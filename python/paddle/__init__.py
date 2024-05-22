@@ -651,18 +651,6 @@ if is_compiled_with_cuda():
                 if os.path.exists(site_cuda_path):
                     dll_paths.append(site_cuda_path)
 
-            cuda_version = paddle.version.cuda_version
-            cuda_path_var = 'CUDA_PATH_V' + cuda_version.replace('.', '_')
-            default_path = os.path.join(
-                pfiles_path,
-                'NVIDIA GPU Computing Toolkit',
-                'CUDA',
-                'v' + cuda_version,
-            )
-            cuda_path = os.path.join(
-                os.getenv(cuda_path_var, default_path), 'bin'
-            )
-
             import ctypes
 
             kernel32 = ctypes.WinDLL('kernel32.dll', use_last_error=True)
@@ -713,7 +701,6 @@ if is_compiled_with_cuda():
                         is_loaded = True
                 if not is_loaded:
                     if not path_patched:
-                        dll_paths.extend(filter(os.path.exists, [cuda_path]))
                         prev_path = os.environ['PATH']
                         os.environ['PATH'] = ';'.join(
                             dll_paths + [os.environ['PATH']]

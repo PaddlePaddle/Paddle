@@ -357,7 +357,7 @@ void* GetCublasDsoHandle() {
     return GetDsoHandleFromSearchPath(
         FLAGS_cuda_dir, win_cublas_lib, true, {cuda_lib_path});
 #endif
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
 #ifdef WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cublas64_12.dll");
 #else
@@ -447,7 +447,7 @@ void* GetCUDNNDsoHandle() {
       "Toolkit\\CUDA\\v10.0\n"
       "You should do this according to your CUDA installation directory and "
       "CUDNN version.");
-  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12000) {
+  if (CUDA_VERSION >= 11000 && CUDA_VERSION < 12030) {
 #ifdef WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(
         FLAGS_cuda_dir, "cudnn64_8.dll", true, {cuda_lib_path}, win_warn_meg);
@@ -455,7 +455,7 @@ void* GetCUDNNDsoHandle() {
     return GetDsoHandleFromSearchPath(
         FLAGS_cuda_dir, win_cudnn_lib, true, {cuda_lib_path}, win_warn_meg);
 #endif
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 12030) {
+  } else if (CUDA_VERSION >= 12030) {
 #ifdef WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(
         FLAGS_cuda_dir, "cudnn64_9.dll", true, {cuda_lib_path}, win_warn_meg);
@@ -496,7 +496,7 @@ void* GetCUPTIDsoHandle() {
         FLAGS_cupti_dir, "libcupti.so", false, {cupti_lib_path});
 #endif
 
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
 #ifdef WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(
         FLAGS_cupti_dir, "libcupti.so.12", false, {cupti_lib_path});
@@ -591,7 +591,7 @@ void* GetCusparseDsoHandle() {
     return GetDsoHandleFromSearchPath(
         FLAGS_cuda_dir, win_cusparse_lib, true, {cuda_lib_path});
 #endif
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
 #ifdef WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cusparse64_12.dll");
 #else
@@ -803,7 +803,7 @@ void* GetCUFFTDsoHandle() {
     return GetDsoHandleFromSearchPath(
         FLAGS_cuda_dir, win_cufft_lib, true, {cuda_lib_path});
 #endif
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
 #ifdef WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "cufft64_11.dll");
 #else
