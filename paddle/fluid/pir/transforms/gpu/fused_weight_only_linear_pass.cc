@@ -32,9 +32,6 @@ int getSMVersion() {
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
   sm_version = paddle::platform::GetGPUComputeCapability(
       paddle::platform::GetCurrentDeviceId());
-#else
-  PADDLE_THROW(common::errors::Unavailable(
-      "fused_weight_only_linear_pass needs paddle compiled with CUDA."));
 #endif
   return sm_version;
 }
