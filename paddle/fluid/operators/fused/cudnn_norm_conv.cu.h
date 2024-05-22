@@ -15,14 +15,15 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/fused/cudnn_fusion_helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
-namespace dynload = platform::dynload;
+namespace dynload = phi::dynload;
 
 template <typename T>
-using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
+using ScalingParamType =
+    typename phi::backends::gpu::CudnnDataType<T>::ScalingParamType;
 
 #if CUDNN_VERSION >= 8000
 
@@ -31,9 +32,9 @@ static size_t RoundUp(int64_t a, int64_t b) { return (a + b - 1) / b * b; }
 template <typename T>
 struct NormConvolutionArgs {
   NormConvolutionArgs() {
-    dtype = platform::CudnnDataType<T>::type;
+    dtype = phi::backends::gpu::CudnnDataType<T>::type;
     format = CUDNN_TENSOR_NHWC;
-    compute_type = platform::CudnnDataType<float>::type;
+    compute_type = phi::backends::gpu::CudnnDataType<float>::type;
   }
 
   void Set(const phi::GPUContext &ctx,
@@ -55,7 +56,7 @@ struct NormConvolutionArgs {
     PADDLE_ENFORCE_EQ(
         input_shape.size(),
         4U,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of input_shape is expected to 4. But received "
             "input_shape's size is %d, input_shape is [%s].",
             input_shape.size(),
@@ -63,7 +64,7 @@ struct NormConvolutionArgs {
     PADDLE_ENFORCE_EQ(
         filter_shape.size(),
         4U,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of filter_shape is expected to 4. But received "
             "filter_shape's size is %d, filter_shape is [%s].",
             filter_shape.size(),
@@ -71,13 +72,13 @@ struct NormConvolutionArgs {
     PADDLE_ENFORCE_EQ(filter_shape[1] == filter_shape[2] &&
                           (filter_shape[1] == 1 || filter_shape[1] == 3),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The filter_shape is expected to store as nhwc, and "
                           "h = w = 1 or 3. But received filter_shape is [%s].",
                           common::make_ddim(filter_shape)));
     PADDLE_ENFORCE_EQ((filter_shape[0] % 32 == 0 && filter_shape[3] % 8 == 0),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input channel is expected to be multiple of 8, "
                           "and the output channel is expected to be multiple "
                           "of 32. But received input channel is %d, output "
@@ -87,7 +88,7 @@ struct NormConvolutionArgs {
     PADDLE_ENFORCE_EQ(
         output_shape.size(),
         4U,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of output_shape is expected to 4. But received "
             "filter_shape's size is %d, filter_shape is [%s].",
             output_shape.size(),
@@ -96,7 +97,7 @@ struct NormConvolutionArgs {
     PADDLE_ENFORCE_EQ(
         is_support,
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Current test is only supported in the platforms with "
             "compatiblity greater than or equal to 70 and the kernel size "
             "must be equal to 1 or 3. When the kernel size is 1, "
@@ -377,21 +378,20 @@ class CudnnNormConvolutionGrad {
     ScalingParamType<T> beta = use_addto ? 1.0f : 0.0f;
     ctx.cudnn_workspace_handle().RunFunc(
         [&](void *cudnn_workspace_ptr) {
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              platform::dynload::cudnnConvolutionBackwardData(
-                  cudnn_handle,
-                  &alpha,
-                  args_.filter_desc.desc(),
-                  filter_ptr,
-                  args_.out_desc.desc(),
-                  output_grad_ptr,
-                  args_.conv_desc.desc(),
-                  dgrad_algo_,
-                  cudnn_workspace_ptr,
-                  workspace_size,
-                  &beta,
-                  args_.in_desc.desc(),
-                  input_grad_ptr));
+          PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnConvolutionBackwardData(
+              cudnn_handle,
+              &alpha,
+              args_.filter_desc.desc(),
+              filter_ptr,
+              args_.out_desc.desc(),
+              output_grad_ptr,
+              args_.conv_desc.desc(),
+              dgrad_algo_,
+              cudnn_workspace_ptr,
+              workspace_size,
+              &beta,
+              args_.in_desc.desc(),
+              input_grad_ptr));
         },
         workspace_size);
   }
@@ -443,7 +443,7 @@ class CudnnNormConvolutionGrad {
     size_t workspace_size = 0U;
     auto handle = ctx.cudnn_handle();
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
+        phi::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
             handle,
             args_.filter_desc.desc(),
             args_.out_desc.desc(),

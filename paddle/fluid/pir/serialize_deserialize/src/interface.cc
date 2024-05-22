@@ -23,12 +23,14 @@ namespace pir {
 #define BASE_CODE "base_code"
 #define MAGIC "magic"
 #define PIRVERSION "version"
+#define TRAINABLE "trainable"
 #define PIR "pir"
 void WriteModule(const pir::Program& program,
                  const std::string& file_path,
                  const uint64_t& pir_version,
                  bool overwrite,
-                 bool readable) {
+                 bool readable,
+                 bool trainable) {
   PADDLE_ENFORCE_EQ(
       FileExists(file_path) && !overwrite,
       false,
@@ -40,12 +42,12 @@ void WriteModule(const pir::Program& program,
   // write base code
   Json total;
 
-  total[BASE_CODE] = {{MAGIC, PIR}, {PIRVERSION, pir_version}};
+  total[BASE_CODE] = {
+      {MAGIC, PIR}, {PIRVERSION, pir_version}, {TRAINABLE, trainable}};
 
-  ProgramWriter writer(pir_version);
+  ProgramWriter writer(pir_version, trainable);
   // write program
   total[PROGRAM] = writer.GetProgramJson(&program);
-
   std::string total_str;
   if (readable) {
     total_str = total.dump(4);
@@ -63,11 +65,32 @@ void WriteModule(const pir::Program& program,
   fout.close();
 }
 
-void ReadModule(const std::string& file_path,
+bool ReadModule(const std::string& file_path,
                 pir::Program* program,
                 const uint64_t& pir_version) {
   std::ifstream f(file_path);
   Json data = Json::parse(f);
+
+  if (data.contains(BASE_CODE) && data[BASE_CODE].contains(MAGIC) &&
+      data[BASE_CODE][MAGIC] == PIR) {
+    uint64_t file_version =
+        data.at(BASE_CODE).at(PIRVERSION).template get<uint64_t>();
+    if (file_version != pir_version) {
+      PADDLE_THROW(
+          common::errors::InvalidArgument("Invalid model version file."));
+    }
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument("Invalid model file."));
+  }
+
+  ProgramReader reader(pir_version);
+  reader.RecoverProgram(&(data[PROGRAM]), program);
+
+  if (data[BASE_CODE].contains(TRAINABLE)) {
+    return data[BASE_CODE][TRAINABLE].get<bool>();
+  } else {
+    return false;
+  }
 }
 
 }  // namespace pir

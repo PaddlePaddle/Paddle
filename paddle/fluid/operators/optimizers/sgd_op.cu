@@ -71,7 +71,7 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     const auto* param_var = ctx.InputVar("Param");
     PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The Var(%s)'s type should be phi::DenseTensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
@@ -93,7 +93,7 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
           ctx.HasInput("MasterParam") && ctx.HasOutput("MasterParamOut");
       PADDLE_ENFORCE_EQ(has_master,
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The Input(MasterParam) and Output(MasterParamOut) "
                             "should not be null when "
                             "the attr `multi_precision` is true"));
@@ -131,7 +131,7 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           param,
           param_out,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The input tensor Param of SgdOp should be equal with ParamOut "
               "if variable's type is SelectedRows."));
       auto* grad = ctx.Input<phi::SelectedRows>("Grad");
@@ -140,7 +140,7 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
       auto out_dims = param_out->dims();
       PADDLE_ENFORCE_EQ(in_height,
                         out_dims[0],
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The input tensor Grad's height of SgdOp should be "
                             "equal with ParamOut's dims. But received Grad's "
                             "height [%s] and ParamOut's dims [%s]",
@@ -153,7 +153,7 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
       int64_t in_row_numel = in_value.numel() / in_rows.size();
       PADDLE_ENFORCE_EQ(in_row_numel,
                         param_out->numel() / in_height,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The in_row_numel of SgdOp should be equal with "
                             "param_out's numel / in_height."));
 
@@ -179,7 +179,7 @@ class SGDOpKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     } else {
       PADDLE_ENFORCE_EQ(false,
                         true,
-                        platform::errors::PermissionDenied(
+                        phi::errors::PermissionDenied(
                             "Unsupported Variable Type of Grad "
                             "in SgdOp. Excepted LodTensor or "
                             "SelectedRows, But received [%s]",

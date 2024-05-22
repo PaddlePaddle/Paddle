@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/pir/transforms/gpu/fused_weight_only_linear_pass.h"
 
+#include <utility>
+
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
@@ -46,9 +48,11 @@ class FusedWeightOnlyLinearWithBiasPattern
 
  public:
   FusedWeightOnlyLinearWithBiasPattern(bool reverse_add,
-                                       const std::string &algo,
+                                       std::string algo,
                                        int sm_version)
-      : reverse_add_(reverse_add), algo_(algo), sm_version_(sm_version) {}
+      : reverse_add_(reverse_add),
+        algo_(std::move(algo)),
+        sm_version_(sm_version) {}
 
   std::string name() const override {
     return "FusedWeightOnlyLinearWithBiasPattern";
@@ -75,34 +79,33 @@ class FusedWeightOnlyLinearWithBiasPattern
     //
     // Constraints.
     //
-    src.RequireNativeCall(
-        [](const paddle::drr::MatchContext &match_ctx) -> bool {
-          if (!pir::ValueIsPersistable(match_ctx.Tensor("w"))) {
-            return false;
-          }
-          bool matmul_trans_x = match_ctx.Attr<bool>("matmul_transpose_x");
-          bool matmul_trans_y = match_ctx.Attr<bool>("matmul_transpose_y");
-          if (matmul_trans_x || matmul_trans_y) return false;
+    src.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
+      if (!pir::ValueIsPersistable(match_ctx.Tensor("w"))) {
+        return false;
+      }
+      bool matmul_trans_x = match_ctx.Attr<bool>("matmul_transpose_x");
+      bool matmul_trans_y = match_ctx.Attr<bool>("matmul_transpose_y");
+      if (matmul_trans_x || matmul_trans_y) return false;
 
-          auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
-          if (!w_dtype.isa<pir::Float16Type>() &&
-              !w_dtype.isa<pir::BFloat16Type>()) {
-            return false;
-          }
+      auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
+      if (!w_dtype.isa<pir::Float16Type>() &&
+          !w_dtype.isa<pir::BFloat16Type>()) {
+        return false;
+      }
 
-          auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
-          auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-          auto bias_dims = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
-          if (!(w_dims.size() == 2 && x_dims.size() >= 2 &&
-                bias_dims.size() == 1)) {
-            return false;
-          }
+      auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+      auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+      auto bias_dims = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
+      if (!(w_dims.size() == 2 && x_dims.size() >= 2 &&
+            bias_dims.size() == 1)) {
+        return false;
+      }
 
-          if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
-          if (x_dims.at(x_dims.size() - 1) != w_dims.at(0)) return false;
+      if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
+      if (x_dims.at(x_dims.size() - 1) != w_dims.at(0)) return false;
 
-          return true;
-        });
+      return true;
+    });
     //
     // Result Pattern.
     //
@@ -166,8 +169,8 @@ class FusedWeightOnlyLinearNoBiasPattern : public paddle::drr::DrrPatternBase {
   int sm_version_;
 
  public:
-  FusedWeightOnlyLinearNoBiasPattern(const std::string &algo, int sm_version)
-      : algo_(algo), sm_version_(sm_version) {}
+  FusedWeightOnlyLinearNoBiasPattern(std::string algo, int sm_version)
+      : algo_(std::move(algo)), sm_version_(sm_version) {}
 
  public:
   std::string name() const override {
@@ -190,32 +193,30 @@ class FusedWeightOnlyLinearNoBiasPattern : public paddle::drr::DrrPatternBase {
     //
     // Constraints.
     //
-    src.RequireNativeCall(
-        [](const paddle::drr::MatchContext &match_ctx) -> bool {
-          if (!pir::ValueIsPersistable(match_ctx.Tensor("w"))) {
-            return false;
-          }
-          bool matmul_trans_x = match_ctx.Attr<bool>("matmul_transpose_x");
-          bool matmul_trans_y = match_ctx.Attr<bool>("matmul_transpose_y");
-          if (matmul_trans_x || matmul_trans_y) return false;
+    src.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
+      if (!pir::ValueIsPersistable(match_ctx.Tensor("w"))) {
+        return false;
+      }
+      bool matmul_trans_x = match_ctx.Attr<bool>("matmul_transpose_x");
+      bool matmul_trans_y = match_ctx.Attr<bool>("matmul_transpose_y");
+      if (matmul_trans_x || matmul_trans_y) return false;
 
-          auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
-          auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-          if (!(w_dims.size() == 2 && x_dims.size() >= 2)) {
-            return false;
-          }
+      auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+      auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+      if (!(w_dims.size() == 2 && x_dims.size() >= 2)) {
+        return false;
+      }
 
-          if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
+      if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
 
-          auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
-          if (!w_dtype.isa<pir::Float16Type>() &&
-              !w_dtype.isa<pir::BFloat16Type>())
-            return false;
+      auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
+      if (!w_dtype.isa<pir::Float16Type>() && !w_dtype.isa<pir::BFloat16Type>())
+        return false;
 
-          if (x_dims.at(x_dims.size() - 1) != w_dims.at(0)) return false;
+      if (x_dims.at(x_dims.size() - 1) != w_dims.at(0)) return false;
 
-          return true;
-        });
+      return true;
+    });
     //
     // Result Pattern.
     //

@@ -21,18 +21,13 @@ disable_wingpu_test="^test_model$|\
 ^test_add_reader_dependency_for_interpretercore$|\
 ^test_decoupled_py_reader$|\
 ^test_decoupled_py_reader_static_build$|\
-^test_generator_dataloader$|\
+^test_generator_dataloader_deprecated$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
 ^test_py_reader_using_executor$|\
-^test_parallel_executor_seresnext_base_gpu$|\
-^test_parallel_executor_seresnext_with_fuse_all_reduce_gpu$|\
-^test_parallel_executor_seresnext_with_reduce_gpu$|\
 ^test_program_prune_backward$|\
 ^test_decoupled_py_reader_data_check$|\
 ^test_fleet_base_single$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
-^test_parallel_executor_feed_persistable_var$|\
-^test_parallel_executor_inference_feed_partial_data$|\
 ^test_py_reader_combination$|\
 ^test_py_reader_pin_memory$|\
 ^test_py_reader_push_pop$|\
@@ -76,7 +71,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_elementwise_add_mkldnn_op$|\
 ^test_comp_high_grad$|\
 ^test_multi_precision_fp16_train$|\
-^test_fuse_relu_depthwise_conv_pass$|\
 ^test_imperative_skip_op$|\
 ^test_qat$|\
 ^test_standalone_cuda_graph_multi_stream$|\
@@ -89,7 +83,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_switch_autotune$|\
 ^test_elementwise_div_op$|\
 ^test_elementwise_mul_op$|\
-^test_conv2d_api$|\
+^test_conv2d_api_deprecated$|\
 ^test_fused_gemm_epilogue_pass$|\
 ^test_cuda_graphed_layer$|\
 ^test_quant_linear_op$|\
@@ -209,7 +203,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_argsort_op$|\
 ^test_image_classification_fp16$|\
 ^test_imperative_double_grad$|\
-^test_parallel_executor_transformer$|\
 ^test_se_resnet$|\
 ^test_standalone_executor_aot_choose_kernel$|\
 ^test_imperative_qat_user_defined$|\
@@ -217,7 +210,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_callback_reduce_lr_on_plateau$|\
 ^test_callback_visualdl$|\
 ^test_callback_wandb$|\
-^test_mix_precision_all_reduce_fuse$|\
 ^test_user_defined_quantization$|\
 ^test_quantization_scale_pass$|\
 ^test_quantization_pass$|\
@@ -228,7 +220,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_matmul_op$|\
 ^test_decoupled_py_reader_data_check$|\
 ^test_decoupled_py_reader$|\
-^test_generator_dataloader$|\
+^test_generator_dataloader_deprecated$|\
 ^test_py_reader_combination$|\
 ^test_reader_reset$|\
 ^test_sync_batch_norm_op$|\
@@ -346,7 +338,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_stack_op$|\
 ^trt_split_converter_test$|\
 ^paddle_infer_api_copy_tensor_tester$|\
-^test_var_base$|\
+^test_eager_tensor$|\
 ^test_einsum_v2$|\
 ^test_tensor_scalar_type_promotion_static$|\
 ^test_matrix_power_op$|\
@@ -399,10 +391,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_model$|\
 ^test_py_reader_combination$|\
 ^test_py_reader_push_pop$|\
-^test_parallel_executor_feed_persistable_var$|\
-^test_parallel_executor_inference_feed_partial_data$|\
 ^test_reader_reset$|\
-^test_parallel_executor_seresnext_base_gpu$|\
 ^test_py_reader_pin_memory$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
@@ -411,7 +400,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_compat$|\
 ^test_decoupled_py_reader$|\
 ^test_decoupled_py_reader_static_build$|\
-^test_generator_dataloader$|\
+^test_generator_dataloader_deprecated$|\
 ^test_py_reader_using_executor$|\
 ^test_dataloader_keep_order$|\
 ^test_dataloader_unkeep_order$|\
@@ -432,8 +421,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_trt_convert_multihead_matmul$|\
 ^test_trt_convert_prelu$|\
 ^test_trt_fc_fuse_quant_dequant_pass$|\
-^test_parallel_executor_seresnext_with_fuse_all_reduce_gpu$|\
-^test_parallel_executor_seresnext_with_reduce_gpu$|\
 ^test_api_impl$|\
 ^test_tensordot$|\
 ^disable_win_inference_test$|\

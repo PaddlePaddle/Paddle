@@ -36,8 +36,8 @@ static void CopyXCCLIDToVar(const std::vector<phi::ccl::CCLRootId>& xccl_ids,
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        platform::errors::NotFound("Variable with name %s is not found",
-                                   var_name.c_str()));
+        phi::errors::NotFound("Variable with name %s is not found",
+                              var_name.c_str()));
     auto xccl_id = var->GetMutable<phi::ccl::CCLRootId>();
     *xccl_id = xccl_ids[i];
   }
@@ -52,7 +52,7 @@ class CGenXCCLIdOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {}
+               const phi::Place& dev_place) const override {}
 };
 
 #else
@@ -65,7 +65,7 @@ class CGenXCCLIdOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {}
+               const phi::Place& dev_place) const override {}
 };
 
 #endif

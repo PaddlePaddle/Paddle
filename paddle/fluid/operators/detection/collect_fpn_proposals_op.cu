@@ -21,12 +21,13 @@ namespace cub = hipcub;
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/detection/collect_fpn_proposals_op.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/mixed_vector.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/detection/bbox_util.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 
@@ -81,7 +82,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     phi::DenseTensor roi_batch_id_list;
     roi_batch_id_list.Resize({total_roi_num});
     int* roi_batch_id_data =
-        roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
+        roi_batch_id_list.mutable_data<int>(phi::CPUPlace());
     int index = 0;
     int lod_size;
     auto place = dev_ctx.GetPlace();
@@ -93,7 +94,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
       if (multi_rois_num.size() > 0) {
         phi::DenseTensor temp;
         paddle::framework::TensorCopySync(
-            *multi_rois_num[i], platform::CPUPlace(), &temp);
+            *multi_rois_num[i], phi::CPUPlace(), &temp);
         const int* length_in = temp.data<int>();
         lod_size = multi_rois_num[i]->numel();
         for (size_t n = 0; n < lod_size; ++n) {
@@ -111,32 +112,36 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         }
       }
 
-      memory::Copy(place,
-                   concat_rois_data + roi_offset,
-                   place,
-                   roi_in->data<T>(),
-                   roi_in->numel() * sizeof(T),
-                   dev_ctx.stream());
-      memory::Copy(place,
-                   concat_scores_data + score_offset,
-                   place,
-                   score_in->data<T>(),
-                   score_in->numel() * sizeof(T),
-                   dev_ctx.stream());
+      phi::memory_utils::Copy(place,
+                              concat_rois_data + roi_offset,
+                              place,
+                              roi_in->data<T>(),
+                              roi_in->numel() * sizeof(T),
+                              dev_ctx.stream());
+      phi::memory_utils::Copy(place,
+                              concat_scores_data + score_offset,
+                              place,
+                              score_in->data<T>(),
+                              score_in->numel() * sizeof(T),
+                              dev_ctx.stream());
       roi_offset += roi_in->numel();
       score_offset += score_in->numel();
     }
 
     // copy batch id list to GPU
     phi::DenseTensor roi_batch_id_list_gpu;
-    framework::TensorCopy(
-        roi_batch_id_list, dev_ctx.GetPlace(), &roi_batch_id_list_gpu);
+    phi::Copy(dev_ctx,
+              roi_batch_id_list,
+              dev_ctx.GetPlace(),
+              false,
+              &roi_batch_id_list_gpu);
 
     phi::DenseTensor index_in_t;
     int* idx_in =
         index_in_t.mutable_data<int>({total_roi_num}, dev_ctx.GetPlace());
-    platform::ForRange<phi::GPUContext> for_range_total(dev_ctx, total_roi_num);
-    for_range_total(RangeInitFunctor{0, 1, idx_in});
+    phi::funcs::ForRange<phi::GPUContext> for_range_total(dev_ctx,
+                                                          total_roi_num);
+    for_range_total(phi::funcs::RangeInitFunctor{0, 1, idx_in});
 
     phi::DenseTensor keys_out_t;
     T* keys_out =
@@ -184,8 +189,9 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     phi::DenseTensor batch_index_t;
     int* batch_idx_in =
         batch_index_t.mutable_data<int>({real_post_num}, dev_ctx.GetPlace());
-    platform::ForRange<phi::GPUContext> for_range_post(dev_ctx, real_post_num);
-    for_range_post(RangeInitFunctor{0, 1, batch_idx_in});
+    phi::funcs::ForRange<phi::GPUContext> for_range_post(dev_ctx,
+                                                         real_post_num);
+    for_range_post(phi::funcs::RangeInitFunctor{0, 1, batch_idx_in});
 
     phi::DenseTensor out_id_t;
     int* out_id_data =
@@ -233,12 +239,12 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     GetLengthLoD<<<blocks, threads, 0, dev_ctx.stream()>>>(
         real_post_num, out_id_data, length_lod_data);
     std::vector<int> length_lod_cpu(lod_size);
-    memory::Copy(platform::CPUPlace(),
-                 length_lod_cpu.data(),
-                 place,
-                 length_lod_data,
-                 sizeof(int) * lod_size,
-                 dev_ctx.stream());
+    phi::memory_utils::Copy(phi::CPUPlace(),
+                            length_lod_cpu.data(),
+                            place,
+                            length_lod_data,
+                            sizeof(int) * lod_size,
+                            dev_ctx.stream());
     dev_ctx.Wait();
 
     std::vector<size_t> offset(1, 0);
@@ -249,12 +255,12 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     if (ctx.HasOutput("RoisNum")) {
       auto* rois_num = ctx.Output<phi::DenseTensor>("RoisNum");
       int* rois_num_data = rois_num->mutable_data<int>({lod_size}, place);
-      memory::Copy(place,
-                   rois_num_data,
-                   place,
-                   length_lod_data,
-                   lod_size * sizeof(int),
-                   dev_ctx.stream());
+      phi::memory_utils::Copy(place,
+                              rois_num_data,
+                              place,
+                              length_lod_data,
+                              lod_size * sizeof(int),
+                              dev_ctx.stream());
     }
 
     framework::LoD lod;

@@ -164,7 +164,7 @@ cinn_cc_library(
   isl
   ginac
   pybind
-  group_cluster
+  op_fusion
   cinn_op_dialect
   ${jitify_deps})
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
@@ -178,7 +178,7 @@ if(WITH_MKL)
   target_link_libraries(cinnapi cinn_mklml)
   add_dependencies(cinnapi cinn_mklml)
   if(WITH_ONEDNN)
-    target_link_libraries(cinnapi ${MKLDNN_LIB})
+    target_link_libraries(cinnapi ${ONEDNN_LIB})
     add_dependencies(cinnapi ${ONEDNN_PROJECT})
   endif()
 endif()
@@ -224,7 +224,7 @@ function(gen_cinncore LINKTYPE)
     isl
     ginac
     pybind
-    group_cluster
+    op_fusion
     cinn_op_dialect
     ${jitify_deps})
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
@@ -239,7 +239,7 @@ function(gen_cinncore LINKTYPE)
     target_link_libraries(${CINNCORE_TARGET} cinn_mklml)
     add_dependencies(${CINNCORE_TARGET} cinn_mklml)
     if(WITH_ONEDNN)
-      target_link_libraries(${CINNCORE_TARGET} ${MKLDNN_LIB})
+      target_link_libraries(${CINNCORE_TARGET} ${ONEDNN_LIB})
       add_dependencies(${CINNCORE_TARGET} ${ONEDNN_PROJECT})
     endif()
   endif()

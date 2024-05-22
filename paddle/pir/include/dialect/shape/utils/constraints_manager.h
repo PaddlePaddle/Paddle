@@ -23,11 +23,13 @@ namespace symbol {
 
 class IR_API ConstraintsManager {
  public:
+  ConstraintsManager() = default;
+  ConstraintsManager(const ConstraintsManager&) = delete;
+  ConstraintsManager(ConstraintsManager&&) = delete;
+
   void AddEqCstr(const DimExpr& lhs, const DimExpr& rhs);
 
   bool IsEqual(const DimExpr& lhs, const DimExpr& rhs) const;
-
-  std::vector<std::vector<DimExpr>> GetEqualClusters() const;
 
   void AddGTOneCstr(const DimExpr& dim_expr);
 
@@ -35,11 +37,10 @@ class IR_API ConstraintsManager {
 
   void AddBroadcastableCstr(const DimExpr& lhs, const DimExpr& rhs);
 
-  using EqualCallbackFunc = std::function<void(const DimExpr&, const DimExpr&)>;
-  void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);
+  bool IsBroadcastable(const DimExpr& lhs, const DimExpr& rhs) const;
 
- private:
-  void SubstituteInConstraint(const DimExpr& lhs, const DimExpr& rhs);
+  template <typename DoEachClusterT>
+  void VisitEqualClusters(const DoEachClusterT& DoEachCluster) const;
 
   template <typename DoEachT>
   void EqualConstraintsVisitor(const DoEachT& DoEach);
@@ -48,14 +49,34 @@ class IR_API ConstraintsManager {
   void GTOneConstraintsVisitor(const DoEachT& DoEach);
 
   template <typename DoEachT>
+  void GTOneConstraintsVisitor(const DoEachT& DoEach) const;
+
+  template <typename DoEachT>
   void BroadcastableConstraintsVisitor(const DoEachT& DoEach);
 
- private:
-  EqualCallbackFunc equal_callback_func_ = nullptr;
+  template <typename DoEachT>
+  void BroadcastableConstraintsVisitor(const DoEachT& DoEach) const;
+
+  using EqualCallbackFunc = std::function<void(const DimExpr&, const DimExpr&)>;
+  void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);
 
   using EqualConstraints = common::UnionFindSet<DimExpr>;
   using GTOneConstraints = std::unordered_set<DimExpr>;
-  using BroadcastableConstraints = std::vector<Broadcastable<DimExpr>>;
+  using BroadcastableConstraints = std::unordered_set<Broadcastable<DimExpr>>;
+
+  const EqualConstraints& equals() const { return equals_; }
+
+  const GTOneConstraints& gtones() const { return gtones_; }
+
+  const BroadcastableConstraints& broadcastables() const {
+    return broadcastables_;
+  }
+
+ private:
+  void SubstituteInConstraint(const DimExpr& lhs, const DimExpr& rhs);
+
+ private:
+  EqualCallbackFunc equal_callback_func_ = nullptr;
 
   EqualConstraints equals_;
   GTOneConstraints gtones_;

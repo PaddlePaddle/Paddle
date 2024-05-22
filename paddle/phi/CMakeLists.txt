@@ -32,6 +32,14 @@ if(WITH_CUSTOM_DEVICE)
   add_subdirectory(capi)
 endif()
 
+if(WIN32)
+  file(GLOB_RECURSE YAML_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ops/yaml/*.yaml")
+  set_property(
+    DIRECTORY
+    APPEND
+    PROPERTY CMAKE_CONFIGURE_DEPENDS ${YAML_FILE})
+endif()
+
 set(PHI_DEPS
     phi_profiler_proto
     auto_parallel_proto
@@ -121,6 +129,7 @@ if(WITH_AVX
   set_source_files_properties(
     kernels/fusion/cpu/fused_layer_norm_avx_kernel.cc
     kernels/fusion/cpu/self_dp_attention_kernel.cc
+    kernels/fusion/cpu/rms_norm_avx_kernel.cc
     PROPERTIES COMPILE_FLAGS
                "${Wno_Maybe_Uninitialized} ${FMA_FLAG} ${AVX512F_FLAG}")
 endif()

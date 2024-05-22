@@ -51,7 +51,7 @@ int32_t BrpcPsServer::Initialize() {
   }
   auto *service =
       CREATE_PSCORE_CLASS(PsBaseService, service_config.service_class());
-  if (service == NULL) {
+  if (service == nullptr) {
     LOG(ERROR) << "service is unregistered, service_name:"
                << service_config.service_class();
     return -1;

@@ -156,11 +156,10 @@ void LayerNormFunc(const T* x_data,
         vbeta = _mm512_maskz_loadu_ps(mask, norm_bias_data + col);
       }
       // (vx - vmean) * vgamma * vvar + vbeta
-      __m512 vy;
       vx = _mm512_mask_sub_ps(vx, mask, vx, vmean);
       vx = _mm512_mask_mul_ps(vx, mask, vx, vgamma);
       vx = _mm512_mask_mul_ps(vx, mask, vx, vvar);
-      vy = _mm512_mask_add_ps(vy, mask, vx, vbeta);
+      __m512 vy = _mm512_mask_add_ps(vx, mask, vx, vbeta);
       _mm512_mask_storeu_ps(py + col, mask, vy);
     }
   }

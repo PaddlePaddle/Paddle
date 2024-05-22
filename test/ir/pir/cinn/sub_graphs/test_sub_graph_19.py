@@ -34,7 +34,8 @@ class LayerCase(paddle.nn.Layer):
 
     def forward(
         self,
-        var_0,  # (shape: [22, 3840, 1, 1], dtype: paddle.float32, stop_gradient: False)
+        # (shape: [22, 3840, 1, 1], dtype: paddle.float32, stop_gradient: False)
+        var_0,
     ):
         var_1 = paddle.nn.functional.common.dropout(
             var_0,
@@ -99,5 +100,5 @@ class TestLayer(unittest.TestCase):
             # np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
 
 
-# if __name__ == '__main__':
-#     unittest.main()
+if __name__ == '__main__':
+    unittest.main()

@@ -73,8 +73,15 @@ void Conv2dOpMapper(const paddle::cpp::OpDesc& op_desc,
   ctx.AddVarModelToProgram(out_name, out->id);
 }
 
-void DepthwiseConv2dOpMapper(const paddle::cpp::OpDesc& op_desc,
-                             const OpMapperContext& ctx) {
+void DepthwiseConv2dOpMapperImpl(common::UnknownArch,
+                                 const paddle::cpp::OpDesc& op_desc,
+                                 const OpMapperContext& ctx) {
+  LOG(FATAL) << "NotImplemented.";
+}
+
+void DepthwiseConv2dOpMapperImpl(common::X86Arch,
+                                 const paddle::cpp::OpDesc& op_desc,
+                                 const OpMapperContext& ctx) {
   CHECK_EQ(op_desc.Input("Input").size(), 1UL);
   auto x_name = op_desc.Input("Input").front();
   CHECK_EQ(op_desc.Input("Filter").size(), 1UL);
@@ -103,28 +110,81 @@ void DepthwiseConv2dOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto y = ctx.GetVar(y_name);
 
   Variable out;
-  if (ctx.Target().arch == Target::Arch::X86) {
-    out = ctx.Builder()->Conv2d(x,
-                                y,
-                                strides,
-                                paddings,
-                                dilations,
-                                groups,
-                                data_format,
-                                padding_algorithm);
-  } else {
-    out = ctx.Builder()->DepthwiseConv2d(x,
-                                         y,
-                                         strides,
-                                         paddings,
-                                         dilations,
-                                         groups,
-                                         data_format,
-                                         padding_algorithm);
+  out = ctx.Builder()->Conv2d(x,
+                              y,
+                              strides,
+                              paddings,
+                              dilations,
+                              groups,
+                              data_format,
+                              padding_algorithm);
+  ctx.AddVar(out_name, out);
+  ctx.AddVarModelToProgram(out_name, out->id);
+}
+
+void DepthwiseConv2dOpMapperImpl(common::ARMArch,
+                                 const paddle::cpp::OpDesc& op_desc,
+                                 const OpMapperContext& ctx) {
+  LOG(FATAL) << "NotImplemented.";
+}
+
+void DepthwiseConv2dOpMapperImpl(common::NVGPUArch,
+                                 const paddle::cpp::OpDesc& op_desc,
+                                 const OpMapperContext& ctx) {
+  CHECK_EQ(op_desc.Input("Input").size(), 1UL);
+  auto x_name = op_desc.Input("Input").front();
+  CHECK_EQ(op_desc.Input("Filter").size(), 1UL);
+  auto y_name = op_desc.Input("Filter").front();
+
+  CHECK_EQ(op_desc.Output("Output").size(), 1UL);
+  auto out_name = op_desc.Output("Output").front();
+
+  auto strides =
+      utils::GetAttrOrDefault<std::vector<int>>(op_desc, "strides", {1, 1});
+  auto paddings =
+      utils::GetAttrOrDefault<std::vector<int>>(op_desc, "paddings", {0, 0});
+  auto dilations =
+      utils::GetAttrOrDefault<std::vector<int>>(op_desc, "dilations", {1, 1});
+  auto groups = utils::GetAttrOrDefault<int>(op_desc, "groups", 1);
+
+  auto data_format =
+      utils::GetAttrOrDefault<std::string>(op_desc, "data_format", "NCHW");
+  if (data_format == "AnyLayout") {
+    data_format = "NCHW";
   }
+
+  auto padding_algorithm = utils::GetAttrOrDefault<std::string>(
+      op_desc, "padding_algorithm", "EXPLICIT");
+  auto x = ctx.GetVar(x_name);
+  auto y = ctx.GetVar(y_name);
+
+  Variable out;
+  out = ctx.Builder()->DepthwiseConv2d(x,
+                                       y,
+                                       strides,
+                                       paddings,
+                                       dilations,
+                                       groups,
+                                       data_format,
+                                       padding_algorithm);
 
   ctx.AddVar(out_name, out);
   ctx.AddVarModelToProgram(out_name, out->id);
+}
+
+void DepthwiseConv2dOpMapperByArch(common::Arch arch,
+                                   const paddle::cpp::OpDesc& op_desc,
+                                   const OpMapperContext& ctx) {
+  return std::visit(
+      [&](const auto& impl) {
+        return DepthwiseConv2dOpMapperImpl(impl, op_desc, ctx);
+      },
+      arch.variant());
+}
+
+void DepthwiseConv2dOpMapper(const paddle::cpp::OpDesc& op_desc,
+                             const OpMapperContext& ctx) {
+  return DepthwiseConv2dOpMapperByArch(ctx.Target().arch, op_desc, ctx);
 }
 
 void Conv2dGradOpMapper(const paddle::cpp::OpDesc& op_desc,

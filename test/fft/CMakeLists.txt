@@ -8,4 +8,4 @@ foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
 
-set_pit_tests_properties()
+set_pir_tests_properties()

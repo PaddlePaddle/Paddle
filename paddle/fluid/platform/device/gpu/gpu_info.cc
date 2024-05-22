@@ -217,6 +217,7 @@ class RecordedGpuMallocHelper {
     CUDADeviceGuard guard(dev_id_);
     gpuError_t result;
 #ifdef PADDLE_WITH_HIP
+    phi::backends::gpu::CUDAGraphCaptureModeGuard capture_mode_guard;
     if (UNLIKELY(malloc_managed_memory)) {
       result = hipMallocManaged(ptr, size);
     } else {
@@ -503,11 +504,11 @@ class RecordedGpuMallocHelper {
   std::atomic<uint64_t> cur_size_{0};
 
 #if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11020)
-  cudaMemPool_t memPool_;
+  cudaMemPool_t memPool_ = nullptr;
   static std::once_flag set_cudamempoolattr_once_flag_;
 #endif
 #if defined(PADDLE_WITH_HIP)
-  hipMemPool_t memPool_;
+  hipMemPool_t memPool_ = nullptr;
   static std::once_flag set_cudamempoolattr_once_flag_;
 #endif
 

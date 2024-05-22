@@ -304,7 +304,7 @@ void update_out_blk(float* output,
       __m512 vabc = _mm512_maskz_loadu_ps(mask, buf + off);
       vout = _mm512_mask_mul_ps(vout, mask, vout, merr);
       vout = _mm512_mask_mul_ps(vout, mask, vout, vfac);
-      __m512 vupt;
+      __m512 vupt = _mm512_set1_ps(0.0f);
       vupt = _mm512_mask_add_ps(vupt, mask, vout, vabc);
       _mm512_mask_storeu_ps(outbuf + off, mask, vupt);
     }

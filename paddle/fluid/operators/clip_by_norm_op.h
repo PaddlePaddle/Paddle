@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/phi/common/transform.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace paddle {
@@ -27,7 +27,7 @@ namespace operators {
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
 
 class ClipByNormOp : public framework::OperatorWithKernel {
  public:
@@ -37,21 +37,21 @@ class ClipByNormOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(X) of ClipByNormOp should not be null. Please "
                           "check if it is created correctly."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Output(Out) of ClipByNormOp should not be null. "
                           "Please check if it is created correctly."));
     auto max_norm = ctx->Attrs().Get<float>("max_norm");
     PADDLE_ENFORCE_GT(
         max_norm,
         0,
-        platform::errors::InvalidArgument("max_norm should be greater than 0. "
-                                          "Received max_norm is %f.",
-                                          max_norm));
+        phi::errors::InvalidArgument("max_norm should be greater than 0. "
+                                     "Received max_norm is %f.",
+                                     max_norm));
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");

@@ -225,11 +225,18 @@ class AnalysisMap {
   template <
       typename AnalysisT,
       typename OpT,
-      std::enable_if_t<
-          !std::is_constructible<AnalysisT, OpT, AnalysisManager&>::value>* =
-          nullptr>
+      std::enable_if_t<std::is_constructible<AnalysisT, OpT>::value>* = nullptr>
   static auto ConstructAnalysis(AnalysisManager&, OpT op) {
     return std::make_unique<AnalysisModel<AnalysisT>>(op);
+  }
+
+  /// Construct analysis using default constructor
+  template <typename AnalysisT,
+            typename OpT,
+            std::enable_if_t<std::is_default_constructible<AnalysisT>::value>* =
+                nullptr>
+  static auto ConstructAnalysis(AnalysisManager&, OpT op) {
+    return std::make_unique<AnalysisModel<AnalysisT>>();
   }
 
  private:

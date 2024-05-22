@@ -17,7 +17,10 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/errors.h"
 #include "paddle/common/layout.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/impl/box_coder.h"
 
@@ -372,6 +375,31 @@ void DpsgdInferMeta(const MetaTensor& param,
           grad.dims()));
   param_out->set_dims(param_dims);
 }
+
+void FakeQuantizeRangeAbsMaxInferMeta(const MetaTensor& x,
+                                      const MetaTensor& in_scale,
+                                      const MetaTensor& iter,
+                                      int window_size,
+                                      int bit_length,
+                                      bool is_test,
+                                      int round_type,
+                                      MetaTensor* out,
+                                      MetaTensor* out_scale,
+                                      MetaTensor* out_scales) {
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  if (out_scales) {
+    out_scales->set_dims({window_size});
+  }
+  out->set_dims(x.dims());
+  out_scale->set_dims({1});
+  out->share_lod(x);
+}
+
 void FlashAttnInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,
@@ -380,12 +408,55 @@ void FlashAttnInferMeta(const MetaTensor& q,
                         MetaTensor* softmax_lse,
                         MetaTensor* seed_offset) {
   auto out_dims = q.dims();
+  PADDLE_ENFORCE_EQ(out_dims.size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "flash_attn receive input with dim "
+                        "[batch_size, seq_len, num_heads, head_dim]"));
   out_dims[3] = v.dims()[3];
   out->set_dims(out_dims);
   out->set_dtype(q.dtype());
   out->set_layout(q.layout());
-  softmax->set_dtype(q.dtype());
-  softmax_lse->set_dtype(q.dtype());
+  auto round_multiple = [](int x) { return (x + 127) / 128 * 128; };
+  int batch_size = q.dims()[0];
+  int num_heads = q.dims()[2];
+  int seqlen_q_rounded = round_multiple(q.dims()[1]);
+  int seqlen_k_rounded = round_multiple(k.dims()[1]);
+  if (softmax) {
+    softmax->set_dtype(q.dtype());
+    softmax->set_dims(
+        {batch_size, num_heads, seqlen_q_rounded, seqlen_k_rounded});
+  }
+  if (softmax_lse) {
+    softmax_lse->set_dtype(q.dtype());
+    softmax_lse->set_dims({batch_size, num_heads, seqlen_q_rounded});
+  }
+  if (seed_offset) {
+    seed_offset->set_dtype(phi::DataType::INT64);
+    seed_offset->set_dims({2});
+  }
+}
+void FlashAttnQKVPackedInferMeta(const MetaTensor& qkv,
+                                 MetaTensor* out,
+                                 MetaTensor* softmax,
+                                 MetaTensor* softmax_lse,
+                                 MetaTensor* seed_offset) {
+  const auto& qkvdims = qkv.dims();
+  PADDLE_ENFORCE(qkvdims.size() == 4 || qkvdims.size() == 5,
+                 phi::errors::InvalidArgument(
+                     "qkv dims must be 4(unpadded) or 5(padded batch)"));
+  // qkv [total_*,nheads/nheads_k+2,nheads_k,headdim]
+  auto out_dims = DDim({qkvdims[0], (qkvdims[1] - 2) * qkvdims[2], qkvdims[3]});
+  if (qkvdims.size() == 5) {
+    // qkv [batchsize,seqlen,nheads/nheads_k+2,nheads_k,headdim]
+    out_dims =
+        DDim{qkvdims[0], qkvdims[1], (qkvdims[2] - 2) * qkvdims[3], qkvdims[4]};
+  }
+  out->set_dims(out_dims);
+  out->set_dtype(qkv.dtype());
+  out->set_layout(qkv.layout());
+  softmax->set_dtype(qkv.dtype());
+  softmax_lse->set_dtype(qkv.dtype());
   if (seed_offset) {
     seed_offset->set_dtype(phi::DataType::INT64);
   }
@@ -519,6 +590,32 @@ void InstanceNormInferMeta(const MetaTensor& x,
     saved_variance->set_dims({NxC});
     saved_variance->set_dtype(param_type);
   }
+}
+
+void GlobalGatherInferMeta(const MetaTensor& x,
+                           const MetaTensor& local_count,
+                           const MetaTensor& global_count,
+                           int ring_id,
+                           bool use_calc_stream,
+                           MetaTensor* out) {
+  PADDLE_ENFORCE_GE(
+      ring_id,
+      0,
+      phi::errors::InvalidArgument(
+          "The ring_id (%d) for global gather op must be non-negative.",
+          ring_id));
+  auto input_dims = x.dims();
+  auto ndim_input = input_dims.size();
+  // dim check
+  PADDLE_ENFORCE_EQ(
+      ndim_input,
+      2,
+      phi::errors::InvalidArgument("The input tensor's dimension must be 2. "
+                                   "But received input's dimension = %d.",
+                                   ndim_input));
+  phi::DDim out_dims = common::make_ddim({-1, -1});
+  out->set_dims(out_dims);
+  out->set_dtype(x.dtype());
 }
 
 void GlobalScatterInferMeta(const MetaTensor& x,
@@ -1123,6 +1220,13 @@ void PutAlongAxisInferMeta(const MetaTensor& x,
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
 }
+
+void PushGpupsSparseInferMeta(const std::vector<const MetaTensor*>& ids,
+                              const std::vector<const MetaTensor*>& out,
+                              const std::vector<int>& size,
+                              bool is_sparse,
+                              bool is_distributed,
+                              std::vector<MetaTensor*> out_grad) {}
 
 void RandomRoutingInferMeta(const MetaTensor& prob,
                             const MetaTensor& topk_value,

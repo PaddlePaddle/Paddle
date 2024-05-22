@@ -103,7 +103,8 @@ def naive_residual_biasadd_layer_norm_int8(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA "
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCM",
 )
 class TestlayernormOp(unittest.TestCase):
     def setUp(self):
@@ -381,7 +382,8 @@ class TestlayernormOp(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA "
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCM",
 )
 class TestlayernormStaticOp(unittest.TestCase):
     def setUp(self):

@@ -21,9 +21,6 @@ namespace symbol {
 
 class IR_API DimExprBuilder {
  public:
-  explicit DimExprBuilder(std::vector<DimExprConstraint>* constraints)
-      : constraints_(constraints) {}
-
   DimExpr ConstSize(std::int64_t dim);
   DimExpr Symbol(const std::string& symbol_name);
   DimExpr Add(const DimExpr& lhs, const DimExpr& rhs);
@@ -35,21 +32,10 @@ class IR_API DimExprBuilder {
   DimExpr Broadcast(const DimExpr& lhs, const DimExpr& rhs);
   std::vector<DimExpr> ConstShape(const std::vector<std::int64_t>& dims);
 
-  void CstrBroadcastable(const DimExpr& lhs, const DimExpr& rhs);
-  void CstrBroadcastable(const std::vector<DimExpr>& lhs,
-                         const std::vector<DimExpr>& rhs);
-  void CstrEq(const DimExpr& lhs, const DimExpr& rhs);
-  void CstrEq(const std::vector<DimExpr>& lhs, const std::vector<DimExpr>& rhs);
-
   std::vector<DimExpr> Concat(const std::vector<DimExpr>& lhs,
                               const std::vector<DimExpr>& rhs);
   std::pair<std::vector<DimExpr>, std::vector<DimExpr>> SplitAt(
       const std::vector<DimExpr>, int index);
-
-  const std::vector<DimExprConstraint>& constraints() const;
-
- private:
-  std::vector<DimExprConstraint>* constraints_;
 };
 
 }  // namespace symbol

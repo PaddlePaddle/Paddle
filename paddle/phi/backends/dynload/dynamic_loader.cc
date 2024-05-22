@@ -103,13 +103,14 @@ static constexpr char* win_nvjpeg_lib =
     ".dll;nvjpeg64_" CUDA_VERSION_MAJOR ".dll;nvjpeg64_10.dll";
 static constexpr char* win_cusolver_lib =
     "cusolver64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
-    ".dll;cusolver64_" CUDA_VERSION_MAJOR ".dll;cusolver64_10.dll";
+    ".dll;cusolver64_" CUDA_VERSION_MAJOR
+    ".dll;cusolver64_11.dll;cusolver64_10.dll";
 static constexpr char* win_cusparse_lib =
     "cusparse64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusparse64_" CUDA_VERSION_MAJOR ".dll;cusparse64_10.dll";
 static constexpr char* win_cufft_lib =
     "cufft64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
-    ".dll;cufft64_" CUDA_VERSION_MAJOR ".dll;cufft64_10.dll";
+    ".dll;cufft64_" CUDA_VERSION_MAJOR ".dll;cufft64_11.dll;cufft64_10.dll";
 #else
 static constexpr char* win_curand_lib =
     "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
@@ -408,8 +409,13 @@ void* GetCUDNNDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_miopen_dir, "libMIOpen.so", false);
 #else
 #ifdef WITH_PIP_CUDA_LIBRARIES
-  return GetDsoHandleFromSearchPath(
-      FLAGS_cudnn_dir, "libcudnn.so.8", false, {cuda_lib_path});
+  if (CUDA_VERSION >= 12030) {
+    return GetDsoHandleFromSearchPath(
+        FLAGS_cudnn_dir, "libcudnn.so.9", false, {cuda_lib_path});
+  } else {
+    return GetDsoHandleFromSearchPath(
+        FLAGS_cudnn_dir, "libcudnn.so.8", false, {cuda_lib_path});
+  }
 #else
   return GetDsoHandleFromSearchPath(
       FLAGS_cudnn_dir, "libcudnn.so", false, {cuda_lib_path});
@@ -694,7 +700,11 @@ void* GetCUFFTDsoHandle() {
 #else
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so");
 #endif
+<<<<<<< HEAD
   } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 13000) {
+=======
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
+>>>>>>> b9366a6c66eb0d91c30f6cdd68ce052edd61a2bd
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so.11");
   } else {
     std::string warning_msg(

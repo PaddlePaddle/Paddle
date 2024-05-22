@@ -64,8 +64,11 @@ class TestLlamaMLP(unittest.TestCase):
         self.hidden_states.stop_gradient = False
 
     def check_jit_kernel_info(self, static_fn):
-        utils.check_jit_kernel_number(static_fn, 1)
-        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+        # FusionOp split by matmul:
+        # FusionOp1: concat
+        # FusionOp2: slice, generate_shape, etc.
+        utils.check_jit_kernel_number(static_fn, 2)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 2})
 
     def eval(self, use_cinn):
         paddle.seed(2024)

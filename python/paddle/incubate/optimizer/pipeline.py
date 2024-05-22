@@ -481,13 +481,13 @@ class PipelineOptimizer:
         if device:
             assert device[0:3] == 'gpu', (
                 "Now, only gpu devices are "
-                "supported in pipeline parallemism."
+                "supported in pipeline parallelism."
             )
         return device
 
     def _add_op_device_attr_for_op(self, op, idx, block):
         """
-        Add op_device attrribute for ops that have not that attribute set.
+        Add op_device attribute for ops that have not that attribute set.
         We use "gpu:all" to represent the op should be put on all
         sub-programs, such as lr-related ops. Note that: "gpu:all"
         is only used by pipeline as an indicator.

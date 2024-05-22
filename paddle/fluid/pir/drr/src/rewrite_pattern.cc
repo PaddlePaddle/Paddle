@@ -14,7 +14,9 @@
 
 #include <glog/logging.h>
 #include <queue>
+#include <utility>
 
+#include "glog/vlog_is_on.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/drr/include/drr_rewrite_pattern.h"
 #include "paddle/fluid/pir/drr/src/ir_operation_factory.h"
@@ -32,7 +34,7 @@ DrrRewritePattern::DrrRewritePattern(
     const DrrPatternContext& drr_context,
     pir::IrContext* context,
     pir::PatternBenefit benefit,
-    const std::shared_ptr<const DrrPatternBase>& drr_pattern_owner)
+    std::shared_ptr<const DrrPatternBase> drr_pattern_owner)
     : pir::RewritePattern(
           (*drr_context.source_pattern_graph()->OutputNodes().begin())->name(),
           benefit,
@@ -41,14 +43,20 @@ DrrRewritePattern::DrrRewritePattern(
       pattern_name_(pattern_name),
       source_pattern_graph_(drr_context.source_pattern_graph()),
       constraints_(drr_context.constraints()),
+      post_processes_(drr_context.post_processes()),
       result_pattern_graph_(drr_context.result_pattern_graph()),
-      drr_pattern_owner_(drr_pattern_owner) {
-  PADDLE_ENFORCE_NE(
-      source_pattern_graph_->owned_op_call().empty(),
-      true,
-      phi::errors::InvalidArgument("Source pattern graph is empty."
-                                   "Suggested fix: Please check the DRR "
-                                   "source pattern definition code."));
+      drr_pattern_owner_(std::move(drr_pattern_owner)) {
+  PADDLE_ENFORCE_NE(source_pattern_graph_->owned_op_call().empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Source pattern graph is empty. Suggested fix: please "
+                        "check the drr source pattern definition code."));
+  if (VLOG_IS_ON(4)) {
+    std::cout << "\nThe source pattern graph in [" << pattern_name << "]:\n"
+              << *source_pattern_graph_ << std::endl;
+    std::cout << "\nThe result pattern graph in [" << pattern_name << "]:\n"
+              << *result_pattern_graph_ << std::endl;
+  }
 }
 
 bool DrrRewritePattern::MatchAndRewrite(
@@ -58,6 +66,10 @@ bool DrrRewritePattern::MatchAndRewrite(
       std::make_shared<MatchContextImpl>();
   if (PatternGraphMatch(op, src_match_ctx.get())) {
     VLOG(4) << "DRR pattern (" << pattern_name_ << ") is matched in program.";
+    MatchContext match_context{src_match_ctx};
+    for (const auto& post_process : post_processes_) {
+      post_process(match_context);
+    }
     PatternGraphRewrite(*src_match_ctx, rewriter);
     VLOG(4) << "DRR pattern (" << pattern_name_ << ") is rewritten in program.";
     return true;
@@ -415,9 +427,8 @@ bool DrrRewritePattern::MatchFromOutputToInput(
         step,
         source_pattern_graph.CountOfOpCalls(),
         phi::errors::PreconditionNotMet(
-            "Pattern matching failed."
-            "The number of successful matches and the number of OpCalls in the "
-            "source pattern graph are not equal."));
+            "Pattern matching failed. The number of successful matches and the "
+            "number of OpCalls in the source pattern graph are not equal."));
   } else {
     return matched;
   }
@@ -465,10 +476,10 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     PADDLE_ENFORCE_NE(
         result_pattern_graph.id2owned_tensor().count(in_tensor),
         0,
-        phi::errors::NotFound("Not found the input tensor."
-                              "Drr input tensor [%s] must exist in the result "
-                              "pattern graph to be obtained.",
-                              in_tensor));
+        phi::errors::NotFound(
+            "Not found the input tensor. Drr input tensor [%s] must exist in "
+            "the result pattern graph to be obtained.",
+            in_tensor));
     if (!result_pattern_graph.id2owned_tensor().at(in_tensor)->is_none()) {
       res_match_ctx.BindIrValue(in_tensor, src_match_ctx.GetIrValue(in_tensor));
     }
@@ -534,7 +545,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     size_t new_max_input_op_index = max_input_op_index + 1;
     op_2_temp_program_index[new_op] = new_max_input_op_index;
     if (new_max_input_op_index >= temp_program.size()) {
-      temp_program.push_back({});
+      temp_program.emplace_back();
     }
     temp_program[new_max_input_op_index].push_back(new_op);
   });

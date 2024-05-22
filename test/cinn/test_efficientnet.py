@@ -105,7 +105,7 @@ class TestLoadEfficientNetModel(unittest.TestCase):
 
     def test_model(self):
         self.apply_test()
-        # self.target.arch = Target.Arch.NVGPU
+        # self.target.arch = Target.NVGPUArch()
         # self.apply_test()
 
 
