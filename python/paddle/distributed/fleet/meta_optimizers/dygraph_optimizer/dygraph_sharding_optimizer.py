@@ -594,7 +594,6 @@ class DygraphShardingOptimizerV2:
                 acc_steps,
                 act=HOOK_ACTION.REDUCE_SCATTER,
                 release_grads=self.sd_release_grads,
-                use_reduce_avg=self.use_reduce_avg,
             )
             self._comm_buffer_list.append(buffer)
 
