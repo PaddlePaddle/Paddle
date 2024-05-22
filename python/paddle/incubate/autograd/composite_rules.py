@@ -15,7 +15,7 @@
 # This file contains composite rules of nonbasic operations. There are some notes:
 # 1. When define composite rule of some op, you can only use primitive ops defined in primitives.py.
 # 2. The name and args of target op must be corresponding with standard description of op in
-#    ops.yaml or legacy_ops.yaml.
+#    ops.yaml or dygraph_ops.yaml.
 
 import functools
 import operator
