@@ -651,16 +651,13 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
                        """
         )
 
-        codegen_commands = []
         codegen_command = aot_template.format(
             address_hint=address_hint,
             value_hint=value_hint,
             BLOCK_SIZE=BLOCK_SIZE,
         )
-        codegen_commands.append(codegen_command)
         re = os.system(codegen_command)
         assert re == 0
-        # multi_process_do(codegen_commands)
 
         link_command = f"{python_path}  {link_file}  {generated_dir}/*.h -o {generated_dir}/{op_name}_kernel"
         re = os.system(link_command)
