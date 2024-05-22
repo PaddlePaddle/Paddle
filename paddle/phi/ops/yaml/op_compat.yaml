@@ -3280,6 +3280,13 @@
   attrs:
     data_format: data_layout
 
+- op : sparse_reshape
+  int_array :
+    shape :
+      data_type : int64_t
+      tensor_name : ShapeTensor
+      tensors_name : ShapeTensorList
+
 - op : sparse_slice
   int_array :
     starts :
