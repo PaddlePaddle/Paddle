@@ -215,7 +215,7 @@ class StatementIR:
         self.name = name
         self.inputs = []  # list of Symbol | PythonObj
         self.outputs = []  # list of Symbol | PythonObj
-        self.statements = []  # list of Statement
+        self.statements: list[Statement] = []  # list of Statement
 
         self.symbol_meta_map = {}
         self.param_symbol = set()
@@ -269,7 +269,7 @@ class StatementIR:
 
     def __str__(self):
         strs = []
-        strs.append("StatementIR: %s" % self.name)
+        strs.append(f"StatementIR: {self.name}")
         strs.append(f"  inputs: {map_structure(lambda x: x.name, self.inputs)}")
         strs.append(
             f"  outputs: {map_structure(lambda x: x.name, self.outputs)}"
@@ -283,8 +283,7 @@ class StatementIR:
         return self.__str__()
 
 
-@Singleton
-class StatementIRFactory:
+class StatementIRFactory(metaclass=Singleton):
     """
     It is used to create a StatementIR.
     """
@@ -320,8 +319,7 @@ class StatementIRFactory:
             del self.cache[key]
 
 
-@Singleton
-class SIRRuntimeCache:
+class SIRRuntimeCache(metaclass=Singleton):
     """
     It is used to cache the runtime information of the StatementIR.
     """

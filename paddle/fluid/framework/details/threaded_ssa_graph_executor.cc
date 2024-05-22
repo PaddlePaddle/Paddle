@@ -34,10 +34,15 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
       local_scopes_(local_scopes),
       local_exec_scopes_(local_exec_scopes),
       places_(places),
+      fetch_ctxs_(),
+      op_deps_(nullptr),
+      op_deps_futures_(),
       strategy_(strategy),
+      run_op_futures_(),
       prepare_pool_(1),
       pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
-                                       : nullptr) {
+                                       : nullptr),
+      traced_ops_() {
   platform::EmplaceDeviceContexts(
       &fetch_ctxs_,
       places,

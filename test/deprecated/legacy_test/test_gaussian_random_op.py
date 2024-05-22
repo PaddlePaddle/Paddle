@@ -87,9 +87,7 @@ class TestGaussianRandomFP16Op(OpTest):
         self.std = 2.0
 
     def test_check_output(self):
-        self.check_output_with_place_customized(
-            self.verify_output, place=core.CUDAPlace(0), check_pir=True
-        )
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         self.assertEqual(outs[0].shape, (123, 92))
@@ -140,9 +138,7 @@ class TestGaussianRandomBF16Op(OpTest):
         self.std = 2.0
 
     def test_check_output(self):
-        self.check_output_with_place_customized(
-            self.verify_output, place=core.CUDAPlace(0), check_pir=True
-        )
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         outs = convert_uint16_to_float(outs)

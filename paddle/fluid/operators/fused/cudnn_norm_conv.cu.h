@@ -15,14 +15,15 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/fused/cudnn_fusion_helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 
 namespace paddle {
 namespace operators {
 namespace dynload = phi::dynload;
 
 template <typename T>
-using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
+using ScalingParamType =
+    typename phi::backends::gpu::CudnnDataType<T>::ScalingParamType;
 
 #if CUDNN_VERSION >= 8000
 
@@ -31,9 +32,9 @@ static size_t RoundUp(int64_t a, int64_t b) { return (a + b - 1) / b * b; }
 template <typename T>
 struct NormConvolutionArgs {
   NormConvolutionArgs() {
-    dtype = platform::CudnnDataType<T>::type;
+    dtype = phi::backends::gpu::CudnnDataType<T>::type;
     format = CUDNN_TENSOR_NHWC;
-    compute_type = platform::CudnnDataType<float>::type;
+    compute_type = phi::backends::gpu::CudnnDataType<float>::type;
   }
 
   void Set(const phi::GPUContext &ctx,

@@ -227,8 +227,8 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           Expr out = vec_tensor[0];
           Expr tmp_out = vec_tensor[1];
 
-          VLOG(3) << "Do IRCudaScheduleBlockReduceInternal Schedule!";
-          pe::IRCudaScheduleBlockReduceInternal(
+          VLOG(3) << "Do IRGpuScheduleBlockReduceInternal Schedule!";
+          pe::IRGpuScheduleBlockReduceInternal(
               ir_sch, tmp_out.as_tensor_ref(), out.as_tensor_ref(), target);
 
           std::vector<CINNValue> res{
@@ -240,12 +240,12 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           Expr tmp_out = vec_tensor[1];
           Expr reduce_tmp_out = vec_tensor[2];
 
-          VLOG(3) << "Do IRCudaScheduleBlockReduce Schedule!";
-          pe::IRCudaScheduleBlockReduce(ir_sch,
-                                        reduce_tmp_out.as_tensor_ref(),
-                                        tmp_out.as_tensor_ref(),
-                                        out.as_tensor_ref(),
-                                        target);
+          VLOG(3) << "Do IRGpuScheduleBlockReduce Schedule!";
+          pe::IRGpuScheduleBlockReduce(ir_sch,
+                                       reduce_tmp_out.as_tensor_ref(),
+                                       tmp_out.as_tensor_ref(),
+                                       out.as_tensor_ref(),
+                                       target);
 
           std::vector<CINNValue> res{
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
@@ -257,13 +257,13 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           Expr reduce_tmp_out = vec_tensor[2];
           Expr reshape = vec_tensor[3];
 
-          VLOG(3) << "Do IRCudaTwoStepReduceSchedule Schedule!";
-          pe::IRCudaTwoStepReduceSchedule(ir_sch,
-                                          reshape.as_tensor_ref(),
-                                          reduce_tmp_out.as_tensor_ref(),
-                                          tmp_out.as_tensor_ref(),
-                                          out.as_tensor_ref(),
-                                          cinn::common::DefaultNVGPUTarget());
+          VLOG(3) << "Do IRGpuTwoStepReduceSchedule Schedule!";
+          pe::IRGpuTwoStepReduceSchedule(ir_sch,
+                                         reshape.as_tensor_ref(),
+                                         reduce_tmp_out.as_tensor_ref(),
+                                         tmp_out.as_tensor_ref(),
+                                         out.as_tensor_ref(),
+                                         cinn::common::DefaultDeviceTarget());
 
           std::vector<CINNValue> res{
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
@@ -274,12 +274,12 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           Expr tmp_out = vec_tensor[1];
           Expr reduce_tmp_out = vec_tensor[2];
 
-          VLOG(3) << "Do IRCudaScheduleBlockReduce Schedule!";
-          pe::IRCudaScheduleBlockReduce(ir_sch,
-                                        reduce_tmp_out.as_tensor_ref(),
-                                        tmp_out.as_tensor_ref(),
-                                        out.as_tensor_ref(),
-                                        cinn::common::DefaultNVGPUTarget());
+          VLOG(3) << "Do IRGpuScheduleBlockReduce Schedule!";
+          pe::IRGpuScheduleBlockReduce(ir_sch,
+                                       reduce_tmp_out.as_tensor_ref(),
+                                       tmp_out.as_tensor_ref(),
+                                       out.as_tensor_ref(),
+                                       cinn::common::DefaultDeviceTarget());
 
           std::vector<CINNValue> res{
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
@@ -292,8 +292,8 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           CHECK_EQ(vec_tensor.size(), 1);
           Expr reduce_out = vec_tensor[0];
 
-          VLOG(3) << "Do IRCudaScheduleReduce Schedule!";
-          pe::IRCudaScheduleReduce(
+          VLOG(3) << "Do IRGpuScheduleReduce Schedule!";
+          pe::IRGpuScheduleReduce(
               ir_sch,
               reduce_out.as_tensor_ref(),
               inputs[0]->shape.size() - reduce_axes.back() - 1,
@@ -308,12 +308,12 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           Expr reduce_internal = vec_tensor[1];
           Expr reduce_reshape = vec_tensor[2];
 
-          VLOG(3) << "Do IRCudaScheduleBlockShuffleReduce Schedule!";
-          pe::IRCudaScheduleBlockShuffleReduce(ir_sch,
-                                               reduce_reshape.as_tensor_ref(),
-                                               reduce_internal.as_tensor_ref(),
-                                               reduce_out.as_tensor_ref(),
-                                               target);
+          VLOG(3) << "Do IRGpuScheduleBlockShuffleReduce Schedule!";
+          pe::IRGpuScheduleBlockShuffleReduce(ir_sch,
+                                              reduce_reshape.as_tensor_ref(),
+                                              reduce_internal.as_tensor_ref(),
+                                              reduce_out.as_tensor_ref(),
+                                              target);
 
           std::vector<CINNValue> res{
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};

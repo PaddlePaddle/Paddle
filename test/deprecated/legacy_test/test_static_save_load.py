@@ -1904,6 +1904,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
 
 
 class TestStaticSaveLoadPickle(unittest.TestCase):
+    @test_with_pir_api
     def test_pickle_protocol(self):
         # enable static graph mode
         paddle.enable_static()
@@ -1915,7 +1916,8 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
                 shape=[None, 10],
                 dtype='float32',
             )
-            x.desc.set_need_check_feed(False)
+            if not in_pir_mode():
+                x.desc.set_need_check_feed(False)
             z = paddle.static.nn.fc(x, 10, bias_attr=False)
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -1952,6 +1954,11 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
                 # set var to zero
                 for var in prog.list_vars():
                     if isinstance(var, framework.Parameter) or var.persistable:
+                        if (
+                            in_pir_mode()
+                            and var.get_defining_op().name() == "pd_op.fetch"
+                        ):
+                            continue
                         ten = (
                             base.global_scope().find_var(var.name).get_tensor()
                         )
@@ -1966,6 +1973,11 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
 
                 for var in prog.list_vars():
                     if isinstance(var, framework.Parameter) or var.persistable:
+                        if (
+                            in_pir_mode()
+                            and var.get_defining_op().name() == "pd_op.fetch"
+                        ):
+                            continue
                         new_t = np.array(
                             base.global_scope().find_var(var.name).get_tensor()
                         )

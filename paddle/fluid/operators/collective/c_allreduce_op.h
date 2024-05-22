@@ -148,7 +148,7 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("Cond")) {
       auto cond = ctx.Input<phi::DenseTensor>("Cond");
       auto place = cond->place();
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+      PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::CPU,
                         true,
                         phi::errors::PreconditionNotMet(
                             "The input `cond` tensor should be on cpu place"));
@@ -238,9 +238,7 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
     }
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
-                   ->x_context()
-                   ->xpu_stream;
+      stream = static_cast<phi::XPUContext*>(dev_ctx)->x_context()->xpu_stream;
     }
 
     BKCLOp bkcl_red_type = BKCL_ADD;
@@ -295,7 +293,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("Cond")) {
       auto cond = ctx.Input<phi::DenseTensor>("Cond");
       auto place = cond->place();
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+      PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::CPU,
                         true,
                         phi::errors::PreconditionNotMet(
                             "The input `cond` tensor should be on cpu place"));

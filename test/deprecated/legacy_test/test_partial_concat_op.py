@@ -18,6 +18,14 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
+
+
+def partial_concat_wrapper(x, start_index, length):
+    if isinstance(x, paddle.Tensor):
+        x = [x]
+    return paddle._C_ops.partial_concat(x, start_index, length)
+
 
 def np_partial_concat(inputs, start, length):
     assert len(inputs[0].shape) == 2
@@ -41,6 +49,7 @@ def np_partial_concat(inputs, start, length):
 class TestPartialConcatOp(OpTest):
     def setUp(self):
         self.op_type = "partial_concat"
+        self.python_api = partial_concat_wrapper
         self.init_kernel_type()
         self.init_para()
         self.var_names = ['x' + str(num) for num in range(self.var_num)]

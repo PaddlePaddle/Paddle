@@ -19,7 +19,7 @@ using phi::distributed::auto_parallel::str_join;
 #define EXTRACT_SHAPE_AND_DIST_ATTR(x)                                 \
   auto x##_shape = phi::vectorize(x.dims());                           \
   int x##_ndim = x##_shape.size();                                     \
-  auto x##_dist_attr_src = x.dist_attr();                              \
+  const auto& x##_dist_attr_src = x.dist_attr();                       \
   const auto& x##_dims_mapping_src = x##_dist_attr_src.dims_mapping(); \
   PADDLE_ENFORCE_EQ(x##_ndim,                                          \
                     x##_dims_mapping_src.size(),                       \
