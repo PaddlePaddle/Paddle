@@ -98,7 +98,7 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
         }
         // gemm_epilogue kernel requires gemm's N and K to be 8 aligned.
         // K and N correspond to w_dims[0] and w_dims[1] respectively.
-        int cutlass_align = 8;
+        constexpr int cutlass_align = 8;
         if (w_dims[0] % cutlass_align != 0 || w_dims[1] % cutlass_align != 0) {
           return false;
         }
