@@ -12,13 +12,12 @@ set(sparse_op_path ${parsed_yaml_path}/sparse_ops.parsed.yaml)
 set(sparse_rev_op_path ${parsed_yaml_path}/sparse_backward.parsed.yaml)
 set(prim_path ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/primitive.yaml)
 set(templates_dir
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/templates/")
-set(compat_path "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml")
-set(destination_dir "${PADDLE_BINARY_DIR}/paddle/fluid/primitive/")
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/templates/)
+set(compat_path ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml)
+set(destination_dir ${PADDLE_BINARY_DIR}/paddle/fluid/primitive/)
 set(decomp_vjp_destination_dir
-    "${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/op_decomp_vjp.cc"
-)
-set(scripts "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/gen.py")
+    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/op_decomp_vjp.cc)
+set(scripts ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/gen.py)
 
 message("Automatic code generation for paddle/fluid/primitive")
 execute_process(
