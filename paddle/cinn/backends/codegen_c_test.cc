@@ -94,8 +94,8 @@ void add1(void* _args, int32_t num_args)
   float* C = ((float*)(_C->memory));
   for (int32_t i = 0; i < 100; i += 1) {
     for (int32_t j = 0; j < 20; j += 1) {
-      float local_var = A[((20 * i0) + i1)];
-      float local_var_0 = B[((20 * i0) + i1)];
+      float local_var = A[((20 * i) + i)];
+      float local_var_0 = B[((20 * i) + i)];
       C[((20 * i) + j)] = (local_var + local_var_0);
     };
   };
