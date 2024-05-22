@@ -35,7 +35,7 @@ namespace allocation {
 
 CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
     const platform::CUDAPlace& place)
-    : place_(place) {
+    : place_(place), virtual_mem_base_(0), prop_{} {
   CUmemAllocationProp prop = {};
 
   // Setup the properties common for all the chunks
