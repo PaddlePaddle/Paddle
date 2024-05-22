@@ -55,7 +55,11 @@ from .dist_saver import DistributedSaver
 from .helper import ProgramHelper
 from .mix_to_dist_pass import apply_mix2dist_pass
 from .parallelizer_v2 import Parallelizer
-from .pir_pass import apply_partition_pass, apply_reshard_pass
+from .pir_pass import (
+    apply_partition_pass,
+    apply_reshard_pass,
+    remove_unuseful_comm_op_pass,
+)
 from .planner_v2 import Planner
 from .process_group import get_all_process_groups, new_process_group
 
@@ -705,6 +709,7 @@ class Engine:
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
         dense_program = dist_program.clone()
         paddle.base.libpaddle.pir.apply_dist2dense_pass(dense_program)
+        remove_unuseful_comm_op_pass(dense_program)
 
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
@@ -1079,9 +1084,10 @@ class Engine:
                         ):
                             param = op.operand_source(0)
                             initial_op = param.get_defining_op()
-                            paddle.pir.set_insertion_point(initial_op)
                             new_param = block.add_kwarg(para_name, param.type())
-                            param.replace_all_use_with(new_param)
+                            new_param.persistable = True
+                            param.replace_all_uses_with(new_param)
+                            del_ops.append(op)
                             del_ops.append(initial_op)
                             continue
                 for del_op in del_ops:

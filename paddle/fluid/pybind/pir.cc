@@ -102,6 +102,7 @@ using pir::Block;
 using pir::BlockArgument;
 using pir::BoolAttribute;
 using pir::CloneOptions;
+using pir::Int32Attribute;
 using pir::IrContext;
 using pir::IrMapping;
 using pir::IrParser;
@@ -697,6 +698,15 @@ void BindOperation(py::module *m) {
              auto str_attr = self.attribute<StrAttribute>(attr_name);
              if (str_attr) {
                return py::cast(str_attr.AsString());
+             } else {
+               return py::cast<py::none>(Py_None);
+             }
+           })
+      .def("int_attr",
+           [](Operation &self, const std::string &attr_name) -> py::object {
+             auto int_attr = self.attribute<Int32Attribute>(attr_name);
+             if (int_attr) {
+               return py::cast(int_attr.data());
              } else {
                return py::cast<py::none>(Py_None);
              }
