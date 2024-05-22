@@ -4259,6 +4259,11 @@
      input : Input
   outputs:
      out: Out
+  # int_array:
+  #   shape :
+  #     data_type : int
+  #     tensor_name : ShapeTensor
+  #     tensors_name : ShapeTensorList
 
 - op: write_to_array
   inputs :
