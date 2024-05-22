@@ -1176,13 +1176,15 @@ class ConcreteProgram:
         # Note: The random seed should be synchronized into cached program
         # if set in `fluid.dygraph_guard` because some ops rely on it, such as
         # `fluid.layers.dropout`.
+        import paddle
 
-        # TODO: new ir has no random seed.
-        #  {{{
-        # main_program.random_seed = static.default_main_program().random_seed
-        # startup_program.random_seed = (
-        # framework.default_startup_program().random_seed
-        # ) }}}
+        main_program.random_seed = (
+            paddle.static.default_main_program().random_seed
+        )
+        startup_program.random_seed = (
+            paddle.static.default_startup_program().random_seed
+        )
+
         with ir_static.program_guard(main_program, startup_program):
             with _to_static_mode_guard_(
                 is_to_static=True
@@ -1276,9 +1278,13 @@ class ConcreteProgram:
         # Note: The random seed should be synchronized into cached program
         # if set in `base.dygraph_guard` because some ops rely on it, such as
         # `base.layers.dropout`.
-        main_program.random_seed = framework.default_main_program().random_seed
+        import paddle
+
+        main_program.random_seed = (
+            paddle.static.default_main_program().random_seed
+        )
         startup_program.random_seed = (
-            framework.default_startup_program().random_seed
+            paddle.static.default_startup_program().random_seed
         )
 
         ProgramTranslator.get_instance()._amp_records.clear()
