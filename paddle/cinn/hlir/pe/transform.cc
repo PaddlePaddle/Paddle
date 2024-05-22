@@ -1368,8 +1368,6 @@ ir::Tensor Gather(const ir::Tensor& x,
 
         auto index_indice = std::vector<Expr>({indice[axis]});
 
-        VLOG(0) << "index is: " << index;
-
         if (index.ndims() > 1) {
           PADDLE_ENFORCE_EQ(
               index.ndims(),
