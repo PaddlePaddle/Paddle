@@ -94,9 +94,7 @@ void add1(void* _args, int32_t num_args)
   float* C = ((float*)(_C->memory));
   for (int32_t i = 0; i < 100; i += 1) {
     for (int32_t j = 0; j < 20; j += 1) {
-      float local_var = A[((20 * i) + i)];
-      float local_var_0 = B[((20 * i) + i)];
-      C[((20 * i) + j)] = (local_var + local_var_0);
+      C[((20 * i) + j)] = (A[((20 * i) + j)] + B[((20 * i) + j)]);
     };
   };
   cinn_buffer_free((void*)(0), _C);
@@ -202,10 +200,7 @@ void matmul(void* _args, int32_t num_args)
     for (int32_t j = 0; j < 50; j += 1) {
       C__reduce_init[((50 * i) + j)] = 0.00000000f;
       for (int32_t k0 = 0; k0 < 20; k0 += 1) {
-        float local_var = C[((50 * i) + j)];
-        float local_var_0 = A[((20 * i) + k0)];
-        float local_var_1 = B[((50 * k0) + j)];
-        C[((50 * i) + j)] = (local_var + (local_var_0 * local_var_1));
+        C[((50 * i) + j)] = (C[((50 * i) + j)] + (A[((20 * i) + k0)] * B[((50 * k0) + j)]));
       };
     };
   };
@@ -325,10 +320,7 @@ void matmul(void* _args, int32_t num_args)
           C_init[((500 * i_inner) + ((16000 * i_outer) + ((32 * j_outer) + j_inner)))] = 0.00000000f;
           for (int32_t k0_outer = 0; k0_outer < 50; k0_outer += 1) {
             for (int32_t k0_inner = 0; k0_inner < 4; k0_inner += 1) {
-              float local_var_2 = C[((500 * i_inner) + ((16000 * i_outer) + ((32 * j_outer) + j_inner)))];
-              float local_var_3 = A[((200 * i_inner) + ((6400 * i_outer) + ((4 * k0_outer) + k0_inner)))];
-              float local_var_4 = B[((32 * j_outer) + ((500 * k0_inner) + ((2000 * k0_outer) + j_inner)))];
-              C[((500 * i_inner) + ((16000 * i_outer) + ((32 * j_outer) + j_inner)))] = fma(local_var_3, local_var_4, local_var_2);
+              C[((500 * i_inner) + ((16000 * i_outer) + ((32 * j_outer) + j_inner)))] = fma(A[((200 * i_inner) + ((6400 * i_outer) + ((4 * k0_outer) + k0_inner)))], B[((32 * j_outer) + ((500 * k0_inner) + ((2000 * k0_outer) + j_inner)))], C[((500 * i_inner) + ((16000 * i_outer) + ((32 * j_outer) + j_inner)))]);
             };
           };
         };
@@ -424,10 +416,7 @@ void matmul_with_packing(void* _args, int32_t num_args)
           C__reduce_init[((500 * i_inner) + ((16000 * i_outer) + ((32 * j_outer) + j_inner)))] = 0;
           for (int32_t k0_outer = 0; k0_outer < 50; k0_outer += 1) {
             for (int32_t k0_inner = 0; k0_inner < 4; k0_inner += 1) {
-              float local_var_6 = C[((500 * i_inner) + ((16000 * i_outer) + ((32 * j_outer) + j_inner)))];
-              float local_var_7 = A[((200 * i_inner) + ((6400 * i_outer) + ((4 * k0_outer) + k0_inner)))];
-              float local_var_8 = PackedB[((6400 * j_outer) + ((32 * k0_inner) + ((128 * k0_outer) + j_inner)))];
-              C[((500 * i_inner) + ((16000 * i_outer) + ((32 * j_outer) + j_inner)))] = fma(local_var_7, local_var_8, local_var_6);
+              C[((500 * i_inner) + ((16000 * i_outer) + ((32 * j_outer) + j_inner)))] = fma(A[((200 * i_inner) + ((6400 * i_outer) + ((4 * k0_outer) + k0_inner)))], PackedB[((6400 * (j_inner / 32)) + ((j_inner & 31) + ((6400 * j_outer) + ((32 * k0_inner) + (128 * k0_outer)))))], C[((500 * i_inner) + ((16000 * i_outer) + ((32 * j_outer) + j_inner)))]);
             };
           };
         };

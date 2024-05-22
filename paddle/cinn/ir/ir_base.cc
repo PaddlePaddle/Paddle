@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/ir/ir_base.h"
 
+#include <sstream>
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/buffer.h"
@@ -239,7 +240,12 @@ const Expr &IrNode::operand(int i) {
 void IrNode::set_type(Type type) { type_ = type; }
 
 void IrNode::replace(Expr old_op, Expr new_op) {
-  PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"));
+  std::stringstream ss;
+  ss << "Not Implemented, The node:(" << node_type() << ") has an old_op: ("
+     << old_op.node_type() << ") should be replaced with new_op: ("
+     << new_op.node_type() << ") but not Implemented";
+
+  PADDLE_THROW(phi::errors::Unimplemented(ss.str()));
 }
 
 void IrNode::convert_int32_to_int64() {

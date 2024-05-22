@@ -15,6 +15,7 @@
 #include "paddle/cinn/optim/rearrange_load_instruction.h"
 
 #include <stack>
+#include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
@@ -84,6 +85,7 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
   }
 
   void Visit(const ir::Select *op, Expr *expr) override {}
+  void Visit(const ir::Broadcast *op, Expr *expr) override {}
 
   void replaceBlock(ir::Block *op, int old_let_size, int old_stmts_size) {
     std::vector<Expr> new_stmts;
@@ -128,7 +130,7 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
   VisitImpl(Let);
   VisitImpl(Reduce);
   VisitImpl(Ramp);
-  VisitImpl(Broadcast);
+  // VisitImpl(Broadcast);
   VisitImpl(FracOp);
   VisitImpl(Product);
   VisitImpl(Sum);

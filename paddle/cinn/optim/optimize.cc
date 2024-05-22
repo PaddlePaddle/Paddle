@@ -28,7 +28,6 @@
 #include "paddle/cinn/optim/lower_function_call_bind_vars.h"
 #include "paddle/cinn/optim/lower_intrin.h"
 #include "paddle/cinn/optim/map_extern_call.h"
-#include "paddle/cinn/optim/rearrange_load_instruction.h"
 #include "paddle/cinn/optim/remove_schedule_block.h"
 #include "paddle/cinn/optim/replace_const_param_to_integer.h"
 #include "paddle/cinn/optim/replace_cross_thread_reduction.h"
@@ -83,9 +82,6 @@ Expr Optimize(Expr e,
   VLOG(10) << "After Optimize Simplify:" << copied;
 
   IfFusion(&copied);
-  VLOG(10) << "After Optimize IfFusion" << copied;
-
-  RearrangeLoadInstruction(&copied);
   VLOG(10) << "After Optimize IfFusion" << copied;
 
   if (runtime_debug_info) {
