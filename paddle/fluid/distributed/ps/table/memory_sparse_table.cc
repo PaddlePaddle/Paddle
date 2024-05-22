@@ -164,7 +164,7 @@ int32_t MemorySparseTable::Load(const std::string &path,
       err_no = 0;
       std::string line_data;
       auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
-      char *end = NULL;
+      char *end = nullptr;
       auto &shard = _local_shards[i];
       try {
         while (read_channel->read_line(line_data) == 0 &&
@@ -241,7 +241,7 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string> &file_list,
       err_no = 0;
       std::string line_data;
       auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
-      char *end = NULL;
+      char *end = nullptr;
       int m_local_shard_id = i % _m_avg_local_shard_num;
       std::unordered_set<size_t> global_shard_idx;
       std::string global_shard_idx_str;
