@@ -152,26 +152,42 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
     def __init__(self):
         super().__init__()
         self.set_attr("enable_optimizer_post_validation", 0)
+        self.set_attr("program_runtimes", [61, 72, 71, 34, 3])
+        self.set_attr("memory_limit_times", 5)
+
         self.program_mem_usages = []
         self.program_max_mem_usages = []
         self.base_memory = []
-        self.program_runtime = {
-            "forward": 61,
-            "backward_b": 72,
-            "backward_w": 71,
-            "loss": 34,
-            "communication": 3,
-        }
+        self.program_runtime = {}
 
     def _create_job_list(self):
+        pp_degree = self.get_attr("pp_degree")
+        num_micro_batches = self.get_attr("num_micro_batches")
+        num_model_chunks = self.get_attr("vpp_degree")
+
+        assert (
+            pp_degree <= num_micro_batches
+        ), "Num of micro batches should larger than or equal to pp degree."
+
+        program_runtimes = self.get_attr("program_runtimes")
+
+        self.program_runtime = {
+            "forward": program_runtimes[0],
+            "backward_b": program_runtimes[1],
+            "backward_w": program_runtimes[2],
+            "loss": program_runtimes[3],
+            "communication": program_runtimes[4],
+        }
+
         v_scheduler = VScheduleCreator(
-            self.get_attr("pp_degree"),
-            self.get_attr("num_micro_batches"),
-            self.get_attr("vpp_degree"),
+            pp_degree,
+            num_micro_batches,
+            num_model_chunks,
             self.program_mem_usages,
             self.program_max_mem_usages,
             self.base_memory,
             self.program_runtime,
+            self._get_max_memory(),
         )
 
         schedule, max_bubble = None, None
@@ -263,6 +279,32 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
             rank = self.get_attr("pp_stage")
             base_memory = paddle.device.cuda.memory_allocated(rank)
             paddle.distributed.all_gather_object(self.base_memory, base_memory)
+
+    def _get_max_memory(self):
+        memory_limit_times = self.get_attr("memory_limit_times")
+        num_model_chunks = self.get_attr("vpp_degree")
+        micro_batch_in_warmup = self.get_attr("pp_degree")
+        base_memory = max(self.base_memory)
+
+        forward_cost = 0
+        for i in range(num_model_chunks):
+            forward_cost += self.program_mem_usages[0][f"forward{i}"]
+
+        backward_max_cost = 0
+        backward_cost = 0
+        for i in range(num_model_chunks):
+            backward_max_cost = max(
+                backward_max_cost,
+                backward_cost
+                + self.program_max_mem_usages[0][f"backward_b{i}"],
+            )
+            backward_cost += self.program_max_mem_usages[0][f"backward_b{i}"]
+
+        memory_1f1b = base_memory + backward_max_cost
+        for i in range(micro_batch_in_warmup):
+            memory_1f1b += forward_cost
+
+        return memory_1f1b * memory_limit_times
 
 
 class VScheduleCreator:
