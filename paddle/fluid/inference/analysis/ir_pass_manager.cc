@@ -36,7 +36,7 @@ namespace analysis {
 using string::PrettyLogEndl;
 using string::Style;
 
-IRPassManager::IRPassManager(Argument *argument) {
+IRPassManager::IRPassManager(Argument *argument) : passes_() {
   disable_logs_ = argument->disable_logs();
 
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);

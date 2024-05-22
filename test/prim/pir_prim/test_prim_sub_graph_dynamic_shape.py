@@ -74,6 +74,10 @@ def index_sample_net(x, index):
     return paddle.index_sample(x, index)
 
 
+def huber_loss_net(x, label):
+    return paddle._C_ops.huber_loss(x, label, 1.0)
+
+
 def bce_loss_net(x, label):
     return paddle._C_ops.bce_loss(x, label)
 
@@ -88,6 +92,10 @@ def swiglu_net2(x):
 
 def dropout_net1(x):
     return paddle.nn.functional.dropout(x, 0.5)
+
+
+def mean_all_net1(x):
+    return paddle._C_ops.mean_all(x)
 
 
 group_norm1 = paddle.nn.GroupNorm(num_channels=128, num_groups=32)
@@ -322,6 +330,23 @@ class TestPrimTwoIndexSample(TestPrimTwo):
         self.tol = 1e-6
 
 
+class TestPrimHuberLoss(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.x_shape = [100, 1]
+        self.y_shape = [100, 1]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None, None]
+        self.init_y_shape = [None, None]
+        self.x = np.random.uniform(0, 1.0, self.x_shape).astype(self.dtype_x)
+        self.y = np.random.uniform(0, 1.0, self.y_shape).astype(self.dtype_y)
+        self.net = huber_loss_net
+        self.necessary_ops = "pd_op.huber_loss"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
 class TestPrimBceLoss(TestPrimTwo):
     def setUp(self):
         np.random.seed(2023)
@@ -507,6 +532,19 @@ class TestPrimMeshgrid(TestPrimTwo):
         self.necessary_ops = "pd_op.meshgrid"
         self.enable_cinn = False
         self.tol = 1e-6
+
+
+class TestPrimMeanAll(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        paddle.seed(2023)
+        self.shape_x = [300, 4096]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, 4096]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = mean_all_net1
+        self.necessary_ops = "pd_op.mean_all"
+        self.enable_cinn = False
 
 
 if __name__ == "__main__":
