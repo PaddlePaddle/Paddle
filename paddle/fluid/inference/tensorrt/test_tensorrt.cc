@@ -131,7 +131,7 @@ void Execute(nvinfer1::IExecutionContext* context,
                             sizeof(float),
                             cudaMemcpyHostToDevice,
                             stream));
-  context->enqueue(1, buffers, stream, nullptr);
+  context->enqueue(1, buffers.data(), stream, nullptr);
   ASSERT_EQ(0,
             cudaMemcpyAsync(output,
                             buffers[output_index],
