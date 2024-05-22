@@ -504,11 +504,11 @@ class RecordedGpuMallocHelper {
   std::atomic<uint64_t> cur_size_{0};
 
 #if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11020)
-  cudaMemPool_t memPool_;
+  cudaMemPool_t memPool_ = nullptr;
   static std::once_flag set_cudamempoolattr_once_flag_;
 #endif
 #if defined(PADDLE_WITH_HIP)
-  hipMemPool_t memPool_;
+  hipMemPool_t memPool_ = nullptr;
   static std::once_flag set_cudamempoolattr_once_flag_;
 #endif
 

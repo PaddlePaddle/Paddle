@@ -70,7 +70,7 @@ static bool gProfileStarted = false;
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-std::once_flag p2p_init_flag;
+std::once_flag p2p_init_flag_pe;
 #endif
 
 class ParallelExecutorPrivate {
@@ -622,9 +622,9 @@ bool ParallelExecutor::NeedCreateLocalExeScope() {
   return executor && executor->NeedCreateLocalExeScope();
 }
 
-void InitP2P(const std::vector<platform::Place> &places) {
+void InitP2PInPE(const std::vector<platform::Place> &places) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  std::call_once(p2p_init_flag, [&]() {
+  std::call_once(p2p_init_flag_pe, [&]() {
     int count = places.size();
     if (count <= 1) return;
 
@@ -679,7 +679,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                     true,
                     platform::errors::Unavailable(
                         "NPU is not supported in ParallelExecutor."));
-  InitP2P(places);
+  InitP2PInPE(places);
   ir::InitReaderQueueDeviceCount(
       graph, *(member_->global_scope_), member_->places_.size());
   // Initialize necessary info of member_ with strategy.
@@ -717,13 +717,13 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   // Step 3. Create vars in each scope. Passes may also create new vars.
   //         skip control vars and empty vars
-  std::vector<details::VariableInfo> var_infos;
-  CreateVariableInfos(&var_infos, graph);
-  std::unordered_map<Scope *, Scope *> scope_map =
-      CreateLocalExecScopes(member_->local_scopes_, /*create_new*/ true);
+  // std::vector<details::VariableInfo> var_infos;
+  // CreateVariableInfos(&var_infos, graph);
+  // std::unordered_map<Scope *, Scope *> scope_map =
+  //     CreateLocalExecScopes(member_->local_scopes_, /*create_new*/ true);
 
   // Step 4. Create SSAGraph executor
-  std::vector<ir::Graph *> final_graphs =
+  /* std::vector<ir::Graph *> final_graphs =
       CreateSSAGraphExecutor(exec_strategy, &async_graphs, graph);
 
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
@@ -739,7 +739,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 
   ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
-  SetReaderOpDeviceInfoOfGraphs(final_graphs);
+  SetReaderOpDeviceInfoOfGraphs(final_graphs); */
 }
 
 ParallelExecutor::ParallelExecutor(const platform::Place &place,
@@ -1226,9 +1226,7 @@ ParallelExecutor::~ParallelExecutor() {
 }
 
 bool ParallelExecutor::EnableParallelGraphExecution(
-    const ir::Graph &graph,
-    const ExecutionStrategy &exec_strategy,
-    const BuildStrategy &build_strategy) const {
+    const ir::Graph &graph, const BuildStrategy &build_strategy) const {
   return false;
 
   bool enable_parallel_graph = true;
@@ -1250,8 +1248,7 @@ bool ParallelExecutor::EnableParallelGraphExecution(
   }
 
   if (!member_->use_all_reduce_ || !member_->IsUseCUDA(member_->use_device_)) {
-    if (build_strategy.enable_sequential_execution_ ||
-        exec_strategy.type_ == ExecutionStrategy::ExecutorType::kExperimental) {
+    if (build_strategy.enable_sequential_execution_) {
       enable_parallel_graph = false;
     }
   }
@@ -1282,6 +1279,7 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
         BuildStrategy::ReduceStrategy::kAllReduce;
     member_->use_all_reduce_ = true;
   }
+
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && defined(_WIN32)
   if (member_->IsUseCUDA(member_->use_device_)) {
     PADDLE_ENFORCE_EQ(
@@ -1324,13 +1322,11 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
       device_name,
       device_count,
       device_count);
-
   // FIXME(Yancey1989): parallel graph mode get better performance
   // in GPU allreduce distributed training. Need an elegant way to
   // choice the execution strategy.
   member_->build_strategy_.enable_parallel_graph_ =
-      EnableParallelGraphExecution(
-          graph, exec_strategy, member_->build_strategy_);
+      EnableParallelGraphExecution(graph, member_->build_strategy_);
   if (member_->build_strategy_.enable_parallel_graph_) {
     LOG(INFO) << "The Executor would execute the graph by ParallelGraph "
                  "Execution which can get better performance,"

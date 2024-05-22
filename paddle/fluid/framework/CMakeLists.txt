@@ -877,6 +877,11 @@ cc_library(
        variable_helper)
 
 cc_library(
+  compiled_program
+  SRCS compiled_program.cc
+  DEPS graph build_strategy)
+
+cc_library(
   executor_cache
   SRCS executor_cache.cc
   DEPS parallel_executor pir_transforms pir)
