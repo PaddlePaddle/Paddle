@@ -158,7 +158,10 @@ struct Expression {
 
   bool equal_to(const Expression& other) const {
     if (hash() != other.hash()) {
-      VLOG(0) << "~~~~~~~~~~~~~~~ Hash not equal! Why call equal_to?";
+      // NOTE(SigureMo): This is a default behavior of std::unordered_set. But
+      // it always calls equal_to on Windows. So we need to check hash first
+      // to avoid expensive equal_to call.
+      return false;
     }
     bool is_equal = CheckOperationEqual(op_, other.op());
     // TODO(SigureMo): clean this check before merge
@@ -327,22 +330,20 @@ struct Expression {
       return true;
     }
     if (lhs->name() != rhs->name()) {
-      VLOG(0) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+      VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
               << " vs rhs [" << rhs << "] " << rhs->name() << " name not equal";
-      VLOG(0) << "lhs hash is " << GetOperationHash(lhs) << ", rhs hash is "
-              << GetOperationHash(rhs);
       return false;
     }
     for (auto attr_name : lhs->info().GetAttributesName()) {
       if (lhs->attribute(attr_name) != rhs->attribute(attr_name)) {
-        VLOG(0) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+        VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
                 << " vs rhs [" << rhs << "] " << rhs->name()
                 << " attribute not equal: " << attr_name;
         return false;
       }
     }
     if (lhs->num_operands() != rhs->num_operands()) {
-      VLOG(0) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+      VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
               << " vs rhs [" << rhs << "] " << rhs->name()
               << " num_operands not equal";
       return false;
@@ -364,7 +365,7 @@ struct Expression {
     }
     for (size_t i = 0; i < lhs_operands.size(); ++i) {
       if (!CheckValueEqual(lhs_operands[i], rhs_operands[i])) {
-        VLOG(0) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+        VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
                 << " vs rhs [" << rhs << "] " << rhs->name() << " operand " << i
                 << " not equal";
         return false;
@@ -377,13 +378,13 @@ struct Expression {
 
   bool CheckValueEqual(const pir::Value& lhs, const pir::Value& rhs) const {
     if (IsTerminateValue(lhs) != IsTerminateValue(rhs)) {
-      VLOG(0) << "[CheckValueEqual] lhs and rhs has different terminate type";
+      VLOG(7) << "[CheckValueEqual] lhs and rhs has different terminate type";
       return false;
     }
     // Compare two terminate values
     if (IsTerminateValue(lhs) && IsTerminateValue(rhs)) {
       if (lhs != rhs) {
-        VLOG(0) << "[CheckValueEqual] lhs and rhs has different terminate "
+        VLOG(7) << "[CheckValueEqual] lhs and rhs has different terminate "
                    "value";
         return false;
       }
@@ -391,15 +392,15 @@ struct Expression {
     }
     // Compare two non-terminate values
     if (!CheckOperationEqual(lhs.defining_op(), rhs.defining_op())) {
-      VLOG(0) << "[CheckValueEqual] lhs and rhs has different defining op";
+      VLOG(7) << "[CheckValueEqual] lhs and rhs has different defining op";
       return false;
     }
     if (lhs.type() != rhs.type()) {
-      VLOG(0) << "[CheckValueEqual] lhs and rhs has different type";
+      VLOG(7) << "[CheckValueEqual] lhs and rhs has different type";
       return false;
     }
     if (GetOpResultId(lhs) != GetOpResultId(rhs)) {
-      VLOG(0) << "[CheckValueEqual] lhs and rhs has different result id";
+      VLOG(7) << "[CheckValueEqual] lhs and rhs has different result id";
       return false;
     }
     return true;
@@ -416,9 +417,6 @@ struct ExpressionHash {
 
 struct ExpressionEqual {
   bool operator()(const Expression& lhs, const Expression& rhs) const {
-    if (lhs.hash() != rhs.hash()) {
-      VLOG(0) << "!!!!!!!!!!!!!!!! Hash not equal! Why call equal_to?";
-    }
     return lhs.equal_to(rhs);
   }
 };
@@ -453,6 +451,8 @@ struct ExpressionTable {
             << " found common subexpression: " << found_expr_iter->op()->name();
     return *found_expr_iter;
   }
+
+  void Rehash(size_t size) { common_exprs_.rehash(size); }
 
  private:
   std::unordered_set<Expression, ExpressionHash, ExpressionEqual> common_exprs_;
@@ -493,6 +493,8 @@ struct CSEAnalyzer {
                      ExpressionTable* parent_expression_table) {
     // Make a clone to inherit the expressions from parent block
     ExpressionTable expression_table = *parent_expression_table;
+    expression_table.Rehash(block->num_ops());
+
     for (auto& op : *block) {
       SimplifyOperation(&op, &expression_table);
     }
