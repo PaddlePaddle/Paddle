@@ -268,7 +268,7 @@ XPUContext::XPUContext(const XPUPlace& place, bool is_comm_context)
   if (is_comm_context) {
     // for communication context init, with gm_size=1 and l3_size=1
     impls_.push_back(std::make_unique<Impl>(place));
-    impls_[0]->Init(1, 1);
+    impls_[0]->Init(0, 0);
   } else if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
     int default_num_stream = 4;
     if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL_STREAM_NUMBER") != nullptr) {

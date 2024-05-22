@@ -129,7 +129,7 @@ class GPUParallelCopyer {
       ++copy_count_;
     }
   }
-  void Wait(void) {
+  void Wait() {
     if (copy_count_ == 0) {
       return;
     }
@@ -144,7 +144,7 @@ class GPUParallelCopyer {
     }
     copy_count_ = 0;
   }
-  void SyncDevStream(void) { platform::GpuStreamSync(dev_stream_); }
+  void SyncDevStream() { platform::GpuStreamSync(dev_stream_); }
 
  private:
   phi::gpuStream_t dev_stream_ = nullptr;

@@ -827,6 +827,26 @@
   kernel :
     func : fake_channel_wise_quantize_dequantize_abs_max_grad
 
+- backward_op : fake_quantize_dequantize_abs_max_grad
+  forward: fake_quantize_dequantize_abs_max(Tensor x, int bit_length = 8, int round_type = 1) -> Tensor(out), Tensor(out_scale)
+  args : (Tensor out_grad, int bit_length = 8, int round_type = 1)
+  output: Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : fake_quantize_dequantize_abs_max_grad
+
+- backward_op : fake_quantize_dequantize_moving_average_abs_max_grad
+  forward: fake_quantize_dequantize_moving_average_abs_max(Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1) -> Tensor(out), Tensor(out_scale), Tensor(out_state), Tensor(out_accum)
+  args : (Tensor out_grad, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1)
+  output: Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : fake_quantize_dequantize_moving_average_abs_max_grad
+
 - backward_op : fft_c2c_grad
   forward: fft_c2c(Tensor x, int64_t[] axes, str normalization, bool forward) -> Tensor(out)
   args : (Tensor out_grad, int64_t[] axes, str normalization, bool forward)
