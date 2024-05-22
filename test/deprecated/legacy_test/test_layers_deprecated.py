@@ -37,6 +37,8 @@ from paddle.incubate.layers.nn import (
 from paddle.pir_utils import test_with_pir_api
 from paddle.tensor import random
 
+paddle.enable_static()
+
 
 class LayerTest(unittest.TestCase):
     @classmethod
@@ -1475,5 +1477,4 @@ class TestBook(LayerTest):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()
