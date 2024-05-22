@@ -496,37 +496,6 @@ std::vector<pir::Value> AnalysisOutputs(
 
 namespace {
 
-pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
-                                const std::vector<pir::Value>& outputs) {
-  // Regard last op as insert position if there are no downstream ops between in
-  // group_ops.
-  pir::Operation* insert_point_op = group_ops.back();
-  auto begin = group_ops.front()->operator Block::ConstIterator();
-  auto end = ++(group_ops.back()->operator Block::ConstIterator());
-  const std::unordered_set<pir::Value> outputs_set(outputs.begin(),
-                                                   outputs.end());
-  const std::unordered_set<const pir::Operation*> group_ops_set(
-      group_ops.begin(), group_ops.end());
-
-  const auto& IsDownstreamOp = [&](const pir::Operation* op) -> bool {
-    if (group_ops_set.find(op) != group_ops_set.end()) return false;
-    for (auto& value : GetUsedExternalValue(*op)) {
-      if (outputs_set.find(value) != outputs_set.end()) {
-        return true;
-      }
-    }
-    return false;
-  };
-  // Find first downstream op as final insert position.
-  for (; begin != end; ++begin) {
-    if (IsDownstreamOp(begin)) {
-      insert_point_op = begin;
-      break;
-    }
-  }
-  return insert_point_op;
-}
-
 struct IncrementalOrder {
   bool operator()(const pir::Operation* lhs, const pir::Operation* rhs) const {
     CHECK(lhs->GetParent() == rhs->GetParent())
@@ -574,6 +543,7 @@ std::unordered_set<pir::Operation*> GetUpstreamOpsAfterPosition(
   }
   return ops;
 }
+}  // namespace
 
 void MoveUpstreamOpBeforeGroup(const GroupOpsVec& group_ops,
                                pir::Block* block,
@@ -595,7 +565,37 @@ void MoveUpstreamOpBeforeGroup(const GroupOpsVec& group_ops,
     op->MoveTo(block, insert_point_op->operator Block::Iterator());
   }
 }
-}  // namespace
+
+pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
+                                const std::vector<pir::Value>& outputs) {
+  // Regard last op as insert position if there are no downstream ops between in
+  // group_ops.
+  pir::Operation* insert_point_op = group_ops.back();
+  auto begin = group_ops.front()->operator Block::ConstIterator();
+  auto end = ++(group_ops.back()->operator Block::ConstIterator());
+  const std::unordered_set<pir::Value> outputs_set(outputs.begin(),
+                                                   outputs.end());
+  const std::unordered_set<const pir::Operation*> group_ops_set(
+      group_ops.begin(), group_ops.end());
+
+  const auto& IsDownstreamOp = [&](const pir::Operation* op) -> bool {
+    if (group_ops_set.find(op) != group_ops_set.end()) return false;
+    for (auto& value : GetUsedExternalValue(*op)) {
+      if (outputs_set.find(value) != outputs_set.end()) {
+        return true;
+      }
+    }
+    return false;
+  };
+  // Find first downstream op as final insert position.
+  for (; begin != end; ++begin) {
+    if (IsDownstreamOp(begin)) {
+      insert_point_op = begin;
+      break;
+    }
+  }
+  return insert_point_op;
+}
 
 void ReplaceWithGroupOp(pir::Block* block,
                         const GroupOpsVec& group_ops) {  // NOLINT
