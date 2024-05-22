@@ -1057,6 +1057,17 @@ ir::Tensor Transpose(const ir::Tensor& input,
       output_name);
 }
 
+int UpdateNegAxis(int axis, int rank) {
+  if (axis < 0) {
+    PADDLE_ENFORCE_GE(
+        axis + rank,
+        0,
+        ::common::errors::InvalidArgument("The axis of slice is out of range"));
+    return axis + rank;
+  }
+  return axis;
+}
+
 ir::Tensor Slice(const ir::Tensor& A,
                  const std::vector<int>& starts,
                  const std::vector<int>& const_axes,
@@ -1073,15 +1084,7 @@ ir::Tensor Slice(const ir::Tensor& A,
                  const_axes.end(),
                  std::back_inserter(axes),
                  [rank = A->shape.size()](const int axis) -> int {
-                   if (axis < 0) {
-                     PADDLE_ENFORCE_GE(
-                         axis + rank,
-                         0,
-                         ::common::errors::InvalidArgument(
-                             "The axis of slice is out of range"));
-                     return axis + rank;
-                   }
-                   return axis;
+                   return UpdateNegAxis(axis, rank);
                  });
   std::vector<int> new_starts(starts);
   for (int i = 0; i < axes.size(); i++) {
@@ -1126,9 +1129,9 @@ ir::Tensor Slice(const ir::Tensor& A,
 }
 
 ir::Tensor SliceSymbolic(const ir::Tensor& A,
-                         const std::vector<int>& starts,
+                         const std::vector<Expr>& starts,
                          const std::vector<int>& const_axes,
-                         const std::vector<int>& strides,
+                         const std::vector<Expr>& strides,
                          const std::vector<int>& decrease_axis,
                          const std::vector<Expr>& output_shape,
                          const std::string& output_name) {
@@ -1137,25 +1140,13 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
     input_shape.emplace_back(shape);
   }
 
-  std::vector<Expr> new_starts;
-  std::transform(starts.begin(),
-                 starts.end(),
-                 std::back_inserter(new_starts),
-                 [](const int start) { return ir::Expr(start); });
+  std::vector<Expr> new_starts = starts;
   std::vector<int> axes;
   std::transform(const_axes.begin(),
                  const_axes.end(),
                  std::back_inserter(axes),
                  [rank = A->shape.size()](const int axis) -> int {
-                   if (axis < 0) {
-                     PADDLE_ENFORCE_GE(
-                         axis + rank,
-                         0,
-                         ::common::errors::InvalidArgument(
-                             "The axis of slice is out of range"));
-                     return axis + rank;
-                   }
-                   return axis;
+                   return UpdateNegAxis(axis, rank);
                  });
 
   for (int i = 0; i < axes.size(); i++) {
@@ -1338,6 +1329,39 @@ ir::Tensor Gather(const ir::Tensor& x,
         // https://github.com/PaddlePaddle/CINN/blob/85ab4981a38926dc5c1dbf672762cec335d2b857/cinn/ir/ir.cc#L477
         transformed_indice[axis] =
             ir::Cast::Make(cinn::common::Int(32), index(indice));
+        return x(transformed_indice);
+      },
+      name);
+  return output_tensor;
+}
+
+ir::Tensor Gather(const ir::Tensor& x,
+                  const ir::Tensor& index,
+                  int axis,
+                  const std::vector<Expr>& output_shape,
+                  const std::string& name) {
+  // The implementation details are explained below.
+  // If output_shape = [2, 4, 3] and axis = 0, `Compute` can be translated as
+  // the following code:
+  // {
+  //   for (i, 0, 2)
+  //   {
+  //     for (j, 0, 4)
+  //     {
+  //       for (k, 0, 3)
+  //       {
+  //         index_select_output[i, j, k] = X[index(i), j, k]
+  //       }
+  //     }
+  //   }
+  // }
+  auto output_tensor = Compute(
+      output_shape,
+      [x, index, axis](const std::vector<Expr>& indice) {
+        // 1) indice is got from `output_shape`
+        // 2) transformed_indice is used in the input `x`
+        std::vector<Expr> transformed_indice = indice;
+        transformed_indice[axis] = index(indice[axis]);
         return x(transformed_indice);
       },
       name);

@@ -117,14 +117,28 @@ void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh) {
     return;
   }
   if (x->is_dist_tensor()) {
-    PADDLE_ENFORCE_EQ(
-        std::dynamic_pointer_cast<phi::distributed::DistTensor>(x->impl())
-            ->process_mesh(),
-        *mesh,
-        platform::errors::InvalidArgument(
-            "Input %s has different mesh. However all inputs should "
-            "have the same mesh.",
-            x->name()));
+    auto dist_ptr =
+        std::dynamic_pointer_cast<phi::distributed::DistTensor>(x->impl());
+    if (!dist_ptr->skip_check_mesh() && x->dims().size() > 0) {
+      // NOTE(pkuzyc): In MoE expert parallelism, the mesh of the
+      // inputs and outputs of different experts are different, so
+      // skip checking mesh in the following two casees:
+      // 1. The ``skip_check_mesh_`` flag is true. The MoE-related apis
+      // sets this flag to indicate that the difference between tensor's
+      // mesh is allowed.
+      // 2. The tensor is a 0-D tensor. Specifically, in MoE expert
+      // parallelism, the learning rate's mesh is global, but expert
+      // weights' mesh is the subset of the global mesh, this is also
+      // allowed so skip checking the mesh of 0-D tensor.
+      PADDLE_ENFORCE_EQ(
+          std::dynamic_pointer_cast<phi::distributed::DistTensor>(x->impl())
+              ->process_mesh(),
+          *mesh,
+          platform::errors::InvalidArgument(
+              "Input %s has different mesh. However all inputs should "
+              "have the same mesh.",
+              x->name()));
+    }
     return;
   } else {
     PADDLE_ENFORCE_EQ(
@@ -1083,6 +1097,14 @@ PyObject* ToPyObject(const phi::DataType& dtype) {
   return obj.ptr();
 }
 
+PyObject* ToPyObject(const std::vector<phi::DataType>& dtypes) {
+  PyObject* result = PyList_New((Py_ssize_t)dtypes.size());
+  for (size_t i = 0; i < dtypes.size(); i++) {
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), ToPyObject(dtypes[i]));
+  }
+  return result;
+}
+
 PyObject* ToPyObject(const pir::Value& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
@@ -1389,8 +1411,17 @@ std::vector<paddle::Tensor> GetTensorListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* tensor_obj = PyList_GetItem(list, i);
+      PADDLE_ENFORCE_EQ(
+          PyObject_TypeCheck(tensor_obj, p_tensor_type),
+          true,
+          platform::errors::InvalidArgument(
+              "%s(): argument '%s' (position %d) must be list of Tensors",
+              op_type,
+              arg_name,
+              arg_idx));
       paddle::Tensor& tensor =
-          reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor;
+          reinterpret_cast<TensorObject*>(tensor_obj)->tensor;
       if (local_mesh) {
         ConvertToDistTensor(&tensor, local_mesh);
       } else {
@@ -1422,8 +1453,17 @@ std::vector<paddle::Tensor> GetTensorListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* tensor_obj = PyTuple_GetItem(list, i);
+      PADDLE_ENFORCE_EQ(
+          PyObject_TypeCheck(tensor_obj, p_tensor_type),
+          true,
+          platform::errors::InvalidArgument(
+              "%s(): argument '%s' (position %d) must be list of Tensors",
+              op_type,
+              arg_name,
+              arg_idx));
       paddle::Tensor& tensor =
-          reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor;
+          reinterpret_cast<TensorObject*>(tensor_obj)->tensor;
       if (local_mesh) {
         ConvertToDistTensor(&tensor, local_mesh);
       } else {
@@ -1495,8 +1535,17 @@ paddle::optional<std::vector<paddle::Tensor>> GetOptionalTensorListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* tensor_obj = PyList_GetItem(list, i);
+      PADDLE_ENFORCE_EQ(
+          PyObject_TypeCheck(tensor_obj, p_tensor_type),
+          true,
+          platform::errors::InvalidArgument(
+              "%s(): argument '%s' (position %d) must be list of Tensors",
+              op_type,
+              arg_name,
+              arg_idx));
       paddle::Tensor& tensor =
-          reinterpret_cast<TensorObject*>(PyList_GetItem(list, i))->tensor;
+          reinterpret_cast<TensorObject*>(tensor_obj)->tensor;
       if (local_mesh) {
         ConvertToDistTensor(&tensor, local_mesh);
       } else {
@@ -1528,8 +1577,17 @@ paddle::optional<std::vector<paddle::Tensor>> GetOptionalTensorListFromArgs(
           arg_idx));
     }
     for (Py_ssize_t i = 0; i < len; i++) {
+      PyObject* tensor_obj = PyTuple_GetItem(list, i);
+      PADDLE_ENFORCE_EQ(
+          PyObject_TypeCheck(tensor_obj, p_tensor_type),
+          true,
+          platform::errors::InvalidArgument(
+              "%s(): argument '%s' (position %d) must be list of Tensors",
+              op_type,
+              arg_name,
+              arg_idx));
       paddle::Tensor& tensor =
-          reinterpret_cast<TensorObject*>(PyTuple_GetItem(list, i))->tensor;
+          reinterpret_cast<TensorObject*>(tensor_obj)->tensor;
       if (local_mesh) {
         ConvertToDistTensor(&tensor, local_mesh);
       } else {
@@ -1960,6 +2018,9 @@ paddle::Tensor CreateTensorFromValue(const pir::Value& value) {
 
   auto dims = phi::vectorize(GetValueDims(value));
   auto ddims = phi::make_ddim(dims);
+  if (HasValueName(value)) {
+    tensor.set_name(GetValueName(value));
+  }
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);
   autograd_meta->SetStopGradient(GetValueBoolAttr(value, kAttrStopGradients));
@@ -2618,7 +2679,7 @@ static Py_tss_t static_op_arg_pre_cast_hook_key = {0, 0};
 
 inline static PyObject* static_op_arg_pre_cast_hook_get() {
   void* result = PyThread_tss_get(&static_op_arg_pre_cast_hook_key);
-  if (result == NULL) {
+  if (result == nullptr) {
     return Py_None;
   } else {
     return reinterpret_cast<PyObject*>(result);
@@ -2653,7 +2714,7 @@ PyMODINIT_FUNC PyInit__static_op_arg_pre_cast_hook() {
 
   Py_INCREF(Py_None);
   static_op_arg_pre_cast_hook_set(Py_None);
-  return NULL;
+  return nullptr;
 }
 
 /* ------------------ for auto parallel ----------------------- */
@@ -2742,11 +2803,11 @@ void DistTensorConverter::operator()(paddle::optional<std::vector<Tensor>>* x) {
 
 static PyMethodDef EagerUtilMethods[] = {
     {"create_empty_tensors_with_var_descs",
-     (PyCFunction)(void (*)(void))GetEmptyTensorsWithVarDesc,
+     (PyCFunction)(void (*)())GetEmptyTensorsWithVarDesc,
      METH_VARARGS,
      "GetEmptyTensorsWithVarDesc"},
     {"create_empty_tensors_with_values",
-     (PyCFunction)(void (*)(void))GetEmptyTensorsWithValue,
+     (PyCFunction)(void (*)())GetEmptyTensorsWithValue,
      METH_VARARGS,
      "GetEmptyTensorsWithValue."},
     {"set_static_op_arg_pre_cast_hook",

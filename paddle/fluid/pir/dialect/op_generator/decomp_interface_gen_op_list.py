@@ -23,13 +23,17 @@ decomp_interface_declare_gen_op_list = [
     "any",
     "batch_norm",
     "batch_norm_",
+    "bce_loss",
+    "bmm",
     "dropout",
     "elu",
     "embedding",
     "flatten",
+    "floor_divide",
     "full_like",
     "gelu",
     "hardswish",
+    "hardsigmoid",
     "group_norm",
     "index_sample",
     "index_select",
@@ -38,12 +42,15 @@ decomp_interface_declare_gen_op_list = [
     "leaky_relu",
     "log_softmax",
     "mean",
+    "mean_all",
+    "meshgrid",
+    "one_hot",
     "p_norm",
     "pow",
     "reciprocal",
     "relu",
     "relu6",
-    "sigmoid",
+    "sigmoid_cross_entropy_with_logits",
     "silu",
     "swiglu",
     "softmax",
@@ -51,19 +58,25 @@ decomp_interface_declare_gen_op_list = [
     "squeeze",
     "stack",
     "unsqueeze",
+    "huber_loss",
 ]
 
 # come into effect in generated file op_decomp.cc
 # manual decomp interface implementation are located in manual_op_decomp.cc
 decomp_interface_implementation_gen_op_list = [
+    "any",
     "add_n",
+    "bce_loss",
+    "bmm",
     "dropout",
     "elu",
     "embedding",
     "flatten",
+    "floor_divide",
     "full_like",
     "gelu",
     "hardswish",
+    "hardsigmoid",
     "group_norm",
     "index_sample",
     "index_select",
@@ -72,12 +85,14 @@ decomp_interface_implementation_gen_op_list = [
     "leaky_relu",
     "log_softmax",
     "mean",
+    "mean_all",
+    "meshgrid",
     "p_norm",
     "pow",
     "reciprocal",
     "relu",
     "relu6",
-    "sigmoid",
+    "sigmoid_cross_entropy_with_logits",
     "silu",
     "swiglu",
     "softmax",
@@ -85,8 +100,14 @@ decomp_interface_implementation_gen_op_list = [
     "squeeze",
     "stack",
     "unsqueeze",
+    "huber_loss",
 ]
-
 
 # xshape output will no longer used after decomp, but return none to keep output num the same as origin op
 decomp_ops_contain_unused_output = ["squeeze", "unsqueeze"]
+
+decomp_vjp_interface_declare_gen_op_list = [
+    "add_grad",
+    "matmul_grad",
+    "relu_grad",
+]

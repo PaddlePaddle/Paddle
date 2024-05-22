@@ -46,17 +46,17 @@ class ArangeNet(paddle.nn.Layer):
 
 class ArangeOpInferSymbolicShapeTest(TestBase):
     def prepare_data(self):
-        self.start = paddle.full([1], 0)
-        self.end = paddle.full([1], 5)
-        self.step = paddle.full([1], 1)
+        self.start = paddle.full([1], 0, dtype='int32')
+        self.end = paddle.full([1], 5, dtype='int32')
+        self.step = paddle.full([1], 1, dtype='int32')
         self.expected = ['shape[Mul(Add(S1, -S0), 1 / (S2))], data[NULL]']
 
     def test_eval_symbolic(self):
         net = ArangeNet()
         input_spec = [
-            InputSpec(shape=[None], dtype='float32'),
-            InputSpec(shape=[None], dtype='float32'),
-            InputSpec(shape=[None], dtype='float32'),
+            InputSpec(shape=[1], dtype='int32'),
+            InputSpec(shape=[1], dtype='int32'),
+            InputSpec(shape=[1], dtype='int32'),
         ]
         net = apply_to_static(net, False, input_spec)
         net.eval()
@@ -100,7 +100,7 @@ class EmptyNet(paddle.nn.Layer):
 
     def forward(self, x):
         out = paddle.empty(shape=[128, 32])
-        out = paddle.empty(shape=x)
+        out = paddle.empty(shape=x.shape)
         return out
 
 

@@ -33,26 +33,24 @@ namespace operators {
 
 inline std::vector<int64_t> GetNewDataFromShapeTensor(
     const phi::DenseTensor* new_data_tensor) {
-  if (framework::TransToProtoVarType(new_data_tensor->dtype()) ==
-      framework::proto::VarType::INT64) {
+  if (new_data_tensor->dtype() == phi::DataType::INT64) {
     auto* new_data = new_data_tensor->data<int64_t>();
     phi::DenseTensor cpu_starts_tensor;
-    if (platform::is_gpu_place(new_data_tensor->place())) {
+    if (new_data_tensor->place().GetType() == phi::AllocationType::GPU) {
       paddle::framework::TensorCopySync(
-          *new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
+          *new_data_tensor, phi::CPUPlace(), &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int64_t>();
     }
     std::vector<int64_t> vec_new_data(new_data,
                                       new_data + new_data_tensor->numel());
     return vec_new_data;
-  } else if (framework::TransToProtoVarType(new_data_tensor->dtype()) ==
-             framework::proto::VarType::INT32) {
+  } else if (new_data_tensor->dtype() == phi::DataType::INT32) {
     auto* new_data = new_data_tensor->data<int32_t>();
     std::vector<int64_t> vec_new_data;
     phi::DenseTensor cpu_starts_tensor;
-    if (platform::is_gpu_place(new_data_tensor->place())) {
+    if (new_data_tensor->place().GetType() == phi::AllocationType::GPU) {
       paddle::framework::TensorCopySync(
-          *new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
+          *new_data_tensor, phi::CPUPlace(), &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int32_t>();
     }
     for (int i = 0; i < new_data_tensor->numel(); ++i) {
@@ -81,20 +79,18 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
             "But received tensor's dim=%s.",
             tensor->dims()));
 
-    if (framework::TransToProtoVarType(tensor->dtype()) ==
-        framework::proto::VarType::INT32) {
-      if (platform::is_gpu_place(tensor->place())) {
+    if (tensor->dtype() == phi::DataType::INT32) {
+      if (tensor->place().GetType() == phi::AllocationType::GPU) {
         phi::DenseTensor temp;
-        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
         vec_new_shape.push_back(static_cast<int64_t>(*temp.data<int32_t>()));
       } else {
         vec_new_shape.push_back(static_cast<int64_t>(*tensor->data<int32_t>()));
       }
-    } else if (framework::TransToProtoVarType(tensor->dtype()) ==
-               framework::proto::VarType::INT64) {
-      if (platform::is_gpu_place(tensor->place())) {
+    } else if (tensor->dtype() == phi::DataType::INT64) {
+      if (tensor->place().GetType() == phi::AllocationType::GPU) {
         phi::DenseTensor temp;
-        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
         vec_new_shape.push_back(*temp.data<int64_t>());
       } else {
         vec_new_shape.push_back(*tensor->data<int64_t>());
@@ -105,8 +101,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
           "But got "
           "unsupport dtype: %s.",
           i,
-          paddle::framework::DataTypeToString(
-              framework::TransToProtoVarType(tensor->dtype()))));
+          phi::DataTypeToString(tensor->dtype())));
     }
   }
 

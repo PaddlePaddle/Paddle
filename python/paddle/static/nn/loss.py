@@ -18,7 +18,6 @@ from paddle.base.framework import static_only
 
 # TODO: define loss functions of neural network
 from paddle.base.layer_helper import LayerHelper
-from paddle.base.layers.layer_function_generator import templatedoc
 from paddle.base.param_attr import ParamAttr
 from paddle.nn.initializer import Assign
 
@@ -31,7 +30,6 @@ __all__ = []
 # For now, the comments in c++ use types like Tensor, but in python side
 # the type is often "Variable", and arguments may vary.
 @static_only
-@templatedoc(op_type="nce")
 def nce(
     input,
     label,
@@ -49,14 +47,16 @@ def nce(
     """
     :api_attr: Static Graph
 
-    ${comment}
+    Compute and return the noise-contrastive estimation training loss. See `Noise-contrastive estimation: A new estimation principle
+    for unnormalized statistical models <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`_.
+    By default this operator uses a uniform distribution for sampling.
 
     Args:
         input (Tensor): Input tensor, 2-D tensor with shape [batch_size, dim],
             and data type is float32 or float64.
         label (Tensor): Input label, 2-D tensor with shape [batch_size, num_true_class],
             and data type is int64.
-        num_total_classes (int):${num_total_classes_comment}.
+        num_total_classes (int): Total number of classes in all samples.
         sample_weight (Tensor|None): A Tensor of shape [batch_size, 1]
             storing a weight for each sample. The default weight for each
             sample is 1.0.
@@ -66,7 +66,7 @@ def nce(
         bias_attr (ParamAttr|None): To specify the bias parameter attribute.
             Default: None, which means the default bias parameter property is
             used. See usage for details in :ref:`api_paddle_ParamAttr` .
-        num_neg_samples (int): ${num_neg_samples_comment}.
+        num_neg_samples (int): The number of negative classes. The default value is 10.
         name(str|None): For detailed information, please refer to
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
         sampler (str, optional): The sampler used to sample class from negative classes.

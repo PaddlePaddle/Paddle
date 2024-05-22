@@ -14,23 +14,30 @@
 
 #include "paddle/cinn/frontend/decomposer_registry.h"
 #include "paddle/cinn/frontend/syntax.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace decomposer {
 
 void top_k(const Instruction& instr, const DecomposerContext& context) {
-  CHECK_EQ(instr->inputs.size(), 1UL)
-      << " 1 input tensor for " << instr->op_type;
-  CHECK_EQ(instr->outputs.size(), 2UL)
-      << "2 output tensors for " << instr->op_type;
+  PADDLE_ENFORCE_EQ(
+      instr->inputs.size(),
+      1UL,
+      phi::errors::InvalidArgument("The input tensor size should be 1."));
+  PADDLE_ENFORCE_EQ(
+      instr->outputs.size(),
+      2UL,
+      phi::errors::InvalidArgument("The output tensor size should be 2."));
   auto x = instr->inputs[0];
   auto output = instr->outputs[0];
   auto indices = instr->outputs[1];
 
   auto* builder = context.builder();
   int k = instr.GetAttrs<int>("k");
-  CHECK_GT(k, 0) << "The attribute k must be greater than 0.";
+  PADDLE_ENFORCE_GT(
+      k,
+      0,
+      phi::errors::InvalidArgument("The attribute k must be greater than 0."));
   int axis = instr.GetAttrs<int>("axis");
   if (axis < 0) {
     axis += x->shape.size();

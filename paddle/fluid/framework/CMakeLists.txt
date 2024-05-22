@@ -671,7 +671,6 @@ if(WITH_DISTRIBUTE)
            glog
            index_sampler
            index_wrapper
-           sampler
            index_dataset_proto
            lod_rank_table
            framework_io
@@ -876,6 +875,11 @@ cc_library(
   SRCS parallel_executor.cc
   DEPS ssa_graph_executor graph build_strategy collective_helper
        variable_helper)
+
+cc_library(
+  compiled_program
+  SRCS compiled_program.cc
+  DEPS graph build_strategy)
 
 cc_library(
   executor_cache

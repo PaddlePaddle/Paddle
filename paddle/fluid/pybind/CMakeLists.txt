@@ -15,6 +15,7 @@ set(PYBIND_DEPS
     generate_pass
     pass_builder
     parallel_executor
+    compiled_program
     profiler
     layer
     tracer
@@ -129,6 +130,7 @@ set(PYBIND_SRCS
     exception.cc
     op_function_common.cc
     parallel_executor.cc
+    compiled_program.cc
     tensor.cc
     place.cc
     const_value.cc
@@ -153,7 +155,8 @@ set(PYBIND_SRCS
     eval_frame_tools.cc
     cpython_internals.c
     eval_frame.c
-    op_callstack_utils.cc)
+    op_callstack_utils.cc
+    python_callable_registry.cc)
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
@@ -549,6 +552,10 @@ if(WITH_PYTHON)
     ${SHARD_LIB_NAME} SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+
+  if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+    target_compile_options(${SHARD_LIB_NAME} PRIVATE -Wno-maybe-uninitialized)
+  endif()
 
   # cc_test do not respect deps, whole archive to link symbols that may need by test
   if(WITH_TESTING)

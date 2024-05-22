@@ -245,7 +245,10 @@ PADDLE_CAPI_EXPORT extern int32_t PD_ConfigXpuDeviceId(
 /// \param[in] device_id device_id the custom device card to use.
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableCustomDevice(
-    __pd_keep PD_Config* pd_config, char* device_type, int32_t device_id);
+    __pd_keep PD_Config* pd_config,
+    char* device_type,
+    int32_t device_id,
+    PD_PrecisionType precision);
 ///
 /// \brief A boolean state telling whether the custom device is turned on.
 ///

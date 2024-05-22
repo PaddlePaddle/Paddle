@@ -167,6 +167,7 @@ def runtime_main(test_class, col_type, sub_type):
     args["currentendpoint"] = os.getenv("PADDLE_CURRENT_ENDPOINT")
     args["col_type"] = col_type
     args["dtype"] = os.getenv("DTYPE")
+    args["batch_size"] = os.getenv("BATCH_SIZE")
     args["dynamic_static_unified_comm"] = bool(
         int(os.getenv("FLAGS_dynamic_static_unified_comm", "0"))
     )

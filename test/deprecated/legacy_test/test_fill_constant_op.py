@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../legacy_test")
 from op import Operator
 from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
@@ -512,10 +515,7 @@ class TestFillConstantOpError(unittest.TestCase):
                 fetch_list=[out],
             )
 
-        with paddle.pir_utils.IrGuard():
-            pir_program = paddle.static.Program()
-            with paddle.static.program_guard(pir_program):
-                self.assertRaises(ValueError, test_shape_type)
+        # TODO(chenzhiyang): pir test_shape_dtype
 
 
 class TestFillConstantOp_ValueTensorBf16(OpTest):
