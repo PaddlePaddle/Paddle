@@ -74,12 +74,15 @@ def get_pir_parameters(program):
     return params, opts
 
 
-def get_pir_feed_names(program):
+def get_pir_feed_and_fetch(program):
     feed_name_list = []
+    fetch_targets = []
     for op in program.global_block().ops:
         if op.name() == "pd_op.data" or op.name() == "pd_op.feed":
             feed_name_list.append(op.attrs()["name"])
-    return feed_name_list
+        if op.name() == "pd_op.fetch":
+            fetch_targets.extend(op.operands_source())
+    return feed_name_list, fetch_targets
 
 
 def set_var(name, ndarray):
@@ -896,6 +899,5 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
                 filename=params_filename,
             )
 
-    feed_names = get_pir_feed_names(program)
-    # pir load program has fetch op, so if use exe.run to execute load program, don't need to set fetch_list
-    return [program, feed_names, []]
+    feed_names, fetch_targets = get_pir_feed_and_fetch(program)
+    return [program, feed_names, fetch_targets]
