@@ -6868,11 +6868,11 @@ def block_diag(inputs, name=None):
     Create a block diagonal matrix from provided tensors.
 
     Args:
-        input (list|tuple): ``input`` is a Tensor list or Tensor tuple, one or more tensors with 0, 1, or 2 dimensions.
+        inputs (list|tuple): ``inputs`` is a Tensor list or Tensor tuple, one or more tensors with 0, 1, or 2 dimensions.
         name (str, optional): Name for the operation (optional, default is None).
 
     Returns:
-        Tensor, A ``Tensor``. The data type is same as ``input``.
+        Tensor, A ``Tensor``. The data type is same as ``inputs``.
 
     Examples:
         .. code-block:: python
