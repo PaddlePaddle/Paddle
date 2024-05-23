@@ -22,8 +22,9 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/utils/none.h"
 
-#if CUDA_VERSION >= 11000 && (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+#if defined(__CUDACC__) && CUDA_VERSION >= 11000
 #define CUDA_BFLOAT16_AVALIABLE
+#include <cuda_bf16.h>
 #endif
 
 namespace phi {
