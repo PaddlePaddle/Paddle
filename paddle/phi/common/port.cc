@@ -75,7 +75,7 @@ int gettimeofday(struct timeval *tp, void *tzp) {
 #endif              // !_WIN32
 
 void ExecShellCommand(const std::string &cmd, std::string *message) {
-  std::array<char, 128> buffer;
+  std::array<char, 128> buffer = {};
 #if !defined(_WIN32)
   std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
 #else
@@ -94,7 +94,7 @@ void ExecShellCommand(const std::string &cmd, std::string *message) {
 
 bool PathExists(const std::string &path) {
 #if !defined(_WIN32)
-  struct stat statbuf;
+  struct stat statbuf = {};
   if (stat(path.c_str(), &statbuf) != -1) {
     if (S_ISDIR(statbuf.st_mode)) {
       return true;
@@ -119,7 +119,7 @@ constexpr char kSEP = '\\';
 
 bool FileExists(const std::string &filepath) {
 #if !defined(_WIN32)
-  struct stat buffer;
+  struct stat buffer = {};
   return (stat(filepath.c_str(), &buffer) == 0);
 #else
   struct _stat buffer;

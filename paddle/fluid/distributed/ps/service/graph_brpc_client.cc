@@ -34,7 +34,7 @@ void GraphPsService_Stub::service(
     const ::paddle::distributed::PsRequestMessage *request,
     ::paddle::distributed::PsResponseMessage *response,
     ::google::protobuf::Closure *done) {
-  if (graph_service != NULL && local_channel == channel()) {
+  if (graph_service != nullptr && local_channel == channel()) {
     // VLOG(0)<<"use local";
     task_pool->enqueue([this, controller, request, response, done]() -> int {
       this->graph_service->service(controller, request, response, done);
@@ -714,8 +714,8 @@ int32_t GraphBrpcClient::Initialize() {
   // set_shard_num(_config.shard_num());
   BrpcPsClient::Initialize();
   server_size = GetServerNums();
-  graph_service = NULL;
-  local_channel = NULL;
+  graph_service = nullptr;
+  local_channel = nullptr;
   return 0;
 }
 }  // namespace distributed

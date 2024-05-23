@@ -80,8 +80,7 @@ struct LoDTensorToArrayFunctor {
     LoDTensorToArrayFunctorImpl<DeviceContext> func;
     func.prev_functor_ = this;
     func.dev_ctx_ = dev_ctx;
-    framework::VisitDataType(framework::TransToProtoVarType(input_.dtype()),
-                             func);
+    phi::VisitDataType(input_.dtype(), func);
   }
 };
 
