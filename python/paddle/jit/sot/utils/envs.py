@@ -27,7 +27,6 @@ ENV_COST_MODEL = BooleanEnvironmentVariable("COST_MODEL", False)
 ENV_MIN_GRAPH_SIZE = IntegerEnvironmentVariable("MIN_GRAPH_SIZE", 10)
 ENV_SOT_LOG_LEVEL = IntegerEnvironmentVariable("SOT_LOG_LEVEL", 0)
 ENV_STRICT_MODE = BooleanEnvironmentVariable("STRICT_MODE", False)
-ENV_SHOW_TRACKERS = StringEnvironmentVariable("SHOW_TRACKERS", "")
 ENV_CLEAN_CODE = BooleanEnvironmentVariable("CLEAN_CODE", False)
 ENV_SOT_WITH_CONTROL_FLOW = BooleanEnvironmentVariable(
     "SOT_WITH_CONTROL_FLOW", True
@@ -65,4 +64,10 @@ def with_control_flow_guard(value: bool):
 @contextmanager
 def with_export_guard(value: str):
     with EnvironmentVariableGuard(ENV_SOT_EXPORT, value):
+        yield
+
+
+@contextmanager
+def with_allow_dynamic_shape_guard(value: bool):
+    with EnvironmentVariableGuard(ENV_SOT_ALLOW_DYNAMIC_SHAPE, value):
         yield

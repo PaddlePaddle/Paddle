@@ -20,8 +20,8 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
+    test_legacy_and_pir,
     test_legacy_and_pt_and_pir,
-    test_legacy_only,
 )
 
 import paddle
@@ -32,6 +32,7 @@ from paddle.jit.dy2static.partial_program import partial_program_from
 from paddle.jit.dy2static.pir_partial_program import (
     partial_program_from as pir_partial_program_from,
 )
+from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2020
@@ -89,6 +90,7 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
         self.temp_dir.cleanup()
 
     @test_ast_only
+    @test_legacy_and_pir
     def test_save_inference_model(self):
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
@@ -112,29 +114,29 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
         infer_model_dir = os.path.join(
             self.temp_dir.name, "test_dy2stat_inference_in_guard"
         )
-        # TODO(pir-save-load): Fix this after we support save/load in PIR
-        if not use_pir_api():
-            paddle.jit.save(
-                layer=layer,
-                path=infer_model_prefix,
-                input_spec=[x],
-                output_spec=[pred],
-            )
-            # Check the correctness of the inference
-            dygraph_out, _ = layer(x)
-            self.check_save_inference_model(
-                layer, [x_data], dygraph_out.numpy()
-            )
-            self.check_save_inference_model(
-                layer, [x_data], dygraph_out.numpy(), fetch=[loss]
-            )
-            self.check_save_inference_model(
-                layer, [x_data], dygraph_out.numpy(), feed=[x]
-            )
+
+        paddle.jit.save(
+            layer=layer,
+            path=infer_model_prefix,
+            input_spec=[x],
+            output_spec=[1] if use_pir_api() else [pred],
+        )
+        # Check the correctness of the inference
+        dygraph_out, _ = layer(x)
+        self.check_save_inference_model(layer, [x_data], dygraph_out.numpy())
+        self.check_save_inference_model(
+            layer,
+            [x_data],
+            dygraph_out.numpy(),
+            fetch=[0] if use_pir_api() else [loss],
+        )
+        self.check_save_inference_model(
+            layer, [x_data], dygraph_out.numpy(), feed=[x]
+        )
 
     # TODO(MarioLulab): Disable PT test until we support PIR PyLayer
     @test_ast_only
-    @test_legacy_only
+    @test_legacy_and_pir
     def test_save_pylayer_model(self):
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
@@ -187,8 +189,12 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
         infer_model_dir = os.path.join(
             self.temp_dir.name, "test_dy2stat_inference"
         )
-        model_filename = "model" + INFER_MODEL_SUFFIX
+        if use_pir_api():
+            model_filename = "model" + PIR_INFER_MODEL_SUFFIX
+        else:
+            model_filename = "model" + INFER_MODEL_SUFFIX
         params_filename = "model" + INFER_PARAMS_SUFFIX
+
         paddle.jit.save(
             layer=model,
             path=infer_model_prefix,
