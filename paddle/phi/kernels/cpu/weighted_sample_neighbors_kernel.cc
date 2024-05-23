@@ -36,7 +36,7 @@ struct GraphWeightedNode {
   GraphWeightedNode(T node_id, float weight_key, T eid = 0)
       : node_id(node_id), weight_key(weight_key), eid(eid) {}
 
-  GraphWeightedNode(const GraphWeightedNode<T>& other) {
+  GraphWeightedNode(const GraphWeightedNode<T>& other) : weight_key(0) {
     if (this != &other) {
       this->node_id = other.node_id;
       this->weight_key = other.weight_key;

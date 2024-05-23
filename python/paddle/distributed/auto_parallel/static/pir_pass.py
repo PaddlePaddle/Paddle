@@ -56,7 +56,7 @@ def reshard_combine_value(op, operand, attr):
     reshard_vars = []
     for inner_operand, inner_attr in zip(combine_op.operands(), array_attr):
         reshard_vars.append(reshard_single_value(op, inner_operand, inner_attr))
-    paddle.pir.set_insertion_point(combine_op)
+    paddle.pir.set_insertion_point(op)
     return paddle._C_ops.builtin_combine(reshard_vars)
 
 

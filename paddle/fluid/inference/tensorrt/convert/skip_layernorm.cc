@@ -149,17 +149,15 @@ class SkipLayerNormOpConverter : public OpConverter {
            scale_weight.values,
            GetPluginFieldType(scale_weight.type),
            static_cast<int32_t>(scale_weight.count)}};
-      nvinfer1::PluginFieldCollection* pluginPtr =
-          static_cast<nvinfer1::PluginFieldCollection*>(
-              malloc(sizeof(nvinfer1::PluginFieldCollection) +
-                     fields.size() * sizeof(nvinfer1::PluginField)));
+      std::unique_ptr<nvinfer1::PluginFieldCollection> pluginPtr(
+          new nvinfer1::PluginFieldCollection);
       pluginPtr->nbFields = static_cast<int32_t>(fields.size());
       pluginPtr->fields = fields.data();
 
-      auto pluginObj =
-          creator->createPlugin("CustomSkipLayerNormPluginDynamic", pluginPtr);
+      auto pluginObj = creator->createPlugin("CustomSkipLayerNormPluginDynamic",
+                                             pluginPtr.get());
 
-      free(pluginPtr);
+      pluginPtr.reset();
 
       auto plugin_layer = engine_->network()->addPluginV2(
           inputs.data(), inputs.size(), *pluginObj);
@@ -213,18 +211,15 @@ class SkipLayerNormOpConverter : public OpConverter {
                           smooth_scale.data(),
                           nvinfer1::PluginFieldType::kFLOAT32,
                           static_cast<int32_t>(smooth_scale.size())});
-        nvinfer1::PluginFieldCollection* pluginPtr =
-            static_cast<nvinfer1::PluginFieldCollection*>(
-                malloc(sizeof(nvinfer1::PluginFieldCollection) +
-                       fields.size() *
-                           sizeof(nvinfer1::PluginField)));  // remember to free
+        std::unique_ptr<nvinfer1::PluginFieldCollection> pluginPtr(
+            new nvinfer1::PluginFieldCollection);
         pluginPtr->nbFields = static_cast<int32_t>(fields.size());
         pluginPtr->fields = fields.data();
 
         auto pluginObj = creator->createPlugin(
-            "CustomSkipLayerNormPluginDynamicWithSmooth", pluginPtr);
+            "CustomSkipLayerNormPluginDynamicWithSmooth", pluginPtr.get());
 
-        free(pluginPtr);
+        pluginPtr.reset();
 
         auto plugin_layer = engine_->network()->addPluginV2(
             inputs.data(), inputs.size(), *pluginObj);
@@ -237,18 +232,15 @@ class SkipLayerNormOpConverter : public OpConverter {
                 "layer"));
         layer = plugin_layer;
       } else {
-        nvinfer1::PluginFieldCollection* pluginPtr =
-            static_cast<nvinfer1::PluginFieldCollection*>(
-                malloc(sizeof(nvinfer1::PluginFieldCollection) +
-                       fields.size() *
-                           sizeof(nvinfer1::PluginField)));  // remember to free
+        std::unique_ptr<nvinfer1::PluginFieldCollection> pluginPtr(
+            new nvinfer1::PluginFieldCollection);
         pluginPtr->nbFields = static_cast<int32_t>(fields.size());
         pluginPtr->fields = fields.data();
 
         auto pluginObj = creator->createPlugin(
-            "CustomSkipLayerNormPluginDynamic", pluginPtr);
+            "CustomSkipLayerNormPluginDynamic", pluginPtr.get());
 
-        free(pluginPtr);
+        pluginPtr.reset();
 
         auto plugin_layer = engine_->network()->addPluginV2(
             inputs.data(), inputs.size(), *pluginObj);
