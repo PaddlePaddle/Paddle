@@ -67,7 +67,7 @@ def get_pir_parameters(program):
     params = []
     opts = []
     for var in program.list_vars():
-        if var.is_parameter and var.persistable:
+        if var.is_parameter:
             params.append(var)
         elif var.persistable and var.get_defining_op().name() == "pd_op.data":
             opts.append(var)
@@ -299,7 +299,6 @@ def save_vars_pir(
     dirname,
     main_program=None,
     vars=None,
-    predicate=None,
     filename=None,
 ):
     """
@@ -323,9 +322,6 @@ def save_vars_pir(
                                     Default: None
         vars(list[Variable], optional): The list contains all variables to be saved.
                                         Default: None
-        predicate(function, optional): The function selects the variables that make
-                                       `predicate(variable) == True`.
-                                       Default: None
         filename(str, optional): If you prefer to save all variables in a single file,
                                  use `filename` to specify it. Otherwise, let `filename` be None.
                                  Default: None
@@ -347,7 +343,7 @@ def save_vars_pir(
         return save_vars_pir(
             main_program=main_program,
             dirname=dirname,
-            vars=vars_list,  # list(filter(predicate, vars_list)),
+            vars=[var for var in vars_list if var.persistable],
             filename=filename,
         )
     else:
@@ -400,7 +396,6 @@ def load_vars_pir(
     dirname,
     main_program=None,
     vars=None,
-    predicate=None,
     filename=None,
 ):
     """
@@ -427,9 +422,6 @@ def load_vars_pir(
                                     Default: None
         vars(list[Variable], optional): The list that contains all variables to be loaded.
                                    Default: None
-        predicate(function, optional): The function selects variables that make
-                                        `predicate(variable) == True`.
-                                        Default: None
         filename(str, optional): The file which saved all required variables. If variables
                                 were saved in separate files, set it to be None.
                                 Default: None
@@ -457,23 +449,30 @@ def load_vars_pir(
                 % type(main_program)
             )
         param, opt = get_pir_parameters(main_program)
-        vars_list = param + opt
+        vars = param + opt
+        paddle.base.libpaddle.pir.create_loaded_parameter(
+            vars, global_scope(), executor._default_executor
+        )
         load_vars_pir(
             executor,
             dirname=dirname,
             main_program=main_program,
-            vars=vars_list,  # list(filter(predicate, vars_list)),
+            vars=[var for var in vars if var.persistable],
             filename=filename,
         )
     else:
         if main_program is None:
             main_program = default_main_program()
 
+        if not isinstance(main_program, paddle.static.Program):
+            raise TypeError(
+                "The type of input main_program is invalid, expected type is paddle.static.Program, but received %s"
+                % type(main_program)
+            )
+
         # TODO(chenzhiyang):save origin param shape, check vars
         load_var_map = {}
-        paddle.base.libpaddle.pir.create_loaded_parameter(
-            vars, global_scope(), executor._default_executor
-        )
+
         for v in vars:
             var = global_scope().find_var(v.name)
             assert isinstance(var, paddle.base.libpaddle.Variable)
@@ -737,7 +736,6 @@ def save_pir_inference_model(
     save_vars_pir(
         dirname=save_dirname,
         main_program=program,
-        # predicate=persistable, TODO(chenzhiyang): Is this filter needed here?
         filename=params_filename,
     )
 
@@ -831,13 +829,14 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
         paddle.base.core.deserialize_pir_program(model_filename, program, 1)
 
         params, opts = get_pir_parameters(program)
-        if len(params + opts) > 0:
+        vars = params + opts
+        vars = [var for var in program.list_vars() if var.persistable]
+        if len(vars) > 0:
             load_vars_pir(
                 # load from memory, dirname is None
                 executor,
                 dirname=None,
                 main_program=program,
-                # predicate=persistable,
                 filename=params_filename,
             )
     # load from file
@@ -884,7 +883,9 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
         paddle.base.core.deserialize_pir_program(model_path, program, 1)
         # load parameters
         params, opts = get_pir_parameters(program)
-        if len(params + opts) > 0:
+        vars = params + opts
+        vars = [var for var in program.list_vars() if var.persistable]
+        if len(vars) > 0:
             load_dirname = os.path.dirname(params_path)
             params_filename = os.path.basename(params_path)
 
@@ -892,7 +893,6 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
                 executor,
                 dirname=load_dirname,
                 main_program=program,
-                # predicate=persistable,
                 filename=params_filename,
             )
 

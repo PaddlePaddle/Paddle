@@ -113,7 +113,7 @@ endif()
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
-  list(REMOVE_ITEM TEST_OPS test_downpoursgd)
+  list(REMOVE_ITEM TEST_OPS test_downpoursgd_deprecated)
   list(REMOVE_ITEM TEST_OPS test_fleet)
   list(REMOVE_ITEM TEST_OPS test_fleet_nocvm_1)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker)
@@ -484,8 +484,13 @@ endif()
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
 set(TEST_OPS_WITH_GC
-    test_concat_op test_elementwise_add_op test_lookup_table_op
-    test_elementwise_sub_op test_gather_op test_mean_op)
+    test_concat_op
+    test_elementwise_add_op
+    test_lookup_table_op
+    test_elementwise_sub_op
+    test_gather_op
+    test_mean_op
+    test_lod_reset_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -849,6 +854,7 @@ set_tests_properties(test_imperative_resnet_sorted_gradient PROPERTIES TIMEOUT
 set_tests_properties(test_imperative_se_resnext PROPERTIES TIMEOUT 200)
 set_tests_properties(test_strided_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_translated_layer PROPERTIES TIMEOUT 120)
+set_tests_properties(test_pir_translated_layer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_mean_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataloader PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool3d_api PROPERTIES TIMEOUT 120)
@@ -1052,6 +1058,14 @@ foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})
   message(STATUS "PIR Copied OpTest: ${PIR_COVERAGE_TEST}_pir in legacy_test")
 endforeach()
 
+set(PIR_ONLY_TEST_FILES test_pir_translated_layer)
+foreach(ITEST ${PIR_ONLY_TEST_FILES})
+  if(TEST ${ITEST})
+    set_tests_properties(${ITEST} PROPERTIES ENVIRONMENT
+                                             "FLAGS_enable_pir_api=True")
+  endif()
+endforeach()
+
 set_tests_properties(test_imperative_optimizer_static_build PROPERTIES TIMEOUT
                                                                        250)
 set_tests_properties(test_sync_batch_norm_op_static_build
@@ -1078,3 +1092,4 @@ set_pir_tests_properties()
 
 set_tests_properties(test_nadam_op PROPERTIES TIMEOUT 100)
 set_tests_properties(test_radam_op PROPERTIES TIMEOUT 100)
+set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)

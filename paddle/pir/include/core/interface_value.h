@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <set>
 #include <type_traits>
 
@@ -27,7 +28,7 @@ class IR_API InterfaceValue {
   template <typename Interface, typename Model>
   static InterfaceValue Get();
   TypeId type_id() const { return type_id_; }
-  void *model() const { return model_; }
+  void *model() const { return model_.get(); }
 
   InterfaceValue() = default;
   InterfaceValue(TypeId type_id) : type_id_(type_id) {}  // NOLINT
@@ -35,7 +36,7 @@ class IR_API InterfaceValue {
   InterfaceValue(InterfaceValue &&) noexcept;
   InterfaceValue &operator=(const InterfaceValue &) = delete;
   InterfaceValue &operator=(InterfaceValue &&) noexcept;
-  ~InterfaceValue();
+  ~InterfaceValue() = default;
   void swap(InterfaceValue &&val) {
     using std::swap;
     swap(type_id_, val.type_id_);
@@ -51,7 +52,8 @@ class IR_API InterfaceValue {
 
  private:
   TypeId type_id_;
-  void *model_{nullptr};
+  std::unique_ptr<void, decltype(static_cast<void (*)(void *)>(free))> model_{
+      nullptr, static_cast<void (*)(void *)>(free)};
 };
 
 template <typename Interface, typename Model>
@@ -64,13 +66,14 @@ InterfaceValue InterfaceValue::Get() {
       sizeof(typename Interface::Concept) == sizeof(Model),
       "Compared with Concept, Model class shouldn't define new data members");
 
-  val.model_ = malloc(sizeof(Model));
-  if (val.model_ == nullptr) {
+  void *model_raw = malloc(sizeof(Model));
+  if (model_raw == nullptr) {
     throw("Alloc memory for interface failed.");
   }
   static_assert(std::is_trivially_destructible<Model>::value,
                 "interface models must be trivially destructible");
-  new (val.model_) Model();
+  new (model_raw) Model();
+  val.model_.reset(model_raw);
   return val;
 }
 

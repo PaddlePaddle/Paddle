@@ -965,18 +965,22 @@ def get_paddle_extra_install_requirements():
                 "nvidia-curand-cu11==10.3.0.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                 "nvidia-cusolver-cu11==11.4.1.48; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                 "nvidia-cusparse-cu11==11.7.5.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-nccl-cu11==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64'"
+                "nvidia-nccl-cu11==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-nvtx-cu11==11.8.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cuda-nvrtc-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64'"
             ),
             "V12": (
-                "nvidia-cuda-runtime-cu12==12.1.105; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cuda-cupti-cu12==12.1.105; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cudnn-cu12==8.9.2.26; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cublas-cu12==12.1.3.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cufft-cu12==11.0.2.54; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-curand-cu12==10.3.2.106; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cusolver-cu12==11.4.5.107; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cusparse-cu12==12.1.0.106; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-nccl-cu12==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64'"
+                "nvidia-cuda-runtime-cu12==12.3.101; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cuda-cupti-cu12==12.3.101; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cudnn-cu12==9.0.0.312; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cublas-cu12==12.3.4.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cufft-cu12==11.2.1.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-curand-cu12==10.3.5.147; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cusolver-cu12==11.6.1.9; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cusparse-cu12==12.3.1.170; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-nccl-cu12==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-nvtx-cu12==12.4.127; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                "nvidia-cuda-nvrtc-cu12==12.3.107; platform_system == 'Linux' and platform_machine == 'x86_64'"
             ),
         }
         try:
@@ -1129,7 +1133,8 @@ def get_package_data_and_package_dir():
 
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             command = (
-                "patchelf --set-rpath '$ORIGIN/' %s/" % libs_path
+                "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_nvrtc/lib/:$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cublas/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/../../nvidia/curand/lib/:$ORIGIN/../../nvidia/cusolver/lib/:$ORIGIN/../../nvidia/nvtx/lib/:$ORIGIN/' %s/"
+                % libs_path
                 + env_dict.get("CINN_LIB_NAME")
             )
             if os.system(command) != 0:
@@ -1263,7 +1268,7 @@ def get_package_data_and_package_dir():
                     )
             else:
                 commands = [
-                    "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../libs/' "
+                    "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cuda_nvrtc/lib:$ORIGIN/../../nvidia/cublas/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/curand/lib:$ORIGIN/../../nvidia/cusparse/lib:$ORIGIN/../../nvidia/nvjitlink/lib:$ORIGIN/../../nvidia/cuda_cupti/lib:$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cusolver/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/nvtx/lib:$ORIGIN/../libs/' "
                     + env_dict.get("PADDLE_BINARY_DIR")
                     + '/python/paddle/base/'
                     + env_dict.get("FLUID_CORE_NAME")

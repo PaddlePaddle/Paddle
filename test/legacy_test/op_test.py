@@ -1529,6 +1529,10 @@ class OpTest(unittest.TestCase):
         check_cinn=False,
     ):
         with paddle.pir_utils.OldIrGuard():
+            if hasattr(self, "attrs"):
+                for k, v in self.attrs.items():
+                    if isinstance(v, paddle.base.core.DataType):
+                        self.attrs[k] = paddle.pir.core.datatype_to_vartype[v]
             program = Program()
             block = program.global_block()
             op = self._append_ops(block)
@@ -3251,6 +3255,11 @@ class OpTest(unittest.TestCase):
         if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
             op_attrs["use_mkldnn"] = False
             use_onednn = True
+        if hasattr(self, "attrs"):
+            for k, v in self.attrs.items():
+                if isinstance(v, paddle.base.core.DataType):
+                    self.attrs[k] = paddle.pir.core.datatype_to_vartype[v]
+
         self.op = create_op(
             self.scope,
             self.op_type,
