@@ -265,16 +265,11 @@ if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
   list(FILTER kernel_cc EXCLUDE REGEX ".*_grad_kernel\\.cc$")
 endif()
 
-if(WITH_AVX
-   AND AVX512F_FOUND
-   AND AVX512F_FLAG
-   AND WITH_MKL)
-  set_source_files_properties(
-    fusion/cpu/fused_layer_norm_avx_kernel.cc
-    fusion/cpu/self_dp_attention_kernel.cc fusion/cpu/rms_norm_avx_kernel.cc
-    PROPERTIES COMPILE_FLAGS
-               "${Wno_Maybe_Uninitialized} ${FMA_FLAG} ${AVX512F_FLAG}")
-else()
+if(NOT
+   (WITH_AVX
+    AND AVX512F_FOUND
+    AND AVX512F_FLAG
+    AND WITH_MKL))
   list(REMOVE_ITEM kernel_cc "fusion/cpu/fused_layer_norm_avx_kernel.cc")
   list(REMOVE_ITEM kernel_cc "fusion/cpu/self_dp_attention_kernel.cc")
   list(REMOVE_ITEM kernel_cc "fusion/cpu/rms_norm_avx_kernel.cc")
