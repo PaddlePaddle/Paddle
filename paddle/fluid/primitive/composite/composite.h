@@ -1039,15 +1039,19 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 }
 
 template <typename T>
-Tensor clip_decomp(const Tensor& x,
-                   const paddle::Scalar& min_,
-                   const paddle::Scalar& max_) {
-  check_valid_type(min_.dtype());
-  Tensor min_t = full<T>(empty_shape, min_, x.dtype());
-
-  check_valid_type(max_.dtype());
-  Tensor max_t = full<T>(empty_shape, max_, x.dtype());
-
+Tensor clip_decomp(const Tensor& x, const Tensor& min_, const Tensor& max_) {
+  Tensor min_t = min_;
+  Tensor max_t = max_;
+  if (min_.dtype() == x.dtype()) {
+    min_t = cast<T>(min_, x.dtype());
+  }
+  if (max_.dtype() == x.dtype()) {
+    max_t = cast<T>(max_, x.dtype());
+  }
+  if (x.size() == 0) {
+    min_t = reshape<T>(min_t, empty_shape);
+    max_t = reshape<T>(max_t, empty_shape);
+  }
   return maximum<T>(minimum<T>(x, max_t), min_t);
 }
 
