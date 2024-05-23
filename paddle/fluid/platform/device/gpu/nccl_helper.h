@@ -54,7 +54,7 @@ inline mcclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
   if (type == framework::proto::VarType::FP32) {
     return mcclFloat;
   } else if (type == framework::proto::VarType::FP64) {
-    return mcclFloat;
+    return mcclDouble;
   } else if (type == framework::proto::VarType::INT32) {
     return mcclInt;
   } else if (type == framework::proto::VarType::INT64) {
