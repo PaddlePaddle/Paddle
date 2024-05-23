@@ -41,10 +41,6 @@ template <typename T, typename DeviceContext>
 class CSoftmaxWithCrossEntropyOp : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const int64_t ignore_index = ctx.Attr<int64_t>("ignore_index");
-    if (ignore_index >= 0) {
-      LOG_FIRST_N(INFO, 1) << "XPU does not support ignore_index in mp.";
-    }
     const int rid = ctx.Attr<int>("ring_id");
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
@@ -65,7 +61,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     const phi::DenseTensor* labels = ctx.Input<phi::DenseTensor>("Label");
     phi::DenseTensor* softmax = ctx.Output<phi::DenseTensor>("Softmax");
     phi::DenseTensor* loss = ctx.Output<phi::DenseTensor>("Loss");
-
+    const int64_t ignore_index = ctx.Attr<int64_t>("ignore_index");
     const int rid = ctx.Attr<int>("ring_id");
     const int nranks = ctx.Attr<int>("nranks");
     const int rank = ctx.Attr<int>("rank");
@@ -165,7 +161,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
           end_index,
           N,
           D,
-          nranks);
+          nranks,
+          ignore_index);
     } else if (label_type == framework::proto::VarType::INT64) {
       ret = xpu::mask_label_by_index<XPUType, int64_t>(
           dev_ctx.x_context(),
@@ -176,7 +173,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
           end_index,
           N,
           D,
-          nranks);
+          nranks,
+          ignore_index);
     }
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "mask_label_by_index");
 
@@ -248,7 +246,31 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
         reinterpret_cast<XPUType*>(loss->data<T>()),
         N * 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "sub");
-
+    phi::DenseTensor predicted_logits_bool, zeros_constant;
+    predicted_logits_bool =
+        ctx.AllocateTmpTensor<bool, phi::XPUContext>({N, 1}, dev_ctx);
+    zeros_constant = ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
+    ret = xpu::constant<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<XPUType*>(zeros_constant.data<T>()),
+        N,
+        0.0);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
+    ret = xpu::cast<XPUType, bool>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(predicted_logits.data<T>()),
+        reinterpret_cast<bool*>(predicted_logits_bool.data<bool>()),
+        N * 1);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "cast");
+    ret = xpu::select(
+        dev_ctx.x_context(),
+        reinterpret_cast<const bool*>(predicted_logits_bool.data<bool>()),
+        reinterpret_cast<const XPUType*>(loss->data<T>()),
+        reinterpret_cast<const XPUType*>(zeros_constant.data<T>()),
+        reinterpret_cast<XPUType*>(loss->data<T>()),
+        common::vectorize(predicted_logits.dims()),
+        common::vectorize(predicted_logits.dims()));
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "select");
     phi::memory_utils::Copy(ctx.GetPlace(),
                             softmax->data(),
                             ctx.GetPlace(),
@@ -265,6 +287,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
     const phi::DenseTensor* labels = ctx.Input<phi::DenseTensor>("Label");
     phi::DenseTensor* softmax = ctx.Output<phi::DenseTensor>("Softmax");
     phi::DenseTensor* loss = ctx.Output<phi::DenseTensor>("Loss");
+    const int64_t ignore_index = ctx.Attr<int64_t>("ignore_index");
 
     const int rid = ctx.Attr<int>("ring_id");
     const int nranks = ctx.Attr<int>("nranks");
@@ -305,7 +328,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
       // NOTE(zhangxiaoci) use global calculate stream so that no sync is
       // required stream = comm->stream();
       stream = static_cast<phi::XPUContext*>(
-                   platform::DeviceContextPool::Instance().Get(place))
+                   phi::DeviceContextPool::Instance().Get(place))
                    ->stream();
       VLOG(3) << "old BKCLCommContext has ring_id " << rid;
     }
@@ -407,7 +430,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
           end_index,
           N,
           D,
-          nranks);
+          nranks,
+          ignore_index);
     } else if (label_type == framework::proto::VarType::INT64) {
       ret = xpu::mask_label_by_index<XPUType, int64_t>(
           dev_ctx.x_context(),
@@ -418,7 +442,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
           end_index,
           N,
           D,
-          nranks);
+          nranks,
+          ignore_index);
     }
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "mask_label_by_index");
 
@@ -470,7 +495,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
           false,
           &sum_exp_logits,
           f);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_max");
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_sum");
     }
 
     if (comm_ctx) {
@@ -535,9 +560,6 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
     const phi::DenseTensor* softmax =
         context.Input<phi::DenseTensor>("Softmax");
     const int64_t ignore_index = context.Attr<int64_t>("ignore_index");
-    if (ignore_index >= 0) {
-      LOG_FIRST_N(INFO, 1) << "XPU does not support ignore_index in mp.";
-    }
     const int rank = context.Attr<int>("rank");
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
@@ -564,7 +586,8 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
           start_index,
           end_index,
           N,
-          D);
+          D,
+          ignore_index);
     } else if (label_type == framework::proto::VarType::INT64) {
       ret = xpu::mask_label_by_index_grad<XPUType, int64_t>(
           dev_ctx.x_context(),
@@ -574,7 +597,8 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
           start_index,
           end_index,
           N,
-          D);
+          D,
+          ignore_index);
     }
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "mask_label_by_index_grad");
   }
