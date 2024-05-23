@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include "glog/logging.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -23,10 +24,9 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math/bloomfilter.h"
 #include "paddle/phi/kernels/funcs/search_compute.h"
-
 namespace phi {
 
-int __attribute__((weak)) rand_r(unsigned int* s) {
+int rand_r2(unsigned int* s) {
   srand(*s);
   return rand();
 }
@@ -164,7 +164,7 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
                               (const float*)(bottom_data + offset[i] + l),
                               ilayer + 1)) {
             if (_is_training != 0) {
-              unsigned int rand_val = rand_r(&_seed);
+              unsigned int rand_val = rand_r2(&_seed);
               double rate = static_cast<double>(rand_val) / (RAND_MAX);
               *(iter_end++) = (rate < _drop_out_percent ? 0 : 1);
             } else {
