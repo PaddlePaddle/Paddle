@@ -45,7 +45,7 @@ class ArrayOp : public framework::OperatorBase {
                                      i_tensor.dims()));
 
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
     size_t offset;
