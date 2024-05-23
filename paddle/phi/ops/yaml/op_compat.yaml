@@ -2789,7 +2789,9 @@
   outputs :
     output : Output
   attrs :
-    {scale : Scale, shift : Shift, include_self: Include_self}
+    {is_negative_input : is_negative_input, scale : Scale, shift : Shift, include_self: Include_self}
+  extra :
+    attrs : [bool use_mkldnn = true, str mkldnn_data_type = "float32"]
 
 - op : quantize_linear
   inputs :
