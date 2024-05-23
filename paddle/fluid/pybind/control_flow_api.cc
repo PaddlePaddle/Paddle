@@ -22,6 +22,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
@@ -337,6 +338,22 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
       no_change = false;
       res[operand_index - 1u] = operand_source(operand_index);
     } else {
+      auto l_type = yield_op.operand_source(operand_index)
+                        .type()
+                        .dyn_cast<pir::DenseTensorType>();
+      auto r_type =
+          body_block.arg(arg_index).type().dyn_cast<pir::DenseTensorType>();
+      if (l_type.dims() != r_type.dims()) {
+        auto dim = common::ComputeCompatibleDim(l_type.dims(), r_type.dims());
+        auto new_type = pir::DenseTensorType::get(operation_->ir_context(),
+                                                  l_type.dtype(),
+                                                  dim,
+                                                  l_type.data_layout(),
+                                                  l_type.lod(),
+                                                  l_type.offset());
+        operand_source(operand_index).set_type(l_type);
+      }
+
       new_input.push_back(operand_source(operand_index));
       index_vec.push_back(operand_index - 1u);
       new_yield_val.push_back(yield_op.operand_source(operand_index));
