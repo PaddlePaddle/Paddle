@@ -4385,7 +4385,7 @@ def cumprod(x, dim=None, dtype=None, name=None):
         x = cast(x, dtype)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.cumprod(x, dim)
+        return _C_ops.cumprod(x, dim, False, False)
     else:
         check_variable_and_dtype(
             x,
@@ -4425,7 +4425,7 @@ def cumprod_(x, dim=None, dtype=None, name=None):
         x = cast_(x, dtype)
 
     if in_dynamic_mode():
-        return _C_ops.cumprod_(x, dim)
+        return _C_ops.cumprod_(x, dim, False, False)
 
 
 def isfinite(x, name=None):

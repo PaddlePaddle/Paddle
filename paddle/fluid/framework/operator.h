@@ -910,9 +910,9 @@ class OperatorWithKernel : public OperatorBase {
                                              const std::string& name) const;
 
  protected:
-  mutable std::unique_ptr<OpKernelType> kernel_type_;
-  mutable std::unique_ptr<OpKernelFunc> kernel_func_;
-  mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
+  mutable std::unique_ptr<OpKernelType> kernel_type_ = nullptr;
+  mutable std::unique_ptr<OpKernelFunc> kernel_func_ = nullptr;
+  mutable std::unique_ptr<RuntimeContext> runtime_ctx_ = nullptr;
   mutable const Scope* pre_scope_ = nullptr;
   mutable bool need_prepare_data_ = true;
   mutable bool need_prepare_phi_data_ = false;
@@ -929,9 +929,9 @@ class OperatorWithKernel : public OperatorBase {
   // we may polish the implementation here
   mutable bool run_phi_kernel_ = false;
   mutable bool run_kp_kernel = false;
-  mutable std::unique_ptr<phi::KernelSignature> kernel_signature_;
-  mutable std::unique_ptr<phi::Kernel> phi_kernel_;
-  mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_;
+  mutable std::unique_ptr<phi::KernelSignature> kernel_signature_ = nullptr;
+  mutable std::unique_ptr<phi::Kernel> phi_kernel_ = nullptr;
+  mutable std::unique_ptr<phi::ArgumentMappingFn> arg_map_fn_ = nullptr;
 
  private:
   struct CacheImpl;

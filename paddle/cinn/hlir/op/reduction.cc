@@ -263,7 +263,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
                                          reduce_tmp_out.as_tensor_ref(),
                                          tmp_out.as_tensor_ref(),
                                          out.as_tensor_ref(),
-                                         cinn::common::DefaultNVGPUTarget());
+                                         cinn::common::DefaultDeviceTarget());
 
           std::vector<CINNValue> res{
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};
@@ -279,7 +279,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
                                        reduce_tmp_out.as_tensor_ref(),
                                        tmp_out.as_tensor_ref(),
                                        out.as_tensor_ref(),
-                                       cinn::common::DefaultNVGPUTarget());
+                                       cinn::common::DefaultDeviceTarget());
 
           std::vector<CINNValue> res{
               CINNValue(ir_sch.GetModule().GetExprs().at(0))};

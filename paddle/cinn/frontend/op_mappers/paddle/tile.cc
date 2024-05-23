@@ -15,7 +15,7 @@
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
 #include "paddle/cinn/frontend/var_type_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
@@ -23,10 +23,16 @@ namespace paddle_mappers {
 void TileOpMapper(const paddle::cpp::OpDesc& op_desc,
                   const OpMapperContext& ctx) {
   // input
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of Tile op must be 1."));
   auto x_name = op_desc.Input("X").front();
   // output
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of Tile op must be 1."));
   auto out_name = op_desc.Output("Out").front();
 
   // attr repeat_times
@@ -34,7 +40,10 @@ void TileOpMapper(const paddle::cpp::OpDesc& op_desc,
       op_desc.GetAttr<std::vector<int>>("repeat_times");
 
   for (auto i : repeat_times) {
-    CHECK_GT(i, 0) << "repeat_times's element must be greater than 0";
+    PADDLE_ENFORCE_GT(i,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "repeat_times's element must be greater than 0"));
   }
 
   auto x = ctx.GetVar(x_name);
@@ -49,9 +58,12 @@ void TileOpMapper(const paddle::cpp::OpDesc& op_desc,
     vec_x_dims.insert(vec_x_dims.begin(), diff, 1);
   }
 
-  CHECK_EQ(vec_x_dims.size(), repeat_times.size())
-      << "vec_x_dims's size must be equal to repeat_times's size after "
-         "promotion";
+  PADDLE_ENFORCE_EQ(
+      vec_x_dims.size(),
+      repeat_times.size(),
+      phi::errors::InvalidArgument(
+          "vec_x_dims's size must be equal to repeat_times's size "
+          "after promotion"));
 
   // output's shape
   std::vector<int> output_shape = vec_x_dims;
