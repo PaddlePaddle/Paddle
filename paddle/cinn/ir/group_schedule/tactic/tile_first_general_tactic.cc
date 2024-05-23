@@ -145,7 +145,21 @@ void TileFirstGeneralTactic::MergeFlattenAxis(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
                                              const std::string& block_id) {
-  if (vec_reduce_axis_.size() >= 2 && !ir::IsReduceInitTensorName(block_id)) {
+  std::vector<ir::Expr> loops = sch->GetLoops(block_id);
+  int32_t max_loop_idx = 0;
+  for (int32_t idx : vec_reduce_axis_) {
+    max_loop_idx = std::max(max_loop_idx, idx);
+    PADDLE_ENFORCE_EQ(idx < loops.size() || loops.size() == 1,
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The reduce axis should meet: axis's idx < "
+                          "loops.size() or loops.size() == 1, but received "
+                          "idx= %d ,loops.size() = %d",
+                          idx,
+                          loops.size()));
+  }
+  if (max_loop_idx < loops.size() && vec_reduce_axis_.size() >= 2 &&
+      !ir::IsReduceInitTensorName(block_id)) {
     sch->Fuse(block_id, vec_reduce_axis_);
   }
 }
