@@ -783,7 +783,6 @@ def _program_for_vpp_split_bwk(
     num_model_chunks,
     dist_context,
     enable_send_recv_overlap=False,
-    is_first_stage=False,
 ):
     if enable_send_recv_overlap:
         _overlap_send_recv(program)
@@ -819,9 +818,7 @@ def _program_for_vpp_split_bwk(
             if is_forward_op(op):
                 type = oprole_type[0]
             elif is_backward_op(op):
-                types = _get_backward_op_type(
-                    block, op, ip, is_first_stage=is_first_stage
-                )
+                types = _get_backward_op_type(block, op, ip)
                 dealed_op_idx = dealed_op_idx + len(types) - 1
             elif is_optimize_op(op):
                 type = oprole_type[4]
