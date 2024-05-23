@@ -34,15 +34,19 @@ from paddle.base.param_attr import ParamAttr
 __all__ = []
 
 
-def inference(with_trt=True, save_model_dir="/root/.cache/"):
+def inference(
+    with_trt=True, save_model_dir="/root/.cache/", precision_mode="fp16"
+):
     def decorator(func=None):
         import inspect
         import textwrap
 
         py_script = textwrap.dedent(inspect.getsource(func))
         py_script = py_script[py_script.find("def") :]
-        py_script = py_script.replace(func.__name__, 'haha2')
+        py_script = py_script.replace(func.__name__, 'original_func')
         predictors = [None]
+        signature = inspect.signature(func)
+        arg_names = [v.name for v in signature.parameters.values()]
 
         def wrapper(*args, **kwargs):
             import paddle
@@ -59,10 +63,8 @@ def inference(with_trt=True, save_model_dir="/root/.cache/"):
             from paddle.static import InputSpec
 
             save_path = save_model_dir + func.__name__ + "/infer"
-            if not os.path.exists(save_path + ".pdmodel") or True:
+            if not os.path.exists(save_path + ".pdmodel"):
                 # we need do ds2.
-                signature = inspect.signature(func)
-                arg_names = [v.name for v in signature.parameters.values()]
                 input_specs = []
                 for i in range(len(args)):
                     if i == 0:
@@ -73,18 +75,18 @@ def inference(with_trt=True, save_model_dir="/root/.cache/"):
                             InputSpec.from_tensor(args[i], name=arg_names[i])
                         )
                 assert not hasattr(
-                    args[0], 'haha2'
-                ), "args[0] must not have haha2 attribute"
+                    args[0], 'original_func'
+                ), "args[0] must not have original_func attribute"
 
                 exec(
                     py_script
-                    + "\nargs[0].haha2 = types.MethodType(haha2, args[0])"
+                    + "\nimport types\nargs[0].original_func = types.MethodType(original_func, args[0])"
                 )
                 model = paddle.jit.to_static(
-                    args[0].haha2, input_spec=input_specs
+                    args[0].original_func, input_spec=input_specs
                 )
                 paddle.jit.save(model, save_path)
-                del args[0].haha2
+                del args[0].original_func
 
             model_dir = save_model_dir + func.__name__ + "/"
             model_file = model_dir + "infer.pdmodel"
@@ -93,7 +95,18 @@ def inference(with_trt=True, save_model_dir="/root/.cache/"):
 
             config = Config(model_file, params_file)
             config.enable_memory_optim()
-            gpu_precision = PrecisionType.Float32
+
+            def get_infer_precision():
+                if precision_mode == "fp32":
+                    return PrecisionType.Float32
+                elif precision_mode == "fp16":
+                    return PrecisionType.Half
+                elif precision_mode == "bf16":
+                    return PrecisionType.Bfloat16
+                else:
+                    raise AssertionError("unsupported precision_mode")
+
+            gpu_precision = get_infer_precision()
             config.enable_use_gpu(1000, 0, gpu_precision)
 
             if with_trt:
@@ -114,7 +127,7 @@ def inference(with_trt=True, save_model_dir="/root/.cache/"):
                     workspace_size=1 << 30,
                     max_batch_size=1,
                     min_subgraph_size=3,
-                    precision_mode=PrecisionType.Bfloat16,
+                    precision_mode=get_infer_precision(),
                     use_static=True,
                     use_calib_mode=False,
                 )
