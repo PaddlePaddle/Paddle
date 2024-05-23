@@ -4352,7 +4352,6 @@ void RoformerRelativePosXPUInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-<<<<<<< HEAD
 void FP8OutBF16GemmFusedInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             const MetaTensor& bias,
@@ -4499,7 +4498,8 @@ void FP8OutFP16GemmFusedInferMeta(const MetaTensor& x,
   out->set_layout(x.layout());
 
   out->set_dtype(phi::DataType::FLOAT16);
-=======
+}
+
 void FusionSeqpoolCvmConcatInferMeta(const std::vector<const MetaTensor*>& x,
                                      const MetaTensor& cvm,
                                      const std::string& pooltype,
@@ -4623,7 +4623,6 @@ void FusedTokenPruneInferMeta(const MetaTensor& attn,
   cls_inds->set_dims({bsz, slim_seq_len});
   slimmed_x->set_dtype(x.dtype());
   cls_inds->set_dtype(DataType::INT64);
->>>>>>> b9366a6c66eb0d91c30f6cdd68ce052edd61a2bd
 }
 
 }  // namespace phi

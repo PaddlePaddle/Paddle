@@ -700,11 +700,7 @@ void* GetCUFFTDsoHandle() {
 #else
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so");
 #endif
-<<<<<<< HEAD
   } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 13000) {
-=======
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
->>>>>>> b9366a6c66eb0d91c30f6cdd68ce052edd61a2bd
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so.11");
   } else {
     std::string warning_msg(

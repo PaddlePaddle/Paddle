@@ -1093,10 +1093,6 @@ void RmsNormKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* residual_out,
                    DenseTensor* inv_var) {
-#if defined(PADDLE_WITH_HIP)
-  LOG(ERROR) << "Please compile with CUDA, ROCM platform isn't support it";
-#else
-
   if (out->dtype() == phi::DataType::INT8 ||
       out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
     PADDLE_ENFORCE_EQ(quant_scale != 0.0f,
