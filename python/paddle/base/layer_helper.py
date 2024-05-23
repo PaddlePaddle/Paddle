@@ -172,7 +172,6 @@ class LayerHelper(LayerHelperBase):
                 attrs = ()
                 if use_cudnn:
                     attrs = ('use_cudnn', use_cudnn)
-
                 act_op = getattr(_C_ops, act)
                 if act == 'softmax':
                     return act_op(input, -1)

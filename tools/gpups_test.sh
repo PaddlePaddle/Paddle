@@ -58,7 +58,7 @@ parallel_list="^init_phi_test$|\
 ^test_collective_cpu_barrier_with_gloo$|\
 ^test_conv1d_layer$|\
 ^test_conv1d_transpose_layer$|\
-^test_conv2d_api$|\
+^test_conv2d_api_deprecated$|\
 ^test_conv2d_layer$|\
 ^test_conv2d_op_depthwise_conv$|\
 ^test_conv2d_transpose_layer$|\

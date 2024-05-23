@@ -48,7 +48,7 @@ from .variables import (
     NumpyVariable,
     RangeVariable,
     SliceVariable,
-    SymbolicIntVariable,
+    SymbolicVariable,
     TupleVariable,
     VariableBase,
     VariableFactory,
@@ -886,7 +886,7 @@ for unary_fn in UNARY_OPS:
     if unary_fn in fallback_tensor_unary_method:
         Dispatcher.register(
             unary_fn,
-            ("TensorVariable | SymbolicIntVariable",),
+            ("TensorVariable | SymbolicVariable",),
             raise_break_graph_fn,
         )
         continue
@@ -912,7 +912,7 @@ for unary_fn in UNARY_OPS:
         )
         Dispatcher.register(
             unary_fn,
-            ("SymbolicIntVariable",),
+            ("SymbolicVariable",),
             partial(
                 lambda magic_name, var: var.graph.call_symbolic_method(
                     magic_name, var
@@ -932,7 +932,7 @@ for binary_fn in BINARY_OPS:
                 binary_fn,
                 (
                     "TensorVariable",
-                    "TensorVariable | SymbolicIntVariable | ConstantVariable | NumpyVariable",
+                    "TensorVariable | SymbolicVariable | ConstantVariable | NumpyVariable",
                 ),
                 partial(
                     lambda magic_name, var, other: var.graph.call_tensor_method(
@@ -944,8 +944,8 @@ for binary_fn in BINARY_OPS:
             Dispatcher.register(
                 binary_fn,
                 (
-                    "SymbolicIntVariable",
-                    "ConstantVariable | SymbolicIntVariable",
+                    "SymbolicVariable",
+                    "ConstantVariable | SymbolicVariable",
                 ),
                 partial(
                     lambda magic_name, var, other: var.graph.call_symbolic_method(
@@ -960,7 +960,7 @@ for binary_fn in BINARY_OPS:
 
                 @Dispatcher.register_decorator(operator.mod)
                 def tensor_mod_dispatcher(
-                    var: ConstantVariable | SymbolicIntVariable,
+                    var: ConstantVariable | SymbolicVariable,
                     other: TensorVariable,
                 ):
                     if var.get_py_type() is str:
@@ -973,7 +973,7 @@ for binary_fn in BINARY_OPS:
                 Dispatcher.register(
                     binary_fn,
                     (
-                        "SymbolicIntVariable | ConstantVariable | NumpyVariable",
+                        "SymbolicVariable | ConstantVariable | NumpyVariable",
                         "TensorVariable",
                     ),
                     partial(
@@ -986,7 +986,7 @@ for binary_fn in BINARY_OPS:
 
                 Dispatcher.register(
                     binary_fn,
-                    ("ConstantVariable", "SymbolicIntVariable"),
+                    ("ConstantVariable", "SymbolicVariable"),
                     partial(
                         lambda magic_name, var, other: var.graph.call_symbolic_method(
                             magic_name, var, other

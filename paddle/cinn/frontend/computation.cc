@@ -209,7 +209,6 @@ void CinnComputation::SetTensorData(hlir::framework::Tensor &t,
       true,
       phi::errors::InvalidArgument("The size of the input data is not equal to "
                                    "the size of the tensor."));
-  CHECK_EQ(size, t->shape().numel() * t->type().bytes());
   context_->target.arch.Visit(adt::match{
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { memcpy(tdata, data, size); },
@@ -233,7 +232,6 @@ void CinnComputation::GetTensorData(hlir::framework::Tensor &t,
       true,
       phi::errors::InvalidArgument("The size of the input data is not equal to "
                                    "the size of the tensor."));
-  CHECK_EQ(size, t->shape().numel() * t->type().bytes());
   context_->target.arch.Visit(adt::match{
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { memcpy(data, tdata, size); },
