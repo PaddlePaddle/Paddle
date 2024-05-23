@@ -15,21 +15,15 @@
 #include <xxhash.h>
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
-#include "glog/logging.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math/bloomfilter.h"
 #include "paddle/phi/kernels/funcs/search_compute.h"
-namespace phi {
 
-int rand_r2(unsigned int* s) {
-  srand(*s);
-  return rand();
-}
+#ifndef _WIN32
+namespace phi {
 
 bool should_use_term(phi::math::bloomfilter* _filter,
                      phi::math::bloomfilter* _black_filter,
@@ -164,7 +158,7 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
                               (const float*)(bottom_data + offset[i] + l),
                               ilayer + 1)) {
             if (_is_training != 0) {
-              unsigned int rand_val = rand_r2(&_seed);
+              unsigned int rand_val = rand_r(&_seed);
               double rate = static_cast<double>(rand_val) / (RAND_MAX);
               *(iter_end++) = (rate < _drop_out_percent ? 0 : 1);
             } else {
@@ -249,3 +243,5 @@ PD_REGISTER_KERNEL(
   kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
 }
+
+#endif
