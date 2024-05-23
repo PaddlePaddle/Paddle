@@ -1126,6 +1126,12 @@
     out : Out
     out_scale : OutScale
 
+- op : fake_dequantize_max_abs
+  inputs :
+    {x : X, scale : Scale}
+  outputs :
+    out : Out
+
 - op : fake_quantize_abs_max
   inputs :
     x : X
