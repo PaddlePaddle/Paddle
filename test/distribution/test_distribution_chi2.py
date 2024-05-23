@@ -209,7 +209,7 @@ class TestChi2Sample(unittest.TestCase):
         sample_shape = (30000,)
         samples = self._paddle_chi2.rsample(sample_shape)
         sample_values = samples.numpy()
-
+        # test error setting is the same as gamma
         np.testing.assert_allclose(
             sample_values.mean(axis=0),
             scipy.stats.chi2.mean(self.df),

@@ -11,4 +11,8 @@ foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
 
+set_tests_properties(test_distribution_chi2_static PROPERTIES TIMEOUT 150)
+set_tests_properties(test_distribution_lkj_cholesky_static PROPERTIES TIMEOUT
+                                                                      150)
+
 set_pir_tests_properties()

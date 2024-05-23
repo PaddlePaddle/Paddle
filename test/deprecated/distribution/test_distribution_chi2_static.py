@@ -267,6 +267,7 @@ class TestGammaSample(unittest.TestCase):
                 rtol=0.1,
                 atol=config.ATOL.get(str(self.df.dtype)),
             )
+            # test error setting is the same as gamma
             np.testing.assert_allclose(
                 data.var(axis=0),
                 scipy.stats.chi2.var(self.df),
