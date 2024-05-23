@@ -74,6 +74,8 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'c_reduce_avg_',
     'c_allreduce_min_',
     'c_allreduce_prod_',
+    'c_reduce_avg',
+    'c_reduce_avg_',
     'distributed_fused_lamb_init',
     'distributed_fused_lamb_init_',
     'fetch',

@@ -20,6 +20,7 @@ from paddle.base import core
 from ...utils.log_utils import get_logger
 from ..pass_base import PassBase
 from ..pass_utils import set_skip_gc_vars, shadow_var_between_sub_programs
+from ..sharding_tensor_fusion import apply_tensor_fusion_pass
 
 logger = get_logger(logging.INFO)
 
@@ -80,6 +81,10 @@ class PipelinePassBase(PassBase):
                 type_to_program[type] = paddle.pir.translate_to_pir(
                     type_to_program[type].desc
                 )
+                if type == "optimizer":
+                    type_to_program[type] = apply_tensor_fusion_pass(
+                        type_to_program[type]
+                    )
             else:
                 type_to_program[type] = type_to_program[type].desc
 
