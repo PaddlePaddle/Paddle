@@ -1361,7 +1361,15 @@ ir::Tensor Gather(const ir::Tensor& x,
         // 1) indice is got from `output_shape`
         // 2) transformed_indice is used in the input `x`
         std::vector<Expr> transformed_indice = indice;
-        transformed_indice[axis] = index(indice[axis]);
+        if (index->shape.size() == 1) {
+          transformed_indice[axis] = index(indice[axis]);
+        } else {
+          PADDLE_ENFORCE_EQ(index->shape.size(),
+                            size_t(2),
+                            ::common::errors::InvalidArgument(
+                                "The rank of index must be equal to 0 or 1"));
+          transformed_indice[axis] = index(indice[axis], ir::Expr(0));
+        }
         return x(transformed_indice);
       },
       name);
