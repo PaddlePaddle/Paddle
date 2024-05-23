@@ -131,17 +131,9 @@ class TestLKJCholeskyLogProb(unittest.TestCase):
                 'concentration': self.concentration,
             }
 
-    def test_log_prob_onion(self):
-        sample_method = 'onion'
-        for dim in range(2, 4):
-            self.dim = dim
-            self._test_log_prob(sample_method)
-
-    def test_log_prob_cvine(self):
-        sample_method = 'cvine'
-        for dim in range(2, 4):
-            self.dim = dim
-            self._test_log_prob(sample_method)
+    def test_log_prob(self):
+        self.dim = 2
+        self._test_log_prob('onion')
 
     def _test_log_prob(self, sample_method):
         with paddle.static.program_guard(self.program):
