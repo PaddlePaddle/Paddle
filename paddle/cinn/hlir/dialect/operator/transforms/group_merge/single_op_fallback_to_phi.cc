@@ -64,9 +64,6 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(fusion_op.result(i),
                                   paddle_op.value()->result(i));
-      shape_analysis.SetShapeOrDataForValue(
-          paddle_op.value()->result(i),
-          shape_analysis.GetShapeOrDataForValue(fusion_op.result(i)));
     }
 
     rewriter.EraseOp(fusion_op);

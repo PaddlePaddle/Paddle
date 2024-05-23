@@ -153,7 +153,14 @@ class PassTest {
 
   void CheckOutput(const std::vector<float>& actual,
                    const std::vector<float>& expect) {
-    CHECK_EQ(actual.size(), expect.size());
+    PADDLE_ENFORCE_EQ(
+        actual.size(),
+        expect.size(),
+        phi::errors::InvalidArgument(
+            "The size of actual and expect is not equal,"
+            "where the size of actual:%d but the size of expect:%d.",
+            actual.size(),
+            expect.size()));
     for (size_t i = 0; i < expect.size(); ++i) {
       ASSERT_FLOAT_EQ(actual[i], expect[i]);
     }
