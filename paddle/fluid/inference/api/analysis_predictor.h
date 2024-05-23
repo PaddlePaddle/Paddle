@@ -240,6 +240,8 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   void PrepareFeedFetch();
 
+  void PreparePirFeedFetch(std::shared_ptr<pir::Program> program);
+
   ///
   /// \brief Set predictor's argument according to config, which mainly includes
   /// execution information and graph optimization related pass information
@@ -343,7 +345,6 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return Whether the function executed successfully
   ///
   bool PrepareProgram(const std::shared_ptr<framework::ProgramDesc> &program);
-
 
   bool PreparePirProgram();
   ///

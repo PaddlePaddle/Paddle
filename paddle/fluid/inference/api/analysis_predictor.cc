@@ -461,9 +461,14 @@ bool AnalysisPredictor::Init(
       return false;
     }
   }
-
   // Get the feed_target_names and fetch_target_names
-  PrepareFeedFetch();
+  if (config_.new_ir_enabled() && extension_ == "json") {
+    LOG(INFO) << "调用了PreparePirFeedFetch";
+    PreparePirFeedFetch(pir_program_);
+  } else {
+    LOG(INFO) << "调用了PrepareFeedFetch";
+    PrepareFeedFetch();
+  }
 
   // Prepare executor, create local variables.
   if (!PrepareExecutor()) {
@@ -2445,6 +2450,42 @@ bool AnalysisPredictor::MkldnnQuantize() {
 #endif
 }
 
+void AnalysisPredictor::PreparePirFeedFetch(
+    std::shared_ptr<pir::Program> pir_program_) {
+  PADDLE_ENFORCE_NOT_NULL(sub_scope_,
+                          platform::errors::InvalidArgument(
+                              "The sub_scope should not be nullptr."));
+  LOG(INFO) << "sub_scope_ is not null";
+  CreateFeedFetchVar(sub_scope_);
+
+  std::string filename = config_.prog_file();
+
+  uint64_t pir_version = 1;
+  pir::ReadModule(filename, pir_program_.get(), pir_version);
+  pir::Block *block = pir_program_->block();
+
+  int feed_idx = 0;
+  for (auto op : block->ops()) {
+    LOG(INFO) << "op:" << op->name();
+    if (op->name() == "pd_op.fetch") {
+      int idx = op->attribute("col").dyn_cast<pir::Int32Attribute>().data();
+      if (fetches_.size() <= static_cast<size_t>(idx)) {
+        fetches_.resize(idx + 1);
+        std::string fetch_name =
+            op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+        LOG(INFO) << "fetch_name:" << fetch_name;
+        idx2fetches_[idx] = fetch_name;
+      }
+    } else if (op->name() == "pd_op.feed" || op->name() == "pd_op.data") {
+      std::string feed_name =
+          op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+      LOG(INFO) << "feed_name:" << feed_name;
+      idx2feeds_[feed_idx] = feed_name;
+      feed_idx++;
+    }
+  }
+}
+
 void AnalysisPredictor::PrepareFeedFetch() {
   PADDLE_ENFORCE_NOT_NULL(sub_scope_,
                           platform::errors::InvalidArgument(
@@ -2461,6 +2502,7 @@ void AnalysisPredictor::PrepareFeedFetch() {
       feeds_[idx] = op;
       feed_names_[op->Output("Out")[0]] = idx;
       idx2feeds_[idx] = op->Output("Out")[0];
+      // 通过op取得var name
     } else if (op->Type() == framework::kFetchOpType) {
       int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (fetches_.size() <= static_cast<size_t>(idx)) {
