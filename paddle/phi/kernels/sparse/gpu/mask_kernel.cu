@@ -584,12 +584,15 @@ PD_REGISTER_KERNEL(mask_as_coo,
                    phi::sparse::MaskAsCooKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -599,11 +602,14 @@ PD_REGISTER_KERNEL(mask_as_csr,
                    phi::sparse::MaskAsCsrKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }

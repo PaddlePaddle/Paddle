@@ -144,8 +144,10 @@ void MaskCsr3DCPUKernel(const CPUContext& dev_ctx,
       IntT col_idx = mask_cols.data<IntT>()[numel];
 
       out_values.data<T>()[numel] =
-          x.data<T>()[(i / x.dims()[0]) * (x.dims()[1] * x.dims()[2]) +
-                      (i % x.dims()[0]) * x.dims()[2] + col_idx];
+          x.data<T>()[(i / (mask_crows.numel() / x.dims()[0])) *
+                          (x.dims()[1] * x.dims()[2]) +
+                      (i % (mask_crows.numel() / x.dims()[0])) * x.dims()[2] +
+                      col_idx];
 
       ++numel;
     }
@@ -312,9 +314,13 @@ PD_REGISTER_KERNEL(mask_as_coo,
                    float,
                    double,
                    uint8_t,
+                   int8_t,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -325,8 +331,12 @@ PD_REGISTER_KERNEL(mask_as_csr,
                    float,
                    double,
                    uint8_t,
+                   int8_t,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
