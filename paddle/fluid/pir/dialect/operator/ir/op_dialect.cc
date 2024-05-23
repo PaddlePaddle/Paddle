@@ -437,6 +437,8 @@ class IdManager {
     return instance;
   }
 
+  IdManager() : ids_() {}
+
   ~IdManager() {
     for (auto id : ids_) {
       delete id;
