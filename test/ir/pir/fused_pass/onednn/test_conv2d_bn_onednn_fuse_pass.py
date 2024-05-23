@@ -64,7 +64,7 @@ class TestConv2dBnOneDNNPassPattern(PassTest):
                 self.fetch_list = [out]
                 self.valid_op_map = {
                     "onednn_op.fused_conv2d": 1,
-                    "pd_op.batch_norm": 0,
+                    "pd_op.batch_norm_": 0,
                 }
                 return [main_prog, start_prog]
 

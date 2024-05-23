@@ -138,26 +138,6 @@ class Conv2dBnOneDNNFusePattern
   }
 };
 
-class BatchNormReplacePattern
-    : public pir::OpRewritePattern<paddle::dialect::BatchNormOp> {
- public:
-  using pir::OpRewritePattern<paddle::dialect::BatchNormOp>::OpRewritePattern;
-  bool MatchAndRewrite(
-      paddle::dialect::BatchNormOp op,
-      pir::PatternRewriter &rewriter) const override {  // NOLINT
-    auto bn_op =
-        rewriter.Build<paddle::dialect::BatchNorm_Op>(op.x(),
-                                                      op.mean(),
-                                                      op.variance(),
-                                                      op.scale(),
-                                                      op.bias(),
-                                                      op->attributes());
-    rewriter.ReplaceAllUsesWith(op.out(), bn_op.out());
-    rewriter.EraseOp(op);
-    return true;
-  }
-};
-
 class Conv2dBnOneDNNFusePass : public pir::PatternRewritePass {
  public:
   Conv2dBnOneDNNFusePass()
@@ -179,14 +159,9 @@ class Conv2dBnOneDNNFusePass : public pir::PatternRewritePass {
             paddle::dialect::Conv2dOp::name(),
             paddle::onednn::dialect::FusedConv2dOp::name(),
         });
-    auto bn_replace_pattern = std::make_unique<BatchNormReplacePattern>(
-        context,
-        1,
-        std::vector<std::string>{paddle::dialect::BatchNorm_Op::name()});
 
-    // bn->bn_replace
-    ps.Add(std::move(bn_replace_pattern));
-    // conv2d+bn->conv2d
+    // Currently BN on graph are all BN_, so no need to add BN replace pattern
+    // conv2d+bn_->conv2d
     ps.Add(std::move(conv_bn_onednn_pattern));
     return ps;
   }
