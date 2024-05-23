@@ -91,8 +91,6 @@ class IfElseNet(paddle.nn.Layer):
 class TestConditionalOp(unittest.TestCase):
     @test_with_dygraph_pir
     def test_while_op(self):
-        if not paddle.framework.use_pir_api():
-            return
         paddle.disable_static()
         net = WhileNet()
         net = paddle.jit.to_static(
@@ -105,14 +103,18 @@ class TestConditionalOp(unittest.TestCase):
         root_path = tempfile.TemporaryDirectory()
         model_file = os.path.join(root_path.name, "while_net")
         x = paddle.to_tensor(np.random.random((1, 3, 8, 8)).astype('float32'))
-        print(" ----- ", net(x))
         paddle.jit.save(net, model_file)
 
         paddle.enable_static()
         if paddle.framework.use_pir_api():
             program = GetPirModelOp(model_file + ".json")
-
-            print(program)
+            self.assertEqual(program.global_block().ops[-4].name(), "pd_op.add")
+            self.assertEqual(
+                program.global_block().ops[-5].result(1).shape, [1, 3, -1, -1]
+            )
+            self.assertEqual(
+                program.global_block().ops[-5].name(), "pd_op.while"
+            )
         else:
             right_pdmodel = {
                 "uniform_random",

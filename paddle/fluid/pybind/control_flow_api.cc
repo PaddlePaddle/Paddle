@@ -330,6 +330,29 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
   }
   for (size_t operand_index = 1u, arg_index = 0u; operand_index < operand_num;
        ++operand_index) {
+    auto l_type =
+        body_block.arg(arg_index).type().dyn_cast<pir::DenseTensorType>();
+    auto r_type = yield_op.operand_source(operand_index)
+                      .type()
+                      .dyn_cast<pir::DenseTensorType>();
+
+    if (l_type.dims() != r_type.dims()) {
+      VLOG(4) << "while op input" << operand_index
+              << "has dynamic shape, origin shape is: " << l_type.dims()
+              << "new shape is: " << r_type.dims();
+      auto dim = common::ComputeCompatibleDim(l_type.dims(), r_type.dims());
+      auto new_type = pir::DenseTensorType::get(operation_->ir_context(),
+                                                l_type.dtype(),
+                                                dim,
+                                                l_type.data_layout(),
+                                                l_type.lod(),
+                                                l_type.offset());
+      body_block.arg(arg_index).set_type(new_type);
+      yield_op.operand_source(operand_index).set_type(new_type);
+      result(arg_index).set_type(new_type);
+      VLOG(4) << "change shape as: " << new_type.dims();
+    }
+
     if (yield_op.operand_source(operand_index) == body_block.arg(arg_index)) {
       operand_source(operand_index).set_type(body_block.arg(arg_index).type());
       body_block.arg(arg_index).ReplaceAllUsesWith(
@@ -338,22 +361,6 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
       no_change = false;
       res[operand_index - 1u] = operand_source(operand_index);
     } else {
-      auto l_type = yield_op.operand_source(operand_index)
-                        .type()
-                        .dyn_cast<pir::DenseTensorType>();
-      auto r_type =
-          body_block.arg(arg_index).type().dyn_cast<pir::DenseTensorType>();
-      if (l_type.dims() != r_type.dims()) {
-        auto dim = common::ComputeCompatibleDim(l_type.dims(), r_type.dims());
-        auto new_type = pir::DenseTensorType::get(operation_->ir_context(),
-                                                  l_type.dtype(),
-                                                  dim,
-                                                  l_type.data_layout(),
-                                                  l_type.lod(),
-                                                  l_type.offset());
-        operand_source(operand_index).set_type(l_type);
-      }
-
       new_input.push_back(operand_source(operand_index));
       index_vec.push_back(operand_index - 1u);
       new_yield_val.push_back(yield_op.operand_source(operand_index));
