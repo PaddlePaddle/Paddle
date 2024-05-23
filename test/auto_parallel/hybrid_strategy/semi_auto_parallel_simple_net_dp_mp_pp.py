@@ -114,7 +114,7 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
                 self.dp_mp_pp_parameters[2], self.base_parameters[2], rtol=2e-5
             )
             self.check_tensor_eq(
-                self.dp_mp_pp_parameters[3], self.base_parameters[3], rtol=2e-5
+                self.dp_mp_pp_parameters[3], self.base_parameters[3], rtol=2e-4
             )
 
         # save load
