@@ -61,7 +61,7 @@ void EraseLoadProcessPIDs(int64_t key) {
 #define SIGNAL_HANDLE(SIGNAL)                               \
   do {                                                      \
     memory::allocation::MemoryMapFdSet::Instance().Clear(); \
-    struct sigaction sa;                                    \
+    struct sigaction sa = {};                               \
     sa.sa_handler = SIG_DFL;                                \
     sa.sa_flags = 0;                                        \
     if (sigemptyset(&sa.sa_mask) != 0 ||                    \
