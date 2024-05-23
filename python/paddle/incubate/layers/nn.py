@@ -39,14 +39,19 @@ def inference(
 ):
     def decorator(func=None):
         import inspect
-        import textwrap
 
-        py_script = textwrap.dedent(inspect.getsource(func))
-        py_script = py_script[py_script.find("def") :]
-        py_script = py_script.replace(func.__name__, 'original_func')
         predictors = [None]
         signature = inspect.signature(func)
         arg_names = [v.name for v in signature.parameters.values()]
+
+        class WrappedLayer(paddle.nn.Layer):
+            def __init__(self, layer):
+                super().__init__()
+                self.fn = func
+                self.layer = layer
+
+            def forward(self, args):
+                return self.fn(self.layer, *args)
 
         def wrapper(*args, **kwargs):
             import paddle
@@ -74,19 +79,23 @@ def inference(
                         input_specs.append(
                             InputSpec.from_tensor(args[i], name=arg_names[i])
                         )
-                assert not hasattr(
-                    args[0], 'original_func'
-                ), "args[0] must not have original_func attribute"
 
-                exec(
-                    py_script
-                    + "\nimport types\nargs[0].original_func = types.MethodType(original_func, args[0])"
-                )
+                for i in range(len(arg_names)):
+                    if arg_names[i] in kwargs.keys():
+                        assert isinstance(kwargs[arg_names[i]], paddle.Tensor)
+                        input_specs.append(
+                            InputSpec.from_tensor(
+                                kwargs[arg_names[i]], name=arg_names[i]
+                            )
+                        )
+
+                input_specs = [input_specs]
+
+                mylayer = WrappedLayer(args[0])
                 model = paddle.jit.to_static(
-                    args[0].original_func, input_spec=input_specs
+                    mylayer, input_spec=input_specs, full_graph=True
                 )
                 paddle.jit.save(model, save_path)
-                del args[0].original_func
 
             model_dir = save_model_dir + func.__name__ + "/"
             model_file = model_dir + "infer.pdmodel"
