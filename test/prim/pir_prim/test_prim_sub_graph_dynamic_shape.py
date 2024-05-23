@@ -291,6 +291,8 @@ class TestPrimSquaredL2Norm(TestPrimBase):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = squared_l2_norm_net
         self.necessary_ops = "pd_op.squared_l2_norm"
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 
 class TestPrimTwo(unittest.TestCase):
