@@ -13,12 +13,13 @@
 // limitations under the License.
 
 #include <xxhash.h>
-
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math/bloomfilter.h"
 #include "paddle/phi/kernels/funcs/search_compute.h"
