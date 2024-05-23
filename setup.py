@@ -1039,6 +1039,19 @@ def get_package_data_and_package_dir():
             ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
         ]
         shutil.copy(env_dict.get("PHI_LIB"), libs_path)
+        package_data['paddle.libs'] += [
+            ('libphi_main' if os.name != 'nt' else 'phi_main') + ext_suffix
+        ]
+        shutil.copy(env_dict.get("PHI_MAIN_LIB"), libs_path)
+        if (
+            env_dict.get("WITH_GPU") == "ON"
+            or env_dict.get("WITH_ROCM") == "ON"
+        ):
+            package_data['paddle.libs'] += [
+                ('libphi_kernel_gpu' if os.name != 'nt' else 'phi_kernel_gpu')
+                + ext_suffix
+            ]
+            shutil.copy(env_dict.get("PHI_KERNEL_GPU_LIB"), libs_path)
 
     if env_dict.get("WITH_SHARED_IR") == "ON":
         package_data['paddle.libs'] += [
@@ -1259,6 +1272,22 @@ def get_package_data_and_package_dir():
                         + '/python/paddle/libs/'
                         + env_dict.get("PHI_NAME")
                     )
+                    commands.append(
+                        "install_name_tool -add_rpath '@loader_path' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("PHI_MAIN_NAME")
+                    )
+                    if (
+                        env_dict.get("WITH_GPU") == "ON"
+                        or env_dict.get("WITH_ROCM") == "ON"
+                    ):
+                        commands.append(
+                            "install_name_tool -add_rpath '@loader_path' "
+                            + env_dict.get("PADDLE_BINARY_DIR")
+                            + '/python/paddle/libs/'
+                            + env_dict.get("PHI_KERNEL_GPU_NAME")
+                        )
                 if env_dict.get("WITH_SHARED_IR") == "ON":
                     commands.append(
                         "install_name_tool -add_rpath '@loader_path' "

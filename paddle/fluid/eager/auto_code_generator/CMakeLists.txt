@@ -58,6 +58,17 @@ if(WIN32)
       OUTPUT ${eager_generator_path}/phi.dll
       COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${eager_generator_path}
       DEPENDS phi)
+    add_custom_command(
+      OUTPUT ${eager_generator_path}/phi_main.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${PHI_MAIN_LIB} ${eager_generator_path}
+      DEPENDS phi)
+    if(WITH_GPU OR WITH_ROCM)
+      add_custom_command(
+        OUTPUT ${eager_generator_path}/phi_kernel_gpu.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_KERNEL_GPU_LIB}
+                ${eager_generator_path}
+        DEPENDS phi)
+    endif()
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/phi.dll)
   endif()
 
