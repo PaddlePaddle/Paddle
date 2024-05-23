@@ -73,7 +73,7 @@ from .variables import (
     NullVariable,
     PaddleLayerVariable,
     ParameterVariable,
-    SymbolicIntVariable,
+    SymbolicVariable,
     TensorVariable,
     VariableBase,
     VariableFactory,
@@ -88,7 +88,7 @@ def convert_to_meta(inputs: Any):
     """
 
     def func(x):
-        if isinstance(x, (TensorVariable, SymbolicIntVariable)):
+        if isinstance(x, (TensorVariable, SymbolicVariable)):
             return x.meta
         if isinstance(x, VariableBase):
             return x.get_py_value()
@@ -103,7 +103,7 @@ def convert_to_symbol(inputs: Any):
     """
 
     def func(x):
-        if isinstance(x, (TensorVariable, SymbolicIntVariable)):
+        if isinstance(x, (TensorVariable, SymbolicVariable)):
             return x.get_symbol()
         if isinstance(x, VariableBase):
             return x.get_py_value()
@@ -118,7 +118,7 @@ def record_symbols(SIR, *args, **kwargs):
     non_params = set()
 
     def fn(value):
-        if isinstance(value, (TensorVariable, SymbolicIntVariable)):
+        if isinstance(value, (TensorVariable, SymbolicVariable)):
             symbol_meta_map[value.get_symbol()] = value.meta
             if isinstance(value, ParameterVariable):
                 params.add(value.get_symbol())
@@ -414,16 +414,16 @@ class FunctionGraph:
             found = False
             for variable in self.input_variables:
                 if (
-                    isinstance(variable, (TensorVariable, SymbolicIntVariable))
+                    isinstance(variable, (TensorVariable, SymbolicVariable))
                     and variable.get_symbol().name == name
                 ):
-                    if isinstance(variable, SymbolicIntVariable):
+                    if isinstance(variable, SymbolicVariable):
                         self.pycode_gen.gen_load_object(
                             paddle.to_tensor, "___paddle_to_tensor"
                         )
                     variable.tracker.gen_instructions(self.pycode_gen)
                     found = True
-                    if isinstance(variable, SymbolicIntVariable):
+                    if isinstance(variable, SymbolicVariable):
                         self.pycode_gen.gen_call_function(1)
                     break
             assert found, f"can't find input {name} in SIR."
@@ -612,7 +612,7 @@ class FunctionGraph:
 
         log(3, f"         inputs : {inputs_symbols}", "\n")
 
-        var_cls = SymbolicIntVariable if is_symbolic_int else TensorVariable
+        var_cls = SymbolicVariable if is_symbolic_int else TensorVariable
         outputs = map_if(
             out_metas,
             pred=lambda x: isinstance(x, MetaInfo),
@@ -707,7 +707,7 @@ class FunctionGraph:
 
     def _find_tensor_outputs(
         self, outputs: list[VariableBase]
-    ) -> OrderedSet[TensorVariable | SymbolicIntVariable]:
+    ) -> OrderedSet[TensorVariable | SymbolicVariable]:
         """
         Return all TensorVariable. find TensorVariables participating in networking from the output Variables
 
@@ -717,9 +717,9 @@ class FunctionGraph:
 
         def is_graph_output(
             var,
-        ) -> TypeGuard[TensorVariable | SymbolicIntVariable]:
+        ) -> TypeGuard[TensorVariable | SymbolicVariable]:
             return isinstance(var.tracker, DummyTracker) and isinstance(
-                var, (TensorVariable, SymbolicIntVariable)
+                var, (TensorVariable, SymbolicVariable)
             )
 
         def collect_related_dummy_tensor(var):
@@ -734,7 +734,7 @@ class FunctionGraph:
             return []
 
         output_tensors: OrderedSet[
-            TensorVariable | SymbolicIntVariable
+            TensorVariable | SymbolicVariable
         ] = OrderedSet()
         # Find Tensor Variables from outputs.
         for output in outputs:

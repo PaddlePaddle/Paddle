@@ -672,7 +672,12 @@ template PD_INFER_DECL bfloat16 *Tensor::mutable_data<bfloat16>(
 template PD_INFER_DECL bool *Tensor::mutable_data<bool>(PlaceType place);
 
 Tensor::Tensor(void *scope, const void *device_contexts)
-    : scope_{scope}, device_contexts_(device_contexts) {}
+    : dtype_(DataType::FLOAT16),
+      input_or_output_(false),
+      scope_{scope},
+      device_contexts_(device_contexts),
+      place_(PlaceType::kCPU),
+      device_(0) {}
 
 template <typename T>
 void *Tensor::FindTensor() const {
