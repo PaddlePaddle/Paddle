@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 namespace paddle {
@@ -202,7 +202,7 @@ class FTRLOpKernel : public framework::OpKernel<T> {
       auto row_numel = static_cast<int64_t>(merged_grad->value().dims()[1]);
       auto row_height = static_cast<int64_t>(merged_grad->rows().size());
 
-      platform::ForRange<DeviceContext> for_range(
+      phi::funcs::ForRange<DeviceContext> for_range(
           static_cast<const DeviceContext&>(ctx.device_context()),
           row_numel * row_height);
 

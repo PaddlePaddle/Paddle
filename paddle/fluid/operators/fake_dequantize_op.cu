@@ -18,13 +18,6 @@ limitations under the License. */
 namespace ops = paddle::operators;
 using float16 = phi::dtype::float16;
 
-PD_REGISTER_STRUCT_KERNEL(fake_dequantize_max_abs,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::FakeDequantizeMaxAbsKernel,
-                          float,
-                          double,
-                          float16) {}
 PD_REGISTER_STRUCT_KERNEL(fake_channel_wise_dequantize_max_abs,
                           GPU,
                           ALL_LAYOUT,

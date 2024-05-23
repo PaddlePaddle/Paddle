@@ -179,7 +179,6 @@ with random values sampled from a uniform distribution.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OPERATOR(
     uniform_random_batch_size_like,
     ops::UniformRandomBatchSizeLikeOp,
