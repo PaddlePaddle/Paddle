@@ -954,15 +954,15 @@ struct FoldRedundantBroadcast {
  * Simplify Example:
  * Broadcast(dim_expr0, Mul(dim_expr0, dim_expr1)) => Mul(dim_expr0, dim_expr1)
  */
-struct FoldBroadcast {
+struct SimplifyBroadcast {
   using dim_expr_type = Broadcast<DimExpr>;
 
   DimExpr Rewrite(const DimExpr& expr) {
     auto [operands] = expr.Get<Broadcast<DimExpr>>();
     while (operands->size() > 1) {
-      int smaller = SearchInversedPair(operands);
-      if (smaller < 1) break;
-      operands->erase(operands->begin() + smaller);
+      int pos_erasable = SearchErasable(operands);
+      if (pos_erasable < 0) break;
+      operands->erase(operands->begin() + pos_erasable);
     }
     if (operands->size() == 1) {
       return operands->at(0);
@@ -971,17 +971,13 @@ struct FoldBroadcast {
     }
   }
 
-  // 1  if lhs > rhs
-  // 0  if lhs = rhs or uncertain
-  // -1 if lhs < rhs
-  int Compare(DimExpr lhs, DimExpr rhs) {
-    DimExpr dim_expr_to_compare;
-    auto Comparer = common::Overloaded{
+  bool IsLhsGreatThanRhs(const DimExpr& lhs, const DimExpr& rhs) {
+    auto LhsOperandsVisitor = common::Overloaded{
         [&](const Mul<DimExpr>& mul) {
           for (const auto& expr : *mul.operands) {
             if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
               return false;
-            if (expr == dim_expr_to_compare) return true;
+            if (expr == rhs) return true;
           }
           return false;
         },
@@ -989,26 +985,20 @@ struct FoldBroadcast {
           for (const auto& expr : *add.operands) {
             if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
               return false;
-            if (expr == dim_expr_to_compare) return true;
+            if (expr == rhs) return true;
           }
           return false;
         },
         [&](const auto& lhs) { return false; }};
-
-    dim_expr_to_compare = rhs;
-    if (std::visit(Comparer, lhs.variant())) return 1;
-    dim_expr_to_compare = lhs;
-    if (std::visit(Comparer, rhs.variant())) return -1;
-    return 0;
+    return std::visit(LhsOperandsVisitor, lhs.variant());
   }
 
-  int SearchInversedPair(const List<DimExpr>& operands) {
+  int SearchErasable(const List<DimExpr>& operands) {
     for (std::size_t i = 0; i < operands->size() - 1; ++i) {
       for (std::size_t j = i + 1; j < operands->size(); ++j) {
-        int compare_result = Compare(operands->at(i), operands->at(j));
-        if (compare_result > 0) {
+        if (IsLhsGreatThanRhs(operands->at(i), operands->at(j))) {
           return j;
-        } else if (compare_result < 0) {
+        } else if (IsLhsGreatThanRhs(operands->at(j), operands->at(i))) {
           return i;
         }
       }
@@ -1054,7 +1044,7 @@ DimExpr Simplify(const DimExpr& expr) {
     DoPass<FoldInversedPairToUnit<Mul>>(&keep_rewrite, &ret);
     DoPass<FoldRedundantBroadcast>(&keep_rewrite, &ret);
     DoPass<FoldRedundantSymbolicBroadcast>(&keep_rewrite, &ret);
-    DoPass<FoldBroadcast>(&keep_rewrite, &ret);
+    DoPass<SimplifyBroadcast>(&keep_rewrite, &ret);
   }
   return ret;
 }
