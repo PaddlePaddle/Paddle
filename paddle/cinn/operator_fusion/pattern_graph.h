@@ -329,6 +329,31 @@ struct CanFuseReduceTreeAndTrivialMatcher {
 };
 
 template <typename T>
+struct HorizontalCheckMiddleOutputVar {
+  bool IsAnyOpUseOutput(const std::vector<pir::Operation*>& ops,
+                        const std::vector<pir::Value>& output_value) {
+    std::unordered_set<pir::Value> set(output_value.begin(),
+                                       output_value.end());
+    for (const auto& op : ops) {
+      for (const auto& var : op->operands()) {
+        if (set.count(var.source())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+  bool operator()(const PatternGraph<T>& graph,
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    const auto& output_value = graph.outputs();
+    const auto& ops = ConcatVector(GetOpsInPattern(lhs->stmt_pattern()),
+                                   GetOpsInPattern(rhs->stmt_pattern()));
+    return !IsAnyOpUseOutput(ops, output_value);
+  }
+};
+
+template <typename T>
 struct HorizontalFusionConstrain {
   bool operator()(const PatternGraph<T>& graph,
                   const PatternNodePtr<T>& lhs,
@@ -381,11 +406,34 @@ struct DownstreamSmallerThan {
   }
 };
 
-template <typename A, typename B>
-struct And {
+template <typename... Args>
+struct And {};
+
+template <typename A>
+struct And<A> {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    return A()(graph, node) && B()(graph, node);
+    return A()(graph, node);
+  }
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph,
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    return A()(graph, lhs, rhs);
+  }
+};
+
+template <typename A, typename... Args>
+struct And<A, Args...> {
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+    return A()(graph, node) && And<Args...>()(graph, node);
+  }
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph,
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    return A()(graph, lhs, rhs) && And<Args...>()(graph, lhs, rhs);
   }
 };
 
