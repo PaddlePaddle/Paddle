@@ -204,8 +204,36 @@ std::vector<std::vector<pir::Value>> ClipOp::Decomp(pir::Operation* op) {
   VLOG(6) << "Decomp Prepare inputs of clip";
 
   Tensor x(std::make_shared<primitive::LazyTensor>(op_obj.x()));
-  Tensor min(std::make_shared<primitive::LazyTensor>(op_obj.min()));
-  Tensor max(std::make_shared<primitive::LazyTensor>(op_obj.max()));
+  Tensor min_t(std::make_shared<primitive::LazyTensor>(op_obj.min()));
+  Tensor max_t(std::make_shared<primitive::LazyTensor>(op_obj.max()));
+
+  auto* min_define_op =
+      std::static_pointer_cast<primitive::LazyTensor>(min_t.impl())
+          ->value()
+          .defining_op();
+  if (min_define_op->name() != "pd_op.full") {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "We don't support dynamic tensors "
+        "attribute value for full_like decomposition "
+        "for now. "));
+  }
+  Scalar min = min_define_op->attribute("value")
+                   .dyn_cast<paddle::dialect::ScalarAttribute>()
+                   .data();
+
+  auto* max_define_op =
+      std::static_pointer_cast<primitive::LazyTensor>(max_t.impl())
+          ->value()
+          .defining_op();
+  if (max_define_op->name() != "pd_op.full") {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "We don't support dynamic tensors "
+        "attribute value for full_like decomposition "
+        "for now. "));
+  }
+  Scalar max = max_define_op->attribute("value")
+                   .dyn_cast<paddle::dialect::ScalarAttribute>()
+                   .data();
 
   VLOG(6) << "Decomp call clip's forward composite rule prepare";
 

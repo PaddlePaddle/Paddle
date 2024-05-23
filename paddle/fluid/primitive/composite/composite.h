@@ -110,7 +110,7 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   }
 }
 
-static bool valid_type(const DataType& dtype) {
+static void check_valid_type(const DataType& dtype) {
   switch (dtype) {
     case DataType::INT8:
     case DataType::INT16:
@@ -123,9 +123,10 @@ static bool valid_type(const DataType& dtype) {
     case DataType::FLOAT16:
     case DataType::FLOAT32:
     case DataType::FLOAT64:
-      return true;
+      break;
     default:
-      return false;
+      PADDLE_THROW(phi::errors::InvalidArgument("Unsupported data type: %s",
+                                                phi::DataTypeToString(dtype)));
   }
 }
 
@@ -192,13 +193,8 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
     x_cast = cast<T>(x, DataType::FLOAT32);
   }
 
-  Tensor y_full;
-  if (valid_type(y.dtype())) {
-    y_full = full<T>(empty_shape, y, x_cast.dtype());
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Unsupported data type: %s", phi::DataTypeToString(y.dtype())));
-  }
+  check_valid_type(y.dtype());
+  Tensor y_full = full<T>(empty_shape, y, x_cast.dtype());
 
   auto ans = elementwise_pow<T>(x_cast, y_full);
   if (need_cast) {
@@ -1043,13 +1039,16 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 }
 
 template <typename T>
-Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
-  if (x.shape().size() != 0) {
-    return maximum<T>(minimum<T>(x, max), min);
-  } else {
-    return maximum<T>(minimum<T>(x, reshape<T>(max, empty_shape)),
-                      reshape<T>(min, empty_shape));
-  }
+Tensor clip_decomp(const Tensor& x,
+                   const paddle::Scalar& min_,
+                   const paddle::Scalar& max_) {
+  check_valid_type(min_.dtype());
+  Tensor min_t = full<T>(empty_shape, min_, x.dtype());
+
+  check_valid_type(max_.dtype());
+  Tensor max_t = full<T>(empty_shape, max_, x.dtype());
+
+  return maximum<T>(minimum<T>(x, max_t), min_t);
 }
 
 template <typename T>
