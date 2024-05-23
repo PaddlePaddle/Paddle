@@ -57,7 +57,10 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
       local_exec_scopes_(local_exec_scopes),
       pool_(places.size() >= 2 ? new ::ThreadPool(places.size()) : nullptr),
       places_(places),
-      graphs_(std::move(graphs)) {
+      graphs_(std::move(graphs)),
+      executors_(),
+      run_futures_(),
+      var_infos_() {
   VLOG(3) << "build AsyncSSAGraphExecutor";
   PADDLE_ENFORCE_EQ(places_.size(),
                     local_scopes_.size(),

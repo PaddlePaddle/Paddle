@@ -71,16 +71,22 @@ class Tracker:
 
     def match_expr(self, expr: str) -> bool:
         """
-        TODO(zrr1999)
+        Match the expression with the tracked variables.
+
+        Args:
+            expr (str): The expression to be matched.
+
+        Returns:
+            bool: True if the expression matches the tracked variables, False otherwise.
         """
-        raise NotImplementedError()
+        return self.trace_value_from_frame().inlined_expr == expr
 
     def is_traceable(self) -> bool:
         """
         Determine if all the tracked variables can be traced from the frame.
 
         Returns:
-            bool, True if all tracked variables are traceable, False otherwise.
+            bool: True if all tracked variables are traceable, False otherwise.
         """
         if self.changed:
             return False
@@ -171,9 +177,6 @@ class LocalTracker(Tracker):
     def trace_value_from_frame(self) -> StringifyExpression:
         return StringifyExpression(f"frame.f_locals['{self.name}']", [], {})
 
-    def match_expr(self, expr: str) -> bool:
-        return expr == f"frame.f_locals['{self.name}']"
-
     def __repr__(self) -> str:
         return f"LocalTracker(name={self.name})"
 
@@ -253,7 +256,7 @@ class ConstTracker(Tracker):
     def trace_value_from_frame(self):
         value_str, value_free_vars = stringify_pyobject(self.value)
         return StringifyExpression(
-            f"{value_str}", [], union_free_vars(value_free_vars)
+            value_str, [], union_free_vars(value_free_vars)
         )
 
     def __repr__(self) -> str:

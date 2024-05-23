@@ -1790,53 +1790,97 @@ std::shared_ptr<OpStrategy> StrategyForSlice(
   return strategy;
 }
 
+template <typename T = int>
+std::vector<T> GetIntVectorFromAttr(const utils::Attribute &attr) {
+  if (absl::holds_alternative<std::vector<int64_t>>(attr)) {
+    const auto &attr_data = absl::get<std::vector<int64_t>>(attr);
+    return std::vector<T>(attr_data.begin(), attr_data.end());
+  } else if (absl::holds_alternative<std::vector<int>>(attr)) {
+    const auto &attr_data = absl::get<std::vector<int>>(attr);
+    return std::vector<T>(attr_data.begin(), attr_data.end());
+  } else if (absl::holds_alternative<bool>(attr)) {
+    return std::vector<T>{};
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("attribute's vector type is invalid!"));
+  }
+}
 std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
     const framework::NodeAttr &attrs,
     const std::vector<ir::Tensor> &inputs,
     const std::vector<Type> &out_type,
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
-  std::vector<int> starts, ends, axes, strides, decrease_axis;
-  if (attrs.attr_store.find("starts") != attrs.attr_store.end()) {
-    starts = absl::get<std::vector<int>>(attrs.attr_store.at("starts"));
-  }
-  if (attrs.attr_store.find("ends") != attrs.attr_store.end()) {
-    ends = absl::get<std::vector<int>>(attrs.attr_store.at("ends"));
-  }
-  if (attrs.attr_store.find("axes") != attrs.attr_store.end()) {
-    axes = absl::get<std::vector<int>>(attrs.attr_store.at("axes"));
-  }
-  if (attrs.attr_store.find("strides") != attrs.attr_store.end()) {
-    strides = absl::get<std::vector<int>>(attrs.attr_store.at("strides"));
-  }
-  if (attrs.attr_store.find("decrease_axis") != attrs.attr_store.end()) {
-    decrease_axis =
-        absl::get<std::vector<int>>(attrs.attr_store.at("decrease_axis"));
-  }
+  const std::vector<Expr> starts_expr = [&] {
+    if (inputs.size() == 3) {
+      const auto &value = inputs.at(1).self()->value();
+      CHECK(value.has_value());
+      return value.value();
+    }
+    if (attrs.attr_store.find("starts") != attrs.attr_store.end()) {
+      return ToCinnExprs(GetIntVectorFromAttr(attrs.attr_store.at("starts")));
+    } else {
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "The Slice op doesn't find [starts] attribute!"));
+    }
+  }();
+  const std::vector<Expr> ends_expr = [&] {
+    if (inputs.size() == 3) {
+      const auto &value = inputs.at(2).self()->value();
+      CHECK(value.has_value());
+      return value.value();
+    }
+    if (attrs.attr_store.find("ends") != attrs.attr_store.end()) {
+      return ToCinnExprs(GetIntVectorFromAttr(attrs.attr_store.at("ends")));
+    } else {
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "The Slice op doesn't find [ends] attribute!"));
+    }
+  }();
+  const std::vector<int> axes = [&] {
+    std::vector<int> axes;
+    if (attrs.attr_store.find("axes") != attrs.attr_store.end()) {
+      axes = GetIntVectorFromAttr(attrs.attr_store.at("axes"));
+    }
+    if (axes.empty()) {
+      for (int i = 0; i < starts_expr.size(); i++) {
+        axes.push_back(i);
+      }
+    }
+    return axes;
+  }();
+  const std::vector<Expr> strides_expr = [&] {
+    std::vector<int> strides;
+    if (attrs.attr_store.find("strides") != attrs.attr_store.end()) {
+      strides = GetIntVectorFromAttr(attrs.attr_store.at("strides"));
+    }
+    if (strides.empty()) {
+      for (int i = 0; i < starts_expr.size(); i++) {
+        strides.push_back(1);
+      }
+    }
+    return ToCinnExprs(strides);
+  }();
+  const std::vector<int> decrease_axis = [&] {
+    if (attrs.attr_store.find("decrease_axis") != attrs.attr_store.end()) {
+      return GetIntVectorFromAttr(attrs.attr_store.at("decrease_axis"));
+    }
+    return std::vector<int>{};
+  }();
 
-  CHECK(!starts.empty()) << "The Slice op doesn't find [starts] attribute! It "
-                            "it a mandatory attribute, please check.";
-  CHECK(!ends.empty()) << "The Slice op doesn't find [ends] attribute! It it a "
-                          "mandatory attribute, please check.";
-  CHECK_EQ(starts.size(), ends.size())
+  CHECK(!starts_expr.empty())
+      << "The Slice op doesn't find [starts] attribute! It "
+         "it a mandatory attribute, please check.";
+  CHECK(!ends_expr.empty())
+      << "The Slice op doesn't find [ends] attribute! It it a "
+         "mandatory attribute, please check.";
+  CHECK_EQ(starts_expr.size(), ends_expr.size())
       << "The size of [starts] and [ends] must be identical! Please check.";
-  if (!axes.empty()) {
-    CHECK_EQ(starts.size(), axes.size())
-        << "The size of [starts] and [axes] must be identical! Please check.";
-  } else {
-    for (int i = 0; i < starts.size(); i++) {
-      axes.push_back(i);
-    }
-  }
-  if (!strides.empty()) {
-    CHECK_EQ(starts.size(), strides.size())
-        << "The size of [starts] and [strides] must be identical! Please "
-           "check.";
-  } else {
-    for (int i = 0; i < starts.size(); i++) {
-      strides.push_back(1);
-    }
-  }
+  CHECK_EQ(starts_expr.size(), axes.size())
+      << "The size of [starts] and [axes] must be identical! Please check.";
+  CHECK_EQ(starts_expr.size(), strides_expr.size())
+      << "The size of [starts] and [strides] must be identical! Please "
+         "check.";
 
   std::vector<Expr> output_shape;
   for (auto &i : output_shapes[0]) {
@@ -1855,12 +1899,25 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
         CHECK(A_expr.as_tensor());
         ir::Tensor A = A_expr.as_tensor_ref();
 
-        CHECK_EQ(arg_pack.size(), 2U);
-        CHECK(arg_pack[1].is_string());
-        std::string tensor_name = arg_pack[1].operator std::string();
+        const std::string tensor_name = [&] {
+          if (arg_pack.size() == 2 || arg_pack.size() == 4) {
+            CHECK(arg_pack.back().is_string());
+            return arg_pack.back().operator std::string();
+          }
+          PADDLE_THROW(::common::errors::InvalidArgument(
+              "The slice op doesn't find output tensor name! The size of "
+              "arg_pack is %d.",
+              arg_pack.size()));
+        }();
 
-        auto out = pe::SliceSymbolic(
-            A, starts, axes, strides, decrease_axis, output_shape, tensor_name);
+        auto out = pe::SliceSymbolic(A,
+                                     starts_expr,
+                                     axes,
+                                     strides_expr,
+                                     decrease_axis,
+                                     output_shape,
+                                     tensor_name);
+        VLOG(4) << "out: " << out;
         auto stages = CreateStages({out});
         *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
       });

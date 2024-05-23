@@ -1157,11 +1157,14 @@ def save(layer, path, input_spec=None, **configs):
         with dygraph.guard():
             if use_pir_api():
                 for tensor, value in zip(*concrete_program.parameters):
+                    if not value.persistable:
+                        continue
                     param_or_buffer_tensor = scope.var(value.name).get_tensor()
                     src_tensor = (
                         state_var_dict[tensor.name].value().get_tensor()
                     )
                     param_or_buffer_tensor._share_data_with(src_tensor)
+
             else:
                 for param_or_buffer in concrete_program.parameters:
                     # share to scope

@@ -335,8 +335,6 @@ bool ReplaceShapeOpsToGenerateShape(
       GetOutOfRewrittenGenerateShapeOp(
           shape_operand, rewriter, ShapeOrDataDimExprs4Value);
   if (!opt_generated_shape.has_value()) return false;
-  shape_analysis->SetShapeOrDataForValue(
-      opt_generated_shape.value(), ShapeOrDataDimExprs4Value(shape_operand));
   rewriter->ReplaceAllUsesWith(shape_operand, opt_generated_shape.value());
   return true;
 }
