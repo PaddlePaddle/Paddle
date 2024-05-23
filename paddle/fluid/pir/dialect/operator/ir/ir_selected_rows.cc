@@ -30,7 +30,7 @@ IrSelectedRows::IrSelectedRows(phi::DataType dtype,
       lod_(std::move(lod)),
       offset_(offset) {}
 
-IrSelectedRows::IrSelectedRows(const IrSelectedRows& other)
+IrSelectedRows::IrSelectedRows(const IrSelectedRows& other) {
     : TensorBase(other) {
   dims_ = other.dims();
   dtype_ = other.dtype();
