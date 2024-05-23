@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
 Numberic: TypeAlias = Union[int, float, complex, np.number, "Tensor"]
-TensorLike: TypeAlias = npt.NDArray[Any] | "Tensor" | Numberic
+TensorLike: TypeAlias = Union[npt.NDArray[Any], "Tensor", Numberic]
 
 _T = TypeVar("_T", bound=Numberic)
 _SeqLevel1: TypeAlias = Sequence[_T]
