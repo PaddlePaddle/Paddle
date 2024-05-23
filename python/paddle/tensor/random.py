@@ -323,10 +323,12 @@ def log_normal(mean=0.0, std=1.0, shape=None, dtype=None, name=None):
     r"""
     Returns a Tensor filled with random values sampled from a Log Normal
     Distribution, with ``mean``, ``std``, ``shape`` and ``dtype``.
-    The Log Normal Distribution is defined as follows:
-    Equation:
-        .. math::
-            f(x) = \frac{1}{x\sigma\sqrt{2\pi}}e^{-\frac{(\ln{x}-\mu)^2}{2\sigma^2}}
+    The Log Normal Distribution is defined as follows
+
+    .. math::
+
+        f(x) = \frac{1}{x\sigma\sqrt{2\pi}}e^{-\frac{(\ln{x}-\mu)^2}{2\sigma^2}}
+
     Args:
         mean (float|Tensor, optional): The mean of the output Tensor's underlying normal distribution.
             If ``mean`` is float, all elements of the output Tensor share the same mean.
