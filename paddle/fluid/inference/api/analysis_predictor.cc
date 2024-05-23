@@ -3359,7 +3359,7 @@ USE_TRT_CONVERTER(dequantize_linear)
 
 namespace paddle_infer {
 
-Predictor::Predictor(const Config &config) {
+Predictor::Predictor(const Config &config) : predictor_(nullptr) {
   // The second parameter indicates that the discard log is not printed
   if (config.use_onnxruntime()) {
 #ifdef PADDLE_WITH_ONNXRUNTIME
@@ -3519,7 +3519,7 @@ std::shared_ptr<Predictor> CreatePredictor(const Config &config) {  // NOLINT
 }
 
 namespace services {
-PredictorPool::PredictorPool(const Config &config, size_t size) {
+PredictorPool::PredictorPool(const Config &config, size_t size) : preds_() {
   PADDLE_ENFORCE_GE(
       size,
       1UL,
