@@ -14,7 +14,8 @@
 
 import unittest
 import sys
-sys.path.append("/workspace/Paddle/test")
+import os
+sys.path.append("../..")
 from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
