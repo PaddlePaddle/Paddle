@@ -104,7 +104,7 @@ class _PirProgramHolder:
             if op.name() == 'pd_op.data':
                 self._input_vars.append(op.result(0))
             elif op.name() == 'pd_op.feed':
-                var_name = op.attr("name")
+                var_name = op.attr()["name"]
                 org_value = op.result(0)
                 with block:
                     value = paddle._pir_ops.data(
@@ -114,7 +114,7 @@ class _PirProgramHolder:
                     )
                     org_value.replace_all_uses_with(value)
                     value.get_defining_op().move_before(op)
-                    block.remove_op(op)
+                block.remove_op(op)
             if op.name() == 'pd_op.fetch':
                 self._output_vars.append(op.operand_source(0))
                 with block:
