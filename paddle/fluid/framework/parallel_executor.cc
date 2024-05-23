@@ -77,7 +77,18 @@ class ParallelExecutorPrivate {
  public:
   ParallelExecutorPrivate(const std::vector<platform::Place> &places,
                           Scope *global_scope)
-      : places_(places), global_scope_(global_scope) {
+      : places_(places),
+        local_scopes_(),
+        local_exec_scopes_(),
+        global_scope_(global_scope),
+        executor_(nullptr),
+        is_persistable_(),
+        own_local_scope_(false),
+        use_device_(DeviceType::CPU),
+        use_all_reduce_(false),
+        nranks_(0),
+        mem_opt_var_infos_(),
+        gcs_() {
     if (!FLAGS_pe_profile_fname.empty()) {
       std::call_once(gProfileOnce, [] {
 #ifdef WITH_GPERFTOOLS
@@ -674,7 +685,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const ExecutionStrategy &exec_strategy,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
-    : member_(new ParallelExecutorPrivate(places, scope)) {
+    : member_(new ParallelExecutorPrivate(places, scope)),
+      async_graphs_(),
+      var_infos_() {
   PADDLE_ENFORCE_EQ(!places.empty(),
                     true,
                     platform::errors::Unavailable(
@@ -747,7 +760,9 @@ ParallelExecutor::ParallelExecutor(const platform::Place &place,
                                    const ExecutionStrategy &exec_strategy,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
-    : member_(new ParallelExecutorPrivate({place}, scope)) {
+    : member_(new ParallelExecutorPrivate({place}, scope)),
+      async_graphs_(),
+      var_infos_() {
   // Initialize necessary info of member_ with strategy.
   InitExecutorPrivateMemberInfo(exec_strategy,
                                 build_strategy,

@@ -828,10 +828,16 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   std::vector<ir::LoweredFunc> lowered_funcs;
   for (ir::Expr func_body : func_bodies) {
     optim::EliminateDeadScheduleBlock(&(func_body), group->output_names());
+    cinn::common::DefaultDeviceTarget().arch.Match(
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) {},
+        [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-    optim::EliminateCommonGlobalMemoryRead(&(func_body));
-    optim::OptimizeExprGPU(&(func_body));
+          optim::EliminateCommonGlobalMemoryRead(&(func_body));
+          optim::OptimizeExprGPU(&(func_body));
 #endif
+        });
 
     // 2.Prepare temp buffers
     auto temp_buffers =

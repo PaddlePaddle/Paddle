@@ -362,7 +362,7 @@ void benchIm2col(int ic, int ih, int iw, int fh, int fw, int ph, int pw) {
   PREPARE_IM2COL_CPU;
   constexpr int repeat = 100;
   auto GetCurrentMs = []() -> double {
-    struct timeval time;
+    struct timeval time = {0, 0};
     gettimeofday(&time, nullptr);
     return 1e+3 * time.tv_sec + 1e-3 * time.tv_usec;  // NOLINT
   };
