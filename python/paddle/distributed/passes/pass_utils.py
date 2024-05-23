@@ -1152,6 +1152,30 @@ def split_matmul_grad_to_matmul(
 
 
 def _split_and_replace_recv(types, sub_program_list):
-    # 将sub_program_list中一开始的recv_v2拆分出来独立成一个program，并在新 program 前插入一个 full 算子，再将原program的recv_v2替换为data
-    # 新的 program 的名字为原始 recv4_xxx
-    return types, sub_program_list
+    rtn_types = []
+    rtn_sub_program_list = []
+    assert len(types) == len(
+        sub_program_list
+    ), f"len of sub_program_list({len(sub_program_list)}) should equal == len of types({len(types)})"
+    for i in range(len(sub_program_list)):
+        program = sub_program_list[i]
+        # for op in program.block(0).ops:
+        #     if op.type == "recv_v2":
+        #         # 创建一个新的 Program，并将 recv_v2 算子添加进去
+        #         new_program = fluid.Program()
+        #         new_program.current_block().append_op(type=op.type,
+        #                                             inputs=op.input_dict(),
+        #                                             outputs=op.output_dict(),
+        #                                                             attrs=op.all_attrs())
+        #         # 在原 Program 中将 recv_v2 算子替换为 data 算子
+        #         op_desc = block.desc.remove_op(i)
+        #         new_op_desc = block.desc.append_op()
+        #         new_op_desc.copy_from(op_desc)
+        #         new_op_desc._set_type("data")
+        #         new_op_desc._rename_output("Out", "X")
+        #         rtn_types.append("recv4_" + types[i])
+        #         rtn_sub_program_list.append(new_program)
+        #         break
+        rtn_types.append(types[i])
+        rtn_sub_program_list.append(program)
+    return rtn_types, rtn_sub_program_list
