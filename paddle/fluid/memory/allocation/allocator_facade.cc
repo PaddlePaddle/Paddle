@@ -199,7 +199,14 @@ class AllocatorFacadePrivate {
                std::map<phi::stream::stream_t, std::shared_ptr<Allocator>>>;
 #endif
 
-  explicit AllocatorFacadePrivate(bool allow_free_idle_chunk = true) {
+  explicit AllocatorFacadePrivate(bool allow_free_idle_chunk = true)
+      :
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        default_stream_safe_cuda_allocators_(),
+        default_cuda_malloc_async_allocators_(),
+        cuda_allocators_(),
+#endif
+        allocators_() {
     strategy_ = GetAllocatorStrategy();
     is_stream_safe_cuda_allocator_used_ = false;
     is_cuda_malloc_async_allocator_used_ = false;

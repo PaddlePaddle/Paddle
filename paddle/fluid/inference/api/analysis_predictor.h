@@ -548,7 +548,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
  private:
   AnalysisConfig config_;
-  std::unique_ptr<Argument> argument_;
+  std::unique_ptr<Argument> argument_ = nullptr;
   Argument::fusion_statis_t fusion_statis_;
   std::unique_ptr<NaiveExecutor> executor_;
   platform::Place place_;
