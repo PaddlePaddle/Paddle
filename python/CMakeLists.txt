@@ -159,7 +159,8 @@ else()
     if(APPLE AND WITH_ARM)
       add_custom_command(
         OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel
-        COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel --plat-name=macosx_11_0_arm64
+        COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
+                --plat-name=macosx_11_0_arm64
         COMMENT "Packing whl packages------>>>")
     else()
       add_custom_command(
