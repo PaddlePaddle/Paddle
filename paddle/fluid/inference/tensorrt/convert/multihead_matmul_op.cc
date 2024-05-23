@@ -234,17 +234,14 @@ class MultiheadMatMulOpConverter : public OpConverter {
                               nvinfer1::PluginFieldType::kFLOAT32,
                               1});
           }
-          nvinfer1::PluginFieldCollection* plugin_collection =
-              static_cast<nvinfer1::PluginFieldCollection*>(malloc(
-                  sizeof(*plugin_collection) +
-                  fields.size() *
-                      sizeof(nvinfer1::PluginField)));  // remember to free
+          std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_collection(
+              new nvinfer1::PluginFieldCollection);
           plugin_collection->nbFields = static_cast<int>(fields.size());
           plugin_collection->fields = fields.data();
 
           auto plugin = creator->createPlugin("CustomQKVToContextPluginDynamic",
-                                              plugin_collection);
-          free(plugin_collection);
+                                              plugin_collection.get());
+          plugin_collection.reset();
 
           std::vector<nvinfer1::ITensor*> plugin_inputs;
           plugin_inputs.emplace_back(fc_layer->getOutput(0));
@@ -429,17 +426,14 @@ class MultiheadMatMulOpConverter : public OpConverter {
                               nvinfer1::PluginFieldType::kFLOAT32,
                               1});
           }
-          nvinfer1::PluginFieldCollection* plugin_collection =
-              static_cast<nvinfer1::PluginFieldCollection*>(malloc(
-                  sizeof(*plugin_collection) +
-                  fields.size() *
-                      sizeof(nvinfer1::PluginField)));  // remember to free
+          std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_collection(
+              new nvinfer1::PluginFieldCollection);
           plugin_collection->nbFields = static_cast<int>(fields.size());
           plugin_collection->fields = fields.data();
 
           auto plugin = creator->createPlugin("CustomQKVToContextPluginDynamic",
-                                              plugin_collection);
-          free(plugin_collection);
+                                              plugin_collection.get());
+          plugin_collection.reset();
 
           std::vector<nvinfer1::ITensor*> plugin_inputs;
           plugin_inputs.emplace_back(
@@ -661,16 +655,13 @@ class MultiheadMatMulOpConverter : public OpConverter {
                &var_seqlen,
                nvinfer1::PluginFieldType::kINT32,
                1}};
-          nvinfer1::PluginFieldCollection* plugin_collection =
-              static_cast<nvinfer1::PluginFieldCollection*>(malloc(
-                  sizeof(*plugin_collection) +
-                  fields.size() *
-                      sizeof(nvinfer1::PluginField)));  // remember to free
+          std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_collection(
+              new nvinfer1::PluginFieldCollection);
           plugin_collection->nbFields = static_cast<int>(fields.size());
           plugin_collection->fields = fields.data();
           auto plugin = creator->createPlugin("CustomQKVToContextPluginDynamic",
-                                              plugin_collection);
-          free(plugin_collection);
+                                              plugin_collection.get());
+          plugin_collection.reset();
           // set inputs
           std::vector<nvinfer1::ITensor*> plugin_inputs;
           // input_0 for plugin

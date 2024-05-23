@@ -60,7 +60,7 @@ static inline Box<T> GetYoloBox(const T* x,
                                 int stride,
                                 float scale,
                                 float bias) {
-  Box<T> b;
+  Box<T> b = {};
   b.x = (i + sigmoid<T>(x[index]) * scale + bias) / grid_size;
   b.y = (j + sigmoid<T>(x[index + stride]) * scale + bias) / grid_size;
   b.w = std::exp(x[index + 2 * stride]) * anchors[2 * an_idx] / input_size;
@@ -307,7 +307,7 @@ void YoloLossKernel(const Context& dev_ctx,
       // for positive sample, all losses should be calculated, and for
       // other samples, only objectness loss is required.
       for (int an_idx = 0; an_idx < an_num; an_idx++) {
-        Box<T> an_box;
+        Box<T> an_box = {};
         an_box.x = 0.0;
         an_box.y = 0.0;
         an_box.w = anchors[2 * an_idx] / static_cast<T>(input_size);

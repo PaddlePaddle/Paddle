@@ -832,6 +832,13 @@
   extra :
     attrs : [float moving_rate = 0.9]
 
+- op : dequantize_log
+  inputs :
+    x : X
+    dict : Dict
+  outputs :
+    out : Out
+
 - op : det (determinant)
   backward : det_grad (determinant_grad)
   inputs :
@@ -1127,12 +1134,23 @@
     out_scale : OutScale
 
 - op : fake_quantize_dequantize_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    out_scale : OutScale
 
 - op : fake_quantize_dequantize_moving_average_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+    in_scale : InScale
+    in_accum : InAccum
+    in_state : InState
+  outputs :
+    out : Out
+    out_scale : OutScale
+    out_state : OutState
+    out_accum : OutAccum
 
 - op : fake_quantize_moving_average_abs_max
   inputs :

@@ -854,6 +854,7 @@ set_tests_properties(test_imperative_resnet_sorted_gradient PROPERTIES TIMEOUT
 set_tests_properties(test_imperative_se_resnext PROPERTIES TIMEOUT 200)
 set_tests_properties(test_strided_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_translated_layer PROPERTIES TIMEOUT 120)
+set_tests_properties(test_pir_translated_layer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_mean_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataloader PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool3d_api PROPERTIES TIMEOUT 120)
