@@ -34,6 +34,7 @@
 #include "paddle/cinn/optim/trans_buffer_with_dynamic_shape.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
+#include "paddle/cinn/optim/rearrange_load_instruction.h"
 #include "paddle/cinn/optim/unroll_loops.h"
 #include "paddle/cinn/optim/vectorize_loops.h"
 
@@ -83,6 +84,11 @@ Expr Optimize(Expr e,
 
   IfFusion(&copied);
   VLOG(10) << "After Optimize IfFusion" << copied;
+
+//#ifdef  CINN_WITH_CUDA
+//  RearrangeLoadInstruction(&copied);
+//  VLOG(10) << "After Optimize RearrangeLoadInstruction:" << copied;
+//#endif
 
   if (runtime_debug_info) {
     LOG(WARNING) << "Turn on runtime debug information output";
