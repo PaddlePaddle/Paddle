@@ -255,6 +255,18 @@
     param : [num_rows, num_columns, dtype]
     data_type : dtype
 
+- op : flatten2
+  args: (Tensor x, int axis = 1)
+  output: Tensor (out), Tensor (x_shape)
+  infer_meta:
+    func: Flatten2InferMeta
+  kernel:
+    func: flatten2
+    data_type: x
+  intermediate: x_shape
+  backward: flatten2_grad
+  inplace: (x -> out)
+
 - op : floor_divide
   args : (Tensor x, Tensor y, int axis = -1)
   output : Tensor(out)
