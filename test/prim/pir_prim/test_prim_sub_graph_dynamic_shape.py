@@ -291,6 +291,7 @@ class TestPrimOneHot(TestPrimBase):
         self.enable_cinn = False
         self.tol = 1e-6
 
+
 class TestPrimSquaredL2Norm(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)
