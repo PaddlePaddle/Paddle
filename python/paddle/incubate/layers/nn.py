@@ -34,6 +34,125 @@ from paddle.base.param_attr import ParamAttr
 __all__ = []
 
 
+def inference(
+    with_trt=True, save_model_dir="/root/.cache/", precision_mode="fp16"
+):
+    def decorator(func=None):
+        import inspect
+
+        predictors = [None]
+        signature = inspect.signature(func)
+        arg_names = [v.name for v in signature.parameters.values()]
+
+        class WrappedLayer(paddle.nn.Layer):
+            def __init__(self, layer):
+                super().__init__()
+                self.fn = func
+                self.layer = layer
+
+            def forward(self, args):
+                return self.fn(self.layer, *args)
+
+        def wrapper(*args, **kwargs):
+            import paddle
+
+            if predictors[0] is not None:
+                input_lists = []
+                for i in range(len(args)):
+                    if i > 0:
+                        input_lists.append(args[i])
+                return predictors[0].run(input_lists)
+
+            import os
+
+            from paddle.static import InputSpec
+
+            save_path = save_model_dir + func.__name__ + "/infer"
+            if not os.path.exists(save_path + ".pdmodel"):
+                # we need do ds2.
+                input_specs = []
+                for i in range(len(args)):
+                    if i == 0:
+                        assert isinstance(args[i], paddle.nn.Layer)
+                    else:
+                        assert isinstance(args[i], paddle.Tensor)
+                        input_specs.append(
+                            InputSpec.from_tensor(args[i], name=arg_names[i])
+                        )
+
+                for i in range(len(arg_names)):
+                    if arg_names[i] in kwargs.keys():
+                        assert isinstance(kwargs[arg_names[i]], paddle.Tensor)
+                        input_specs.append(
+                            InputSpec.from_tensor(
+                                kwargs[arg_names[i]], name=arg_names[i]
+                            )
+                        )
+
+                input_specs = [input_specs]
+
+                mylayer = WrappedLayer(args[0])
+                model = paddle.jit.to_static(
+                    mylayer, input_spec=input_specs, full_graph=True
+                )
+                paddle.jit.save(model, save_path)
+
+            model_dir = save_model_dir + func.__name__ + "/"
+            model_file = model_dir + "infer.pdmodel"
+            params_file = model_dir + "infer.pdiparams"
+            from paddle.inference import Config, PrecisionType, create_predictor
+
+            config = Config(model_file, params_file)
+            config.enable_memory_optim()
+
+            def get_infer_precision():
+                if precision_mode == "fp32":
+                    return PrecisionType.Float32
+                elif precision_mode == "fp16":
+                    return PrecisionType.Half
+                elif precision_mode == "bf16":
+                    return PrecisionType.Bfloat16
+                else:
+                    raise AssertionError("unsupported precision_mode")
+
+            gpu_precision = get_infer_precision()
+            config.enable_use_gpu(1000, 0, gpu_precision)
+
+            if with_trt:
+                dynamic_names = []
+                min_input_shape = {}
+                max_input_shape = {}
+                opt_input_shape = {}
+                for i in range(len(args)):
+                    if i > 0:
+                        min_input_shape[arg_names[i]] = args[i].shape
+                        max_input_shape[arg_names[i]] = args[i].shape
+                        opt_input_shape[arg_names[i]] = args[i].shape
+
+                config.set_trt_dynamic_shape_info(
+                    min_input_shape, max_input_shape, opt_input_shape
+                )
+                config.enable_tensorrt_engine(
+                    workspace_size=1 << 30,
+                    max_batch_size=1,
+                    min_subgraph_size=3,
+                    precision_mode=get_infer_precision(),
+                    use_static=True,
+                    use_calib_mode=False,
+                )
+
+            predictors[0] = create_predictor(config)
+
+            input_lists = []
+            for i in range(len(args)):
+                if i > 0:
+                    input_lists.append(args[i])
+            return predictors[0].run(input_lists)
+
+        return wrapper
+
+    return decorator
+
 def fused_embedding_seq_pool(
     input,
     size,
