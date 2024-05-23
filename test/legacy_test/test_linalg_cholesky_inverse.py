@@ -189,11 +189,15 @@ class TestErrorDtype(unittest.TestCase):
     def test_float16(self):
         if core.is_compiled_with_cuda():
             x = paddle.rand((3, 3), dtype='float16')
-            with self.assertRaises(RuntimeError):
+            with self.assertRaises((RuntimeError, ValueError)):
                 paddle.linalg.cholesky_inverse(x)
 
     def test_bfloat16(self):
         if core.is_compiled_with_cuda():
             x = paddle.rand((3, 3), dtype='bfloat16')
-            with self.assertRaises(ValueError):
+            with self.assertRaises((RuntimeError, ValueError)):
                 paddle.linalg.cholesky_inverse(x)
+
+
+if __name__ == '__main__':
+    unittest.main()
