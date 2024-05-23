@@ -493,7 +493,8 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
       continue;
     } else if (item.first == ::pir::kSymbolBindings) {
       auto symbol_bindings =
-          cinn::dialect::ConvertAttributeToSymbolBindings(item.second);
+          cinn::dialect::GenerateShapeOp::ConvertAttributeToSymbolBindings(
+              item.second);
       PADDLE_ENFORCE(symbol_bindings.has_value(),
                      ::common::errors::PreconditionNotMet(
                          "Required symbol_bindings.has_value()==true."));

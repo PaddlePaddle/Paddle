@@ -15,6 +15,7 @@
 #pragma once
 #include <variant>
 #include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -154,6 +155,12 @@ class IR_API GenerateShapeOp
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
 
+  using SymbolBindingBase = cinn::dialect::SymbolBindingBase;
+  using SymbolBinding = cinn::dialect::SymbolBinding;
+  using ShapeSymbolBinding = cinn::dialect::ShapeSymbolBinding;
+  using DataSymbolBinding = cinn::dialect::DataSymbolBinding;
+  using SymbolBindings = cinn::dialect::SymbolBindings;
+
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::Value> &inputs,
@@ -166,6 +173,11 @@ class IR_API GenerateShapeOp
   pir::Value out() { return result(0); }
 
   bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
+
+  static pir::Attribute ConvertSymbolBindingsToAttribute(
+      pir::Builder &builder, const SymbolBindings &symbol_bindings);  // NOLINT
+  static std::optional<SymbolBindings> ConvertAttributeToSymbolBindings(
+      const pir::Attribute &symbol_bindings);
 };
 
 }  // namespace dialect

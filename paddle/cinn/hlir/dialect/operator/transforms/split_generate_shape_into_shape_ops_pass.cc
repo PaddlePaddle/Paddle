@@ -304,17 +304,25 @@ class SplitGenerateShapeIntoShapeOps
                   paddle::dialect::TransToPhiDataType(gs_out_type.dtype()))
               .out();
     }
-    if (gs_out_type.dims().size() == 0 &&
-        new_output_type.dims().size() == 1) {  // 0D Tensor
-      PADDLE_ENFORCE_EQ(new_output_type.dims()[0],
-                        1,
-                        ::common::errors::PreconditionNotMet(
-                            "The shape of the new output tensor of shape graph "
-                            "should be [1], but received [%d].",
-                            new_output_type.dims()[0]));
+    if (gs_out_type.dims() != new_output_type.dims()) {
+      PADDLE_ENFORCE_EQ(
+          ::common::contain_unknown_dim(gs_out_type.dims()),
+          false,
+          ::common::errors::PreconditionNotMet(
+              "The shape of the output tensor of generate_shape_op should not "
+              "contain unknown dim, but received [%s].",
+              gs_out_type.dims().to_str()));
+      PADDLE_ENFORCE_LE(
+          ::common::product(gs_out_type.dims()),
+          9,
+          ::common::errors::PreconditionNotMet(
+              "The numel of the output tensor of generate_shape_op should be "
+              "less than 9, but received [%s].",
+              ::common::product(gs_out_type.dims())));
       return rewriter
-          ->Build<paddle::dialect::ReshapeOp>(new_output.value(),
-                                              std::vector<int64_t>{})
+          ->Build<paddle::dialect::ReshapeOp>(
+              new_output.value(),
+              ::common::vectorize<int64_t>(gs_out_type.dims()))
           .out();
     }
     return new_output;
@@ -330,7 +338,8 @@ class SplitGenerateShapeIntoShapeOps
                        "attr symbol_bindings MUST in attribute map for [%s] op",
                        op->name()));
     pir::Attribute attr = iter->second;
-    auto* Convert = &cinn::dialect::ConvertAttributeToSymbolBindings;
+    auto* Convert =
+        &cinn::dialect::GenerateShapeOp::ConvertAttributeToSymbolBindings;
     const auto& symbol_bindings = Convert(attr);
     PADDLE_ENFORCE(
         symbol_bindings.has_value(),

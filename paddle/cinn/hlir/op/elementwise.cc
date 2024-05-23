@@ -1291,11 +1291,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
                                         "in strategy for generate shape op"));
   auto output_dim_exprs = absl::get<std::vector<symbol::DimExpr>>(
       attrs.attr_store.at("output_dim_exprs"));
-  // PADDLE_ENFORCE_EQ(output_dim_exprs.size(),
-  //                   1,
-  //                   ::common::errors::InvalidArgument(
-  //                       "Invalid argument. StrategyForGenerateShapeSymbolic "
-  //                       "only support output_dim_exprs.size() == 1."));
   auto symbol_bindings = absl::get<cinn::dialect::SymbolBindings>(
       attrs.attr_store.at("symbol_bindings"));
 
@@ -1315,7 +1310,6 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
         auto stages = CreateStages({});
 
         std::string tensor_name = pack_args.back().operator std::string();
-
         ir::Tensor out = pe::GenerateShape(
             inputs, symbol_bindings, output_dim_exprs, tensor_name);
         std::vector<CINNValue> res;

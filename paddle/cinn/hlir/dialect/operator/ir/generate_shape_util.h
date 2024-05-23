@@ -17,6 +17,7 @@
 #include <functional>
 #include <optional>
 #include <vector>
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
@@ -56,8 +57,4 @@ bool MakeGenerateShapeOpAttribute(
     std::vector<pir::Attribute>* output_dim_expr_attrs,
     SymbolBindings* symbol_bindings);
 
-pir::Attribute ConvertSymbolBindingsToAttribute(
-    pir::Builder& builder, const SymbolBindings& symbol_bindings);  // NOLINT
-std::optional<SymbolBindings> ConvertAttributeToSymbolBindings(
-    const pir::Attribute& symbol_bindings);
 }  // namespace cinn::dialect

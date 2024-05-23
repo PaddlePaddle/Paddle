@@ -145,7 +145,8 @@ class BlockDimExprsAsserter {
   void AssertDimExprForOutput(pir::Operation* op) {  // NOLINT
     VLOG(5) << "Add assert for result of [ " << op->name() << " ]";
     if (op->num_results() == 0) return;
-    if (!op->HasInterface<paddle::dialect::InferSymbolicShapeInterface>()) {
+    if (!op->HasInterface<paddle::dialect::InferSymbolicShapeInterface>() ||
+        op->HasTrait<pir::SideEffectTrait>()) {
       LOG(INFO) << "skip the checking for [ " << op->name() << " ]";
       return;
     }
@@ -327,8 +328,8 @@ class BlockDimExprsAsserter {
             .out();
     auto assert_op = builder_.Build<paddle::dialect::AssertOp>(
         all_eq, assert_data, lhs_numel);
-    const std::string error_msg = "Check [" + op->name() + "_" +
-                                  std::to_string(op->id()) +
+    const std::string error_msg = "Check [" + op->name() +
+                                  " id:" + std::to_string(op->id()) +
                                   "] infer symbolic shape failed.";
     assert_op->set_attribute(
         paddle::dialect::AssertOp::ERROR_INFO_ATTR_NAME,

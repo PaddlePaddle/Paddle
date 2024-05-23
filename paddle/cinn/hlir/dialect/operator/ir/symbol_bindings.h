@@ -30,8 +30,15 @@ struct SymbolBindingBase {
   }
 };
 
-struct DataSymbolBinding : public SymbolBindingBase {};
-struct ShapeSymbolBinding : public SymbolBindingBase {};
+constexpr char* kDataSymbolBinding = "DataSymbolBinding";
+constexpr char* kShapeSymbolBinding = "ShapeSymbolBinding";
+
+struct DataSymbolBinding : public SymbolBindingBase {
+  const char* binding_type() const { return kDataSymbolBinding; }
+};
+struct ShapeSymbolBinding : public SymbolBindingBase {
+  const char* binding_type() const { return kShapeSymbolBinding; }
+};
 
 using SymbolBinding = std::variant<DataSymbolBinding, ShapeSymbolBinding>;
 
@@ -39,15 +46,11 @@ using SymbolBindings = std::vector<SymbolBinding>;
 
 inline std::ostream& operator<<(std::ostream& os,
                                 const SymbolBinding& symbol_binding) {
-  if (std::holds_alternative<ShapeSymbolBinding>(symbol_binding)) {
-    os << "ShapeBinding[";
-  } else {
-    os << "DataBinding[";
-  }
   std::visit(
-      [&](auto&& binding_base) {
-        os << binding_base.symbol_name << "," << binding_base.input_tensor_idx
-           << "," << binding_base.input_tensor_dim_idx << "]";
+      [&](auto&& binding) {
+        os << binding.binding_type() << "[" << binding.symbol_name << ","
+           << binding.input_tensor_idx << "," << binding.input_tensor_dim_idx
+           << "]";
       },
       symbol_binding);
 }
