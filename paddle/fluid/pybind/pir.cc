@@ -647,6 +647,8 @@ void BindOperation(py::module *m) {
            return_value_policy::reference)
       .def("num_operands", &Operation::num_operands)
       .def("num_results", &Operation::num_results)
+      .def("num_regions", &Operation::num_regions)
+
       .def("operand", &Operation::operand)
       .def("result",
            [](Operation &self, uint32_t index) {

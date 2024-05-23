@@ -282,6 +282,11 @@ void FlattenInferMeta(const MetaTensor& x,
                       int stop_axis,
                       MetaTensor* out);
 
+void Flatten2InferMeta(const MetaTensor& x,
+                       int axis,
+                       MetaTensor* out,
+                       MetaTensor* x_shape);
+
 void FlattenWithXShapeInferMeta(const MetaTensor& x,
                                 int start_axis,
                                 int stop_axis,

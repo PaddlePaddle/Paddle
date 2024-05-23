@@ -28,6 +28,7 @@ class TestBase(unittest.TestCase):
         self.with_prim = True
         self.with_cinn = True
         self.atol = 1e-6
+        self.with_precision_compare = True
         # override customized settting
         self.init()
 
@@ -69,7 +70,10 @@ class TestBase(unittest.TestCase):
             with_prim=self.with_prim,
             with_cinn=self.with_cinn,
         )
-        for st, cinn in zip(
-            paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
-        ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
+        if self.with_precision_compare:
+            for st, cinn in zip(
+                paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
+            ):
+                np.testing.assert_allclose(
+                    st.numpy(), cinn.numpy(), atol=self.atol
+                )

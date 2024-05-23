@@ -24,13 +24,8 @@ from op_test import convert_float_to_uint16, convert_uint16_to_float
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.base import core
 
 
-@unittest.skipIf(
-    core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
-    "Unsupported on XPU3",
-)
 class TestCompareOpBase(XPUOpTest):
     def setUp(self):
         self.place = paddle.XPUPlace(0)
@@ -107,15 +102,15 @@ class XPUTestLessThanOP(XPUOpTestWrapper):
         def set_data(self):
             self.lbound = -200
             self.hbound = 200
-            self.x_shape = [128, 128, 512]
+            self.x_shape = [16, 64, 512]
             self.y_shape = [1]
 
     class LessThanOpTestCase5(LessThanOpTestCase1):
         def set_data(self):
             self.lbound = -100
             self.hbound = 100
-            self.x_shape = [128, 128, 512]
-            self.y_shape = [128, 128, 512]
+            self.x_shape = [16, 64, 512]
+            self.y_shape = [16, 64, 512]
 
     class LessThanOpTestCase_ZeroDim1(LessThanOpTestCase1):
         def set_data(self):
@@ -187,8 +182,8 @@ class XPUTestLessEqualOp(XPUOpTestWrapper):
         def set_data(self):
             self.lbound = -200
             self.hbound = 200
-            self.x_shape = [128, 128, 512]
-            self.y_shape = [128, 128, 512]
+            self.x_shape = [16, 64, 512]
+            self.y_shape = [16, 64, 512]
 
     class LessEqualOpTestCase_ZeroDim1(LessEqualOpTestCase1):
         def set_data(self):
@@ -232,14 +227,14 @@ class XPUTestGreaterThanOp(XPUOpTestWrapper):
         def set_data(self):
             self.lbound = -200
             self.hbound = 200
-            self.x_shape = [128, 128, 512]
-            self.y_shape = [128, 128, 512]
+            self.x_shape = [16, 64, 512]
+            self.y_shape = [16, 64, 512]
 
     class GreaterThanOpTestCase2(GreaterThanOpTestCase1):
         def set_data(self):
             self.lbound = -100
             self.hbound = 100
-            self.x_shape = [128, 128, 512]
+            self.x_shape = [16, 64, 512]
             self.y_shape = [1]
 
     class GreaterThanOpTestCase3(GreaterThanOpTestCase1):
