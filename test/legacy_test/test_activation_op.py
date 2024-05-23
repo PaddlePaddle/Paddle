@@ -1946,6 +1946,11 @@ class TestRsqrt_Complex64(TestRsqrt):
         np.testing.assert_allclose(ddx.numpy(), expected_ddx, rtol=1e-3)
 
 
+class TestRsqrt_Complex128(TestRsqrt):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 class TestAbs(TestActivation):
     def setUp(self):
         self.op_type = "abs"

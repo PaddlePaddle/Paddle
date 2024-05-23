@@ -861,7 +861,7 @@ def rsqrt(x, name=None):
        out = \\frac{1}{\\sqrt{x}}
 
     Args:
-        x (Tensor): Input of Rsqrt operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Rsqrt operator, an N-D Tensor, with data type float32, float64, float16, complex64 or complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
