@@ -1604,7 +1604,7 @@ def AutoCodeGen(
                         )
 
                         build_mutable_attr_is_input = f"static void Build({build_args_with_muta_attr_is_input_for_declare});"
-                # Currently not support invoke op for sparse op.
+                # TODO(huangjiyi): support invoke op for sparse op.
                 if (
                     (op_invoke_map is not None)
                     and (not op_info.is_sparse_op)
