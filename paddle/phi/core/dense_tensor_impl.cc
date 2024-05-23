@@ -118,8 +118,8 @@ void* DenseTensor::mutable_data(const Place& place,
     holder_ = memory_utils::AllocShared(place, size);
     meta_.offset = 0;
   }
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                 meta_.offset);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset;
+  return reinterpret_cast<void*>(ptr);
 }
 
 void* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
@@ -149,8 +149,8 @@ void* DenseTensor::mutable_data(const Place& place,
     holder_ = memory_utils::AllocShared(place, size, stream);
     meta_.offset = 0;
   }
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                 meta_.offset);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset;
+  return reinterpret_cast<void*>(ptr);
 }
 
 /* @jim19930609: The following "mutable_data" only supports specific dtypes

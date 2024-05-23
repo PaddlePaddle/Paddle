@@ -1993,11 +1993,13 @@ class TestSaveLoadInferenceModel(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_pir_api
     def test_no_params(self):
-        main_program = framework.Program()
-        with framework.program_guard(main_program):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
             x = paddle.static.data(name="x", shape=[10, 10], dtype='float32')
-            x.desc.set_need_check_feed(False)
+            if not in_pir_mode():
+                x.desc.set_need_check_feed(False)
             y = x + x
 
             place = paddle.CPUPlace()
@@ -2012,9 +2014,25 @@ class TestSaveLoadInferenceModel(unittest.TestCase):
             ] = paddle.static.load_inference_model(self.model_path, exe)
 
             self.assertEqual(feed_target_names, ['x'])
-            self.assertEqual(fetch_targets[0].shape, (10, 10))
-            ops = [op.type for op in inference_program.block(0).ops]
-            self.assertEqual(ops, ['feed', 'elementwise_add', 'scale', 'fetch'])
+            if in_pir_mode():
+                self.assertEqual(fetch_targets[0].shape, [10, 10])
+                ops = [op.name() for op in inference_program.global_block().ops]
+                self.assertEqual(
+                    ops,
+                    [
+                        'pd_op.data',
+                        'pd_op.add',
+                        'pd_op.full',
+                        'pd_op.scale',
+                        'pd_op.fetch',
+                    ],
+                )
+            else:
+                self.assertEqual(fetch_targets[0].shape, (10, 10))
+                ops = [op.type for op in inference_program.block(0).ops]
+                self.assertEqual(
+                    ops, ['feed', 'elementwise_add', 'scale', 'fetch']
+                )
 
 
 if __name__ == '__main__':

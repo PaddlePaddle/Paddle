@@ -20,7 +20,9 @@ namespace paddle {
 namespace distributed {
 
 SourceInterceptor::SourceInterceptor(int64_t interceptor_id, TaskNode* node)
-    : Interceptor(interceptor_id, node), max_run_times_(node->max_run_times()) {
+    : Interceptor(interceptor_id, node),
+      max_run_times_(node->max_run_times()),
+      downstream_step_() {
   // prepare the downstream running status
   for (const auto& down : node->downstream()) {
     downstream_step_.emplace(down.first, 0);

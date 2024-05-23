@@ -331,6 +331,19 @@ void DetectionMapInferMeta(const MetaTensor& detect_res,
                            MetaTensor* m_ap,
                            MetaConfig config = MetaConfig());
 
+void DgcInferMeta(const MetaTensor& u,
+                  const MetaTensor& v,
+                  const MetaTensor& grad,
+                  const MetaTensor& param,
+                  const MetaTensor& current_step_tensor,
+                  const MetaTensor& nranks_tensor,
+                  MetaTensor* u_out,
+                  MetaTensor* v_out,
+                  MetaTensor* encode_grad_out,
+                  MetaTensor* grad_out,
+                  MetaTensor* k_out,
+                  MetaTensor* gather_buff);
+
 void DGCMomentumInferMeta(const MetaTensor& param,
                           const MetaTensor& grad,
                           const MetaTensor& velocity,

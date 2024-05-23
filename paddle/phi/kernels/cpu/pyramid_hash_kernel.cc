@@ -22,9 +22,9 @@
 #include "paddle/phi/kernels/funcs/math/bloomfilter.h"
 #include "paddle/phi/kernels/funcs/search_compute.h"
 
-#ifndef _WIN32
 namespace phi {
 
+#ifndef _WIN32
 bool should_use_term(phi::math::bloomfilter* _filter,
                      phi::math::bloomfilter* _black_filter,
                      const float* word_repr,
@@ -235,6 +235,31 @@ void CPUPyramidHashOPKernel(const Context& dev_ctx,
         top_data, top_data, top->dims()[0] * top->dims()[1], _drop_out_percent);
   }
 }
+#endif
+
+#ifdef _WIN32
+template <typename T, typename Context>
+void CPUPyramidHashOPKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& w,
+                            const DenseTensor& white_list,
+                            const DenseTensor& black_list,
+                            int num_emb,
+                            int space_len,
+                            int pyramid_layer,
+                            int rand_len,
+                            float drop_out_percent,
+                            int is_training,
+                            bool use_filter,
+                            int white_list_len,
+                            int black_list_len,
+                            int seed,
+                            float lr,
+                            const std::string& distribute_update_vars,
+                            DenseTensor* out,
+                            DenseTensor* drop_pos,
+                            DenseTensor* x_temp_out) {}
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
@@ -243,5 +268,3 @@ PD_REGISTER_KERNEL(
   kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
 }
-
-#endif
