@@ -43,7 +43,7 @@ paddle.seed(2024)
         (
             'multi-dim',
             parameterize.xrand(
-                (2, 5),
+                (2, 2),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
@@ -51,7 +51,7 @@ paddle.seed(2024)
         (
             'broadcast',
             parameterize.xrand(
-                (4, 1),
+                (2, 1),
                 dtype='float32',
                 min=np.finfo(dtype='float32').tiny,
             ),
