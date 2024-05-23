@@ -395,17 +395,17 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
   // second input
   auto input_t2 = predictor->GetInputHandle(input_names[1]);
   input_t2->Reshape({run_seq_len});
-  input_t2->CopyFromCpu(i2);
+  input_t2->CopyFromCpu(i2.data());
 
   // third input
   auto input_t3 = predictor->GetInputHandle(input_names[2]);
   input_t3->Reshape({run_batch + 1});
-  input_t3->CopyFromCpu(i3);
+  input_t3->CopyFromCpu(i3.data());
 
   // fourth input
   auto input_t4 = predictor->GetInputHandle(input_names[3]);
   input_t4->Reshape({1, max_seq_len, 1});
-  input_t4->CopyFromCpu(i4);
+  input_t4->CopyFromCpu(i4.data());
 
   CHECK(predictor->Run());
 
