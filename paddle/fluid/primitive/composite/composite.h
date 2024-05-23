@@ -268,6 +268,23 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
 }
 
 template <typename T>
+Tensor squared_l2_norm_decomp(const Tensor& x) {
+  Tensor reduce_x;
+  if (has_dynamic_shape(x.shape())) {
+    reduce_x = backend::reshape_with_tensor<T>(
+        x, prod<T>(shape<T>(x), {0}, true, false));
+  } else {
+    int reduce_num = 1;
+    for (size_t i = 0; i < x.shape().size(); i++) {
+      reduce_num *= x.shape()[i];
+    }
+    reduce_x = reshape<T>(x, {reduce_num});
+  }
+  auto res = sum<T>(reduce_x * reduce_x, {0}, x.dtype(), true);
+  return res;
+}
+
+template <typename T>
 Tensor reciprocal_decomp(const Tensor& x) {
   return full<T>(empty_shape, 1.0, x.dtype()) / x;
 }
