@@ -73,12 +73,9 @@ void cumprod_grad(const Tensor& x,
     auto zero_tensor = full<T>(x_dim, 0.0, x.dtype());
     auto zero_mask = cast<T>(equal<T>(x, zero_tensor), x.dtype());
     // determine the index of first zero
-    auto zero_mask_cumsum_inclusive =
-        cumsum<T>(zero_mask, dim, false, false, reverse);
     auto zero_mask_cumsum_exclusive =
         cumsum<T>(zero_mask, dim, false, true, reverse);
-    auto zero_mask_cumsum =
-        zero_mask_cumsum_inclusive + zero_mask_cumsum_exclusive;
+    auto zero_mask_cumsum = scale<T>(zero_mask_cumsum_exclusive, 2) + zero_mask;
     auto ones_tensor = full<T>(x_dim, 1.0, x.dtype());
     auto first_zero_mask =
         cast<T>(equal<T>(zero_mask_cumsum, ones_tensor), x.dtype());
