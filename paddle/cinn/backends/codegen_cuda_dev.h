@@ -95,6 +95,10 @@ class CodeGenCUDA_Dev : public CodeGenC {
                                 ir::Expr index,
                                 bool is_store);
 
+  // Print access index for temp tensors on a load/store node.
+  bool PrintTempTensorAccess(const ir::LoadStoreAddrMnger* op,
+                             ir::Expr index_expr);
+
   void PrintBuiltinCodes();
 
   void PrintIncludes() override;
@@ -121,6 +125,9 @@ class CodeGenCUDA_Dev : public CodeGenC {
   // tensors are customized_type with customized_type::kcuda_builtin_vector_t
   // prefix
   std::unordered_set<std::string> vectorized_tensor_names_;
+  // names of temporary tensors, which are usually indexed by the sp_loop
+  // variable (e.g. var_0_rf, var_0_1)
+  std::unordered_set<std::string> temp_tensor_names_;
   static const std::string source_header_;
 
   ir::Expr dyn_shared_mem_offset_{-1};

@@ -113,6 +113,8 @@ std::vector<Expr> CodeGenCUDA_Dev::GenerateBufferAliasExprs(
     Var t_var(t->name, data_ptr_type);
     Var buf_var(t->buffer->name, data_ptr_type);
     buffer_alias.push_back(ir::Let::Make(t_var, buf_var));
+
+    temp_tensor_names_.insert(t->name);
   }
 
   return buffer_alias;
@@ -489,11 +491,51 @@ bool CodeGenCUDA_Dev::PrintBuiltinVectorAccess(const ir::LoadStoreAddrMnger *op,
   return true;
 }
 
+// TODO(lshpku): Force the index of temp buffer to be the sp_loop var.
+// Example:
+//   From : (((8 * i_j_fused_3) % 33) + ((8 * i_j_fused_3) / 33) * 25)
+//   To   : i_j_fused_3
+bool CodeGenCUDA_Dev::PrintTempTensorAccess(const ir::LoadStoreAddrMnger *op,
+                                            ir::Expr index_expr) {
+  auto *tensor = op->tensor.As<ir::_Tensor_>();
+  if (!tensor) {
+    return false;
+  }
+  if (!temp_tensor_names_.count(tensor->name)) {
+    return false;
+  }
+
+  // find the single var in rf's index_expr
+  VLOG(4) << "PrintTempTensorAccess for tensor: " << tensor->name
+          << ", index_expr: " << index_expr;
+  std::set<std::string> var_names;
+  const auto CollectVar = [&](const ir::Expr *x) {
+    auto *var = x->As<ir::_Var_>();
+    if (var) {
+      var_names.insert(var->name);
+    }
+    return false;
+  };
+  ir::ir_utils::CollectIRNodes(index_expr, CollectVar);
+  if (var_names.size() != 1) {
+    return false;
+  }
+
+  VLOG(4) << "PrintTempTensorAccess found single var: " << *var_names.begin();
+  str_ += tensor->name;
+  str_ += "[";
+  str_ += *var_names.begin();
+  str_ += "]";
+  return true;
+}
+
 void CodeGenCUDA_Dev::Visit(const ir::Load *op) {
   // overload this visit function to especially deal with the case when it
   // accesses element at a cuda built-in vector, others still resolve to
   // CodeGenC
   if (!PrintBuiltinVectorAccess(op, op->index(), false)) {
+    // if (!PrintBuiltinVectorAccess(op, op->index(), false) &&
+    // !PrintTempTensorAccess(op, op->index())) {
     CodeGenC::Visit(op);
   }
 }
@@ -503,6 +545,8 @@ void CodeGenCUDA_Dev::Visit(const ir::Store *op) {
   // accesses element at a cuda built-in vector, others still resolve to
   // CodeGenC
   if (PrintBuiltinVectorAccess(op, op->index(), true)) {
+    // if (PrintBuiltinVectorAccess(op, op->index(), true) ||
+    // PrintTempTensorAccess(op, op->index())) {
     str_ += " = ";
     IrPrinter::Visit(op->value);
   } else {

@@ -88,6 +88,15 @@ std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
   for (auto& val : group->output_values()) {
     group_info->direct_output_var_names.insert(ValueName(val));
   }
+
+  group->WalkOps([&group_info](::pir::Operation* op) {
+    VLOG(4) << "BucketLower WalkOps: " << op->name();
+    if (op->name().rfind("cinn_op.reduce_", 0) == 0) {
+      group_info->raw_reduce_axis = cinn::fusion::GetReduceAxisIdx(op);
+      group_info->raw_data_rank =
+          cinn::fusion::GetCompitableRank(op->operand_source(0));
+    }
+  });
   return group_info;
 }
 

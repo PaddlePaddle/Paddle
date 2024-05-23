@@ -37,6 +37,7 @@ std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
   base_info->broadcast_info = group_info->broadcast_info;
   base_info->broadcast_to_elementwise = group_info->broadcast_to_elementwise;
   base_info->data_rank = group_info->data_space.size();
+  base_info->raw_data_rank = group_info->raw_data_rank;
 
   std::set<int64_t> reduce_dim_loc;
   for (auto dim : group_info->reduce_axis) {
@@ -45,6 +46,13 @@ std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
     }
     base_info->reduce_axis.push_back(dim);
     reduce_dim_loc.insert(dim);
+  }
+
+  for (auto dim : group_info->raw_reduce_axis) {
+    if (dim < 0) {
+      dim += base_info->data_rank;
+    }
+    base_info->raw_reduce_axis.push_back(dim);
   }
 
   base_info->spatial_numel = 1;
