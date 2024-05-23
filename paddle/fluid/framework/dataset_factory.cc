@@ -32,7 +32,7 @@ datasetMap g_dataset_map;
   class __Registerer_##dataset_class {                          \
    public:                                                      \
     __Registerer_##dataset_class() {                            \
-      g_dataset_map[#dataset_class] = &Creator_##dataset_class; \
+      g_dataset_map[dataset_class] = &Creator_##dataset_class; \
     }                                                           \
   };                                                            \
   __Registerer_##dataset_class g_registerer_##dataset_class;    \
