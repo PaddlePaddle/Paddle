@@ -23,7 +23,7 @@ if(WIN32)
   set(UTF8PROC_LIBRARIES "${UTF8PROC_INSTALL_DIR}/lib/utf8proc_static.lib")
   add_definitions(-DUTF8PROC_STATIC)
 else()
-  set(UTF8PROC_LIBRARIES "${UTF8PROC_INSTALL_DIR}/lib/libutf8proc.a")
+  set(UTF8PROC_LIBRARIES "${UTF8PROC_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libutf8proc.a")
 endif()
 
 include_directories(${UTF8PROC_INSTALL_DIR}/include)
