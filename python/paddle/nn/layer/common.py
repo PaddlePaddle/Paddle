@@ -1360,7 +1360,7 @@ class ZeroPad3D(Layer):
         padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
             same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
             The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-        data_format (str): An string from: "NCDHW", "NCDHW". Specify the data format of the input data.
+        data_format (str): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
            Default is  "NCDHW"
         name (str, optional) : The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
