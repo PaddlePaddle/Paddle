@@ -1448,6 +1448,11 @@ PHI_DEFINE_EXPORTED_string(logging_pir_py_code_dir,
                            "",
                            "the logging directory to save pir py code");
 
+PHI_DEFINE_EXPORTED_bool(logging_trunc_pir_py_code,
+                         true,
+                         "whether truncate the logging files under directory "
+                         "FLAGS_logging_pir_py_code_dir");
+
 /**
  * Using PIR API in Python
  * Name: enable_pir_api
@@ -1658,6 +1663,17 @@ PHI_DEFINE_EXPORTED_bool(
     "Whether to use check_infer_symbolic_pass. This pass can check "
     "the symbolic inference accuracy by comparing the the value "
     "shape between dynamic shape and static shape.");
+
+/**
+ * Name: manually_trans_conv_filter
+ * Since Version: 3.0.0 Beta
+ * Value Range: bool, default=false
+ */
+PHI_DEFINE_EXPORTED_bool(
+    manually_trans_conv_filter,
+    false,
+    "Whether to manually transpose the filter of conv2d. This pass can "
+    "accelerate the performance of conv2d since it transpose filter ahead");
 
 /**
  * Apply CSE optimize pass in Dy2St

@@ -74,7 +74,7 @@ class SameStatusReshardFunction(ReshardFunction):
                     -1 not in dst_type.shape
                 ), "dynamic shape is not supported by pir-auto parallel yet."
                 recv_value = paddle._C_ops.recv_v2(
-                    dst_type.shape,
+                    dst_type._local_shape,
                     dst_type.dtype,
                     src_local_rank,
                     comm_group.id,

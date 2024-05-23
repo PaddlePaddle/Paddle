@@ -354,6 +354,8 @@ class GradientAccumulationInfo {
                                     bool sort_gradient,
                                     bool create_graph)
       : mapped_grad_var_(var.get()),
+        accumulator_(nullptr),
+        partial_grad_grads_(),
         sort_gradient_(sort_gradient),
         create_graph_(create_graph) {}
 
@@ -468,6 +470,7 @@ class ReadyGradVarInfoMap {
   };
 
  public:
+  ReadyGradVarInfoMap() : vars_(), target_vars_() {}
   void IncreaseRefCnt(const VariableWrapper *var) {
     ++(vars_[var].total_ref_cnt);
   }

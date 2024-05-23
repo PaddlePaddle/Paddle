@@ -37,8 +37,8 @@ SpmdInfo GatherInferSpmdBase(const DistMetaTensor& x,
   // index may be 0-d tensor, verify it specifically
   auto index_shape = common::vectorize(index.dims());
   int index_ndim = index_shape.size();
-  TensorDistAttr index_dist_attr_src = index.dist_attr();
-  std::vector<int64_t> index_dims_mapping_src =
+  const TensorDistAttr& index_dist_attr_src = index.dist_attr();
+  const std::vector<int64_t>& index_dims_mapping_src =
       index_dist_attr_src.dims_mapping();
   if (index_ndim == 0) {
     PADDLE_ENFORCE_EQ(index_dims_mapping_src.size(),
@@ -182,8 +182,8 @@ SpmdInfo GatherGradInferSpmd(const DistMetaTensor& x,
   EXTRACT_SHAPE_AND_DIST_ATTR(out_grad);
   auto index_shape = common::vectorize(index.dims());
   int index_ndim = index_shape.size();
-  TensorDistAttr index_dist_attr_src = index.dist_attr();
-  std::vector<int64_t> index_dims_mapping_src =
+  const TensorDistAttr& index_dist_attr_src = index.dist_attr();
+  const std::vector<int64_t>& index_dims_mapping_src =
       index_dist_attr_src.dims_mapping();
   int axis_ = axis.to<int32_t>();
 

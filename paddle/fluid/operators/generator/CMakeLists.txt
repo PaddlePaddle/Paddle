@@ -2,20 +2,22 @@
 include(operators)
 
 # set yaml file path
-set(op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/ops.yaml)
-set(legacy_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_ops.yaml)
-set(bw_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/backward.yaml)
-set(static_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/static_ops.yaml)
-set(fused_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/fused_ops.yaml)
+set(op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/ops.yaml)
+set(legacy_op_yaml_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/inconsistent/dygraph_ops.yaml)
+set(bw_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/backward.yaml)
+set(static_op_yaml_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/legacy/static_ops.yaml)
+set(fused_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/fused_ops.yaml)
 set(legacy_bw_op_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_backward.yaml)
-set(sparse_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_ops.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/inconsistent/dygraph_backward.yaml)
+set(sparse_op_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/sparse_ops.yaml)
 set(sparse_bw_op_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_backward.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/sparse_backward.yaml)
 set(static_bw_op_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/static_backward.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/legacy/static_backward.yaml)
 set(fused_bw_op_yaml_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/fused_backward.yaml)
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/fused_backward.yaml)
 
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
@@ -64,8 +66,7 @@ install_py_pyyaml()
 install_py_jinja2()
 
 # parse ops
-set(parsed_op_dir
-    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops)
+set(parsed_op_dir ${CMAKE_BINARY_DIR}/paddle/phi/ops/yaml)
 set(generated_op_path_1
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_op1.cc)
 set(generated_op_path_2
@@ -110,46 +111,35 @@ message(
 
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
-  COMMAND ${CMAKE_COMMAND} -E make_directory
-          ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}/inconsistent
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}/legacy
   COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${op_yaml_file}
-          --output_path ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/ops.parsed.yaml
-  COMMAND
-    ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${legacy_op_yaml_file}
-    --output_path ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/legacy_ops.parsed.yaml
-  COMMAND
-    ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${bw_op_yaml_file}
-    --output_path
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/backward_ops.parsed.yaml --backward
+          --output_path ${parsed_op_dir}/ops.parsed.yaml
+  COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${legacy_op_yaml_file}
+          --output_path ${parsed_op_dir}/inconsistent/dygraph_ops.parsed.yaml
+  COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${bw_op_yaml_file}
+          --output_path ${parsed_op_dir}/backward.parsed.yaml --backward
   COMMAND
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${legacy_bw_op_yaml_file}
-    --output_path
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/legacy_backward_ops.parsed.yaml
+    --output_path ${parsed_op_dir}/inconsistent/dygraph_backward.parsed.yaml
     --backward
-  COMMAND
-    ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${static_op_yaml_file}
-    --output_path ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/static_ops.parsed.yaml
-  COMMAND
-    ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${fused_op_yaml_file}
-    --output_path ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/fused_ops.parsed.yaml
-  COMMAND
-    ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${sparse_op_yaml_file}
-    --output_path ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/sparse_ops.parsed.yaml
+  COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${static_op_yaml_file}
+          --output_path ${parsed_op_dir}/legacy/static_ops.parsed.yaml
+  COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${fused_op_yaml_file}
+          --output_path ${parsed_op_dir}/fused_ops.parsed.yaml
+  COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${sparse_op_yaml_file}
+          --output_path ${parsed_op_dir}/sparse_ops.parsed.yaml
   COMMAND
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${sparse_bw_op_yaml_file}
-    --output_path
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/sparse_backward.parsed.yaml
-    --backward
+    --output_path ${parsed_op_dir}/sparse_backward.parsed.yaml --backward
   COMMAND
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${static_bw_op_yaml_file}
-    --output_path
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/static_backward.parsed.yaml
-    --backward
+    --output_path ${parsed_op_dir}/legacy/static_backward.parsed.yaml --backward
   COMMAND
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${fused_bw_op_yaml_file}
-    --output_path
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/fused_backward.parsed.yaml
-    --backward RESULTS_VARIABLE _results)
+    --output_path ${parsed_op_dir}/fused_backward.parsed.yaml --backward
+    RESULTS_VARIABLE _results)
 foreach(_result in ${_results})
   if(${_result})
     message(FATAL_ERROR "op yaml parsing failed, exiting.")
@@ -159,16 +149,15 @@ endforeach()
 # validation of op yamls
 message("validate op yaml:
 - ${parsed_op_dir}/ops.parsed.yaml
-- ${parsed_op_dir}/backward_ops.parsed.yaml")
+- ${parsed_op_dir}/backward.parsed.yaml")
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/ops.parsed.yaml
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/legacy_ops.parsed.yaml
-    --backward_yaml_paths
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/backward_ops.parsed.yaml
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/legacy_backward_ops.parsed.yaml
+    ${parsed_op_dir}/ops.parsed.yaml
+    ${parsed_op_dir}/inconsistent/dygraph_ops.parsed.yaml --backward_yaml_paths
+    ${parsed_op_dir}/backward.parsed.yaml
+    ${parsed_op_dir}/inconsistent/dygraph_backward.parsed.yaml
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "ops validation failed, exiting.")
@@ -178,9 +167,8 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/static_ops.parsed.yaml
-    --backward_yaml_paths
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/static_backward.parsed.yaml
+    ${parsed_op_dir}/legacy/static_ops.parsed.yaml --backward_yaml_paths
+    ${parsed_op_dir}/legacy/static_backward.parsed.yaml
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "static ops validation failed, exiting.")
@@ -190,9 +178,8 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/fused_ops.parsed.yaml
-    --backward_yaml_paths
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/fused_backward.parsed.yaml
+    ${parsed_op_dir}/fused_ops.parsed.yaml --backward_yaml_paths
+    ${parsed_op_dir}/fused_backward.parsed.yaml
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "fused ops validation failed, exiting.")
@@ -202,9 +189,8 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} cross_validate.py --forward_yaml_paths
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/sparse_ops.parsed.yaml
-    --backward_yaml_paths
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/sparse_backward.parsed.yaml
+    ${parsed_op_dir}/sparse_ops.parsed.yaml --backward_yaml_paths
+    ${parsed_op_dir}/sparse_backward.parsed.yaml
   RESULT_VARIABLE _result)
 if(${_result})
   message(FATAL_ERROR "sparse ops validation failed, exiting.")
@@ -219,11 +205,10 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} generate_op.py --ops_yaml_path
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/ops.parsed.yaml --backward_yaml_path
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/backward_ops.parsed.yaml
-    --op_version_yaml_path
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_version.yaml
-    --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml
+    ${parsed_op_dir}/ops.parsed.yaml --backward_yaml_path
+    ${parsed_op_dir}/backward.parsed.yaml --op_version_yaml_path
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_version.yaml
+    --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml
     --output_op_path "${generated_op_path_1}.tmp" "${generated_op_path_2}.tmp"
     "${generated_op_path_3}.tmp" "${generated_op_path_4}.tmp"
     --output_arg_map_path "${generated_argument_mapping_path}.tmp"
@@ -236,12 +221,10 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} generate_op.py --ops_yaml_path
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/static_ops.parsed.yaml
-    --backward_yaml_path
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/static_backward.parsed.yaml
-    --op_version_yaml_path
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_version.yaml
-    --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml
+    ${parsed_op_dir}/legacy/static_ops.parsed.yaml --backward_yaml_path
+    ${parsed_op_dir}/legacy/static_backward.parsed.yaml --op_version_yaml_path
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_version.yaml
+    --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml
     --output_op_path "${generated_static_op_path}.tmp" --output_arg_map_path
     "${generated_static_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result)
@@ -253,12 +236,10 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} generate_op.py --ops_yaml_path
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/fused_ops.parsed.yaml
-    --backward_yaml_path
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/fused_backward.parsed.yaml
-    --op_version_yaml_path
-    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_version.yaml
-    --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml
+    ${parsed_op_dir}/fused_ops.parsed.yaml --backward_yaml_path
+    ${parsed_op_dir}/fused_backward.parsed.yaml --op_version_yaml_path
+    ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_version.yaml
+    --op_compat_yaml_path ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml
     --output_op_path "${generated_fused_op_path}.tmp" --output_arg_map_path
     "${generated_fused_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result)
@@ -270,10 +251,9 @@ execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND
     ${PYTHON_EXECUTABLE} generate_sparse_op.py --ops_yaml_path
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/sparse_ops.parsed.yaml
-    --backward_ops_yaml_path
-    ${CMAKE_CURRENT_BINARY_DIR}/parsed_ops/sparse_backward.parsed.yaml
-    --output_op_path "${generated_sparse_ops_path}.tmp" --output_arg_map_path
+    ${parsed_op_dir}/sparse_ops.parsed.yaml --backward_ops_yaml_path
+    ${parsed_op_dir}/sparse_backward.parsed.yaml --output_op_path
+    "${generated_sparse_ops_path}.tmp" --output_arg_map_path
     "${generated_sparse_argument_mapping_path}.tmp"
   RESULT_VARIABLE _result)
 if(${_result})
@@ -326,7 +306,7 @@ endif()
 # op extra info file
 set(ops_extra_info_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator/ops_extra_info_gen.py)
-set(op_compat_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
+set(op_compat_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml)
 set(ops_extra_info_file
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.cc)
 
