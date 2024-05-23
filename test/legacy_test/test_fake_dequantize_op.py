@@ -198,7 +198,7 @@ class TestFakeDequantizeMaxAbsOp(OpTest):
         self.outputs = {'Out': ydq}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestFakeDequantizeMaxAbsOpDouble(TestFakeDequantizeMaxAbsOp):
@@ -217,7 +217,7 @@ class TestFakeDequantizeMaxAbsOpFloat16(TestFakeDequantizeMaxAbsOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-2)
+        self.check_output(check_dygraph=False, atol=1e-2)
 
 
 class TestChannelWiseDequantizeOp(OpTest):

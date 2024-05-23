@@ -1131,6 +1131,15 @@
     data_type : x
   backward : fake_channel_wise_quantize_dequantize_abs_max_grad
 
+- op : fake_dequantize_max_abs
+  args : (Tensor x, Tensor scale, float max_range)
+  output : Tensor(out)
+  infer_meta :
+    func : FakeDequantizeMaxAbsInferMeta
+  kernel :
+    func : fake_dequantize_max_abs
+    data_type : x
+
 - op : fake_quantize_abs_max
   args : (Tensor x, int bit_length = 8, int round_type = 1)
   output : Tensor(out), Tensor(out_scale)
