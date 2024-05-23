@@ -40,6 +40,7 @@ sys.path.append(
 VJPS_BLACK_LIST = [
     'reshape_grad',
     'add_n_grad',
+    'fused_attention_grad',
 ]
 
 BACKENDS_BLACK_LIST = [
