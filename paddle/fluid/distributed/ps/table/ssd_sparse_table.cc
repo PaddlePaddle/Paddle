@@ -2615,8 +2615,8 @@ int32_t SSDSparseTable::LoadWithString(
     char* end = nullptr;
     int local_shard_id = i % _avg_local_shard_num;
     auto& shard = _local_shards[local_shard_id];
-    float data_buffer[FLAGS_pserver_load_batch_size *
-                      feature_value_size];  // NOLINT
+    float data_buffer[FLAGS_pserver_load_batch_size *  // NOLINT
+                      feature_value_size];
     float* data_buffer_ptr = data_buffer;
     uint64_t mem_count = 0;
     uint64_t ssd_count = 0;
