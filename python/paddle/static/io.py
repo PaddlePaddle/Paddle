@@ -1038,7 +1038,7 @@ def save_vars(
 
     """
     if in_pir_mode():
-        return save_vars_pir(dirname, main_program, vars, predicate, filename)
+        return save_vars_pir(dirname, main_program, vars, filename)
 
     save_to_memory = False
     if dirname is None and filename is None:
@@ -1206,9 +1206,7 @@ def load_vars(
 
     """
     if in_pir_mode():
-        return load_vars_pir(
-            executor, dirname, main_program, vars, predicate, filename
-        )
+        return load_vars_pir(executor, dirname, main_program, vars, filename)
 
     vars_from_memory = False
     if dirname is not None:

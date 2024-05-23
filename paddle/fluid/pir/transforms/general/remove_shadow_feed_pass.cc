@@ -68,7 +68,8 @@ class RemoveShadowFeedPattern
       : pir::OpRewritePattern<paddle::dialect::PhiKernelOp>::OpRewritePattern(
             context),
         place_(place),
-        scope_(scope) {
+        scope_(scope),
+        kwargs_map_() {
     for (auto &[name, value] : block->kwargs()) {
       kwargs_map_[value] = name;
     }

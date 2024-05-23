@@ -31,6 +31,7 @@ void FusedMultiTransformerInferMeta(
     const paddle::optional<std::vector<const MetaTensor*>>& cache_kvs,
     const paddle::optional<std::vector<const MetaTensor*>>& pre_caches,
     const MetaTensor& rotary_tensor,
+    const MetaTensor& beam_offset,
     const MetaTensor& time_step,
     const MetaTensor& seq_lengths,
     const MetaTensor& src_mask,
@@ -44,6 +45,7 @@ void FusedMultiTransformerInferMeta(
     const paddle::optional<std::vector<const MetaTensor*>>& ffn2_biases,
     bool pre_layer_norm,
     float epsilon,
+    float residual_alpha,
     float dropout_rate,
     int rotary_emb_dims,
     bool is_test,
@@ -51,6 +53,9 @@ void FusedMultiTransformerInferMeta(
     const std::string& act_method,
     bool trans_qkvw,
     int ring_id,
+    const std::string& norm_type,
+    bool use_neox_rotary_style,
+    int gqa_group_size,
     std::vector<MetaTensor*> cache_kv_outs,
     MetaTensor* out);
 
@@ -77,6 +82,12 @@ void GroupNormalizeSiluXPUInferMeta(const MetaTensor& x,
                                     float epsilon,
                                     MetaTensor* out);
 
+void BlhaGetMaxLenInferMeta(const MetaTensor& seq_lens_encoder,
+                            const MetaTensor& seq_lens_decoder,
+                            const MetaTensor& batch_size,
+                            MetaTensor* max_enc_len_this_time,
+                            MetaTensor* max_dec_len_this_time);
+
 void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const MetaTensor& key_cache,
                                       const MetaTensor& value_cache,
@@ -101,6 +112,8 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const MetaTensor& qkv_bias,
                                       const MetaTensor& out_shift,
                                       const MetaTensor& out_smooth,
+                                      const MetaTensor& max_enc_len_this_time,
+                                      const MetaTensor& max_dec_len_this_time,
                                       int max_seq_len,
                                       int block_size,
                                       bool use_neox_style,
@@ -444,14 +457,14 @@ void FusedFeedForwardGradInferMeta(const MetaTensor& out_grad,
                                    bool add_residual,
                                    int ring_id,
                                    MetaTensor* x_grad,
-                                   MetaTensor* ln1_scale_grad,
-                                   MetaTensor* ln1_bias_grad,
-                                   MetaTensor* ln2_scale_grad,
-                                   MetaTensor* ln2_bias_grad,
                                    MetaTensor* linear1_weight_grad,
                                    MetaTensor* linear1_bias_grad,
                                    MetaTensor* linear2_weight_grad,
-                                   MetaTensor* linear2_bias_grad);
+                                   MetaTensor* linear2_bias_grad,
+                                   MetaTensor* ln1_scale_grad,
+                                   MetaTensor* ln1_bias_grad,
+                                   MetaTensor* ln2_scale_grad,
+                                   MetaTensor* ln2_bias_grad);
 
 void FusedGemmEpilogueInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
@@ -983,5 +996,14 @@ void FusionSeqpoolCvmConcatInferMeta(const std::vector<const MetaTensor*>& x,
                                      int axis,
                                      MetaTensor* out,
                                      MetaConfig config = MetaConfig());
+
+void FusedTokenPruneInferMeta(const MetaTensor& attn,
+                              const MetaTensor& x,
+                              const MetaTensor& mask,
+                              const MetaTensor& new_mask,
+                              bool keep_first_token,
+                              bool keep_order,
+                              MetaTensor* slimmed_x,
+                              MetaTensor* cls_inds);
 
 }  // namespace phi
