@@ -293,11 +293,16 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   }
 
   auto func_body = ir_sch->GetModule().GetExprs().at(0);
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  if (apply_pass) {
-    optim::OptimizeExprGPU(&(func_body));
-  }
+        if (apply_pass) {
+          optim::OptimizeExprGPU(&(func_body));
+        }
 #endif
+      });
   // 2.Prepare temp buffers
   poly::StageMap stages;
   auto temp_buffers =

@@ -193,7 +193,7 @@ ProgramProcessor::ProgramProcessor() = default;
 // write to file
 void WriteToFile(const std::string &file_path, const std::string &msg) {
   FILE *fp = fopen(file_path.c_str(), "w");
-  if (fp == NULL) {
+  if (fp == nullptr) {
     LOG(WARNING) << "open write file path=" << file_path << " failed";
     return;
   }

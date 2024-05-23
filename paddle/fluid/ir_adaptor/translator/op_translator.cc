@@ -90,8 +90,8 @@ constexpr char kTargetDialectPrefix[] = "pd_op.";  // NOLINT
 #ifdef PADDLE_WITH_DNNL
 constexpr char kOneDNNTargetDialectPrefix[] = "onednn_op.";  // NOLINT
 #endif
-constexpr char kCustomOpDialectPrefix[] = "custom_op.";
-constexpr char kEmptyVarName[] = "@EMPTY@";  // NOLINT
+constexpr char kCustomOpDialectPrefix[] = "custom_op.";  // NOLINT
+constexpr char kEmptyVarName[] = "@EMPTY@";              // NOLINT
 
 static const std::unordered_set<std::string> SpecialNonInplaceOps = {};
 

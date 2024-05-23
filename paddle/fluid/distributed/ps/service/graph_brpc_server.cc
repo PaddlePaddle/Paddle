@@ -43,7 +43,7 @@ int32_t GraphBrpcServer::Initialize() {
   }
   auto *service =
       CREATE_PSCORE_CLASS(PsBaseService, service_config.service_class());
-  if (service == NULL) {
+  if (service == nullptr) {
     LOG(ERROR) << "service is unregistered, service_name:"
                << service_config.service_class();
     return -1;
@@ -446,7 +446,7 @@ int32_t GraphBrpcService::graph_random_sample_nodes(
           type_id, idx_, size, buffer, actual_size) == 0) {
     cntl->response_attachment().append(buffer.get(), actual_size);
   } else {
-    cntl->response_attachment().append(NULL, 0);
+    cntl->response_attachment().append(nullptr, 0);
   }
 
   return 0;

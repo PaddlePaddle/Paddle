@@ -832,6 +832,13 @@
   extra :
     attrs : [float moving_rate = 0.9]
 
+- op : dequantize_log
+  inputs :
+    x : X
+    dict : Dict
+  outputs :
+    out : Out
+
 - op : det (determinant)
   backward : det_grad (determinant_grad)
   inputs :
@@ -1119,6 +1126,12 @@
     out : Out
     out_scale : OutScale
 
+- op : fake_dequantize_max_abs
+  inputs :
+    {x : X, scale : Scale}
+  outputs :
+    out : Out
+
 - op : fake_quantize_abs_max
   inputs :
     x : X
@@ -1127,12 +1140,23 @@
     out_scale : OutScale
 
 - op : fake_quantize_dequantize_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+  outputs :
+    out : Out
+    out_scale : OutScale
 
 - op : fake_quantize_dequantize_moving_average_abs_max
-  extra :
-    attrs : [int round_type = 1]
+  inputs :
+    x : X
+    in_scale : InScale
+    in_accum : InAccum
+    in_state : InState
+  outputs :
+    out : Out
+    out_scale : OutScale
+    out_state : OutState
+    out_accum : OutAccum
 
 - op : fake_quantize_moving_average_abs_max
   inputs :
@@ -3928,6 +3952,12 @@
   outputs:
     {u_out: U_out, v_out: V_out, encode_grad: EncodeGrad, grad_out: Grad_out, gather_buff: GatherBuff}
 
+- op: dgc
+  inputs:
+    {u : U, v : V, grad : Grad, param : Param}
+  outputs:
+    {u_out : U_out, v_out : V_out, encode_grad : EncodeGrad, grad_out : Grad_out, gather_buff : GatherBuff}
+
 - op: distribute_fpn_proposals
   inputs :
     {fpn_rois: FpnRois, rois_num: RoisNum}
@@ -3963,6 +3993,13 @@
 - op: fetch (fetch_v2)
   inputs: {x: X}
   outputs: {out: Out}
+
+- op: flatten2
+  backward: flatten2_grad
+  inputs:
+    x : X
+  outputs:
+    {out : Out, x_shape : XShape}
 
 - op: ftrl
   inputs:

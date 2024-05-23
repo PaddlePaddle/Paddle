@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/frontend/decomposer_registry.h"
 #include "paddle/cinn/frontend/syntax.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace decomposer {
@@ -25,9 +25,12 @@ struct BatchNormHelper {
                   const std::vector<int>& arg_param_shape,
                   std::string data_layout,
                   std::string bn_op_type) {
-    CHECK_EQ(arg_x_shape.size(), 4UL)
-        << "Only 4-D input tensor is supported, but get " << arg_x_shape.size()
-        << "-D input tensor.";
+    PADDLE_ENFORCE_EQ(arg_x_shape.size(),
+                      4UL,
+                      phi::errors::InvalidArgument(
+                          "Only 4-D input tensor is supported, but get %d",
+                          arg_x_shape.size(),
+                          "-D input tensor."));
 
     builder = net_builder;
     x_shape = arg_x_shape;
@@ -162,21 +165,34 @@ struct BatchNormHelper {
 
 void batch_norm_train(const Instruction& instr,
                       const DecomposerContext& context) {
-  CHECK_EQ(instr->inputs.size(), 5UL)
-      << "The number of the given inputs is not equal to the required for op "
-      << instr->op_type;
-  CHECK_EQ(instr->outputs.size(), 5UL)
-      << "The number of the given outputs is not equal to the required for op "
-      << instr->op_type;
+  PADDLE_ENFORCE_EQ(
+      instr->inputs.size(),
+      5UL,
+      phi::errors::InvalidArgument(
+          "The number of the given inputs is not equal to the required"));
+  PADDLE_ENFORCE_EQ(
+      instr->outputs.size(),
+      5UL,
+      phi::errors::InvalidArgument(
+          "The number of the given outputs is not equal to the required"));
 
   auto& x = instr->inputs[0];
   auto& scale = instr->inputs[1];
   auto& bias = instr->inputs[2];
   auto& moving_mean = instr->inputs[3];
   auto& moving_variance = instr->inputs[4];
-  CHECK_EQ(scale->type, bias->type);
-  CHECK_EQ(scale->type, moving_mean->type);
-  CHECK_EQ(scale->type, moving_variance->type);
+  PADDLE_ENFORCE_EQ(
+      scale->type == bias->type,
+      true,
+      phi::errors::InvalidArgument("The type of scale and bias is not equal"));
+  PADDLE_ENFORCE_EQ(scale->type == moving_mean->type,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The type of scale and moving_mean is not equal"));
+  PADDLE_ENFORCE_EQ(scale->type == moving_variance->type,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The type of scale and moving_variance is not equal"));
 
   float epsilon = instr.GetAttrs<float>("epsilon");
   float momentum = instr.GetAttrs<float>("momentum");
@@ -219,21 +235,34 @@ void batch_norm_train(const Instruction& instr,
 
 void batch_norm_grad(const Instruction& instr,
                      const DecomposerContext& context) {
-  CHECK_EQ(instr->inputs.size(), 5UL)
-      << " The number of the given inputs is not equal to the required "
-      << instr->op_type;
-  CHECK_EQ(instr->outputs.size(), 3UL)
-      << " The number of the given outputs is not equal to the required"
-      << instr->op_type;
+  PADDLE_ENFORCE_EQ(
+      instr->inputs.size(),
+      5UL,
+      phi::errors::InvalidArgument(
+          "The number of the given inputs is not equal to the required"));
+  PADDLE_ENFORCE_EQ(
+      instr->outputs.size(),
+      3UL,
+      phi::errors::InvalidArgument(
+          "The number of the given outputs is not equal to the required"));
 
   auto& y_grad = instr->inputs[0];
   auto& x = instr->inputs[1];
   auto& scale = instr->inputs[2];
   auto& save_mean = instr->inputs[3];
   auto& save_variance = instr->inputs[4];
-  CHECK_EQ(y_grad->type, x->type);
-  CHECK_EQ(scale->type, save_mean->type);
-  CHECK_EQ(scale->type, save_variance->type);
+  PADDLE_ENFORCE_EQ(
+      y_grad->type == x->type,
+      true,
+      phi::errors::InvalidArgument("The type of y_grad and x is not equal"));
+  PADDLE_ENFORCE_EQ(scale->type == save_mean->type,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The type of scale and save_mean is not equal"));
+  PADDLE_ENFORCE_EQ(scale->type == save_variance->type,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The type of scale and save_variance is not equal"));
 
   auto epsilon = instr.GetAttrs<float>("epsilon");
   auto layout = instr.GetAttrs<std::string>("data_layout");
@@ -304,21 +333,35 @@ void batch_norm_grad(const Instruction& instr,
 }
 
 void batch_norm(const Instruction& instr, const DecomposerContext& context) {
-  CHECK_EQ(instr->inputs.size(), 5UL)
-      << "The number of the given inputs is not equal to the required for op "
-      << instr->op_type;
-  CHECK_EQ(instr->outputs.size(), 1UL)
-      << "The number of the given outputs is not equal to the required for op "
-      << instr->op_type;
+  PADDLE_ENFORCE_EQ(
+      instr->inputs.size(),
+      5UL,
+      phi::errors::InvalidArgument(
+          "The number of the given inputs is not equal to the required"));
+
+  PADDLE_ENFORCE_EQ(
+      instr->outputs.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The number of the given outputs is not equal to the required"));
 
   auto& x = instr->inputs[0];
   auto& scale = instr->inputs[1];
   auto& bias = instr->inputs[2];
   auto& moving_mean = instr->inputs[3];
   auto& moving_variance = instr->inputs[4];
-  CHECK_EQ(scale->type, bias->type);
-  CHECK_EQ(scale->type, moving_mean->type);
-  CHECK_EQ(scale->type, moving_variance->type);
+  PADDLE_ENFORCE_EQ(
+      scale->type == bias->type,
+      true,
+      phi::errors::InvalidArgument("The type of scale and bias is not equal"));
+  PADDLE_ENFORCE_EQ(scale->type == moving_mean->type,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The type of scale and moving_mean is not equal"));
+  PADDLE_ENFORCE_EQ(scale->type == moving_variance->type,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The type of scale and moving_variance is not equal"));
 
   float epsilon = instr.GetAttrs<float>("epsilon");
   float momentum = instr.GetAttrs<float>("momentum");

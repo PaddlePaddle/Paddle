@@ -32,7 +32,7 @@
 #include "paddle/cinn/hlir/framework/tensor.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::frontend {
 
 using CPUKernelFunc = std::function<void(const std::vector<size_t>& lengths,
@@ -83,7 +83,11 @@ void CopyFromVector(const std::vector<T>& vec,
   auto* data = tensor->mutable_data<T>(target);
 
   size_t numel = tensor->shape().numel();
-  CHECK_EQ(vec.size(), numel);
+  PADDLE_ENFORCE_EQ(vec.size(),
+                    numel,
+                    phi::errors::InvalidArgument(
+                        "The size of the input vector should be equal to the "
+                        "number of elements in the tensor."));
 
   if (target == cinn::common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
@@ -127,7 +131,11 @@ void CheckOutput(const std::vector<T>& actual,
                  const std::vector<T>& expect,
                  float atol = 1e-8,
                  float rtol = 1e-5) {
-  CHECK_EQ(actual.size(), expect.size());
+  PADDLE_ENFORCE_EQ(actual.size(),
+                    expect.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of the actual result should be equal to the "
+                        "size of the expected result."));
 
   auto allclose = [](T a, T e, float atol, float rtol) {
     return abs(a - e) <= (atol + rtol * abs(e));
@@ -159,7 +167,11 @@ void CheckOutput(const std::vector<T>& actual,
             << " (expect), maximum_relative_diff=" << max_diff
             << " (absolute_diff=" << abs((actual[offset] - expect[offset]))
             << ")";
-  CHECK_EQ(num_diffs, 0);
+  PADDLE_ENFORCE_EQ(
+      num_diffs,
+      0,
+      phi::errors::InvalidArgument("The actual result is different from the "
+                                   "expected result, please check the log."));
 }
 
 template <typename T>
@@ -229,8 +241,10 @@ void RunAndCheckShape(NetBuilder* builder,
 
   for (size_t i = 0; i < output_names.size(); ++i) {
     auto tensor = scope->GetTensor(output_names[i]);
-    CHECK_EQ(tensor->shape().data() == output_shapes[i], true)
-        << "The " << i << "-th shape is expected to be " << output_shapes[i];
+    PADDLE_ENFORCE_EQ(tensor->shape().data() == output_shapes[i],
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The shape of the output tensor is not correct"));
     if (output_vecs) {
       std::vector<T> vec;
       CopyToVector<T>(tensor, &vec);

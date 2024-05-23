@@ -25,7 +25,8 @@ namespace paddle {
 namespace framework {
 
 InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
-    const std::vector<Instruction>& vec_instruction) {
+    const std::vector<Instruction>& vec_instruction)
+    : queue_(nullptr), gc_event_(), events_() {
   WorkQueueOptions options(/*name*/ "GarbageCollector",
                            /*num_threads*/ 1,
                            /*allow_spinning*/ true,
@@ -38,7 +39,8 @@ InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
 }
 
 InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
-    const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction) {
+    const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction)
+    : queue_(nullptr), gc_event_(), events_() {
   WorkQueueOptions options(/*name*/ "GarbageCollector",
                            /*num_threads*/ 1,
                            /*allow_spinning*/ true,
