@@ -22,6 +22,7 @@ from .nn import (  # noqa: F401
     fused_bn_add_act,
     fused_embedding_seq_pool,
     fused_seqpool_cvm,
+    inference,
     multiclass_nms2,
     partial_concat,
     partial_sum,

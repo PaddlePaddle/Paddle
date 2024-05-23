@@ -34,6 +34,104 @@ from paddle.base.param_attr import ParamAttr
 __all__ = []
 
 
+def inference(with_trt=True, save_model_dir="/root/.cache/"):
+    def decorator(func=None):
+        import inspect
+        import textwrap
+
+        py_script = textwrap.dedent(inspect.getsource(func))
+        py_script = py_script[py_script.find("def") :]
+        py_script = py_script.replace(func.__name__, 'haha2')
+        predictors = [None]
+
+        def wrapper(*args, **kwargs):
+            import paddle
+
+            if predictors[0] is not None:
+                input_lists = []
+                for i in range(len(args)):
+                    if i > 0:
+                        input_lists.append(args[i])
+                return predictors[0].run(input_lists)
+
+            import os
+
+            from paddle.static import InputSpec
+
+            save_path = save_model_dir + func.__name__ + "/infer"
+            if not os.path.exists(save_path + ".pdmodel") or True:
+                # we need do ds2.
+                signature = inspect.signature(func)
+                arg_names = [v.name for v in signature.parameters.values()]
+                input_specs = []
+                for i in range(len(args)):
+                    if i == 0:
+                        assert isinstance(args[i], paddle.nn.Layer)
+                    else:
+                        assert isinstance(args[i], paddle.Tensor)
+                        input_specs.append(
+                            InputSpec.from_tensor(args[i], name=arg_names[i])
+                        )
+                assert not hasattr(
+                    args[0], 'haha2'
+                ), "args[0] must not have haha2 attribute"
+
+                exec(
+                    py_script
+                    + "\nargs[0].haha2 = types.MethodType(haha2, args[0])"
+                )
+                model = paddle.jit.to_static(
+                    args[0].haha2, input_spec=input_specs
+                )
+                paddle.jit.save(model, save_path)
+                del args[0].haha2
+
+            model_dir = save_model_dir + func.__name__ + "/"
+            model_file = model_dir + "infer.pdmodel"
+            params_file = model_dir + "infer.pdiparams"
+            from paddle.inference import Config, PrecisionType, create_predictor
+
+            config = Config(model_file, params_file)
+            config.enable_memory_optim()
+            gpu_precision = PrecisionType.Float32
+            config.enable_use_gpu(1000, 0, gpu_precision)
+
+            if with_trt:
+                dynamic_names = []
+                min_input_shape = {}
+                max_input_shape = {}
+                opt_input_shape = {}
+                for i in range(len(args)):
+                    if i > 0:
+                        min_input_shape[arg_names[i]] = args[i].shape
+                        max_input_shape[arg_names[i]] = args[i].shape
+                        opt_input_shape[arg_names[i]] = args[i].shape
+
+                config.set_trt_dynamic_shape_info(
+                    min_input_shape, max_input_shape, opt_input_shape
+                )
+                config.enable_tensorrt_engine(
+                    workspace_size=1 << 30,
+                    max_batch_size=1,
+                    min_subgraph_size=3,
+                    precision_mode=PrecisionType.Bfloat16,
+                    use_static=True,
+                    use_calib_mode=False,
+                )
+
+            predictors[0] = create_predictor(config)
+
+            input_lists = []
+            for i in range(len(args)):
+                if i > 0:
+                    input_lists.append(args[i])
+            return predictors[0].run(input_lists)
+
+        return wrapper
+
+    return decorator
+
+
 def fused_embedding_seq_pool(
     input,
     size,
