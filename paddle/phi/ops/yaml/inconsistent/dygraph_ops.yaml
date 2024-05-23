@@ -211,18 +211,6 @@
     func : floor_divide
   inplace: (x -> out)
 
-- op : full
-  args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
-  output: Tensor(out)
-  infer_meta :
-    func : CreateInferMeta
-    param : [shape, dtype]
-  kernel :
-    func : full
-    param : [shape, value, dtype]
-    data_type : dtype
-    backend : place
-
 - op : full_with_tensor
   args : (Tensor value, IntArray shape, DataType dtype=DataType::FLOAT32)
   output: Tensor(out)

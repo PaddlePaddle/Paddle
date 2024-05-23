@@ -1646,6 +1646,19 @@
     func : frobenius_norm
   backward : frobenius_norm_grad
 
+- op : full
+  args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  output: Tensor(out)
+  infer_meta :
+    func : CreateInferMeta
+    param : [shape, dtype]
+  kernel :
+    func : full
+    param : [shape, value, dtype]
+    data_type : dtype
+    backend : place
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : full_
   args : (Tensor output, IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output : Tensor(out)
