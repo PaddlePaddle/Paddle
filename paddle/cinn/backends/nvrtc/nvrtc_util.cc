@@ -17,6 +17,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <nvrtc.h>
+#include <pybind11/pybind11.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -37,6 +38,17 @@ PD_DECLARE_bool(cinn_nvrtc_cubin_with_fmad);
 namespace cinn {
 namespace backends {
 namespace nvrtc {
+
+static std::string GetPythonSitePackagePath() {
+  pybind11::module site = pybind11::module::import("site");
+  pybind11::object path_obj = site.attr("getsitepackages")();
+  auto path_list = pybind11::cast<pybind11::list>(path_obj);
+  PADDLE_ENFORCE_GT(
+      path_list.size(),
+      0,
+      ::common::errors::NotFound("site.getsitepackages() returns empty."));
+  return pybind11::cast<std::string>(path_list[0]);
+}
 
 std::string Compiler::operator()(const std::string& code,
                                  bool include_headers) {
@@ -67,11 +79,20 @@ std::vector<std::string> Compiler::FindCUDAIncludePaths() {
     cuda_include_path += delimiter + "include";
     return {cuda_include_path};
   }
+  const auto& TryLocateCudaIncludePath = [](const std::string& path) -> bool {
+    struct stat st;
+    return stat(path.c_str(), &st) == 0;
+  };
 
 #if defined(__linux__)
-  struct stat st;
+  cuda_include_path =
+      GetPythonSitePackagePath() + delimiter + "nvidia/cuda_runtime/include";
+  if (TryLocateCudaIncludePath(cuda_include_path)) {
+    return {cuda_include_path};
+  }
+
   cuda_include_path = "/usr/local/cuda/include";
-  if (stat(cuda_include_path.c_str(), &st) == 0) {
+  if (TryLocateCudaIncludePath(cuda_include_path)) {
     return {cuda_include_path};
   }
 #endif
@@ -123,6 +144,7 @@ std::string Compiler::CompileCudaSource(const std::string& code,
     auto cinn_headers = FindCINNRuntimeIncludePaths();
     std::vector<std::string> include_paths;
     for (auto& header : cuda_headers) {
+      VLOG(5) << "add include-path: " << header;
       include_paths.push_back("--include-path=" + header);
     }
     for (auto& header : cinn_headers) {
