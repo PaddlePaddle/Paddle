@@ -26,12 +26,10 @@
 
 namespace phi {
 
-#if NOT defined(rand_r)
-int rand_r(unsigned int* s) {
+int __attribute__((weak)) rand_r(unsigned int* s) {
   srand(*s);
   return rand();
 }
-#endif
 
 bool should_use_term(phi::math::bloomfilter* _filter,
                      phi::math::bloomfilter* _black_filter,
