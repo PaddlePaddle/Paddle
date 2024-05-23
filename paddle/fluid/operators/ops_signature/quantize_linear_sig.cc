@@ -18,7 +18,9 @@ namespace phi {
 
 KernelSignature QuantizeLinearOpArgumentMapping(
     const ArgumentMappingContext& ctx UNUSED) {
-  bool is_test = paddle::any_cast<bool>(ctx.Attr("is_test"));
+  bool is_test = ctx.HasAttr("is_test")
+                     ? paddle::any_cast<bool>(ctx.Attr("is_test"))
+                     : true;
   if (is_test) {
     return KernelSignature(
         "quantize_linear_deprecated_infer",
