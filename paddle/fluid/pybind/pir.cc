@@ -53,7 +53,6 @@
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
-#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/attribute.h"
@@ -1759,8 +1758,6 @@ std::unordered_map<::pir::Value, std::string> GetNameMap(
 
 std::shared_ptr<Program> ApplyFusedBnAddActPass(
     std::shared_ptr<Program> program) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#if defined(PADDLE_WITH_HIP) || CUDNN_VERSION_MIN(7, 4, 1)
   pir::PassManager pm(pir::IrContext::Instance(), 3);
   pm.AddPass(pir::CreateFusedBnAddActPass());
   pm.Run(program.get());
@@ -1768,8 +1765,6 @@ std::shared_ptr<Program> ApplyFusedBnAddActPass(
     std::cout << "IR After FusedBnAddActPass -------------------" << std::endl;
     std::cout << *program << std::endl;
   }
-#endif
-#endif
   return program;
 }
 
