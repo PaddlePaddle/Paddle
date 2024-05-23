@@ -38,7 +38,7 @@ trainerMap g_trainer_map;
   class __Registerer_##trainer_class {                          \
    public:                                                      \
     __Registerer_##trainer_class() {                            \
-      g_trainer_map[trainer_class] = &Creator_##trainer_class; \
+      g_trainer_map[#trainer_class] = &Creator_##trainer_class; \
     }                                                           \
   };                                                            \
   __Registerer_##trainer_class g_registerer_##trainer_class;    \
