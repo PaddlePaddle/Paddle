@@ -30,8 +30,8 @@ std::shared_ptr<FILE> shell_fopen(const std::string& path,
   if (shell_verbose()) {
     LOG(INFO) << "Opening file[" << path << "] with mode[" << mode << "]";
   }
-  FILE* fp;
-  if (!(fp = fopen(path.c_str(), mode.c_str()))) {
+  FILE* fp = fopen(path.c_str(), mode.c_str());
+  if (!fp) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Failed to open file, path[%s], mode[%s].", path, mode));
   }
@@ -61,8 +61,8 @@ static int close_open_fds_internal() {
     char d_name[256];             // NOLINT
   };
 
-  int dir_fd = -1;
-  if ((dir_fd = open("/proc/self/fd", O_RDONLY)) < 0) {
+  int dir_fd = open("/proc/self/fd", O_RDONLY);
+  if (dir_fd < 0) {
     PADDLE_THROW(platform::errors::Unavailable("Failed to open proc/self/fd."));
     return -1;
   }
@@ -213,8 +213,8 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
 
   close(child_end);
 
-  FILE* fp = nullptr;
-  if ((fp = fdopen(parent_end, mode.c_str())) == nullptr) {
+  FILE* fp = fdopen(parent_end, mode.c_str());
+  if (fp == nullptr) {
     *err_no = -1;
     signal(SIGCHLD, old_handler);
     return nullptr;
@@ -255,8 +255,8 @@ static int shell_p2open_fork_internal(const char* real_cmd,
 #if defined(_WIN32) || defined(__APPLE__) || defined(PADDLE_ARM)
   return 0;
 #else
-  int child_pid = -1;
-  if ((child_pid = fork()) < 0) {
+  int child_pid = fork();
+  if (child_pid < 0) {
     return -1;
   }
 
