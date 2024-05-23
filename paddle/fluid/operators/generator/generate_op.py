@@ -632,7 +632,7 @@ def main(
 
     # exclude ops in specific yaml file
     if ops_exclude_yaml_path is not None:
-        with open(ops_exclude_yaml_path, "rt") as f:
+        with open(ops_exclude_yaml_path, "rt", encoding='utf-8') as f:
             exclude_ops = yaml.safe_load(f)
             exclude_ops = [op.rstrip('_') for op in exclude_ops]
         for op_name in exclude_ops:
@@ -640,7 +640,7 @@ def main(
                 del forward_op_dict[op_name]
         ops = [op for op in ops if op['name'] not in exclude_ops]
     if backward_exclude_yaml_path is not None:
-        with open(backward_exclude_yaml_path, "rt") as f:
+        with open(backward_exclude_yaml_path, "rt", encoding='utf-8') as f:
             exclude_backward_ops = yaml.safe_load(f)
             exclude_ops = [op.rstrip('_') for op in exclude_ops]
         for op_name in exclude_backward_ops:
