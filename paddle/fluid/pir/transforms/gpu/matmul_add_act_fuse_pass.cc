@@ -84,6 +84,12 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
           return y_dims.at(0) == 1 && y_dims.at(1) == w_dims.at(1);
         }
       } else {
+        // gemm_epilogue kernel requires gemm's N and K to be 8 aligned.
+        // K and N correspond to w_dims[0] and w_dims[1] respectively.
+        constexpr int cutlass_align = 8;
+        if (w_dims[0] % cutlass_align != 0 || w_dims[1] % cutlass_align != 0) {
+          return false;
+        }
         if (y_dims.size() == x_dims.size()) {
           if (y_dims.size() == 2) {
             return ((y_dims.at(0) == 1) || (y_dims.at(0) == x_dims.at(0))) &&
@@ -95,12 +101,6 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
             }
           }
           return y_dims.at(y_dims.size() - 1) == w_dims.at(1);
-        }
-        // gemm_epilogue kernel requires gemm's N and K to be 8 aligned.
-        // K and N correspond to w_dims[0] and w_dims[1] respectively.
-        constexpr int cutlass_align = 8;
-        if (w_dims[0] % cutlass_align != 0 || w_dims[1] % cutlass_align != 0) {
-          return false;
         }
       }
       return false;
