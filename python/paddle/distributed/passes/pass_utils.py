@@ -1149,3 +1149,9 @@ def split_matmul_grad_to_matmul(
     dist_context.set_op_dist_attr_for_program(matmul_op, matmul_grad_dist_attr)
 
     block._remove_op(matmul_grad_id, sync=False)
+
+
+def _split_and_replace_recv(types, sub_program_list):
+    # 将sub_program_list中一开始的recv_v2拆分出来独立成一个program，并在新 program 前插入一个 full 算子，再将原program的recv_v2替换为data
+    # 新的 program 的名字为原始 recv4_xxx
+    return types, sub_program_list
