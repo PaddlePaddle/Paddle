@@ -47,7 +47,12 @@ namespace internal {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class EigenGpuStreamDevice : public Eigen::StreamInterface {
  public:
-  EigenGpuStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
+  EigenGpuStreamDevice()
+      : stream_(nullptr),
+        allocator_(nullptr),
+        device_prop_(nullptr),
+        semaphore_(nullptr),
+        allocations_() {
     Eigen::initializeDeviceProp();
   }
   ~EigenGpuStreamDevice() override = default;
@@ -130,7 +135,9 @@ void CPUContextResource::InitCPUResource() {
   cpu_eigen_device_ = std::make_unique<Eigen::DefaultDevice>();
 }
 
-CPUContextResource::CPUContextResource() { InitCPUResource(); }
+CPUContextResource::CPUContextResource() : cpu_eigen_device_(nullptr) {
+  InitCPUResource();
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 GPUContextResource::GPUContextResource(const phi::Place& place, void* stream)
