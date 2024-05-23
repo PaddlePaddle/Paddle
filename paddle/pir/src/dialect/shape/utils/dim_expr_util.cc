@@ -958,17 +958,16 @@ struct FoldBroadcast {
   using dim_expr_type = Broadcast<DimExpr>;
 
   DimExpr Rewrite(const DimExpr& expr) {
-    const auto& [operands] = expr.Get<Broadcast<DimExpr>>();
-    List<DimExpr> ret_operands;
-    while (ret_operands->size() > 1) {
-      int smaller = SearchInversedPair(ret_operands);
+    auto [operands] = expr.Get<Broadcast<DimExpr>>();
+    while (operands->size() > 1) {
+      int smaller = SearchInversedPair(operands);
       if (smaller < 1) break;
-      ret_operands->erase(ret_operands->begin() + smaller);
+      operands->erase(operands->begin() + smaller);
     }
-    if (ret_operands->size() == 1) {
-      return ret_operands->at(0);
+    if (operands->size() == 1) {
+      return operands->at(0);
     } else {
-      return Broadcast<DimExpr>{ret_operands};
+      return Broadcast<DimExpr>{operands};
     }
   }
 
@@ -977,21 +976,24 @@ struct FoldBroadcast {
   // -1 if lhs < rhs
   int Compare(DimExpr lhs, DimExpr rhs) {
     DimExpr dim_expr_to_compare;
-    auto Comparer =
-        common::Overloaded{[&](const Mul<DimExpr>& mul) {
-                             for (const auto& expr : *mul.operands) {
-                               if (expr == dim_expr_to_compare) return true;
-                             }
-                             return false;
-                           },
-                           [&](const Add<DimExpr>& add) {
-                             for (const auto& expr : *add.operands) {
-                               if (expr.isa<Negative<DimExpr>>()) return false;
-                               if (expr == dim_expr_to_compare) return true;
-                             }
-                             return false;
-                           },
-                           [&](const auto& lhs) { return false; }};
+    auto Comparer = common::Overloaded{
+        [&](const Mul<DimExpr>& mul) {
+          for (const auto& expr : *mul.operands) {
+            if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
+              return false;
+            if (expr == dim_expr_to_compare) return true;
+          }
+          return false;
+        },
+        [&](const Add<DimExpr>& add) {
+          for (const auto& expr : *add.operands) {
+            if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
+              return false;
+            if (expr == dim_expr_to_compare) return true;
+          }
+          return false;
+        },
+        [&](const auto& lhs) { return false; }};
 
     dim_expr_to_compare = rhs;
     if (std::visit(Comparer, lhs.variant())) return 1;
