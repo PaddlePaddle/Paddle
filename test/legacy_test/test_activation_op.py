@@ -1295,8 +1295,8 @@ class TestTanhshrinkComplex64(TestActivation):
             ):
                 np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
                 x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
-                y = paddle.log(x)
-                x_expect = np.log(np_x)
+                y = paddle.tanhshrink(x)
+                x_expect = np.tanhshrink(np_x)
                 np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
