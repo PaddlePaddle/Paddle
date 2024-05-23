@@ -976,18 +976,20 @@ struct SimplifyBroadcast {
         [&](const Mul<DimExpr>& mul) {
           bool lhs_great_than_rhs = false;
           for (const auto& expr : *mul.operands) {
-            if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
+            if (expr == rhs)
+              lhs_great_than_rhs = true;
+            else if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
               return false;
-            if (expr == rhs) lhs_great_than_rhs = true;
           }
           return lhs_great_than_rhs;
         },
         [&](const Add<DimExpr>& add) {
           bool lhs_great_than_rhs = false;
           for (const auto& expr : *add.operands) {
-            if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
+            if (expr == rhs)
+              lhs_great_than_rhs = true;
+            else if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
               return false;
-            if (expr == rhs) lhs_great_than_rhs = true;
           }
           return lhs_great_than_rhs;
         },
