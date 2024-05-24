@@ -1289,6 +1289,59 @@ Tensor elu_decomp(const Tensor& x, const float alpha) {
   }
 }
 
+template <typename T>
+std::tuple<Tensor, Tensor> cross_entropy_with_softmax_decomp(
+    const Tensor& logits,
+    const Tensor& label,
+    bool soft_label,
+    bool use_softmax,
+    bool numeric_stable_mode,
+    int ignore_index,
+    int axis) {
+  Tensor softmax, loss;
+  const int rank = logits.dims().size();
+  const int axis_v = axis < 0 ? axis + rank : axis;  // calc_axis
+  int axis_dim = static_cast<int>(logits.dims()[axis_v]);
+  const int n = size_to_axis(axis_v, logits.shape());
+  const int d = size_from_axis(axis_v, logits.shape());
+
+  Tensor x = logits;
+  softmax = x;
+  if (use_softmax) {
+    softmax = softmax_decomp<T>(x, axis);
+    x = softmax;
+  }
+
+  Tensor x_2d, label_2d, out_2d;
+  x_2d = reshape<T>(x, {n, d});
+  label_2d = reshape<T>(label, {n, label.numel() / n});
+  const int64_t batch_size = static_cast<const int64_t>(x_2d.shape()[0]);
+  const int64_t num_classes = static_cast<const int64_t>(x_2d.shape()[1]);
+  const int64_t num_remain = num_classes / axis_dim;
+  std::vector<int64_t> new_shape = {batch_size, axis_dim, num_remain};
+
+  if (soft_label) {
+    out_2d = label_2d * log<T>(x_2d);
+    out_2d = reshape<T>(out_2d, new_shape);
+    out_2d = -sum<T>(out_2d, {1}, x.dtype(), false);
+  } else {
+    label_2d = reshape<T>(label, {n, 1, label.numel() / n});
+    if (label_2d.dtype() != DataType::INT64) {
+      label_2d = cast<T>(label_2d, DataType::INT64);
+    }
+    Tensor zeros = full<T>(label_2d.shape(), 0, x_2d.dtype());
+    Tensor ignore_index_tensor =
+        full<T>(label_2d.shape(), ignore_index, label_2d.dtype());
+    out_2d = reshape<T>(x_2d, new_shape);
+    out_2d = take_along_axis<T>(out_2d, label_2d, 1);
+    out_2d = where<T>(label_2d == ignore_index_tensor, zeros, -log<T>(out_2d));
+  }
+  std::vector<int64_t> loss_shape = logits.shape();
+  loss_shape[axis_v] = 1;
+  loss = reshape<T>(out_2d, loss_shape);
+  return std::make_tuple(softmax, loss);
+}
+
 }  // namespace details
 
 }  // namespace primitive
