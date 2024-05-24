@@ -606,8 +606,6 @@ class TestPrimSoftmaxWithCrossEntropy2(TestPrimTwo):
         self.x = np.random.uniform(0.1, 1.0, self.shape_x).astype(self.dtype_x)
         self.y = np.random.uniform(0.1, 1.0, self.shape_y).astype(self.dtype_y)
         self.y = self.y / np.sum(self.y, axis=-1, keepdims=True)
-        print(self.x.shape)
-        print(self.y.shape)
         self.net = softmax_with_cross_entropy_net2
         self.necessary_ops = "pd_op.c_softmax_with_cross_entropy"
         self.enable_cinn = False
