@@ -48,6 +48,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_bn_add_act_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -1733,7 +1734,7 @@ std::pair<std::shared_ptr<Program>, ValueMap> CloneProgram(
       std::make_pair(associated_array_key, associated_array_value));
 }
 
-void AppendShadowOutput(Program *forward_program,
+void AppendShadowOutput(Program *program,
                         const pir::Value &value,
                         const std::string &name,
                         size_t start_point) {
@@ -1744,16 +1745,16 @@ void AppendShadowOutput(Program *forward_program,
   };
   pir::Operation *operation =
       pir::Operation::Create({value}, attribute_map, {}, op_info);
-  auto position = forward_program->block()->begin();
+  auto position = program->block()->begin();
   std::advance(position, start_point);
-  if (position == forward_program->block()->end()) {
-    forward_program->block()->push_back(operation);
+  if (position == program->block()->end()) {
+    program->block()->push_back(operation);
   } else {
-    forward_program->block()->insert(position, operation);
+    program->block()->insert(position, operation);
   }
 }
 
-int AppendShadowOutputs(Program *forward_program,
+int AppendShadowOutputs(Program *program,
                         const std::vector<pir::Value> &outputs,
                         int start_point,
                         std::string name_prefix) {
@@ -1766,7 +1767,7 @@ int AppendShadowOutputs(Program *forward_program,
         shadow_output_name = GetValueName(value);
       }
       AppendShadowOutput(
-          forward_program, value, shadow_output_name, start_point + counter);
+          program, value, shadow_output_name, start_point + counter);
       counter += 1;
       added_value.insert(value);
     }
@@ -1810,6 +1811,18 @@ std::unordered_map<::pir::Value, std::string> GetNameMap(
     }
   }
   return value2name;
+}
+
+std::shared_ptr<Program> ApplyFusedBnAddActPass(
+    std::shared_ptr<Program> program) {
+  pir::PassManager pm(pir::IrContext::Instance(), 3);
+  pm.AddPass(pir::CreateFusedBnAddActPass());
+  pm.Run(program.get());
+  if (FLAGS_print_ir) {
+    std::cout << "IR After FusedBnAddActPass -------------------" << std::endl;
+    std::cout << *program << std::endl;
+  }
+  return program;
 }
 
 SplitedResult SplitForwardBackward(
@@ -2147,7 +2160,9 @@ void BindUtils(pybind11::module *m) {
   m->def("get_op_inplace_info", GetOpInplaceInfo);
   m->def("reset_shadow_output_name", ResetShadowOutputName);
   m->def("split_program", SplitForwardBackward);
+  m->def("apply_bn_add_act_pass", ApplyFusedBnAddActPass);
   m->def("append_shadow_outputs", AppendShadowOutputs);
+  m->def("append_shadow_output", AppendShadowOutput);
   m->def("fake_value", FakeValue);
   m->def("is_fake_value", IsFakeValue);
   m->def("get_current_insertion_point", []() -> PyInsertionPoint {
