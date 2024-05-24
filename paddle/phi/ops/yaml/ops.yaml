@@ -89,6 +89,7 @@
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_out)
   infer_meta :
     func : AdamInferMeta
+    spmd_rule : AdamInferSpmdDynamic
   kernel :
     func : adam {dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense},
            adam_dense_param_sparse_grad {dense, selected_rows, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense}
@@ -526,6 +527,7 @@
   infer_meta :
     func : CheckFiniteAndUnscaleInferMeta
     param : [x, scale]
+    spmd_rule : CheckFiniteAndUnscaleSpmd
   kernel :
     func : check_finite_and_unscale
     param : [x, scale]
@@ -3409,6 +3411,7 @@
   infer_meta :
     func : UpdateLossScalingInferMeta
     param : [x, found_infinite, prev_loss_scaling, in_good_steps, in_bad_steps]
+    spmd_rule : UpdateLossScalingSpmd
   kernel :
     func : update_loss_scaling
     data_type : x
