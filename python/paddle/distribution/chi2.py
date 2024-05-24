@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
+from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.framework import Variable
 from paddle.distribution.gamma import Gamma
+from paddle.framework import in_dynamic_mode
 
 __all__ = ["Chi2"]
 
@@ -36,9 +39,24 @@ class Chi2(Gamma):
     """
 
     def __init__(self, df):
-        if not isinstance(df, paddle.Tensor):
-            df = paddle.to_tensor(df)
-        super().__init__(0.5 * df, paddle.to_tensor(0.5))
+        if not in_dynamic_mode():
+            check_type(
+                df,
+                'df',
+                (float, Variable),
+                'Chi2',
+            )
+
+        # Get/convert concentration to tensor.
+        if self._validate_args(df):
+            self.concentration = 0.5 * df
+            self.dtype = convert_dtype(df.dtype)
+        else:
+            [self.concentration] = self._to_tensor(0.5 * df)
+            self.dtype = paddle.get_default_dtype()
+
+        self.rate = paddle.to_tensor(0.5)
+        super().__init__(self.concentration, self.rate)
 
     @property
     def df(self):
