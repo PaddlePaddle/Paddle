@@ -17,6 +17,8 @@
 #include "paddle/fluid/pir/serialize_deserialize/include/serialize_utils.h"
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 namespace pir {
 
@@ -55,7 +57,7 @@ Json ProgramWriter::WriteRegion(const pir::Region* region,
   return region_json;
 }
 
-Json ProgramWriter::WriteBlock(const pir::Block* block,
+Json ProgramWriter::WriteBlock(pir::Block* block,
                                const std::string& block_name) {
   Json block_json;
   block_json[ID] = block_name;
@@ -82,6 +84,22 @@ Json ProgramWriter::WriteBlock(const pir::Block* block,
 
   Json ops_json = Json::array();
   for (auto op : block->ops()) {
+    /* delete cf.stack_create / cf.tuple_push */
+    if (op->isa<pir::StackCreateOp>()) {
+      auto stack_op = op->dyn_cast<pir::StackCreateOp>();
+      if (stack_op.inlet().HasOneUse()) {
+        auto tuple_push_op = stack_op.tuple_push_op();
+        auto block_in = tuple_push_op->GetParent();
+        block_in->erase(*tuple_push_op);
+      }
+      if (stack_op.outlet().HasOneUse()) {
+        auto tuple_pop_op = stack_op.tuple_pop_op();
+        auto block_in = tuple_pop_op->GetParent();
+        block_in->erase(*tuple_pop_op);
+      }
+      block->erase(*op);
+      continue;
+    }
     auto op_json = WriteOp(*op);
     ops_json.emplace_back(op_json);
   }

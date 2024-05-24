@@ -335,10 +335,11 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
     auto r_type = yield_op.operand_source(operand_index)
                       .type()
                       .dyn_cast<pir::DenseTensorType>();
-
-    if (l_type.dims() != r_type.dims()) {
-      VLOG(4) << "while op input" << operand_index
-              << "has dynamic shape, origin shape is: " << l_type.dims()
+    VLOG(4) << "l_dim " << l_type.dims() << " r_dim " << r_type.dims();
+    if (l_type.dims().size() == r_type.dims().size() &&
+        l_type.dims() != r_type.dims()) {
+      VLOG(4) << "while op input " << operand_index
+              << " has dynamic shape, origin shape is: " << l_type.dims()
               << "new shape is: " << r_type.dims();
       auto dim = common::ComputeCompatibleDim(l_type.dims(), r_type.dims());
       auto new_type = pir::DenseTensorType::get(operation_->ir_context(),
