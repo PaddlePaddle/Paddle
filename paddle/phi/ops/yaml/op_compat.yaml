@@ -2791,7 +2791,7 @@
   attrs :
     {scale : Scale, shift : Shift, include_self: Include_self}
   extra :
-    attrs : [bool is_negative_input=false, str output_format="NHWC", bool bfloat16=false, bool use_mkldnn = true, str mkldnn_data_type = "float32"]
+    attrs : [bool is_negative_input=false, float scale=1.0, float shift=0.0, str output_format="NHWC", bool bfloat16=false]
 
 - op : quantize_linear
   inputs :
