@@ -72,14 +72,15 @@ void FakeChannelWiseDequantizeMaxAbsKernel(
     max_range *= (std::pow(2, quant_bits[0] - 1) - 1) *
                  (std::pow(2, quant_bits[1] - 1) - 1);
   }
-  phi::funcs::ChannelDequantizeFunctor<Context, T>()(dev_ctx,
-                                                     &x,
-                                                     scales.data(),
-                                                     scale_num,
-                                                     static_cast<T>(max_range),
-                                                     quant_axis,
-                                                     x_num_col_dims,
-                                                     out);
+  phi::funcs::ChannelDequantizeFunctor<Context, T>()(
+      dev_ctx,
+      &x,
+      (const_cast<std::vector<const DenseTensor*>>(&scales)).data(),
+      scale_num,
+      static_cast<T>(max_range),
+      quant_axis,
+      x_num_col_dims,
+      out);
 }
 
 }  // namespace phi
