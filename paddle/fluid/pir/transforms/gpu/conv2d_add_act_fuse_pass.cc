@@ -35,6 +35,8 @@ class Conv2dAddActFusePassDrrPattern : public paddle::drr::DrrPatternBase {
  private:
   std::string act_name_;
   bool cutlass_pattern_;
+  const std::unordered_set<std::string> conv2d_depthwise_act_set_ = {
+      "relu", "swish", "sigmoid"};
 
  public:
   static const int CUTLASS_NHWC_ALIGNMENT = 8;
@@ -62,16 +64,17 @@ class Conv2dAddActFusePassDrrPattern : public paddle::drr::DrrPatternBase {
     pat.AddConstraint([this](
                           const paddle::drr::MatchContext &match_ctx) -> bool {
       auto bias_shape = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
-      auto input_shape = pir::GetShapeFromValue(match_ctx.Tensor("input"));
+      auto add_input_shape =
+          pir::GetShapeFromValue(match_ctx.Tensor("conv2d_out"));
       auto bias_ = 1;
-      auto input_ = 1;
+      auto add_input_ = 1;
       for (auto &bias_dim : bias_shape) {
         bias_ *= bias_dim;
       }
-      for (auto &input_dim : input_shape) {
-        input_ *= input_dim;
+      for (auto &add_input_dim : add_input_shape) {
+        add_input_ *= add_input_dim;
       }
-      if (bias_ == input_) {
+      if (bias_ == add_input_) {
         return false;
       }
       auto padding_algorithm = match_ctx.Attr<std::string>("padding_algorithm");
@@ -92,11 +95,17 @@ class Conv2dAddActFusePassDrrPattern : public paddle::drr::DrrPatternBase {
       } else {
         auto filter_dtype =
             pir::GetDataTypeFromValue(match_ctx.Tensor("filter"));
-        auto strides = match_ctx.Attr<std::vector<int>>("strides");
-        auto dilations = match_ctx.Attr<std::vector<int>>("dilations");
         auto filter_shape = pir::GetShapeFromValue(match_ctx.Tensor("filter"));
+        auto strides_shape = match_ctx.Attr<std::vector<int>>("strides");
+        auto dilations_shape = match_ctx.Attr<std::vector<int>>("dilations");
+        int stride_h = strides_shape[0];
+        int stride_w = strides_shape[1];
+        int dilation_h = dilations_shape[0];
+        int dilation_w = dilations_shape[1];
         int oc = filter_shape[0];
         int kc = filter_shape[1];
+        int kh = filter_shape[2];
+        int kw = filter_shape[3];
         if (!filter_dtype.isa<pir::Float16Type>()) {
           return false;
         }
@@ -110,7 +119,27 @@ class Conv2dAddActFusePassDrrPattern : public paddle::drr::DrrPatternBase {
             return false;
           }
         } else if (groups == ic && ic == oc) {
-          return false;
+          if (!(kh == 3 && kw == 3) || (kh == 5 && kw == 5)) {
+            return false;
+          }
+          if (!(stride_h == 1 || stride_h == 2)) {
+            return false;
+          }
+          if (stride_h != stride_w) {
+            return false;
+          }
+          if (dilation_h != 1) {
+            return false;
+          }
+          if (dilation_w != 1) {
+            return false;
+          }
+          if (ic % 8 != 0) {
+            return false;
+          }
+          if (!conv2d_depthwise_act_set_.count(act_name_)) {
+            return false;
+          }
         } else {
           return false;
         }
@@ -124,7 +153,8 @@ class Conv2dAddActFusePassDrrPattern : public paddle::drr::DrrPatternBase {
         });
     const auto &perm_weight_shape = res.ComputeAttr(
         [this](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          if (cutlass_pattern_) {
+          auto data_format = match_ctx.Attr<std::string>("data_format");
+          if (cutlass_pattern_ || data_format == "NHWC") {
             return {0, 2, 3, 1};
           } else {
             return {0, 1, 2, 3};

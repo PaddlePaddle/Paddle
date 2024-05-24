@@ -976,7 +976,8 @@ bool AnalysisPredictor::PrepareExecutor() {
       // set attr
       for (const auto &pass : pass_pm.passes()) {
         if (pass->name() == "matmul_add_act_fuse_pass" ||
-            pass->name() == "conv2d_add_act_fuse_pass") {
+            pass->name() == "conv2d_add_act_fuse_pass" ||
+            pass->name() == "conv2d_add_fuse_pass") {
           pass->Set("use_cutlass", new bool(config_.use_cutlass_));
         }
       }
