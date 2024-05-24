@@ -39,7 +39,7 @@ class CWaitCommOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
+               const phi::Place& place) const override {
     PADDLE_ENFORCE_EQ(
         place.GetType() == phi::AllocationType::GPU,
         true,
@@ -52,7 +52,7 @@ class CWaitCommOp : public framework::OperatorBase {
 
     gpuStream_t compute_stream =
         static_cast<phi::GPUContext*>(
-            platform::DeviceContextPool::Instance().Get(place))
+            phi::DeviceContextPool::Instance().Get(place))
             ->stream();
     gpuStream_t comm_stream = nullptr;
     gpuEvent_t event = nullptr;

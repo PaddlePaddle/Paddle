@@ -34,7 +34,7 @@ class IrSelectedRows
   IrSelectedRows(phi::DataType dtype,
                  const phi::DDim& dims,
                  phi::DataLayout layout,
-                 const LoD& lod,
+                 LoD lod,
                  size_t offset = 0);
 
   IrSelectedRows(IrSelectedRows&& other) = default;

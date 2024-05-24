@@ -110,7 +110,6 @@ class ParallelExecutor {
   void BCastParamsToDevices(const std::vector<std::string> &vars,
                             int trainer_id = 0) const;
   bool EnableParallelGraphExecution(const ir::Graph &graph,
-                                    const ExecutionStrategy &exec_strategy,
                                     const BuildStrategy &build_strategy) const;
 
   void InitExecutorPrivateMemberInfo(const ExecutionStrategy &exec_strategy,

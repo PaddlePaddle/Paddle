@@ -36,6 +36,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/compiled_program.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
@@ -144,6 +145,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/pybind/compiled_program.h"
 #include "paddle/fluid/pybind/parallel_executor.h"
 #include "paddle/fluid/pybind/place.h"
 #include "paddle/fluid/pybind/protobuf.h"
@@ -205,6 +207,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
+#include "paddle/fluid/pir/dialect/operator/interface/decomp_vjp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
@@ -374,6 +377,14 @@ bool IsRunWithCINN() {
 
 bool IsCompiledWithHETERPS() {
 #ifndef PADDLE_WITH_HETERPS
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithGPUGRAPH() {
+#ifndef PADDLE_WITH_GPU_GRAPH
   return false;
 #else
   return true;
@@ -1017,6 +1028,42 @@ void BindDecomp(pybind11::module *m) {
 
   m->def("has_decomp", [](pir::Operation &fwd_op) {
     return paddle::has_decomp_rule(fwd_op);
+  });
+}
+
+void BindDecompVjp(pybind11::module *m) {
+  m->def("call_decomp_vjp", [](pir::Operation &vjp_op) {
+    py::list res;
+    paddle::dialect::DecompVjpInterface decomp_vjp_interface =
+        vjp_op.dyn_cast<paddle::dialect::DecompVjpInterface>();
+    PADDLE_ENFORCE(
+        decomp_vjp_interface,
+        phi::errors::InvalidArgument(
+            "[Prim] The decomp_vjp function is not registered in %s vjp_op ",
+            vjp_op.name()));
+    std::vector<std::vector<pir::Value>> decomp_res =
+        decomp_vjp_interface.DecompVjp(&vjp_op);
+
+    for (size_t i = 0; i < decomp_res.size(); ++i) {
+      py::list sub_res;
+      for (size_t j = 0; j < decomp_res[i].size(); ++j) {
+        if (!decomp_res[i][j]) {
+          sub_res.append(nullptr);
+        } else {
+          sub_res.append(decomp_res[i][j]);
+        }
+      }
+      res.append(sub_res);
+    }
+    return res;
+  });
+
+  m->def("has_decomp_vjp", [](pir::Operation &vjp_op) {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    pir::OpInfo vjp_op_info = ctx->GetRegisteredOpInfo(vjp_op.name());
+    auto decomp_vjp_interface_impl =
+        vjp_op_info.GetInterfaceImpl<paddle::dialect::DecompVjpInterface>();
+    return decomp_vjp_interface_impl != nullptr;
   });
 }
 
@@ -2157,6 +2204,7 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
+      .def("get_place", &Executor::GetPlace)
       .def("run_from_dataset",
            &Executor::RunFromDataset,
            py::call_guard<py::gil_scoped_release>())
@@ -2342,6 +2390,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_distribute", IsCompiledWithDISTRIBUTE);
   m.def("is_run_with_cinn", IsRunWithCINN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
+  m.def("_is_compiled_with_gpu_graph", IsCompiledWithGPUGRAPH);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("supports_int8", SupportsInt8);
@@ -3149,7 +3198,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
   BindFleetWrapper(&m);
   BindIO(&m);
-  BindParallelExecutor(m);
+  BindCompiledProgram(m);
   BindPlace(m);
   BindTensor(m);
 
@@ -3252,6 +3301,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindPir(&m);
   BindVjp(&m);
   BindDecomp(&m);
+  BindDecompVjp(&m);
 #ifdef PADDLE_WITH_DISTRIBUTE
   BindDistApi(&m);
 #endif

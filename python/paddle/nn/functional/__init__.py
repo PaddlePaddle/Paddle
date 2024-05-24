@@ -94,6 +94,7 @@ from .flash_attention import (
 )
 from .input import embedding, one_hot
 from .loss import (
+    adaptive_log_softmax_with_loss,
     binary_cross_entropy,
     binary_cross_entropy_with_logits,
     cosine_embedding_loss,
@@ -276,6 +277,7 @@ __all__ = [
     'rrelu',
     'triplet_margin_with_distance_loss',
     'triplet_margin_loss',
+    'adaptive_log_softmax_with_loss',
     'multi_margin_loss',
     'soft_margin_loss',
     'gaussian_nll_loss',

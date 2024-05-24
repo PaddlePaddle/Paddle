@@ -31,6 +31,8 @@ class TestTruncatedGaussianRandomOp(unittest.TestCase):
             "mean": 0.0,
             "std": 1.0,
             "seed": 10,
+            "a": -2.0,
+            "b": 2.0,
         }
         self.outputs = ["Out"]
 
@@ -95,6 +97,8 @@ class TestTruncatedGaussianRandomOp(unittest.TestCase):
                 self.attrs["mean"],
                 self.attrs["std"],
                 self.attrs["seed"],
+                self.attrs["a"],
+                self.attrs["b"],
                 dtype,
                 place,
             )
