@@ -75,7 +75,9 @@ __forceinline__ __device__ half add_mul<half>(half a, half b, half c) {
 template <>
 __forceinline__ __device__ __nv_bfloat16
 add_mul<__nv_bfloat16>(__nv_bfloat16 a, __nv_bfloat16 b, __nv_bfloat16 c) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800)
   return __hmul(__hadd(a, b), c);
+#endif
 }
 #endif
 
