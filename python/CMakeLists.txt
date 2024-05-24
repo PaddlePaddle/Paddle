@@ -208,7 +208,8 @@ else()
     add_custom_command(
       OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel
       COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
-      COMMENT "Packing whl packages------>>>")
+      COMMENT "Packing whl packages------>>>"
+      DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
   endif()
 endif()
 
