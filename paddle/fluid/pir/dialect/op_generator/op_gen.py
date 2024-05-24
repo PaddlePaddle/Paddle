@@ -1119,10 +1119,11 @@ def get_input_grad_semantic(op_info, op_info_items):
 
     # get backward op
     bwd_op_name = op_info.backward_name
+    sparse_op_name_suffix = '_sp' if op_info.is_sparse_op else ''
     if (bwd_op_name is None) or (bwd_op_name not in op_info_items.keys()):
         input_grad_semantics = ["false" for i in range(num_inputs)]
     else:
-        bwd_op_info = op_info_items[bwd_op_name]
+        bwd_op_info = op_info_items[bwd_op_name + sparse_op_name_suffix]
 
         # cut "_grad" of each output of bwd_op, and then compare each modified output with corresponding input
         # thus determine whether each input has grad semantic
@@ -1153,12 +1154,13 @@ def get_mutable_attribute_grad_semantic(op_info, op_info_items):
 
     # get backward op
     bwd_op_name = op_info.backward_name
+    sparse_op_name_suffix = '_sp' if op_info.is_sparse_op else ''
     if (bwd_op_name is None) or (bwd_op_name not in op_info_items.keys()):
         mutable_attribute_grad_semantics = [
             "false" for i in range(len(fwd_mutable_attribute_list))
         ]
     else:
-        bwd_op_info = op_info_items[bwd_op_name]
+        bwd_op_info = op_info_items[bwd_op_name + sparse_op_name_suffix]
 
         # cut "_grad" of each output of bwd_op, and then compare each modified output with corresponding attribute
         # thus determine whether each attribute has grad semantic

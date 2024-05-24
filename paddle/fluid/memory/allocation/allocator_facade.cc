@@ -31,6 +31,7 @@
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <shared_mutex>
+#include <utility>
 
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/cuda_managed_allocator.h"
@@ -141,8 +142,8 @@ class CUDAGraphAllocator
     DecoratedAllocationPtr underlying_allocation_;
   };
 
-  explicit CUDAGraphAllocator(const std::shared_ptr<Allocator>& allocator)
-      : underlying_allocator_(allocator) {}
+  explicit CUDAGraphAllocator(std::shared_ptr<Allocator> allocator)
+      : underlying_allocator_(std::move(allocator)) {}
 
  public:
   ~CUDAGraphAllocator() override = default;
@@ -198,7 +199,14 @@ class AllocatorFacadePrivate {
                std::map<phi::stream::stream_t, std::shared_ptr<Allocator>>>;
 #endif
 
-  explicit AllocatorFacadePrivate(bool allow_free_idle_chunk = true) {
+  explicit AllocatorFacadePrivate(bool allow_free_idle_chunk = true)
+      :
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        default_stream_safe_cuda_allocators_(),
+        default_cuda_malloc_async_allocators_(),
+        cuda_allocators_(),
+#endif
+        allocators_() {
     strategy_ = GetAllocatorStrategy();
     is_stream_safe_cuda_allocator_used_ = false;
     is_cuda_malloc_async_allocator_used_ = false;
@@ -1684,7 +1692,7 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 
   platform::CUDAPlace p(place.GetDeviceId());
   if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
-    gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
+    gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());  // NOLINT
     return m->GetAllocator(p, s, /* create_if_not_found = */ true)
         ->Allocate(size);
   } else {
@@ -1702,7 +1710,7 @@ bool AllocatorFacade::InSameStream(
     const std::shared_ptr<phi::Allocation>& allocation,
     const phi::Stream& stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
+  gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());  // NOLINT
   return s == GetStream(allocation);
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet("Not compiled with GPU."));

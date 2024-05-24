@@ -178,6 +178,8 @@ std::vector<pir::Type> BuildOutType(
   auto& alignment_schedule_info = node.alignment_schedule_info;
   for (auto op : group_ops) {
     auto new_op = op->Clone(*ir_mapping, clone_options);
+    // TODO(Hongqing-work): delete this after fix bug of
+    // cinn_dynamic_reshape_op_pass
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
@@ -350,6 +352,8 @@ class CinnGroupClusterPattern
       auto new_group_op = ReplaceWithGroupOp(
           &rewriter, uniq_ops, node, output_values, &ir_mapping);
 
+      // TODO(Hongqing-work): delete this after fix bug of
+      // cinn_dynamic_reshape_op_pass
       auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
           group_op->GetParentProgram());
       // update ir mapping

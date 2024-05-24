@@ -85,7 +85,7 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
                 scale_np = scale_np.astype('float16')
                 bias_np = scale_np.astype('float16')
             if (
-                self.dtype == np.uint16 and self.use_fp16_scale_bias
+                self.dtype == np.uint16 and self.use_bf16_scale_bias
             ):  # bfloat16 actually
                 scale_np = convert_float_to_uint16(scale_np)
                 bias_np = convert_float_to_uint16(bias_np)
@@ -146,6 +146,10 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
             self.shape = [4, 5, 6]
             self.use_fp16_scale_bias = False
 
+    @unittest.skipIf(
+        core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+        "Unsupported on XPU3",
+    )
     class TestXPULayerNormOpBF16(TestXPULayerNormOp):
         def set_attrs(self):
             self.use_bf16_scale_bias = True
@@ -154,6 +158,10 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
             else:
                 self.dtype = np.float32
 
+    @unittest.skipIf(
+        core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+        "Unsupported on XPU3",
+    )
     class TestXPULayerNormOpBF16_2D(TestXPULayerNormOp):
         def set_attrs(self):
             self.shape = [10, 12]
@@ -163,6 +171,10 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
             else:
                 self.dtype = np.float32
 
+    @unittest.skipIf(
+        core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+        "Unsupported on XPU3",
+    )
     class TestXPULayerNormOpBF16_3D(TestXPULayerNormOp):
         def set_attrs(self):
             self.shape = [4, 5, 6]
