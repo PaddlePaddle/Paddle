@@ -188,7 +188,8 @@ inline ShapeOrData SliceRawInferSymbolicShape(
       out_data.push_back(in_shapeordata.data().value()[i]);
     }
 
-    const std::vector<symbol::DimExpr> shape{std::int64_t(out_data.size())};
+    const ExprVec shape =
+        GetDecreasedDims(ExprVec{out_data.size()}, decrease_axis);
     return symbol::ShapeOrDataDimExprs{
         symbol::TensorShapeOrDataDimExprs(shape, out_data)};
   };
