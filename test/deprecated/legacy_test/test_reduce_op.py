@@ -546,6 +546,10 @@ def raw_reduce_prod(x, dim=[0], keep_dim=False):
 
 
 # NOTE: there is a bug when use composite of prod in static graph on cpu, it will use inplace mode
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(),
+    "prod grad composite test runs only on GPU",
+)
 class TestProdOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
@@ -636,11 +640,19 @@ class TestProdBFP16OP(TestProdOp):
         )
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(),
+    "prod grad composite test runs only on GPU",
+)
 class TestProdOpFp64(TestProdOp):
     def init_data_type(self):
         self.data_type = "float64"
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(),
+    "prod grad composite test runs only on GPU",
+)
 class TestProdOp_ZeroDim(OpTest):
     def setUp(self):
         self.python_api = raw_reduce_prod
@@ -670,6 +682,10 @@ class TestProdOp_ZeroDim(OpTest):
         )
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(),
+    "prod grad composite test runs only on GPU",
+)
 class TestProdOp_ZeroDim1(TestProdOp):
     def setUp(self):
         self.python_api = paddle.prod
@@ -686,6 +702,10 @@ class TestProdOp_ZeroDim1(TestProdOp):
         self.attrs = {'dim': [], 'reduce_all': True}
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(),
+    "prod grad composite test runs only on GPU",
+)
 class TestProdOp_ZeroDim2(TestProdOp_ZeroDim1):
     def init_inputs_and_outputs(self):
         self.inputs = {'X': np.random.random([5, 6, 10]).astype("float64")}
@@ -693,6 +713,10 @@ class TestProdOp_ZeroDim2(TestProdOp_ZeroDim1):
         self.attrs = {'dim': [], 'reduce_all': True}
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(),
+    "prod grad composite test runs only on GPU",
+)
 class TestProd6DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
