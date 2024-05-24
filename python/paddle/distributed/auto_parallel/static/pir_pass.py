@@ -14,6 +14,7 @@
 
 import paddle
 
+from .process_group import get_process_group
 from .reshard_funcs.base_reshard_func import (
     choose_reshard_func,
 )
@@ -56,7 +57,7 @@ def reshard_combine_value(op, operand, attr):
     reshard_vars = []
     for inner_operand, inner_attr in zip(combine_op.operands(), array_attr):
         reshard_vars.append(reshard_single_value(op, inner_operand, inner_attr))
-    paddle.pir.set_insertion_point(combine_op)
+    paddle.pir.set_insertion_point(op)
     return paddle._C_ops.builtin_combine(reshard_vars)
 
 
@@ -132,6 +133,10 @@ def apply_reshard_pass(program):
                 not var.initialized() or var.dist_attr() == src_dist_attr
             ), f"The dist_attr of reshard op's input and operand should be equal, but got {var.dist_attr()} and {src_dist_attr}"
 
+            if src_dist_attr == dst_dist_attr:
+                op.result(0).replace_all_uses_with(var)
+                op.erase()
+                continue
             reshard_func = choose_reshard_func(src_dist_attr, dst_dist_attr)
             assert (
                 reshard_func is not None
@@ -146,6 +151,20 @@ def apply_reshard_pass(program):
             if out_value is not None:
                 op.result(0).replace_all_uses_with(out_value)
             if op.result(0).use_empty():
+                op.erase()
+
+
+# Note: this is the pass in the dense program
+comm_ops = ["pd_op.c_allreduce_sum_", "pd_op.c_allgather"]
+
+
+def remove_unuseful_comm_op_pass(program):
+    for op in program.global_block().ops:
+        if op.name() in comm_ops:
+            ring_id = op.int_attr("ring_id")
+            process_group = get_process_group(ring_id)
+            if process_group.nranks == 1:
+                op.result(0).replace_all_uses_with(op.operand_source(0))
                 op.erase()
 
 

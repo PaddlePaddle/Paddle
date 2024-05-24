@@ -24,7 +24,7 @@ PROTOBUF3_NEEDED_TESTING_LIST = [
     'test_dist_fleet_a_sync_optimizer_async',
     'test_dist_fleet_a_sync_optimizer_auto',
     'test_dist_fleet_a_sync_optimizer_sync',
-    'test_dist_fleet_a_sync_optimizer_geo',
+    'test_dist_fleet_a_sync_optimizer_geo_deprecated',
     'test_dist_fleet_a_sync_optimizer_auto_geo',
     'test_dist_fleet_a_sync_optimizer_auto_async',
     'test_fleet_fp16_allreduce_meta_optimizer',

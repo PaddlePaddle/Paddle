@@ -22,40 +22,6 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void KeDequantize(
-    const T* in, const T* scale, T max_range, int64_t num, T* out) {
-  int64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-  for (int64_t i = idx; i < num; i += blockDim.x * gridDim.x) {
-    out[i] = in[i] * scale[0] / max_range;
-  }
-}
-
-template <typename T>
-struct DequantizeFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& dev_ctx,
-                  const phi::DenseTensor* in,
-                  const phi::DenseTensor* scale,
-                  T max_range,
-                  phi::DenseTensor* out) {
-    const T* in_data = in->data<T>();
-    const T* scale_factor = scale->data<T>();
-    T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
-
-    int64_t num = in->numel();
-    int64_t block_size = std::min(
-        num, static_cast<int64_t>(dev_ctx.GetMaxThreadsPerBlock() / 4));
-    int64_t max_threads =
-        dev_ctx.GetMaxPhysicalThreadCount();  // SM * block_per_SM
-    const int64_t max_blocks =
-        std::max(((max_threads - 1) / block_size + 1), static_cast<int64_t>(1));
-    const int64_t grid_size =
-        std::min(max_blocks, (num + block_size - 1) / block_size);
-    KeDequantize<T><<<grid_size, block_size, 0, dev_ctx.stream()>>>(
-        in_data, scale_factor, max_range, num, out_data);
-  }
-};
-
-template <typename T>
 __global__ void DequantizeOneScaleQuantAxis0(
     const T* in, const T* scale, T max_range, int num, int channel, T* out) {
   int tid = threadIdx.x;
@@ -177,8 +143,6 @@ struct ChannelDequantizeFunctor<phi::GPUContext, T> {
   }
 };
 
-template struct DequantizeFunctor<phi::GPUContext, float>;
-template struct DequantizeFunctor<phi::GPUContext, double>;
 template struct ChannelDequantizeFunctor<phi::GPUContext, float>;
 template struct ChannelDequantizeFunctor<phi::GPUContext, double>;
 

@@ -197,6 +197,19 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   os << printer.indentation() << "}";
 }
 
+bool FusionOp::InferSymbolicShape(
+    ::pir::InferSymbolicShapeContext* infer_context) {
+  ::pir::InferSymExprForBlock(*block(), infer_context);
+
+  for (uint32_t rst_idx = 0; rst_idx < num_results(); rst_idx++) {
+    auto inner_yield_value = block()->back().operand_source(rst_idx);
+    const auto& shape =
+        infer_context->GetShapeOrDataForValue(inner_yield_value);
+    infer_context->SetShapeOrDataForValue(result(rst_idx), shape);
+  }
+  return true;
+}
+
 void YieldStoreOp::Build(pir::Builder& builder,
                          pir::OperationArgument& argument,
                          pir::Value x,
@@ -478,24 +491,17 @@ GenerateShapeOp::ConvertAttributeToSymbolBindings(
   }
   return std::move(ret);
 }
-
 bool GenerateShapeOp::InferSymbolicShape(
     pir::InferSymbolicShapeContext* infer_context) {
   const auto attr_dim_exprs = [&] {
-    std::vector<symbol::DimExpr> dim_exprs{};
     pir::Attribute dim_expr_attr = this->attributes().at("output_dim_exprs");
-    PADDLE_ENFORCE(dim_expr_attr.isa<pir::ArrayAttribute>(),
+    auto dim_exprs = ConvertAttributeToDimExprs(dim_expr_attr);
+
+    PADDLE_ENFORCE(dim_exprs.has_value(),
                    ::common::errors::PreconditionNotMet(
-                       "Required dim_expr_attr is ArrayAttribute."));
-    auto array = dim_expr_attr.dyn_cast<pir::ArrayAttribute>();
-    for (int i = 0; i < array.size(); ++i) {
-      const auto& dim_expr = ConvertAttributeToDimExpr(array.at(i));
-      PADDLE_ENFORCE(dim_expr.has_value(),
-                     ::common::errors::PreconditionNotMet(
-                         "Required dim_expr.has_value()==true."));
-      dim_exprs.push_back(dim_expr.value());
-    }
-    return dim_exprs;
+                       "Required dim_exprs.has_value()==true."));
+
+    return dim_exprs.value();
   }();
   const auto symbol_bindings = [&] {
     pir::Attribute symbol_bindings_attr =
