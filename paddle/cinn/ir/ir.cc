@@ -603,6 +603,12 @@ Expr Load::Make(Expr tensor, const std::vector<Expr> &origin_indices) {
   node->set_type(node->type());
   return Expr(node);
 }
+
+void Load::convert_int32_to_int64() {
+  IrNode::convert_int32_to_int64();
+  tensor->convert_int32_to_int64();
+}
+
 Type Load::type() const {
   CHECK(tensor.defined());
   CHECK(tensor.type().valid());
@@ -809,7 +815,7 @@ void Reduce::Verify() const {
 Type Select::type() const {
   PADDLE_ENFORCE_EQ(
       true_value.type(), false_value.type(), "Type of Select must be same");
-  return true_value.type();
+  return type_;
 }
 
 void Select::Verify() const {

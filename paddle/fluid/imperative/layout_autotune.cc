@@ -134,8 +134,7 @@ paddle::imperative::NameVarMap<VarType> DealLightlyLayoutSensitive(
 
 LayoutAutotuneGuard::LayoutAutotuneGuard(std::shared_ptr<Tracer> tracer,
                                          bool use_autotune)
-    : tracer_(tracer) {
-  pre_layout_autotune_ = tracer_->UseLayoutAutoTune();
+    : tracer_(tracer), pre_layout_autotune_(tracer_->UseLayoutAutoTune()) {
   if (pre_layout_autotune_ != use_autotune) {
     tracer_->EnableLayoutAutoTune();
     if (!use_autotune) {

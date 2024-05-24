@@ -443,15 +443,14 @@ static PyObject* tensor_method_numpy(TensorObject* self,
 
   PyObject* base = ToPyObject(paddle::Tensor(
       std::make_shared<phi::DenseTensor>(std::move(cpu_tensor))));
-
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(array_buffer) + array_offset;
   PyObject* array = api.PyArray_NewFromDescr_(
       api.PyArray_Type_,
       api.PyArray_DescrFromType_(numpy_dtype),
       static_cast<int>(py_rank),
       py_dims,
       py_strides,
-      reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(array_buffer) +
-                              array_offset),
+      reinterpret_cast<void*>(ptr),
       pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
           pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
       nullptr);
@@ -3233,8 +3232,7 @@ PyMethodDef variable_methods[] = {  // NOLINT
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_is_dense_tensor_hold_allocation",
-     (PyCFunction)(void (*)(
-         void))tensor_method__is_dense_tensor_hold_allocation,
+     (PyCFunction)(void (*)())tensor_method__is_dense_tensor_hold_allocation,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_copy_to",
@@ -3298,7 +3296,7 @@ PyMethodDef variable_methods[] = {  // NOLINT
      METH_VARARGS | METH_KEYWORDS,
      tensor_method_detach__doc__},
     {"detach_",
-     (PyCFunction)(void (*)(void))tensor_method_detach_,
+     (PyCFunction)(void (*)())tensor_method_detach_,
      METH_VARARGS | METH_KEYWORDS,
      tensor_method_detach___doc__},
     {"get_tensor",
@@ -3481,19 +3479,19 @@ PyMethodDef variable_methods[] = {  // NOLINT
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"contiguous",
-     (PyCFunction)(void (*)(void))tensor_contiguous,
+     (PyCFunction)(void (*)())tensor_contiguous,
      METH_VARARGS | METH_KEYWORDS,
      tensor_contiguous__doc__},
     {"is_contiguous",
-     (PyCFunction)(void (*)(void))tensor_is_contiguous,
+     (PyCFunction)(void (*)())tensor_is_contiguous,
      METH_VARARGS | METH_KEYWORDS,
      tensor_is_contiguous__doc__},
     {"get_strides",
-     (PyCFunction)(void (*)(void))tensor_method_strides,
+     (PyCFunction)(void (*)())tensor_method_strides,
      METH_VARARGS | METH_KEYWORDS,
      tensor_get_strides__doc__},
     {"_set_impl",
-     (PyCFunction)(void (*)(void))tensor_method__set_impl,
+     (PyCFunction)(void (*)())tensor_method__set_impl,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 #if defined(PADDLE_WITH_CUDA)
@@ -3516,8 +3514,7 @@ PyMethodDef string_tensor_variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_is_string_tensor_hold_allocation",
-     (PyCFunction)(void (*)(
-         void))tensor_method__is_string_tensor_hold_allocation,
+     (PyCFunction)(void (*)())tensor_method__is_string_tensor_hold_allocation,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     // TODO(zhoushunjie): Need to add _copy_to, copy_ for StringTensor.

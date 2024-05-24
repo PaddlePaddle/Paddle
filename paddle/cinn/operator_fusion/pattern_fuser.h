@@ -55,12 +55,6 @@ std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern<T>& pattern) {
                     pattern.variant());
 }
 
-template <typename T>
-pir::Operation* GetSinkOpInPattern(const StmtPattern<T>& pattern) {
-  return std::visit([](const auto& impl) { return impl.sink_op(); },
-                    pattern.variant());
-}
-
 using LoopFramework = std::vector<symbol::DimExpr>;
 
 // std::optional({}) means not sure.
@@ -69,6 +63,35 @@ using MaybeLoopFramework = LoopFramework;
 
 template <typename T>
 MaybeLoopFramework GetLoopFramework(const StmtPattern<T>& pattern);
+
+static MaybeLoopFramework SqueezeLoopFramework(
+    const MaybeLoopFramework& loop_framework) {
+  MaybeLoopFramework result;
+  for (int i = 0; i < loop_framework.size(); i++) {
+    if (loop_framework[i] == 1) {
+      continue;  // skip 1
+    } else {
+      result.push_back(loop_framework[i]);
+    }
+  }
+  return result;
+}
+
+template <typename T>
+bool IsLoopFrameworkEqual(const StmtPattern<T>& lhs,
+                          const StmtPattern<T>& rhs) {
+  auto lhs_loop = GetLoopFramework(lhs);
+  auto rhs_loop = GetLoopFramework(rhs);
+  VLOG(4) << "lhs loop range is:" << utils::Join(lhs_loop, ",");
+  VLOG(4) << "rhs loop range is:" << utils::Join(rhs_loop, ",");
+  return SqueezeLoopFramework(lhs_loop) == SqueezeLoopFramework(rhs_loop);
+}
+
+template <typename T>
+pir::Operation* GetSinkOpInPattern(const StmtPattern<T>& pattern) {
+  return std::visit([](const auto& impl) { return impl.sink_op(); },
+                    pattern.variant());
+}
 
 template <typename T>
 struct LoopFrameworkVisitor {
@@ -147,29 +170,6 @@ struct LoopFrameworkVisitor {
 template <typename T>
 MaybeLoopFramework GetLoopFramework(const StmtPattern<T>& pattern) {
   return std::visit(LoopFrameworkVisitor<T>(), pattern.variant());
-}
-
-static MaybeLoopFramework SqueezeLoopFramework(
-    const MaybeLoopFramework& loop_framework) {
-  MaybeLoopFramework result;
-  for (int i = 0; i < loop_framework.size(); i++) {
-    if (loop_framework[i] == 1) {
-      continue;  // skip 1
-    } else {
-      result.push_back(loop_framework[i]);
-    }
-  }
-  return result;
-}
-
-template <typename T>
-bool IsLoopFrameworkEqual(const StmtPattern<T>& lhs,
-                          const StmtPattern<T>& rhs) {
-  auto lhs_loop = GetLoopFramework(lhs);
-  auto rhs_loop = GetLoopFramework(rhs);
-  VLOG(4) << "lhs loop range is:" << utils::Join(lhs_loop, ",");
-  VLOG(4) << "rhs loop range is:" << utils::Join(rhs_loop, ",");
-  return SqueezeLoopFramework(lhs_loop) == SqueezeLoopFramework(rhs_loop);
 }
 
 template <typename T>
@@ -283,32 +283,33 @@ inline auto GetPaddingVector(const MaybeLoopFramework& first,
   std::vector<int> padding_s;
   VLOG(4) << "GetPaddingVector for: " << utils::Join(first, ",") << " vs "
           << utils::Join(second, ",");
-  std::function<void(int, int, int)> recursive_padding =
-      [&first, &second, &padding_f, &padding_s, &recursive_padding](
+
+  std::function<void(int, int, int)> RecursivePadding =
+      [&first, &second, &padding_f, &padding_s, &RecursivePadding](
           int pf, int ps, int padding_size) {
         if (pf == first.size() && ps == second.size()) {
           return;
         } else if (pf == first.size()) {
           PADDLE_ENFORCE(second[ps] == 1, "second[ps] must be '1' to padding.");
           padding_f.push_back(padding_size);
-          recursive_padding(pf, ps + 1, padding_size + 1);
+          RecursivePadding(pf, ps + 1, padding_size + 1);
         } else if (ps == second.size()) {
           PADDLE_ENFORCE(first[pf] == 1, "second[ps] must be '1' to padding.");
           padding_s.push_back(padding_size);
-          recursive_padding(pf + 1, ps, padding_size + 1);
+          RecursivePadding(pf + 1, ps, padding_size + 1);
         } else if (second[ps] == first[pf]) {
-          recursive_padding(pf + 1, ps + 1, padding_size + 1);
+          RecursivePadding(pf + 1, ps + 1, padding_size + 1);
         } else if (second[ps] == 1) {
           padding_f.push_back(padding_size);
-          recursive_padding(pf, ps + 1, padding_size + 1);
+          RecursivePadding(pf, ps + 1, padding_size + 1);
         } else if (first[ps] == 1) {
           padding_s.push_back(padding_size);
-          recursive_padding(pf + 1, ps, padding_size + 1);
+          RecursivePadding(pf + 1, ps, padding_size + 1);
         } else {
           PADDLE_THROW("Padding Error.");
         }
       };
-  recursive_padding(0, 0, 0);
+  RecursivePadding(0, 0, 0);
   VLOG(4) << "GetPaddingVector result: " << utils::Join(padding_f, ",")
           << " vs " << utils::Join(padding_s, ",");
   return std::tuple(padding_f, padding_s);

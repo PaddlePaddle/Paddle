@@ -39,8 +39,8 @@ void FillDiagonalTensorGradKernel(const Context& ctx,
       }
     }
 
-    std::array<int64_t, 2> new_dims;
-    std::array<int64_t, 2> strides;
+    std::array<int64_t, 2> new_dims = {};
+    std::array<int64_t, 2> strides = {};
     std::vector<int64_t> matdim;
     matdim.resize(matrows);
     CalMatDims(dx_dims,

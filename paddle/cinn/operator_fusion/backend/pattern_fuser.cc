@@ -237,7 +237,7 @@ ir::Expr UnSqueezeExpr(const ir::Expr& expr,
   const auto& vars_in_expr = AppendBound(GetAllForIters(expr), expr);
   // get the all vars.
   int counter = 0;
-  auto gen_next_name = [&counter]() {
+  auto GenNextName = [&counter]() {
     counter += 1;
     return "expand_var_" + std::to_string(counter);
   };
@@ -246,7 +246,7 @@ ir::Expr UnSqueezeExpr(const ir::Expr& expr,
   for (int i = 0; i < vars_in_expr.size() + padding_vec.size(); i++) {
     if (std::find(padding_vec.begin(), padding_vec.end(), i) !=
         padding_vec.end()) {
-      vars.emplace_back(Expr(0), Expr(1), gen_next_name());
+      vars.emplace_back(Expr(0), Expr(1), GenNextName());
     } else {
       vars.push_back(vars_in_expr[pointer++]);
     }
@@ -389,6 +389,7 @@ std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs) {
   for (const auto& op : op_exprs) {
     auto inputs = GetInputTensors(op);
     auto outputs = GetOutputTensors(op);
+
     if (VLOG_IS_ON(5)) {
       VLOG(4) << "Ir::Expr is: \n" << op;
       VLOG(4) << "Inputs: ";
