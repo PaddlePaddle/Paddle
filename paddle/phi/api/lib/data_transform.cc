@@ -684,7 +684,7 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
     if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(),
                                    tensor_dist_attr)) {
       auto argument_name = (arg_name.empty() ? "tensor" : arg_name);
-      auto tensor_name = (tensor.name.empty() ? "None" : tensor.name());
+      auto tensor_name = (tensor.name().empty() ? "None" : tensor.name());
       VLOG(4) << "Reshard input: " << argument_name << "(" << tensor_name
               << ") " << ReshardDebugInfo(*dist_tensor, tensor_dist_attr);
       auto* func = phi::distributed::ChooseProperReshardFunction(
