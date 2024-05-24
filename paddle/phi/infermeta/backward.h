@@ -490,6 +490,18 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
                                MetaTensor* x_grad,
                                MetaTensor* updates_grad);
 
+void SequenceConvGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& padding_data,
+                               const MetaTensor& filter,
+                               const MetaTensor& out_grad,
+                               int context_length,
+                               bool padding_trainable,
+                               int context_start,
+                               int context_stride,
+                               MetaTensor* x_grad,
+                               MetaTensor* padding_data_grad,
+                               MetaTensor* filter_grad);
+
 void ShuffleBatchGradInferMeta(const MetaTensor& shuffle_idx,
                                const MetaTensor& out_grad,
                                int startup_seed,

@@ -237,6 +237,21 @@ def is_fused_linear_param_grad_add_supported():
 _raise_cuda_env_unset_warning_for_sp = True
 
 
+def _check_environment_for_overlap():
+    if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
+        global _raise_cuda_env_unset_warning_for_sp
+        if _raise_cuda_env_unset_warning_for_sp:
+            logger.warning(
+                "You set mp_async_allreduce=True or recompute_allgather=True, but you forget to set environment "
+                "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+            )
+        _raise_cuda_env_unset_warning_for_sp = False
+
+        # Using small operation to preempt GPU SMs for all_gather or reduce_scatter to achieve overlap.
+        tmp = paddle.ones([512])
+
+
 class SPInnerOverlapLinear(paddle.autograd.PyLayer):
     @staticmethod
     def forward(
@@ -245,16 +260,22 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
         weight,
         bias,
         fuse_matmul_bias,
+        recompute_allgather,
         mp_fused_linear_param_grad_add,
         model_parallel_group,
     ):
+        ctx.recompute_allgather = recompute_allgather
         ctx.mp_fused_linear_param_grad_add = mp_fused_linear_param_grad_add
         ctx.model_parallel_group = model_parallel_group
 
         world_size = model_parallel_group.nranks
         input_parallel = all_gather(x)
 
-        ctx.save_for_backward(x, weight, bias, input_parallel)
+        if not recompute_allgather:
+            ctx.save_for_backward(x, weight, bias, input_parallel)
+        else:
+            ctx.save_for_backward(x, weight, bias)
+
         if not fuse_matmul_bias:
             output = paddle._C_ops.linear(input_parallel, weight, bias)
         else:
@@ -265,9 +286,26 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
 
     @staticmethod
     def backward(ctx, dy):
-        x, weight, bias, input_parallel = ctx.saved_tensor()
-        parallelism = ctx.model_parallel_group.nranks
+        group = ctx.model_parallel_group
+        parallelism = group.nranks
 
+        if not ctx.recompute_allgather:
+            x, weight, bias, input_parallel = ctx.saved_tensor()
+        else:
+            x, weight, bias = ctx.saved_tensor()
+
+            # all-gather x
+            input_parallel_shape = x.shape
+            input_parallel_shape[0] = input_parallel_shape[0] * parallelism
+            input_parallel = paddle.empty(
+                shape=input_parallel_shape, dtype=x.dtype
+            )
+            allgather_task = dist.all_gather(
+                input_parallel, x, group=group, sync_op=False
+            )
+
+        # compute dx
+        _check_environment_for_overlap()
         if dy.dtype == weight.dtype:
             dinput_parallel = paddle.matmul(dy, weight, transpose_y=True)
         else:
@@ -279,11 +317,14 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
             dinput_parallel.shape[0] % parallelism == 0
         ), f"Input sequence length {dinput_parallel.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
 
+        if ctx.recompute_allgather:
+            # wait the finish of all-gather of x
+            allgather_task.wait()
+
+        # reduce-scatter dx
         dx_shape = dinput_parallel.shape
         dx_shape[0] = dx_shape[0] // parallelism
         dx = paddle.empty(shape=dx_shape, dtype=dinput_parallel.dtype)
-        hcg = fleet.get_hybrid_communicate_group()
-        group = hcg.get_model_parallel_group()
         task = dist.stream.reduce_scatter(
             dx,
             dinput_parallel,
@@ -291,18 +332,9 @@ class SPInnerOverlapLinear(paddle.autograd.PyLayer):
             group=group,
             sync_op=False,
         )
-        # Using small operation to preempt GPU SMs for all_reduce to achieve overlap.
-        if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
-            global _raise_cuda_env_unset_warning_for_sp
-            if _raise_cuda_env_unset_warning_for_sp:
-                logger.warning(
-                    "You set mp_async_allreduce=True, but you forget to set environment "
-                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
-                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
-                )
-            _raise_cuda_env_unset_warning_for_sp = False
-            tmp = paddle.ones([512])
 
+        # compute dw and dbias
+        _check_environment_for_overlap()
         if ctx.mp_fused_linear_param_grad_add:
             if not is_fused_linear_param_grad_add_supported():
                 raise NotImplementedError(
@@ -485,6 +517,7 @@ class ColumnSequenceParallelLinear(Layer):
             "mp_configs"
         ]
         self.mp_async_allreduce = mp_configs.mp_async_allreduce
+        self.recompute_allgather = mp_configs.recompute_allgather
 
         self.mp_fused_linear_param_grad_add = (
             self.mp_async_allreduce
@@ -492,14 +525,15 @@ class ColumnSequenceParallelLinear(Layer):
         )
 
     def forward(self, x):
-        # sequence parallelism is same as model parallelis, if sequence parallel is true, input shape is [s, b, h],else input shape is [b, s, h]
-        # reuse mp_async_allreduce to do sequence parallelism overlap
+        # sequence parallel is same as tensor parallel, if sequence parallel is true, input shape is [s, b, h], else input shape is [b, s, h]
+        # reuse mp_async_allreduce to do sequence parallel overlap
         if self.mp_async_allreduce:
             output = SPInnerOverlapLinear.apply(
                 x,
                 self.weight,
                 self.bias,
                 self.fuse_matmul_bias,
+                self.recompute_allgather,
                 self.mp_fused_linear_param_grad_add,
                 self.model_parallel_group,
             )

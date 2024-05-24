@@ -89,6 +89,7 @@
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_out)
   infer_meta :
     func : AdamInferMeta
+    spmd_rule : AdamInferSpmdDynamic
   kernel :
     func : adam {dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense},
            adam_dense_param_sparse_grad {dense, selected_rows, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense}
@@ -526,6 +527,7 @@
   infer_meta :
     func : CheckFiniteAndUnscaleInferMeta
     param : [x, scale]
+    spmd_rule : CheckFiniteAndUnscaleSpmd
   kernel :
     func : check_finite_and_unscale
     param : [x, scale]
@@ -2599,6 +2601,17 @@
   inplace : (topk_idx -> out)
   traits : pir::SideEffectTrait
 
+- op : rank_attention
+  args : (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size = 0)
+  output : Tensor(input_help), Tensor(out), Tensor(ins_rank)
+  infer_meta :
+    func : RankAttentionInferMeta
+  kernel :
+    func : rank_attention
+    data_type : x
+  backward : rank_attention_grad
+  optional : ins_rank, input_help
+
 - op : real
   args : (Tensor x)
   output : Tensor (out)
@@ -2882,6 +2895,18 @@
     func : send_uv
     data_type : x
   backward : send_uv_grad
+
+- op : sequence_conv
+  args: (Tensor x, Tensor padding_data, Tensor filter, int context_length, bool padding_trainable = false,
+    int context_start = 0, int context_stride = 1)
+  output: Tensor (out)
+  infer_meta:
+    func: SequenceConvInferMeta
+  kernel:
+    func: sequence_conv
+    data_type: x
+  optional: padding_data
+  backward: sequence_conv_grad
 
 - op : sgd_
   args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param, bool multi_precision=false)
@@ -3397,6 +3422,7 @@
   infer_meta :
     func : UpdateLossScalingInferMeta
     param : [x, found_infinite, prev_loss_scaling, in_good_steps, in_bad_steps]
+    spmd_rule : UpdateLossScalingSpmd
   kernel :
     func : update_loss_scaling
     data_type : x
