@@ -121,7 +121,7 @@ static std::vector<ExprWrapper> DimsExprs2VecExprWrapper(
     nvinfer1::IExprBuilder& expr_builder  // NOLINT
 ) {
   std::vector<ExprWrapper> x_dims_wrap;
-  x_dims_wrap.reserve(x_dims.nbDims.size());
+  x_dims_wrap.reserve(x_dims.nbDims);
   for (int i = 0; i < x_dims.nbDims; i++) {
     x_dims_wrap.emplace_back(x_dims.d[i], &expr_builder);
   }
