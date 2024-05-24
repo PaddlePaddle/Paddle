@@ -1168,13 +1168,19 @@ def _split_and_replace_recv(types, sub_program_list):
         # Move all recv_ops at the beginning of program into recv4_program, and replace the recv_ops with data_ops.
         for index, op in enumerate(list(program.global_block().ops)):
             if op.type == "recv_v2":
+                recv_arg_name = op.input("Out")[0]
+
                 _create_program(
                     program.global_block(), recv4_program.global_block(), op
                 )
+                recv4_program.global_block().append_op(
+                    type="shadow_output",
+                    inputs={"x": recv_arg_name},
+                    outputs={"out": recv_arg_name},  # unused
+                    attrs={"name": recv_arg_name},
+                )
 
                 program.global_block()._remove_op(index, sync=False)
-
-                recv_arg_name = op.input("Out")[0]
                 recv_var = program.global_block().var(recv_arg_name)
                 program.global_block()._insert_op_without_sync(
                     index,
