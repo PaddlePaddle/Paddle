@@ -12,7 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, version
+from paddle import _C_ops
+
+try:
+    from paddle import version
+except ImportError:
+    import sys
+
+    sys.stderr.write(
+        '''Warning with import paddle: you should not
+     import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
+    )
+
 from paddle.base.data_feeder import check_dtype
 from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.device.cuda import get_device_capability
