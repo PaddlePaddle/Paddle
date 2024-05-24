@@ -491,17 +491,24 @@ GenerateShapeOp::ConvertAttributeToSymbolBindings(
   }
   return std::move(ret);
 }
+
 bool GenerateShapeOp::InferSymbolicShape(
     pir::InferSymbolicShapeContext* infer_context) {
   const auto attr_dim_exprs = [&] {
+    std::vector<symbol::DimExpr> dim_exprs{};
     pir::Attribute dim_expr_attr = this->attributes().at("output_dim_exprs");
-    auto dim_exprs = ConvertAttributeToDimExprs(dim_expr_attr);
-
-    PADDLE_ENFORCE(dim_exprs.has_value(),
+    PADDLE_ENFORCE(dim_expr_attr.isa<pir::ArrayAttribute>(),
                    ::common::errors::PreconditionNotMet(
-                       "Required dim_exprs.has_value()==true."));
-
-    return dim_exprs.value();
+                       "Required dim_expr_attr is ArrayAttribute."));
+    auto array = dim_expr_attr.dyn_cast<pir::ArrayAttribute>();
+    for (int i = 0; i < array.size(); ++i) {
+      const auto& dim_expr = ConvertAttributeToDimExpr(array.at(i));
+      PADDLE_ENFORCE(dim_expr.has_value(),
+                     ::common::errors::PreconditionNotMet(
+                         "Required dim_expr.has_value()==true."));
+      dim_exprs.push_back(dim_expr.value());
+    }
+    return dim_exprs;
   }();
   const auto symbol_bindings = [&] {
     pir::Attribute symbol_bindings_attr =
