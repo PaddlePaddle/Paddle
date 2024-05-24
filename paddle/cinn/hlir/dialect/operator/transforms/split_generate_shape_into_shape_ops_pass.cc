@@ -116,6 +116,17 @@ struct CachedDimExprToValueConverter {
   }
 
   pir::Value ConvertTensorDimToValue(const TensorDimInData& tensor_dim) {
+    auto CastToInt64IfNeed = [&](pir::Value value) {
+      if (value.type()
+              .dyn_cast<paddle::dialect::DenseTensorType>()
+              .dtype()
+              .isa<pir::Int64Type>()) {
+        return value;
+      }
+      return rewriter
+          ->Build<paddle::dialect::CastOp>(value, phi::DataType::INT64)
+          .out();
+    };
     auto FlattenValueIfNeed = [&](pir::Value value) {
       const auto& dims =
           value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
@@ -130,17 +141,17 @@ struct CachedDimExprToValueConverter {
             .dyn_cast<paddle::dialect::DenseTensorType>()
             .dims()
             .size() == 0) {
-      return tensor_dim.value;
+      return CastToInt64IfNeed(tensor_dim.value);
     }
-    return rewriter
-        ->Build<paddle::dialect::SliceOp>(
-            FlattenValueIfNeed(tensor_dim.value),
-            std::vector<int64_t>{0LL},
-            std::vector<int64_t>{tensor_dim.axis},
-            std::vector<int64_t>{tensor_dim.axis + 1},
-            std::vector<int64_t>{},
-            std::vector<int64_t>{})
-        .out();
+    return CastToInt64IfNeed(rewriter
+                                 ->Build<paddle::dialect::SliceOp>(
+                                     FlattenValueIfNeed(tensor_dim.value),
+                                     std::vector<int64_t>{0LL},
+                                     std::vector<int64_t>{tensor_dim.axis},
+                                     std::vector<int64_t>{tensor_dim.axis + 1},
+                                     std::vector<int64_t>{},
+                                     std::vector<int64_t>{})
+                                 .out());
   }
 
   pir::Value ConvertToValueImpl(
