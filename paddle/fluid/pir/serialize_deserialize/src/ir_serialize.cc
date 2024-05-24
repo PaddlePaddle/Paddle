@@ -185,7 +185,7 @@ Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
       op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()) {
     auto [_1, attr_info, _3, _4, _5] =
         op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
-    if (attr_info.size() != 0) {
+    if (!attr_info.empty()) {
       for (auto it = attr_info.begin(); it != attr_info.end(); it++) {
         if (attr_map.find(it->name) != attr_map.end()) {
           attrs_json.emplace_back(

@@ -59,7 +59,7 @@ std::pair<DimExpr, DimExpr> EliminateCommonFactor(const OpT<DimExpr>& lhs,
       lhs_diffs->push_back(lhs_dim_expr);
     }
   }
-  if (lhs_diffs->size() == 0 || rhs_diffs->size() == 0)
+  if (lhs_diffs->empty() || rhs_diffs->empty())
     return std::pair(lhs, rhs);
   auto lhs_diff =
       lhs_diffs->size() == 1 ? lhs_diffs->at(0) : OpT<DimExpr>{lhs_diffs};
