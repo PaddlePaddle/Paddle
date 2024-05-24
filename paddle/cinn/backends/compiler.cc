@@ -268,6 +268,7 @@ void Compiler::BuildDefault(const Module& module) {
   });
 }
 
+namespace {
 std::string getFileContent(const std::string& filePath) {
   std::ifstream file(filePath);
 
@@ -283,6 +284,7 @@ std::string getFileContent(const std::string& filePath) {
   file.close();
   return content;
 }
+}  // namespace
 
 void Compiler::CompileCudaModule(const Module& module,
                                  const std::string& code) {
