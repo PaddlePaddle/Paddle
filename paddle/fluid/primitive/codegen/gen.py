@@ -40,6 +40,7 @@ sys.path.append(
 VJPS_BLACK_LIST = [
     'reshape_grad',
     'add_n_grad',
+    'fused_attention_grad',
 ]
 
 BACKENDS_BLACK_LIST = [
@@ -119,6 +120,7 @@ CUSTOM_VJP = [
     'instance_norm_grad',
     'layer_norm_grad',
     'leaky_relu_grad',
+    'mean_grad',
     'minimum_grad',
     'pow_grad',
     'relu_grad',
@@ -127,6 +129,7 @@ CUSTOM_VJP = [
     'softmax_grad',
     'sqrt_grad',
     'stack_grad',
+    'swiglu',
 ]  # custom vjp list of composite op
 
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP

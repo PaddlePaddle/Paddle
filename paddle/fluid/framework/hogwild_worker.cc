@@ -84,8 +84,10 @@ class GPUParallelCopyer {
   GPUParallelCopyer(const phi::gpuStream_t &stream,
                     const int device_id,
                     const int stream_num)
-      : dev_stream_(stream), device_id_(device_id), max_stream_(stream_num) {
-    streams_.resize(max_stream_);
+      : dev_stream_(stream),
+        device_id_(device_id),
+        max_stream_(stream_num),
+        streams_(stream_num) {
     platform::CUDADeviceGuard guard(device_id_);
     for (size_t i = 0; i < max_stream_; ++i) {
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&streams_[i]));
@@ -127,7 +129,7 @@ class GPUParallelCopyer {
       ++copy_count_;
     }
   }
-  void Wait(void) {
+  void Wait() {
     if (copy_count_ == 0) {
       return;
     }
@@ -142,7 +144,7 @@ class GPUParallelCopyer {
     }
     copy_count_ = 0;
   }
-  void SyncDevStream(void) { platform::GpuStreamSync(dev_stream_); }
+  void SyncDevStream() { platform::GpuStreamSync(dev_stream_); }
 
  private:
   phi::gpuStream_t dev_stream_ = nullptr;

@@ -551,6 +551,8 @@ struct Load : public ExprNode<Load>, public LoadStoreAddrMnger {
 
   Type type() const override;
 
+  void convert_int32_to_int64() override;
+
   static const IrNodeTy _node_type_ = IrNodeTy::Load;
 };
 

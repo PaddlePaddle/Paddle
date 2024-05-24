@@ -178,6 +178,8 @@ std::vector<pir::Type> BuildOutType(
   auto& alignment_schedule_info = node.alignment_schedule_info;
   for (auto op : group_ops) {
     auto new_op = op->Clone(*ir_mapping, clone_options);
+    // TODO(Hongqing-work): delete this after fix bug of
+    // cinn_dynamic_reshape_op_pass
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
@@ -246,7 +248,7 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
   std::function<cinn::fusion::FrontendContent(pir::Operation*)> func =
       [](pir::Operation* op) { return cinn::fusion::FrontendContent(op); };
   const auto& contents = cinn::fusion::MapVector(group_op.GetOperators(), func);
-  auto cluster_result = cinn::fusion::ClusterOps(contents);
+  auto cluster_result = cinn::fusion::ClusterOps(contents, {});
   std::vector<std::vector<pir::Operation*>> result;
   std::transform(
       cluster_result.begin(),
@@ -350,6 +352,8 @@ class CinnGroupClusterPattern
       auto new_group_op = ReplaceWithGroupOp(
           &rewriter, uniq_ops, node, output_values, &ir_mapping);
 
+      // TODO(Hongqing-work): delete this after fix bug of
+      // cinn_dynamic_reshape_op_pass
       auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
           group_op->GetParentProgram());
       // update ir mapping
@@ -390,6 +394,9 @@ class CinnGroupClusterPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
+    if (op->isa<cinn::dialect::FusionOp>()) {
+      return false;
+    }
     return op->num_regions() > 0;
   }
 };

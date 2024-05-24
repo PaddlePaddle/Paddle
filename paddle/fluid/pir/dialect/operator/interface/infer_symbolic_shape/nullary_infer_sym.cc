@@ -72,9 +72,11 @@ bool AssignValueOpInferSymbolicShape(
                          .data()
                          .to<int64_t>());
   }
-  if (values.size() == 1) {
-    std::vector<symbol::DimExpr> data{values[0]};
-
+  if (values.size() > 0 && sym_dims.size() == 1) {
+    std::vector<symbol::DimExpr> data;
+    for (const auto &value : values) {
+      data.emplace_back(symbol::DimExpr(value));
+    }
     symbol::ShapeOrDataDimExprs shape_data{
         symbol::TensorShapeOrDataDimExprs(sym_dims, data)};
     infer_context->SetShapeOrDataForValue(op->result(0), shape_data);

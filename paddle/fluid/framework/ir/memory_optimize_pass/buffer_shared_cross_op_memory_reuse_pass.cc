@@ -44,6 +44,10 @@ static NodeDependency ReverseNodeDependency(NodeDependency dep) {
 }
 
 class BufferSharedCrossOpMemoryReusePass : public MemoryReusePass {
+ public:
+  BufferSharedCrossOpMemoryReusePass()
+      : graph_(nullptr), ops_(), op_to_idx_(), deps_() {}
+
  protected:
   std::string ReuseType() const override { return "cross_op_memory_reuse"; }
 
