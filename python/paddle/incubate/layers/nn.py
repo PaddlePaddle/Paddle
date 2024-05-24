@@ -35,7 +35,10 @@ __all__ = []
 
 
 def inference(
-    with_trt=True, save_model_dir="/root/.cache/", precision_mode="fp16"
+    with_trt=False,
+    save_model_dir="/root/.cache/",
+    precision_mode="fp32",
+    collect_shape=False,
 ):
     def decorator(func=None):
         import inspect
@@ -56,12 +59,15 @@ def inference(
         def wrapper(*args, **kwargs):
             import paddle
 
+            input_tensor_lists = []
+            for i in range(len(args)):
+                if i > 0:
+                    assert isinstance(args[i], paddle.Tensor)
+                    input_tensor_lists.append(args[i])
+
             if predictors[0] is not None:
-                input_lists = []
-                for i in range(len(args)):
-                    if i > 0:
-                        input_lists.append(args[i])
-                return predictors[0].run(input_lists)
+                results = predictors[0].run(input_tensor_lists)
+                return results if len(results) > 1 else results[0]
 
             import os
 
@@ -97,6 +103,7 @@ def inference(
                 )
                 paddle.jit.save(model, save_path)
 
+            # create predictor
             model_dir = save_model_dir + func.__name__ + "/"
             model_file = model_dir + "infer.pdmodel"
             params_file = model_dir + "infer.pdiparams"
@@ -104,6 +111,7 @@ def inference(
 
             config = Config(model_file, params_file)
             config.enable_memory_optim()
+            config.switch_ir_debug()
 
             def get_infer_precision():
                 if precision_mode == "fp32":
@@ -123,15 +131,24 @@ def inference(
                 min_input_shape = {}
                 max_input_shape = {}
                 opt_input_shape = {}
-                for i in range(len(args)):
-                    if i > 0:
-                        min_input_shape[arg_names[i]] = args[i].shape
-                        max_input_shape[arg_names[i]] = args[i].shape
-                        opt_input_shape[arg_names[i]] = args[i].shape
+                shape_range_file = model_dir + "/shape.txt"
+                if collect_shape:
+                    config.collect_shape_range_info(shape_range_file)
+                elif os.path.exists(shape_range_file):
+                    config.enable_tuned_tensorrt_dynamic_shape(
+                        shape_range_file, True
+                    )
+                else:
+                    for i in range(len(args)):
+                        if i > 0:
+                            min_input_shape[arg_names[i]] = args[i].shape
+                            max_input_shape[arg_names[i]] = args[i].shape
+                            opt_input_shape[arg_names[i]] = args[i].shape
 
-                config.set_trt_dynamic_shape_info(
-                    min_input_shape, max_input_shape, opt_input_shape
-                )
+                    config.set_trt_dynamic_shape_info(
+                        min_input_shape, max_input_shape, opt_input_shape
+                    )
+
                 config.enable_tensorrt_engine(
                     workspace_size=1 << 30,
                     max_batch_size=1,
@@ -143,15 +160,13 @@ def inference(
 
             predictors[0] = create_predictor(config)
 
-            input_lists = []
-            for i in range(len(args)):
-                if i > 0:
-                    input_lists.append(args[i])
-            return predictors[0].run(input_lists)
+            results = predictors[0].run(input_tensor_lists)
+            return results if len(results) > 1 else results[0]
 
         return wrapper
 
     return decorator
+
 
 def fused_embedding_seq_pool(
     input,
