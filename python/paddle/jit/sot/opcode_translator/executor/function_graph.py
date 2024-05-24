@@ -64,7 +64,7 @@ from .side_effects import (
     SideEffectRestorer,
     SideEffects,
 )
-from .tracker import BuiltinTracker, DummyTracker, SymbolicTracker
+from .tracker import BuiltinTracker, DummyTracker, SymbolicOperationTracker
 from .variables import (
     ConstantVariable,
     DictVariable,
@@ -651,7 +651,9 @@ class FunctionGraph:
                 self._put_inner(outputs)
 
             if is_symbolic_int:
-                tracker = SymbolicTracker(list(args) + list(kwargs.values()))
+                tracker = SymbolicOperationTracker(
+                    list(args) + list(kwargs.values())
+                )
             else:
                 tracker = DummyTracker(list(args) + list(kwargs.values()))
 
