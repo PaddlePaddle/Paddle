@@ -5416,6 +5416,23 @@ void UniformRandomInplaceInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void UniformRandomBatchSizeLikeInferMeta(const MetaTensor& input,
+                                         const std::vector<int>& shape,
+                                         int input_dim_idx,
+                                         int output_dim_idx,
+                                         float min,
+                                         float max,
+                                         int seed,
+                                         int diag_num,
+                                         int diag_step,
+                                         float diag_val,
+                                         DataType dtype,
+                                         MetaTensor* out,
+                                         MetaConfig config) {
+  phi::BatchSizeLikeInferMeta(input, shape, input_dim_idx, output_dim_idx, out);
+  out->set_dtype(dtype);
+}
+
 void UniqueConsecutiveInferMeta(const MetaTensor& x,
                                 bool return_inverse,
                                 bool return_counts,

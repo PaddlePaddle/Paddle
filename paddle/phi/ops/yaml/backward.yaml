@@ -622,6 +622,7 @@
     param: [x]
   kernel :
     func : cumprod_grad
+  composite: cumprod_grad(x, out, out_grad, dim, exclusive, reverse, x_grad)
 
 - backward_op : cumsum_grad
   forward : cumsum(Tensor x, Scalar axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false) -> Tensor(out)
@@ -2527,6 +2528,19 @@
   kernel :
     func : send_uv_grad
     data_type : x
+
+- backward_op : sequence_conv_grad
+  forward: sequence_conv (Tensor x, Tensor padding_data, Tensor filter, int context_length, bool padding_trainable = false,
+    int context_start = 0, int context_stride = 1) -> Tensor (out)
+  args: (Tensor x, Tensor padding_data, Tensor filter, Tensor out_grad, int context_length, bool padding_trainable = false,
+    int context_start = 0, int context_stride = 1)
+  output: Tensor (x_grad), Tensor (padding_data_grad), Tensor (filter_grad)
+  infer_meta:
+    func: SequenceConvGradInferMeta
+  kernel:
+    func: sequence_conv_grad
+    data_type: out_grad
+  optional: padding_data
 
 - backward_op : set_value_with_tensor_grad
   forward: set_value_with_tensor (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes) -> Tensor(out)

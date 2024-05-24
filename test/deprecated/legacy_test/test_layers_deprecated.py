@@ -24,10 +24,9 @@ from decorator_helper import prog_scope
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core, dygraph
-from paddle.base.framework import Program, program_guard
+from paddle.base.framework import program_guard
 from paddle.incubate.layers.nn import (
     batch_fc,
     partial_concat,
@@ -37,6 +36,8 @@ from paddle.incubate.layers.nn import (
 )
 from paddle.pir_utils import test_with_pir_api
 from paddle.tensor import random
+
+paddle.enable_static()
 
 
 class LayerTest(unittest.TestCase):
@@ -87,111 +88,6 @@ class LayerTest(unittest.TestCase):
 
 
 class TestLayer(LayerTest):
-    def test_custom_layer_with_kwargs(self):
-        class CustomLayer(paddle.nn.Layer):
-            def __init__(self, input_size, linear1_size=4):
-                super().__init__()
-                self.linear1 = paddle.nn.Linear(
-                    input_size, linear1_size, bias_attr=False
-                )
-                self.linear2 = paddle.nn.Linear(
-                    linear1_size, 1, bias_attr=False
-                )
-
-            def forward(self, x, do_linear2=False):
-                ret = self.linear1(x)
-                if do_linear2:
-                    ret = self.linear2(ret)
-                return ret
-
-        with self.dynamic_graph():
-            inp = np.ones([3, 3], dtype='float32')
-            x = paddle.to_tensor(inp)
-            custom = CustomLayer(input_size=3, linear1_size=2)
-            ret = custom(x, do_linear2=False)
-            np.testing.assert_array_equal(ret.numpy().shape, [3, 2])
-            ret = custom(x, do_linear2=True)
-            np.testing.assert_array_equal(ret.numpy().shape, [3, 1])
-
-    def test_dropout(self):
-        inp = np.ones([3, 32, 32], dtype='float32')
-        with self.static_graph():
-            t = paddle.static.data(
-                name='data',
-                shape=[3, 32, 32],
-                dtype='float32',
-            )
-            dropout = paddle.nn.Dropout(p=0.35)
-            ret = dropout(t)
-            ret2 = paddle.nn.functional.dropout(t, p=0.35)
-            static_ret, static_ret2 = self.get_static_graph_result(
-                feed={'data': inp}, fetch_list=[ret, ret2]
-            )
-        with self.dynamic_graph():
-            t = paddle.to_tensor(inp)
-            dropout = paddle.nn.Dropout(p=0.35)
-            dy_ret = dropout(t)
-            dy_ret2 = paddle.nn.functional.dropout(t, p=0.35)
-            dy_ret_value = dy_ret.numpy()
-            dy_ret2_value = dy_ret2.numpy()
-
-        np.testing.assert_array_equal(static_ret, static_ret2)
-        np.testing.assert_array_equal(dy_ret_value, dy_ret2_value)
-        np.testing.assert_array_equal(static_ret, dy_ret_value)
-
-    def test_linear(self):
-        inp = np.ones([3, 32, 32], dtype='float32')
-        with self.static_graph():
-            t = paddle.static.data(
-                name='data', shape=[3, 32, 32], dtype='float32'
-            )
-            linear = paddle.nn.Linear(
-                32,
-                4,
-                bias_attr=paddle.nn.initializer.Constant(value=1),
-            )
-            ret = linear(t)
-            static_ret = self.get_static_graph_result(
-                feed={'data': inp}, fetch_list=[ret]
-            )[0]
-        with self.dynamic_graph():
-            t = paddle.to_tensor(inp)
-            linear = paddle.nn.Linear(
-                32,
-                4,
-                bias_attr=paddle.nn.initializer.Constant(value=1),
-            )
-            dy_ret = linear(t)
-            dy_ret_value = dy_ret.numpy()
-
-        np.testing.assert_array_equal(static_ret, dy_ret_value)
-
-        with self.static_graph():
-            # the input of Linear must be Variable.
-            def test_Variable():
-                inp = np.ones([3, 32, 32], dtype='float32')
-                linear = paddle.nn.Linear(
-                    32,
-                    4,
-                    bias_attr=paddle.nn.initializer.Constant(value=1),
-                )
-                linear_ret1 = linear(inp)
-
-            self.assertRaises(TypeError, test_Variable)
-
-            # the input dtype of Linear must be float16 or float32 or float64
-            # float16 only can be set on GPU place
-            def test_type():
-                inp = np.ones([3, 32, 32], dtype='int32')
-                linear = paddle.nn.Linear(
-                    32,
-                    4,
-                    bias_attr=paddle.nn.initializer.Constant(value=1),
-                )
-                linear_ret2 = linear(inp)
-
-            self.assertRaises(TypeError, test_type)
-
     def test_cvm(self):
         inp = np.ones([10, 10], dtype='float32')
         arr = [[0.6931472, -1.904654e-09, 1, 1, 1, 1, 1, 1, 1, 1]] * 10
@@ -231,170 +127,6 @@ class TestLayer(LayerTest):
             )[0]
         np.testing.assert_allclose(static_ret1, cvm1, rtol=1e-5, atol=1e-06)
         np.testing.assert_allclose(static_ret2, cvm2, rtol=1e-5, atol=1e-06)
-
-    def test_Flatten(self):
-        inp = np.ones([3, 4, 4, 5], dtype='float32')
-        with self.static_graph():
-            t = paddle.static.data(
-                name='data', shape=[3, 4, 4, 5], dtype='float32'
-            )
-            flatten = paddle.nn.Flatten()
-            ret = flatten(t)
-            static_ret = self.get_static_graph_result(
-                feed={'data': inp}, fetch_list=[ret]
-            )[0]
-        with self.dynamic_graph():
-            t = paddle.to_tensor(inp)
-            flatten = paddle.nn.Flatten()
-            dy_ret = flatten(t)
-            dy_ret_value = dy_ret.numpy()
-
-        np.testing.assert_array_equal(static_ret, dy_ret_value)
-
-        with self.static_graph():
-            # the input of Linear must be Variable.
-            def test_Variable():
-                inp = np.ones([3, 32, 32], dtype='float32')
-                linear = paddle.nn.Linear(
-                    32,
-                    4,
-                    bias_attr=paddle.nn.initializer.Constant(value=1),
-                )
-                linear_ret1 = linear(inp)
-
-            self.assertRaises(TypeError, test_Variable)
-
-            # the input dtype of Linear must be float16 or float32 or float64
-            # float16 only can be set on GPU place
-            def test_type():
-                inp = np.ones([3, 32, 32], dtype='int32')
-                linear = paddle.nn.Linear(
-                    32,
-                    4,
-                    bias_attr=paddle.nn.initializer.Constant(value=1),
-                )
-                linear_ret2 = linear(inp)
-
-            self.assertRaises(TypeError, test_type)
-
-    @test_with_pir_api
-    def test_SyncBatchNorm(self):
-        if core.is_compiled_with_cuda():
-            with self.static_graph():
-                t = paddle.static.data(
-                    name='t', shape=[-1, 3, 5, 5], dtype='float32'
-                )
-                my_sync_bn = paddle.nn.SyncBatchNorm(3)
-                ret = my_sync_bn(t)
-                static_ret = self.get_static_graph_result(
-                    feed={'t': np.ones([3, 3, 5, 5], dtype='float32')},
-                    fetch_list=[ret],
-                )[0]
-
-            with self.dynamic_graph():
-                t = np.ones([3, 3, 5, 5], dtype='float32')
-                my_syncbn = paddle.nn.SyncBatchNorm(3)
-                dy_ret = my_syncbn(paddle.to_tensor(t))
-                dy_ret_value = dy_ret.numpy()
-            np.testing.assert_array_equal(static_ret, dy_ret_value)
-
-    def test_relu(self):
-        with self.static_graph():
-            t = paddle.static.data(name='t', shape=[-1, 3, 3], dtype='float32')
-            ret = F.relu(t)
-            static_ret = self.get_static_graph_result(
-                feed={'t': np.ones([3, 3], dtype='float32')}, fetch_list=[ret]
-            )[0]
-
-        with self.dynamic_graph():
-            t = np.ones([3, 3], dtype='float32')
-            dy_ret = F.relu(paddle.to_tensor(t))
-            dy_ret_value = dy_ret.numpy()
-
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-
-    def test_matmul(self):
-        with self.static_graph():
-            t = paddle.static.data(name='t', shape=[-1, 3, 3], dtype='float32')
-            t2 = paddle.static.data(
-                name='t2', shape=[-1, 3, 3], dtype='float32'
-            )
-            ret = paddle.matmul(t, t2)
-            static_ret = self.get_static_graph_result(
-                feed={
-                    't': np.ones([3, 3], dtype='float32'),
-                    't2': np.ones([3, 3], dtype='float32'),
-                },
-                fetch_list=[ret],
-            )[0]
-
-        with self.dynamic_graph():
-            t = np.ones([3, 3], dtype='float32')
-            t2 = np.ones([3, 3], dtype='float32')
-            dy_ret = paddle.matmul(paddle.to_tensor(t), paddle.to_tensor(t2))
-            dy_ret_value = dy_ret.numpy()
-
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-
-    def test_elementwise_math(self):
-        n = np.ones([3, 3], dtype='float32')
-        n2 = np.ones([3, 3], dtype='float32') * 1.1
-        n3 = np.ones([3, 3], dtype='float32') * 2
-        n4 = np.ones([3, 3], dtype='float32') * 3
-        n5 = np.ones([3, 3], dtype='float32') * 4
-        n6 = np.ones([3, 3], dtype='float32') * 5
-
-        with self.static_graph():
-            t = paddle.static.data(name='t', shape=[-1, 3, 3], dtype='float32')
-            t2 = paddle.static.data(
-                name='t2', shape=[-1, 3, 3], dtype='float32'
-            )
-            t3 = paddle.static.data(
-                name='t3', shape=[-1, 3, 3], dtype='float32'
-            )
-            t4 = paddle.static.data(
-                name='t4', shape=[-1, 3, 3], dtype='float32'
-            )
-            t5 = paddle.static.data(
-                name='t5', shape=[-1, 3, 3], dtype='float32'
-            )
-            t6 = paddle.static.data(
-                name='t6', shape=[-1, 3, 3], dtype='float32'
-            )
-
-            ret = paddle.add(t, t2)
-            ret = paddle.pow(ret, t3)
-            ret = paddle.divide(ret, t4)
-            ret = paddle.subtract(ret, t5)
-            ret = paddle.multiply(ret, t6)
-
-            static_ret = self.get_static_graph_result(
-                feed={'t': n, 't2': n2, 't3': n3, 't4': n4, 't5': n5, 't6': n6},
-                fetch_list=[ret],
-            )[0]
-
-        with self.dynamic_graph():
-            ret = paddle.add(paddle.to_tensor(n), paddle.to_tensor(n2))
-            ret = paddle.pow(ret, paddle.to_tensor(n3))
-            ret = paddle.divide(ret, paddle.to_tensor(n4))
-            ret = paddle.subtract(ret, paddle.to_tensor(n5))
-            dy_ret = paddle.multiply(ret, paddle.to_tensor(n6))
-            dy_ret_value = dy_ret.numpy()
-
-        np.testing.assert_allclose(static_ret, dy_ret_value, rtol=1e-05)
-
-    def test_elementwise_minmax(self):
-        n = np.ones([3, 3], dtype='float32')
-        n2 = np.ones([3, 3], dtype='float32') * 2
-
-        with self.dynamic_graph():
-            min_ret = paddle.minimum(paddle.to_tensor(n), paddle.to_tensor(n2))
-            max_ret = paddle.maximum(paddle.to_tensor(n), paddle.to_tensor(n2))
-            min_ret_value = min_ret.numpy()
-            max_ret_value = max_ret.numpy()
-
-        np.testing.assert_allclose(n, min_ret_value, rtol=1e-05)
-        np.testing.assert_allclose(n2, max_ret_value, rtol=1e-05)
 
     def test_conv2d_transpose(self):
         inp_np = np.arange(0, 24).reshape([2, 3, 2, 2]).astype('float32')
@@ -704,43 +436,6 @@ class TestLayer(LayerTest):
             emb2.weight = emb1.weight
             np.testing.assert_array_equal(
                 emb1.weight.numpy(), emb2.weight.numpy()
-            )
-
-    def test_one_hot(self):
-        with self.dynamic_graph():
-            label = paddle.to_tensor(np.array([[1], [1], [3], [0]]))
-            one_hot_label1 = paddle.nn.functional.one_hot(label, 4)
-            one_hot_label2 = paddle.nn.functional.one_hot(
-                label, paddle.to_tensor(np.array([4]))
-            )
-            np.testing.assert_array_equal(
-                one_hot_label1.numpy(), one_hot_label2.numpy()
-            )
-
-    def test_split(self):
-        with self.dynamic_graph():
-            input = paddle.to_tensor(np.random.random((3, 8, 5)))
-            x0, x1 = paddle.split(input, num_or_sections=2, axis=1)
-            x00, x11 = paddle.split(
-                input,
-                num_or_sections=2,
-                axis=paddle.to_tensor(np.array([1])),
-            )
-            np.testing.assert_array_equal(x0.numpy(), x00.numpy())
-            np.testing.assert_array_equal(x1.numpy(), x11.numpy())
-
-    def test_topk(self):
-        with self.dynamic_graph():
-            input = paddle.to_tensor(np.random.random((13, 11)))
-            top5_values1, top5_indices1 = paddle.topk(input, k=5)
-            top5_values2, top5_indices2 = paddle.topk(
-                input, k=paddle.to_tensor(np.array([5]))
-            )
-            np.testing.assert_array_equal(
-                top5_values1.numpy(), top5_values2.numpy()
-            )
-            np.testing.assert_array_equal(
-                top5_indices1.numpy(), top5_indices2.numpy()
             )
 
     def test_conv3d(self):
@@ -1164,105 +859,6 @@ class TestLayer(LayerTest):
 
         np.testing.assert_array_equal(static_ret[0], dy_ret[0].numpy())
 
-    def test_compare(self):
-        value_a = np.arange(3)
-        value_b = np.arange(3)
-        # less than
-        with self.static_graph():
-            a = paddle.static.data(name='a', shape=[-1, 1], dtype='int64')
-            b = paddle.static.data(name='b', shape=[-1, 1], dtype='int64')
-            cond = paddle.less_than(x=a, y=b)
-            static_ret = self.get_static_graph_result(
-                feed={"a": value_a, "b": value_b}, fetch_list=[cond]
-            )[0]
-        with self.dynamic_graph():
-            da = paddle.to_tensor(value_a)
-            db = paddle.to_tensor(value_b)
-            dcond = paddle.less_than(x=da, y=db)
-
-            for i in range(len(static_ret)):
-                self.assertTrue(dcond.numpy()[i] == static_ret[i])
-
-        # less equal
-        with self.static_graph():
-            a1 = paddle.static.data(name='a1', shape=[-1, 1], dtype='int64')
-            b1 = paddle.static.data(name='b1', shape=[-1, 1], dtype='int64')
-            cond1 = paddle.less_equal(x=a1, y=b1)
-            static_ret1 = self.get_static_graph_result(
-                feed={"a1": value_a, "b1": value_b}, fetch_list=[cond1]
-            )[0]
-        with self.dynamic_graph():
-            da1 = paddle.to_tensor(value_a)
-            db1 = paddle.to_tensor(value_b)
-            dcond1 = paddle.less_equal(x=da1, y=db1)
-
-            for i in range(len(static_ret1)):
-                self.assertTrue(dcond1.numpy()[i] == static_ret1[i])
-
-        # greater than
-        with self.static_graph():
-            a2 = paddle.static.data(name='a2', shape=[-1, 1], dtype='int64')
-            b2 = paddle.static.data(name='b2', shape=[-1, 1], dtype='int64')
-            cond2 = paddle.greater_than(x=a2, y=b2)
-            static_ret2 = self.get_static_graph_result(
-                feed={"a2": value_a, "b2": value_b}, fetch_list=[cond2]
-            )[0]
-        with self.dynamic_graph():
-            da2 = paddle.to_tensor(value_a)
-            db2 = paddle.to_tensor(value_b)
-            dcond2 = paddle.greater_than(x=da2, y=db2)
-
-            for i in range(len(static_ret2)):
-                self.assertTrue(dcond2.numpy()[i] == static_ret2[i])
-
-        # greater equal
-        with self.static_graph():
-            a3 = paddle.static.data(name='a3', shape=[-1, 1], dtype='int64')
-            b3 = paddle.static.data(name='b3', shape=[-1, 1], dtype='int64')
-            cond3 = paddle.greater_equal(x=a3, y=b3)
-            static_ret3 = self.get_static_graph_result(
-                feed={"a3": value_a, "b3": value_b}, fetch_list=[cond3]
-            )[0]
-        with self.dynamic_graph():
-            da3 = paddle.to_tensor(value_a)
-            db3 = paddle.to_tensor(value_b)
-            dcond3 = paddle.greater_equal(x=da3, y=db3)
-
-            for i in range(len(static_ret3)):
-                self.assertTrue(dcond3.numpy()[i] == static_ret3[i])
-
-        # equal
-        with self.static_graph():
-            a4 = paddle.static.data(name='a4', shape=[-1, 1], dtype='int64')
-            b4 = paddle.static.data(name='b4', shape=[-1, 1], dtype='int64')
-            cond4 = paddle.equal(x=a4, y=b4)
-            static_ret4 = self.get_static_graph_result(
-                feed={"a4": value_a, "b4": value_b}, fetch_list=[cond4]
-            )[0]
-        with self.dynamic_graph():
-            da4 = paddle.to_tensor(value_a)
-            db4 = paddle.to_tensor(value_b)
-            dcond4 = paddle.equal(x=da4, y=db4)
-
-            for i in range(len(static_ret4)):
-                self.assertTrue(dcond4.numpy()[i] == static_ret4[i])
-
-        # not equal
-        with self.static_graph():
-            a5 = paddle.static.data(name='a5', shape=[-1, 1], dtype='int64')
-            b5 = paddle.static.data(name='b5', shape=[-1, 1], dtype='int64')
-            cond5 = paddle.equal(x=a5, y=b5)
-            static_ret5 = self.get_static_graph_result(
-                feed={"a5": value_a, "b5": value_b}, fetch_list=[cond5]
-            )[0]
-        with self.dynamic_graph():
-            da5 = paddle.to_tensor(value_a)
-            db5 = paddle.to_tensor(value_b)
-            dcond5 = paddle.equal(x=da5, y=db5)
-
-            for i in range(len(static_ret5)):
-                self.assertTrue(dcond5.numpy()[i] == static_ret5[i])
-
     @test_with_pir_api
     def test_cond(self):
         def less_than_branch(a, b):
@@ -1470,79 +1066,6 @@ class TestLayer(LayerTest):
         np.testing.assert_array_equal(static_res2, dynamic_res2)
         np.testing.assert_array_equal(static_res3, dynamic_res3)
 
-    def test_crop_tensor(self):
-        with self.static_graph():
-            x = paddle.static.data(
-                name="x1", shape=[-1, 6, 5, 8], dtype="float32"
-            )
-
-            dim1 = paddle.static.data(name="dim1", shape=[1], dtype="float32")
-            dim2 = paddle.static.data(name="dim2", shape=[1], dtype="float32")
-            crop_shape1 = (1, 2, 4, 4)
-            crop_shape2 = paddle.static.data(
-                name="crop_shape", shape=[4], dtype="float32"
-            )
-            crop_shape3 = [-1, dim1, dim2, 4]
-            crop_offsets1 = [0, 0, 1, 0]
-            crop_offsets2 = paddle.static.data(
-                name="crop_offset", shape=[4], dtype="float32"
-            )
-            crop_offsets3 = [0, dim1, dim2, 0]
-
-            out1 = paddle.crop(x, shape=crop_shape1, offsets=crop_offsets1)
-            out2 = paddle.crop(x, shape=crop_shape2, offsets=crop_offsets2)
-            out3 = paddle.crop(x, shape=crop_shape3, offsets=crop_offsets3)
-
-            self.assertIsNotNone(out1)
-            self.assertIsNotNone(out2)
-            self.assertIsNotNone(out3)
-
-    def test_shard_index(self):
-        with self.static_graph():
-            x = paddle.static.data(
-                name="label", shape=[-1, 4, 1], dtype='int64'
-            )
-            shard_label = paddle.shard_index(
-                input=x, index_num=20, nshards=2, shard_id=0
-            )
-
-        self.assertIsNotNone(shard_label)
-
-    def test_accuracy(self):
-        x = np.random.rand(3, 32, 32).astype("float32")
-        y = np.array([[1], [0], [1]])
-        with self.static_graph():
-            data = paddle.static.data(
-                name="input", shape=[-1, 32, 32], dtype="float32"
-            )
-            label = paddle.static.data(name="label", shape=[-1, 1], dtype="int")
-            data_new = paddle.reshape(data, [3, 32 * 32])
-            fc_out = paddle.nn.Linear(32 * 32, 10)(data_new)
-            predict = paddle.nn.functional.softmax(fc_out)
-            result = paddle.static.accuracy(input=predict, label=label, k=5)
-            place = base.CPUPlace()
-            exe = base.Executor(place)
-
-            exe.run(base.default_startup_program())
-            # x = np.random.rand(3, 32, 32).astype("float32")
-            # y = np.array([[1], [0], [1]])
-
-            static_out = exe.run(
-                feed={"input": x, "label": y}, fetch_list=result
-            )
-
-        with self.dynamic_graph(force_to_use_cpu=True):
-            data = paddle.to_tensor(x)
-            label = paddle.to_tensor(y)
-            data_new = paddle.reshape(data, [3, 32 * 32])
-            fc_out = paddle.nn.Linear(32 * 32, 10)(data_new)
-            predict = paddle.nn.functional.softmax(fc_out)
-            dynamic_out = paddle.static.accuracy(
-                input=predict, label=label, k=5
-            )
-
-        np.testing.assert_array_equal(static_out[0], dynamic_out.numpy())
-
 
 class TestBook(LayerTest):
     def setUp(self):
@@ -1647,41 +1170,6 @@ class TestBook(LayerTest):
             data.desc.set_need_check_feed(False)
             return data
 
-    def make_fit_a_line(self):
-        with program_guard(
-            base.default_main_program(),
-            startup_program=base.default_startup_program(),
-        ):
-            x = self._get_data(name='x', shape=[13], dtype='float32')
-            y_predict = paddle.nn.Linear(13, 1)(x)
-            y = self._get_data(name='y', shape=[1], dtype='float32')
-            cost = paddle.nn.functional.square_error_cost(
-                input=y_predict, label=y
-            )
-            avg_cost = paddle.mean(cost)
-            return avg_cost
-
-    def make_recognize_digits_mlp(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            # Change g_program, so the rest layers use `g_program`
-            images = self._get_data(name='pixel', shape=[784], dtype='float32')
-            label = self._get_data(name='label', shape=[1], dtype='int64')
-            hidden1 = paddle.nn.Linear(784, 128)(images)
-            hidden1 = paddle.nn.functional.relu(hidden1)
-            hidden2 = paddle.nn.Linear(128, 64)(hidden1)
-            hidden2 = paddle.nn.functional.relu(hidden2)
-            hidden1 = paddle.nn.Linear(128, 10, "sftmax.w1")(hidden1)
-            hidden2 = paddle.nn.Linear(64, 10, "sftmax.w2")(hidden2)
-            hidden = hidden1 + hidden2
-            predict = paddle.nn.functional.softmax(hidden)
-            cost = paddle.nn.functional.cross_entropy(
-                input=predict, label=label, reduction='none', use_softmax=False
-            )
-            avg_cost = paddle.mean(cost)
-            return avg_cost
-
     def make_conv2d_transpose(self):
         with program_guard(
             base.default_main_program(), base.default_startup_program()
@@ -1690,53 +1178,6 @@ class TestBook(LayerTest):
             return paddle.static.nn.conv2d_transpose(
                 input=img, num_filters=10, output_size=28
             )
-
-    def make_recognize_digits_conv(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            images = self._get_data(
-                name='pixel', shape=[1, 28, 28], dtype='float32'
-            )
-            label = self._get_data(name='label', shape=[1], dtype='int64')
-            conv_pool_1 = nets.simple_img_conv_pool(
-                input=images,
-                filter_size=5,
-                num_filters=2,
-                pool_size=2,
-                pool_stride=2,
-                act="relu",
-            )
-            conv_pool_2 = nets.simple_img_conv_pool(
-                input=conv_pool_1,
-                filter_size=5,
-                num_filters=4,
-                pool_size=2,
-                pool_stride=2,
-                act="relu",
-            )
-
-            conv_pool_2_new = paddle.reshape(
-                conv_pool_2,
-                [
-                    conv_pool_2.shape[0],
-                    conv_pool_2.shape[1]
-                    * conv_pool_2.shape[2]
-                    * conv_pool_2.shape[3],
-                ],
-            )
-            predict = paddle.nn.Linear(
-                conv_pool_2.shape[1]
-                * conv_pool_2.shape[2]
-                * conv_pool_2.shape[3],
-                10,
-            )(conv_pool_2_new)
-            predict = paddle.nn.functional.softmax(predict)
-            cost = paddle.nn.functional.cross_entropy(
-                input=predict, label=label, reduction='none', use_softmax=False
-            )
-            avg_cost = paddle.mean(cost)
-            return avg_cost
 
     def make_word_embedding(self):
         with program_guard(
@@ -1798,35 +1239,6 @@ class TestBook(LayerTest):
             avg_cost = paddle.mean(cost)
             return avg_cost
 
-    def make_pool2d(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[3, 224, 224], dtype='float32')
-            return paddle.nn.functional.max_pool2d(
-                x, kernel_size=[5, 3], stride=[1, 2], padding=(2, 1)
-            )
-
-    def make_pool2d_infershape(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            theta = self._get_data("theta", shape=[2, 3], dtype='float32')
-            x = paddle.nn.functional.affine_grid(
-                theta, out_shape=[2, 3, 244, 244]
-            )
-            return paddle.nn.functional.max_pool2d(
-                x, kernel_size=[5, 3], stride=[1, 2], padding=(2, 1)
-            )
-
-    def make_softmax(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            data = self._get_data(name='data', shape=[10], dtype='float32')
-            hid = paddle.nn.Linear(10, 20)(data)
-            return paddle.nn.functional.softmax(hid, axis=1)
-
     @prog_scope()
     def make_nce(self):
         window_size = 5
@@ -1863,215 +1275,6 @@ class TestBook(LayerTest):
         )
         avg_loss = paddle.mean(loss)
         return avg_loss
-
-    def make_multiplex(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            x1 = self._get_data(name='x1', shape=[4], dtype='float32')
-            x2 = self._get_data(name='x2', shape=[4], dtype='float32')
-            index = self._get_data(name='index', shape=[1], dtype='int32')
-            out = paddle.multiplex(inputs=[x1, x2], index=index)
-            return out
-
-    def make_softmax_with_cross_entropy(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[16], dtype='float32')
-            y = self._get_data(name='label', shape=[1], dtype='int64')
-            loss, softmax = paddle.nn.functional.softmax_with_cross_entropy(
-                x, y, return_softmax=True
-            )
-            self.assertIsNotNone(loss)
-            self.assertIsNotNone(softmax)
-
-            loss = paddle.nn.functional.softmax_with_cross_entropy(x, y)
-            self.assertIsNotNone(loss)
-
-            x1 = self._get_data(name='x1', shape=[16, 32, 64], dtype='float32')
-            y1 = self._get_data(name='label1', shape=[1, 32, 64], dtype='int64')
-            y2 = self._get_data(name='label2', shape=[16, 1, 64], dtype='int64')
-            y3 = self._get_data(name='label3', shape=[16, 32, 1], dtype='int64')
-            loss1 = paddle.nn.functional.softmax_with_cross_entropy(
-                x1, y1, axis=1
-            )
-            loss2 = paddle.nn.functional.softmax_with_cross_entropy(
-                x1, y2, axis=2
-            )
-            loss3 = paddle.nn.functional.softmax_with_cross_entropy(
-                x1, y3, axis=3
-            )
-            loss4 = paddle.nn.functional.softmax_with_cross_entropy(
-                x1, y3, axis=-1
-            )
-            self.assertIsNotNone(loss1)
-            self.assertIsNotNone(loss2)
-            self.assertIsNotNone(loss3)
-            self.assertIsNotNone(loss4)
-            return loss4
-
-    def make_scatter(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            x = self._get_data(
-                name='x', shape=[3, 3], append_batch_size=False, dtype='float32'
-            )
-            idx = self._get_data(
-                name='idx', shape=[2], append_batch_size=False, dtype='int32'
-            )
-            updates = self._get_data(
-                name='updates',
-                shape=[2, 3],
-                dtype='float32',
-                append_batch_size=False,
-            )
-            out = paddle.scatter(x, index=idx, updates=updates)
-            return out
-
-    def make_one_hot(self):
-        with base.framework._dygraph_place_guard(place=base.CPUPlace()):
-            label = self._get_data(name="label", shape=[1], dtype="int32")
-            one_hot_label = paddle.nn.functional.one_hot(label, 10)
-            return one_hot_label
-
-    def make_label_smooth(self):
-        # TODO(minqiyang): support gpu ut
-        self._force_to_use_cpu = True
-        with base.framework._dygraph_place_guard(place=base.CPUPlace()):
-            label = self._get_data(name="label", shape=[1], dtype="int32")
-            one_hot_label = paddle.nn.functional.one_hot(label, 10)
-            smooth_label = F.label_smooth(label=one_hot_label, epsilon=0.1)
-            return smooth_label
-
-    def make_topk(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            data = self._get_data(name="label", shape=[200], dtype="float32")
-            values, indices = paddle.topk(data, k=5)
-            return values
-            return indices
-
-    def make_l2_normalize(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[8, 7, 10], dtype="float32")
-            output = paddle.nn.functional.normalize(x, axis=1)
-            return output
-
-    def make_shape(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            input = self._get_data(
-                name="input", shape=[3, 100, 100], dtype="float32"
-            )
-            out = paddle.shape(input)
-            return out
-
-    def make_pad2d(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            input = self._get_data(
-                name="input", shape=[3, 100, 100], dtype="float32"
-            )
-
-            tmp_pad = paddle.nn.Pad2D(
-                padding=[1, 2, 3, 4],
-                mode='reflect',
-                data_format='NCHW',
-                name="shape",
-            )
-            out = tmp_pad(input)
-            return out
-
-    def make_mish(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            input = self._get_data(name="input", shape=[16], dtype="float32")
-            out = paddle.nn.functional.mish(input, name='mish')
-            return out
-
-    def make_cross_entropy(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            x = self._get_data(name="x", shape=[30, 10], dtype="float32")
-            label = self._get_data(name="label", shape=[30, 1], dtype="int64")
-            mode = 'channel'
-            out = paddle.nn.functional.cross_entropy(
-                x,
-                label,
-                soft_label=False,
-                ignore_index=4,
-                reduction='none',
-                use_softmax=False,
-            )
-            return out
-
-    def make_uniform_random_batch_size_like(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            input = self._get_data(
-                name="input", shape=[13, 11], dtype='float32'
-            )
-            out = random.uniform_random_batch_size_like(input, [-1, 11])
-            return out
-
-    def make_gaussian_random(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            out = random.gaussian(shape=[20, 30])
-            return out
-
-    def make_sum(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            input = self._get_data(
-                name="input", shape=[13, 11], dtype='float32'
-            )
-
-            out = paddle.add_n(input)
-            return out
-
-    def make_slice(self):
-        starts = [1, 0, 2]
-        ends = [3, 3, 4]
-        axes = [0, 1, 2]
-
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            input = self._get_data(
-                name="input", shape=[3, 4, 5, 6], dtype='float32'
-            )
-
-            out = paddle.slice(input, axes=axes, starts=starts, ends=ends)
-            return out
-
-    def make_scale_variable(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            input = self._get_data(
-                name="input", shape=[3, 4, 5, 6], dtype='float32'
-            )
-            scale_var = self._get_data(
-                name="scale",
-                shape=[1],
-                dtype='float32',
-                append_batch_size=False,
-            )
-            out = paddle.scale(input, scale=scale_var)
-            return out
 
     def make_bilinear_tensor_product_layer(self):
         with program_guard(
@@ -2111,25 +1314,6 @@ class TestBook(LayerTest):
             out = paddle.static.nn.batch_norm(data, momentum=momentum)
             return out
 
-    def make_range(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            paddle.arange(0, 10, 2, 'int32')
-            paddle.arange(0.1, 10.0, 0.2, 'float32')
-            paddle.arange(0.1, 10.0, 0.2, 'float64')
-            start = paddle.tensor.fill_constant(
-                shape=[1], value=0.1, dtype="float32"
-            )
-            end = paddle.tensor.fill_constant(
-                shape=[1], value=10.0, dtype="float32"
-            )
-            step = paddle.tensor.fill_constant(
-                shape=[1], value=0.2, dtype="float32"
-            )
-            y = paddle.arange(start, end, step, 'float64')
-            return y
-
     def make_spectral_norm(self):
         with program_guard(
             base.default_main_program(), base.default_startup_program()
@@ -2143,87 +1327,81 @@ class TestBook(LayerTest):
             out = paddle.static.nn.spectral_norm(weight, dim=1, power_iters=1)
             return out
 
-    def make_kldiv_loss(self):
-        with program_guard(
+    def make_recognize_digits_conv(self):
+        with base.program_guard(
             base.default_main_program(), base.default_startup_program()
         ):
-            x = self._get_data(
-                name='x',
-                shape=[32, 128, 128],
-                dtype="float32",
-                append_batch_size=False,
+            images = self._get_data(
+                name='pixel', shape=[1, 28, 28], dtype='float32'
             )
-            target = self._get_data(
-                name='target',
-                shape=[32, 128, 128],
-                dtype="float32",
-                append_batch_size=False,
+            label = self._get_data(name='label', shape=[1], dtype='int64')
+            conv_pool_1 = nets.simple_img_conv_pool(
+                input=images,
+                filter_size=5,
+                num_filters=2,
+                pool_size=2,
+                pool_stride=2,
+                act="relu",
             )
-            loss = paddle.nn.functional.kl_div(
-                input=x, label=target, reduction='batchmean'
+            conv_pool_2 = nets.simple_img_conv_pool(
+                input=conv_pool_1,
+                filter_size=5,
+                num_filters=4,
+                pool_size=2,
+                pool_stride=2,
+                act="relu",
             )
-            return loss
 
-    def make_pixel_shuffle(self):
-        with program_guard(
+            conv_pool_2_new = paddle.reshape(
+                conv_pool_2,
+                [
+                    conv_pool_2.shape[0],
+                    conv_pool_2.shape[1]
+                    * conv_pool_2.shape[2]
+                    * conv_pool_2.shape[3],
+                ],
+            )
+            predict = paddle.nn.Linear(
+                conv_pool_2.shape[1]
+                * conv_pool_2.shape[2]
+                * conv_pool_2.shape[3],
+                10,
+            )(conv_pool_2_new)
+            predict = paddle.nn.functional.softmax(predict)
+            cost = paddle.nn.functional.cross_entropy(
+                input=predict, label=label, reduction='none', use_softmax=False
+            )
+            avg_cost = paddle.mean(cost)
+            return avg_cost
+
+    def make_uniform_random_batch_size_like(self):
+        with base.program_guard(
             base.default_main_program(), base.default_startup_program()
         ):
-            x = self._get_data(name="X", shape=[9, 4, 4], dtype="float32")
-            out = paddle.nn.functional.pixel_shuffle(x, upscale_factor=3)
+            input = self._get_data(
+                name="input", shape=[13, 11], dtype='float32'
+            )
+            out = random.uniform_random_batch_size_like(input, [-1, 11])
             return out
 
-    def make_mse_loss(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            x = self._get_data(name="X", shape=[1], dtype="float32")
-            y = self._get_data(name="Y", shape=[1], dtype="float32")
-            out = paddle.nn.functional.mse_loss(input=x, label=y)
-            return out
-
-    def make_square_error_cost(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            x = self._get_data(name="X", shape=[1], dtype="float32")
-            y = self._get_data(name="Y", shape=[1], dtype="float32")
-            out = paddle.nn.functional.square_error_cost(input=x, label=y)
-            return out
-
-    @test_with_pir_api
-    def test_affine_grid(self):
-        with self.static_graph():
-            data = paddle.static.data(
-                name='data', shape=[-1, 2, 3, 3], dtype="float32"
-            )
-            out = paddle.argsort(x=data, axis=1)
-
-            theta = paddle.static.data(
-                name="theta", shape=[-1, 2, 3], dtype="float32"
-            )
-            out_shape = paddle.static.data(
-                name="out_shape", shape=[-1], dtype="int32"
-            )
-            data_0 = paddle.nn.functional.affine_grid(theta, out_shape)
-            data_1 = paddle.nn.functional.affine_grid(theta, [5, 3, 28, 28])
-
-            self.assertIsNotNone(data_0)
-            self.assertIsNotNone(data_1)
-
-    @test_with_pir_api
-    def test_stridedslice(self):
-        axes = [0, 1, 2]
-        starts = [1, 0, 2]
-        ends = [3, 3, 4]
-        strides = [1, 1, 1]
+    def test_row_conv(self):
+        # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
             x = paddle.static.data(
-                name="x", shape=[-1, 245, 30, 30], dtype="float32"
+                name='x', shape=[-1, 16], dtype='float32', lod_level=1
             )
-            out = paddle.strided_slice(
-                x, axes=axes, starts=starts, ends=ends, strides=strides
-            )
+            out = paddle.static.nn.row_conv(input=x, future_context_size=2)
             return out
+
+    def test_simple_conv2d(self):
+        # TODO(minqiyang): dygraph do not support layers with param now
+        with self.static_graph():
+            images = paddle.static.data(
+                name='pixel', shape=[-1, 3, 48, 48], dtype='float32'
+            )
+            return paddle.static.nn.conv2d(
+                input=images, num_filters=3, filter_size=[4, 4]
+            )
 
     def test_shuffle_batch(self):
         # TODO(minqiyang): dygraph do not support lod now
@@ -2238,12 +1416,41 @@ class TestBook(LayerTest):
             self.assertIsNotNone(out2)
             return out1
 
+    def test_rank_attention(self):
+        with self.static_graph():
+            input = paddle.static.data(
+                name="input", shape=[None, 2], dtype="float32"
+            )
+            rank_offset = paddle.static.data(
+                name="rank_offset", shape=[None, 7], dtype="int32"
+            )
+            out = rank_attention(
+                input=input,
+                rank_offset=rank_offset,
+                rank_param_shape=[18, 3],
+                rank_param_attr=base.ParamAttr(
+                    learning_rate=1.0,
+                    name="ubm_rank_param.w_0",
+                    initializer=paddle.nn.initializer.XavierNormal(),
+                ),
+                max_rank=3,
+            )
+            return out
+
     def test_partial_sum(self):
         with self.static_graph():
             x = paddle.static.data(name="x", shape=[None, 3], dtype="float32")
             y = paddle.static.data(name="y", shape=[None, 3], dtype="float32")
             sum = partial_sum([x, y], start_index=0, length=2)
             return sum
+
+    def test_partial_concat(self):
+        with self.static_graph():
+            x = paddle.static.data(name="x", shape=[None, 3], dtype="float32")
+            y = paddle.static.data(name="y", shape=[None, 3], dtype="float32")
+            concat1 = partial_concat([x, y], start_index=0, length=2)
+            concat2 = partial_concat(x, start_index=0, length=-1)
+            return concat1, concat2
 
     def test_batch_fc(self):
         with self.static_graph():
@@ -2268,227 +1475,6 @@ class TestBook(LayerTest):
             )
         return out
 
-    def test_rank_attention(self):
-        with self.static_graph():
-            input = paddle.static.data(
-                name="input", shape=[None, 2], dtype="float32"
-            )
-            rank_offset = paddle.static.data(
-                name="rank_offset", shape=[None, 7], dtype="int32"
-            )
-            out = rank_attention(
-                input=input,
-                rank_offset=rank_offset,
-                rank_param_shape=[18, 3],
-                rank_param_attr=base.ParamAttr(
-                    learning_rate=1.0,
-                    name="ubm_rank_param.w_0",
-                    initializer=paddle.nn.initializer.XavierNormal(),
-                ),
-                max_rank=3,
-            )
-            return out
-
-    def test_row_conv(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = paddle.static.data(
-                name='x', shape=[-1, 16], dtype='float32', lod_level=1
-            )
-            out = paddle.static.nn.row_conv(input=x, future_context_size=2)
-            return out
-
-    def test_simple_conv2d(self):
-        # TODO(minqiyang): dygraph do not support layers with param now
-        with self.static_graph():
-            images = paddle.static.data(
-                name='pixel', shape=[-1, 3, 48, 48], dtype='float32'
-            )
-            return paddle.static.nn.conv2d(
-                input=images, num_filters=3, filter_size=[4, 4]
-            )
-
-    def test_squeeze(self):
-        # TODO(minqiyang): dygraph do not support layers with param now
-        with self.static_graph():
-            x = paddle.static.data(
-                name='x', shape=[-1, 1, 1, 4], dtype='float32'
-            )
-            out = paddle.squeeze(x, axis=[2])
-            return out
-
-    def test_flatten(self):
-        # TODO(minqiyang): dygraph do not support op without kernel now
-        with self.static_graph():
-            x = paddle.static.data(
-                name='x',
-                shape=[4, 4, 3],
-                dtype="float32",
-            )
-            out = paddle.flatten(x, 1, -1, name="flatten")
-            return out
-
-    def test_linspace(self):
-        program = Program()
-        with program_guard(program):
-            out = paddle.linspace(20, 10, 5, 'float64')
-            self.assertIsNotNone(out)
-        print(str(program))
-
-    def test_unfold(self):
-        with self.static_graph():
-            x = paddle.static.data(
-                name='x', shape=[-1, 3, 20, 20], dtype='float32'
-            )
-            out = paddle.nn.functional.unfold(x, [3, 3], 1, 1, 1)
-            return out
-
-    def test_partial_concat(self):
-        with self.static_graph():
-            x = paddle.static.data(name="x", shape=[None, 3], dtype="float32")
-            y = paddle.static.data(name="y", shape=[None, 3], dtype="float32")
-            concat1 = partial_concat([x, y], start_index=0, length=2)
-            concat2 = partial_concat(x, start_index=0, length=-1)
-            return concat1, concat2
-
-    def test_addmm(self):
-        with program_guard(
-            base.default_main_program(), base.default_startup_program()
-        ):
-            input = paddle.static.data(
-                name='input_data',
-                shape=[3, 3],
-                dtype='float32',
-            )
-            x = paddle.static.data(name='x', shape=[3, 2], dtype='float32')
-            y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
-
-            out = paddle.addmm(input=input, x=x, y=y)
-            return out
-
-    def test_warpctc_with_padding(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            input_length = paddle.static.data(
-                name='logits_length', shape=[11], dtype='int64'
-            )
-            label_length = paddle.static.data(
-                name='labels_length', shape=[12], dtype='int64'
-            )
-            label = paddle.static.data(
-                name='label', shape=[12, 1], dtype='int32'
-            )
-            predict = paddle.static.data(
-                name='predict', shape=[4, 4, 8], dtype='float32'
-            )
-            output = paddle.nn.functional.ctc_loss(
-                log_probs=predict,
-                labels=label,
-                input_lengths=input_length,
-                label_lengths=label_length,
-                reduction='none',
-            )
-            return output
-
-
-class ExampleNet(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-        self.weight = self.create_parameter(
-            shape=[1, 1], attr=paddle.ParamAttr(trainable=False)
-        )
-
-    def forward(self):
-        # only for test parameter trainable attr
-        pass
-
-
-class TestLayerParameterTrainableSet(unittest.TestCase):
-    def test_layer_parameter_set(self):
-        with base.dygraph.guard():
-            net = ExampleNet()
-            self.assertFalse(net.weight.trainable)
-
-
-class TestLayerTrainingAttribute(unittest.TestCase):
-    def test_set_train_eval_in_dynamic_mode(self):
-        with base.dygraph.guard():
-            net = paddle.nn.Dropout()
-            net.train()
-            self.assertTrue(net.training)
-            net.eval()
-            self.assertFalse(net.training)
-
-    def test_set_train_eval_in_static_mode(self):
-        net = paddle.nn.Dropout()
-        net.train()
-        self.assertTrue(net.training)
-        net.eval()
-        self.assertFalse(net.training)
-
-
-class MyLayer(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-        self._linear = paddle.nn.Linear(1, 1)
-        self._dropout = paddle.nn.Dropout(p=0.5)
-
-    def forward(self, input):
-        temp = self._linear(input)
-        temp = self._dropout(temp)
-        return temp
-
-
-class MySuperLayer(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-        self._mylayer = MyLayer()
-
-    def forward(self, input):
-        temp = self._mylayer(input)
-        return temp
-
-
-class TestSubLayerCount(unittest.TestCase):
-    def test_sublayer(self):
-        with base.dygraph.guard():
-            mySuperlayer = MySuperLayer()
-            self.assertTrue(len(mySuperlayer.sublayers()) == 3)
-            self.assertTrue(len(mySuperlayer.sublayers(include_self=True)) == 4)
-
-
-class TestExcludedLayersSupportBool(unittest.TestCase):
-    def test_support_tuple(self):
-        with base.dygraph.guard():
-            model = MyLayer()
-            model.float16(excluded_layers=[paddle.nn.Linear])
-            self.assertTrue(model._linear.weight.dtype == paddle.float32)
-            model.bfloat16(excluded_layers=(paddle.nn.Linear))
-            self.assertTrue(model._linear.weight.dtype == paddle.float32)
-
-
-class TestLayerClearGradientSetToZero(unittest.TestCase):
-    def test_layer_clear_gradient_set_to_zero_true(self):
-        with base.dygraph.guard():
-            net = MyLayer()
-            inputs = paddle.randn([10, 1])
-            outputs = net(inputs)
-            outputs.backward()
-            net.clear_gradients()
-            self.assertTrue(
-                net._linear.weight.grad.numpy() == np.array([[0.0]])
-            )
-
-    def test_layer_clear_gradient_set_to_zero_false(self):
-        with base.dygraph.guard():
-            net = MyLayer()
-            inputs = paddle.randn([10, 1])
-            outputs = net(inputs)
-            outputs.backward()
-            net.clear_gradients(set_to_zero=False)
-            self.assertTrue(net._linear.weight.grad is None)
-
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()

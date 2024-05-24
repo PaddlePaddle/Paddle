@@ -89,6 +89,7 @@
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_out)
   infer_meta :
     func : AdamInferMeta
+    spmd_rule : AdamInferSpmdDynamic
   kernel :
     func : adam {dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense},
            adam_dense_param_sparse_grad {dense, selected_rows, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense}
@@ -677,6 +678,7 @@
   infer_meta :
     func : CheckFiniteAndUnscaleInferMeta
     param : [x, scale]
+    spmd_rule : CheckFiniteAndUnscaleSpmd
   kernel :
     func : check_finite_and_unscale
     param : [x, scale]
@@ -3436,6 +3438,18 @@
     data_type : x
   backward : send_uv_grad
 
+- op : sequence_conv
+  args: (Tensor x, Tensor padding_data, Tensor filter, int context_length, bool padding_trainable = false,
+    int context_start = 0, int context_stride = 1)
+  output: Tensor (out)
+  infer_meta:
+    func: SequenceConvInferMeta
+  kernel:
+    func: sequence_conv
+    data_type: x
+  optional: padding_data
+  backward: sequence_conv_grad
+
 - op : set_value_with_tensor
   args : (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
   output : Tensor(out)
@@ -3939,6 +3953,18 @@
   inplace: (x -> out)
   backward: uniform_inplace_grad
 
+- op : uniform_random_batch_size_like
+  args: (Tensor input, int[] shape, int input_dim_idx = 0, int output_dim_idx = 0,
+    float min=-1.0f, float max=1.0f, int seed=0, int diag_num=0, int diag_step=0, float diag_val=1.0f, DataType dtype=DataType::FLOAT32)
+  output: Tensor (out)
+  infer_meta:
+    func: UniformRandomBatchSizeLikeInferMeta
+  kernel:
+    func : uniform_random_batch_size_like {dense -> dense},
+           uniform_random_batch_size_like_sr {selected_rows -> selected_rows}
+    data_type: dtype
+  no_need_buffer: input
+
 - op : unique_consecutive
   args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, DataType dtype = DataType::FLOAT32)
   output : Tensor(out), Tensor(index), Tensor(counts)
@@ -4000,6 +4026,7 @@
   infer_meta :
     func : UpdateLossScalingInferMeta
     param : [x, found_infinite, prev_loss_scaling, in_good_steps, in_bad_steps]
+    spmd_rule : UpdateLossScalingSpmd
   kernel :
     func : update_loss_scaling
     data_type : x

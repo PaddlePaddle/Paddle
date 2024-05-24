@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,7 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
+#include "paddle/phi/backends/context_pool.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/random.h>
 
@@ -28,17 +27,57 @@
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #endif
 
-namespace paddle {
-namespace operators {
+#include "glog/logging.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/tensor_utils.h"
+
+namespace phi {
+namespace funcs {
+
+template <typename T>
+inline void UniformRealDistribution(T* data,
+                                    const int64_t& size,
+                                    const float& min,
+                                    const float& max,
+                                    const unsigned int seed) {
+  VLOG(4) << "[CPU] UniformRandomKernel<T>";
+  std::uniform_real_distribution<T> dist(static_cast<T>(min),
+                                         static_cast<T>(max));
+  auto engine = phi::GetCPURandomEngine(seed);
+
+  for (int64_t i = 0; i < size; ++i) {
+    data[i] = dist(*engine);
+  }
+}
+
+template <>
+inline void UniformRealDistribution(phi::dtype::bfloat16* data,
+                                    const int64_t& size,
+                                    const float& min,
+                                    const float& max,
+                                    const unsigned int seed) {
+  VLOG(4) << "[CPU] UniformRandomKernel<bfloat16>";
+  std::uniform_real_distribution<float> dist(min, max);
+  auto engine = phi::GetCPURandomEngine(seed);
+
+  for (int64_t i = 0; i < size; ++i) {
+    data[i] = static_cast<phi::dtype::bfloat16>(dist(*engine));
+  }
+}
 
 inline std::vector<int64_t> GetNewDataFromShapeTensor(
     const phi::DenseTensor* new_data_tensor) {
+  phi::DenseTensor cpu_starts_tensor;
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().Get(cpu_starts_tensor.place());
   if (new_data_tensor->dtype() == phi::DataType::INT64) {
     auto* new_data = new_data_tensor->data<int64_t>();
-    phi::DenseTensor cpu_starts_tensor;
     if (new_data_tensor->place().GetType() == phi::AllocationType::GPU) {
-      paddle::framework::TensorCopySync(
-          *new_data_tensor, phi::CPUPlace(), &cpu_starts_tensor);
+      phi::Copy(*dev_ctx,
+                *new_data_tensor,
+                phi::CPUPlace(),
+                true,
+                &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int64_t>();
     }
     std::vector<int64_t> vec_new_data(new_data,
@@ -47,10 +86,12 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
   } else if (new_data_tensor->dtype() == phi::DataType::INT32) {
     auto* new_data = new_data_tensor->data<int32_t>();
     std::vector<int64_t> vec_new_data;
-    phi::DenseTensor cpu_starts_tensor;
     if (new_data_tensor->place().GetType() == phi::AllocationType::GPU) {
-      paddle::framework::TensorCopySync(
-          *new_data_tensor, phi::CPUPlace(), &cpu_starts_tensor);
+      phi::Copy(*dev_ctx,
+                *new_data_tensor,
+                phi::CPUPlace(),
+                true,
+                &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int32_t>();
     }
     for (int i = 0; i < new_data_tensor->numel(); ++i) {
@@ -67,6 +108,8 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
 
 inline std::vector<int64_t> GetNewDataFromShapeTensorList(
     const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
+  phi::DenseTensor temp;
+  auto* dev_ctx = phi::DeviceContextPool::Instance().Get(temp.place());
   std::vector<int64_t> vec_new_shape;
   vec_new_shape.reserve(list_new_shape_tensor.size());
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
@@ -81,8 +124,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
 
     if (tensor->dtype() == phi::DataType::INT32) {
       if (tensor->place().GetType() == phi::AllocationType::GPU) {
-        phi::DenseTensor temp;
-        paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
+        phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
         vec_new_shape.push_back(static_cast<int64_t>(*temp.data<int32_t>()));
       } else {
         vec_new_shape.push_back(static_cast<int64_t>(*tensor->data<int32_t>()));
@@ -90,7 +132,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
     } else if (tensor->dtype() == phi::DataType::INT64) {
       if (tensor->place().GetType() == phi::AllocationType::GPU) {
         phi::DenseTensor temp;
-        paddle::framework::TensorCopySync(*tensor, phi::CPUPlace(), &temp);
+        phi::Copy(*dev_ctx, *tensor, phi::CPUPlace(), true, &temp);
         vec_new_shape.push_back(*temp.data<int64_t>());
       } else {
         vec_new_shape.push_back(*tensor->data<int64_t>());
@@ -109,7 +151,6 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
 }
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-
 template <typename T>
 struct UniformGenerator {
   T min_, max_;
@@ -141,35 +182,38 @@ struct UniformGenerator {
 };
 
 template <typename T>
-void UniformRandom(const framework::ExecutionContext& context,
-                   phi::DenseTensor* tensor) {
+void UniformRandom(const phi::GPUContext& dev_ctx,
+                   phi::DenseTensor* tensor,
+                   int attr_seed,
+                   float attr_min,
+                   float attr_max,
+                   int attr_diag_num,
+                   int attr_diag_step,
+                   float attr_diag_val) {
   int64_t size = tensor->numel();
-  auto& dev_cxt = context.template device_context<phi::GPUContext>();
-  T* data = tensor->mutable_data<T>(dev_cxt.GetPlace());
+  T* data = dev_ctx.Alloc<T>(tensor);
   if (size <= 0) return;
-  unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+  unsigned int seed = static_cast<unsigned int>(attr_seed);
 
-  T min = static_cast<T>(context.Attr<float>("min"));
-  T max = static_cast<T>(context.Attr<float>("max"));
-  unsigned int diag_num =
-      static_cast<unsigned int>(context.Attr<int>("diag_num"));
-  unsigned int diag_step =
-      static_cast<unsigned int>(context.Attr<int>("diag_step"));
-  T diag_val = static_cast<T>(context.Attr<float>("diag_val"));
+  T min = static_cast<T>(attr_min);
+  T max = static_cast<T>(attr_max);
+  unsigned int diag_num = static_cast<unsigned int>(attr_diag_num);
+  unsigned int diag_step = static_cast<unsigned int>(attr_diag_step);
+  T diag_val = static_cast<T>(attr_diag_val);
 
   if (seed == 0) {
     // Use global Generator seed
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     phi::funcs::uniform_distribution<MT> dist;
     phi::funcs::uniform_real_transform<MT> trans(min, max);
-    phi::funcs::distribution_and_transform<T>(dev_cxt, tensor, dist, trans);
+    phi::funcs::distribution_and_transform<T>(dev_ctx, tensor, dist, trans);
   } else {
     // Use OP seed
     auto func =
         UniformGenerator<T>(min, max, seed, diag_num, diag_step, diag_val);
-    phi::IndexKernel<T, UniformGenerator<T>>(dev_cxt, tensor, func);
+    phi::IndexKernel<T, UniformGenerator<T>>(dev_ctx, tensor, func);
   }
 }
 #endif
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
