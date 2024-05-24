@@ -807,9 +807,7 @@ bool AnalysisPredictor::PreparePirProgram() {
       LOG(ERROR) << "block is null";
       return false;
     }
-
-    //这一步是对应pir_io.py中的487行，得到v,因为只有ParameterOP才有v.name,所以这里只把ParameterOp
-    //添加到vars中
+    // 这一步是对应pir_io.py中的487行，得到v,因为只有ParameterOP才有v.name,所以这里只把ParameterOp添加到var
     std::vector<pir::Value> vars;
     for (auto op : block->ops()) {
       LOG(INFO) << "ops的 " << op->name();
@@ -823,7 +821,6 @@ bool AnalysisPredictor::PreparePirProgram() {
         }
       }
     }
-
     size_t len = vars.size();
     std::vector<phi::DenseTensor *> tensor_out;
     for (size_t i = 0; i < len; ++i) {
@@ -1310,7 +1307,9 @@ bool AnalysisPredictor::PrepareExecutor() {
         "Please recompile or reinstall Paddle with PSCORE support."));
 #endif
   }
-  if (!config_.new_ir_enabled()) {
+  std::string filename = config_.prog_file();
+  std::string extension_ = filename.substr(filename.find_last_of(".") + 1);
+  if (extension_ != "json") {
     DisablePrepareDataOpt(inference_program_, 0, false);
     executor_->Prepare(sub_scope_, *inference_program_, 0);
   }
@@ -2516,7 +2515,7 @@ void AnalysisPredictor::PreparePirFeedFetch(
         idx2fetches_[idx] = fetch_name;
       }
     } else if (op->name() == "pd_op.feed" || op->name() == "pd_op.data") {
-      int idx std::string feed_name =
+      std::string feed_name =
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
       LOG(INFO) << "feed_name:" << feed_name;
       idx2feeds_[feed_idx] = feed_name;
