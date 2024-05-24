@@ -119,6 +119,14 @@ class DygraphShardingOptimizer:
         self._broadcast_overlap = False
         self._forward_pre_hook_remove_helper = []
 
+        if (
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+        ):
+            assert (
+                not self.comm_overlap
+            ), "comm overlap not support when use xpu cdnn_cluster parallel."
+
         try:
             # The fp32 params such as layer_norm_0.w_0 will be at the end of param_list.
             # Have to sort the params to make sure all params are in the forward using order.
@@ -312,6 +320,14 @@ class DygraphShardingOptimizer:
             for buffer in self._comm_buffers:
                 buffer.scale_grads()
             return
+
+        # sync here to guarantee cdnn_cluster parallel correct.
+        if (
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+        ):
+            paddle.device.synchronize()
+
         with framework.no_grad():
             for param in parameter_list:
                 g_var = self._get_param_grad(param)
@@ -624,6 +640,14 @@ class DygraphShardingOptimizerV2:
         self._set_inner_opt_attr('_parameter_list', self._local_parameter_list)
         self._set_inner_opt_attr('_param_groups', self._local_parameter_list)
 
+        if (
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+        ):
+            assert (
+                not self.comm_overlap
+            ), "comm overlap not support when use xpu cdnn_cluster parallel."
+
         # Ensure acc_steps is greater than 0 when comm_overlap is used
         if self.comm_overlap:
             assert (
@@ -739,6 +763,14 @@ class DygraphShardingOptimizerV2:
     def reduce_gradients(self, parameter_list, hcg):
         # TODO merge grad / nrank with dp
         logger.debug("sharding start gradients sync")
+
+        # sync here to guarantee cdnn_cluster parallel correct.
+        if (
+            paddle.is_compiled_with_xpu()
+            and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
+        ):
+            paddle.device.synchronize()
+
         with framework.no_grad():
             for comm_buffer in self._comm_buffer_list:
                 if self.pp_release_grads and comm_buffer.grad_storage is None:
