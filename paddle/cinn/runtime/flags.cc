@@ -207,6 +207,10 @@ PD_DEFINE_string(
     StringFromEnv("FLAGS_cinn_dump_group_instruction", ""),
     "Specify the path for dump instruction by group, which is used for debug.");
 
+PD_DEFINE_string(cinn_custom_code_path,
+                 StringFromEnv("FLAGS_cinn_custom_code_path", ""),
+                 "Specify custom code path for cinn.");
+
 PD_DEFINE_string(cinn_pass_visualize_dir,
                  StringFromEnv("FLAGS_cinn_pass_visualize_dir", ""),
                  "Specify the directory path of pass visualize file of graph, "
