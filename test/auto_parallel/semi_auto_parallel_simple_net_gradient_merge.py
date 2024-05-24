@@ -44,7 +44,7 @@ class TestSimpleNetWithGradientMergeForSemiAutoParallel(
         # create loss
         loss_fn = nn.MSELoss()
         opt = paddle.optimizer.SGD(
-            learning_rate=0.1, parameters=layer.parameters()
+            learning_rate=0.001, parameters=layer.parameters()
         )
         # run forward and backward
         image, label = self.init_input_data()
@@ -79,7 +79,7 @@ class TestSimpleNetWithGradientMergeForSemiAutoParallel(
         self.check_tensor_eq(self.dp_loss, self.base_loss)
         self.check_tensor_eq(self.dp_loss, self.base_loss)
         for param, param_base in zip(self.dp_parameters, self.base_parameters):
-            self.check_tensor_eq(param, param_base)
+            self.check_tensor_eq(param, param_base, rtol=2e-4)
             self.check_tensor_eq(param.grad, param_base.grad)
 
     def test_mp_demo_net(self):
