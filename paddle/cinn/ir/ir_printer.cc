@@ -93,7 +93,7 @@ void IrPrinter::Visit(const UIntImm *x) {
 
 namespace {
 template <typename T>
-bool isCloseEqualMaxValue(T value) {
+bool isCloseEqualBoundValue(T value) {
   T maxValue = std::numeric_limits<T>::max();
   T minValue = std::numeric_limits<T>::lowest();
   T tol = std::numeric_limits<T>::denorm_min();
@@ -139,7 +139,7 @@ void IrPrinter::Visit(const FloatImm *x) {
     }
   } else if (x->type().is_float(32)) {
     float v = truncateInfinity<float>(x->value);
-    if (isCloseEqualMaxValue<float>(v)) std::fesetround(FE_TOWARDZERO);
+    if (isCloseEqualBoundValue<float>(v)) std::fesetround(FE_TOWARDZERO);
     ss << std::setprecision(std::numeric_limits<float>::max_digits10);
     ss << std::showpoint;
     ss << v;
