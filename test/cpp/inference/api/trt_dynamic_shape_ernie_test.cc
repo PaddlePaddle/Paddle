@@ -390,7 +390,7 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
   // first input
   auto input_t1 = predictor->GetInputHandle(input_names[0]);
   input_t1->Reshape({run_seq_len});
-  input_t1->CopyFromCpu(i1);
+  input_t1->CopyFromCpu(i1.data());
 
   // second input
   auto input_t2 = predictor->GetInputHandle(input_names[1]);
