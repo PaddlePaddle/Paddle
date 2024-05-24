@@ -494,7 +494,7 @@ phi::distributed::SpmdInfo RunInferSpmdFn(
         phi::distributed::DistMetaTensor meta_tensor;
         if (t.impl().get()) {
           meta_tensor =
-              paddle::experimental::MakeDistMetaTensor(*(t.impl().get()));
+              paddle::experimental::MakeDistMetaTensor(*(t.impl()));
         }
         meta_tensors.emplace_back(std::move(meta_tensor));
       }
@@ -505,7 +505,7 @@ phi::distributed::SpmdInfo RunInferSpmdFn(
       phi::distributed::DistMetaTensor meta_tensor;
       if (t.impl().get()) {
         meta_tensor =
-            paddle::experimental::MakeDistMetaTensor(*(t.impl().get()));
+            paddle::experimental::MakeDistMetaTensor(*(t.impl()));
       }
       tensor_inputs.emplace_back(std::move(meta_tensor));
     }

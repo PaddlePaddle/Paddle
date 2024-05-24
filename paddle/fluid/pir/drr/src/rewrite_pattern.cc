@@ -83,7 +83,7 @@ bool DrrRewritePattern::PatternGraphMatch(
   const OpCall* anchor = *source_pattern_graph_->OutputNodes().begin();
   std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
       bind_map =
-          FindCandidateIrOutputOp(op, anchor, *(source_pattern_graph_.get()));
+          FindCandidateIrOutputOp(op, anchor, *source_pattern_graph_);
   if (bind_map.empty()) {
     return false;
   }
@@ -116,7 +116,7 @@ bool DrrRewritePattern::PatternGraphMatch(
                        return std::make_pair(drr_op, ir_op);
                      });
       if (MatchFromOutputToInput(
-              output_op_map, *(source_pattern_graph_.get()), match_ctx)) {
+              output_op_map, *source_pattern_graph_, match_ctx)) {
         *source_pattern_match_ctx = *match_ctx;
         return true;
       }
