@@ -34,7 +34,7 @@ const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
 
 inline double GetCurrentUS() {
   struct timeval time;
-  gettimeofday(&time, NULL);
+  gettimeofday(&time, nullptr);
   return 1e+6 * time.tv_sec + time.tv_usec;
 }
 

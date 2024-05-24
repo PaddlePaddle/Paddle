@@ -20,7 +20,7 @@
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
 #include "paddle/cinn/frontend/syntax.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
@@ -28,11 +28,17 @@ namespace paddle_mappers {
 void LayerNormOpMapper(const paddle::cpp::OpDesc& op_desc,
                        const OpMapperContext& ctx) {
   auto get_input = [&op_desc](const std::string& name) {
-    CHECK_EQ(op_desc.Input(name).size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input(name).size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The input of layer_norm op should be one."));
     return op_desc.Input(name).front();
   };
   auto get_output = [&op_desc](const std::string& name) {
-    CHECK_EQ(op_desc.Output(name).size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output(name).size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output of layer_norm op should be one."));
     return op_desc.Output(name).front();
   };
 
@@ -69,9 +75,11 @@ void LayerNormOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   const auto& x_shape = x->shape;
   auto x_ndim = x_shape.size();
-  CHECK_LT(begin_norm_axis, x_ndim) << "`begin_norm_axis` must be less than "
-                                       "the dimensions of X, but received "
-                                    << begin_norm_axis;
+  PADDLE_ENFORCE_LT(
+      begin_norm_axis,
+      x_ndim,
+      phi::errors::InvalidArgument("`begin_norm_axis` must be less than "
+                                   "the dimensions of X."));
   VLOG(4) << "-- [layer_norm] begin_norm_axis = " << begin_norm_axis;
   int left = 1;
   for (int i = 0; i < begin_norm_axis; i++) {

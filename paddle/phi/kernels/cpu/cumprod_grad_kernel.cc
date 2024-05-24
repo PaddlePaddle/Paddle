@@ -35,7 +35,7 @@ void CumprodGradKernel(const Context& dev_ctx,
                        bool exclusive,
                        bool reverse,
                        DenseTensor* d_x) {
-  DDim shape = x.dims();
+  const DDim& shape = x.dims();
 
   auto* d_out_data = d_out.data<T>();
   auto* x_data = x.data<T>();

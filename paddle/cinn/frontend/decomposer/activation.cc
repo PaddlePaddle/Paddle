@@ -14,16 +14,21 @@
 
 #include "paddle/cinn/frontend/decomposer_registry.h"
 #include "paddle/cinn/frontend/syntax.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace frontend {
 namespace decomposer {
 
 void relu(const Instruction& instr, const DecomposerContext& context) {
-  CHECK_EQ(instr->inputs.size(), 1UL)
-      << " 1 input tensor for " << instr->op_type;
-  CHECK_EQ(instr->outputs.size(), 1UL)
-      << "1 output tensor for " << instr->op_type;
+  PADDLE_ENFORCE_EQ(
+      instr->inputs.size(),
+      1UL,
+      phi::errors::InvalidArgument("1 input tensor for ", instr->op_type));
+  PADDLE_ENFORCE_EQ(
+      instr->outputs.size(),
+      1UL,
+      phi::errors::InvalidArgument("1 output tensor for ", instr->op_type));
   auto x = instr->inputs[0];
   auto output = instr->outputs[0];
   auto* builder = context.builder();
@@ -39,10 +44,14 @@ void relu(const Instruction& instr, const DecomposerContext& context) {
 }
 
 void relu_grad(const Instruction& instr, const DecomposerContext& context) {
-  CHECK_EQ(instr->inputs.size(), 2UL)
-      << " 2 input tensors for " << instr->op_type;
-  CHECK_EQ(instr->outputs.size(), 1UL)
-      << "1 output tensor for " << instr->op_type;
+  PADDLE_ENFORCE_EQ(
+      instr->inputs.size(),
+      2UL,
+      phi::errors::InvalidArgument(" 2 input tensors for ", instr->op_type));
+  PADDLE_ENFORCE_EQ(
+      instr->outputs.size(),
+      1UL,
+      phi::errors::InvalidArgument("1 output tensor for ", instr->op_type));
   auto dout = instr->inputs[0];
   auto out = instr->inputs[1];
   auto dx = instr->outputs[0];
@@ -60,10 +69,14 @@ void relu_grad(const Instruction& instr, const DecomposerContext& context) {
 }
 
 void gelu(const Instruction& instr, const DecomposerContext& context) {
-  CHECK_EQ(instr->inputs.size(), 1UL)
-      << " 1 input tensor for " << instr->op_type;
-  CHECK_EQ(instr->outputs.size(), 1UL)
-      << "1 output tensor for " << instr->op_type;
+  PADDLE_ENFORCE_EQ(
+      instr->inputs.size(),
+      1UL,
+      phi::errors::InvalidArgument(" 1 input tensor for ", instr->op_type));
+  PADDLE_ENFORCE_EQ(
+      instr->outputs.size(),
+      1UL,
+      phi::errors::InvalidArgument("1 output tensor for ", instr->op_type));
   auto x = instr->inputs[0];
   auto output = instr->outputs[0];
   auto* builder = context.builder();
@@ -86,10 +99,14 @@ void gelu(const Instruction& instr, const DecomposerContext& context) {
 }
 
 void softmax(const Instruction& instr, const DecomposerContext& context) {
-  CHECK_EQ(instr->inputs.size(), 1UL)
-      << " 1 input tensor for " << instr->op_type;
-  CHECK_EQ(instr->outputs.size(), 1UL)
-      << "1 output tensor for " << instr->op_type;
+  PADDLE_ENFORCE_EQ(
+      instr->inputs.size(),
+      1UL,
+      phi::errors::InvalidArgument(" 1 input tensor for ", instr->op_type));
+  PADDLE_ENFORCE_EQ(
+      instr->outputs.size(),
+      1UL,
+      phi::errors::InvalidArgument("1 output tensor for ", instr->op_type));
   auto x = instr->inputs[0];
   auto output = instr->outputs[0];
   auto* builder = context.builder();
