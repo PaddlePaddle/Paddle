@@ -17,7 +17,6 @@
 #include <memory>
 #include <sstream>
 
-
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/ir/group_schedule/config/database.h"
 #include "paddle/cinn/ir/group_schedule/search/config_searcher.h"
@@ -41,7 +40,6 @@ std::shared_ptr<::pir::Program> BuildReduceSumProgram() {
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
   const float value_one = 1.0;
-
   const std::vector<int64_t> shape = {-1, 1024};
   auto x = builder
                .Build<paddle::dialect::DataOp>(
@@ -95,7 +93,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
       });
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
-        return candidate[0] * 32 <= kMaxThreadsPerBlock;
+        return candidate[0] * kThreadsPerWarp <= kMaxThreadsPerBlock;
       });
 
   // Step 5: Construct searcher and search.
