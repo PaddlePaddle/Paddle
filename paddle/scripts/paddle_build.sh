@@ -3633,9 +3633,16 @@ function clang-tidy_check() {
     num_diff_files=$(echo "$diff_files" | wc -l)
     echo -e "diff files between pr and ${BRANCH}:\n${diff_files}"
 
+    # 输出具体存在差异的文件
+    for file in ${diff_files}
+    do
+        echo "Diff file: ${file}"
+    done
+
     echo "Checking code style by clang-tidy ..."
     startTime_s=`date +%s`
-    pre-commit run clang-tidy --files ${diff_files};check_error=$?
+    # 使用详细模式，并输出具体的clang-tidy检查项
+    pre-commit run clang-tidy --verbose --checks=* --files ${diff_files};check_error=$?
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Files Num: $[ $num_diff_files ]"
@@ -3652,7 +3659,7 @@ function clang-tidy_check() {
         if [[ $num_diff_files -le 100 ]];then
             echo "After the build is completed, run clang-tidy to check codestyle issues in your PR:"
             echo ""
-            echo "    pre-commit run clang-tidy --files" $(echo ${diff_files} | tr "\n" " ")
+            echo "    pre-commit run clang-tidy --verbose --checks=* --files" $(echo ${diff_files} | tr "\n" " ")
             echo ""
         fi
         echo "For more information, please refer to our codestyle check guide:"
