@@ -167,17 +167,21 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
                            nvinfer1::MatrixOperation::kNONE,
                            *weight_layer->getOutput(0),
                            nvinfer1::MatrixOperation::kTRANSPOSE);
-  PADDLE_ENFORCE_NOT_NULL(matmul_layer,
-                          platform::errors::InvalidArgument(
-                              "TRT matrix multiply layer building failed."));
+  PADDLE_ENFORCE_NOT_NULL(
+      matmul_layer,
+      platform::errors::InvalidArgument(
+          "The TRT MatrixMultiply layer cannot be null. There is something "
+          "wrong with the TRT network building and layer creation."));
   auto *add_layer = TRT_ENGINE_ADD_LAYER(engine_,
                                          ElementWise,
                                          *matmul_layer->getOutput(0),
                                          *bias_layer->getOutput(0),
                                          nvinfer1::ElementWiseOperation::kSUM);
-  PADDLE_ENFORCE_NOT_NULL(add_layer,
-                          platform::errors::InvalidArgument(
-                              "TRT elementwise add layer building failed."));
+  PADDLE_ENFORCE_NOT_NULL(
+      add_layer,
+      platform::errors::InvalidArgument(
+          "The TRT elementwise layer cannot be null. There is something wrong "
+          "with the TRT network building and layer creation."));
 
   engine_->DeclareOutput(add_layer, 0, "y");
   engine_->FreezeNetwork();
