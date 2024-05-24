@@ -50,7 +50,7 @@ StringTensor& StringTensor::operator=(const StringTensor& other) {
 }
 
 StringTensor& StringTensor::operator=(  // NOLINT
-    StringTensor&& other) noexcept {  
+    StringTensor&& other) noexcept {
   meta_ = std::move(other.meta_);
   std::swap(holder_, other.holder_);
   return *this;
