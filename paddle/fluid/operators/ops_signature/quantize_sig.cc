@@ -14,7 +14,11 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature QuantOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("quantize", {"Input"}, {"Scale", "Shift"}, {"Output"});
+  return KernelSignature(
+      "quantize",
+      {"Input"},
+      {"Scale", "Shift", "is_negative_input", "output_format", "bfloat16"},
+      {"Output"});
 }
 
 }  // namespace phi
