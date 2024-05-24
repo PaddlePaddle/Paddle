@@ -471,6 +471,7 @@ class Optimizer:
                         param.persistable = True
                         main_program.lr_scheduler = self._learning_rate
                         main_program.lr_var = param
+                        main_program.lr_name = lr_name
                         self._learning_rate_map[main_program] = param
 
                 else:

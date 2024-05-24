@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -25,6 +26,7 @@
 #include "paddle/cinn/hlir/pe/transform.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 #ifdef CINN_WITH_CUDNN
 #include <cudnn.h>
@@ -893,6 +895,8 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<double>)
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<bool>)
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<std::string>)
+    EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<symbol::DimExpr>)
+    EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<cinn::dialect::SymbolBinding>)
 #undef EXPAND_MEMSET_TYPE_UNSUPPORT
   };
 
