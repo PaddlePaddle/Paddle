@@ -75,7 +75,7 @@ void FakeChannelWiseDequantizeMaxAbsKernel(
   phi::funcs::ChannelDequantizeFunctor<Context, T>()(
       dev_ctx,
       &x,
-      (const_cast<std::vector<const DenseTensor*>>(&scales)).data(),
+      (const_cast<std::vector<const DenseTensor*>*>(&scales))->data(),
       scale_num,
       static_cast<T>(max_range),
       quant_axis,
