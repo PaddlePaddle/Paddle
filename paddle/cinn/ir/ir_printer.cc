@@ -94,21 +94,21 @@ void IrPrinter::Visit(const UIntImm *x) {
 namespace {
 template <typename T>
 bool IsCloseEqualBoundValue(T value) {
-  T maxValue = std::numeric_limits<T>::max();
-  T minValue = std::numeric_limits<T>::lowest();
+  T max_value = std::numeric_limits<T>::max();
+  T min_value = std::numeric_limits<T>::lowest();
   T tol = std::numeric_limits<T>::denorm_min();
-  return (maxValue - value) < tol || (value - minValue) < tol;
+  return (max_value - value) < tol || (value - min_value) < tol;
 }
 
 template <typename T>
 T TruncateInfinity(T value) {
-  T maxValue = std::numeric_limits<T>::max();
-  T minValue = std::numeric_limits<T>::lowest();
-  if (value > maxValue) {
-    return maxValue;
+  T max_value = std::numeric_limits<T>::max();
+  T min_value = std::numeric_limits<T>::lowest();
+  if (value > max_value) {
+    return max_value;
   }
-  if (value < minValue) {
-    return minValue;
+  if (value < min_value) {
+    return min_value;
   }
   return value;
 }

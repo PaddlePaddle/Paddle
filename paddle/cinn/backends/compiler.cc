@@ -269,17 +269,17 @@ void Compiler::BuildDefault(const Module& module) {
 }
 
 namespace {
-std::string GetFileContent(const std::string& filePath) {
-  std::ifstream file(filePath);
+std::string GetFileContent(const std::string& path) {
+  std::ifstream file(path);
 
   if (!file.is_open()) {
-    std::cerr << "Unable to open file: " << filePath << std::endl;
+    std::cerr << "Unable to open file: " << path << std::endl;
     return "";
   }
 
-  std::ostringstream contentStream;
-  contentStream << file.rdbuf();
-  std::string content = contentStream.str();
+  std::ostringstream ss;
+  ss << file.rdbuf();
+  std::string content = ss.str();
 
   file.close();
   return content;
@@ -299,8 +299,8 @@ void Compiler::CompileCudaModule(const Module& module,
   std::string source_code;
 
   if (!FLAGS_cinn_debug_custom_code_path.empty()) {
-    std::string filePath = FLAGS_cinn_debug_custom_code_path;
-    source_code = GetFileContent(filePath);
+    std::string file_path = FLAGS_cinn_debug_custom_code_path;
+    source_code = GetFileContent(file_path);
   } else if (code.empty()) {
     CodeGenCUDA_Dev codegen(target_);
     source_code = codegen.Compile(device_module);
