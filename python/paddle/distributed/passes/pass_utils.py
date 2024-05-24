@@ -16,6 +16,7 @@ import logging
 from collections import OrderedDict
 from enum import Enum
 
+import paddle
 from paddle.base import core
 from paddle.base.framework import Parameter, Program
 from paddle.distributed.auto_parallel.static.dist_attribute import (
@@ -1159,23 +1160,41 @@ def _split_and_replace_recv(types, sub_program_list):
     ), f"len of sub_program_list({len(sub_program_list)}) should equal == len of types({len(types)})"
     for i in range(len(sub_program_list)):
         program = sub_program_list[i]
-        # for op in program.block(0).ops:
-        #     if op.type == "recv_v2":
-        #         # 创建一个新的 Program，并将 recv_v2 算子添加进去
-        #         new_program = fluid.Program()
-        #         new_program.current_block().append_op(type=op.type,
-        #                                             inputs=op.input_dict(),
-        #                                             outputs=op.output_dict(),
-        #                                                             attrs=op.all_attrs())
-        #         # 在原 Program 中将 recv_v2 算子替换为 data 算子
-        #         op_desc = block.desc.remove_op(i)
-        #         new_op_desc = block.desc.append_op()
-        #         new_op_desc.copy_from(op_desc)
-        #         new_op_desc._set_type("data")
-        #         new_op_desc._rename_output("Out", "X")
-        #         rtn_types.append("recv4_" + types[i])
-        #         rtn_sub_program_list.append(new_program)
-        #         break
+        recv4_program = Program()
+        # Insert a record_stream_op to achieve cross-stream sync of subsequent recv_ops.
+        with paddle.static.program_guard(recv4_program):
+            paddle.full(shape=[3, 2], fill_value=1.0)
+
+        # Move all recv_ops at the beginning of program into recv4_program, and replace the recv_ops with data_ops.
+        for index, op in enumerate(list(program.global_block().ops)):
+            if op.type == "recv_v2":
+                _create_program(
+                    program.global_block(), recv4_program.global_block(), op
+                )
+
+                program.global_block()._remove_op(index, sync=False)
+
+                recv_arg_name = op.input("Out")[0]
+                recv_var = program.global_block().var(recv_arg_name)
+                program.global_block()._insert_op_without_sync(
+                    index,
+                    type="data",
+                    outputs={"out": recv_arg_name},
+                    attrs={
+                        "shape": recv_var.shape,
+                        "dtype": recv_var.dtype,
+                        "place": 2,  # GPUPlace
+                        "name": recv_arg_name,
+                    },
+                )
+            else:
+                break
+
+        if len(recv4_program.block(0).ops) > 1:
+            recv4_program._sync_with_cpp()
+            rtn_types.append("recv4_" + types[i])
+            rtn_sub_program_list.append(recv4_program)
+        program._sync_with_cpp()
         rtn_types.append(types[i])
         rtn_sub_program_list.append(program)
     return rtn_types, rtn_sub_program_list
