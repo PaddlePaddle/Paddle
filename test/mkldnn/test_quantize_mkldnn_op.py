@@ -28,6 +28,7 @@ class TestQuantizeOp(OpTest):
         self.input_size = [1, 1, 5, 5]  # Naive nChw16c
         self.is_negative = False
         self.output_format = 'NCHW'
+        self.bfloat16 = False
         self.set_scale()
         self.set_shift()
         self.set_is_negative()
@@ -50,10 +51,11 @@ class TestQuantizeOp(OpTest):
 
         self.inputs = {'Input': OpTest.np_dtype_to_base_dtype(self.input)}
         self.attrs = {
+            'is_negative_input': self.is_negative,
             'Scale': self.scale,
             'Shift': self.shift,
-            'is_negative_input': self.is_negative,
             'output_format': self.output_format,
+            'bfloat16': self.bfloat16,
         }
 
     def prepare_output(self):
