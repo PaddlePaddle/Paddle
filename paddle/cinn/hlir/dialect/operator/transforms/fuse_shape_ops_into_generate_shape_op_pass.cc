@@ -391,21 +391,6 @@ class FuseShapeOpsIntoGenerateShapeOpPattern
   }
 };
 
-template <>
-class FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::SliceOp>
-    : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
- public:
-  explicit FuseShapeOpsIntoGenerateShapeOpPattern(pir::IrContext* context)
-      : pir::OpRewritePattern<paddle::dialect::SliceOp>(context) {}
-
-  bool MatchAndRewrite(paddle::dialect::SliceOp op,
-                       pir::PatternRewriter& rewriter) const override {
-    auto& shape_analysis =
-        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-    return ProcessOp(op, &rewriter, &shape_analysis);
-  }
-};
-
 class FuseShapeOpsIntoGenerateShapeOpPass : public pir::PatternRewritePass {
  public:
   FuseShapeOpsIntoGenerateShapeOpPass()
