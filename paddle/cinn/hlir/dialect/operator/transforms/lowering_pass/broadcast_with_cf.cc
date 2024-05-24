@@ -15,7 +15,6 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/broadcast_with_cf.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -214,7 +213,7 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
 
   std::vector<pir::Value> lhs_minimal_inputs;
   std::vector<pir::Attribute> lhs_output_dim_expr_attrs;
-  cinn::dialect::SymbolBindings lhs_symbol_bindings;
+  cinn::dialect::GenerateShapeOp::SymbolBindings lhs_symbol_bindings;
   bool success =
       cinn::dialect::MakeGenerateShapeOpAttribute(builder.ir_context(),
                                                   ShapeOrDataDimExprs4Value,
@@ -226,7 +225,7 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
   CHECK(success);
   std::vector<pir::Value> rhs_minimal_inputs;
   std::vector<pir::Attribute> rhs_output_dim_expr_attrs;
-  cinn::dialect::SymbolBindings rhs_symbol_bindings;
+  cinn::dialect::GenerateShapeOp::SymbolBindings rhs_symbol_bindings;
   success =
       cinn::dialect::MakeGenerateShapeOpAttribute(builder.ir_context(),
                                                   ShapeOrDataDimExprs4Value,

@@ -72,8 +72,8 @@ TEST(DimExprUtil, Substitute) {
 }
 
 TEST(DimExprUtil, MakeGetterDimExpr4SymbolName) {
-  cinn::dialect::SymbolBindings symbol_bindings{};
-  using ShapeSymbolBinding = cinn::dialect::ShapeSymbolBinding;
+  cinn::dialect::GenerateShapeOp::SymbolBindings symbol_bindings{};
+  using ShapeSymbolBinding = cinn::dialect::GenerateShapeOp::ShapeSymbolBinding;
   symbol_bindings.emplace_back(ShapeSymbolBinding{"Symbol", 0, 0});
   const auto& dim_expr = CreateExampleDimExpr();
 

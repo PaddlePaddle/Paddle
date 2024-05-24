@@ -72,7 +72,7 @@ std::optional<pir::Value> InsertGenerateShapeOpToRunFirst(
   const auto& out_dim_exprs = GetDimExprs(value, dim_exprs_accessor);
   std::vector<pir::Value> minimal_inputs{};
   std::vector<pir::Attribute> output_dim_expr_attrs{};
-  cinn::dialect::SymbolBindings symbol_bindings{};
+  cinn::dialect::GenerateShapeOp::SymbolBindings symbol_bindings{};
   bool success =
       MakeGenerateShapeOpAttribute(builder->ir_context(),
                                    dim_exprs_accessor.GetShapeOrDataDimExprs,
