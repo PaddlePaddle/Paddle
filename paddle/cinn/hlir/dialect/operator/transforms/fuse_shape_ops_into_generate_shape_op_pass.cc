@@ -352,26 +352,10 @@ bool ProcessOp<paddle::dialect::SliceOp>(
     paddle::dialect::SliceOp op,
     pir::PatternRewriter* rewriter,
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  bool result = true;
-  if ((op->operand_source(0))
-          .type()
-          .isa<paddle::dialect::DenseTensorArrayType>()) {
-    result &= ReplaceShapeOpsToGenerateShape(
-        op->operand_source(0), rewriter, shape_analysis);
-  }
-  if ((op->operand_source(1))
-          .type()
-          .isa<paddle::dialect::DenseTensorArrayType>()) {
-    result &= ReplaceShapeOpsToGenerateShape(
-        op->operand_source(1), rewriter, shape_analysis);
-  }
-  if ((op->operand_source(2))
-          .type()
-          .isa<paddle::dialect::DenseTensorArrayType>()) {
-    result &= ReplaceShapeOpsToGenerateShape(
-        op->operand_source(2), rewriter, shape_analysis);
-  }
-  return result;
+  return ReplaceShapeOpsToGenerateShape(
+             op->operand_source(1), rewriter, shape_analysis) &&
+         ReplaceShapeOpsToGenerateShape(
+             op->operand_source(2), rewriter, shape_analysis);
 }
 
 }  // namespace
