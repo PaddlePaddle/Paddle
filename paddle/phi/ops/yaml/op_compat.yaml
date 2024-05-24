@@ -2789,7 +2789,7 @@
   outputs :
     output : Output
   attrs :
-    {scale : Scale, shift : Shift, include_self: Include_self}
+    {scale : Scale, shift : Shift}
   extra :
     attrs : [bool is_negative_input=false, float scale=1.0, float shift=0.0, str output_format="NHWC", bool bfloat16=false]
 
