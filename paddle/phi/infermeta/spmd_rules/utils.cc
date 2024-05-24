@@ -363,10 +363,8 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
           if (IsDimSharded(tensor_dist_attr, shard_dim)) {
             continue;
           }
-          int64_t num = std::accumulate(tensor_shape.begin(),
-                                        tensor_shape.end(),
-                                        1,
-                                        std::multiplies<>());
+          int64_t num = std::accumulate(
+              tensor_shape.begin(), tensor_shape.end(), 1, std::multiplies<>());
           if (num == static_cast<int64_t>(0)) {
             continue;
           }
