@@ -366,8 +366,7 @@ Expr GetScalarExpr(const framework::NodeAttr::attr_t &attr) {
     }
     void operator()(const std::vector<cinn::dialect::SymbolBinding> &) {
       PADDLE_THROW(phi::errors::InvalidArgument(
-          "wrong type "
-          "std::vector<cinn::dialect::SymbolBinding>"));
+          "wrong type std::vector<cinn::dialect::SymbolBinding>"));
     }
   };
   absl::visit(Visitor{scalar}, attr);

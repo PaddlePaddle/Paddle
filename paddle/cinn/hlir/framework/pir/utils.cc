@@ -495,15 +495,21 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
       auto symbol_bindings =
           cinn::dialect::GenerateShapeOp::ConvertAttributeToSymbolBindings(
               item.second);
-      PADDLE_ENFORCE(symbol_bindings.has_value(),
-                     ::common::errors::PreconditionNotMet(
-                         "Required symbol_bindings.has_value()==true."));
+      PADDLE_ENFORCE_EQ(
+          symbol_bindings.has_value(),
+          true,
+          ::common::errors::PreconditionNotMet(
+              "Required convert attribute to symbol bindings success, but "
+              "failed, symbol_bindings.has_value()==false."));
       dst_attrs[::pir::kSymbolBindings] = symbol_bindings.value();
     } else if (item.first == ::pir::kOutputDimExprs) {
       auto dim_exprs = cinn::dialect::ConvertAttributeToDimExprs(item.second);
-      PADDLE_ENFORCE(dim_exprs.has_value(),
-                     ::common::errors::PreconditionNotMet(
-                         "Required dim_exprs.has_value()==true."));
+      PADDLE_ENFORCE_EQ(
+          dim_exprs.has_value(),
+          true,
+          ::common::errors::PreconditionNotMet(
+              "Required convert attribute to dim expressions success, but "
+              "failed, dim_exprs.has_value()==false."));
       dst_attrs[::pir::kOutputDimExprs] = dim_exprs.value();
     } else if (item.second.isa<paddle::dialect::PlaceAttribute>()) {
       auto is_cpu =

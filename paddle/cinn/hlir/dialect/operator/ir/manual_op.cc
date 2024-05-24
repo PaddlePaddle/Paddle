@@ -497,9 +497,12 @@ bool GenerateShapeOp::InferSymbolicShape(
     pir::Attribute dim_expr_attr = this->attributes().at("output_dim_exprs");
     auto dim_exprs = ConvertAttributeToDimExprs(dim_expr_attr);
 
-    PADDLE_ENFORCE(dim_exprs.has_value(),
-                   ::common::errors::PreconditionNotMet(
-                       "Required dim_exprs.has_value()==true."));
+    PADDLE_ENFORCE_EQ(
+        dim_exprs.has_value(),
+        true,
+        ::common::errors::PreconditionNotMet(
+            "Required convert attribute to dim expressions success, but "
+            "failed, dim_exprs.has_value()==false."));
 
     return dim_exprs.value();
   }();
