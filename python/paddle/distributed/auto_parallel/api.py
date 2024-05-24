@@ -2341,6 +2341,9 @@ class DistModel:
             local_state_dict[param_name] = v._local_value()
         dist_main_program.set_state_dict(local_state_dict)
 
+    def set_job_schedule_profiler_status(self, enable_job_schedule_profiler):
+        self._engine.enable_job_schedule_profiler = enable_job_schedule_profiler
+
 
 def to_static(
     layer: paddle.nn.Layer,
