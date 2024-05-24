@@ -361,7 +361,20 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
 }  // namespace
 
 AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
-    : config_(config) {
+    : config_(config),
+      fusion_statis_(),
+      executor_(nullptr),
+      feeds_(),
+      feed_names_(),
+      idx2feeds_(),
+      fetches_(),
+      idx2fetches_(),
+      feed_tensors_(),
+      output_hookfuncs_(),
+      input_hookfuncs_(),
+      shape_info_(),
+      shape_tensor_value_(),
+      device_contexts_() {
   if (config_.shape_range_info_collected()) {
     config_.SwitchIrOptim(false);
   }
@@ -1514,6 +1527,30 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   if (config_.shape_range_info_collected()) {
     HookCollectShapeRangeInfo();
   }
+#ifdef PADDLE_WITH_XPU
+  InferXPUContext *infer_xpu_ctx = nullptr;
+  if (config_.use_xpu_) {
+    PADDLE_ENFORCE(
+        private_context_,
+        paddle::platform::errors::Fatal(
+            "Must use private context if run predictor on xpu place."));
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place,
+        std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        this->GetDeviceContexts());
+    infer_xpu_ctx =
+        static_cast<InferXPUContext *>(dev_ctxs->at(place_).get().get());
+    auto *x_context = static_cast<xpu::Context *>(config_.xpu_config_.context);
+    if (x_context != nullptr) {
+      infer_xpu_ctx->SetXContext(x_context);
+    }
+    infer_xpu_ctx->SetStream(predictor_stream_);
+    infer_xpu_ctx->SetL3Info(config_.xpu_config_.l3_size,
+                             config_.xpu_config_.l3_ptr,
+                             config_.xpu_config_.l3_autotune_size,
+                             place_);
+  }
+#endif
 
   if (config_.new_executor_enabled()) {  // NOLINT
     executor_->RunInterpreterCore();
@@ -1524,7 +1561,11 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   }
 
   inference::DisplayMemoryInfo(place_, "after run");
-
+#ifdef PADDLE_WITH_XPU
+  if (config_.use_xpu_ && infer_xpu_ctx != nullptr) {
+    infer_xpu_ctx->L3CacheAutotune();
+  }
+#endif
   // get fetch variable
   if (!GetFetch(outputs, scope)) {
     LOG(ERROR) << "fail to get fetches";
@@ -3346,7 +3387,7 @@ USE_TRT_CONVERTER(dequantize_linear)
 
 namespace paddle_infer {
 
-Predictor::Predictor(const Config &config) {
+Predictor::Predictor(const Config &config) : predictor_(nullptr) {
   // The second parameter indicates that the discard log is not printed
   if (config.use_onnxruntime()) {
 #ifdef PADDLE_WITH_ONNXRUNTIME
@@ -3506,7 +3547,7 @@ std::shared_ptr<Predictor> CreatePredictor(const Config &config) {  // NOLINT
 }
 
 namespace services {
-PredictorPool::PredictorPool(const Config &config, size_t size) {
+PredictorPool::PredictorPool(const Config &config, size_t size) : preds_() {
   PADDLE_ENFORCE_GE(
       size,
       1UL,

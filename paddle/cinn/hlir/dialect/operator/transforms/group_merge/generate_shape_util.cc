@@ -90,12 +90,6 @@ std::optional<pir::Value> InsertGenerateShapeOpToRunFirst(
   return std::nullopt;
 }
 
-void CloneDimExprInfo(pir::Value from,
-                      pir::Value to,
-                      const ShapeOrDataDimExprsAccessor& ctx) {
-  ctx.SetShapeOrDataDimExprs(to, ctx.GetShapeOrDataDimExprs(from));
-}
-
 void ReplaceAllUses(pir::Value from, pir::Value to) {
   from.ReplaceAllUsesWith(to);
 }
@@ -119,7 +113,6 @@ bool RewriteOneGenerateShapeOpToRunFirst(
     std::optional<pir::Value> new_shape = InsertGenerateShapeOpToRunFirst(
         &builder, block_args, op.out(), dim_exprs_accessor);
     if (!new_shape.has_value()) continue;
-    CloneDimExprInfo(op.out(), new_shape.value(), dim_exprs_accessor);
     ReplaceAllUses(op.out(), new_shape.value());
     EraseGenerateShapeOp(op_iter, block);
     return true;

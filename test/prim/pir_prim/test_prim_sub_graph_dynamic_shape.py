@@ -90,8 +90,16 @@ def swiglu_net2(x):
     return paddle.incubate.nn.functional.swiglu(x)
 
 
+def squared_l2_norm_net(x):
+    return paddle._C_ops.squared_l2_norm(x)
+
+
 def dropout_net1(x):
     return paddle.nn.functional.dropout(x, 0.5)
+
+
+def mean_all_net1(x):
+    return paddle._C_ops.mean_all(x)
 
 
 group_norm1 = paddle.nn.GroupNorm(num_channels=128, num_groups=32)
@@ -156,11 +164,23 @@ def meshgrid_net(x, y):
     return paddle.meshgrid(x, y)
 
 
-def softmax_with_cross_entropy_net(x, y):
+def softmax_with_cross_entropy_net1(x, y):
     return paddle.nn.functional.softmax_with_cross_entropy(
         x,
         y,
         soft_label=False,
+        ignore_index=-100,
+        numeric_stable_mode=True,
+        return_softmax=True,
+        axis=-1,
+    )
+
+
+def softmax_with_cross_entropy_net2(x, y):
+    return paddle.nn.functional.softmax_with_cross_entropy(
+        x,
+        y,
+        soft_label=True,
         ignore_index=-100,
         numeric_stable_mode=True,
         return_softmax=True,
@@ -265,6 +285,19 @@ class TestPrimStack(TestPrimBase):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = stack_net
         self.necessary_ops = "pd_op.stack"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSquaredL2Norm(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [8, 5, 10]
+        self.init_x_shape = [None, None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = squared_l2_norm_net
+        self.necessary_ops = "pd_op.squared_l2_norm"
         self.enable_cinn = False
         self.tol = 1e-6
 
@@ -542,24 +575,56 @@ class TestPrimMeshgrid(TestPrimTwo):
         self.tol = 1e-6
 
 
-class TestPrimSoftmaxWithCrossEntropy(TestPrimTwo):
+class TestPrimSoftmaxWithCrossEntropy1(TestPrimTwo):
     def setUp(self):
         np.random.seed(2023)
-        self.shape_x = [3, 1, 5]
-        self.shape_y = [3, 1, 1]
+        self.shape_x = [10, 20, 5]
+        self.shape_y = [10, 20, 1]
         self.dtype_x = "float32"
         self.dtype_y = "int64"
         self.init_x_shape = [None, None, 5]
         self.init_y_shape = [None, None, 1]
-        self.x = np.random.uniform(
-            0.1, 1.0, self.shape_x).astype(self.dtype_x)
+        self.x = np.random.uniform(0.1, 1.0, self.shape_x).astype(self.dtype_x)
         self.y = np.random.randint(
             0, self.shape_x[-1], self.shape_y, dtype=self.dtype_y
         )
-        self.net = softmax_with_cross_entropy_net
+        self.net = softmax_with_cross_entropy_net1
         self.necessary_ops = "pd_op.c_softmax_with_cross_entropy"
         self.enable_cinn = False
         self.tol = 1e-6
+
+
+class TestPrimSoftmaxWithCrossEntropy2(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [10, 20, 5]
+        self.shape_y = [10, 20, 5]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None, None, 5]
+        self.init_y_shape = [None, None, 5]
+        self.x = np.random.uniform(0.1, 1.0, self.shape_x).astype(self.dtype_x)
+        self.y = np.random.uniform(0.1, 1.0, self.shape_y).astype(self.dtype_y)
+        self.y = self.y / np.sum(self.y, axis=-1, keepdims=True)
+        print(self.x.shape)
+        print(self.y.shape)
+        self.net = softmax_with_cross_entropy_net2
+        self.necessary_ops = "pd_op.c_softmax_with_cross_entropy"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimMeanAll(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        paddle.seed(2023)
+        self.shape_x = [300, 4096]
+        self.dtype_x = "float32"
+        self.init_x_shape = [None, 4096]
+        self.x = np.random.random(self.shape_x).astype(self.dtype_x)
+        self.net = mean_all_net1
+        self.necessary_ops = "pd_op.mean_all"
+        self.enable_cinn = False
 
 
 if __name__ == "__main__":

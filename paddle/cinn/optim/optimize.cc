@@ -58,16 +58,21 @@ Expr Optimize(Expr e,
 
   VectorizeLoops(&copied, target);
   VLOG(4) << "After Optimize VectorizeLoops:" << copied;
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  if (copied.as_lowered_func()) {
-    ir::SetCudaAxisInfo(&copied);
-  }
-  if (remove_gpu_for_loops) {
-    RemoveGpuForloopsAxis(&copied);
-  }
-  CudaSyncThreadsDropIfThenElse(&copied);
-  // CudaTransBufferWithDynamicShape(&copied);
+        if (copied.as_lowered_func()) {
+          ir::SetCudaAxisInfo(&copied);
+        }
+        if (remove_gpu_for_loops) {
+          RemoveGpuForloopsAxis(&copied);
+        }
+        CudaSyncThreadsDropIfThenElse(&copied);
+    // CudaTransBufferWithDynamicShape(&copied);
 #endif
+      });
 
   SimplifyBlocks(&copied);
   VLOG(4) << "After SimplifyBlocks:" << copied;
