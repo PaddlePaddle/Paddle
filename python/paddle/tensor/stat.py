@@ -465,7 +465,7 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
             [1, 1, 1])
 
             >>> # cases containing nan values
-            >>> x = paddle.to_tensor(np.array([[1,2,3,float('nan')],[1,2,3,4],[float('nan'),1,2,3]])
+            >>> x = paddle.to_tensor(np.array([[1,float('nan'),3,float('nan')],[1,2,3,4],[float('nan'),1,2,3]]))
 
             >>> y6 = paddle.median(x, axis=-1, keepdim=True)
             >>> print(y6)
@@ -482,7 +482,7 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
              [nan]])
             >>> print(median_indices)
             Tensor(shape=[3, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[3],
+            [[1],
              [1],
              [0]])
     """
@@ -522,13 +522,13 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
     sz = x.shape[axis]
     kth = sz >> 1
     tensor_topk, idx = paddle.topk(x, kth + 1, axis=axis, largest=False)
-    dtype = (
-        'float64'
-        if x.dtype
-        in [core.VarDesc.VarType.FP64, paddle.base.core.DataType.FLOAT64]
-        else 'float32'
-    )
     if mode == 'avg':
+        dtype = (
+            'float64'
+            if x.dtype
+            in [core.VarDesc.VarType.FP64, paddle.base.core.DataType.FLOAT64]
+            else 'float32'
+        )
         if sz & 1 == 0:
             out_tensor = paddle.slice(
                 tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]
@@ -579,6 +579,11 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
             index_along_axis = paddle.argsort(
                 x_all_zero, axis=axis, stable=True
             )
+
+            # find the index of the leading one in x_isnan
+            cumsum = x_isnan.cumsum(axis=axis)
+            x_isnan = x_isnan * paddle.where(cumsum > 1, 0, 1)
+
             nan_index = paddle.sum(
                 index_along_axis * x_isnan, axis=axis, keepdim=True
             )

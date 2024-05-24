@@ -215,6 +215,19 @@ class TestMedianAvg(unittest.TestCase):
             res_np = np.median(x, axis=axis, keepdims=keepdims)
             res_pd = paddle.median(paddle.to_tensor(x), axis, keepdims)
             self.check_numpy_res(res_pd.numpy(False), res_np.astype('float64'))
+            np.testing.assert_equal(res_pd.numpy(False).dtype, np.float32)
+
+    def test_output_dtype(self):
+        supported_dypes = ['float32', 'float64', 'int32', 'int64']
+        for inp_dtype in supported_dypes:
+            x = np.random.randint(low=-100, high=100, size=[2, 4, 5]).astype(
+                inp_dtype
+            )
+            res = paddle.median(paddle.to_tensor(x), mode='avg')
+            if inp_dtype == 'float64':
+                np.testing.assert_equal(res.numpy().dtype, np.float64)
+            else:
+                np.testing.assert_equal(res.numpy().dtype, np.float32)
 
 
 class TestMedianMin(unittest.TestCase):
@@ -292,7 +305,13 @@ class TestMedianMin(unittest.TestCase):
     def test_nan(self):
         paddle.disable_static()
         x = np.array(
-            [[1, 2, 3, float('nan')], [1, 2, 3, 4], [float('nan'), 1, 2, 3]]
+            [
+                [1, 2, 3, float('nan')],
+                [1, 2, 3, 4],
+                [float('nan'), 1, 2, 3],
+                [1, float('nan'), 3, float('nan')],
+                [float('nan'), float('nan'), 3, float('nan')],
+            ]
         )
         lis_tests = [
             [x.astype(dtype), axis, keepdims]
@@ -329,6 +348,16 @@ class TestMedianMin(unittest.TestCase):
                     paddle.to_tensor(x), axis, keepdims, mode='min'
                 )
             np.testing.assert_allclose(res_pd.numpy(False), res_np)
+            np.testing.assert_equal(res_pd.numpy(False).dtype, np.float16)
+
+    def test_output_dtype(self):
+        supported_dypes = ['float32', 'float64', 'int32', 'int64']
+        for inp_dtype in supported_dypes:
+            x = np.random.randint(low=-100, high=100, size=[2, 4, 5]).astype(
+                inp_dtype
+            )
+            res = paddle.median(paddle.to_tensor(x), mode='min')
+            np.testing.assert_equal(res.numpy().dtype, np.dtype(inp_dtype))
 
 
 if __name__ == '__main__':
