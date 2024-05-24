@@ -1963,7 +1963,8 @@ void swiglu_grad(const Tensor& x,
     Tensor tmp = sig * xs[0];
     Tensor x0_grad = dz * xs[1] * sig * (one_tensor + xs[0] - tmp);
     Tensor x1_grad = dz * tmp;
-    x_grad = concat<T>({x0_grad, x1_grad}, x_shape.size() - 1);
+    int64_t c_axis = x_shape.size() - 1;
+    x_grad = concat<T>({x0_grad, x1_grad}, c_axis);
   }
   set_output<T>(x_grad, dx);
 }
