@@ -423,6 +423,7 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
         .. code-block:: python
 
             >>> import paddle
+            >>> import numpy as np
 
             >>> x = paddle.arange(12).reshape([3, 4])
             >>> print(x)
