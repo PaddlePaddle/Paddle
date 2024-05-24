@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
+sys.path.append("../../legacy_test")
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 from utils import static_guard
@@ -543,6 +545,7 @@ def raw_reduce_prod(x, dim=[0], keep_dim=False):
     return paddle.prod(x, dim, keep_dim)
 
 
+# NOTE: there is a bug when use composite of prod in static graph on cpu, it will use inplace mode
 class TestProdOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
@@ -569,8 +572,13 @@ class TestProdOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0),
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -652,8 +660,13 @@ class TestProdOp_ZeroDim(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0),
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -711,7 +724,9 @@ class TestProd6DOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
+        )
 
 
 @unittest.skipIf(

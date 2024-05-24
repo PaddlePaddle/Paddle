@@ -1080,6 +1080,8 @@ void prod_grad(const Tensor& x,
                bool reduce_all,
                Tensor* x_grad) {
   if (x_grad) {
+    // NOTE: there is a bug when use composite of prod grad in static graph on
+    // cpu, it will use inplace mode
     std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
     int64_t axis_size = axis.size();
     int64_t x_dim_size = x_dim.size();
