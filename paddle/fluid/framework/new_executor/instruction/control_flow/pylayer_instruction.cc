@@ -146,9 +146,7 @@ PyLayerInstruction::PyLayerInstruction(
 }
 
 PyLayerInstruction::~PyLayerInstruction() {
-  if (fwd_inter_ != nullptr) {
-    delete fwd_inter_;
-  }
+  delete fwd_inter_;
 }
 
 void PyLayerInstruction::Run() {

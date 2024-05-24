@@ -174,9 +174,7 @@ PhiKernelInstruction::PhiKernelInstruction(
 }
 
 PhiKernelInstruction::~PhiKernelInstruction() {
-  if (phi_kernel_ != nullptr) {
-    delete phi_kernel_;
-  }
+  delete phi_kernel_;
 }
 
 void PhiKernelInstruction::Run() {
