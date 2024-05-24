@@ -341,7 +341,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
     }
     std::priority_queue<std::pair<double, char>,
                         std::vector<std::pair<double, char>>,
-                        std::greater<std::pair<double, char>>>
+                        std::greater<>
         cost_queue;
 
     for (auto axis_name : align_axis) {
@@ -366,7 +366,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
           int64_t num = std::accumulate(tensor_shape.begin(),
                                         tensor_shape.end(),
                                         1,
-                                        std::multiplies<int64_t>());
+                                        std::multiplies<>());
           if (num == static_cast<int64_t>(0)) {
             continue;
           }
@@ -375,7 +375,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
           cost += std::accumulate(local_shape.begin(),
                                   local_shape.end(),
                                   1,
-                                  std::multiplies<int64_t>()) *
+                                  std::multiplies<>()) *
                   process_mess.dim_size(mesh_dim);
         }
       }
