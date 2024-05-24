@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import inspect
+import logging
 import re
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
@@ -24,6 +25,10 @@ from typing import Any, Callable, Literal
 from typing_extensions import TypeAlias
 
 import paddle
+
+logging.basicConfig(style="{", format="{message}", level=logging.INFO)
+logger = logging.getLogger("Generating stub file for paddle.Tensor")
+logger.setLevel(logging.INFO)
 
 INDENT_SIZE = 4
 INDENT = " " * INDENT_SIZE
@@ -292,7 +297,7 @@ def func_sig_to_method_sig(func_sig: str) -> str:
     matched = regex_func_sig.search(func_sig)
     if matched is None:
         # TODO: resolve this case
-        print(f"[Warning] Cannot parse function signature: {func_sig}")
+        logging.warning(f"Cannot parse function signature: {func_sig}")
         return "_(self)"
 
     if matched.group('rest_args').startswith('*'):
@@ -419,9 +424,7 @@ def get_tensor_members():
                 member_doc_cleaned,
             )
         else:
-            print('*' * 20)
-            print(name, member)
-            print('=' * 20)
+            logging.debug(f"Skip unknown type of member: {name}, {member}")
     return members
 
 
@@ -451,8 +454,7 @@ def main():
 
     # Get members of Tensor
     tensor_members = get_tensor_members()
-    print('-' * 20)
-    print(f'total members: {len(tensor_members)}')
+    logging.debug(f'total members in Tensor: {len(tensor_members)}')
 
     # Get tensor template
     tensor_template = get_tensor_template(args.input_file)
