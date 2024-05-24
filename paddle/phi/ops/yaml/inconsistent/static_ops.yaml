@@ -887,17 +887,6 @@
     backend : place
   traits : pir::SideEffectTrait
 
-- op : rank_attention
-  args : (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size = 0)
-  output : Tensor(input_help), Tensor(out), Tensor(ins_rank)
-  infer_meta :
-    func : RankAttentionInferMeta
-  kernel :
-    func : rank_attention
-    data_type : x
-  backward : rank_attention_grad
-  optional : ins_rank, input_help
-
 - op : recv_v2
   args : (int[] out_shape = {}, DataType dtype = DataType::FLOAT32, int peer = 0, int ring_id = 0, bool use_calc_stream = false, bool dynamic_shape = false)
   output : Tensor(out)
