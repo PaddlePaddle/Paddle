@@ -55,7 +55,6 @@ class AddAccuracyCheckPattern
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
     ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
     ::pir::Builder builder = ::pir::Builder(ctx, fusion_op->GetParent());
-    builder.set_insertion_point(fusion_op);
 
     const auto& InsertAccuaryCheckOp = [&](::pir::Operation* op) -> void {
       for (size_t i = 0; i < op->num_operands(); ++i) {
@@ -68,7 +67,6 @@ class AddAccuracyCheckPattern
     };
 
     const auto& ConvertCinnOpToPdOp = [&](::pir::Operation* op) -> void {
-      rewriter.SetInsertionPointAfter(fusion_op);
       for (size_t i = 0; i < op->num_operands(); ++i) {
         if (!ir_mapping.GetMap<pir::Value>().count(op->operand_source(i))) {
           ir_mapping.Add(op->operand_source(i), op->operand_source(i));
@@ -76,6 +74,8 @@ class AddAccuracyCheckPattern
       }
       pir::Operation* pd_op =
           cinn::dialect::details::RewriteCinnOpToPdOp(op, ir_mapping, builder);
+      rewriter.SetInsertionPointAfter(pd_op);
+      builder.SetInsertionPointAfter(pd_op);
     };
 
     const auto& ClonePdOp = [&](::pir::Operation* op) -> void {
@@ -87,8 +87,11 @@ class AddAccuracyCheckPattern
       auto new_op = op->Clone(ir_mapping, clone_options);
       rewriter.Insert(new_op);
       rewriter.SetInsertionPointAfter(new_op);
+      builder.SetInsertionPointAfter(new_op);
     };
 
+    rewriter.SetInsertionPointAfter(fusion_op);
+    builder.SetInsertionPointAfter(fusion_op);
     for (auto& op : op_list) {
       if (op->isa<::pir::YieldOp>()) {
         InsertAccuaryCheckOp(op);
@@ -104,7 +107,7 @@ class AddAccuracyCheckPattern
 
 class AccuarcyCheckPass : public pir::Pass {
  public:
-  AccuarcyCheckPass() : pir::Pass("accuracy_check_pass", /*opt_level=*/3) {}
+  AccuarcyCheckPass() : pir::Pass("accuracy_check_pass", /*opt_level=*/1) {}
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
