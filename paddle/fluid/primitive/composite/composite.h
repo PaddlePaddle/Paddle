@@ -1314,21 +1314,21 @@ std::tuple<Tensor, Tensor> cross_entropy_with_softmax_decomp(
 
   Tensor x_2d, label_2d, out_2d;
   x_2d = reshape<T>(x, {n, d});
-  label_2d = reshape<T>(label, {n, label.numel() / n});
   const int64_t batch_size = static_cast<const int64_t>(x_2d.shape()[0]);
   const int64_t num_classes = static_cast<const int64_t>(x_2d.shape()[1]);
   const int64_t num_remain = num_classes / axis_dim;
   std::vector<int64_t> new_shape = {batch_size, axis_dim, num_remain};
 
   if (soft_label) {
+    label_2d = reshape<T>(label, {n, label.numel() / n});
     out_2d = label_2d * log<T>(x_2d);
     out_2d = reshape<T>(out_2d, new_shape);
     out_2d = -sum<T>(out_2d, {1}, x.dtype(), false);
   } else {
-    label_2d = reshape<T>(label, {n, 1, label.numel() / n});
-    if (label_2d.dtype() != DataType::INT64) {
-      label_2d = cast<T>(label_2d, DataType::INT64);
+    if (label.dtype() != DataType::INT64) {
+      label_2d = cast<T>(label, DataType::INT64);
     }
+    label_2d = reshape<T>(label_2d, {n, 1, label.numel() / n});
     Tensor zeros = full<T>(label_2d.shape(), 0, x_2d.dtype());
     Tensor ignore_index_tensor =
         full<T>(label_2d.shape(), ignore_index, label_2d.dtype());
