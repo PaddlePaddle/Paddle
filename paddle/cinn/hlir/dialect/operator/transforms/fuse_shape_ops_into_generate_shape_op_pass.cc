@@ -347,6 +347,33 @@ bool ProcessOp(OP_TYPE op,
       op->operand_source(1), rewriter, shape_analysis);
 }
 
+template <>
+bool ProcessOp<paddle::dialect::SliceOp>(
+    paddle::dialect::SliceOp op,
+    pir::PatternRewriter* rewriter,
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  bool result = true;
+  if ((op->operand_source(0))
+          .type()
+          .isa<paddle::dialect::DenseTensorArrayType>()) {
+    result &= ReplaceShapeOpsToGenerateShape(
+        op->operand_source(0), rewriter, shape_analysis);
+  }
+  if ((op->operand_source(1))
+          .type()
+          .isa<paddle::dialect::DenseTensorArrayType>()) {
+    result &= ReplaceShapeOpsToGenerateShape(
+        op->operand_source(1), rewriter, shape_analysis);
+  }
+  if ((op->operand_source(2))
+          .type()
+          .isa<paddle::dialect::DenseTensorArrayType>()) {
+    result &= ReplaceShapeOpsToGenerateShape(
+        op->operand_source(2), rewriter, shape_analysis);
+  }
+  return result;
+}
+
 }  // namespace
 
 template <typename OPTYPE>
@@ -357,6 +384,21 @@ class FuseShapeOpsIntoGenerateShapeOpPattern
       : pir::OpRewritePattern<OPTYPE>(context) {}
 
   bool MatchAndRewrite(OPTYPE op,
+                       pir::PatternRewriter& rewriter) const override {
+    auto& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    return ProcessOp(op, &rewriter, &shape_analysis);
+  }
+};
+
+template <>
+class FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::SliceOp>
+    : public pir::OpRewritePattern<paddle::dialect::SliceOp> {
+ public:
+  explicit FuseShapeOpsIntoGenerateShapeOpPattern(pir::IrContext* context)
+      : pir::OpRewritePattern<paddle::dialect::SliceOp>(context) {}
+
+  bool MatchAndRewrite(paddle::dialect::SliceOp op,
                        pir::PatternRewriter& rewriter) const override {
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
@@ -376,7 +418,8 @@ class FuseShapeOpsIntoGenerateShapeOpPass : public pir::PatternRewritePass {
         context);
     ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::ReshapeOp>>(
         context);
-
+    ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::SliceOp>>(
+        context);
     return ps;
   }
 
