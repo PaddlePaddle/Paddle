@@ -341,7 +341,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
     }
     std::priority_queue<std::pair<double, char>,
                         std::vector<std::pair<double, char>>,
-                        std::greater<>
+                        std::greater<>>
         cost_queue;
 
     for (auto axis_name : align_axis) {
