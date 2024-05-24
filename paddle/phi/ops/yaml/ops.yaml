@@ -1389,6 +1389,15 @@
     data_type : dtype
     backend : place
 
+- op : fake_channel_wise_dequantize_max_abs
+  args : (Tensor x, Tensor[] scales, int[] quant_bits = {8}, int quant_axis = 0, int x_num_col_dims = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : FakeChannelWiseDequantizeMaxAbsInferMeta
+  kernel :
+    func : fake_channel_wise_dequantize_max_abs
+    data_type : x
+
 - op : fake_channel_wise_quantize_abs_max
   args : (Tensor x, int bit_length = 8, int round_type = 1, int quant_axis = 0, bool is_test = false)
   output : Tensor(out), Tensor(out_scale)
