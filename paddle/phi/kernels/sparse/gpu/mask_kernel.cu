@@ -272,7 +272,12 @@ void MaskCsr3DGPUKernel(const GPUContext& dev_ctx,
   GetBatchSizes<IntT>
       <<<config_batch.block_per_grid.x, config_batch.thread_per_block.x>>>(
           csr_crows_data, rows, batches, offsets_ptr);
+
+#ifdef PADDLE_WITH_HIP
+  thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
+#else
   thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+#endif
                          offsets_ptr,
                          offsets_ptr + batches,
                          offsets_ptr);
