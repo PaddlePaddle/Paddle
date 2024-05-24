@@ -160,6 +160,7 @@ cinn_cc_library(
   param_proto
   auto_schedule_proto
   schedule_desc_proto
+  filetileconfig_proto
   absl
   isl
   ginac
@@ -220,6 +221,7 @@ function(gen_cinncore LINKTYPE)
     param_proto
     auto_schedule_proto
     schedule_desc_proto
+    filetileconfig_proto
     absl
     isl
     ginac
