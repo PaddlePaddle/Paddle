@@ -445,9 +445,8 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
 
   if (ndims_x >= 2 && ndims_y >= 2) {
     infer_context->AddEqualCstr(dims_x_new[ndims_x - 1],
-                                dims_y_new[ndims_x - 2]);
-    for (int i = 3; i <= ndims_x || i <= ndims_y; i++) {
-      if (i >= ndims_x || i >= ndims_y) continue;
+                                dims_y_new[ndims_y - 2]);
+    for (int i = 3; i <= ndims_x && i <= ndims_y; i++) {
       infer_context->AddBroadcastableCstr(dims_x_new[ndims_x - i],
                                           dims_y_new[ndims_y - i]);
     }
