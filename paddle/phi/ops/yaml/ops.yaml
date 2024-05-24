@@ -881,6 +881,19 @@
     data_type: detect_res
   optional: has_state, pos_count, true_pos, false_pos
 
+- op : dgc
+  args : (Tensor u, Tensor v, Tensor grad, Tensor param, Tensor current_step, Tensor nranks, float m=0.9, bool use_nesterov=true, float[] sparsity={}, float rampup_begin_step=0.0, float rampup_step=0.0, float regular_coeff=0.0, int regular_type=0)
+  output : Tensor(u_out), Tensor(v_out), Tensor(encode_grad), Tensor(grad_out), Tensor(k), Tensor(gather_buff)
+  infer_meta:
+    func: DgcInferMeta
+    param : [u, v, grad, param, current_step, nranks]
+  kernel :
+    func : dgc
+    param : [u, v, grad, param, current_step, nranks, m, use_nesterov, sparsity, rampup_begin_step, rampup_step, regular_coeff, regular_type]
+  optional: param
+  data_transform :
+    skip_transform : current_step, nranks
+
 - op : dgc_momentum
   args: (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor
     master_param, Tensor current_step_tensor, Tensor nranks_tensor, float mu, bool use_nesterov
@@ -1117,6 +1130,15 @@
     func : fake_channel_wise_quantize_dequantize_abs_max
     data_type : x
   backward : fake_channel_wise_quantize_dequantize_abs_max_grad
+
+- op : fake_dequantize_max_abs
+  args : (Tensor x, Tensor scale, float max_range)
+  output : Tensor(out)
+  infer_meta :
+    func : FakeDequantizeMaxAbsInferMeta
+  kernel :
+    func : fake_dequantize_max_abs
+    data_type : x
 
 - op : fake_quantize_abs_max
   args : (Tensor x, int bit_length = 8, int round_type = 1)
@@ -3311,6 +3333,18 @@
     data_type: x
   inplace: (x -> out)
   backward: uniform_inplace_grad
+
+- op : uniform_random_batch_size_like
+  args: (Tensor input, int[] shape, int input_dim_idx = 0, int output_dim_idx = 0,
+    float min=-1.0f, float max=1.0f, int seed=0, int diag_num=0, int diag_step=0, float diag_val=1.0f, DataType dtype=DataType::FLOAT32)
+  output: Tensor (out)
+  infer_meta:
+    func: UniformRandomBatchSizeLikeInferMeta
+  kernel:
+    func : uniform_random_batch_size_like {dense -> dense},
+           uniform_random_batch_size_like_sr {selected_rows -> selected_rows}
+    data_type: dtype
+  no_need_buffer: input
 
 - op : unique_consecutive
   args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, DataType dtype = DataType::FLOAT32)

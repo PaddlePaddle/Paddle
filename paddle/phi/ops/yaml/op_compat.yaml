@@ -1126,6 +1126,12 @@
     out : Out
     out_scale : OutScale
 
+- op : fake_dequantize_max_abs
+  inputs :
+    {x : X, scale : Scale}
+  outputs :
+    out : Out
+
 - op : fake_quantize_abs_max
   inputs :
     x : X
@@ -3946,6 +3952,12 @@
   outputs:
     {u_out: U_out, v_out: V_out, encode_grad: EncodeGrad, grad_out: Grad_out, gather_buff: GatherBuff}
 
+- op: dgc
+  inputs:
+    {u : U, v : V, grad : Grad, param : Param}
+  outputs:
+    {u_out : U_out, v_out : V_out, encode_grad : EncodeGrad, grad_out : Grad_out, gather_buff : GatherBuff}
+
 - op: distribute_fpn_proposals
   inputs :
     {fpn_rois: FpnRois, rois_num: RoisNum}
@@ -3981,6 +3993,13 @@
 - op: fetch (fetch_v2)
   inputs: {x: X}
   outputs: {out: Out}
+
+- op: flatten2
+  backward: flatten2_grad
+  inputs:
+    x : X
+  outputs:
+    {out : Out, x_shape : XShape}
 
 - op: ftrl
   inputs:

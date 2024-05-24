@@ -127,8 +127,14 @@ ProcessGroupNCCL::ProcessGroupNCCL(
     int nccl_comm_init_option)
     : ProcessGroupWithStream(rank, size, gid),
       store_(store),
+      place_to_calc_event_(),
+      place_to_calc_ctx_(),
+      place_to_comm_ctx_(),
+      p2p_comm_seq_(),
+      place_to_group_key_(),
       pg_timeout_(timeout),
-      nccl_comm_init_option_(nccl_comm_init_option) {
+      nccl_comm_init_option_(nccl_comm_init_option),
+      allocation_stream_pairs() {
   LOG(INFO) << "ProcessGroupNCCL pg_timeout_ " << pg_timeout_;
   LOG(INFO) << "ProcessGroupNCCL nccl_comm_init_option_ "
             << nccl_comm_init_option_;
