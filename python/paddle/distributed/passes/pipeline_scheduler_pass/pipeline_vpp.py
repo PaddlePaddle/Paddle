@@ -35,6 +35,7 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
 
         self._forward_micro_step_counter = {}
         self._backward_micro_step_counter = {}
+        self._types = []
 
     def _record_fwd_micro_step(self, virtual_pp_rank):
         real_micro_step = self._forward_micro_step_counter[virtual_pp_rank]
@@ -48,6 +49,7 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
 
     def _create_job_list(self):
         accumulate_steps = self.get_attr("num_micro_batches")
+        enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
         stage_id = self.get_attr("pp_stage")
         num_stages = self.get_attr("pp_degree")
         num_model_chunks = self.get_attr("vpp_degree")
@@ -78,13 +80,15 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
         for micro_step in range(warmup_steps):
             virtual_pp_rank = _get_virtual_pp_rank(micro_step, forward=True)
             micro_batch_id = self._record_fwd_micro_step(virtual_pp_rank)
-            if self.get_attr("enable_send_recv_overlap"):
-                recv4_fw_job = core.Job(
-                    "recv4_" + FORWARD + str(virtual_pp_rank)
-                )
+            fw_job_name = FORWARD + str(virtual_pp_rank)
+            if (
+                enable_send_recv_overlap
+                and ("recv4_" + fw_job_name) in self._types
+            ):
+                recv4_fw_job = core.Job("recv4_" + fw_job_name)
                 recv4_fw_job.set_micro_batch_id(micro_batch_id)
                 job_list.append(recv4_fw_job)
-            fw_job = core.Job(FORWARD + str(virtual_pp_rank))
+            fw_job = core.Job(fw_job_name)
             fw_job.set_micro_batch_id(micro_batch_id)
             job_list.append(fw_job)
 
@@ -96,15 +100,17 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
             fwd_micro_batch_id = self._record_fwd_micro_step(
                 fwd_virtual_pp_rank
             )
-            if self.get_attr("enable_send_recv_overlap"):
-                recv4_fwd_job = core.Job(
-                    "recv4_" + FORWARD + str(fwd_virtual_pp_rank)
-                )
+            fwd_job_name = FORWARD + str(fwd_virtual_pp_rank)
+            if (
+                enable_send_recv_overlap
+                and ("recv4_" + fwd_job_name) in self._types
+            ):
+                recv4_fwd_job = core.Job("recv4_" + fwd_job_name)
                 recv4_fwd_job.set_micro_batch_id(fwd_micro_batch_id)
                 job_list.insert(-1, recv4_fwd_job) if len(
                     job_list
                 ) > 0 else job_list.append(recv4_fwd_job)
-            fwd_job = core.Job(FORWARD + str(fwd_virtual_pp_rank))
+            fwd_job = core.Job(fwd_job_name)
             fwd_job.set_micro_batch_id(fwd_micro_batch_id)
             job_list.append(fwd_job)
 
@@ -115,28 +121,32 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
             bwd_micro_batch_id = self._record_bwd_micro_step(
                 bwd_virtual_pp_rank
             )
-            if self.get_attr("enable_send_recv_overlap"):
-                recv4_bwd_job = core.Job(
-                    "recv4_" + BACKWARD + str(bwd_virtual_pp_rank)
-                )
+            bwd_job_name = BACKWARD + str(bwd_virtual_pp_rank)
+            if (
+                enable_send_recv_overlap
+                and ("recv4_" + bwd_job_name) in self._types
+            ):
+                recv4_bwd_job = core.Job("recv4_" + bwd_job_name)
                 recv4_bwd_job.set_micro_batch_id(bwd_micro_batch_id)
                 job_list.insert(-1, recv4_bwd_job) if len(
                     job_list
                 ) > 0 else job_list.append(recv4_bwd_job)
-            bwd_job = core.Job(BACKWARD + str(bwd_virtual_pp_rank))
+            bwd_job = core.Job(bwd_job_name)
             bwd_job.set_micro_batch_id(bwd_micro_batch_id)
             job_list.append(bwd_job)
 
         for micro_step in range(steady_steps, total_num_steps):
             virtual_pp_rank = _get_virtual_pp_rank(micro_step, forward=False)
             micro_batch_id = self._record_bwd_micro_step(virtual_pp_rank)
-            bwd_job = core.Job(BACKWARD + str(virtual_pp_rank))
-            if self.get_attr("enable_send_recv_overlap"):
-                recv4_bwd_job = core.Job(
-                    "recv4_" + BACKWARD + str(virtual_pp_rank)
-                )
+            bwd_job_name = BACKWARD + str(virtual_pp_rank)
+            if (
+                enable_send_recv_overlap
+                and ("recv4_" + bwd_job_name) in self._types
+            ):
+                recv4_bwd_job = core.Job("recv4_" + bwd_job_name)
                 recv4_bwd_job.set_micro_batch_id(micro_batch_id)
                 job_list.append(recv4_bwd_job)
+            bwd_job = core.Job(bwd_job_name)
             bwd_job.set_micro_batch_id(micro_batch_id)
             job_list.append(bwd_job)
 
@@ -155,4 +165,5 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
             types, sub_program_list = _split_and_replace_recv(
                 types, sub_program_list
             )
+        self._types = types
         return types, sub_program_list
