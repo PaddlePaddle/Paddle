@@ -53,7 +53,9 @@
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -61,7 +63,6 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/fluid/primitive/base/decomp_trans.h"
-#include "paddle/fluid/pybind/pir.h"
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/context_pool.h"
@@ -807,6 +808,8 @@ bool AnalysisPredictor::PreparePirProgram() {
       return false;
     }
 
+    //这一步是对应pir_io.py中的487行，得到v,因为只有ParameterOP才有v.name,所以这里只把ParameterOp
+    //添加到vars中
     std::vector<pir::Value> vars;
     for (auto op : block->ops()) {
       LOG(INFO) << "ops的 " << op->name();
@@ -820,28 +823,32 @@ bool AnalysisPredictor::PreparePirProgram() {
         }
       }
     }
+
     size_t len = vars.size();
     std::vector<phi::DenseTensor *> tensor_out;
     for (size_t i = 0; i < len; ++i) {
       LOG(INFO) << "params_names[i]" << param_names[i];
-      auto *var = scope_->FindVar(param_names[i]);
+      auto *var = sub_scope_->FindVar(param_names[i]);
       pir::Value value = vars[i];
       if (var == nullptr) {
         LOG(INFO) << "Variable not found, creating new variable: "
                   << param_names[i];
-        var = scope_->Var(param_names[i]);
+        var = sub_scope_->Var(param_names[i]);
         auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
-        tensor_temp->Resize(common::make_ddim(
-            phi::vectorize(paddle::pybind::GetValueDims(value))));
+        tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
         LOG(INFO) << "Found variable: " << param_names[i]
                   << " with type: " << var->Type();
         phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
         const phi::DeviceContext *dev_ctx = nullptr;
         dev_ctx = pool.Get(place_);
-        dev_ctx->Alloc(tensor_temp, paddle::pybind::GetValueDtype(value));
+        pir::Type type_ = pir::GetDataTypeFromValue(value);
+        phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
+        dev_ctx->Alloc(tensor_temp, type_data);
       }
       auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
       tensor_out.push_back(tensor_temp);
+      LOG(INFO) << "Tensor value for " << param_names[i] << "; "
+                << *tensor_temp;
     }
     pir::LoadCombineFunction(
         params_file, param_names, &tensor_out, false, place_);
@@ -1291,6 +1298,8 @@ bool AnalysisPredictor::PrepareExecutor() {
   PADDLE_ENFORCE_NOT_NULL(sub_scope_,
                           platform::errors::PreconditionNotMet(
                               "The sub_scope should not be nullptr."));
+
+  LOG(INFO) << "sub_scope_ is not nullptr";
   if (config_.dist_config().use_dist_model()) {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
     VLOG(3) << "use_dist_model is enabled, will init FleetExecutor.";
@@ -1301,36 +1310,66 @@ bool AnalysisPredictor::PrepareExecutor() {
         "Please recompile or reinstall Paddle with PSCORE support."));
 #endif
   }
-  DisablePrepareDataOpt(inference_program_, 0, false);
-
-  executor_->Prepare(sub_scope_, *inference_program_, 0);
+  if (!config_.new_ir_enabled()) {
+    DisablePrepareDataOpt(inference_program_, 0, false);
+    executor_->Prepare(sub_scope_, *inference_program_, 0);
+  }
 
   if (config_.new_executor_enabled()) {
+    LOG(INFO) << "new executor is enabled,prepareing execution config";
     framework::interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
     execution_config.used_for_inference = true;
+    LOG(INFO) << "Set execution_config parameters";
+
     auto input_names = GetInputNames();
+    LOG(INFO) << "Get input names";
+    for (const auto &name : input_names) {
+      LOG(INFO) << "input-name " << name;
+    }
     execution_config.skip_gc_vars.insert(input_names.begin(),
                                          input_names.end());
+    LOG(INFO) << "Inserted input names into execution_config.skip_gc_vars";
     auto output_names = GetOutputNames();
+    LOG(INFO) << "Get output names";
+    for (const auto &name : output_names) {
+      LOG(INFO) << "output-name " << name;
+    }
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
+    LOG(INFO) << "Inserted output names into execution_config.skip_gc_vars";
     if (config_.new_ir_enabled()) {
+      LOG(INFO) << "New IR is enabled,calling PrepareInteroreterCore with "
+                   "pir_program_";
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
+      LOG(INFO) << "Called executor_->PrepareInterpreterCore with pir_program_";
     } else {
+      LOG(INFO) << "New IR is not enabled, calling PrepareInterpreterCore with "
+                   "inference_program_";
       executor_->PrepareInterpreterCore(
           sub_scope_, *inference_program_, execution_config);
+      LOG(INFO)
+          << "Called executor_->PrepareInterpreterCore with inference_program_";
     }
   }
 
   if (config_.enable_memory_optim_ && !config_.use_optimized_model_) {
+    LOG(INFO) << "Memory optimization is enabled, preparing reuse table";
     auto *pass_res_info =
         inference::analysis::PassResultInfoForRuntime::Instance();
+    LOG(INFO) << "Got PassResultInfoForRuntime instance";
     auto reuse_table =
         pass_res_info->Get<std::unordered_map<std::string, std::string>>(
             root_predictor_id_, "memory_optimize_pass");
+    LOG(INFO) << "Got reuse table for memory optimization pass";
+    LOG(INFO) << "Reuse table:";
+    for (const auto &pair : reuse_table) {
+      LOG(INFO) << pair.first << " -> " << pair.second;
+    }
+    LOG(INFO) << "Calling executor_->MakeReusePlan";
     executor_->MakeReusePlan(reuse_table);
+    LOG(INFO) << "Called executor_->MakeReusePlan";
   }
 
   return true;
@@ -2477,7 +2516,7 @@ void AnalysisPredictor::PreparePirFeedFetch(
         idx2fetches_[idx] = fetch_name;
       }
     } else if (op->name() == "pd_op.feed" || op->name() == "pd_op.data") {
-      std::string feed_name =
+      int idx std::string feed_name =
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
       LOG(INFO) << "feed_name:" << feed_name;
       idx2feeds_[feed_idx] = feed_name;

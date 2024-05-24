@@ -222,6 +222,7 @@ const Scope* Scope::FindScopeInternal(const std::string& name) const {
 
 void Scope::RenameInternal(const std::string& origin_name,
                            const std::string& new_name) const {
+  LOG(INFO) << "Renaming variable from " << origin_name << " to " << new_name;
   auto origin_it = vars_.find(origin_name);
   PADDLE_ENFORCE_NE(
       origin_it,
