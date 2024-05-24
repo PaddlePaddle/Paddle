@@ -330,26 +330,16 @@ struct CanFuseReduceTreeAndTrivialMatcher {
 
 template <typename T>
 struct HorizontalCheckMiddleOutputVar {
-  bool IsAnyOpUseOutput(const std::vector<pir::Operation*>& ops,
-                        const std::vector<pir::Value>& output_value) {
-    std::unordered_set<pir::Value> set(output_value.begin(),
-                                       output_value.end());
-    for (const auto& op : ops) {
-      for (const auto& var : op->operands()) {
-        if (set.count(var.source())) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
   bool operator()(const PatternGraph<T>& graph,
                   const PatternNodePtr<T>& lhs,
                   const PatternNodePtr<T>& rhs) {
-    const auto& output_value = graph.outputs();
-    const auto& ops = ConcatVector(GetOpsInPattern(lhs->stmt_pattern()),
-                                   GetOpsInPattern(rhs->stmt_pattern()));
-    return !IsAnyOpUseOutput(ops, output_value);
+    for (const auto& i : lhs->downstream()) {
+      if (i == rhs) return false;
+    }
+    for (const auto& i : lhs->upstream()) {
+      if (i == rhs) return false;
+    }
+    return true;
   }
 };
 
