@@ -1157,9 +1157,8 @@ def dropout(
         )  # semantic transfer
 
         if in_dynamic_or_pir_mode():
-            if default_main_program().random_seed != 0:
-                seed = default_main_program().random_seed
-
+            if paddle.static.default_main_program().random_seed != 0:
+                seed = paddle.static.default_main_program().random_seed
             out = _C_ops.dropout(
                 x,
                 None,

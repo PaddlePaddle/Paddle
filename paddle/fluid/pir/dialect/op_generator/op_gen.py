@@ -24,7 +24,7 @@ from decomp_interface_gen_op_list import (
     decomp_interface_declare_gen_op_list,
     decomp_vjp_interface_declare_gen_op_list,
 )
-from gen_utils import to_pascal_case
+from gen_utils import attr_types_map, to_pascal_case
 from infer_symbolic_shape_gen import gen_infer_symbolic_shape_str
 from op_all_func_gen import gen_op_all_func
 from op_build_gen import gen_build_func_str, gen_build_func_str_by_invoke
@@ -342,54 +342,6 @@ PD_MANUAL_OP_LIST = {
 ONEDNN_MANUAL_OP_LIST = {
     'split_grad',
     'expand',
-}
-
-attr_types_map = {
-    'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
-    'Scalar': ['paddle::dialect::ScalarAttribute', 'Scalar'],
-    'Scalar(int)': ['pir::Int32Attribute', 'int'],
-    'Scalar(int64_t)': ['pir::Int64Attribute', 'int64_t'],
-    'Scalar(float)': ['pir::FloatAttribute', 'float'],
-    'Scalar(double)': ['pir::DoubleAttribute', 'double'],
-    'Scalar[]': [
-        'pir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
-        'const std::vector<Scalar>&',
-    ],
-    'int': ['pir::Int32Attribute', 'int'],
-    'int32_t': ['pir::Int32Attribute', 'int32_t'],
-    'int64_t': ['pir::Int64Attribute', 'int64_t'],
-    'long': ['pir::LongAttribute', 'long'],
-    'size_t': ['pir::Size_tAttribute', 'size_t'],
-    'float': ['pir::FloatAttribute', 'float'],
-    'float[]': [
-        'pir::ArrayAttribute<pir::FloatAttribute>',
-        'const std::vector<float>&',
-    ],
-    'double': ['pir::DoubleAttribute', 'double'],
-    'bool': ['pir::BoolAttribute', 'bool'],
-    'bool[]': [
-        'pir::ArrayAttribute<pir::BoolAttribute>',
-        'const std::vector<bool>&',
-    ],
-    'str': ['pir::StrAttribute', 'const std::string&'],
-    'str[]': [
-        'pir::ArrayAttribute<pir::StrAttribute>',
-        'const std::vector<std::string>&',
-    ],
-    'Place': ['paddle::dialect::PlaceAttribute', 'const phi::Place&'],
-    'DataLayout': [
-        'paddle::dialect::DataLayoutAttribute',
-        'DataLayout',
-    ],
-    'DataType': ['paddle::dialect::DataTypeAttribute', 'DataType'],
-    'int64_t[]': [
-        'pir::ArrayAttribute<pir::Int64Attribute>',
-        'const std::vector<int64_t>&',
-    ],
-    'int[]': [
-        'pir::ArrayAttribute<pir::Int32Attribute>',
-        'const std::vector<int>&',
-    ],
 }
 
 
@@ -1119,10 +1071,11 @@ def get_input_grad_semantic(op_info, op_info_items):
 
     # get backward op
     bwd_op_name = op_info.backward_name
+    sparse_op_name_suffix = '_sp' if op_info.is_sparse_op else ''
     if (bwd_op_name is None) or (bwd_op_name not in op_info_items.keys()):
         input_grad_semantics = ["false" for i in range(num_inputs)]
     else:
-        bwd_op_info = op_info_items[bwd_op_name]
+        bwd_op_info = op_info_items[bwd_op_name + sparse_op_name_suffix]
 
         # cut "_grad" of each output of bwd_op, and then compare each modified output with corresponding input
         # thus determine whether each input has grad semantic
@@ -1153,12 +1106,13 @@ def get_mutable_attribute_grad_semantic(op_info, op_info_items):
 
     # get backward op
     bwd_op_name = op_info.backward_name
+    sparse_op_name_suffix = '_sp' if op_info.is_sparse_op else ''
     if (bwd_op_name is None) or (bwd_op_name not in op_info_items.keys()):
         mutable_attribute_grad_semantics = [
             "false" for i in range(len(fwd_mutable_attribute_list))
         ]
     else:
-        bwd_op_info = op_info_items[bwd_op_name]
+        bwd_op_info = op_info_items[bwd_op_name + sparse_op_name_suffix]
 
         # cut "_grad" of each output of bwd_op, and then compare each modified output with corresponding attribute
         # thus determine whether each attribute has grad semantic

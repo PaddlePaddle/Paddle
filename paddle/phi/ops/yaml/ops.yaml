@@ -89,6 +89,7 @@
   output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_out)
   infer_meta :
     func : AdamInferMeta
+    spmd_rule : AdamInferSpmdDynamic
   kernel :
     func : adam {dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense},
            adam_dense_param_sparse_grad {dense, selected_rows, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense}
@@ -526,6 +527,7 @@
   infer_meta :
     func : CheckFiniteAndUnscaleInferMeta
     param : [x, scale]
+    spmd_rule : CheckFiniteAndUnscaleSpmd
   kernel :
     func : check_finite_and_unscale
     param : [x, scale]
@@ -881,6 +883,19 @@
     data_type: detect_res
   optional: has_state, pos_count, true_pos, false_pos
 
+- op : dgc
+  args : (Tensor u, Tensor v, Tensor grad, Tensor param, Tensor current_step, Tensor nranks, float m=0.9, bool use_nesterov=true, float[] sparsity={}, float rampup_begin_step=0.0, float rampup_step=0.0, float regular_coeff=0.0, int regular_type=0)
+  output : Tensor(u_out), Tensor(v_out), Tensor(encode_grad), Tensor(grad_out), Tensor(k), Tensor(gather_buff)
+  infer_meta:
+    func: DgcInferMeta
+    param : [u, v, grad, param, current_step, nranks]
+  kernel :
+    func : dgc
+    param : [u, v, grad, param, current_step, nranks, m, use_nesterov, sparsity, rampup_begin_step, rampup_step, regular_coeff, regular_type]
+  optional: param
+  data_transform :
+    skip_transform : current_step, nranks
+
 - op : dgc_momentum
   args: (Tensor param, Tensor grad, Tensor velocity, Tensor learning_rate, Tensor
     master_param, Tensor current_step_tensor, Tensor nranks_tensor, float mu, bool use_nesterov
@@ -1118,6 +1133,15 @@
     data_type : x
   backward : fake_channel_wise_quantize_dequantize_abs_max_grad
 
+- op : fake_dequantize_max_abs
+  args : (Tensor x, Tensor scale, float max_range)
+  output : Tensor(out)
+  infer_meta :
+    func : FakeDequantizeMaxAbsInferMeta
+  kernel :
+    func : fake_dequantize_max_abs
+    data_type : x
+
 - op : fake_quantize_abs_max
   args : (Tensor x, int bit_length = 8, int round_type = 1)
   output : Tensor(out), Tensor(out_scale)
@@ -1126,6 +1150,27 @@
   kernel :
     func : fake_quantize_abs_max
     data_type : x
+
+- op : fake_quantize_dequantize_abs_max
+  args : (Tensor x, int bit_length = 8, int round_type = 1)
+  output : Tensor(out), Tensor(out_scale)
+  infer_meta :
+    func : FakeQuantizeAbsMaxInferMeta
+  kernel :
+    func : fake_quantize_dequantize_abs_max
+    data_type : x
+  backward : fake_quantize_dequantize_abs_max_grad
+
+- op : fake_quantize_dequantize_moving_average_abs_max
+  args : (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1)
+  output : Tensor(out), Tensor(out_scale), Tensor(out_state), Tensor(out_accum)
+  infer_meta :
+    func : FakeQuantOrWithDequantMovingAverageAbsMaxInferMeta
+  kernel :
+    func : fake_quantize_dequantize_moving_average_abs_max
+    data_type : x
+  optional : in_accum, in_state, out_state, out_accum
+  backward : fake_quantize_dequantize_moving_average_abs_max_grad
 
 - op : fake_quantize_moving_average_abs_max
   args : (Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1)
@@ -2514,6 +2559,16 @@
   backward : put_along_axis_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : qkv_unpack_mha
+  args : (Tensor q, Tensor k, Tensor v, Tensor src_mask)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [q]
+  kernel :
+    func : qkv_unpack_mha
+    data_type : q
+
 - op : qr
   args : (Tensor x, str mode = "reduced")
   output : Tensor(q), Tensor(r)
@@ -2545,6 +2600,17 @@
     data_type : prob
   inplace : (topk_idx -> out)
   traits : pir::SideEffectTrait
+
+- op : rank_attention
+  args : (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size = 0)
+  output : Tensor(input_help), Tensor(out), Tensor(ins_rank)
+  infer_meta :
+    func : RankAttentionInferMeta
+  kernel :
+    func : rank_attention
+    data_type : x
+  backward : rank_attention_grad
+  optional : ins_rank, input_help
 
 - op : real
   args : (Tensor x)
@@ -2829,6 +2895,18 @@
     func : send_uv
     data_type : x
   backward : send_uv_grad
+
+- op : sequence_conv
+  args: (Tensor x, Tensor padding_data, Tensor filter, int context_length, bool padding_trainable = false,
+    int context_start = 0, int context_stride = 1)
+  output: Tensor (out)
+  infer_meta:
+    func: SequenceConvInferMeta
+  kernel:
+    func: sequence_conv
+    data_type: x
+  optional: padding_data
+  backward: sequence_conv_grad
 
 - op : sgd_
   args : (Tensor param, Tensor learning_rate, Tensor grad, Tensor master_param, bool multi_precision=false)
@@ -3281,6 +3359,18 @@
   inplace: (x -> out)
   backward: uniform_inplace_grad
 
+- op : uniform_random_batch_size_like
+  args: (Tensor input, int[] shape, int input_dim_idx = 0, int output_dim_idx = 0,
+    float min=-1.0f, float max=1.0f, int seed=0, int diag_num=0, int diag_step=0, float diag_val=1.0f, DataType dtype=DataType::FLOAT32)
+  output: Tensor (out)
+  infer_meta:
+    func: UniformRandomBatchSizeLikeInferMeta
+  kernel:
+    func : uniform_random_batch_size_like {dense -> dense},
+           uniform_random_batch_size_like_sr {selected_rows -> selected_rows}
+    data_type: dtype
+  no_need_buffer: input
+
 - op : unique_consecutive
   args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, DataType dtype = DataType::FLOAT32)
   output : Tensor(out), Tensor(index), Tensor(counts)
@@ -3332,6 +3422,7 @@
   infer_meta :
     func : UpdateLossScalingInferMeta
     param : [x, found_infinite, prev_loss_scaling, in_good_steps, in_bad_steps]
+    spmd_rule : UpdateLossScalingSpmd
   kernel :
     func : update_loss_scaling
     data_type : x

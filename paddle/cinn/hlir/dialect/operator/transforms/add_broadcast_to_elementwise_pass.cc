@@ -130,8 +130,6 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
                 .dyn_cast<paddle::dialect::PlaceAttribute>()
                 .data());
         op->operand(0).set_source(new_full->result(0));
-        shape_analysis.SetShapeOrDataForValue(
-            new_full.result(0), symbol::TensorShapeOrDataDimExprs(out_dim));
       } else {
         auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
             op->operand_source(0),
@@ -139,9 +137,6 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
             output_shape);
 
         op->operand(0).set_source(new_transpose_op->result(0));
-        shape_analysis.SetShapeOrDataForValue(
-            new_transpose_op.result(0),
-            symbol::TensorShapeOrDataDimExprs(out_dim));
       }
     }
 
@@ -160,8 +155,6 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
                 .data());
 
         op->operand(1).set_source(new_full->result(0));
-        shape_analysis.SetShapeOrDataForValue(
-            new_full.result(0), symbol::TensorShapeOrDataDimExprs(out_dim));
       } else {
         auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
             op->operand_source(1),
@@ -169,9 +162,6 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
             output_shape);
 
         op->operand(1).set_source(new_transpose_op->result(0));
-        shape_analysis.SetShapeOrDataForValue(
-            new_transpose_op.result(0),
-            symbol::TensorShapeOrDataDimExprs(out_dim));
       }
     }
 

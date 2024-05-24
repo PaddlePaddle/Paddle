@@ -119,6 +119,9 @@ PyObject* new_tensor_with_impl(paddle::Tensor* tensor) {
     new (&(v->tensor)) paddle::Tensor();
     v->tensor.set_impl(tensor->impl());
     v->tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
+    egr::EagerUtils::autograd_meta(&v->tensor)
+        ->SetStopGradient(
+            egr::EagerUtils::autograd_meta(tensor)->StopGradient());
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "tp_alloc return null, can not new a PyObject."));

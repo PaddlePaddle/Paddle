@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/funcs/flatten2_utils.h"
 #include "paddle/phi/kernels/funcs/parse_qr_mode.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
@@ -1562,6 +1563,40 @@ void FlattenWithXShapeInferMeta(const MetaTensor& x,
   }
   xshape->set_dims(common::make_ddim(xshape_dims));
   xshape->share_lod(x);
+}
+
+void Flatten2InferMeta(const MetaTensor& x,
+                       int axis,
+                       MetaTensor* out,
+                       MetaTensor* x_shape) {
+  const auto& in_dims = x.dims();
+  PADDLE_ENFORCE_GE(axis,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The axis should be greater than or equal to 0."));
+  PADDLE_ENFORCE_LE(
+      axis,
+      in_dims.size(),
+      phi::errors::InvalidArgument(
+          "The axis should be less than or equal to input tensor's rank"));
+
+  const auto& out_dims = phi::funcs::GetOutputShape(axis, in_dims);
+  out->set_dims(common::make_ddim(out_dims));
+  if (in_dims[0] == out_dims[0]) {
+    // Only pass LoD when the first dimension of output and Input(X)
+    // are the same.
+    out->share_lod(x);
+  }
+  out->set_dtype(x.dtype());
+  if (!x_shape->initialized()) return;
+  std::vector<int64_t> xshape_dims(in_dims.size() + 1);
+  xshape_dims[0] = 0;
+  for (int i = 0; i < in_dims.size(); ++i) {
+    xshape_dims[i + 1] = in_dims[i];
+  }
+  x_shape->set_dims(common::make_ddim(xshape_dims));
+  x_shape->share_lod(x);
+  x_shape->set_dtype(x.dtype());
 }
 
 void FlipInferMeta(const MetaTensor& x,
@@ -5379,6 +5414,23 @@ void UniformRandomInplaceInferMeta(const MetaTensor& x,
   auto xdim = x.dims();
   out->set_dims(xdim);
   out->set_dtype(x.dtype());
+}
+
+void UniformRandomBatchSizeLikeInferMeta(const MetaTensor& input,
+                                         const std::vector<int>& shape,
+                                         int input_dim_idx,
+                                         int output_dim_idx,
+                                         float min,
+                                         float max,
+                                         int seed,
+                                         int diag_num,
+                                         int diag_step,
+                                         float diag_val,
+                                         DataType dtype,
+                                         MetaTensor* out,
+                                         MetaConfig config) {
+  phi::BatchSizeLikeInferMeta(input, shape, input_dim_idx, output_dim_idx, out);
+  out->set_dtype(dtype);
 }
 
 void UniqueConsecutiveInferMeta(const MetaTensor& x,

@@ -572,6 +572,7 @@
     param: [x]
   kernel :
     func : cumprod_grad
+  composite: cumprod_grad(x, out, out_grad, dim, exclusive, reverse, x_grad)
 
 - backward_op : cumsum_grad
   forward : cumsum(Tensor x, Scalar axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false) -> Tensor(out)
@@ -826,6 +827,26 @@
     param : [out_grad]
   kernel :
     func : fake_channel_wise_quantize_dequantize_abs_max_grad
+
+- backward_op : fake_quantize_dequantize_abs_max_grad
+  forward: fake_quantize_dequantize_abs_max(Tensor x, int bit_length = 8, int round_type = 1) -> Tensor(out), Tensor(out_scale)
+  args : (Tensor out_grad, int bit_length = 8, int round_type = 1)
+  output: Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : fake_quantize_dequantize_abs_max_grad
+
+- backward_op : fake_quantize_dequantize_moving_average_abs_max_grad
+  forward: fake_quantize_dequantize_moving_average_abs_max(Tensor x, Tensor in_scale, Tensor in_accum, Tensor in_state, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1) -> Tensor(out), Tensor(out_scale), Tensor(out_state), Tensor(out_accum)
+  args : (Tensor out_grad, float moving_rate = 0.9, int bit_length = 8, bool is_test = false, int round_type = 1)
+  output: Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : fake_quantize_dequantize_moving_average_abs_max_grad
 
 - backward_op : fft_c2c_grad
   forward: fft_c2c(Tensor x, int64_t[] axes, str normalization, bool forward) -> Tensor(out)
@@ -1994,6 +2015,17 @@
   kernel :
     func : qr_grad
 
+- backward_op : rank_attention_grad
+  forward : rank_attention (Tensor x, Tensor rank_offset, Tensor rank_param, int max_rank = 3, int max_size = 0) -> Tensor(input_help), Tensor(out), Tensor(ins_rank)
+  args : (Tensor x, Tensor rank_offset, Tensor rank_param, Tensor input_help, Tensor ins_rank, Tensor out_grad, int max_rank = 3, int max_size = 0)
+  output : Tensor(rank_param_grad)
+  infer_meta :
+    func : RankAttentionGradInferMeta
+  kernel :
+    func : rank_attention_grad
+    data_type : out_grad
+  no_need_buffer : x, rank_offset, rank_param
+
 - backward_op : real_grad
   forward : real (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
@@ -2250,6 +2282,19 @@
   kernel :
     func : send_uv_grad
     data_type : x
+
+- backward_op : sequence_conv_grad
+  forward: sequence_conv (Tensor x, Tensor padding_data, Tensor filter, int context_length, bool padding_trainable = false,
+    int context_start = 0, int context_stride = 1) -> Tensor (out)
+  args: (Tensor x, Tensor padding_data, Tensor filter, Tensor out_grad, int context_length, bool padding_trainable = false,
+    int context_start = 0, int context_stride = 1)
+  output: Tensor (x_grad), Tensor (padding_data_grad), Tensor (filter_grad)
+  infer_meta:
+    func: SequenceConvGradInferMeta
+  kernel:
+    func: sequence_conv_grad
+    data_type: out_grad
+  optional: padding_data
 
 - backward_op : sigmoid_cross_entropy_with_logits_grad
   forward : sigmoid_cross_entropy_with_logits (Tensor x, Tensor label, Tensor pos_weight, bool normalize=false, int ignore_index=-100) -> Tensor(out)

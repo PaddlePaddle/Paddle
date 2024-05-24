@@ -199,7 +199,14 @@ class AllocatorFacadePrivate {
                std::map<phi::stream::stream_t, std::shared_ptr<Allocator>>>;
 #endif
 
-  explicit AllocatorFacadePrivate(bool allow_free_idle_chunk = true) {
+  explicit AllocatorFacadePrivate(bool allow_free_idle_chunk = true)
+      :
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        default_stream_safe_cuda_allocators_(),
+        default_cuda_malloc_async_allocators_(),
+        cuda_allocators_(),
+#endif
+        allocators_() {
     strategy_ = GetAllocatorStrategy();
     is_stream_safe_cuda_allocator_used_ = false;
     is_cuda_malloc_async_allocator_used_ = false;
@@ -1674,6 +1681,22 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
     }
   }
 #endif
+#if defined(PADDLE_WITH_XPU)
+  if (platform::is_xpu_place(place)) {
+    if (!GetPrivate()->IsStreamSafeCUDAAllocatorUsed()) {
+      return Alloc(place, size);
+    }
+    platform::XPUPlace p(place);
+    if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
+      XPUStream s = reinterpret_cast<XPUStream>(stream.id());
+      return GetPrivate()
+          ->GetAllocator(p, s, /* create_if_not_found = */ true)
+          ->Allocate(size);
+    } else {
+      return GetPrivate()->GetAllocator(p, size)->Allocate(size);
+    }
+  }
+#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   AllocatorFacadePrivate* m = GetPrivate();
   if (!m->IsStreamSafeCUDAAllocatorUsed() &&
@@ -1685,14 +1708,12 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
 
   platform::CUDAPlace p(place.GetDeviceId());
   if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
-    gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
+    gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());  // NOLINT
     return m->GetAllocator(p, s, /* create_if_not_found = */ true)
         ->Allocate(size);
   } else {
     return m->GetAllocator(p, size)->Allocate(size);
   }
-#elif defined(PADDLE_WITH_XPU)
-  return GetAllocator(place)->Allocate(size);
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(
       "Not compiled with GPU or XPU or CustomDevice."));
@@ -1703,7 +1724,7 @@ bool AllocatorFacade::InSameStream(
     const std::shared_ptr<phi::Allocation>& allocation,
     const phi::Stream& stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());
+  gpuStream_t s = reinterpret_cast<gpuStream_t>(stream.id());  // NOLINT
   return s == GetStream(allocation);
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet("Not compiled with GPU."));

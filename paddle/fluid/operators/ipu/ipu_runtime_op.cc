@@ -31,7 +31,7 @@ class IpuRuntimeOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope, const phi::Place& place) const {
     auto ipu_backend = platform::ipu::IpuBackend::GetInstance();
-    auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+    auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
     framework::RuntimeContext runtime_ctx(inputs_, outputs_, scope);
     framework::ExecutionContext ctx(*this, scope, *dev_ctx, runtime_ctx);
     auto inputs = ctx.MultiInput<phi::DenseTensor>("FeedList");

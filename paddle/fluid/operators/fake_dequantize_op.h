@@ -24,15 +24,6 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-struct DequantizeFunctor {
-  void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor* in,
-                  const phi::DenseTensor* scale,
-                  T max_range,
-                  phi::DenseTensor* out);
-};
-
-template <typename DeviceContext, typename T>
 struct ChannelDequantizeFunctor {
   void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor* in,
@@ -42,24 +33,6 @@ struct ChannelDequantizeFunctor {
                   const int quant_axis,
                   const int x_num_col_dims,
                   phi::DenseTensor* out);
-};
-
-template <typename T, typename DeviceContext>
-class FakeDequantizeMaxAbsKernel : public framework::OpKernel<T> {
- public:
-  virtual void Compute(const framework::ExecutionContext& ctx) const {
-    auto* in = ctx.Input<phi::DenseTensor>("X");
-    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
-
-    float max_range = ctx.Attr<float>("max_range");
-
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    out->mutable_data<T>(dev_ctx.GetPlace());
-
-    DequantizeFunctor<DeviceContext, T>()(
-        dev_ctx, in, scale, static_cast<T>(max_range), out);
-  }
 };
 
 template <typename T, typename DeviceContext>
