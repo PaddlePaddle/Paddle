@@ -37,7 +37,7 @@ PD_DECLARE_string(cinn_dump_group_lowered_func);
 PD_DECLARE_string(cinn_dump_group_source_code);
 PD_DECLARE_string(cinn_dump_group_ptx);
 PD_DECLARE_string(cinn_dump_group_instruction);
-PD_DECLARE_string(cinn_custom_code_path);
+PD_DECLARE_string(cinn_debug_custom_code_path);
 
 namespace cinn {
 namespace backends {
@@ -269,7 +269,7 @@ void Compiler::BuildDefault(const Module& module) {
 }
 
 namespace {
-std::string getFileContent(const std::string& filePath) {
+std::string GetFileContent(const std::string& filePath) {
   std::ifstream file(filePath);
 
   if (!file.is_open()) {
@@ -298,9 +298,9 @@ void Compiler::CompileCudaModule(const Module& module,
   VLOG(3) << "[CUDA] device module:\n" << device_module;
   std::string source_code;
 
-  if (!FLAGS_cinn_custom_code_path.empty()) {
-    std::string filePath = FLAGS_cinn_custom_code_path;
-    source_code = getFileContent(filePath);
+  if (!FLAGS_cinn_debug_custom_code_path.empty()) {
+    std::string filePath = FLAGS_cinn_debug_custom_code_path;
+    source_code = GetFileContent(filePath);
   } else if (code.empty()) {
     CodeGenCUDA_Dev codegen(target_);
     source_code = codegen.Compile(device_module);
