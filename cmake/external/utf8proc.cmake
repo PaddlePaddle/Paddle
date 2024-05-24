@@ -23,7 +23,7 @@ if(WIN32)
   set(UTF8PROC_LIBRARIES "${UTF8PROC_INSTALL_DIR}/lib/utf8proc_static.lib")
   add_definitions(-DUTF8PROC_STATIC)
 else()
-  set(UTF8PROC_LIBRARIES "${UTF8PROC_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libutf8proc.a")
+  set(UTF8PROC_LIBRARIES "${UTF8PROC_INSTALL_DIR}/lib/libutf8proc.a")
 endif()
 
 include_directories(${UTF8PROC_INSTALL_DIR}/include)
@@ -39,6 +39,7 @@ ExternalProject_Add(
              -DBUILD_STATIC=ON
              -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
              -DCMAKE_INSTALL_PREFIX:PATH=${UTF8PROC_INSTALL_DIR}
+             -DCMAKE_INSTALL_LIBDIR:PATH=${UTF8PROC_INSTALL_DIR}/lib
              -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
   BUILD_BYPRODUCTS ${UTF8PROC_LIBRARIES})
 
