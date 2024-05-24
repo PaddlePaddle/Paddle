@@ -14,12 +14,16 @@
 
 import typing
 
+is_paddle_installed = False
 try:
     from paddle.cuda_env import *  # noqa: F403
     from paddle.version import (  # noqa: F401
         commit as __git_commit__,
         full_version as __version__,
     )
+
+    is_paddle_installed = True
+
 except ImportError:
     import sys
 
@@ -577,7 +581,7 @@ if is_compiled_with_cinn():
     if os.path.exists(cuh_file):
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
-if is_compiled_with_cuda():
+if is_paddle_installed and is_compiled_with_cuda():
     import os
     import platform
 
