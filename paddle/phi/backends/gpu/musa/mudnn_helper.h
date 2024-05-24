@@ -36,6 +36,10 @@ namespace gpu {
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
 
+#define MUDNN_SOFTMAX_MODE_INSTANCE 0
+
+#define MUDNN_SOFTMAX_MODE_CHANNEL 1
+
 enum class DataLayout {  // Not use
   kNHWC,
   kNCHW,
@@ -302,6 +306,15 @@ class ScopedSoftmaxDescriptor {
   dynload::Softmax desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedSoftmaxDescriptor);
 };
+
+static void Coalesce1ToLastDims(std::vector<int>& tensor_dims) {
+  const int ndims = tensor_dims.size();
+  if (ndims < 3) return;
+  for (int i = ndims - 1; i > 1; --i) {
+    tensor_dims[i - 1] *= tensor_dims[i];
+    tensor_dims[i] = 1;
+  }
+}
 
 static void InternalMemFree(void* ptr) {
   if (!ptr) {
