@@ -53,11 +53,10 @@ std::string AESCipher::EncryptInternal(const std::string& plaintext,
   BuildCipher(true, &need_iv, &m_cipher, &m_filter);
   if (need_iv) {
     iv_ = CipherUtils::GenKey(iv_size_);
-    m_cipher->SetKeyWithIV(
-        key_char,
-        key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
-        iv_.size());
+    m_cipher->SetKeyWithIV(key_char,
+                           key.size(),
+                           reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
+                           iv_.size());
   } else {
     m_cipher->SetKey(key_char, key.size());
   }
@@ -85,11 +84,10 @@ std::string AESCipher::DecryptInternal(const std::string& ciphertext,
   if (need_iv) {
     iv_ = ciphertext.substr(0, iv_size_ / 8);
     ciphertext_beg = iv_size_ / 8;
-    m_cipher->SetKeyWithIV(
-        key_char,
-        key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
-        iv_.size());
+    m_cipher->SetKeyWithIV(key_char,
+                           key.size(),
+                           reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
+                           iv_.size());
   } else {
     m_cipher->SetKey(key_char, key.size());
   }
@@ -112,11 +110,10 @@ std::string AESCipher::AuthenticatedEncryptInternal(
   BuildAuthEncCipher(&need_iv, &m_cipher, &m_filter);
   if (need_iv) {
     iv_ = CipherUtils::GenKey(iv_size_);
-    m_cipher->SetKeyWithIV(
-        key_char,
-        key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
-        iv_.size());
+    m_cipher->SetKeyWithIV(key_char,
+                           key.size(),
+                           reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
+                           iv_.size());
   } else {
     m_cipher->SetKey(key_char, key.size());
   }
@@ -144,11 +141,10 @@ std::string AESCipher::AuthenticatedDecryptInternal(
   if (need_iv) {
     iv_ = ciphertext.substr(0, iv_size_ / 8);
     ciphertext_beg = iv_size_ / 8;
-    m_cipher->SetKeyWithIV(
-        key_char,
-        key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
-        iv_.size());
+    m_cipher->SetKeyWithIV(key_char,
+                           key.size(),
+                           reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
+                           iv_.size());
   } else {
     m_cipher->SetKey(key_char, key.size());
   }
@@ -173,43 +169,31 @@ void AESCipher::BuildCipher(
   if (aes_cipher_name_ == "AES_ECB_PKCSPadding" && for_encrypt) {
     m_cipher->reset(new CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption);
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        **m_cipher,
-        nullptr,
-        CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
+        **m_cipher, nullptr, CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_ECB_PKCSPadding" && !for_encrypt) {
     m_cipher->reset(new CryptoPP::ECB_Mode<CryptoPP::AES>::Decryption);
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        **m_cipher,
-        nullptr,
-        CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
+        **m_cipher, nullptr, CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_CBC_PKCSPadding" && for_encrypt) {
     m_cipher->reset(new CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        **m_cipher,
-        nullptr,
-        CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
+        **m_cipher, nullptr, CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_CBC_PKCSPadding" && !for_encrypt) {
     m_cipher->reset(new CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        **m_cipher,
-        nullptr,
-        CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
+        **m_cipher, nullptr, CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_CTR_NoPadding" && for_encrypt) {
     m_cipher->reset(new CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        **m_cipher,
-        nullptr,
-        CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
+        **m_cipher, nullptr, CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
   } else if (aes_cipher_name_ == "AES_CTR_NoPadding" && !for_encrypt) {
     m_cipher->reset(new CryptoPP::CTR_Mode<CryptoPP::AES>::Decryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        **m_cipher,
-        nullptr,
-        CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
+        **m_cipher, nullptr, CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
   } else {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
         "Create cipher error. "

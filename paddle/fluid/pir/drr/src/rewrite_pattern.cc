@@ -82,8 +82,7 @@ bool DrrRewritePattern::PatternGraphMatch(
   VLOG(6) << "PatternGraphMatch Start: op(" << op->name() << ")";
   const OpCall* anchor = *source_pattern_graph_->OutputNodes().begin();
   std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
-      bind_map =
-          FindCandidateIrOutputOp(op, anchor, *source_pattern_graph_);
+      bind_map = FindCandidateIrOutputOp(op, anchor, *source_pattern_graph_);
   if (bind_map.empty()) {
     return false;
   }
@@ -164,8 +163,8 @@ void DrrRewritePattern::DfsVisitor(
     std::unordered_set<const OpCall*>* drr_visited_ops,
     std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>*
         output_op_bind_map) const {
-  VLOG(6) << "DfsVisitor Start: drr op(" << drr_op->name() << ")"
-          << "ir op(" << ir_op->name() << ")";
+  VLOG(6) << "DfsVisitor Start: drr op(" << drr_op->name() << ")" << "ir op("
+          << ir_op->name() << ")";
   if (drr_op->name() != ir_op->name()) {
     return;
   }
