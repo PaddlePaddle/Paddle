@@ -3334,6 +3334,18 @@
   inplace: (x -> out)
   backward: uniform_inplace_grad
 
+- op : uniform_random_batch_size_like
+  args: (Tensor input, int[] shape, int input_dim_idx = 0, int output_dim_idx = 0,
+    float min=-1.0f, float max=1.0f, int seed=0, int diag_num=0, int diag_step=0, float diag_val=1.0f, DataType dtype=DataType::FLOAT32)
+  output: Tensor (out)
+  infer_meta:
+    func: UniformRandomBatchSizeLikeInferMeta
+  kernel:
+    func : uniform_random_batch_size_like {dense -> dense},
+           uniform_random_batch_size_like_sr {selected_rows -> selected_rows}
+    data_type: dtype
+  no_need_buffer: input
+
 - op : unique_consecutive
   args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, DataType dtype = DataType::FLOAT32)
   output : Tensor(out), Tensor(index), Tensor(counts)
