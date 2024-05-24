@@ -1310,8 +1310,9 @@ class ShardingPass(PassBase):
                 if (
                     op.type == "c_reduce_avg"
                     and not grad_group.is_in_local_shard
-                    and not self.get_attr("gradient_sync_after_accumulate")
                 ):
+                    #     and not self.get_attr("gradient_sync_after_accumulate")
+                    # ):
                     if idx not in dep_map:
                         dep_map[idx] = []
                     dep_map[idx].append(

@@ -51,6 +51,7 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
         stage_id = self.get_attr("pp_stage")
         num_stages = self.get_attr("pp_degree")
         num_model_chunks = self.get_attr("vpp_degree")
+        grad_to_global_grad = self.get_attr("grad_to_global_grad", {})
         for i in range(num_model_chunks):
             self._forward_micro_step_counter[i] = 0
             self._backward_micro_step_counter[i] = 0
@@ -101,14 +102,24 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
             bwd_micro_batch_id = self._record_bwd_micro_step(
                 bwd_virtual_pp_rank
             )
-            bwd_job = core.Job(BACKWARD + str(bwd_virtual_pp_rank))
+            if bwd_micro_batch_id == accumulate_steps - 1:
+                bwd_job = core.Job(
+                    BACKWARD + str(bwd_virtual_pp_rank) + "_has_dp_comm"
+                )
+            else:
+                bwd_job = core.Job(BACKWARD + str(bwd_virtual_pp_rank))
             bwd_job.set_micro_batch_id(bwd_micro_batch_id)
             job_list.append(bwd_job)
 
         for micro_step in range(steady_steps, total_num_steps):
             virtual_pp_rank = _get_virtual_pp_rank(micro_step, forward=False)
             micro_batch_id = self._record_bwd_micro_step(virtual_pp_rank)
-            bwd_job = core.Job(BACKWARD + str(virtual_pp_rank))
+            if micro_batch_id == accumulate_steps - 1:
+                bwd_job = core.Job(
+                    BACKWARD + str(virtual_pp_rank) + "_has_dp_comm"
+                )
+            else:
+                bwd_job = core.Job(BACKWARD + str(virtual_pp_rank))
             bwd_job.set_micro_batch_id(micro_batch_id)
             job_list.append(bwd_job)
 
@@ -120,7 +131,16 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
         dist_context = self.get_attr("dist_context")
         num_model_chunks = self.get_attr("vpp_degree")
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
+        gradient_sync_after_accumulate = self.get_attr(
+            "gradient_sync_after_accumulate"
+        )
+        grad_to_global_grad = self.get_attr("grad_to_global_grad")
         types, sub_program_list = _program_for_vpp(
-            program, num_model_chunks, dist_context, enable_send_recv_overlap
+            program,
+            num_model_chunks,
+            dist_context,
+            enable_send_recv_overlap,
+            grad_to_global_grad,
+            gradient_sync_after_accumulate,
         )
         return types, sub_program_list

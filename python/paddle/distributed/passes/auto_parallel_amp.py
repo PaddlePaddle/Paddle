@@ -860,6 +860,7 @@ class AMPPass(PassBase):
                 g.name, g_dist_attr.dims_mapping
             )
         self.dist_context.set_op_dist_attr_for_program(new_op, new_op_dist_attr)
+
         return grads, found_inf
 
     def _init_amp_var(self):
