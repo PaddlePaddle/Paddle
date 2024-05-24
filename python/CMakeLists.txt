@@ -169,8 +169,8 @@ add_custom_target(paddle_python ALL
                   DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
 
 # -------------- Generate tensor.pyi stub file --------------
-add_custom_command(
-  OUTPUT ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.pyi
+add_custom_target(
+  paddle_stub ALL
   # generate tensor.pyi for type hints
   COMMAND
     ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
@@ -182,9 +182,8 @@ add_custom_command(
     ${CMAKE_COMMAND} -E copy
     ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
     ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.pyi
-  COMMENT "Generate tensor.pyi------>>>")
-add_custom_target(paddle_stub ALL
-                  DEPENDS ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.pyi)
+  COMMENT "Generate tensor.pyi------>>>"
+  DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
 add_dependencies(paddle_stub paddle_python)
 # -------------- End Generate tensor.pyi stub file --------------
 
@@ -192,6 +191,7 @@ if(BUILD_WHL_PACKAGE AND NOT WITH_SETUP_INSTALL)
   add_custom_target(paddle_copy ALL
                     DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel)
   add_dependencies(paddle_copy paddle_python)
+  add_dependencies(paddle_copy paddle_stub)
 endif()
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
