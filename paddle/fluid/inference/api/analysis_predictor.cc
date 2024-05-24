@@ -932,11 +932,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         // gpu
         if (!config_.custom_pass_only_) {
           for (const auto &gpu_pass : kPirGpuPasses) {
-            auto pass = pir::PassRegistry::Instance().Get(gpu_pass);
-            if (pass->name() == "matmul_add_act_fuse_pass") {
-              pass->Set("use_cutlass", new bool(config_.use_cutlass_));
-            }
-            pass_pm.AddPass(std::move(pass));
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
           }
         }
 
@@ -976,6 +972,13 @@ bool AnalysisPredictor::PrepareExecutor() {
         pass_pm.EnableIRPrinting(
             std::make_unique<pir::PassManager::IRPrinterOption>(
                 ir_printing_conditions, ir_printing_conditions));
+      }
+      // set attr
+      for (const auto &pass : pass_pm.passes()) {
+        if (pass->name() == "matmul_add_act_fuse_pass" ||
+            pass->name() == "conv2d_add_act_fuse_pass") {
+          pass->Set("use_cutlass", new bool(config_.use_cutlass_));
+        }
       }
       pass_pm.Run(pir_program_.get());
 
