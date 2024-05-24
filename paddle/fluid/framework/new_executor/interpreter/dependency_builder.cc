@@ -74,7 +74,13 @@ const std::string StringizeDownstreamMap(
 }
 
 DependencyBuilder::DependencyBuilder()
-    : is_build_(false), instructions_(nullptr) {
+    : is_build_(false),
+      op_num_(0),
+      ops_before_(),
+      ops_behind_(),
+      op_downstream_map_(nullptr),
+      op_happens_before_(nullptr),
+      instructions_(nullptr) {
   op_downstream_map_ = std::make_shared<std::map<size_t, std::set<size_t>>>();
   op_happens_before_ = std::make_shared<std::vector<std::vector<bool>>>();
 }
@@ -559,7 +565,7 @@ void DependencyBuilder::UpdateVarMinRwOp(
 /// ======================== ///
 ///        For new ir        ///
 /// ======================== ///
-PirDependencyBuilder::PirDependencyBuilder() {
+PirDependencyBuilder::PirDependencyBuilder() : instructions_() {
   is_build_ = false;
   op_downstream_map_ = std::make_shared<std::map<size_t, std::set<size_t>>>();
   op_happens_before_ = std::make_shared<std::vector<std::vector<bool>>>();

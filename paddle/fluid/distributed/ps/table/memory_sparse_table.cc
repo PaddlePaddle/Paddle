@@ -148,7 +148,7 @@ int32_t MemorySparseTable::Load(const std::string &path,
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < _real_local_shard_num; ++i) {
-    FsChannelConfig channel_config;
+    FsChannelConfig channel_config = {};
     channel_config.path = file_list[file_start_idx + i];
     VLOG(1) << "MemorySparseTable::load begin load " << channel_config.path
             << " into local shard " << i;
@@ -164,7 +164,7 @@ int32_t MemorySparseTable::Load(const std::string &path,
       err_no = 0;
       std::string line_data;
       auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
-      char *end = NULL;
+      char *end = nullptr;
       auto &shard = _local_shards[i];
       try {
         while (read_channel->read_line(line_data) == 0 &&
@@ -227,7 +227,7 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string> &file_list,
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
   for (int i = start_idx; i < end_idx; ++i) {
-    FsChannelConfig channel_config;
+    FsChannelConfig channel_config = {};
     channel_config.path = file_list[i];
     channel_config.converter = _value_accessor->Converter(load_param).converter;
     channel_config.deconverter =
@@ -241,7 +241,7 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string> &file_list,
       err_no = 0;
       std::string line_data;
       auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
-      char *end = NULL;
+      char *end = nullptr;
       int m_local_shard_id = i % _m_avg_local_shard_num;
       std::unordered_set<size_t> global_shard_idx;
       std::string global_shard_idx_str;
@@ -351,7 +351,7 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < _real_local_shard_num; ++i) {
-    FsChannelConfig channel_config;
+    FsChannelConfig channel_config = {};
     if (_config.compress_in_save() && (save_param == 0 || save_param == 3)) {
       channel_config.path =
           ::paddle::string::format_string("%s/part-%03d-%05d.gz",
@@ -495,7 +495,7 @@ int32_t MemorySparseTable::Save_v2(const std::string &dirname,
 
 #pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < _real_local_shard_num; ++i) {
-    FsChannelConfig channel_config;
+    FsChannelConfig channel_config = {};
     FsChannelConfig channel_config_for_slot_feature;
 
     if (_config.compress_in_save() && (save_param == 0 || save_param == 3)) {
@@ -670,7 +670,7 @@ int32_t MemorySparseTable::SavePatch(const std::string &path, int save_param) {
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < _m_real_local_shard_num; ++i) {
-    FsChannelConfig channel_config;
+    FsChannelConfig channel_config = {};
     channel_config.path = ::paddle::string::format_string("%s/part-%03d-%05d",
                                                           table_path.c_str(),
                                                           _shard_idx,
@@ -870,7 +870,7 @@ int32_t MemorySparseTable::SaveCache(
   _afs_client.remove(::paddle::string::format_string(
       "%s/part-%03d", table_path.c_str(), _shard_idx));
   uint32_t feasign_size = 0;
-  FsChannelConfig channel_config;
+  FsChannelConfig channel_config = {};
   // not compress cache model
   channel_config.path = ::paddle::string::format_string(
       "%s/part-%03d", table_path.c_str(), _shard_idx);

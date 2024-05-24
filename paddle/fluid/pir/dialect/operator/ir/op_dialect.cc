@@ -437,6 +437,8 @@ class IdManager {
     return instance;
   }
 
+  IdManager() : ids_() {}
+
   ~IdManager() {
     for (auto id : ids_) {
       delete id;
@@ -460,6 +462,8 @@ class AttributeManager {
     static AttributeManager instance;
     return instance;
   }
+
+  AttributeManager() : char_pointers_(), pointers_size_() {}
 
   ~AttributeManager() {
     for (size_t i = 0; i < char_pointers_.size(); i++) {

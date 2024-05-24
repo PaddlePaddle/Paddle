@@ -42,12 +42,27 @@ class IR_API ConstraintsManager {
   template <typename DoEachClusterT>
   void VisitEqualClusters(const DoEachClusterT& DoEachCluster) const;
 
+  template <typename DoEachT>
+  void EqualConstraintsVisitor(const DoEachT& DoEach);
+
+  template <typename DoEachT>
+  void GTOneConstraintsVisitor(const DoEachT& DoEach);
+
+  template <typename DoEachT>
+  void GTOneConstraintsVisitor(const DoEachT& DoEach) const;
+
+  template <typename DoEachT>
+  void BroadcastableConstraintsVisitor(const DoEachT& DoEach);
+
+  template <typename DoEachT>
+  void BroadcastableConstraintsVisitor(const DoEachT& DoEach) const;
+
   using EqualCallbackFunc = std::function<void(const DimExpr&, const DimExpr&)>;
   void SetEqualCallbackFunc(EqualCallbackFunc equal_callback_func);
 
   using EqualConstraints = common::UnionFindSet<DimExpr>;
   using GTOneConstraints = std::unordered_set<DimExpr>;
-  using BroadcastableConstraints = std::vector<Broadcastable<DimExpr>>;
+  using BroadcastableConstraints = std::unordered_set<Broadcastable<DimExpr>>;
 
   const EqualConstraints& equals() const { return equals_; }
 
@@ -59,15 +74,6 @@ class IR_API ConstraintsManager {
 
  private:
   void SubstituteInConstraint(const DimExpr& lhs, const DimExpr& rhs);
-
-  template <typename DoEachT>
-  void EqualConstraintsVisitor(const DoEachT& DoEach);
-
-  template <typename DoEachT>
-  void GTOneConstraintsVisitor(const DoEachT& DoEach);
-
-  template <typename DoEachT>
-  void BroadcastableConstraintsVisitor(const DoEachT& DoEach);
 
  private:
   EqualCallbackFunc equal_callback_func_ = nullptr;

@@ -324,6 +324,11 @@ void ExpandAsInferMeta(const MetaTensor& x,
                        const std::vector<int>& target_shape,
                        MetaTensor* out);
 
+void FakeDequantizeMaxAbsInferMeta(const MetaTensor& x,
+                                   const MetaTensor& scale,
+                                   float max_range,
+                                   MetaTensor* out);
+
 void FillDiagonalTensorInferMeta(const MetaTensor& x,
                                  const MetaTensor& y,
                                  int64_t offset,

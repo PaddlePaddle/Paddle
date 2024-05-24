@@ -34,6 +34,9 @@ namespace inference {
 namespace tensorrt {
 
 class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
+ public:
+  TensorRTDynamicShapeValueEngineTest() : engine_(nullptr), ctx_(nullptr) {}
+
  protected:
   void SetUp() override {
     ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
@@ -179,6 +182,7 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
 
 class TensorRTDynamicEngineTest : public ::testing::Test {
  protected:
+  TensorRTDynamicEngineTest() : engine_(nullptr), ctx_(nullptr) {}
   void SetUp() override {
     ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
@@ -337,6 +341,8 @@ TEST_F(TensorRTDynamicEngineTest, test_spmm) {
 
 class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
  protected:
+  TensorRTDynamicTestFusedTokenPrune()
+      : inputs_(), outputs_(), engine_(nullptr), ctx_(nullptr) {}
   void SetUp() override {
     ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
@@ -534,6 +540,8 @@ TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
 
 class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
  protected:
+  TensorRTDynamicTestFusedTokenPruneHalf()
+      : inputs_(), outputs_(), engine_(nullptr), ctx_(nullptr) {}
   void SetUp() override {
     ctx_ = std::make_unique<phi::GPUContext>(platform::CUDAPlace(0));
     ctx_->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()

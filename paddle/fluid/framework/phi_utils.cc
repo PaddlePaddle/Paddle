@@ -34,7 +34,7 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
  public:
   explicit KernelArgsNameMakerByOpProto(
       const framework::proto::OpProto* op_proto)
-      : op_proto_(op_proto) {
+      : op_proto_(op_proto), input_names_(), output_names_(), attr_names_() {
     PADDLE_ENFORCE_NOT_NULL(
         op_proto_,
         platform::errors::InvalidArgument("Op proto cannot be nullptr."));

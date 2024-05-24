@@ -40,6 +40,9 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
       underlying_executor_(std::move(underlying_executor)),
       local_scopes_(std::move(local_scopes)),
       local_exec_scopes_(std::move(local_exec_scopes)),
+      preserve_vars_(),
+      tmp_var_infos_(),
+      tensor_array_vars_(),
       var_infos_(std::move(var_infos)),
       places_(std::move(places)),
       scope_monitor_(places_, local_exec_scopes_) {
