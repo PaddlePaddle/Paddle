@@ -115,18 +115,6 @@ if(WIN32)
         ${PADDLE_BINARY_DIR}/python/paddle/
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/test
               ${PADDLE_BINARY_DIR}/test
-      # generate tensor.pyi for type hints
-      COMMAND
-        ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-        ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/gen_tensor_stub.py
-        --input-file
-        ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.prototype.pyi
-        --output-file ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
-      # copy tensor.pyi to source dir
-      COMMAND
-        ${CMAKE_COMMAND} -E copy
-        ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
-        ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.pyi
       COMMENT "Packing whl packages------>>>"
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
               pass_desc_py_proto ${PY_FILES})
@@ -138,18 +126,6 @@ if(WIN32)
         ${PADDLE_BINARY_DIR}/python/paddle/
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/test
               ${PADDLE_BINARY_DIR}/test
-      # generate tensor.pyi for type hints
-      COMMAND
-        ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-        ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/gen_tensor_stub.py
-        --input-file
-        ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.prototype.pyi
-        --output-file ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
-      # copy tensor.pyi to source dir
-      COMMAND
-        ${CMAKE_COMMAND} -E copy
-        ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
-        ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.pyi
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
               pass_desc_py_proto ${PY_FILES})
 
@@ -168,18 +144,6 @@ else()
       COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle
               ${PADDLE_BINARY_DIR}/python
       COMMAND cp -r ${PADDLE_SOURCE_DIR}/test ${PADDLE_BINARY_DIR}/
-      # generate tensor.pyi for type hints
-      COMMAND
-        ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-        ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/gen_tensor_stub.py
-        --input-file
-        ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.prototype.pyi
-        --output-file ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
-      # copy tensor.pyi to source dir
-      COMMAND
-        ${CMAKE_COMMAND} -E copy
-        ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
-        ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.pyi
       COMMENT "Packing whl packages------>>>"
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
               pass_desc_py_proto ${PY_FILES})
@@ -190,18 +154,6 @@ else()
       COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle
               ${PADDLE_BINARY_DIR}/python
       COMMAND cp -r ${PADDLE_SOURCE_DIR}/test ${PADDLE_BINARY_DIR}/
-      # generate tensor.pyi for type hints
-      COMMAND
-        ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-        ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/gen_tensor_stub.py
-        --input-file
-        ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.prototype.pyi
-        --output-file ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
-      # copy tensor.pyi to source dir
-      COMMAND
-        ${CMAKE_COMMAND} -E copy
-        ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
-        ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.pyi
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
               pass_desc_py_proto ${PY_FILES})
 
@@ -215,6 +167,27 @@ endif()
 
 add_custom_target(paddle_python ALL
                   DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
+
+# -------------- Generate tensor.pyi stub file --------------
+add_custom_command(
+  OUTPUT ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.pyi
+  # generate tensor.pyi for type hints
+  COMMAND
+    ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
+    ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/gen_tensor_stub.py
+    --input-file ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.prototype.pyi
+    --output-file ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
+  # copy tensor.pyi to source dir
+  COMMAND
+    ${CMAKE_COMMAND} -E copy
+    ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
+    ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.pyi
+  COMMENT "Generate tensor.pyi------>>>")
+add_custom_target(paddle_stub ALL
+                  DEPENDS ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.pyi)
+add_dependencies(paddle_stub paddle_python)
+# -------------- End Generate tensor.pyi stub file --------------
+
 if(BUILD_WHL_PACKAGE AND NOT WITH_SETUP_INSTALL)
   add_custom_target(paddle_copy ALL
                     DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel)
