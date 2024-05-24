@@ -48,7 +48,7 @@ IrTensor& IrTensor::operator=(const IrTensor& other) {
   return *this;
 }
 
-IrTensor& IrTensor::operator=(IrTensor&& other) noexcept {
+IrTensor& IrTensor::operator=(IrTensor&& other) noexcept {  // NOLINT
   dims_ = other.dims();
   dtype_ = other.dtype();
   layout_ = other.layout();
