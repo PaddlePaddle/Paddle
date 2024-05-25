@@ -15,7 +15,7 @@
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
 #include "paddle/cinn/frontend/var_type_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
@@ -23,15 +23,27 @@ namespace paddle_mappers {
 void RollOpMapper(const paddle::cpp::OpDesc& op_desc,
                   const OpMapperContext& ctx) {
   // input
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of Roll op must be 1."));
   auto x_name = op_desc.Input("X").front();
   // output
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of Roll op must be 1."));
   auto out_name = op_desc.Output("Out").front();
 
   // attr shifts and axis
-  CHECK(op_desc.HasAttr("shifts"));
-  CHECK(op_desc.HasAttr("axis"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("shifts"),
+      true,
+      phi::errors::InvalidArgument("Roll op must have shifts attribute"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("axis"),
+      true,
+      phi::errors::InvalidArgument("Roll op must have axis attribute"));
   std::vector<int> shifts = utils::ToShapeType(
       utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "shifts", {1}));
   std::vector<int> axis = utils::ToShapeType(
@@ -44,8 +56,11 @@ void RollOpMapper(const paddle::cpp::OpDesc& op_desc,
   // check axis and shifts and when axis is None, we should flatten x.
   bool axis_None = false;
   if (axis.size() == 0) {
-    CHECK_EQ(shifts.size(), 1)
-        << "shifts.size() should be equal to 1 when axis is None";
+    PADDLE_ENFORCE_EQ(
+        shifts.size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "shifts.size() should be equal to 1 when axis is None"));
     axis.push_back(0);
     axis_None = true;
     int reshape_num = 1;
@@ -55,8 +70,10 @@ void RollOpMapper(const paddle::cpp::OpDesc& op_desc,
     vec_x_dims = std::vector<int>{reshape_num};
     x = ctx.Builder()->Reshape(x, vec_x_dims);
   } else {
-    CHECK_EQ(shifts.size(), axis.size())
-        << "shifts.size() should be equal to axis.size()";
+    PADDLE_ENFORCE_EQ(shifts.size(),
+                      axis.size(),
+                      phi::errors::InvalidArgument(
+                          "shifts.size() should be equal to axis.size()"));
   }
 
   // preprocessing the shifts and axis
@@ -64,10 +81,14 @@ void RollOpMapper(const paddle::cpp::OpDesc& op_desc,
   std::unordered_map<int, int> axis_to_shifts;
   for (int i = 0; i < shifts_size; ++i) {
     int vec_x_dims_size = vec_x_dims.size();
-    CHECK_GE(axis[i], -vec_x_dims_size)
-        << "axis value should be >= " << -vec_x_dims_size;
-    CHECK_LT(axis[i], vec_x_dims_size)
-        << "axis value should be < " << vec_x_dims_size;
+    PADDLE_ENFORCE_GE(axis[i],
+                      -vec_x_dims_size,
+                      phi::errors::InvalidArgument(
+                          "axis value should be >= -vec_x_dims_size"));
+    PADDLE_ENFORCE_LT(
+        axis[i],
+        vec_x_dims_size,
+        phi::errors::InvalidArgument("axis value should be < vec_x_dims_size"));
     if (axis[i] < 0) {
       axis[i] += vec_x_dims_size;
     }

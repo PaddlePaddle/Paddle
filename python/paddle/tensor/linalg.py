@@ -1855,7 +1855,7 @@ def t(input, name=None):
         check_variable_and_dtype(
             input,
             'input',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             'transpose',
         )
 

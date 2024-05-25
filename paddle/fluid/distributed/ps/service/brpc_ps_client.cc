@@ -1797,13 +1797,13 @@ int BrpcPsClient::PushSparseAsyncShardMerge(
   // 去重 本地merge
   uint64_t last_key = sorted_kv_list[0].first;
   const float *last_value_data = sorted_kv_list[0].second;
-  float *last_merge_data = NULL;
+  float *last_merge_data = nullptr;
   std::shared_ptr<char> merger_buffer(new char[value_size],
                                       array_deleter<char>());
   for (size_t kv_idx = 1; kv_idx < sorted_kv_size; ++kv_idx) {
     while (kv_idx < sorted_kv_size &&
            last_key == sorted_kv_list[kv_idx].first) {
-      if (last_merge_data == NULL) {
+      if (last_merge_data == nullptr) {
         last_merge_data = reinterpret_cast<float *>(merger_buffer.get());
         memcpy(last_merge_data, last_value_data, value_size);
       }
@@ -1811,10 +1811,10 @@ int BrpcPsClient::PushSparseAsyncShardMerge(
           accessor, last_merge_data, sorted_kv_list[kv_idx].second);
       ++kv_idx;
     }
-    if (last_merge_data != NULL) {
+    if (last_merge_data != nullptr) {
       shard_kv_data.value_list[merged_kv_count].assign(
           (const char *)last_merge_data, value_size);
-      last_merge_data = NULL;
+      last_merge_data = nullptr;
     } else {
       shard_kv_data.value_list[merged_kv_count].assign(
           (const char *)sorted_kv_list[kv_idx - 1].second, value_size);

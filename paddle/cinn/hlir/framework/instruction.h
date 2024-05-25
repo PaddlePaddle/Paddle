@@ -116,9 +116,15 @@ class Instruction {
           ((lower_func_ptr_t)fn_ptrs_[idx])(static_cast<void*>(pod_args.data()),
                                             pod_args.size());
         }
+        cinn::common::DefaultDeviceTarget().arch.Match(
+            [&](std::variant<common::UnknownArch,
+                             common::X86Arch,
+                             common::ARMArch>) {},
+            [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-        CUDA_CALL(cudaDeviceSynchronize());
+              CUDA_CALL(cudaDeviceSynchronize());
 #endif
+            });
       }
     }
     if (flag >= 0) {

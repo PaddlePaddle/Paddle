@@ -309,8 +309,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
              t.dtype() == phi::DataType::INT64) &&
             is_shape_tensor) {
           std::vector<int> int32_host(t.numel());
-          paddle::platform::DeviceContextPool &pool =
-              paddle::platform::DeviceContextPool::Instance();
+          phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
 
           if (t.place().GetType() == phi::AllocationType::CPU) {
             auto &int32_tensor = t;
@@ -500,7 +499,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
               const phi::Place &dev_place,
               TensorRTEngine *engine) const {
     int runtime_batch = -1;
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
     auto stream = reinterpret_cast<const phi::GPUContext &>(dev_ctx).stream();
     std::vector<std::string> output_maps =
