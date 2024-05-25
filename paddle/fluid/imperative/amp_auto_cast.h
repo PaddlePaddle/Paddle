@@ -87,7 +87,7 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops);
 class AmpAttrs {
  public:
   AmpAttrs();
-  ~AmpAttrs() = default;
+  ~AmpAttrs();
   bool GetUsePromote() const;
   void SetUsePromote(bool use_promote);
   AmpLevel GetAmpLevel() const;
