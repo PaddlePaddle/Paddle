@@ -3659,7 +3659,7 @@ function clang-tidy_check() {
         if [[ $num_diff_files -le 100 ]];then
             echo "After the build is completed, run clang-tidy to check codestyle issues in your PR:"
             echo ""
-            echo "    pre-commit run clang-tidy --verbose --checks=* --files" $(echo ${diff_files} | tr "\n" " ")
+            echo "    pre-commit run clang-tidy --verbose --files" $(echo ${diff_files} | tr "\n" " ")
             echo ""
         fi
         echo "For more information, please refer to our codestyle check guide:"
