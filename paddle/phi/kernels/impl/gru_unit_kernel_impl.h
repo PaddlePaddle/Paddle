@@ -55,9 +55,9 @@ void GRUUnitKernel(const Context& dev_ctx,
                    int activation,
                    int gate_activation,
                    bool origin_mode,
-                   const DenseTensor* gate,
-                   const DenseTensor* reset_hidden_prev,
-                   const DenseTensor* hidden) {
+                   DenseTensor* gate,
+                   DenseTensor* reset_hidden_prev,
+                   DenseTensor* hidden) {
   auto* input_p = &input;
   auto* hidden_prev_p = &hidden_prev;
   auto* weight_p = &weight;
@@ -185,10 +185,10 @@ void GRUUnitGradKernel(const Context& dev_ctx,
                        int activation,
                        int gate_activation,
                        bool origin_mode,
-                       const DenseTensor* input_grad,
-                       const DenseTensor* hidden_prev_grad,
-                       const DenseTensor* weight_grad,
-                       const DenseTensor* bias_grad) {
+                       DenseTensor* input_grad,
+                       DenseTensor* hidden_prev_grad,
+                       DenseTensor* weight_grad,
+                       DenseTensor* bias_grad) {
   phi::DenseTensor gate_grad;
   phi::DenseTensor reset_hidden_prev_grad;
 
