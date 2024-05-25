@@ -34,6 +34,18 @@ namespace phi {
 namespace fusion {
 
 template <typename T>
+struct FastGeluFunctor {
+  inline __device__ T operator()(const T x) const {
+#ifdef PADDLE_WITH_HIP
+    assert(0 && "ROCM does not support FastGelu");
+#else
+    return phi::GeluFwd<T, true>(x);
+#endif
+  }
+};
+
+#ifndef PADDLE_WITH_HIP
+template <typename T>
 struct GeluComputeType;
 
 template <>
@@ -107,18 +119,6 @@ struct ReluFunctor {
   }
 };
 
-template <typename T>
-struct FastGeluFunctor {
-  inline __device__ T operator()(const T x) const {
-#ifdef PADDLE_WITH_HIP
-    assert(0 && "ROCM does not support FastGelu");
-#else
-    return phi::GeluFwd<T, true>(x);
-#endif
-  }
-};
-
-#ifndef PADDLE_WITH_HIP
 inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
   constexpr int kBlockSize = 128;
   constexpr int kNumWaves = 16;
