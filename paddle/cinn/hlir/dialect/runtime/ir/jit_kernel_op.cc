@@ -22,7 +22,8 @@
 namespace cinn {
 namespace dialect {
 
-const char* JitKernelOp::attributes_name[attributes_num] = {kAttrName};
+const char* JitKernelOp::attributes_name[attributes_num] = {
+    kKernelInfoAttrName, kInplaceMapAttrName};
 
 void JitKernelOp::Build(::pir::Builder& builder,
                         pir::OperationArgument& argument,
@@ -45,8 +46,8 @@ void JitKernelOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs and attributes for: JitKernelOp.";
 
   auto& attributes = this->attributes();
-  PADDLE_ENFORCE_EQ(attributes.count(kAttrName) > 0 &&
-                        attributes.at(kAttrName)
+  PADDLE_ENFORCE_EQ(attributes.count(kKernelInfoAttrName) > 0 &&
+                        attributes.at(kKernelInfoAttrName)
                             .isa<cinn::dialect::CINNKernelInfoAttribute>(),
                     true,
                     "Type of attribute: instruction is not right.");
@@ -54,7 +55,7 @@ void JitKernelOp::VerifySig() {
 
 const hlir::framework::pir::CINNKernelInfo& JitKernelOp::cinn_kernel_info() {
   return attributes()
-      .at(kAttrName)
+      .at(kKernelInfoAttrName)
       .dyn_cast<cinn::dialect::CINNKernelInfoAttribute>()
       .data();
 }

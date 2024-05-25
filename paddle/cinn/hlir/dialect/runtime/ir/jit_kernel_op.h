@@ -26,8 +26,9 @@ class JitKernelOp : public ::pir::Op<JitKernelOp> {
   using Op::Op;
   static const char* name() { return "cinn_runtime.jit_kernel"; }
   // TODO(Aurelius84): Think deeply what should contains
-  static constexpr uint32_t attributes_num = 1;
-  static constexpr char* kAttrName = "kernel_info";
+  static constexpr uint32_t attributes_num = 2;
+  static constexpr char* kKernelInfoAttrName = "kernel_info";
+  static constexpr char* kInplaceMapAttrName = "inplace_map";
   static const char* attributes_name[attributes_num];
 
   static void Build(::pir::Builder& builder,             // NOLINT
