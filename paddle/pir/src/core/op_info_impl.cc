@@ -80,6 +80,7 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
     memcpy(base_ptr, trait_set.data(), sizeof(TypeId) * traits_num);
     std::sort(p_first_trait, p_first_trait + traits_num);
     base_ptr += traits_num * sizeof(TypeId);
+    base_ptr.release();
   }
   // Construct OpInfoImpl.
   VLOG(10) << "Construct OpInfoImpl at " << reinterpret_cast<void *>(base_ptr)
@@ -93,6 +94,7 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
                                                     attributes_name,
                                                     verify_sig,
                                                     verify_region));
+  base_ptr.release();
   return op_info;
 }
 void OpInfoImpl::Destroy(OpInfo info) {
