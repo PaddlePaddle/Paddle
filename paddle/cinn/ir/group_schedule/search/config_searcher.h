@@ -33,18 +33,20 @@ using ConstraintFunc = std::function<bool(const CandidateType&)>;
 
 class BaseObjectiveFunc {
  public:
-  virtual ScoreType operator()(const CandidateType& candidate) = 0;
+  virtual bool operator()(std::map<ScoreType, CandidateType>& records) = 0;
 };
 
 class WeightedSamplingTrailObjectiveFunc : public BaseObjectiveFunc {
  public:
   WeightedSamplingTrailObjectiveFunc(::pir::Program* program,
                                      const IterSpace& iter_space,
+                                     const std::vector<std::pair<int, int>>& candidate_range = {},
+                                     const std::vector<ConstraintFunc>& contraints = {},
                                      double sampling_prob = 1.0,
                                      int max_sampling_times = 65536,
                                      int repeats = 10);
 
-  ScoreType operator()(const CandidateType& candidate) override;
+  bool operator()(std::map<ScoreType, CandidateType>& records) override;
 
  private:
   ::pir::Program* program_;
@@ -54,6 +56,11 @@ class WeightedSamplingTrailObjectiveFunc : public BaseObjectiveFunc {
   int max_sampling_times_;
   int repeats_;
   int sampling_times_;
+  std::vector<std::pair<int, int>> candidate_range_;
+  std::vector<ConstraintFunc> contraints_;
+  std::vector<CandidateType> candidates_;
+  std::vector<std::unordered_map<std::string, std::vector<int64_t>>>
+      inputs_sampling_;
 
   utils::LinearRandomEngine::StateType rand_seed_ = 1;
 };
@@ -77,16 +84,12 @@ class CandidateGenerator {
 class ScheduleConfigSearcher {
  public:
   ScheduleConfigSearcher(
-      std::unique_ptr<BaseObjectiveFunc> objective_func,
-      const std::vector<std::pair<int, int>>& candidate_range,
-      const std::vector<ConstraintFunc>& contraints = {});
+      std::unique_ptr<BaseObjectiveFunc> objective_func);
 
   std::pair<ScoreType, CandidateType> Search(bool is_search_minimun = true);
 
  private:
   std::unique_ptr<BaseObjectiveFunc> objective_func_;
-  std::vector<ConstraintFunc> contraints_;
-  std::vector<std::pair<int, int>> candidate_range_;
 
   std::map<ScoreType, CandidateType> records_;
 };

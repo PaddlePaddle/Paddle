@@ -65,7 +65,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
   auto& schedule_config_manager = cinn::ir::ScheduleConfigManager::Instance();
   schedule_config_manager.SetPolicy("custom");
 
-  // Step 3: Construct iter space and objective function.
+  // Step 3: Construct iter space
   cinn::ir::search::IterSpace iter_space;
   iter_space.space.push_back(cinn::ir::search::IterSpace::Dimension{
       33,
@@ -79,9 +79,6 @@ TEST(ConfigSearcher, TestReduceDemo) {
                                              "R",
                                              /* is_dynamic = */ false,
                                              std::vector<double>(1, 1.0)});
-  std::unique_ptr<cinn::ir::search::BaseObjectiveFunc> obj_func =
-      std::make_unique<cinn::ir::search::WeightedSamplingTrailObjectiveFunc>(
-          program.get(), iter_space);
 
   // Step 4: Construct config candidate range and constraints.
   std::vector<std::pair<int, int>> candidate_range{
@@ -93,12 +90,16 @@ TEST(ConfigSearcher, TestReduceDemo) {
       });
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
-        return candidate[0] * kThreadsPerWarp <= kMaxThreadsPerBlock;
+        return candidate[0] * 32 <= kMaxThreadsPerBlock;
       });
 
-  // Step 5: Construct searcher and search.
-  cinn::ir::search::ScheduleConfigSearcher searcher(
-      std::move(obj_func), candidate_range, constraints);
+  // Step 5: Construct objective function.
+  std::unique_ptr<cinn::ir::search::BaseObjectiveFunc> obj_func =
+      std::make_unique<cinn::ir::search::WeightedSamplingTrailObjectiveFunc>(
+          program.get(), iter_space, candidate_range, constraints);
+
+  // Step 6: Construct searcher and search.
+  cinn::ir::search::ScheduleConfigSearcher searcher(std::move(obj_func));
   auto search_res = searcher.Search();
   LOG(INFO) << "min score = " << search_res.first;
   LOG(INFO) << "best candidate: "

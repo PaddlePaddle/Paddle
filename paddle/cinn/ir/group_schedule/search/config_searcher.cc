@@ -26,11 +26,15 @@ namespace search {
 WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
     ::pir::Program* program,
     const IterSpace& iter_space,
+    const std::vector<std::pair<int, int>>& candidate_range,
+    const std::vector<ConstraintFunc>& contraints,
     double sampling_prob,
     int max_sampling_times,
     int repeats)
     : program_(program),
       iter_space_(iter_space),
+      candidate_range_(candidate_range),
+      contraints_(contraints),
       measurer_(program),
       sampling_prob_(sampling_prob),
       max_sampling_times_(max_sampling_times),
@@ -50,30 +54,13 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
   sampling_times_ =
       std::min(static_cast<int>(weighted_space_size * sampling_prob),
                max_sampling_times);
-}
+               
+  // Generate Candidates
+  CandidateGenerator candidate_generator(candidate_range, contraints);
+  candidates_ = candidate_generator.Candidates();
+  VLOG(6) << "Candidate num = " << candidates_.size();
 
-ScoreType WeightedSamplingTrailObjectiveFunc::operator()(
-    const CandidateType& candidate) {
-  auto tile_config_database = std::make_shared<NaiveTileConfigDatabase>();
-  IterSpaceType iter_space_type = [&] {
-    std::vector<std::pair<std::string, std::string>> res;
-    for (const auto& dim : iter_space_.space) {
-      res.emplace_back(dim.iter_type, (dim.is_dynamic ? "dynamic" : "static"));
-    }
-    return res;
-  }();
-  BucketInfo bucket_info{iter_space_.space[0].lower_bound,
-                         iter_space_.space[0].upper_bound,
-                         iter_space_.space[1].lower_bound,
-                         iter_space_.space[1].upper_bound};
-  ScheduleConfig::TileConfig config{
-      candidate[0], candidate[1], candidate[2], NoneReduceMethod()};
-  tile_config_database->AddConfig(
-      cinn::common::DefaultTarget(), iter_space_type, bucket_info, config);
-  auto& schedule_config_manager = ScheduleConfigManager::Instance();
-  schedule_config_manager.AddConfigDatabase("custom", tile_config_database);
-  measurer_.Compile();
-
+  // Generate Sampling Inputs
   const auto Sample = [&]() -> std::vector<int64_t> {
     std::vector<int64_t> samples;
     for (IterSpace::Dimension dim : iter_space_.space) {
@@ -91,14 +78,46 @@ ScoreType WeightedSamplingTrailObjectiveFunc::operator()(
     inputs["x"] = Sample();
     return inputs;
   };
-
   for (int i = 0; i < sampling_times_; ++i) {
     std::unordered_map<std::string, std::vector<int64_t>>
         input_name_and_shapes = GenerateInputs();
-    measurer_.Run(input_name_and_shapes, repeats_);
+    inputs_sampling_.push_back(input_name_and_shapes);
   }
-  ScoreType score = measurer_.Result().avg_kernel_execute_time.count();
-  return score;
+
+}
+
+bool WeightedSamplingTrailObjectiveFunc::operator()(
+    std::map<ScoreType, CandidateType>& records) {
+  IterSpaceType iter_space_type = [&] {
+    std::vector<std::pair<std::string, std::string>> res;
+    for (const auto& dim : iter_space_.space) {
+      res.emplace_back(dim.iter_type, (dim.is_dynamic ? "dynamic" : "static"));
+    }
+    return res;
+  }();
+  BucketInfo bucket_info{iter_space_.space[0].lower_bound,
+                         iter_space_.space[0].upper_bound,
+                         iter_space_.space[1].lower_bound,
+                         iter_space_.space[1].upper_bound};
+  for (const auto& candidate : candidates_) {
+    auto tile_config_database = std::make_shared<NaiveTileConfigDatabase>();
+    ScheduleConfig::TileConfig config{
+        candidate[0], candidate[1], candidate[2], NoneReduceMethod()};
+    tile_config_database->AddConfig(
+        cinn::common::DefaultTarget(), iter_space_type, bucket_info, config);
+    auto& schedule_config_manager = ScheduleConfigManager::Instance();
+    schedule_config_manager.AddConfigDatabase("custom", tile_config_database);
+    measurer_.Compile();
+
+    for (auto& input_name_and_shapes : inputs_sampling_) {
+      measurer_.Run(input_name_and_shapes, repeats_);
+    }
+    ScoreType score = measurer_.Result().avg_kernel_execute_time.count();
+    VLOG(6) << "Candidate: [" << utils::Join<int>(candidate, ", ") << "]";
+    VLOG(6) << "Score = " << score;
+    records[score] = candidate;
+  }
+  return true;
 }
 
 CandidateGenerator::CandidateGenerator(
@@ -185,24 +204,16 @@ bool CandidateGenerator::IsValid(const CandidateType& candidate) const {
 }
 
 ScheduleConfigSearcher::ScheduleConfigSearcher(
-    std::unique_ptr<BaseObjectiveFunc> objective_func,
-    const std::vector<std::pair<int, int>>& candidate_range,
-    const std::vector<ConstraintFunc>& contraints)
-    : objective_func_(std::move(objective_func)),
-      candidate_range_(candidate_range),
-      contraints_(contraints) {}
+    std::unique_ptr<BaseObjectiveFunc> objective_func)
+    : objective_func_(std::move(objective_func)) {}
 
 std::pair<ScoreType, CandidateType> ScheduleConfigSearcher::Search(
     bool is_search_minimun) {
   VLOG(6) << "Start Search...";
-  CandidateGenerator candidate_generator(candidate_range_, contraints_);
-  std::vector<CandidateType> candidates = candidate_generator.Candidates();
-  VLOG(6) << "Candidate num = " << candidates.size();
-  for (const auto& candidate : candidates) {
-    ScoreType score = (*objective_func_)(candidate);
-    VLOG(6) << "Candidate: [" << utils::Join<int>(candidate, ", ") << "]";
-    VLOG(6) << "Score = " << score;
-    records_[score] = candidate;
+  if ((*objective_func_)(records_)) {
+    VLOG(6) << "Search Done!";
+  } else {
+    VLOG(6) << "Search Failed!";
   }
   return is_search_minimun ? *records_.begin() : *(records_.end()--);
 }
