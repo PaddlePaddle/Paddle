@@ -191,10 +191,6 @@ TEST(downpour_feature_value_accessor_test, test_update) {
           embed_g2sum(),
           embedx_w(),
           embedx_g2sum() {}
-<<<<<<< HEAD
-
-=======
->>>>>>> 12ecf2e8564d7d4b3fa755a8b68ccecde8d9b6b5
 
     void to_array(float* ptr, size_t dim) {
       ptr[0] = slot;
@@ -226,10 +222,6 @@ TEST(downpour_feature_value_accessor_test, test_update) {
     std::vector<float> embedx_g;
     DownpourSparsePushValueTest()
         : slot(0), show(0), click(0), embed_g(0), embedx_g() {}
-<<<<<<< HEAD
-
-=======
->>>>>>> 12ecf2e8564d7d4b3fa755a8b68ccecde8d9b6b5
   };
   std::vector<float*> exp_value;
   for (auto i = 0u; i < item_size; ++i) {
