@@ -93,6 +93,8 @@ def swiglu_net2(x):
 def squared_l2_norm_net(x):
     return paddle._C_ops.squared_l2_norm(x)
 
+def elu_net(x):
+    return paddle.nn.functional.elu(x, 1.0)
 
 def dropout_net1(x):
     return paddle.nn.functional.dropout(x, 0.5)
@@ -277,6 +279,17 @@ class TestPrimSquaredL2Norm(TestPrimBase):
         self.enable_cinn = False
         self.tol = 1e-6
 
+class TestPrimElu(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = [15, 20]
+        self.init_x_shape = [None, None]
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = elu_net
+        self.necessary_ops = "pd_op.elu"
+        self.enable_cinn = False
+        self.tol = 1e-6
 
 class TestPrimTwo(unittest.TestCase):
     def setUp(self):
