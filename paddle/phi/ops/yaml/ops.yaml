@@ -1548,6 +1548,18 @@
   backward : group_norm_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : gru_unit
+  args: (Tensor input, Tensor hidden_prev, Tensor weight, Tensor bias, int activation
+    = 2, int gate_activation = 1, bool origin_mode = false)
+  output: Tensor (gate), Tensor (reset_hidden_prev), Tensor (hidden)
+  infer_meta:
+    func: GruUnitInferMeta
+  kernel:
+    func: gru_unit
+  optional: bias
+  intermediate: gate, reset_hidden_prev
+  backward: gru_unit_grad
+
 - op : gumbel_softmax
   args : (Tensor x, float temperature = 1.0, bool hard = false, int axis = -1)
   output : Tensor

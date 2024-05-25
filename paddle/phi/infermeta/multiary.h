@@ -504,6 +504,18 @@ void GraphSampleNeighborsInferMeta(const MetaTensor& row,
                                    MetaTensor* out_count,
                                    MetaTensor* out_eids);
 
+void GruUnitInferMeta(const MetaTensor& input,
+                      const MetaTensor& hidden_prev,
+                      const MetaTensor& weight,
+                      const paddle::optional<MetaTensor>& bias,
+                      int activation,
+                      int gate_activation,
+                      bool origin_mode,
+                      MetaTensor* gate,
+                      MetaTensor* reset_hidden_prev,
+                      MetaTensor* hidden,
+                      MetaConfig config = MetaConfig());
+
 void HSigmoidLossInferMeta(const MetaTensor& x,
                            const MetaTensor& label,
                            const MetaTensor& w,
