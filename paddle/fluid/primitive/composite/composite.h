@@ -933,10 +933,13 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
     auto out = difference * rsqrt_var;
 
     int dim_size = x_dim.size();
+    auto x_shape_tensor = shape<T>(x);
     std::vector<Tensor> slice_shape_concat;
-    auto shape_1 = full<T>({1}, 1, DataType::INT32);
-    auto shape_2 = cast<T>(get_slice<T>(shape<T>(x), 1), DataType::INT32);
-    auto shape_3 = full<T>({dim_size - 2}, 1, DataType::INT32);
+
+    auto shape_1 = full<T>({1}, 1, x_shape_tensor.dtype());
+    auto shape_2 =
+        cast<T>(get_slice<T>(x_shape_tensor, 1), x_shape_tensor.dtype());
+    auto shape_3 = full<T>({dim_size - 2}, 1, x_shape_tensor.dtype());
     slice_shape_concat.push_back(shape_1);
     slice_shape_concat.push_back(shape_2);
     slice_shape_concat.push_back(shape_3);
