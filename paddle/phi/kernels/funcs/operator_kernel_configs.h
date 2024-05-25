@@ -19,7 +19,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "glog/logging.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
 namespace funcs {
