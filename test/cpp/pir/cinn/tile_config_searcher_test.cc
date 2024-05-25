@@ -90,7 +90,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
       });
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
-        return candidate[0] * 32 <= kMaxThreadsPerBlock;
+        return candidate[0] * kThreadsPerWarp <= kMaxThreadsPerBlock;
       });
 
   // Step 5: Construct objective function.
