@@ -12,18 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import _C_ops
-
-try:
-    from paddle import version
-except ImportError:
-    import sys
-
-    sys.stderr.write(
-        '''Warning with import paddle: you should not
-     import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
-    )
-
 from paddle.base.data_feeder import check_dtype
 from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.device.cuda import get_device_capability
@@ -35,7 +25,7 @@ from paddle.framework import (
 
 def _get_arch_info():
     # Get SMVersion from device.
-    cuda_version = version.cuda()
+    cuda_version = paddle.version.cuda()
     if cuda_version is not None and cuda_version != 'False':
         major, minor = get_device_capability()
         arch = int(major * 10 + minor)

@@ -43,16 +43,6 @@ try:
         # Use add_dll_directory to specify dll resolution path
         os.add_dll_directory(third_lib_path)
 
-        # todo: debug
-        import glob
-
-        sys.stderr.write('^' * 20)
-        sys.stderr.write(str(glob.glob(third_lib_path + os.sep + '*')))
-        sys.stderr.write('=' * 20)
-        sys.stderr.write(os.environ['path'])
-        sys.stderr.write('=' * 20)
-        sys.stderr.write(str(glob.glob(current_path + os.sep + '*')))
-
 except ImportError as e:
     if os.name == 'nt':
         executable_path = os.path.abspath(os.path.dirname(sys.executable))
