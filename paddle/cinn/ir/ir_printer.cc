@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <cfenv>
 #include <iomanip>
 #include <limits>
 #include <vector>
@@ -89,6 +90,16 @@ void IrPrinter::Visit(const UIntImm *x) {
     PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
+
+namespace {
+template <typename T>
+bool isCloseEqualMaxValue(T value) {
+  T max_value = std::numeric_limits<T>::max();
+  T tol = std::numeric_limits<T>::denorm_min();
+  return (max_value - value) < tol;
+}
+}  // namespace
+
 void IrPrinter::Visit(const FloatImm *x) {
   std::ostringstream ss;
   if (x->type().is_float16()) {
@@ -112,6 +123,7 @@ void IrPrinter::Visit(const FloatImm *x) {
       ss << static_cast<bfloat16>(x->value) << "f";
     }
   } else if (x->type().is_float(32)) {
+    if (isCloseEqualMaxValue<float>(x->value)) std::fesetround(FE_TOWARDZERO);
     ss << std::setprecision(std::numeric_limits<float>::max_digits10);
     ss << std::showpoint;
     ss << x->value;

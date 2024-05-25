@@ -1043,6 +1043,13 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 }
 
 template <typename T>
+Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
+  auto ans = maximum<T>(minimum<T>(x, reshape<T>(max, empty_shape)),
+                        reshape<T>(min, empty_shape));
+  return ans;
+}
+
+template <typename T>
 Tensor index_select_decomp(const Tensor& x, const Tensor& index, int axis) {
   int axis_tmp = axis;
   if (axis < 0) {
