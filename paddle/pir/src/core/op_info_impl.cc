@@ -72,31 +72,31 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
            << " interfaces, " << traits_num << " traits, " << attributes_num
            << " attributes.";
   size_t base_size = sizeof(TypeId) * traits_num + sizeof(OpInfoImpl);
-  char *base_ptr = static_cast<char *>(::operator new(base_size));
-  VLOG(10) << "Malloc " << base_size << " Bytes at "
-           << static_cast<void *>(base_ptr);
-  if (traits_num > 0) {
-    auto p_first_trait = reinterpret_cast<TypeId *>(base_ptr);
-    memcpy(base_ptr, trait_set.data(), sizeof(TypeId) * traits_num);
-    std::sort(p_first_trait, p_first_trait + traits_num);
-    base_ptr += traits_num * sizeof(TypeId);
-    base_ptr.release();
-  }
-  // Construct OpInfoImpl.
-  VLOG(10) << "Construct OpInfoImpl at " << reinterpret_cast<void *>(base_ptr)
-           << " ......";
-  OpInfo op_info = OpInfo(new (base_ptr) OpInfoImpl(std::move(interface_set),
-                                                    dialect,
-                                                    op_id,
-                                                    op_name,
-                                                    traits_num,
-                                                    attributes_num,
-                                                    attributes_name,
-                                                    verify_sig,
-                                                    verify_region));
-  base_ptr.release();
-  return op_info;
+std::unique_ptr<char[]> base_ptr(new char[base_size]);
+VLOG(10) << "Malloc " << base_size << " Bytes at "
+         << static_cast<void *>(base_ptr.get());
+char* raw_base_ptr = base_ptr.get();
+if (traits_num > 0) {
+  auto p_first_trait = reinterpret_cast<TypeId *>(raw_base_ptr);
+  memcpy(p_first_trait, trait_set.data(), sizeof(TypeId) * traits_num);
+  std::sort(p_first_trait, p_first_trait + traits_num);
+  raw_base_ptr += traits_num * sizeof(TypeId);
 }
+// Construct OpInfoImpl.
+VLOG(10) << "Construct OpInfoImpl at " << reinterpret_cast<void *>(raw_base_ptr)
+         << " ......";
+OpInfo op_info = OpInfo(new (raw_base_ptr) OpInfoImpl(std::move(interface_set),
+                                                      dialect,
+                                                      op_id,
+                                                      op_name,
+                                                      traits_num,
+                                                      attributes_num,
+                                                      attributes_name,
+                                                      verify_sig,
+                                                      verify_region));
+base_ptr.release();  // 释放所有权，不要自动删除
+return op_info;
+
 void OpInfoImpl::Destroy(OpInfo info) {
   if (info.impl_) {
     info.impl_->Destroy();
