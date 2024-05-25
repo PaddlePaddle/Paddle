@@ -15,16 +15,340 @@
 from __future__ import annotations
 
 import argparse
+import glob
 import inspect
 import logging
+import os
+import platform
 import re
+import shutil
+import sys
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
 from typing import Any, Callable, Literal
 
 from typing_extensions import TypeAlias
 
-import paddle
+
+def copy_libs(paddle_binary_dir):
+    ext_suffix = (
+        '.dll'
+        if os.name == 'nt'
+        else ('.dylib' if sys.platform == 'darwin' else '.so')
+    )
+
+    try:
+        from env_dict import env_dict
+    except ImportError:
+        return
+
+    if os.name != 'nt':
+        package_data = {
+            'paddle.base': [env_dict.get("FLUID_CORE_NAME") + '.so']
+        }
+    else:
+        package_data = {
+            'paddle.base': [
+                env_dict.get("FLUID_CORE_NAME") + '.pyd',
+                env_dict.get("FLUID_CORE_NAME") + '.lib',
+            ]
+        }
+    package_data['paddle.base'] += [
+        paddle_binary_dir + '/python/paddle/cost_model/static_op_benchmark.json'
+    ]
+    if 'develop' in sys.argv:
+        package_dir = {'': 'python'}
+    else:
+        package_dir = {
+            '': env_dict.get("PADDLE_BINARY_DIR") + '/python',
+            'paddle.base.proto.profiler': env_dict.get("PADDLE_BINARY_DIR")
+            + '/paddle/fluid/platform',
+            'paddle.base.proto': env_dict.get("PADDLE_BINARY_DIR")
+            + '/paddle/fluid/framework',
+            'paddle.base': env_dict.get("PADDLE_BINARY_DIR")
+            + '/python/paddle/base',
+        }
+    # put all thirdparty libraries in paddle.libs
+    libs_path = paddle_binary_dir + '/python/paddle/libs'
+    package_data['paddle.libs'] = []
+    if env_dict.get("WITH_SHARED_PHI") == "ON":
+        package_data['paddle.libs'] += [
+            ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
+        ]
+        shutil.copy(env_dict.get("PHI_LIB"), libs_path)
+
+    if env_dict.get("WITH_SHARED_IR") == "ON":
+        package_data['paddle.libs'] += [
+            ('libpir' if os.name != 'nt' else 'pir') + ext_suffix
+        ]
+        shutil.copy(env_dict.get("IR_LIB"), libs_path)
+
+    package_data['paddle.libs'] += [
+        ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix,
+        ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_suffix,
+    ]
+    package_data['paddle.libs'] += [
+        ('libcommon' if os.name != 'nt' else 'common') + ext_suffix,
+    ]
+    shutil.copy(env_dict.get("COMMON_LIB"), libs_path)
+    shutil.copy(env_dict.get("WARPCTC_LIBRARIES"), libs_path)
+    shutil.copy(env_dict.get("WARPRNNT_LIBRARIES"), libs_path)
+    package_data['paddle.libs'] += [
+        os.path.basename(env_dict.get("LAPACK_LIB")),
+        os.path.basename(env_dict.get("BLAS_LIB")),
+        os.path.basename(env_dict.get("GFORTRAN_LIB")),
+        os.path.basename(env_dict.get("GNU_RT_LIB_1")),
+    ]
+    shutil.copy(env_dict.get("BLAS_LIB"), libs_path)
+    shutil.copy(env_dict.get("LAPACK_LIB"), libs_path)
+    shutil.copy(env_dict.get("GFORTRAN_LIB"), libs_path)
+    shutil.copy(env_dict.get("GNU_RT_LIB_1"), libs_path)
+
+    if not sys.platform.startswith("linux"):
+        package_data['paddle.libs'] += [
+            os.path.basename(env_dict.get("GNU_RT_LIB_2"))
+        ]
+        shutil.copy(env_dict.get("GNU_RT_LIB_2"), libs_path)
+    if env_dict.get("WITH_MKL") == 'ON':
+        shutil.copy(env_dict.get("MKLML_SHARED_LIB"), libs_path)
+        shutil.copy(env_dict.get("MKLML_SHARED_IOMP_LIB"), libs_path)
+        package_data['paddle.libs'] += [
+            ('libmklml_intel' if os.name != 'nt' else 'mklml') + ext_suffix,
+            ('libiomp5' if os.name != 'nt' else 'libiomp5md') + ext_suffix,
+        ]
+    else:
+        if os.name == 'nt':
+            # copy the openblas.dll
+            shutil.copy(env_dict.get("OPENBLAS_SHARED_LIB"), libs_path)
+            package_data['paddle.libs'] += ['openblas' + ext_suffix]
+        elif (
+            os.name == 'posix'
+            and platform.machine() == 'aarch64'
+            and env_dict.get("OPENBLAS_LIB").endswith('so')
+        ):
+            # copy the libopenblas.so on linux+aarch64
+            # special: libpaddle.so without avx depends on 'libopenblas.so.0', not 'libopenblas.so'
+            if os.path.exists(env_dict.get("OPENBLAS_LIB") + '.0'):
+                shutil.copy(env_dict.get("OPENBLAS_LIB") + '.0', libs_path)
+                package_data['paddle.libs'] += ['libopenblas.so.0']
+
+    if env_dict.get("WITH_GPU") == 'ON':
+        if len(env_dict.get("FLASHATTN_LIBRARIES", "")) > 1:
+            package_data['paddle.libs'] += [
+                os.path.basename(env_dict.get("FLASHATTN_LIBRARIES"))
+            ]
+            shutil.copy(env_dict.get("FLASHATTN_LIBRARIES"), libs_path)
+    if env_dict.get("WITH_CINN") == 'ON':
+        shutil.copy(
+            env_dict.get("CINN_LIB_LOCATION")
+            + '/'
+            + env_dict.get("CINN_LIB_NAME"),
+            libs_path,
+        )
+        shutil.copy(
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh',
+            libs_path,
+        )
+        package_data['paddle.libs'] += ['libcinnapi.so']
+        package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
+
+        cinn_fp16_file = (
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/cuda/float16.h'
+        )
+        if os.path.exists(cinn_fp16_file):
+            shutil.copy(cinn_fp16_file, libs_path)
+            package_data['paddle.libs'] += ['float16.h']
+        cinn_bf16_file = (
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/cuda/bfloat16.h'
+        )
+        if os.path.exists(cinn_bf16_file):
+            shutil.copy(cinn_bf16_file, libs_path)
+            package_data['paddle.libs'] += ['bfloat16.h']
+
+        if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
+            command = (
+                "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_nvrtc/lib/:$ORIGIN/../../nvidia/cuda_runtime/lib/:$ORIGIN/../../nvidia/cublas/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/../../nvidia/curand/lib/:$ORIGIN/../../nvidia/cusolver/lib/:$ORIGIN/../../nvidia/nvtx/lib/:$ORIGIN/' %s/"
+                % libs_path
+                + env_dict.get("CINN_LIB_NAME")
+            )
+            if os.system(command) != 0:
+                raise Exception(
+                    'patch '
+                    + libs_path
+                    + '/'
+                    + env_dict.get("CINN_LIB_NAME")
+                    + ' failed',
+                    'command: %s' % command,
+                )
+    if env_dict.get("WITH_PSLIB") == 'ON':
+        shutil.copy(env_dict.get("PSLIB_LIB"), libs_path)
+        shutil.copy(env_dict.get("JVM_LIB"), libs_path)
+        if os.path.exists(env_dict.get("PSLIB_VERSION_PY")):
+            shutil.copy(
+                env_dict.get("PSLIB_VERSION_PY"),
+                paddle_binary_dir
+                + '/python/paddle/incubate/distributed/fleet/parameter_server/pslib/',
+            )
+        package_data['paddle.libs'] += ['libps' + ext_suffix]
+        package_data['paddle.libs'] += ['libjvm' + ext_suffix]
+    if env_dict.get("WITH_ONEDNN") == 'ON':
+        if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
+            # only change rpath in Release mode.
+            # TODO(typhoonzero): use install_name_tool to patch mkl libs once
+            # we can support mkl on mac.
+            #
+            # change rpath of libdnnl.so.1, add $ORIGIN/ to it.
+            # The reason is that all thirdparty libraries in the same directory,
+            # thus, libdnnl.so.1 will find libmklml_intel.so and libiomp5.so.
+            command = "patchelf --set-rpath '$ORIGIN/' " + env_dict.get(
+                "ONEDNN_SHARED_LIB"
+            )
+            if os.system(command) != 0:
+                raise Exception(
+                    "patch libdnnl.so failed, command: %s" % command
+                )
+        shutil.copy(env_dict.get("ONEDNN_SHARED_LIB"), libs_path)
+        if os.name != 'nt':
+            package_data['paddle.libs'] += ['libdnnl.so.3']
+        else:
+            package_data['paddle.libs'] += ['mkldnn.dll']
+
+    if env_dict.get("WITH_ONNXRUNTIME") == 'ON':
+        shutil.copy(env_dict.get("ONNXRUNTIME_SHARED_LIB"), libs_path)
+        shutil.copy(env_dict.get("PADDLE2ONNX_LIB"), libs_path)
+        if os.name == 'nt':
+            package_data['paddle.libs'] += [
+                'paddle2onnx.dll',
+                'onnxruntime.dll',
+            ]
+        else:
+            package_data['paddle.libs'] += [
+                env_dict.get("PADDLE2ONNX_LIB_NAME"),
+                env_dict.get("ONNXRUNTIME_LIB_NAME"),
+            ]
+
+    if env_dict.get("WITH_XPU") == 'ON':
+        shutil.copy(env_dict.get("XPU_API_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_API_LIB_NAME")]
+        xpu_rt_lib_list = glob.glob(env_dict.get("XPU_RT_LIB") + '*')
+        for xpu_rt_lib_file in xpu_rt_lib_list:
+            shutil.copy(xpu_rt_lib_file, libs_path)
+            package_data['paddle.libs'] += [os.path.basename(xpu_rt_lib_file)]
+
+    if env_dict.get("WITH_XPU_BKCL") == 'ON':
+        shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_BKCL_LIB_NAME")]
+
+    if env_dict.get("WITH_XPU_XFT") == 'ON':
+        shutil.copy(env_dict.get("XPU_XFT_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XFT_LIB_NAME")]
+
+    if env_dict.get("WITH_XPTI") == 'ON':
+        shutil.copy(env_dict.get("XPU_XPTI_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XPTI_LIB_NAME")]
+
+    if env_dict.get("WITH_XPU_XHPC") == 'ON':
+        shutil.copy(env_dict.get("XPU_XBLAS_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XBLAS_LIB_NAME")]
+        shutil.copy(env_dict.get("XPU_XFA_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
+
+    # remove unused paddle/libs/__init__.py
+    if os.path.isfile(libs_path + '/__init__.py'):
+        os.remove(libs_path + '/__init__.py')
+    package_dir['paddle.libs'] = libs_path
+
+    # change rpath of ${FLUID_CORE_NAME}.ext, add $ORIGIN/../libs/ to it.
+    # The reason is that libwarpctc.ext, libwarprnnt.ext, libiomp5.ext etc are in paddle.libs, and
+    # ${FLUID_CORE_NAME}.ext is in paddle.base, thus paddle/fluid/../libs will pointer to above libraries.
+    # This operation will fix https://github.com/PaddlePaddle/Paddle/issues/3213
+    if env_dict.get("CMAKE_BUILD_TYPE") == 'Release':
+        if os.name != 'nt':
+            # only change rpath in Release mode, since in Debug mode, ${FLUID_CORE_NAME}.xx is too large to be changed.
+            if env_dict.get("APPLE") == "1":
+                commands = [
+                    "install_name_tool -id '@loader_path/../libs/' "
+                    + env_dict.get("PADDLE_BINARY_DIR")
+                    + '/python/paddle/base/'
+                    + env_dict.get("FLUID_CORE_NAME")
+                    + '.so'
+                ]
+                commands.append(
+                    "install_name_tool -add_rpath '@loader_path/../libs/' "
+                    + env_dict.get("PADDLE_BINARY_DIR")
+                    + '/python/paddle/base/'
+                    + env_dict.get("FLUID_CORE_NAME")
+                    + '.so'
+                )
+                commands.append(
+                    "install_name_tool -add_rpath '@loader_path/../libs/' "
+                    + env_dict.get("PADDLE_BINARY_DIR")
+                    + '/python/paddle/libs/'
+                    + env_dict.get("COMMON_NAME")
+                )
+                if env_dict.get("WITH_SHARED_PHI") == "ON":
+                    commands.append(
+                        "install_name_tool -add_rpath '@loader_path' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("PHI_NAME")
+                    )
+                if env_dict.get("WITH_SHARED_IR") == "ON":
+                    commands.append(
+                        "install_name_tool -add_rpath '@loader_path' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("IR_NAME")
+                    )
+            else:
+                commands = [
+                    "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cuda_nvrtc/lib:$ORIGIN/../../nvidia/cublas/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/curand/lib:$ORIGIN/../../nvidia/cusparse/lib:$ORIGIN/../../nvidia/nvjitlink/lib:$ORIGIN/../../nvidia/cuda_cupti/lib:$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cufft/lib:$ORIGIN/../../nvidia/cusolver/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/nvtx/lib:$ORIGIN/../libs/' "
+                    + env_dict.get("PADDLE_BINARY_DIR")
+                    + '/python/paddle/base/'
+                    + env_dict.get("FLUID_CORE_NAME")
+                    + '.so'
+                ]
+                if env_dict.get("WITH_SHARED_PHI") == "ON":
+                    commands.append(
+                        "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("PHI_NAME")
+                    )
+                if env_dict.get("WITH_SHARED_IR") == "ON":
+                    commands.append(
+                        "patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("IR_NAME")
+                    )
+            # The sw_64 not support patchelf, so we just disable that.
+            if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
+                for command in commands:
+                    if os.system(command) != 0:
+                        raise Exception(
+                            'patch '
+                            + env_dict.get("FLUID_CORE_NAME")
+                            + '.%s failed' % ext_suffix,
+                            'command: %s' % command,
+                        )
+    # type hints
+    package_data['paddle'] = package_data.get('paddle', []) + ['py.typed']
+    package_data['paddle.framework'] = package_data.get(
+        'paddle.framework', []
+    ) + ['*.pyi']
+    package_data['paddle.base'] = package_data.get('paddle.base', []) + [
+        '*.pyi'
+    ]
+    package_data['paddle.tensor'] = package_data.get('paddle.tensor', []) + [
+        'tensor.pyi'
+    ]
+
+    return package_data, package_dir
+
 
 logging.basicConfig(style="{", format="{message}", level=logging.INFO)
 logger = logging.getLogger("Generating stub file for paddle.Tensor")
@@ -340,6 +664,8 @@ def func_doc_to_method_doc(func_doc: str) -> str:
 
 
 def get_tensor_members():
+    import paddle
+
     tensor_class = paddle.Tensor
 
     members: dict[int, Member] = {}
@@ -445,15 +771,26 @@ def main():
         type=str,
         default="python/paddle/tensor/tensor.prototype.pyi",
     )
-
     parser.add_argument(
         "-o",
         "--output-file",
         type=str,
         default="python/paddle/tensor/tensor.pyi",
     )
+    parser.add_argument(
+        "--source-dir",
+        type=str,
+        default="",
+    )
+    parser.add_argument(
+        "--binary-dir",
+        type=str,
+        default="",
+    )
 
     args = parser.parse_args()
+
+    copy_libs(args.binary_dir)
 
     # Get members of Tensor
     tensor_members = get_tensor_members()

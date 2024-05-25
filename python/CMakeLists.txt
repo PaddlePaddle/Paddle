@@ -177,6 +177,7 @@ add_custom_target(
     ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/gen_tensor_stub.py
     --input-file ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.prototype.pyi
     --output-file ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
+    --source-dir ${PADDLE_SOURCE_DIR} --binary-dir ${PADDLE_BINARY_DIR}
   # copy tensor.pyi to source dir
   COMMAND
     ${CMAKE_COMMAND} -E copy
