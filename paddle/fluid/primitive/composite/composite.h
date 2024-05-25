@@ -1364,9 +1364,11 @@ Tensor elu_decomp(const Tensor& x, const float alpha) {
   }
   Tensor zero;
   Tensor tmp_res;
+
   if (has_dynamic_shape(x_cast.shape())) {
     zero = backend::full_with_tensor<T>(shape<T>(x_cast), 0, x_cast.dtype());
-    tmp_res = full<T>(empty_shape, alpha, x_cast.dtype()) * (exp<T>(x_cast) - full<T>(empty_shape, 1, x_cast.dtype()));
+    tmp_res = full<T>(empty_shape, alpha, x_cast.dtype()) *
+              (exp<T>(x_cast) - full<T>(empty_shape, 1, x_cast.dtype()));
   } else {
     zero = full<T>(x_cast.shape(), 0, x_cast.type());
     tmp_res = alpha * (exp<T>(x_cast) - 1);
