@@ -184,7 +184,12 @@ add_custom_target(
     ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.pyi
   COMMENT "Generate tensor.pyi------>>>"
   DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
-add_dependencies(paddle_stub paddle_python copy_libpaddle inference_lib_dist)
+
+if(ON_INFER)
+  add_dependencies(paddle_stub paddle_python copy_libpaddle inference_lib_dist)
+else()
+  add_dependencies(paddle_stub paddle_python copy_libpaddle)
+endif()
 # -------------- End Generate tensor.pyi stub file --------------
 
 if(BUILD_WHL_PACKAGE AND NOT WITH_SETUP_INSTALL)
