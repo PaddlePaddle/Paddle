@@ -96,7 +96,7 @@ OpInfo op_info = OpInfo(new (raw_base_ptr) OpInfoImpl(std::move(interface_set),
                                                       verify_region));
 base_ptr.release();  // 释放所有权，不要自动删除
 return op_info;
-
+                          }
 void OpInfoImpl::Destroy(OpInfo info) {
   if (info.impl_) {
     info.impl_->Destroy();
