@@ -3629,9 +3629,11 @@ function clang-tidy_check() {
     trap 'abort' 0
     set -e
 
-    diff_files=$(git diff --name-only ${BRANCH})
+    echo "Current git branch: ${current_branch}"  # 输出当前git分支名
+
+    diff_files=$(git diff --name-only ${current_branch})
     num_diff_files=$(echo "$diff_files" | wc -l)
-    echo -e "diff files between pr and ${BRANCH}:\n${diff_files}"
+    echo -e "diff files ${num_diff_files} between pr and ${current_branch}:\n${diff_files}"
 
     # 输出具体存在差异的文件
     for file in ${diff_files}
