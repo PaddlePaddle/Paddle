@@ -25,7 +25,7 @@ namespace phi {
 
 enum GRUActivationType { identity = 0, sigmoid = 1, tanh = 2, relu = 3 };
 
-template <typename Device, typename X, typename Y>
+template <typename T, typename Device, typename X, typename Y>
 void ActCompute(
     const int act_type, const Device& d, X x, Y y, phi::Place place) {
   if (act_type == identity) {
@@ -46,6 +46,8 @@ void ActCompute(
   }
 }
 
+#define ACT_COMPUTE ActCompute<T>
+
 template <typename T, typename Context>
 void GRUUnitKernel(const Context& dev_ctx,
                    const DenseTensor& input,
@@ -61,7 +63,7 @@ void GRUUnitKernel(const Context& dev_ctx,
   auto* input_p = &input;
   auto* hidden_prev_p = &hidden_prev;
   auto* weight_p = &weight;
-  auto* bias_p = bias->get_ptr();
+  auto* bias_p = bias.get_ptr();
 
   dev_ctx.template Alloc<T>(gate);
   dev_ctx.template Alloc<T>(reset_hidden_prev);
@@ -108,20 +110,18 @@ void GRUUnitKernel(const Context& dev_ctx,
   // calculate activated gate
   Eigen::array<int, 2> extents{{batch_size, frame_size}};
   Eigen::array<int, 2> u_offsets{{0, 0}};
-  ActCompute<Eigen::DefaultDevice, EigenMatrix, EigenMatrix>(
-      gate_activation,
-      place,
-      g.slice(u_offsets, extents),
-      g.slice(u_offsets, extents),
-      dev_ctx.GetPlace());
+  ACT_COMPUTE(gate_activation,
+              place,
+              g.slice(u_offsets, extents),
+              g.slice(u_offsets, extents),
+              dev_ctx.GetPlace());
   auto u = g.slice(u_offsets, extents);  // update gate
   Eigen::array<int, 2> r_offsets{{0, frame_size}};
-  ActCompute<Eigen::DefaultDevice, EigenMatrix, EigenMatrix>(
-      gate_activation,
-      place,
-      g.slice(r_offsets, extents),
-      g.slice(r_offsets, extents),
-      dev_ctx.GetPlace());
+  ACT_COMPUTE(gate_activation,
+              place,
+              g.slice(r_offsets, extents),
+              g.slice(r_offsets, extents),
+              dev_ctx.GetPlace());
   auto r = g.slice(r_offsets, extents);  // reset gate
   r_h_p.device(place) = r * h_p;         // reset previous hidden state
   blas.GEMM(false,
@@ -139,12 +139,11 @@ void GRUUnitKernel(const Context& dev_ctx,
             frame_size * 3);
 
   Eigen::array<int, 2> c_offsets{{0, frame_size * 2}};
-  ActCompute<Eigen::DefaultDevice, EigenMatrix, EigenMatrix>(
-      activation,
-      place,
-      g.slice(c_offsets, extents),
-      g.slice(c_offsets, extents),
-      dev_ctx.GetPlace());
+  ACT_COMPUTE(activation,
+              place,
+              g.slice(c_offsets, extents),
+              g.slice(c_offsets, extents),
+              dev_ctx.GetPlace());
   auto c = g.slice(c_offsets, extents);  // output candidate
 
   // calculate final output
@@ -155,7 +154,12 @@ void GRUUnitKernel(const Context& dev_ctx,
   }
 }
 
-template <typename Device, typename X, typename Y, typename DX, typename DY>
+template <typename T,
+          typename Device,
+          typename X,
+          typename Y,
+          typename DX,
+          typename DY>
 void ActGradCompute(
     const int act_type, const Device& d, X x, Y y, DX dx, DY dy) {
   // x is dummy and won't be used even in Relu(use y instead)
@@ -172,6 +176,8 @@ void ActGradCompute(
         "Unsupported activation type, only supports identity, sigmoid, tanh "
         "and relu."));
 }
+
+#define ACT_GRAD_COMPUTE ActGradCompute<T>
 
 template <typename T, typename Context>
 void GRUUnitGradKernel(const Context& dev_ctx,
@@ -221,40 +227,24 @@ void GRUUnitGradKernel(const Context& dev_ctx,
 
   // backward for unactivated update gate
   if (origin_mode) {
-    ActGradCompute<Eigen::DefaultDevice,
-                   EigenMatrix,
-                   EigenMatrix,
-                   EigenMatrix,
-                   EigenMatrix>(gate_activation,
-                                place,
-                                u,
-                                u,
-                                d_g.slice(u_offsets, extents),
-                                d_h * (h_p - c));
+    ACT_GRAD_COMPUTE(gate_activation,
+                     place,
+                     u,
+                     u,
+                     d_g.slice(u_offsets, extents),
+                     d_h * (h_p - c));
     // backward for unactivated output candidate
-    ActGradCompute<Eigen::DefaultDevice,
-                   EigenMatrix,
-                   EigenMatrix,
-                   EigenMatrix,
-                   EigenMatrix>(
+    ACT_GRAD_COMPUTE(
         activation, place, c, c, d_g.slice(c_offsets, extents), d_h * (1 - u));
   } else {
-    ActGradCompute<Eigen::DefaultDevice,
-                   EigenMatrix,
-                   EigenMatrix,
-                   EigenMatrix,
-                   EigenMatrix>(gate_activation,
-                                place,
-                                u,
-                                u,
-                                d_g.slice(u_offsets, extents),
-                                d_h * (c - h_p));
+    ACT_GRAD_COMPUTE(gate_activation,
+                     place,
+                     u,
+                     u,
+                     d_g.slice(u_offsets, extents),
+                     d_h * (c - h_p));
     // backward for unactivated output candidate
-    ActGradCompute<Eigen::DefaultDevice,
-                   EigenMatrix,
-                   EigenMatrix,
-                   EigenMatrix,
-                   EigenMatrix>(
+    ACT_GRAD_COMPUTE(
         activation, place, c, c, d_g.slice(c_offsets, extents), d_h * u);
   }
   // backward for reset_hidden_prev
@@ -273,16 +263,12 @@ void GRUUnitGradKernel(const Context& dev_ctx,
             reset_hidden_prev_grad_data,
             frame_size);
   // backward for unactivated reset gate
-  ActGradCompute<Eigen::DefaultDevice,
-                 EigenMatrix,
-                 EigenMatrix,
-                 EigenMatrix,
-                 EigenMatrix>(gate_activation,
-                              place,
-                              r,
-                              r,
-                              d_g.slice(r_offsets, extents),
-                              d_r_h_p * h_p);
+  ACT_GRAD_COMPUTE(gate_activation,
+                   place,
+                   r,
+                   r,
+                   d_g.slice(r_offsets, extents),
+                   d_r_h_p * h_p);
   // backward for weight
   if (weight_grad) {
     T* weight_grad_data = dev_ctx.template Alloc<T>(weight_grad);
