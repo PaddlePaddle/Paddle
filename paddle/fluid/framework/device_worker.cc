@@ -245,7 +245,8 @@ bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size) {
 
 void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
   std::ostringstream os;
-  int device_id = static_cast<int>(static_cast<unsigned char>(place_.GetDeviceId()));
+  int device_id =
+      static_cast<int>(static_cast<unsigned char>(place_.GetDeviceId()));
   for (auto& param : *dump_param_) {
     os.str("");
     Variable* var = scope.FindVar(param);
