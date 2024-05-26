@@ -1946,7 +1946,7 @@ class TestRsqrt_Complex64(TestRsqrt):
         np.testing.assert_allclose(ddx.numpy(), expected_ddx, rtol=1e-3)
 
 
-class TestRsqrt_Complex128(TestRsqrt):
+class TestRsqrt_Complex128(TestRsqrt_Complex64):
     def init_dtype(self):
         self.dtype = np.complex128
 
