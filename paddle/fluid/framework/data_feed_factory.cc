@@ -29,18 +29,18 @@ typedef std::shared_ptr<DataFeed> (*Createdata_feedFunction)();
 typedef std::unordered_map<std::string, Createdata_feedFunction> data_feedMap;
 data_feedMap g_data_feed_map;
 
-#define REGISTER_DATAFEED_CLASS(data_feed_class)                      \
-  namespace {                                                         \
-  std::shared_ptr<DataFeed> Creator_##data_feed_class() {             \
-    return std::shared_ptr<DataFeed>(new data_feed_class);            \
-  }                                                                   \
-  class __Registerer_##data_feed_class {                              \
-   public:                                                            \
-    __Registerer_##data_feed_class() {                                \
-      g_data_feed_map[#data_feed_class] = &Creator_##data_feed_class; \
-    }                                                                 \
-  };                                                                  \
-  __Registerer_##data_feed_class g_registerer_##data_feed_class;      \
+#define REGISTER_DATAFEED_CLASS(data_feed_class)                                 \
+  namespace {                                                                    \
+  std::shared_ptr<DataFeed> Creator_##data_feed_class() {                        \
+    return std::shared_ptr<DataFeed>(new data_feed_class);                       \
+  }                                                                              \
+  class __Registerer_##data_feed_class {                                         \
+   public:                                                                       \
+    __Registerer_##data_feed_class() {                                           \
+      g_data_feed_map[#data_feed_class] = &Creator_##data_feed_class;  \\ NOLINT \
+    }                                                                            \
+  };                                                                             \
+  __Registerer_##data_feed_class g_registerer_##data_feed_class;                 \
   }  // namespace
 
 std::string DataFeedFactory::DataFeedTypeList() {
