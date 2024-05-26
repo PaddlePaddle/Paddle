@@ -22,7 +22,7 @@ void AsRealStridedKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          DenseTensor* out) {
   auto out_stride_v = common::vectorize(x.strides());
-  for (auto &v : out_stride_v) {
+  for (auto& v : out_stride_v) {
     v *= 2;
   }
   out_stride_v.push_back(1);

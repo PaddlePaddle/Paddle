@@ -78,7 +78,8 @@ std::string PrintOperationWithNoRegion(Operation* op) {
   os << " =";
 
   // print OpName & OpId
-  os << " \"" << op->name() << "(op_" << op->id() << ")" << "\"";
+  os << " \"" << op->name() << "(op_" << op->id() << ")"
+     << "\"";
 
   // print OpOperands
   os << " (";
@@ -201,8 +202,10 @@ void CheckInferSymWithInferMeta(
             std::ostringstream print_stream;
             print_stream
                 << "Warning : Check InferSymbolicShape for " << op->name()
-                << " (op_" << op->id() << ") " << " carefully! " << "shape["
-                << i << "] of infer_sym_shape shoule be int64_t NOT a symbol!";
+                << " (op_" << op->id() << ") "
+                << " carefully! "
+                << "shape[" << i
+                << "] of infer_sym_shape shoule be int64_t NOT a symbol!";
             VLOG(vlog_level) << print_stream.str();
             continue;
           }
@@ -212,8 +215,8 @@ void CheckInferSymWithInferMeta(
             std::ostringstream print_stream;
             print_stream << "Warning : Check InferSymbolicShape for "
                          << op->name() << " (op_" << op->id() << ") "
-                         << " carefully! " << "infer_sym_shape is ["
-                         << infer_meta_shape[i]
+                         << " carefully! "
+                         << "infer_sym_shape is [" << infer_meta_shape[i]
                          << "], but infer_meta_shape is ["
                          << infer_sym_shape[i].dyn_cast<int64_t>() << "].";
             VLOG(vlog_level) << print_stream.str();

@@ -572,7 +572,7 @@ bool StackOpInferSymbolicShape(pir::Operation *op,
   const symbol::ShapeOrDataDimExprs shape_data = [&] {
     std::vector<symbol::DimExpr> shape_dim_exprs;
     std::vector<symbol::DimExpr> data_dim_exprs;
-    for (const auto &shape_data :  shape_data_list) {
+    for (const auto &shape_data : shape_data_list) {
       if (shape_data.data().has_value() && axis == 0) {
         data_dim_exprs.emplace_back(shape_data.data().value()[0]);
       }

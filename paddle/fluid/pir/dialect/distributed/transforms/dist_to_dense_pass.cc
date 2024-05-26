@@ -64,7 +64,7 @@ inline bool IsDistType(pir::Type type) { return type.isa<DistTypeInterface>(); }
 
 void ProcessDistBlock(pir::Block* block) {
   auto ctx = pir::IrContext::Instance();
-  for (auto &val : *block) {
+  for (auto& val : *block) {
     pir::Operation* op_item = &val;
     VLOG(6) << "dist_to_dense main loop over op [" << op_item->name() << "].";
 
@@ -126,7 +126,7 @@ void ProcessDistBlock(pir::Block* block) {
     3. no shard_tensor / reshard in block.
 */
 void VerifyDenseBlock(pir::Block* block) {
-  for (auto &val : *block) {
+  for (auto& val : *block) {
     pir::Operation* op_item = &val;
 
     for (size_t i = 0; i < op_item->num_results(); ++i) {

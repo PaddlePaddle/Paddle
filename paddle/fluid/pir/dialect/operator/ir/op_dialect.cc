@@ -930,7 +930,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
       size_t input_index =
           std::distance(fwd_inputs_name.begin(), fwd_inputs_name_iter);
       for (size_t i = 0; i < input_index; ++i) {
-        for (const auto &bwd_output_name : bwd_outputs_name) {
+        for (const auto& bwd_output_name : bwd_outputs_name) {
           const auto& fwd_input_name_tmp = paddle::framework::detail::NoGrad(
               bwd_output_name, is_double_grad_op);
           if (fwd_input_name_tmp == fwd_inputs_name[i]) {
