@@ -2375,6 +2375,91 @@ void GraphReindexInferMeta(const MetaTensor& x,
   out_nodes->set_dtype(x.dtype());
 }
 
+void GruInferMeta(const MetaTensor& input,
+                  const MetaTensor& h0,
+                  const MetaTensor& weight,
+                  const MetaTensor& bias,
+                  const std::string& activation,
+                  const std::string& gate_activation,
+                  bool is_reverse,
+                  bool origin_mode,
+                  bool is_test,
+                  MetaTensor* batch_gate,
+                  MetaTensor* batch_reset_hidden_prev,
+                  MetaTensor* batch_hidden,
+                  MetaTensor* hidden,
+                  MetaConfig config) {
+  const auto& input_dims = input.dims();
+  const auto& weight_dims = weight.dims();
+  int input_size = static_cast<int>(input_dims[1]);
+  int frame_size = static_cast<int>(weight_dims[0]);
+  if (config.is_runtime) {
+    PADDLE_ENFORCE_EQ(input_size,
+                      frame_size * 3,
+                      phi::errors::InvalidArgument(
+                          "The second dimension of Input(Input) must be 3 "
+                          "times of frame_size in GRUOp, but received %d "
+                          "(Input) vs %d (frame_size).",
+                          input_size,
+                          frame_size));
+  }
+  PADDLE_ENFORCE_EQ(
+      weight_dims[1],
+      frame_size * 3,
+      phi::errors::InvalidArgument(
+          "The shape of Input(Weight) matrix must be [frame_size, frame_size "
+          "* 3], but received [%d, %d] (Weight) vs [%d, %d] (frame_size).",
+          weight_dims[0],
+          weight_dims[1],
+          frame_size,
+          frame_size * 3));
+  if (h0.initialized()) {
+    const auto& h0_dims = h0.dims();
+    PADDLE_ENFORCE_EQ(
+        h0_dims[1],
+        frame_size,
+        phi::errors::InvalidArgument(
+            "The width of Input(H0) must be equal to frame_size, but "
+            "received %d (width of H0) vs %d (frame_size).",
+            h0_dims[1],
+            frame_size));
+  }
+  if (bias.initialized()) {
+    const auto& bias_dims = bias.dims();
+    int bias_height = static_cast<int>(bias_dims[0]);
+    int bias_width = static_cast<int>(bias_dims[1]);
+    PADDLE_ENFORCE_EQ(
+        bias_height,
+        1,
+        phi::errors::InvalidArgument(
+            "The shape of Bias must be [1, frame_size * 3], but received "
+            "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
+            bias_height,
+            bias_width,
+            frame_size * 3));
+    PADDLE_ENFORCE_EQ(
+        bias_width,
+        frame_size * 3,
+        phi::errors::InvalidArgument(
+            "The shape of Bias must be [1, frame_size * 3], but received "
+            "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
+            bias_height,
+            bias_width,
+            frame_size * 3));
+  }
+  if (!is_test) {
+    batch_gate->set_dims(input_dims);
+    batch_gate->set_dtype(input.dtype());
+    batch_reset_hidden_prev->set_dims({input_dims[0], frame_size});
+    batch_reset_hidden_prev->set_dtype(input.dtype());
+    batch_hidden->set_dims({input_dims[0], frame_size});
+    batch_hidden->set_dtype(input.dtype());
+  }
+  hidden->set_dims({input_dims[0], frame_size});
+  hidden->set_dtype(input.dtype());
+  hidden->share_lod(input);
+}
+
 void GraphSampleNeighborsInferMeta(const MetaTensor& row,
                                    const MetaTensor& col_ptr,
                                    const MetaTensor& x,

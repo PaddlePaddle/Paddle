@@ -1167,6 +1167,25 @@
   optional: scale, bias
   inplace : (y_grad -> x_grad)
 
+- backward_op : gru_grad
+  forward: gru (Tensor input, Tensor h0, Tensor weight, Tensor bias, str activation = "tanh",
+    str gate_activation = "sigmoid", bool is_reverse = false, bool origin_mode = false, bool is_test=false) ->
+    Tensor (batch_gate), Tensor (batch_reset_hidden_prev), Tensor (batch_hidden),
+    Tensor (hidden)
+  args: (Tensor input, Tensor h0, Tensor weight, Tensor bias, Tensor batch_gate,
+    Tensor batch_reset_hidden_prev, Tensor batch_hidden, Tensor hidden,
+    Tensor hidden_grad, str activation = "tanh",
+    str gate_activation = "sigmoid", bool is_reverse = false, bool origin_mode = false, bool is_test=false)
+  output: Tensor(input_grad), Tensor(h0_grad), Tensor(weight_grad), Tensor(bias_grad)
+  infer_meta:
+    func: GruGradInferMeta
+    param: [input, h0, weight, bias]
+  kernel:
+    func: gru_grad
+    data_type: hidden_grad
+  optional: h0, bias
+  no_need_buffer: input, bias
+
 - backward_op : gumbel_softmax_grad
   forward : gumbel_softmax (Tensor x, float temperature, bool hard, int axis) -> Tensor(out)
   args : (Tensor out, Tensor out_grad, int axis)

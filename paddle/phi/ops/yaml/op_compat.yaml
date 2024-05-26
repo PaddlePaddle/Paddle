@@ -4069,6 +4069,13 @@
   outputs :
     out : Out
 
+- op: gru
+  backward: gru_grad
+  inputs:
+    {input : Input, h0 : H0, weight : Weight, bias : Bias}
+  outputs:
+    {batch_gate : BatchGate, batch_reset_hidden_prev : BatchResetHiddenPrev, batch_hidden : BatchHidden, hidden : Hidden}
+
 - op: identity_loss
   inputs :
     x: X
