@@ -85,8 +85,8 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
   }
 
   // Construct OpInfoImpl.
-  VLOG(10) << "Construct OpInfoImpl at " << reinterpret_cast<void *>(raw_base_ptr)
-           << " ......";
+  VLOG(10) << "Construct OpInfoImpl at "
+           << reinterpret_cast<void *>(raw_base_ptr) << " ......";
   OpInfoImpl *impl = new (raw_base_ptr) OpInfoImpl(std::move(interface_set),
                                                    dialect,
                                                    op_id,
