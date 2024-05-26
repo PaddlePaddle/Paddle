@@ -61,11 +61,11 @@ void GRUKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(batch_reset_hidden_prev);
   dev_ctx.template Alloc<T>(batch_hidden);
 
-  phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
+  phi::funcs::LoDTensor2BatchFunctor<Context, T> to_batch;
   to_batch(dev_ctx, input, batch_gate, true, is_reverse);
 
   if (bias) {
-    phi::funcs::RowwiseAdd<DeviceContext, T> add_bias;
+    phi::funcs::RowwiseAdd<Context, T> add_bias;
     add_bias(dev_ctx, *batch_gate, *bias, batch_gate);
   }
 

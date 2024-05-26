@@ -25,11 +25,11 @@
 namespace phi {
 
 template <typename Context, typename T>
-inline void ReorderInitState(const Context &dev_ctx,
-                             const phi::DenseTensor &src,
-                             phi::Vector<size_t> index_lod,
-                             phi::DenseTensor *dst,
-                             bool indexed_src) {
+void ReorderInitState(const Context &dev_ctx,
+                      const phi::DenseTensor &src,
+                      phi::Vector<size_t> index_lod,
+                      phi::DenseTensor *dst,
+                      bool indexed_src) {
   phi::funcs::CopyMatrixRowsFunctor<Context, T> row_shuffle;
   dst->Resize(src.dims());
   dev_ctx.template Alloc<T>(dst);

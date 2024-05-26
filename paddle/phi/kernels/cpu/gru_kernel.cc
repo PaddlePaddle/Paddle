@@ -74,7 +74,7 @@ void GRUCPUKernel(const Context &dev_ctx,
 
   if (bias) {
     phi::funcs::RowwiseAdd<Context, T> add_bias;
-    add_bias(dev_ctx, *batch_gate, bias, batch_gate);
+    add_bias(dev_ctx, *batch_gate, bias.get(), batch_gate);
   }
 
   int frame_size = static_cast<int>(hidden_dims[1]);
