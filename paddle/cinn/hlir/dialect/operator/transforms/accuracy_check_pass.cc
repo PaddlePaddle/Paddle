@@ -18,6 +18,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_to_pd_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -31,7 +32,6 @@
 #include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
-
 namespace cinn::dialect::ir {
 
 class AddAccuracyCheckPattern
@@ -67,6 +67,16 @@ class AddAccuracyCheckPattern
     };
 
     const auto& ConvertCinnOpToPdOp = [&](::pir::Operation* op) -> void {
+      if (op->isa<cinn::dialect::GenerateShapeOp>()) {
+        auto cinn_op = op->dyn_cast<cinn::dialect::GenerateShapeOp>();
+        std::optional<pir::Value> out_replacement =
+            details::GetOutReplacement(cinn_op, &rewriter);
+        if (!out_replacement.has_value()) return;
+        ir_mapping.Add(op->result(0), out_replacement.value());
+        rewriter.SetInsertionPointAfter(out_replacement.value().defining_op());
+        builder.SetInsertionPointAfter(out_replacement.value().defining_op());
+        return;
+      }
       for (size_t i = 0; i < op->num_operands(); ++i) {
         if (!ir_mapping.GetMap<pir::Value>().count(op->operand_source(i))) {
           ir_mapping.Add(op->operand_source(i), op->operand_source(i));
