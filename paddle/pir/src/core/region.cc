@@ -108,7 +108,7 @@ void Region::TakeBody(Region &&other) {
   clear();
   blocks_.swap(other.blocks_);
   for (auto &block : blocks_) {
-    block.SetParent(this);
+    block->SetParent(this);
   }
 }
 

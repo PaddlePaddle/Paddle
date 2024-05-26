@@ -568,7 +568,7 @@ inline const void UpdatePaddingAndDilation(
     }
 
   } else if (padding_algorithm == "VALID") {
-    for (auto& val : paddings_wrap) {
+    for (auto& val : *paddings_wrap) {
       val = ExprWrapper(0, &expr_builder);
     }
   }
