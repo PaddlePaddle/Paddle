@@ -72,7 +72,7 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
            << " interfaces, " << traits_num << " traits, " << attributes_num
            << " attributes.";
   size_t base_size = sizeof(TypeId) * traits_num + sizeof(OpInfoImpl);
-char *base_ptr = static_cast<char *>(::operator new(base_size));
+  char *base_ptr = static_cast<char *>(::operator new(base_size));
   VLOG(10) << "Malloc " << base_size << " Bytes at "
            << static_cast<void *>(base_ptr);
   if (traits_num > 0) {
@@ -94,7 +94,7 @@ char *base_ptr = static_cast<char *>(::operator new(base_size));
                                                     verify_sig,
                                                     verify_region));
   return op_info;
-                          }
+}
 void OpInfoImpl::Destroy(OpInfo info) {
   if (info.impl_) {
     info.impl_->Destroy();
