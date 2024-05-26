@@ -30,18 +30,18 @@ typedef std::shared_ptr<TrainerBase> (*CreateTrainerFunction)();
 typedef std::unordered_map<std::string, CreateTrainerFunction> trainerMap;
 trainerMap g_trainer_map;
 
-#define REGISTER_TRAINER_CLASS(trainer_class)                             \
-  namespace {                                                             \
-  std::shared_ptr<TrainerBase> Creator_##trainer_class() {                \
-    return std::shared_ptr<TrainerBase>(new trainer_class);               \
-  }                                                                       \
-  class __Registerer_##trainer_class {                                    \
-   public:                                                                \
-    __Registerer_##trainer_class() {                                      \
-      g_trainer_map[#trainer_class] = &Creator_##trainer_class; \\ NOLINT \
-    }                                                                     \
-  };                                                                      \
-  __Registerer_##trainer_class g_registerer_##trainer_class;              \
+#define REGISTER_TRAINER_CLASS(trainer_class)                   \
+  namespace {                                                   \
+  std::shared_ptr<TrainerBase> Creator_##trainer_class() {      \
+    return std::shared_ptr<TrainerBase>(new trainer_class);     \
+  }                                                             \
+  class __Registerer_##trainer_class {                          \
+   public:                                                      \
+    __Registerer_##trainer_class() {                            \
+      g_trainer_map[#trainer_class] = &Creator_##trainer_class; \
+    }                                                           \
+  };                                                            \
+  __Registerer_##trainer_class g_registerer_##trainer_class;    \
   }  // namespace
 
 std::string TrainerFactory::TrainerTypeList() {

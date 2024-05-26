@@ -36,7 +36,7 @@ device_workerMap g_device_worker_map;
   class __Registerer_##device_worker_class {                             \
    public:                                                               \
     __Registerer_##device_worker_class() {                               \
-      g_device_worker_map[#device_worker_class] =  \\ NOLINT             \
+      g_device_worker_map[#device_worker_class] =                        \
           &Creator_##device_worker_class;                                \
     }                                                                    \
   };                                                                     \
