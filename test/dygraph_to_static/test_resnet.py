@@ -251,12 +251,14 @@ class TransedFlowerDataSet(paddle.io.Dataset):
 
 class ResNetHelper:
     def __init__(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-
-        self.model_save_dir = os.path.join(self.temp_dir.name, "./inference")
+        # self.temp_dir = tempfile.TemporaryDirectory()
+        self.temp_dir ="/home/zexuli/Paddle-1/test/dygraph_to_static"
+        
+        self.model_save_dir = os.path.join(self.temp_dir, "./inference")
         self.model_save_prefix = os.path.join(
-            self.temp_dir.name, "./inference/resnet"
+            self.temp_dir, "./inference/resnet"
         )
+        print("paddle.jit.translated_layer.INFER_MODEL_SUFFIX",paddle.jit.translated_layer.INFER_MODEL_SUFFIX)
         self.model_filename = (
             "resnet" + paddle.jit.translated_layer.INFER_MODEL_SUFFIX
         )
@@ -264,11 +266,11 @@ class ResNetHelper:
             "resnet" + paddle.jit.translated_layer.INFER_PARAMS_SUFFIX
         )
         self.dy_state_dict_save_path = os.path.join(
-            self.temp_dir.name, "./resnet.dygraph"
+            self.temp_dir, "./resnet.dygraph"
         )
 
-    def __del__(self):
-        self.temp_dir.cleanup()
+    # def __del__(self):
+    #     self.temp_dir.cleanup()
 
     def train(self, to_static, build_strategy=None):
         """
@@ -340,11 +342,10 @@ class ResNetHelper:
                 if batch_id == 10:
                     if to_static:
                         # TODO(@xiongkun): open after save / load supported in pir.
-                        if (
-                            to_static
-                            and not paddle.base.framework.use_pir_api()
-                        ):
-                            paddle.jit.save(resnet, self.model_save_prefix)
+                            # if paddle.framework.use_pir_api():
+                                print("save model in PIR mode")
+                                paddle.jit.save(resnet, self.model_save_prefix)
+                            # paddle.jit.save(resnet, self.model_save_prefix)
                     else:
                         paddle.save(
                             resnet.state_dict(),
@@ -358,6 +359,7 @@ class ResNetHelper:
         with enable_to_static_guard(False):
             resnet = paddle.jit.to_static(ResNet())
 
+            print("self.dy_state_dict_save_path",self.dy_state_dict_save_path)
             model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
             resnet.set_dict(model_dict)
             resnet.eval()
@@ -373,6 +375,7 @@ class ResNetHelper:
 
     def predict_static(self, data):
         with static_guard():
+            print("self.model_save_dir",self.model_save_dir)
             exe = paddle.static.Executor(place)
             [
                 inference_program,

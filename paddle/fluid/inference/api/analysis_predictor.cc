@@ -72,7 +72,9 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
+#include "paddle/pir/include/core/attribute.h"
 #include "paddle/pir/include/core/block_argument.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/utils/string/split.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
@@ -772,6 +774,25 @@ bool AnalysisPredictor::PrepareScope(
   return true;
 }
 
+
+void PrintScopeVariables(const paddle::framework::Scope &scope)
+{
+  auto vars =scope.LocalVarNames();
+  for (const auto& var_name : vars) {
+    auto* var=scope.FindVar(var_name);
+    if(var)
+    {
+      LOG(INFO) << "Variable in scope: " << var_name;
+      if(var->IsType<phi::DenseTensor>())
+      {
+        auto &tensor = var->Get<phi::DenseTensor>();
+        LOG(INFO) << "Tensor shape: " << tensor.dims();
+        LOG(INFO) << "Tensor dtype: " << tensor.dtype();
+      }
+    }
+  }
+}
+
 bool AnalysisPredictor::PreparePirProgram() {
   std::string filename;
   if (!config_.prog_file().empty()) {
@@ -791,10 +812,11 @@ bool AnalysisPredictor::PreparePirProgram() {
       pir_program_ = std::make_shared<pir::Program>(ctx);
       LOG(INFO) << "创建pir_program之后";
     }
-    // PADDLE_ENFORCE_NOT_NULL(pir_program_.get(), "pir_program_ is not
-    // initialized");
+    PADDLE_ENFORCE_NOT_NULL(pir_program_.get(),
+                            "pir_program_ is not initialized");
     LOG(INFO) << "Preparing PIR program from file:" << filename;
     bool success = pir::ReadModule(filename, pir_program_.get(), pir_version);
+    LOG(INFO) << "suceess" << success;
     LOG(INFO) << "pir_program" << *(pir_program_.get());
 
     std::vector<std::string> param_names;
@@ -808,16 +830,28 @@ bool AnalysisPredictor::PreparePirProgram() {
       return false;
     }
     // 这一步是对应pir_io.py中的487行，得到v,因为只有ParameterOP才有v.name,所以这里只把ParameterOp添加到var
+    //下面的var是pir::value
     std::vector<pir::Value> vars;
     for (auto op : block->ops()) {
       LOG(INFO) << "ops的 " << op->name();
       for (auto var : op->results()) {
         std::string var_name;
-        if (auto param_op = var.defining_op<::pir::ParameterOp>()) {
-          var_name = param_op.param_name();
-          LOG(INFO) << "var_name你猜有没有" << var_name;
-          param_names.push_back(var_name);
-          vars.push_back(var);
+        auto is_persistable =
+            var.attribute<pir::BoolAttribute>(kAttrIsPersistable);
+        if (is_persistable && is_persistable.data()) {
+          LOG(INFO) << "is_persistable" << is_persistable.data();
+          if (auto param_op = var.defining_op<::pir::ParameterOp>()) {
+            var_name = param_op.param_name();
+            LOG(INFO) << "var_name你猜有没有" << var_name;
+            param_names.push_back(var_name);
+            vars.push_back(var);
+          }else if (auto data_op =var.defining_op<paddle::dialect::DataOp>())
+          {
+            var_name =data_op.attribute<pir::StrAttribute>("name").AsString();
+            LOG(INFO)<<"Data op的var name"<<var_name;
+            param_names.push_back(var_name);
+            vars.push_back(var);
+          }
         }
       }
     }
@@ -831,24 +865,49 @@ bool AnalysisPredictor::PreparePirProgram() {
         LOG(INFO) << "Variable not found, creating new variable: "
                   << param_names[i];
         var = sub_scope_->Var(param_names[i]);
+        if (var == nullptr) {
+          LOG(ERROR) << "Failed to create variable:" << param_names[i];
+          return false;
+        }
         auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+        if (tensor_temp == nullptr) {
+          LOG(ERROR) << "Failed to get mutable DenseTensor for variable: "
+                     << param_names[i];
+          return false;
+        }
         tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
+        LOG(INFO) << "Resized tensor for variable: " << param_names[i]
+                  << " to shape: "
+                  << common::make_ddim(pir::GetShapeFromValue(value));
         LOG(INFO) << "Found variable: " << param_names[i]
                   << " with type: " << var->Type();
         phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
         const phi::DeviceContext *dev_ctx = nullptr;
         dev_ctx = pool.Get(place_);
+        if (dev_ctx == nullptr) {
+          LOG(ERROR) << "Failed to get device context for place: " << place_;
+          return false;
+        }
         pir::Type type_ = pir::GetDataTypeFromValue(value);
         phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
         dev_ctx->Alloc(tensor_temp, type_data);
+        LOG(INFO) << "Allocated tensor for variable: " << param_names[i]
+                  << " with data type: " << type_data;
+      } else {
+        LOG(INFO) << "Variable already exists: " << param_names[i];
       }
       auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
       tensor_out.push_back(tensor_temp);
-      LOG(INFO) << "Tensor value for " << param_names[i] << "; "
-                << *tensor_temp;
+      LOG(INFO) << "Tensor value for " << param_names[i]<<" is "
+      << *tensor_temp;
     }
+    LOG(INFO) << "Printing scope variables before LoadCombineFunction";
+    PrintScopeVariables(*sub_scope_);
     pir::LoadCombineFunction(
         params_file, param_names, &tensor_out, false, place_);
+
+    LOG(INFO) << "Printing scope variables after LoadCombineFunction";
+    PrintScopeVariables(*sub_scope_);
 
     // std::vector<phi::DenseTensor *> tensor_pointers;
     // for (const auto &param : param_names) {
@@ -869,10 +928,6 @@ bool AnalysisPredictor::PreparePirProgram() {
     //             << ", which pointer is " << ptr;
     // }
 
-    if (!success) {
-      LOG(ERROR) << "Failed to read module from file: " << filename;
-      return false;
-    }
     auto ir_printing_conditions = [this](::pir::Pass *pass,
                                          ::pir::Operation *op) {
       if (this->config_.ir_debug_passes_.empty()) {

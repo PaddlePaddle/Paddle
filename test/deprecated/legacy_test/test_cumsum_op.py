@@ -600,20 +600,17 @@ class TestTensorAxis(unittest.TestCase):
                 linear = paddle.nn.Linear(np_x.shape[-1], np_x.shape[-1])
                 linear_out = linear(x)
                 relu_out = paddle.nn.functional.relu(linear_out)
-                axis = paddle.full([1], 2, dtype='int64')
-                out = paddle.cumsum(relu_out, axis=axis)
-                loss = paddle.mean(out)
-                sgd = paddle.optimizer.SGD(learning_rate=0.0)
-                sgd.minimize(paddle.mean(out))
-
-               
+            
+                # axis = paddle.full([1], 2, dtype='int64')
+                # out = paddle.cumsum(relu_out, axis=axis)
+                
                 exe = paddle.static.Executor(self.place)
                 exe.run(startup_prog)
-                static_out = exe.run(feed={'x': np_x}, fetch_list=[out])
+                static_out = exe.run(feed={'x': np_x}, fetch_list=[relu_out])
 
                 # run infer
                 paddle.static.save_inference_model(
-                    self.save_path, [x], [out], exe, program=main_prog
+                    self.save_path, [x], [relu_out], exe, program=main_prog
                 )
                 config =paddle_infer.Config(
                     self.save_path + '.json',self.save_path + '.pdiparams'

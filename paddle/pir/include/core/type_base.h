@@ -18,6 +18,9 @@
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/storage_manager.h"
 #include "paddle/pir/include/core/type_id.h"
+#include "glog/logging.h"
+#include <typeinfo>
+
 
 namespace pir {
 class Dialect;
@@ -197,6 +200,8 @@ struct IR_API TypeManager {
   ///
   template <typename T, typename... Args>
   static T get(IrContext *ctx, Args &&...args) {
+    // VLOG(0) << "typename" << typeid(T).name();
+    // VLOG(0) << "TYPE iD " << pir::TypeId::get<T>();
     return get<T, Args...>(
         ctx, pir::TypeId::get<T>(), std::forward<Args>(args)...);
   }

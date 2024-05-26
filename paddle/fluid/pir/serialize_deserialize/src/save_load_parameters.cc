@@ -191,6 +191,8 @@ void LoadCombineFunction(const std::string& file_path,
                          std::vector<phi::DenseTensor*>* out,
                          bool load_as_fp16,
                          phi::Place place) {
+  
+  LOG(INFO)<<"Starting LoadCombineFuncion with file "<<file_path;
   std::ifstream fin(file_path, std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fin),
                     true,
@@ -199,6 +201,7 @@ void LoadCombineFunction(const std::string& file_path,
                         "whether the model file is complete or damaged.",
                         file_path));
 
+  LOG(INFO)<<"Opened file: "<<file_path<<" successfully.";
   PADDLE_ENFORCE_GT(out->size(),
                     0UL,
                     phi::errors::InvalidArgument(
@@ -208,13 +211,16 @@ void LoadCombineFunction(const std::string& file_path,
   const phi::DeviceContext* dev_ctx = GetDeviceContext(*(out->at(0)), place);
   for (size_t i = 0; i < names.size(); i++) {
     auto tensor = out->at(i);
+    LOG(INFO)<<"Loading tensor: "<<names[i];
     paddle::framework::DeserializeFromStream(fin, tensor, *dev_ctx);
-
+    LOG(INFO)<<"Loaded tensor: "<<names[i]<<" successfully.";
     auto in_dtype = tensor->dtype();
     auto out_dtype = load_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
     if (in_dtype != out_dtype) {
+      LOG(INFO)<<"Casting tensor type for: "<<names[i];
       auto cast_in = *tensor;
       *tensor = CastTensorType(dev_ctx, cast_in, out_dtype);
+      LOG(INFO)<<"Casted tensor type for: "<<names[i];
     }
   }
   fin.peek();
@@ -223,6 +229,7 @@ void LoadCombineFunction(const std::string& file_path,
       true,
       phi::errors::Unavailable("Not allowed to load partial data via "
                                "load_combine_op, please use load_op instead."));
+  LOG(INFO)<<"Finished LoadCombineFunction for file. "<<file_path;
 }
 
 }  // namespace pir

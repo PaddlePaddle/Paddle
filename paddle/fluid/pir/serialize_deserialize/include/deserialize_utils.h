@@ -66,9 +66,14 @@ paddle::dialect::IntArrayAttribute
 deserializeAttrFromJson<paddle::dialect::IntArrayAttribute,
                         std::vector<int64_t>>(Json* attr_json,
                                               pir::IrContext* ctx) {
+  VLOG(0) << "11111111111" ;                                     
   std::vector<int64_t> data = attr_json->at(DATA).get<std::vector<int64_t>>();
+   VLOG(0) << data[0] << " " << data[1]  << " " << data[2] ; 
   phi::IntArray int_array = phi::IntArray(data);
-  return paddle::dialect::IntArrayAttribute::get(ctx, int_array);
+  VLOG(0) << "22222222";  
+  auto type = paddle::dialect::IntArrayAttribute::get(ctx, int_array);
+  VLOG(0) << "3333333";
+  return type;
 }
 
 pir::Attribute deserializeAttrFromJson_scalarAttr(Json* attr_json,
@@ -288,8 +293,11 @@ pir::Attribute parseAttr(Json* attr_json) {
         attr_json, ctx);
   } else if (attr_name == paddle::dialect::IntArrayAttribute::name()) {
     VLOG(8) << "Parse IntArrayAttribute .";
-    return pir::deserializeAttrFromJson<paddle::dialect::IntArrayAttribute,
+    
+    auto type = pir::deserializeAttrFromJson<paddle::dialect::IntArrayAttribute,
                                         std::vector<int64_t>>(attr_json, ctx);
+    VLOG(0) << "44444444";
+    return type;
   } else if (attr_name == paddle::dialect::ScalarAttribute::name()) {
     VLOG(8) << "Parse ScalarAttribute .";
     // this func's return type is pir::Attribute which is diffrent

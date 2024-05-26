@@ -75,7 +75,7 @@ void ProgramReader::ReadBlock(Json* block_json, pir::Block* block) {
 
 pir::Operation* ProgramReader::ReadOp(Json* op_json) {
   auto op_name = op_json->at(ID).template get<std::string>();
-
+  VLOG(0) << "begin read op " << op_name;
   // deserialize opoperands (find value)
   Json& operands_json = op_json->at(OPOPERANDS);
   std::vector<pir::Value> inputs;
@@ -110,11 +110,12 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
   pir::IrContext* ctx_ = pir::IrContext::Instance();
   // prepare opinfo
   pir::OpInfo op_info = ctx_->GetRegisteredOpInfo(op_name);
-
+  VLOG(0) << "&&&&&&&&&&&&&&1";
+  VLOG(0) << "output_type " << output_types[0];
   // deserialize op
   pir::Operation* op =
       Operation::Create(inputs, attributes, output_types, op_info);
-
+  VLOG(0) << "&&&&&&&&&&&&&&2";
   PADDLE_ENFORCE_EQ(
       output_ids.size(),
       static_cast<size_t>(op->num_results()),
@@ -136,6 +137,7 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(Json* attrs_json,
   pir::AttributeMap attributes;
   for (auto& attr_json : *attrs_json) {
     auto attr_name = attr_json.at(NAME).template get<std::string>();
+    VLOG(0)<<"attr_name: "<<attr_name;
     attributes.insert({attr_name, ReadAttribute(&attr_json)});
   }
   VLOG(6) << "Finish Read pir::AttributeMap ";
@@ -149,7 +151,9 @@ pir::AttributeMap ProgramReader::ReadAttributesMap(Json* attrs_json,
 
 pir::Attribute ProgramReader::ReadAttribute(Json* attr_json) {
   VLOG(6) << "Begin Read Attribute. ";
-  return pir::parseAttr(&attr_json->at(ATTR_TYPE));
+  auto res =  pir::parseAttr(&attr_json->at(ATTR_TYPE));
+  VLOG(6) << "Finish Read Attribute. ";
+  return res;
 }
 
 pir::Type ProgramReader::ReadType(Json* type_json) {
