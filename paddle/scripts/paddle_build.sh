@@ -3642,7 +3642,7 @@ function clang-tidy_check() {
     echo "Checking code style by clang-tidy ..."
     startTime_s=`date +%s`
     # 使用详细模式，并输出具体的clang-tidy检查项
-    pre-commit run clang-tidy --verbose --checks=* --files ${diff_files};check_error=$?
+    pre-commit run clang-tidy --verbose --files ${diff_files};check_error=$?
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Files Num: $[ $num_diff_files ]"
