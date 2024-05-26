@@ -3467,7 +3467,7 @@ int32_t GraphTable::Initialize(const GraphParameter &graph) {
           << ", graph_edges_split_only_by_src_id="
           << FLAGS_graph_edges_split_only_by_src_id;
   feat_id_map.resize(node_types.size());
-  for (int k = 0; k < edge_types.size(); k++) {
+  for (int k = 0; k < edge_types.size(); k++) {  // NOLINT
     VLOG(0) << "in initialize: get a edge_type " << edge_types[k];
     edge_to_id[edge_types[k]] = k;
     id_to_edge.push_back(edge_types[k]);

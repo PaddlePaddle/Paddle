@@ -408,7 +408,7 @@ std::vector<pir::Operation*> DecompProgram::parse_block_ops(pir::Block* block) {
 
 void DecompProgram::decomp_program() {
   std::unordered_map<pir::Value, int> orig_vars_dict;
-  for (size_t i = 0; i < src_vars_.size(); i++) {
+  for (size_t i = 0; i < src_vars_.size(); i++) {  // NOLINT
     orig_vars_dict[src_vars_[i]] = static_cast<int>(i);
   }
   std::ostringstream orig_prog_stream;

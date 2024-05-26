@@ -78,8 +78,7 @@ std::string PrintOperationWithNoRegion(Operation* op) {
   os << " =";
 
   // print OpName & OpId
-  os << " \"" << op->name() << "(op_" << op->id() << ")"
-     << "\"";
+  os << " \"" << op->name() << "(op_" << op->id() << ")" << "\"";
 
   // print OpOperands
   os << " (";
@@ -202,10 +201,8 @@ void CheckInferSymWithInferMeta(
             std::ostringstream print_stream;
             print_stream
                 << "Warning : Check InferSymbolicShape for " << op->name()
-                << " (op_" << op->id() << ") "
-                << " carefully! "
-                << "shape[" << i
-                << "] of infer_sym_shape shoule be int64_t NOT a symbol!";
+                << " (op_" << op->id() << ") " << " carefully! " << "shape["
+                << i << "] of infer_sym_shape shoule be int64_t NOT a symbol!";
             VLOG(vlog_level) << print_stream.str();
             continue;
           }
@@ -215,8 +212,8 @@ void CheckInferSymWithInferMeta(
             std::ostringstream print_stream;
             print_stream << "Warning : Check InferSymbolicShape for "
                          << op->name() << " (op_" << op->id() << ") "
-                         << " carefully! "
-                         << "infer_sym_shape is [" << infer_meta_shape[i]
+                         << " carefully! " << "infer_sym_shape is ["
+                         << infer_meta_shape[i]
                          << "], but infer_meta_shape is ["
                          << infer_sym_shape[i].dyn_cast<int64_t>() << "].";
             VLOG(vlog_level) << print_stream.str();
@@ -317,10 +314,10 @@ void InferSymExprForBlock(const Block& block,
             const std::vector<Type>& vec_data =
                 value_type.dyn_cast<VectorType>().data();
             symbol::TensorListShapeOrDataDimExprs shape_data_list;
-            for (unsigned i = 0; i < vec_data.size(); ++i) {
-              CHECK(vec_data[i].isa<DenseTensorType>());
+            for (const auto& vec : vec_data) {
+              CHECK(vec.isa<DenseTensorType>());
               const DenseTensorType& type_info =
-                  vec_data[i].dyn_cast<DenseTensorType>();
+                  vec.dyn_cast<DenseTensorType>();
               shape_data_list.emplace_back(
                   CreateShapeOrDataByDDim(type_info.dims()));
             }

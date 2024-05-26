@@ -36,8 +36,10 @@ inline bool HasOptimizedOneDNNKernel(const KernelContext* ctx) {
     return true;
   }
 
-  for (size_t i = 0; i < dims.size(); ++i) {
-    if (dims[i] < 0) dims[i] = ndims + dims[i];
+  for (auto& dim : dims) {
+    if (dim < 0) {
+      dim += ndims;
+    }
   }
 
   sort(dims.begin(), dims.end());
