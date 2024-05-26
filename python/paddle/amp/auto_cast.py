@@ -26,7 +26,6 @@ from paddle.base.framework import (
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.static.amp.decorator import OptimizerWithMixedPrecision
-from paddle.static.amp.fp16_lists import AutoMixedPrecisionLists
 
 from .amp_lists import black_list, white_list
 
@@ -252,7 +251,7 @@ def _pir_transform(t, dtype):
                 param = op.operand(0).source()
                 cast_param = paddle.cast(param, dtype)
                 cast_param.persistable = True
-                paddle._pir_ops.set_parameter(cast_param, t.name)
+                paddle._pir_ops.updata_parameter(cast_param, t.name)
                 block.remove_op(op)
                 break
     main.set_parameters_from(startup)
@@ -323,9 +322,7 @@ def check_models(models):
     for model in models:
         if not isinstance(model, paddle.nn.Layer):
             raise RuntimeError(
-                "Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {}.".format(
-                    type(model)
-                )
+                f"Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {type(model)}."
             )
         if isinstance(model, paddle.DataParallel):
             raise RuntimeError(
@@ -353,9 +350,7 @@ def check_optimizers(optimizers):
     for optimizer in optimizers:
         if not _is_valid_optimizer(optimizer):
             raise RuntimeError(
-                "Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or DygraphShardingOptimizer, but receive {}.".format(
-                    type(optimizer)
-                )
+                f"Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or DygraphShardingOptimizer, but receive {type(optimizer)}."
             )
 
 
@@ -1039,15 +1034,15 @@ def decorate(
                     amp_lists=None,
                     level=level,
                     dtype=dtype,
-                    init_loss_scaling=2.0**16,
-                    incr_every_n_steps=2000,
-                    decr_every_n_nan_or_inf=1,
-                    incr_ratio=2.0,
-                    decr_ratio=0.5,
+                    init_loss_scaling=1.0,
+                    incr_every_n_steps=None,
+                    decr_every_n_nan_or_inf=None,
+                    incr_ratio=None,
+                    decr_ratio=None,
                     use_dynamic_loss_scaling=False,
                     use_amp_guard=None,
                     use_master_grad=master_grad,
-                    use_promote=True,
+                    use_promote=None,
                 )
                 return models, optimizers
         elif level == 'O2':
@@ -1061,16 +1056,18 @@ def decorate(
             else:
                 optimizers = OptimizerWithMixedPrecision(
                     optimizer=optimizers,
-                    amp_lists=AutoMixedPrecisionLists(dtype=dtype),
+                    amp_lists=None,
                     level=level,
                     dtype=dtype,
-                    init_loss_scaling=2**15,
+                    init_loss_scaling=1.0,
+                    incr_every_n_steps=None,
+                    decr_every_n_nan_or_inf=None,
+                    incr_ratio=None,
+                    decr_ratio=None,
                     use_dynamic_loss_scaling=False,
-                    incr_every_n_steps=1000,
-                    decr_every_n_nan_or_inf=2,
-                    incr_ratio=2.0,
-                    decr_ratio=0.8,
+                    use_amp_guard=None,
                     use_master_grad=master_grad,
+                    use_promote=None,
                 )
                 return models, optimizers
         else:

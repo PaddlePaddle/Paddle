@@ -28,10 +28,13 @@ set(XPU_XFA_LIB_NAME "libxpu_flash_attention.so")
 if(NOT DEFINED XPU_BASE_DATE)
   set(XPU_BASE_DATE "20240104")
 endif()
-if(NOT DEFINED XPU_XHPC_BASE_DATE)
-  set(XPU_XHPC_BASE_DATE "20240328")
+if(NOT DEFINED XPU_XDNN_BASE_DATE)
+  set(XPU_XDNN_BASE_DATE "20240327")
 endif()
-set(XPU_XCCL_BASE_VERSION "1.1.8.1")
+if(NOT DEFINED XPU_XHPC_BASE_DATE)
+  set(XPU_XHPC_BASE_DATE "20240515")
+endif()
+set(XPU_XCCL_BASE_VERSION "1.2.0.5")
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
   set(XPU_XFT_BASE_VERSION "20230602")
 endif()
@@ -44,6 +47,10 @@ if(NOT DEFINED XPU_BASE_URL)
 else()
   set(XPU_BASE_URL "${XPU_BASE_URL}")
 endif()
+
+set(XPU_XDNN_BASE_URL
+    "https://klx-sdk-release-public.su.bcebos.com/xdnn/stable/${XPU_XDNN_BASE_DATE}"
+)
 
 set(XPU_XCCL_BASE_URL
     "https://klx-sdk-release-public.su.bcebos.com/xccl/release/${XPU_XCCL_BASE_VERSION}"
@@ -105,7 +112,7 @@ set(XPU_XRE_URL
     "${XPU_BASE_URL}/${XPU_XRE_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
 set(XPU_XDNN_URL
-    "${XPU_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz"
+    "${XPU_XDNN_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
 set(XPU_XCCL_URL
     "${XPU_XCCL_BASE_URL}/${XPU_XCCL_DIR_NAME}.tar.gz"
@@ -229,7 +236,7 @@ if(WITH_XPTI)
 endif()
 
 if(WITH_XPU_XHPC)
-  target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB} ${XPU_XBLAS_LIB}
+  target_link_libraries(xpulib ${XPU_RT_LIB} ${XPU_XBLAS_LIB} ${XPU_API_LIB}
                         ${XPU_XFA_LIB})
 endif()
 

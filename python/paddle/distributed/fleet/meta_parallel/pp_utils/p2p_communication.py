@@ -188,23 +188,13 @@ class SendRecvMeta:
         actual_shape, actual_dtype = self._obtain_send_message(tensor)
         assert (
             self.send_shape_message == actual_shape
-        ), "send_shape_message: {}, actual_shape: {}".format(
-            self.send_shape_message, actual_shape
-        )
+        ), f"send_shape_message: {self.send_shape_message}, actual_shape: {actual_shape}"
         assert (
             self.send_dtype_message == actual_dtype
-        ), "send_dtype_message: {}, actual_dtype: {}".format(
-            self.send_dtype_message, actual_dtype
-        )
+        ), f"send_dtype_message: {self.send_dtype_message}, actual_dtype: {actual_dtype}"
 
     def __repr__(self):
-        return "send_shape_message: {}, send_dtype_message: {}, recv_shape_message: {}, recv_dtype_message: {}, recv_stop_gradient: {}".format(
-            self.send_shape_message,
-            self.send_dtype_message,
-            self.recv_shape_message,
-            self.recv_dtype_message,
-            self.recv_stop_gradient,
-        )
+        return f"send_shape_message: {self.send_shape_message}, send_dtype_message: {self.send_dtype_message}, recv_shape_message: {self.recv_shape_message}, recv_dtype_message: {self.recv_dtype_message}, recv_stop_gradient: {self.recv_stop_gradient}"
 
 
 def _is_valid_send_recv_partial(tensor, mp_degree):

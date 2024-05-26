@@ -33,7 +33,7 @@ class LoDResetOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GT(
           static_cast<int64_t>(level0.size()),
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "If Input(Y) is not provided, the output's LoD should be "
               "specified by attribute 'target_lod'. But the size of "
               "'target_lod' is 0."));
@@ -235,7 +235,6 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(LoDResetGradNoNeedBufferVarInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OPERATOR(lod_reset,
                   ops::LoDResetOp,
                   ops::LoDResetOpMaker,
@@ -252,7 +251,7 @@ PD_REGISTER_STRUCT_KERNEL(lod_reset,
                           CPU,
                           ALL_LAYOUT,
                           ops::LoDResetKernel,
-                          plat::float16,
+                          phi::dtype::float16,
                           float,
                           double,
                           int,
@@ -263,7 +262,7 @@ PD_REGISTER_STRUCT_KERNEL(lod_reset,
                           XPU,
                           ALL_LAYOUT,
                           ops::LoDResetKernel,
-                          plat::float16,
+                          phi::dtype::float16,
                           float,
                           double,
                           int,
@@ -274,7 +273,7 @@ PD_REGISTER_STRUCT_KERNEL(lod_reset_grad,
                           CPU,
                           ALL_LAYOUT,
                           ops::LoDResetGradKernel,
-                          plat::float16,
+                          phi::dtype::float16,
                           float,
                           double,
                           int,

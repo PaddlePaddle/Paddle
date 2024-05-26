@@ -23,22 +23,6 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct DequantizeFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& dev_ctx,
-                  const phi::DenseTensor* in,
-                  const phi::DenseTensor* scale,
-                  T max_range,
-                  phi::DenseTensor* out) {
-    auto in_e = framework::EigenVector<T>::Flatten(*in);
-    const T* scale_factor = scale->data<T>();
-    auto out_e = framework::EigenVector<T>::Flatten(*out);
-
-    auto& dev = *dev_ctx.eigen_device();
-    out_e.device(dev) = in_e * scale_factor[0] / max_range;
-  }
-};
-
-template <typename T>
 struct ChannelDequantizeFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& dev_ctx,
                   const phi::DenseTensor* in,
@@ -59,8 +43,8 @@ struct ChannelDequantizeFunctor<phi::CPUContext, T> {
           T s = scale_factor[i];
           phi::DenseTensor one_channel_in = in->Slice(i, i + 1);
           phi::DenseTensor one_channel_out = out->Slice(i, i + 1);
-          auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
-          auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
+          auto in_e = phi::EigenVector<T>::Flatten(one_channel_in);
+          auto out_e = phi::EigenVector<T>::Flatten(one_channel_out);
           auto& dev = *dev_ctx.eigen_device();
           out_e.device(dev) = in_e * s / max_range;
         }
@@ -128,8 +112,8 @@ struct ChannelDequantizeFunctor<phi::CPUContext, T> {
             T s = scale_one[j];
             phi::DenseTensor one_channel_in = one_batch_in.Slice(j, j + 1);
             phi::DenseTensor one_channel_out = one_batch_out.Slice(j, j + 1);
-            auto in_e = framework::EigenVector<T>::Flatten(one_channel_in);
-            auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
+            auto in_e = phi::EigenVector<T>::Flatten(one_channel_in);
+            auto out_e = phi::EigenVector<T>::Flatten(one_channel_out);
             auto& dev = *dev_ctx.eigen_device();
             out_e.device(dev) = in_e * s * scale_two[0] / max_range;
           }
@@ -139,50 +123,8 @@ struct ChannelDequantizeFunctor<phi::CPUContext, T> {
   }
 };
 
-template struct DequantizeFunctor<phi::CPUContext, float>;
-template struct DequantizeFunctor<phi::CPUContext, double>;
 template struct ChannelDequantizeFunctor<phi::CPUContext, float>;
 template struct ChannelDequantizeFunctor<phi::CPUContext, double>;
-
-class FakeDequantizeMaxAbsOp : public framework::OperatorWithKernel {
- public:
-  FakeDequantizeMaxAbsOp(const std::string& type,
-                         const framework::VariableNameMap& inputs,
-                         const framework::VariableNameMap& outputs,
-                         const framework::AttributeMap& attrs)
-      : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FakeDequantizeMaxAbs");
-    OP_INOUT_CHECK(
-        ctx->HasOutput("Out"), "Output", "Out", "FakeDequantizeMaxAbs");
-
-    ctx->ShareDim("X", /*->*/ "Out");
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
-};
-
-class FakeDequantizeMaxAbsOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X",
-             "(Tensor) The input with float-32/64 type is the "
-             "low precision tensor.");
-    AddInput("Scale", "(float) The scale in quantization stage.");
-    AddOutput("Out",
-              "(Tensor) The output is the dequantized high "
-              "precision tensor.");
-    AddAttr<float>("max_range", "(float) The max range in quantization stage.");
-    AddComment(R"DOC(
-FakeDequantizeMaxAbsOp operator.
-
-This calculation is an opposite operation of FakeQuantizeMaxAbsOp:
-
-$$Out = \frac{scale*X}{ max_range }$$
-
-)DOC");
-  }
-};
 
 class FakeChannelWiseDequantizeMaxAbsOp : public framework::OperatorWithKernel {
  public:
@@ -232,12 +174,12 @@ class FakeChannelWiseDequantizeMaxAbsOpMaker
                  "and mul, the quant_axis is equal to the cout axis.")
         .SetDefault(0)
         .AddCustomChecker([](const int& quant_axis) {
-          PADDLE_ENFORCE_EQ(quant_axis == 0 || quant_axis == 1,
-                            true,
-                            platform::errors::InvalidArgument(
-                                "'quant_axis' should be 0 or 1, but "
-                                "the received is %d",
-                                quant_axis));
+          PADDLE_ENFORCE_EQ(
+              quant_axis == 0 || quant_axis == 1,
+              true,
+              phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                           "the received is %d",
+                                           quant_axis));
         });
     AddAttr<int>("x_num_col_dims",
                  "The x_num_col_dims of mul. Only used for mul or matmul.")
@@ -245,7 +187,7 @@ class FakeChannelWiseDequantizeMaxAbsOpMaker
         .AddCustomChecker([](const int& x_num_col_dims) {
           PADDLE_ENFORCE_EQ(x_num_col_dims == 0,
                             false,
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "'x_num_col_dims' should be larger than 0, but "
                                 "the received is %d",
                                 x_num_col_dims));
@@ -270,19 +212,6 @@ Notes: In general, the per-channel quantization is only applied to weights and t
 
 namespace ops = paddle::operators;
 using CPU = phi::CPUContext;
-
-REGISTER_OPERATOR(
-    fake_dequantize_max_abs,
-    ops::FakeDequantizeMaxAbsOp,
-    ops::FakeDequantizeMaxAbsOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(fake_dequantize_max_abs,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::FakeDequantizeMaxAbsKernel,
-                          float,
-                          double) {}
 
 REGISTER_OPERATOR(
     fake_channel_wise_dequantize_max_abs,

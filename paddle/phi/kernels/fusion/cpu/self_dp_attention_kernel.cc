@@ -257,7 +257,9 @@ void softmax_sum_max(float* AB,
       __mmask16 mask = (remain >= 16 ? 0xffff : (1 << remain) - 1);
 
       __m512 vx = _mm512_maskz_loadu_ps(mask, buf + off);
-      vx = vexp(vx * vrefac - vmax);
+      vx = _mm512_mask_mul_ps(vx, mask, vx, vrefac);
+      vx = _mm512_mask_sub_ps(vx, mask, vx, vmax);
+      vx = vexp(vx);
 
       _mm512_mask_storeu_ps(buf + off, mask, vx);
 
@@ -275,8 +277,7 @@ void softmax_sum_max(float* AB,
       __mmask16 mask = (remain >= 16 ? 0xffff : (1 << remain) - 1);
 
       __m512 vx = _mm512_maskz_loadu_ps(mask, buf + off);
-      vx = vx * vrsum;
-
+      vx = _mm512_mask_mul_ps(vx, mask, vx, vrsum);
       _mm512_mask_storeu_ps(buf + off, mask, vx);
     }
   }
@@ -301,7 +302,10 @@ void update_out_blk(float* output,
       __mmask16 mask = (remain >= 16 ? 0xffff : (1 << remain) - 1);
       __m512 vout = _mm512_maskz_loadu_ps(mask, outbuf + off);
       __m512 vabc = _mm512_maskz_loadu_ps(mask, buf + off);
-      __m512 vupt = vout * merr * vfac + vabc;
+      vout = _mm512_mask_mul_ps(vout, mask, vout, merr);
+      vout = _mm512_mask_mul_ps(vout, mask, vout, vfac);
+      __m512 vupt = _mm512_set1_ps(0.0f);
+      vupt = _mm512_mask_add_ps(vupt, mask, vout, vabc);
       _mm512_mask_storeu_ps(outbuf + off, mask, vupt);
     }
     pre_sum[i] = sum[i];

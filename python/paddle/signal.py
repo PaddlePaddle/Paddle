@@ -542,22 +542,16 @@ def istft(
         if onesided:
             assert (
                 fft_size == n_fft // 2 + 1
-            ), 'fft_size should be equal to n_fft // 2 + 1({}) when onesided is True, but got {}.'.format(
-                n_fft // 2 + 1, fft_size
-            )
+            ), f'fft_size should be equal to n_fft // 2 + 1({n_fft // 2 + 1}) when onesided is True, but got {fft_size}.'
         else:
             assert (
                 fft_size == n_fft
-            ), 'fft_size should be equal to n_fft({}) when onesided is False, but got {}.'.format(
-                n_fft, fft_size
-            )
+            ), f'fft_size should be equal to n_fft({n_fft}) when onesided is False, but got {fft_size}.'
 
     if window is not None:
         assert (
             len(window.shape) == 1 and len(window) == win_length
-        ), 'expected a 1D window tensor of size equal to win_length({}), but got window with shape {}.'.format(
-            win_length, window.shape
-        )
+        ), f'expected a 1D window tensor of size equal to win_length({win_length}), but got window with shape {window.shape}.'
     else:
         window_dtype = (
             paddle.float32

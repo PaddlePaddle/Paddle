@@ -120,17 +120,6 @@ ir::Tensor BroadcastTo(
     const std::vector<ir::Expr>& out_shape,
     const std::string& out_name = cinn::common::UniqName("T_broadcast_to_out"));
 
-// This operator checks if all x and y satisfy the condition: |x - y| <= atol +
-// rtol * |y|
-ir::Tensor IsClose(
-    const ir::Tensor& x,
-    const ir::Tensor& y,
-    int axis = -1,
-    float rtol = 1e-05f,
-    float atol = 1e-08f,
-    bool equal_nan = false,
-    const std::string& out_name = cinn::common::UniqName("IsClose_output"));
-
 }  // namespace pe
 }  // namespace hlir
 }  // namespace cinn

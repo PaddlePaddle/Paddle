@@ -78,9 +78,7 @@ class _ConvNd(Layer):
         valid_padding_modes = {'zeros', 'reflect', 'replicate', 'circular'}
         if padding_mode not in valid_padding_modes:
             raise ValueError(
-                "padding_mode must be one of {}, but got padding_mode='{}'".format(
-                    valid_padding_modes, padding_mode
-                )
+                f"padding_mode must be one of {valid_padding_modes}, but got padding_mode='{padding_mode}'"
             )
 
         if padding_mode in {
@@ -95,9 +93,7 @@ class _ConvNd(Layer):
         valid_format = {'NHWC', 'NCHW', 'NDHWC', 'NCDHW', 'NLC', 'NCL'}
         if data_format not in valid_format:
             raise ValueError(
-                "data_format must be one of {}, but got data_format='{}'".format(
-                    valid_format, data_format
-                )
+                f"data_format must be one of {valid_format}, but got data_format='{data_format}'"
             )
 
         channel_last = (

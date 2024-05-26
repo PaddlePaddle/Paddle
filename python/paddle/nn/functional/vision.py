@@ -269,9 +269,7 @@ def grid_sample(
         )
     if padding_mode not in _padding_modes:
         raise ValueError(
-            "The padding mode of grid sample function should be in {}, but got: {}".format(
-                _padding_modes, padding_mode
-            )
+            f"The padding mode of grid sample function should be in {_padding_modes}, but got: {padding_mode}"
         )
 
     if not isinstance(align_corners, bool):

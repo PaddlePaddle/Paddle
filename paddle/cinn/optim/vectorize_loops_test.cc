@@ -55,7 +55,7 @@ TEST(Vectorize, replace_var) {
   Expr func = optim::Optimize(funcs, cinn::common::DefaultHostTarget());
 
   Target target;
-  target.arch = Target::Arch ::X86;
+  target.arch = common::X86Arch{};
   target.bits = Target::Bit ::k32;
   target.os = Target::OS ::Linux;
 
@@ -99,7 +99,7 @@ TEST(Vectorize, TestMarkVectorize) {
   Expr N(500);
 
   Target target;
-  target.arch = Target::Arch ::X86;
+  target.arch = common::X86Arch{};
   target.bits = Target::Bit ::k32;
   target.os = Target::OS ::Linux;
 

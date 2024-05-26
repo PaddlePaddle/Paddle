@@ -12,17 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
+from os.path import dirname
 
 import numpy as np
 from test_infer_sym_shape_utils import (
     TestBase,
-    apply_to_static,
     check_infer_results,
 )
 
 import paddle
 from paddle.static import InputSpec
+
+sys.path.append(dirname(dirname(__file__)))
+from utils import apply_to_static
 
 
 class ArangeNet(paddle.nn.Layer):
@@ -42,17 +46,17 @@ class ArangeNet(paddle.nn.Layer):
 
 class ArangeOpInferSymbolicShapeTest(TestBase):
     def prepare_data(self):
-        self.start = paddle.full([1], 0)
-        self.end = paddle.full([1], 5)
-        self.step = paddle.full([1], 1)
+        self.start = paddle.full([1], 0, dtype='int32')
+        self.end = paddle.full([1], 5, dtype='int32')
+        self.step = paddle.full([1], 1, dtype='int32')
         self.expected = ['shape[Mul(Add(S1, -S0), 1 / (S2))], data[NULL]']
 
     def test_eval_symbolic(self):
         net = ArangeNet()
         input_spec = [
-            InputSpec(shape=[None], dtype='float32'),
-            InputSpec(shape=[None], dtype='float32'),
-            InputSpec(shape=[None], dtype='float32'),
+            InputSpec(shape=[1], dtype='int32'),
+            InputSpec(shape=[1], dtype='int32'),
+            InputSpec(shape=[1], dtype='int32'),
         ]
         net = apply_to_static(net, False, input_spec)
         net.eval()
@@ -96,7 +100,7 @@ class EmptyNet(paddle.nn.Layer):
 
     def forward(self, x):
         out = paddle.empty(shape=[128, 32])
-        out = paddle.empty(shape=x)
+        out = paddle.empty(shape=x.shape)
         return out
 
 
@@ -110,7 +114,7 @@ class EmptyOpInferSymbolicShapeTest(TestBase):
     def test_eval_symbolic(self):
         net = EmptyNet()
 
-        x_spec = InputSpec(shape=[None, None, None], dtype='float32')
+        x_spec = InputSpec(shape=[None, None, None], dtype='int32')
         input_spec = [x_spec]
         net = apply_to_static(net, False, input_spec)
         net.eval()

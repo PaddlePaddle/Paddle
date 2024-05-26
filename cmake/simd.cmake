@@ -11,12 +11,17 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   set(AVX_FLAG "-mavx")
   set(AVX2_FLAG "-mavx2")
   set(AVX512F_FLAG "-mavx512f")
+  set(Wno_Maybe_Uninitialized "-Wno-maybe-uninitialized")
+  set(FMA_FLAG "-mfma")
 elseif(MSVC)
   set(MMX_FLAG "/arch:MMX")
   set(SSE2_FLAG "/arch:SSE2")
   set(SSE3_FLAG "/arch:SSE3")
   set(AVX_FLAG "/arch:AVX")
   set(AVX2_FLAG "/arch:AVX2")
+  set(AVX512F_FLAG "/arch:AVX512")
+  set(Wno_Maybe_Uninitialized "/wd4701")
+  set(FMA_FLAG "/arch:AVX2")
 endif()
 
 set(CMAKE_REQUIRED_FLAGS_RETAINED ${CMAKE_REQUIRED_FLAGS})
@@ -118,6 +123,9 @@ int main()
     return 0;
 }"
   AVX512F_FOUND)
+if(AVX512F_FOUND)
+  add_definitions(-DPADDLE_WITH_AVX512F)
+endif()
 
 set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_RETAINED})
 mark_as_advanced(MMX_FOUND SSE2_FOUND SSE3_FOUND AVX_FOUND AVX2_FOUND

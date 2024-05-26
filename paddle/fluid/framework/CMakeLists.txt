@@ -153,10 +153,10 @@ if(WITH_XPU)
   target_link_libraries(var_type_traits dynload_xpti)
 endif()
 
-# every source file that includes "dnnl.h" must depends on mkldnn
-# or, the first one should depends on mkldnn
-if(WITH_MKLDNN)
-  add_dependencies(var_type_traits mkldnn)
+# every source file that includes "dnnl.h" must depends on onednn
+# or, the first one should depends on onednn
+if(WITH_ONEDNN)
+  add_dependencies(var_type_traits onednn)
 endif()
 
 set(BRPC_DEPS "")
@@ -273,10 +273,10 @@ cc_library(
   SRCS shape_inference.cc
   DEPS phi common attribute selected_rows_utils)
 
-# every source file that includes "dnnl.h" must depends on mkldnn
-# or, the first one should depends on mkldnn
-if(WITH_MKLDNN)
-  add_dependencies(shape_inference mkldnn)
+# every source file that includes "dnnl.h" must depends on onednn
+# or, the first one should depends on onednn
+if(WITH_ONEDNN)
+  add_dependencies(shape_inference onednn)
 endif()
 
 cc_library(
@@ -550,7 +550,6 @@ cc_library(
   executor_gc_helper
   SRCS executor_gc_helper.cc
   DEPS while_op_helper
-       recurrent_op_helper
        conditional_block_op_helper
        pylayer_op_helper
        scope
@@ -585,7 +584,6 @@ if(WITH_DISTRIBUTE)
            device_worker_factory.cc
            data_set.cc
       DEPS fleet_wrapper
-           recurrent_op_helper
            op_registry
            device_context
            scope
@@ -660,8 +658,7 @@ if(WITH_DISTRIBUTE)
            heter_section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS recurrent_op_helper
-           op_registry
+      DEPS op_registry
            device_context
            scope
            framework_proto
@@ -671,7 +668,6 @@ if(WITH_DISTRIBUTE)
            glog
            index_sampler
            index_wrapper
-           sampler
            index_dataset_proto
            lod_rank_table
            framework_io
@@ -737,8 +733,7 @@ if(WITH_DISTRIBUTE)
            section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS recurrent_op_helper
-           op_registry
+      DEPS op_registry
            device_context
            scope
            framework_proto
@@ -797,8 +792,7 @@ elseif(WITH_PSLIB)
          section_worker.cc
          device_worker_factory.cc
          data_set.cc
-    DEPS recurrent_op_helper
-         op_registry
+    DEPS op_registry
          device_context
          scope
          framework_proto
@@ -844,8 +838,7 @@ else()
          section_worker.cc
          device_worker_factory.cc
          data_set.cc
-    DEPS recurrent_op_helper
-         op_registry
+    DEPS op_registry
          device_context
          scope
          framework_proto
@@ -868,14 +861,25 @@ else()
 endif()
 
 target_link_libraries(
-  executor while_op_helper executor_gc_helper recurrent_op_helper
-  conditional_block_op_helper pylayer_op_helper)
+  executor
+  while_op_helper
+  executor_gc_helper
+  static_prim_api
+  static_utils
+  get_expected_kernel_func
+  conditional_block_op_helper
+  pylayer_op_helper)
 
 cc_library(
   parallel_executor
   SRCS parallel_executor.cc
   DEPS ssa_graph_executor graph build_strategy collective_helper
        variable_helper)
+
+cc_library(
+  compiled_program
+  SRCS compiled_program.cc
+  DEPS graph build_strategy)
 
 cc_library(
   executor_cache
@@ -954,8 +958,8 @@ cc_library(
   DEPS common)
 target_link_libraries(type_info pir op_dialect)
 add_dependencies(type_info framework_proto auto_parallel_proto xxhash)
-if(WITH_MKLDNN)
-  add_dependencies(type_info mkldnn)
+if(WITH_ONEDNN)
+  add_dependencies(type_info onednn)
 endif()
 
 set(FLUID_FRAMEWORK_MODULES

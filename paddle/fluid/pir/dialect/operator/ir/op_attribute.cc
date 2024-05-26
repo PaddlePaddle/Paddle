@@ -30,7 +30,7 @@ phi::DataLayout DataLayoutAttribute::data() const {
   return storage()->GetAsKey();
 }
 
-phi::Scalar ScalarAttribute::data() {
+phi::Scalar ScalarAttribute::data() const {
   if (isa<pir::FloatAttribute>()) {
     return phi::Scalar(dyn_cast<pir::FloatAttribute>().data());
   } else if (isa<pir::DoubleAttribute>()) {

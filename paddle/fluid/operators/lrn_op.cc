@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 namespace paddle {
@@ -135,14 +135,14 @@ struct LRNGradFunctor<phi::CPUContext, T> {
                   T beta,
                   const DataLayout data_layout) {
     T ratio = -2 * alpha * beta;
-    auto x_g_e = framework::EigenVector<T>::Flatten(*x_g);
+    auto x_g_e = phi::EigenVector<T>::Flatten(*x_g);
     x_g_e = x_g_e.constant(0.0);
 
-    auto e_x = framework::EigenTensor<T, 4>::From(x);
-    auto e_x_g = framework::EigenTensor<T, 4>::From(*x_g);
-    auto e_out = framework::EigenTensor<T, 4>::From(out);
-    auto e_out_g = framework::EigenTensor<T, 4>::From(out_g);
-    auto e_mid = framework::EigenTensor<T, 4>::From(mid);
+    auto e_x = phi::EigenTensor<T, 4>::From(x);
+    auto e_x_g = phi::EigenTensor<T, 4>::From(*x_g);
+    auto e_out = phi::EigenTensor<T, 4>::From(out);
+    auto e_out_g = phi::EigenTensor<T, 4>::From(out_g);
+    auto e_mid = phi::EigenTensor<T, 4>::From(mid);
 
     const int start = -(n - 1) / 2;
     const int end = start + n;
@@ -199,23 +199,23 @@ class LRNOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dim.size(),
         4,
-        platform::errors::InvalidArgument("Input(input) rank should be 4, "
-                                          "but received input rank (%d) != 4",
-                                          x_dim.size()));
+        phi::errors::InvalidArgument("Input(input) rank should be 4, "
+                                     "but received input rank (%d) != 4",
+                                     x_dim.size()));
 
     int n = ctx->Attrs().Get<int>("n");
-    PADDLE_ENFORCE_GT(n,
-                      0UL,
-                      platform::errors::InvalidArgument(
-                          "Argument(n) should be positive, "
-                          "but received n(%d) not greater than 0",
-                          n));
-    PADDLE_ENFORCE_EQ(n % 2,
-                      1UL,
-                      platform::errors::InvalidArgument(
-                          "Argument(n) should be odd value, "
-                          "but received n(%d) is not an odd value",
-                          n));
+    PADDLE_ENFORCE_GT(
+        n,
+        0UL,
+        phi::errors::InvalidArgument("Argument(n) should be positive, "
+                                     "but received n(%d) not greater than 0",
+                                     n));
+    PADDLE_ENFORCE_EQ(
+        n % 2,
+        1UL,
+        phi::errors::InvalidArgument("Argument(n) should be odd value, "
+                                     "but received n(%d) is not an odd value",
+                                     n));
 
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");

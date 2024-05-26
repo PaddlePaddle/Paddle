@@ -72,16 +72,43 @@ CINNSchedule GetInjectiveScheduleFunc(
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
     pe::IRInjectiveSchedule(ir_sch, output_shapes.front(), target);
-    /*if (target.arch == Target::Arch::NVGPU) {
-      pe::IRInjectiveSchedule(ir_sch, output_shapes.front(), target);
-    } else if (target.arch == Target::Arch::X86) {
-      pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target,
-    vectorizable);
-    }*/
     std::vector<cinn::common::CINNValue> res{
         cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
     *ret = cinn::common::CINNValuePack{res};
   });
+}
+
+std::string GetExternFuncNameArchPrefixImpl(common::UnknownArch,
+                                            const std::string& func_name) {
+  std::stringstream ss;
+  ss << func_name << " only supports X86 and NVGPU! Please Check.\n";
+  PADDLE_THROW(phi::errors::Fatal(ss.str()));
+}
+
+std::string GetExternFuncNameArchPrefixImpl(common::X86Arch,
+                                            const std::string& func_name) {
+  return "host_";
+}
+
+std::string GetExternFuncNameArchPrefixImpl(common::ARMArch,
+                                            const std::string& func_name) {
+  std::stringstream ss;
+  ss << func_name << " only supports X86 and NVGPU! Please Check.\n";
+  PADDLE_THROW(phi::errors::Fatal(ss.str()));
+}
+
+std::string GetExternFuncNameArchPrefixImpl(common::NVGPUArch,
+                                            const std::string& func_name) {
+  return "nvgpu_";
+}
+
+std::string GetExternFuncNameArchPrefix(common::Arch arch,
+                                        const std::string& func_name) {
+  return std::visit(
+      [&](const auto& impl) {
+        return GetExternFuncNameArchPrefixImpl(impl, func_name);
+      },
+      arch.variant());
 }
 
 std::string GetExternFuncName(const cinn::common::Target& target,
@@ -95,15 +122,8 @@ std::string GetExternFuncName(const cinn::common::Target& target,
     func_proto_name.append("cinn_");
   }
   if (need_target) {
-    if (target.arch == cinn::common::Target::Arch::NVGPU) {
-      func_proto_name.append("nvgpu_");
-    } else if (target.arch == cinn::common::Target::Arch::X86) {
-      func_proto_name.append("host_");
-    } else {
-      std::stringstream ss;
-      ss << func_name << " only supports X86 and NVGPU! Please Check.\n";
-      PADDLE_THROW(phi::errors::Fatal(ss.str()));
-    }
+    const auto& prefix = GetExternFuncNameArchPrefix(target.arch, func_name);
+    func_proto_name.append(prefix);
   }
   func_proto_name.append(func_name);
   if (!need_type) {

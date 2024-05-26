@@ -94,9 +94,7 @@ class TestGradientClipByGlobalNorm(unittest.TestCase):
                 sharding_p,
                 rtol=1e-05,
                 atol=1e-08,
-                err_msg='gradient clip by global norm has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                    dp_p, sharding_p, dp_p - sharding_p
-                ),
+                err_msg=f'gradient clip by global norm has wrong results!, \nu={dp_p}\nv={sharding_p}\ndiff={dp_p - sharding_p}',
             )
 
     def test_grad_clip(self):

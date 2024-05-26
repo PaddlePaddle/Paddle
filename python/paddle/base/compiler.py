@@ -13,15 +13,13 @@
 # limitations under the License.
 
 import sys
-import warnings
 
 from . import core, framework
 from .framework import cpu_places, cuda_places, xpu_places
 
 __all__ = []
 
-ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
-BuildStrategy = core.ParallelExecutor.BuildStrategy
+BuildStrategy = core.CompiledProgram.BuildStrategy
 InferNativeConfig = core.NativeConfig
 InferAnalysisConfig = core.AnalysisConfig
 DeviceType = core.DeviceType
@@ -157,7 +155,6 @@ class CompiledProgram:
         self._share_vars_from = None
         self._places = None
         self._build_strategy = build_strategy
-        self._exec_strategy = None
 
     def _with_inference_optimize(self, config):
         """Add inference optimize
@@ -202,39 +199,11 @@ class CompiledProgram:
 
         assert isinstance(
             places, (list, tuple)
-        ), "Currently, The places type can only be list or tuple, but the input type is {}.".format(
-            type(places)
-        )
+        ), f"Currently, The places type can only be list or tuple, but the input type is {type(places)}."
 
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
         self._build_strategy.is_distribution = _is_pserver_mode(self._program)
-
-        if self._exec_strategy is None:
-            self._exec_strategy = ExecutionStrategy()
-        self._exec_strategy._use_device = use_device
-
-        if self._exec_strategy.num_threads == 0:
-            if self._exec_strategy._use_device == DeviceType.CUDA:
-                # Experiments on se-resnext shows that too many threads hurt
-                # performance. Worth tunning for other models in the future.
-                self._exec_strategy.num_threads = len(places) * 4
-            elif self._exec_strategy._use_device == DeviceType.XPU:
-                # Currently only single thread is supported in Kunlun XPU.
-                self._exec_strategy.num_threads = 1
-            else:
-                self._exec_strategy.num_threads = len(places) * 2
-
-        if (
-            "FLAGS_use_cinn" in core.globals()
-            and core.globals()["FLAGS_use_cinn"]
-            and self._exec_strategy.num_threads != 1
-        ):
-            warnings.warn(
-                "At present, when CINN is turned on, each process can "
-                "only contain one thread, so reset the number of threads to 1 here."
-            )
-            self._exec_strategy.num_threads = 1
 
         # TODO(wuyi): trainer endpoints should be passed in through
         # build_strategy, not program.xxx.
@@ -264,9 +233,6 @@ class CompiledProgram:
             self._build_strategy.enable_sequential_execution = True
 
         if self._program is not None and self._program._enable_dgc:
-            assert (
-                self._exec_strategy._use_device == DeviceType.CUDA
-            ), "DGC only used under CUDA environment."
             assert (
                 self._build_strategy.num_trainers * len(places) > 1
             ), "DGC is not available for single card training."
@@ -306,13 +272,12 @@ class CompiledProgram:
             raise RuntimeError(
                 "CUDA Graph is not allowed to capture when running the first batch."
             )
-        return core.ParallelExecutor(
+        return core.CompiledProgram(
             places,
             self._persistable_vars,
             '',
             self._scope,
             self._local_scopes,
-            self._exec_strategy,
             self._build_strategy,
             self._graph,
         )
@@ -546,10 +511,8 @@ class IpuDynamicPatcher:
                 current_tracing_count = len(self._caches)
                 if current_tracing_count > MAX_TRACED_PROGRAM_COUNT:
                     logging_utils.warn(
-                        "Current traced program number: {} > `max_tracing_count`:{}. Too much cached programs will bring expensive overhead. "
-                        "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors.".format(
-                            current_tracing_count, MAX_TRACED_PROGRAM_COUNT
-                        )
+                        f"Current traced program number: {current_tracing_count} > `max_tracing_count`:{MAX_TRACED_PROGRAM_COUNT}. Too much cached programs will bring expensive overhead. "
+                        "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors."
                     )
 
             return self._caches[item_id]

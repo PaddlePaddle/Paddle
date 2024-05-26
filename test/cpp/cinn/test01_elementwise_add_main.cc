@@ -31,7 +31,7 @@ TEST(test01_elementwise_add, basic) {
   C->Bind(C_buf);
 
   Target target;
-  target.arch = Target::Arch ::X86;
+  target.arch = common::X86Arch{};
   target.bits = Target::Bit ::k32;
   target.os = Target::OS ::Linux;
   Module::Builder builder("module1", target);
@@ -61,7 +61,7 @@ TEST(test01_elementwise_add, vectorize) {
   stages[C]->Vectorize(1, 8);
 
   Target target;
-  target.arch = Target::Arch ::X86;
+  target.arch = common::X86Arch{};
   target.bits = Target::Bit ::k32;
   target.os = Target::OS ::Linux;
   Module::Builder builder("module2", target);

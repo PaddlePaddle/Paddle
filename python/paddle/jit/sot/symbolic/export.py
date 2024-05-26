@@ -239,9 +239,7 @@ class PyFileGen:
                         f"    paddle.randint(low=0, high=2, shape={shape_str}, dtype=paddle.int32).cast(paddle.bool),"
                     )
                     numpy_inputs.append(
-                        "    np.random.randint(low=0, high=2, size={}, dtype='int').astype('bool'),".format(
-                            shape_str
-                        )
+                        f"    np.random.randint(low=0, high=2, size={shape_str}, dtype='int').astype('bool'),"
                     )
                 else:
                     paddle_inputs.append(

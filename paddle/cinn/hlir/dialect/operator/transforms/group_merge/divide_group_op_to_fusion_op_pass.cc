@@ -163,6 +163,8 @@ class GroupOpPattern : public pir::OpRewritePattern<cinn::dialect::GroupOp> {
             << "fusion_yield_values already has key!";
         const auto& shape_expr =
             shape_analysis.GetShapeOrDataForValue(vec_outs[i]);
+        // TODO(Hongqing-work): delete this after fix bug of
+        // cinn_dynamic_reshape_op_pass
         shape_analysis.SetShapeOrDataForValue(fusion_op.result(i), shape_expr);
         auto find_it = output_value2id.find(vec_outs[i]);
         if (find_it != output_value2id.end()) {

@@ -244,6 +244,24 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
   }
 }
 
+void FlashAttnQKVPackedGradInferMeta(const MetaTensor& qkv, MetaTensor* dqkv) {
+  if (dqkv) {
+    dqkv->share_meta(qkv);
+  }
+}
+
+void Flatten2GradInferMeta(const MetaTensor& x,
+                           const MetaTensor& x_shape,
+                           const MetaTensor& out_grad,
+                           int axis,
+                           MetaTensor* x_grad) {
+  const auto& xshape_dims = x_shape.dims();
+  auto x_dims = common::slice_ddim(xshape_dims, 1, xshape_dims.size());
+  x_grad->set_dims(x_dims);
+  x_grad->share_lod(x_shape);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
                                   const MetaTensor& out_grad,
                                   MetaTensor* x_grad,
@@ -318,6 +336,29 @@ void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
 
   logits_grad->set_dims(softmax.dims());
   logits_grad->set_dtype(softmax.dtype());
+}
+
+void CudnnLSTMGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& init_h,
+    const MetaTensor& init_c,
+    const paddle::optional<std::vector<const MetaTensor*>>& weight_list,
+    MetaTensor* x_grad,
+    MetaTensor* init_h_grad,
+    MetaTensor* init_c_grad,
+    std::vector<MetaTensor*> weight_list_grad) {
+  if (x_grad) {
+    x_grad->share_meta(x);
+  }
+  if (init_h_grad) {
+    init_h_grad->share_meta(init_h);
+  }
+  if (init_c_grad) {
+    init_c_grad->share_meta(init_c);
+  }
+  if (!weight_list_grad.empty()) {
+    UnchangedMultiInferMeta(weight_list.get(), weight_list_grad);
+  }
 }
 
 void DeformableConvGradInferMeta(const MetaTensor& x,
@@ -469,7 +510,7 @@ void GeneralTernaryGradInferMeta(const MetaTensor& x,
   if (dx) {
     dx->share_meta(x);
   }
-  if (dy) {
+  if (dy && y) {
     dy->share_meta(y);
   }
   if (dz) {
@@ -1146,6 +1187,32 @@ void ScatterNdAddGradInferMeta(const MetaTensor& index,
   }
 }
 
+void SequenceConvGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& padding_data,
+                               const MetaTensor& filter,
+                               const MetaTensor& out_grad,
+                               int context_length,
+                               bool padding_trainable,
+                               int context_start,
+                               int context_stride,
+                               MetaTensor* x_grad,
+                               MetaTensor* padding_data_grad,
+                               MetaTensor* filter_grad) {
+  if (padding_trainable && padding_data_grad != nullptr) {
+    padding_data_grad->set_dims(padding_data.dims());
+    padding_data_grad->set_dtype(padding_data.dtype());
+  }
+  if (x_grad != nullptr) {
+    x_grad->set_dims(x.dims());
+    x_grad->share_lod(x);
+    x_grad->set_dtype(x.dtype());
+  }
+  if (filter_grad != nullptr) {
+    filter_grad->set_dims(filter.dims());
+    filter_grad->set_dtype(filter.dtype());
+  }
+}
+
 void ShuffleBatchGradInferMeta(const MetaTensor& shuffle_idx,
                                const MetaTensor& out_grad,
                                int startup_seed,
@@ -1405,6 +1472,7 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
                             const MetaTensor& dout_v,
                             bool use_neox_rotary_style,
                             bool time_major,
+                            float rotary_emb_base,
                             MetaTensor* dq,
                             MetaTensor* dk,
                             MetaTensor* dv) {

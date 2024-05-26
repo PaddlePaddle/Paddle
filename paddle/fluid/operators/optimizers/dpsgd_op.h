@@ -18,8 +18,8 @@ limitations under the License. */
 
 #include <iostream>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -31,7 +31,7 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
     const auto *param_var = ctx.InputVar("Param");
     PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The Var(%s)'s type should be phi::DenseTensor, "
                           "but the received is %s",
                           ctx.InputNames("Param").front(),
@@ -40,7 +40,7 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
     const auto *grad_var = ctx.InputVar("Grad");
     PADDLE_ENFORCE_EQ(grad_var->IsType<phi::DenseTensor>(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The Var(%s)'s type should be phi::DenseTensor, "
                           "but the received is %s",
                           ctx.InputNames("Grad").front(),
@@ -56,12 +56,12 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
     auto sz = param_out->numel();
     PADDLE_ENFORCE_EQ(param->numel(),
                       sz,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input parameter's number of elements is error, "
                           "expected %zu, but received %zu."));
     PADDLE_ENFORCE_EQ(grad->numel(),
                       sz,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input gradient's number of elements is error, "
                           "expected %zu, but received %zu."));
 

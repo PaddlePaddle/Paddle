@@ -97,9 +97,7 @@ class RegisterPassHelper:
                     op_outs = out.Outputs()
                     if len(op_outs) != 1:
                         raise ValueError(
-                            "Operator '{}' has multiple outputs, please specify one output variable.".format(
-                                out._type
-                            )
+                            f"Operator '{out._type}' has multiple outputs, please specify one output variable."
                         )
                     for op_out in op_outs.values():
                         vars.extend(op_out)
@@ -315,9 +313,7 @@ class PassDesc:
         def _to_readable_code(self, skip_op_callstack=True):
             assert isinstance(
                 skip_op_callstack, bool
-            ), "skip_op_callstack parameter's type is error, expect bool, received {}".format(
-                type(skip_op_callstack)
-            )
+            ), f"skip_op_callstack parameter's type is error, expect bool, received {type(skip_op_callstack)}"
             outputs_str = "{"
             outputs_str += ", ".join(
                 [f"{k}={v}" for k, v in self._outputs.items()]
@@ -354,16 +350,12 @@ class PassDesc:
                 op_input = self._inputs.get(in_name)
                 if op_input is None:
                     raise ValueError(
-                        "Operator '{}' does not have input named '{}'.".format(
-                            self._type, in_name
-                        )
+                        f"Operator '{self._type}' does not have input named '{in_name}'."
                     )
                 if isinstance(in_args, (list, tuple)):
                     if len(in_args) == 0:
                         raise ValueError(
-                            "Input '{}' of operator '{}' cannot be empty.".format(
-                                in_name, self._type
-                            )
+                            f"Input '{in_name}' of operator '{self._type}' cannot be empty."
                         )
                 else:
                     in_args = [in_args]
@@ -372,9 +364,7 @@ class PassDesc:
                         op_outs = in_arg.Outputs()
                         if len(op_outs) != 1:
                             raise ValueError(
-                                "The size of outputs of operator '{}' is not equal 1, please specify one output variable.".format(
-                                    in_arg._type
-                                )
+                                f"The size of outputs of operator '{in_arg._type}' is not equal 1, please specify one output variable."
                             )
                         for op_out in op_outs.values():
                             op_input.extend(op_out)

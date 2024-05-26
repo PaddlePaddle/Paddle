@@ -197,10 +197,8 @@ def _parse_configs(user_config):
         for op_type in configs['quantize_op_types']:
             assert (op_type in QUANT_DEQUANT_PASS_OP_TYPES) or (
                 op_type in TRANSFORM_PASS_OP_TYPES
-            ), "{} is not support, \
-                        now support op types are {}".format(
-                op_type, TRANSFORM_PASS_OP_TYPES + QUANT_DEQUANT_PASS_OP_TYPES
-            )
+            ), f"{op_type} is not support, \
+                        now support op types are {TRANSFORM_PASS_OP_TYPES + QUANT_DEQUANT_PASS_OP_TYPES}"
 
     assert isinstance(configs['dtype'], str), "dtype must be a str."
 

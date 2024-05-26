@@ -124,9 +124,7 @@ class LRScheduler:
     def __init__(self, learning_rate=0.1, last_epoch=-1, verbose=False):
         if not isinstance(learning_rate, (float, int)):
             raise TypeError(
-                "The type of learning rate must be float, but received {}".format(
-                    type(learning_rate)
-                )
+                f"The type of learning rate must be float, but received {type(learning_rate)}"
             )
         if learning_rate < 0:
             raise ValueError(f"Invalid learning rate: {learning_rate}")
@@ -194,9 +192,7 @@ class LRScheduler:
 
         if self.verbose:
             print(
-                'Epoch {}: {} set learning rate to {}.'.format(
-                    self.last_epoch, self.__class__.__name__, self.last_lr
-                )
+                f'Epoch {self.last_epoch}: {self.__class__.__name__} set learning rate to {self.last_lr}.'
             )
 
     def state_dict(self):
@@ -889,9 +885,7 @@ class LinearWarmup(LRScheduler):
         type_check = isinstance(learning_rate, (float, int, LRScheduler))
         if not type_check:
             raise TypeError(
-                "the type of learning_rate should be [int, float or LRScheduler], the current type is {}".format(
-                    learning_rate
-                )
+                f"the type of learning_rate should be [int, float or LRScheduler], the current type is {learning_rate}"
             )
         self.learning_rate = learning_rate
         assert warmup_steps > 0 and isinstance(
@@ -1529,18 +1523,14 @@ class ReduceOnPlateau(LRScheduler):
         # loss must be float, numpy.ndarray or 1-D Tensor with numel 1
         if isinstance(metrics, (core.eager.Tensor, numpy.ndarray)):
             assert metrics.size == 1, (
-                "the size of metrics must be 1, but the current metrics.size is {}. Maybe that "
-                "you should call paddle.mean to process it first.".format(
-                    metrics.size
-                )
+                f"the size of metrics must be 1, but the current metrics.size is {metrics.size}. Maybe that "
+                "you should call paddle.mean to process it first."
             )
         elif not isinstance(
             metrics, (int, float, numpy.float32, numpy.float64)
         ):
             raise TypeError(
-                "metrics must be 'int', 'float', 'np.float64', 'numpy.ndarray' or 'paddle.Tensor', but receive {}".format(
-                    type(metrics)
-                )
+                f"metrics must be 'int', 'float', 'np.float64', 'numpy.ndarray' or 'paddle.Tensor', but receive {type(metrics)}"
             )
 
         if self.cooldown_counter > 0:
@@ -1560,11 +1550,7 @@ class ReduceOnPlateau(LRScheduler):
                     self.last_lr = new_lr
                     if self.verbose:
                         print(
-                            'Epoch {}: {} set learning rate to {}.'.format(
-                                self.last_epoch,
-                                self.__class__.__name__,
-                                self.last_lr,
-                            )
+                            f'Epoch {self.last_epoch}: {self.__class__.__name__} set learning rate to {self.last_lr}.'
                         )
 
     def _is_better(self, current, best):
@@ -1889,9 +1875,7 @@ class OneCycleLR(LRScheduler):
         # Check type and value of max_learning_rate
         if not isinstance(max_learning_rate, (float, int)):
             raise TypeError(
-                "'max_learning_rate' must be 'float' or 'int', but received {}".format(
-                    type(max_learning_rate)
-                )
+                f"'max_learning_rate' must be 'float' or 'int', but received {type(max_learning_rate)}"
             )
         if max_learning_rate < 0:
             raise ValueError("'max_learning_rate' must be a positive integer.")
@@ -1899,9 +1883,7 @@ class OneCycleLR(LRScheduler):
         # Check type and value of end_learning_rate
         if not isinstance(end_learning_rate, (float, int)):
             raise TypeError(
-                "'end_learning_rate' must be 'float' or 'int', but received {}".format(
-                    type(end_learning_rate)
-                )
+                f"'end_learning_rate' must be 'float' or 'int', but received {type(end_learning_rate)}"
             )
         if end_learning_rate < 0:
             raise ValueError("'end_learning_rate' must be a positive integer.")
@@ -1928,9 +1910,7 @@ class OneCycleLR(LRScheduler):
         # Check type and value of divide_factor
         if not isinstance(divide_factor, (float, int)):
             raise TypeError(
-                "'divide_factor' must be 'float' or 'int', but received {}".format(
-                    type(divide_factor)
-                )
+                f"'divide_factor' must be 'float' or 'int', but received {type(divide_factor)}"
             )
 
         initial_lr = max_learning_rate / float(divide_factor)
@@ -1985,9 +1965,7 @@ class OneCycleLR(LRScheduler):
             self.anneal_func = self._linear_annealing
         else:
             raise ValueError(
-                "'anneal_strategy' must by one of 'cos' or 'linear', but received {}".format(
-                    anneal_strategy
-                )
+                f"'anneal_strategy' must by one of 'cos' or 'linear', but received {anneal_strategy}"
             )
         super().__init__(initial_lr, last_epoch, verbose)
 
@@ -2003,9 +1981,7 @@ class OneCycleLR(LRScheduler):
 
         if current_step > self.total_steps:
             raise ValueError(
-                "Tried to step {} times. However the number of total steps is {}".format(
-                    current_step, self.total_steps
-                )
+                f"Tried to step {current_step} times. However the number of total steps is {self.total_steps}"
             )
 
         for i, (end_step, step_size) in enumerate(
@@ -2134,44 +2110,32 @@ class CyclicLR(LRScheduler):
         # check type and value of max_learning_rate
         if not isinstance(max_learning_rate, (float, int)):
             raise TypeError(
-                "'max_learning_rate' must be 'float' or 'int', but received {}".format(
-                    type(max_learning_rate)
-                )
+                f"'max_learning_rate' must be 'float' or 'int', but received {type(max_learning_rate)}"
             )
         if max_learning_rate < 0:
             raise ValueError(
-                "'max_learning_rate' must be a positive integer, but received {}".format(
-                    max_learning_rate
-                )
+                f"'max_learning_rate' must be a positive integer, but received {max_learning_rate}"
             )
 
         # check type and value of step_size_up
         if not isinstance(step_size_up, int):
             raise TypeError(
-                "The type of 'step_size_up' must be int, but received {}".format(
-                    type(step_size_up)
-                )
+                f"The type of 'step_size_up' must be int, but received {type(step_size_up)}"
             )
         if step_size_up <= 0:
             raise ValueError(
-                "'step_size_up' must be a positive integer, but received {}".format(
-                    step_size_up
-                )
+                f"'step_size_up' must be a positive integer, but received {step_size_up}"
             )
 
         # check type and value of step_size_down
         if step_size_down is not None:
             if not isinstance(step_size_down, int):
                 raise TypeError(
-                    "The type of 'step_size_down' must be int, but received {}".format(
-                        type(step_size_down)
-                    )
+                    f"The type of 'step_size_down' must be int, but received {type(step_size_down)}"
                 )
             if step_size_down <= 0:
                 raise ValueError(
-                    "'step_size_down' must be a positive integer, but received {}".format(
-                        step_size_down
-                    )
+                    f"'step_size_down' must be a positive integer, but received {step_size_down}"
                 )
 
         # check type of exp_gamma
@@ -2331,16 +2295,12 @@ class LinearLR(LRScheduler):
     ):
         if start_factor > 1.0 or start_factor <= 0:
             raise ValueError(
-                "`start_factor` must be greater than 0 and less or equal to 1, but got {}".format(
-                    start_factor
-                )
+                f"`start_factor` must be greater than 0 and less or equal to 1, but got {start_factor}"
             )
 
         if end_factor > 1.0 or end_factor < 0:
             raise ValueError(
-                "`end_factor` must be greater than 0 and less than 1, but got {}".format(
-                    end_factor
-                )
+                f"`end_factor` must be greater than 0 and less than 1, but got {end_factor}"
             )
 
         if total_steps <= 0:
@@ -2524,9 +2484,7 @@ class CosineAnnealingWarmRestarts(LRScheduler):
         self.last_lr = self.get_lr()
         if self.verbose:
             print(
-                'Epoch {}: {} set learning rate to {}.'.format(
-                    self.last_epoch, self.__class__.__name__, self.last_lr
-                )
+                f'Epoch {self.last_epoch}: {self.__class__.__name__} set learning rate to {self.last_lr}.'
             )
 
 

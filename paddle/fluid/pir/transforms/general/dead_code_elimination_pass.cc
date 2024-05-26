@@ -15,8 +15,10 @@
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include <cstdint>
 
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/op_trait.h"
@@ -32,17 +34,26 @@ class DeadCodeEliminationPass : public pir::Pass {
   void Run(pir::Operation* op) override {
     VLOG(6) << "apply dead_code_elimination_pass";
     int64_t num_erasers{0};
+    std::vector<std::string> deleted_vars;
     bool updated{true};
     while (updated) {
       int64_t pre_num_erasers = num_erasers;
-      EraseOp(*op->GetParentProgram()->block(), &num_erasers);
+      EraseOp(*op->GetParentProgram()->block(), &num_erasers, &deleted_vars);
       updated = pre_num_erasers != num_erasers;
+    }
+    if (Has(pir::Pass::kParamScopeAttr)) {
+      auto scope = &Get<paddle::framework::Scope>(pir::Pass::kParamScopeAttr);
+      if (deleted_vars.size() > 0) {
+        scope->EraseVars(deleted_vars);
+      }
     }
     AddStatistics(num_erasers);
   }
 
  private:
-  void EraseOp(const pir::Block& block, int64_t* num_erasers) {
+  void EraseOp(const pir::Block& block,
+               int64_t* num_erasers,
+               std::vector<std::string>* deleted_vars) {
     std::vector<pir::Operation*> deleted_ops;
     for (auto& op : block) {
       if (op.HasTrait<pir::SideEffectTrait>() ||
@@ -56,7 +67,15 @@ class DeadCodeEliminationPass : public pir::Pass {
     }
 
     for (auto* op : deleted_ops) {
+      if (op->isa<pir::ParameterOp>()) {
+        auto parameter_op = op->dyn_cast<pir::ParameterOp>();
+        deleted_vars->push_back(parameter_op.param_name());
+      } else if (op->isa<pir::ConstantTensorOp>()) {
+        auto constant_tensor_op = op->dyn_cast<pir::ConstantTensorOp>();
+        deleted_vars->push_back(constant_tensor_op.tensor_name());
+      }
       op->Erase();
+      VLOG(4) << "erase op: " << op->name();
       (*num_erasers)++;
     }
 
@@ -65,12 +84,12 @@ class DeadCodeEliminationPass : public pir::Pass {
         for (size_t i = 0; i < op.num_regions(); ++i) {
           auto& inner_region = op.region(i);
           for (auto& inner_block : inner_region) {
-            EraseOp(inner_block, num_erasers);
+            EraseOp(inner_block, num_erasers, deleted_vars);
           }
         }
       }
     } else {
-      EraseOp(block, num_erasers);
+      EraseOp(block, num_erasers, deleted_vars);
     }
   }
 };

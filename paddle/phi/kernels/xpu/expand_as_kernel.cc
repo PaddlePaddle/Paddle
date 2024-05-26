@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#define MAX_RANK_SUPPORTED 6
+#define MAX_RANK_SUPPORTED 8
 
 namespace phi {
 

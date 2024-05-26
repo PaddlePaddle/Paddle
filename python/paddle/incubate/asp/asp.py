@@ -459,9 +459,7 @@ def prune_model(model, n=2, m=4, mask_algo='mask_1d', with_mask=True):
             place = paddle.CUDAPlace(gpu_id)
     else:
         raise TypeError(
-            "model should be paddle.nn.Layer or paddle.static.Program, but got {}".format(
-                type(model)
-            )
+            f"model should be paddle.nn.Layer or paddle.static.Program, but got {type(model)}"
         )
 
     return prune_func(
@@ -599,11 +597,9 @@ class ASPHelper:
                         ASPHelper._get_mask_name(param.name)
                     )
                     assert weight_mask_param is not None, (
-                        'Cannot find {} variable, please call optimizer.minimize ('
+                        f'Cannot find {ASPHelper._get_mask_name(param.name)} variable, please call optimizer.minimize ('
                         'paddle.incubate.asp.decorate(optimizer).minimize(loss)'
-                        ' and initialization (exe.run(startup_program)) first!'.format(
-                            ASPHelper._get_mask_name(param.name)
-                        )
+                        ' and initialization (exe.run(startup_program)) first!'
                     )
                     weight_mask_tensor = weight_mask_param.get_tensor()
                     weight_sparse_mask = weight_sparse_mask.astype(
@@ -650,10 +646,8 @@ class ASPHelper:
                             param.name, None
                         )
                         assert weight_mask_param is not None, (
-                            'Cannot find {} variable, please call asp.decorate() to'
-                            ' decorate your optimizer first!'.format(
-                                ASPHelper._get_mask_name(param.name)
-                            )
+                            f'Cannot find {ASPHelper._get_mask_name(param.name)} variable, please call asp.decorate() to'
+                            ' decorate your optimizer first!'
                         )
                         weight_mask_param.set_value(weight_sparse_mask)
 

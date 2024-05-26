@@ -12,12 +12,9 @@
  See the License for the specific language governing permissions and
  limitations under the License. */
 
-#include "paddle/fluid/operators/tdm_sampler_op.h"
-
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/sampler.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -81,15 +78,15 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Inputs(Input) of TdmSampler should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Travel"),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Inputs(Travel) of TdmSampler should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Layer"),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Inputs(Layer) of TdmSampler should not be null."));
     auto neg_samples_num_vec =
         ctx->Attrs().Get<std::vector<int>>("neg_samples_num_list");
@@ -137,12 +134,3 @@ REGISTER_OPERATOR(
     ops::TDMSamplerOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-PD_REGISTER_STRUCT_KERNEL(tdm_sampler,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::TDMSamplerKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}

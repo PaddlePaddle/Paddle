@@ -36,14 +36,14 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
                    "DecayedAdagradOp");
     PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Param").front(),
                       framework::proto::VarType::LOD_TENSOR,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input var's type should be phi::DenseTensor, "
                           "but the received is %s",
                           ctx->Inputs("Param").front(),
                           ctx->GetInputsVarType("Param").front()));
     PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Grad").front(),
                       framework::proto::VarType::LOD_TENSOR,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input var's type should be phi::DenseTensor, "
                           "but the received is %s",
                           ctx->Inputs("Grad").front(),
@@ -57,26 +57,26 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_NE(common::product(lr_dims),
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Maybe the Input variable LearningRate has not "
                           "been initialized. You may need to confirm "
                           "if you put exe.run(startup_program) "
                           "after optimizer.minimize function."));
-    PADDLE_ENFORCE_EQ(common::product(lr_dims),
-                      1,
-                      platform::errors::InvalidArgument(
-                          "LearningRate should have one element"));
+    PADDLE_ENFORCE_EQ(
+        common::product(lr_dims),
+        1,
+        phi::errors::InvalidArgument("LearningRate should have one element"));
     auto param_dims = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
         param_dims,
         ctx->GetInputDim("Grad"),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Param and Grad input of DecayedAdagradOp should have "
             "the same dimension."));
     PADDLE_ENFORCE_EQ(
         param_dims,
         ctx->GetInputDim("Moment"),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Param and Moment input of DecayedAdagradOp should have "
             "the same dimension."));
 

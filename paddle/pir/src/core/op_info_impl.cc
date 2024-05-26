@@ -21,15 +21,19 @@
 namespace pir {
 
 void OpInfo::AttachInterface(InterfaceValue &&interface_value) {
-  IR_ENFORCE(impl_, "Cann't attach interface to a nullptr OpInfo");
+  PADDLE_ENFORCE_NOT_NULL(impl_,
+                          phi::errors::InvalidArgument(
+                              "Cann't attach interface to a nullptr OpInfo"));
   impl_->AttachInterface(std::move(interface_value));
 }
 
 void OpInfoImpl::AttachInterface(InterfaceValue &&interface_value) {
   auto success = interface_set_.insert(std::move(interface_value)).second;
-  IR_ENFORCE(success,
-             "Interface: id[%u] is already registered. inset failed",
-             interface_value.type_id());
+  PADDLE_ENFORCE_EQ(success,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Interface: id[%u] is already registered. inset failed",
+                        interface_value.type_id()));
   VLOG(10) << "Attach a interface: id[" << interface_value.type_id() << "]. to "
            << op_name_;
 }
@@ -133,6 +137,14 @@ void OpInfoImpl::Destroy() {
   // (3) free memory
   VLOG(10) << "Free base_ptr " << reinterpret_cast<void *>(base_ptr);
   ::operator delete(base_ptr);
+}
+
+std::vector<std::string> OpInfoImpl::GetAttributesName() const {
+  std::vector<std::string> attributes_name;
+  for (size_t i = 0; i < num_attributes_; ++i) {
+    attributes_name.push_back(p_attributes_[i]);
+  }
+  return attributes_name;
 }
 
 }  // namespace pir

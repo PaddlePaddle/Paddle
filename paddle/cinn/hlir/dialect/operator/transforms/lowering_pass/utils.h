@@ -31,4 +31,6 @@ std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
 
 OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr);
 
+void UpdateGroupShapeOrDataExprs(OpLoweringGroupPtr group);
+
 }  // namespace cinn::dialect::ir::details

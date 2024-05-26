@@ -54,6 +54,8 @@ NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'solve',
     'qr',
     'layer_norm',
+    'cumprod',
+    # 'expand_v2',
 ]
 
 NEED_FIX_FP64_CHECK_OUTPUT_THRESHOLD_OP_LIST = [

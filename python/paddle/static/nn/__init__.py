@@ -37,7 +37,6 @@ from .common import (
 from .control_flow import case, cond, switch_case, while_loop
 from .loss import nce
 from .sequence_lod import (
-    sequence_concat,
     sequence_conv,
     sequence_enumerate,
     sequence_expand,
@@ -47,7 +46,6 @@ from .sequence_lod import (
     sequence_pad,
     sequence_pool,
     sequence_reshape,
-    sequence_reverse,
     sequence_scatter,
     sequence_slice,
     sequence_softmax,
@@ -83,7 +81,6 @@ __all__ = [
     'sequence_conv',
     'sequence_softmax',
     'sequence_pool',
-    'sequence_concat',
     'sequence_first_step',
     'sequence_last_step',
     'sequence_slice',
@@ -94,6 +91,5 @@ __all__ = [
     'sequence_reshape',
     'sequence_scatter',
     'sequence_enumerate',
-    'sequence_reverse',
     'prelu',
 ]

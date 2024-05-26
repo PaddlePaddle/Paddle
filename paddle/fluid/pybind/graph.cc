@@ -229,7 +229,7 @@ void BindNode(py::module *m) {
 
 class PYBIND11_HIDDEN PassAttrGetterSetterRegistry {
  private:
-  PassAttrGetterSetterRegistry() = default;
+  PassAttrGetterSetterRegistry() : getter_setter_map_() {}
   DISABLE_COPY_AND_ASSIGN(PassAttrGetterSetterRegistry);
 
   using Getter = std::function<py::object(const framework::ir::Pass & /*pass*/,

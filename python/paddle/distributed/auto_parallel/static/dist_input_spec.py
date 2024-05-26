@@ -59,6 +59,4 @@ class DistributedInputSpec(InputSpec):
         )
 
     def __repr__(self):
-        return "{}, mesh:{}, placements:{}".format(
-            super().__repr__(), self.mesh, self.dims_mapping
-        )
+        return f"{super().__repr__()}, mesh:{self.mesh}, placements:{self.dims_mapping}"

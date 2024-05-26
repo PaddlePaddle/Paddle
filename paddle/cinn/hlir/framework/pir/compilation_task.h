@@ -50,14 +50,13 @@ class CompilationTask {
   explicit CompilationTask(GroupCompilationContext* context)
       : context_(context) {}
 
-  void operator()();
-  pir::CINNKernelInfo GetCINNKernelInfo();
+  std::shared_ptr<pir::CompilationResult> operator()();
 
  private:
   void Lowering();
-  void CodegenAndJit();
-  std::unique_ptr<Instruction> BuildInstruction();
-  void BuildPirCINNKernelInfo(const ir::Module& module);
+  std::shared_ptr<pir::CompilationResult> CodegenAndJit();
+  std::shared_ptr<pir::CompilationResult> BuildPirCINNKernelInfo(
+      const ir::Module& module);
 
   GroupCompilationContext* context_;
 };

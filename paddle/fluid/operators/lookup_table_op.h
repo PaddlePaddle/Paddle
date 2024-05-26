@@ -17,17 +17,17 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
 
 using SelectedRows = phi::SelectedRows;
-using DDim = framework::DDim;
+using DDim = phi::DDim;
 
 constexpr int64_t kNoPadding = -1;
 
@@ -64,7 +64,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_LT(
               ids[i],
               row_number,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input "
                   "value.",
@@ -73,7 +73,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_GE(
               ids[i],
               0,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input "
                   "value.",
@@ -90,8 +90,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
       int64_t row_width = table_t.value().dims()[1];
       const auto *table = table_t.value().data<T>();
       auto *output = output_t->mutable_data<T>(context.GetPlace());
-      auto input_data_type =
-          framework::TransToProtoVarType(table_t.value().dtype());
+      auto input_data_type = table_t.value().dtype();
       for (int64_t i = 0; i < ids_numel; ++i) {
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
           memset(output + i * row_width, 0, row_width * sizeof(T));
@@ -99,7 +98,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_GE(
               ids[i],
               0,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
                   "expected >= 0. But received %ld",
                   ids[i]));
@@ -107,9 +106,9 @@ class LookupTableKernel : public framework::OpKernel<T> {
             auto id_index = table_t.GetIndexFromId(ids[i]);
 
             if (id_index != -1) {
-              if (input_data_type == framework::proto::VarType::INT8 ||
-                  input_data_type == framework::proto::VarType::INT16 ||
-                  input_data_type == framework::proto::VarType::BF16) {
+              if (input_data_type == phi::DataType::INT8 ||
+                  input_data_type == phi::DataType::INT16 ||
+                  input_data_type == phi::DataType::BFLOAT16) {
                 memcpy(output + i * row_width,
                        table + id_index * row_width,
                        row_width * sizeof(T));
@@ -129,20 +128,20 @@ class LookupTableKernel : public framework::OpKernel<T> {
             PADDLE_ENFORCE_GE(
                 ids[i],
                 0,
-                platform::errors::InvalidArgument(
+                phi::errors::InvalidArgument(
                     "Variable value (input) of OP(fluid.layers.embedding) "
                     "expected >= 0. But received %ld",
                     ids[i]));
             PADDLE_ENFORCE_GE(
                 id_index,
                 0,
-                platform::errors::InvalidArgument(
+                phi::errors::InvalidArgument(
                     "the input key should be exists. But received %d.",
                     id_index));
 
-            if (input_data_type == framework::proto::VarType::INT8 ||
-                input_data_type == framework::proto::VarType::INT16 ||
-                input_data_type == framework::proto::VarType::BF16) {
+            if (input_data_type == phi::DataType::INT8 ||
+                input_data_type == phi::DataType::INT16 ||
+                input_data_type == phi::DataType::BFLOAT16) {
               memcpy(output + i * row_width,
                      table + id_index * row_width,
                      row_width * sizeof(T));
@@ -173,7 +172,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       auto *table_t = context.Input<phi::SelectedRows>("W");
       table_dim = table_t->value().dims();
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "The parameter W of a LookupTable "
           "must be either phi::DenseTensor or SelectedRows"));
     }
@@ -210,7 +209,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
           common::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
       PADDLE_ENFORCE_EQ(d_table_value->dims(),
                         d_output_dims_2d,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "ShapeError: The shape of lookup_table@Grad and "
                             "output@Grad should be same. "
                             "But received lookup_table@Grad's shape = [%s], "
@@ -243,7 +242,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_LT(
               ids_data[i],
               N,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input "
                   "value.",
@@ -252,7 +251,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_GE(
               ids_data[i],
               0,
-              platform::errors::InvalidArgument(
+              phi::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
                   "expected >= 0 and < %ld, but got %ld. Please check input"
                   "value.",

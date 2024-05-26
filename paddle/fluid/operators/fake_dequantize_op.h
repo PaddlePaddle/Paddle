@@ -17,20 +17,11 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/ddim.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename DeviceContext, typename T>
-struct DequantizeFunctor {
-  void operator()(const DeviceContext& dev_ctx,
-                  const phi::DenseTensor* in,
-                  const phi::DenseTensor* scale,
-                  T max_range,
-                  phi::DenseTensor* out);
-};
 
 template <typename DeviceContext, typename T>
 struct ChannelDequantizeFunctor {
@@ -42,24 +33,6 @@ struct ChannelDequantizeFunctor {
                   const int quant_axis,
                   const int x_num_col_dims,
                   phi::DenseTensor* out);
-};
-
-template <typename T, typename DeviceContext>
-class FakeDequantizeMaxAbsKernel : public framework::OpKernel<T> {
- public:
-  virtual void Compute(const framework::ExecutionContext& ctx) const {
-    auto* in = ctx.Input<phi::DenseTensor>("X");
-    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
-    auto* out = ctx.Output<phi::DenseTensor>("Out");
-
-    float max_range = ctx.Attr<float>("max_range");
-
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    out->mutable_data<T>(dev_ctx.GetPlace());
-
-    DequantizeFunctor<DeviceContext, T>()(
-        dev_ctx, in, scale, static_cast<T>(max_range), out);
-  }
 };
 
 template <typename T, typename DeviceContext>
@@ -82,7 +55,7 @@ class FakeChannelWiseDequantizeMaxAbsKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           scales[0]->numel(),
           in->dims()[quant_axis],
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "The number of first scale values must be the same with "
               "quant_axis dimension value of Input(X) when the `Scales` has "
               "only one element, but %ld != %ld here.",
@@ -93,7 +66,7 @@ class FakeChannelWiseDequantizeMaxAbsKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           scales[0]->numel(),
           in->dims()[x_num_col_dims],
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "The number of first scale values must be the same with "
               "corresponding dimension value of Input(X) when the `Scales` "
               "has two elements, but %ld != %ld here.",
@@ -101,7 +74,7 @@ class FakeChannelWiseDequantizeMaxAbsKernel : public framework::OpKernel<T> {
               in->dims()[1]));
       PADDLE_ENFORCE_EQ(scales[1]->numel(),
                         1,
-                        platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "The second scale tensor should only have one "
                             "value at now, but it has %ld values here.",
                             scales[1]->numel()));

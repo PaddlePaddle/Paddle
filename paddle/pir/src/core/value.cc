@@ -22,10 +22,12 @@
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/src/core/value_impl.h"
 
-#define CHECK_NULL_IMPL(class_name, func_name)                  \
-  IR_ENFORCE(impl_,                                             \
-             "impl_ pointer is null when call func:" #func_name \
-             " , in class: " #class_name ".")
+#define CHECK_NULL_IMPL(class_name, func_name)               \
+  PADDLE_ENFORCE_NOT_NULL(                                   \
+      impl_,                                                 \
+      phi::errors::InvalidArgument(                          \
+          "impl_ pointer is null when call func:" #func_name \
+          " , in class: " #class_name "."))
 
 #define CHECK_VALUE_NULL_IMPL(func_name) CHECK_NULL_IMPL(Value, func_name)
 

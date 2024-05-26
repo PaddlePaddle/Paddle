@@ -74,7 +74,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -859,7 +858,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         )DOC")
 #endif
       .def("_share_filename",
-           [](phi::DenseTensor &self) {
+           [](phi::DenseTensor &self, bool use_file_descriptor) {
              if (!self.IsInitialized() || self.numel() == 0)
                throw std::runtime_error(
                    "Tensor not initialized or numel is 0. could not pass to "
@@ -886,6 +885,10 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
                int flags = memory::allocation::MAPPED_SHAREDMEM |
                            memory::allocation::MAPPED_EXCLUSIVE;
+               if (use_file_descriptor) {
+                   flags = flags | memory::allocation::MAPPED_KEEPFD |
+                           memory::allocation::MAPPED_UNLINK;
+               }
                std::string handle = memory::allocation::GetIPCName();
                int find_id = -1;
                if (FLAGS_use_shm_cache) {
@@ -894,9 +897,10 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                if (find_id != -1) {
                  handle = memory::allocation::MemoryMapAllocationPool::Instance().GetById(find_id).file_name_; // NOLINT
                }
+               int shared_fd = -1;
                auto shared_holder =
                    memory::allocation::AllocateRefcountedMemoryMapAllocation(
-                       handle, flags, data_size, find_id);
+                       handle, shared_fd, flags, data_size, find_id);
 
                // copy data & reset holder
                if (platform::is_cuda_pinned_place(holder->place())) {
@@ -914,8 +918,10 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              int type_idx = static_cast<int>(self.type());
 
              return py::make_tuple(mmap_allocation->ipc_name(),
+                                   mmap_allocation->shared_fd(),
                                    mmap_allocation->size(), type_idx,
-                                   common::vectorize(self.dims()), self.lod());
+                                   common::vectorize(self.dims()), self.lod(),
+                                   use_file_descriptor);
            },
            R"DOC(
            Serialize CPU lod tensor in shared memory to tuple.
@@ -935,30 +941,37 @@ void BindTensor(pybind11::module &m) {  // NOLINT
        )DOC")
       .def("_new_shared_filename",
            [](py::tuple t) {  // __setstate__
-             if (t.size() != 5)
+             if (t.size() != 7)
                throw std::runtime_error("Invalid Tensor meta info state!");
 
              phi::DenseTensor tensor;
 
              // 2. Rebuild Allocation
              const std::string &ipc_name = t[0].cast<std::string>();
-             size_t size = t[1].cast<size_t>();
+             const int shared_fd = t[1].cast<int>();
+             const bool use_file_descriptor = t[6].cast<bool>();
+
+             size_t size = t[2].cast<size_t>();
              int flags = memory::allocation::MAPPED_SHAREDMEM |
                          memory::allocation::MAPPED_NOCREATE;
+             if (use_file_descriptor) {
+                 flags = flags | memory::allocation::MAPPED_KEEPFD |
+                         memory::allocation::MAPPED_UNLINK;
+             }
              int find_id = -1;
              if (FLAGS_use_shm_cache) {
                find_id = memory::allocation::MemoryMapAllocationPool::Instance().FindFromCache(flags, size, ipc_name, /*check_refcount*/ false); // NOLINT
              }
              auto shared_holder =
                  memory::allocation::AllocateRefcountedMemoryMapAllocation(
-                     ipc_name, flags, size, find_id);
+                     ipc_name, shared_fd, flags, size, find_id);
 
              // 3. Rebuild Tensor
              tensor.ResetHolderWithType(
                  shared_holder,
-                 static_cast<phi::DataType>(t[2].cast<int>()));
-             tensor.Resize(common::make_ddim(t[3].cast<std::vector<int>>()));
-             tensor.set_lod(t[4].cast<framework::LoD>());
+                 static_cast<phi::DataType>(t[3].cast<int>()));
+             tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
+             tensor.set_lod(t[5].cast<framework::LoD>());
 
              return tensor;
            },
@@ -1085,6 +1098,8 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              }
              return self;
            })
+      .def("_unsafe_set_skip_check_mesh",
+           &DistTensor::unsafe_set_skip_check_mesh)
       .def("_clear", &DistTensor::clear);
 #endif
 

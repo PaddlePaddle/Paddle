@@ -70,7 +70,7 @@ class ProxyLayer(Layer):
     @paddle.jit.not_to_static
     def append_loss_to_shadow_output(self, mode):
         name = paddle.utils.unique_name.generate('loss')
-        paddle._pir_ops.set_persistable_value(self._loss_vars[mode], name)
+        paddle._C_ops.set_persistable_value(self._loss_vars[mode], name)
         self._loss_names[mode] = name
 
     def _train(self, inputs, labels):
@@ -363,6 +363,61 @@ class ProgramHelper:
         ], "Please call build_program(mode) firstly."
         func_name = '_' + self.proxy_layer.mode
         return getattr(self.proxy_layer, func_name)
+
+    def init_pir(self, main_program, place):
+        # collect all params in current dist program
+        param_values = main_program.global_block().all_parameters()
+        value_name_to_value = {}
+        dy_param_name_to_pir_param_name = {}
+        for value in param_values:
+            value_name_to_value[value.name] = value
+
+        dy_params = self.concrete_program.parameters[0]
+        pir_param = self.concrete_program.parameters[1]
+
+        for i in range(len(pir_param)):
+            if pir_param[i].name in value_name_to_value:
+                dy_param_name_to_pir_param_name[dy_params[i].name] = pir_param[
+                    i
+                ].name
+
+        for param in dy_params:
+            # create var in scope and share parameters to scope
+            if param is None:
+                continue
+            if param.name not in dy_param_name_to_pir_param_name:
+                # Release the reduntant params
+                param.get_tensor()._clear()
+                continue
+            if param.is_dense():
+                value_name = dy_param_name_to_pir_param_name[param.name]
+                value = value_name_to_value[value_name]
+                # get param_var's dist_attr
+                assert (
+                    value.is_dist_dense_tensor_type()
+                ), f"param [{value.name}] is not dist tensor type"
+                dist_attr = {
+                    "dims_mapping": value.dist_attr().dims_mapping,
+                    "process_shape": value.dist_attr().process_mesh.shape,
+                    "process_group": value.dist_attr().process_mesh.process_ids,
+                }
+                # slice param_value with dist_attr
+                # share sliced_param_value with param_tensor in global_scope
+                pir_scope_param = global_scope().var(value_name).get_tensor()
+                sliced_param = Converter.slice_with_dist_attr(
+                    param.numpy(), dist_attr
+                )
+                pir_scope_param.set(sliced_param, place)
+                param.get_tensor()._clear()
+
+            elif param.is_dist():
+                value_name = dy_param_name_to_pir_param_name[param.name]
+                value = value_name_to_value[value_name]
+                # assert value.is_dist_dense_tensor_type(), "param [{}] is not dist tensor type".format(value.name)
+                pir_scope_param = global_scope().var(value_name).get_tensor()
+                pir_scope_param._share_data_with(
+                    param.get_tensor().get_tensor()
+                )
 
     def init(self, main_program, place, dist_context):
         if self.lazy_init:

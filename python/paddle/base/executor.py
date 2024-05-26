@@ -22,6 +22,8 @@ from functools import lru_cache
 import numpy as np
 
 from paddle import pir
+from paddle.base.framework import in_cinn_mode
+from paddle.base.libpaddle.pir import apply_cinn_pass
 
 from ..pir import (
     Program as PirProgram,
@@ -268,9 +270,7 @@ def check_feed_shape_type(var, feed, num_places=1):
                 else feed._dtype()
             )
             raise ValueError(
-                'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
-                    var.name, var_dtype_format, feed_dtype_format
-                )
+                f'The data type of fed Variable {var.name!r} must be {var_dtype_format!r}, but received {feed_dtype_format!r}'
             )
     return True
 
@@ -301,7 +301,7 @@ def pir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
     """
     diff_shape = core.diff_tensor_shape(feed, target_shape, num_places)
     if diff_shape is not None:
-        raise ValueError(
+        warnings.warn(
             'The fed Variable %r should have dimensions = %d, shape = '
             '%r, but received fed shape %r on each device'
             % (name, len(target_shape), target_shape, diff_shape)
@@ -317,10 +317,8 @@ def pir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
             if isinstance(feed._dtype(), core.VarDesc.VarType)
             else feed._dtype()
         )
-        raise ValueError(
-            'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
-                name, var_dtype_format, feed_dtype_format
-            )
+        warnings.warn(
+            f'The data type of fed Variable {name!r} must be {var_dtype_format!r}, but received {feed_dtype_format!r}'
         )
     return True
 
@@ -1076,6 +1074,9 @@ class _ExecutorCache:
                         pir_program, param_mapping, new_program._grad_var_to_var
                     )
 
+                    if in_cinn_mode():
+                        apply_cinn_pass(pir_program)
+
                     type_to_program = {"default": pir_program}
 
                 else:
@@ -1093,7 +1094,18 @@ class _ExecutorCache:
         ):
             pm = pir.PassManager()
             for p in new_program._pass_opt['pass_list']:
-                pm.add_pass(p)
+                # Temporary implementation, it will be refined when auto_parallel refactored
+                if p == 'eliminate_transpose':
+                    from paddle.distributed.auto_parallel.static.pir_pass import (
+                        eliminate_transpose_by_reshape,
+                    )
+
+                    for job_type in plan.job_types():
+                        ir_program = plan.ir_program(job_type)
+                        eliminate_transpose_by_reshape(ir_program)
+                else:
+                    pm.add_pass(p, {})
+
             for job_type in plan.job_types():
                 ir_program = plan.ir_program(job_type)
                 pm.run(ir_program)
@@ -1156,6 +1168,11 @@ class _ExecutorCache:
                     op.result(0).persistable,
                 )
                 data_op_infos.append(tup)
+        from paddle.decomposition import decomp
+
+        if core._enable_dist_prim_all():
+            with decomp.prim_guard():
+                decomp.decompose_dist_program(program)
         return program, new_exe, data_op_infos
 
 
@@ -1455,9 +1472,7 @@ class Executor:
             elif isinstance(item, tuple):
                 if not isinstance(item[0], (list, tuple)):
                     raise TypeError(
-                        "Requires fetch_list[{}][0] shall be one of (list, tuple) when type(fetch_list[{}]) is `tuple`, but received fetch_list[{}][0]'s type is `{}`.".format(
-                            index, index, index, type(item[0]).__name__
-                        )
+                        f"Requires fetch_list[{index}][0] shall be one of (list, tuple) when type(fetch_list[{index}]) is `tuple`, but received fetch_list[{index}][0]'s type is `{type(item[0]).__name__}`."
                     )
                 for i in item[0]:
                     _get_targets(_optimize_ops, _fetch_list, i)
@@ -2106,12 +2121,10 @@ class Executor:
 
             lr_scheduler = program.lr_scheduler
             lr_value = lr_scheduler()
-            lr_var = program.lr_var
+            lr_var = program.get_parameter_value_by_name(program.lr_name)
 
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-            tensor = core.get_variable_tensor(
-                global_scope(), lr_scheduler._var_name
-            )
+            tensor = core.get_variable_tensor(global_scope(), program.lr_name)
             # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
             cpu_tensor = _as_lodtensor(data, core.CPUPlace())
             if core.is_cuda_graph_capturing():
@@ -2142,8 +2155,8 @@ class Executor:
 
         assert is_tuple_list(fetch_list), (
             "Currently , The fetch_list type only should be list or tuple, \n"
-            "but the input type is {}. For more information please refer to \n"
-            "the executor.run(...).".format(type(fetch_list))
+            f"but the input type is {type(fetch_list)}. For more information please refer to \n"
+            "the executor.run(...)."
         )
 
         res = []
@@ -2158,9 +2171,7 @@ class Executor:
                     res.append(var)
             else:
                 raise TypeError(
-                    "Require fetch_list[{}] 's type shall be one of (Value, str), but received {}.".format(
-                        i, type(var).__name__
-                    )
+                    f"Require fetch_list[{i}] 's type shall be one of (Value, str), but received {type(var).__name__}."
                 )
 
         return res
@@ -2525,8 +2536,8 @@ class Executor:
         reused_trainer = program._heter_pipeline_opt is not None or (
             program._fleet_opt is not None
             and program._fleet_opt.get("use_ps_gpu", False)
+            and program._fleet_opt.get("dump_fields_path", "") == ""
         )
-
         if reused_trainer is False:
             trainer_instance = (
                 self._default_executor.init_for_dataset(  # -->InitForDataset

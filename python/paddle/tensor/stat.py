@@ -540,7 +540,9 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
                 )
 
     out_tensor = out_tensor + paddle.sum(
-        paddle.cast(paddle.isnan(x), dtype=dtype) * x, axis=axis, keepdim=True
+        paddle.cast(paddle.isnan(x), dtype=dtype) * x.astype(dtype),
+        axis=axis,
+        keepdim=True,
     )
     if is_flatten:
         if keepdim:
@@ -624,9 +626,7 @@ def _compute_quantile(
         "midpoint",
     ]:
         raise ValueError(
-            "interpolation must be one of 'linear', 'lower', 'higher', 'nearest' or 'midpoint', but got {}".format(
-                interpolation
-            )
+            f"interpolation must be one of 'linear', 'lower', 'higher', 'nearest' or 'midpoint', but got {interpolation}"
         )
     # Validate axis
     dims = len(x.shape)
@@ -710,7 +710,7 @@ def _compute_quantile(
         if interpolation == "midpoint":
             return (tensor_upper + tensor_below) / 2
 
-        weights = (index - indices_below).astype(x.dtype)
+        weights = (index - indices_below.astype(index.dtype)).astype(x.dtype)
         # "linear"
         return paddle.lerp(
             tensor_below.astype(x.dtype),

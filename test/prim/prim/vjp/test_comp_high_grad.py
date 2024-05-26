@@ -412,6 +412,248 @@ class TestSiluHighGradCheck(unittest.TestCase):
 
 
 @param.parameterized_class(
+    ('shape1'),
+    [
+        ([2],),
+        ([2, 3],),
+        ([2, 3, 4],),
+        ([2, 3, 3, 4],),
+    ],
+)
+class TestExpHighGradCheck(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.shape1 = cls.shape1
+
+    def exp_wrapper(self, x):
+        return paddle.exp(x[0])
+
+    @prog_scope()
+    def func_double(self, place):
+        shape1 = self.shape1
+        eps = 0.0005
+        dtype = np.float64
+        x = paddle.static.data('x', shape1, dtype=dtype)
+        x.stop_gradient = False
+        x.persistable = True
+        out = paddle.exp(x)
+        x_arr = np.random.uniform(-1, 1, shape1).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+
+        # exp double grad only has CompositeOpMaker, don't need set prim_flag
+        from paddle.base import core
+
+        core._set_prim_backward_enabled(True)
+        gradient_checker.double_grad_check(
+            [x], y=out, x_init=[x_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.exp_wrapper,
+            [x],
+            y=out,
+            x_init=[x_arr],
+            place=place,
+        )
+        core._set_prim_backward_enabled(False)
+
+    @prog_scope()
+    def func_triple(self, place):
+        shape1 = self.shape1
+        eps = 0.0005
+        dtype = np.float64
+        x = paddle.static.data('x', shape1, dtype=dtype)
+        x.stop_gradient = False
+        x.persistable = True
+        out = paddle.exp(x)
+        x_arr = np.random.uniform(-1, 1, shape1).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+        from paddle.base import core
+
+        core._set_prim_backward_enabled(True)
+        gradient_checker.triple_grad_check(
+            [x], y=out, x_init=[x_arr], place=place, eps=eps
+        )
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.exp_wrapper,
+            [x],
+            y=out,
+            x_init=[x_arr],
+            place=place,
+        )
+        core._set_prim_backward_enabled(False)
+
+    def test_high_grad(self):
+        paddle.enable_static()
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            self.func_double(p)
+            self.func_triple(p)
+
+
+@param.parameterized_class(
+    ('shape1'),
+    [
+        ([2],),
+        ([2, 3],),
+        ([2, 3, 4],),
+        ([2, 3, 3, 4],),
+    ],
+)
+class TestLogHighGradCheck(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.shape1 = cls.shape1
+
+    def log_wrapper(self, x):
+        return paddle.log(x[0])
+
+    @prog_scope()
+    def func_double(self, place):
+        shape1 = self.shape1
+        eps = 0.0005
+        dtype = np.float64
+        x = paddle.static.data('x', shape1, dtype=dtype)
+        x.stop_gradient = False
+        x.persistable = True
+        out = paddle.log(x)
+        x_arr = np.random.uniform(0.0, 10.0, shape1).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+
+        # log double grad only has CompositeOpMaker,don't need set prim_flag
+        from paddle.base import core
+
+        core._set_prim_backward_enabled(True)
+        gradient_checker.double_grad_check(
+            [x], y=out, x_init=[x_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.log_wrapper,
+            [x],
+            y=out,
+            x_init=[x_arr],
+            place=place,
+        )
+        core._set_prim_backward_enabled(False)
+
+    @prog_scope()
+    def func_triple(self, place):
+        shape1 = self.shape1
+        eps = 0.0005
+        dtype = np.float64
+        x = paddle.static.data('x', shape1, dtype=dtype)
+        x.stop_gradient = False
+        x.persistable = True
+        out = paddle.log(x)
+        x_arr = np.random.uniform(0.0, 10.0, shape1).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+        from paddle.base import core
+
+        core._set_prim_backward_enabled(True)
+        gradient_checker.triple_grad_check(
+            [x], y=out, x_init=[x_arr], place=place, eps=eps
+        )
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.log_wrapper,
+            [x],
+            y=out,
+            x_init=[x_arr],
+            place=place,
+        )
+        core._set_prim_backward_enabled(False)
+
+    def test_high_grad(self):
+        paddle.enable_static()
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            self.func_double(p)
+            self.func_triple(p)
+
+
+@param.parameterized_class(
+    ('shape1'),
+    [
+        ([2],),
+        ([2, 3],),
+        ([2, 3, 4],),
+        ([2, 3, 3, 4],),
+    ],
+)
+class TestAbsHighGradCheck(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.shape1 = cls.shape1
+
+    def abs_wrapper(self, x):
+        return paddle.abs(x[0])
+
+    @prog_scope()
+    def func_double(self, place):
+        shape1 = self.shape1
+        eps = 0.0005
+        dtype = np.float64
+        x = paddle.static.data('x', shape1, dtype=dtype)
+        x.stop_gradient = False
+        x.persistable = True
+        out = paddle.abs(x)
+        x_arr = np.random.uniform(0.0, 10.0, shape1).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+
+        from paddle.base import core
+
+        core._set_prim_backward_enabled(True)
+        gradient_checker.double_grad_check(
+            [x], y=out, x_init=[x_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.abs_wrapper,
+            [x],
+            y=out,
+            x_init=[x_arr],
+            place=place,
+        )
+        core._set_prim_backward_enabled(False)
+
+    @prog_scope()
+    def func_triple(self, place):
+        shape1 = self.shape1
+        eps = 0.0005
+        dtype = np.float64
+        x = paddle.static.data('x', shape1, dtype=dtype)
+        x.stop_gradient = False
+        x.persistable = True
+        out = paddle.abs(x)
+        x_arr = np.random.uniform(0.0, 10.0, shape1).astype(dtype)
+        x_arr[np.abs(x_arr) < 0.005] = 0.002
+        from paddle.base import core
+
+        core._set_prim_backward_enabled(True)
+        gradient_checker.triple_grad_check(
+            [x], y=out, x_init=[x_arr], place=place, eps=eps
+        )
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.abs_wrapper,
+            [x],
+            y=out,
+            x_init=[x_arr],
+            place=place,
+        )
+        core._set_prim_backward_enabled(False)
+
+    def test_high_grad(self):
+        paddle.enable_static()
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+        for p in places:
+            self.func_double(p)
+            self.func_triple(p)
+
+
+@param.parameterized_class(
     ('shape1', 'shape2'),
     [
         (
