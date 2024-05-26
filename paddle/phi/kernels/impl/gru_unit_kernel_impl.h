@@ -62,8 +62,6 @@ void GRUUnitKernel(const Context& dev_ctx,
                    DenseTensor* hidden) {
   auto* input_p = &input;
   auto* hidden_prev_p = &hidden_prev;
-  auto* weight_p = &weight;
-  auto* bias_p = bias.get_ptr();
 
   dev_ctx.template Alloc<T>(gate);
   dev_ctx.template Alloc<T>(reset_hidden_prev);
