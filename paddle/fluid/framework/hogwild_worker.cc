@@ -307,7 +307,7 @@ int HogwildWorker::IsParameter(const std::string &name, bool full_match) {
   }
 }
 void HogwildWorker::BuildShardingDepends(const ProgramDesc &program) {
-  nccl_rank_id_ = place_.GetDeviceId();
+  nccl_rank_id_ = static_cast<int>(static_cast<unsigned char>(place_.GetDeviceId()));
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
   auto gpu_ps = PSGPUWrapper::GetInstance();
   nccl_rank_id_ = gpu_ps->GetNCCLRankId(nccl_rank_id_);
