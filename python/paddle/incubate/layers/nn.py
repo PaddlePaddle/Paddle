@@ -35,17 +35,36 @@ __all__ = []
 
 
 def inference(
+    cache_static_model=False,
     with_trt=False,
     save_model_dir="/root/.cache/",
     precision_mode="fp32",
+    switch_ir_optim=True,
+    switch_ir_debug=False,
     collect_shape=False,
 ):
     def decorator(func=None):
         import inspect
+        import os
 
         predictors = [None]
         signature = inspect.signature(func)
         arg_names = [v.name for v in signature.parameters.values()]
+        assert arg_names[0] == "self"
+        save_path = save_model_dir + func.__name__ + "/infer"
+        d2s_input_info_path = save_path + "_d2s_input_info.txt"
+        d2s_input_shapes = []
+        d2s_input_names = []
+
+        # get old d2s shapes!
+        if os.path.exists(d2s_input_info_path) and cache_static_model:
+            with open(d2s_input_info_path, "r") as f:
+                for line in f.readlines():
+                    name = line.split(":")[0]
+                    shape = line.split(":")[1]
+                    shape = [int(s) for s in shape.split(",")]
+                    d2s_input_shapes.append(shape)
+                    d2s_input_names.append(name)
 
         class WrappedLayer(paddle.nn.Layer):
             def __init__(self, layer):
@@ -59,49 +78,123 @@ def inference(
         def wrapper(*args, **kwargs):
             import paddle
 
+            def get_tensor(run_time_args):
+                if isinstance(run_time_args, paddle.Tensor):
+                    return [run_time_args]
+                elif isinstance(run_time_args, list):
+                    this_input_tensor_lists = []
+                    for ele in run_time_args:
+                        assert isinstance(ele, paddle.Tensor)
+                        this_input_tensor_lists.append(ele)
+                    return this_input_tensor_lists
+
             input_tensor_lists = []
             for i in range(len(args)):
                 if i > 0:
-                    assert isinstance(args[i], paddle.Tensor)
-                    input_tensor_lists.append(args[i])
+                    input_tensor_lists += get_tensor(args[i])
+                else:
+                    print(type(args[0]))
 
-            if predictors[0] is not None:
+            for i in range(len(arg_names)):
+                if arg_names[i] in kwargs.keys():
+                    this_input = kwargs[arg_names[i]]
+                    input_tensor_lists += get_tensor(this_input)
+            # initiate the d2s_input_shapes.
+            if len(d2s_input_shapes) == 0:
+                for tensor in input_tensor_lists:
+                    d2s_input_shapes.append(tensor.shape)
+
+            re_do_d2s = False
+            # check whether the shape is changed
+            for i in range(len(d2s_input_shapes)):
+                if d2s_input_shapes[i] is not None:
+                    for j in range(len(d2s_input_shapes[i])):
+                        if (
+                            d2s_input_shapes[i][j] != -1
+                            and d2s_input_shapes[i][j]
+                            != input_tensor_lists[i].shape[j]
+                        ):
+                            re_do_d2s = True
+                            d2s_input_shapes[i][j] = -1
+                            print("shape are changed, we need re do d2s.")
+
+            if predictors[0] is not None and not re_do_d2s:
                 results = predictors[0].run(input_tensor_lists)
                 return results if len(results) > 1 else results[0]
 
-            import os
+            if (
+                not os.path.exists(save_path + ".pdmodel")
+                or not cache_static_model
+                or re_do_d2s
+            ):
+                from paddle.static import InputSpec
 
-            from paddle.static import InputSpec
+                def get_d2s_spec(run_time_args, name):
+                    if isinstance(run_time_args, paddle.Tensor):
+                        return InputSpec.from_tensor(run_time_args, name=name)
+                    elif isinstance(run_time_args, list):
+                        this_input_spec = []
+                        suffix = 0
+                        for ele in run_time_args:
+                            assert isinstance(ele, paddle.Tensor)
+                            this_input_spec.append(
+                                InputSpec.from_tensor(
+                                    ele, name=name + "_" + str(suffix)
+                                )
+                            )
+                            suffix += 1
+                        return this_input_spec
 
-            save_path = save_model_dir + func.__name__ + "/infer"
-            if not os.path.exists(save_path + ".pdmodel"):
                 # we need do ds2.
                 input_specs = []
                 for i in range(len(args)):
                     if i == 0:
                         assert isinstance(args[i], paddle.nn.Layer)
                     else:
-                        assert isinstance(args[i], paddle.Tensor)
                         input_specs.append(
-                            InputSpec.from_tensor(args[i], name=arg_names[i])
+                            get_d2s_spec(args[i], name=arg_names[i])
                         )
 
+                # some args are passed from kwargs, we extract them from kwargs.
                 for i in range(len(arg_names)):
                     if arg_names[i] in kwargs.keys():
-                        assert isinstance(kwargs[arg_names[i]], paddle.Tensor)
+                        this_input = kwargs[arg_names[i]]
                         input_specs.append(
-                            InputSpec.from_tensor(
-                                kwargs[arg_names[i]], name=arg_names[i]
-                            )
+                            get_d2s_spec(this_input, name=arg_names[i])
                         )
 
-                input_specs = [input_specs]
+                # update the input_spec's shape for doing d2s
+                d2s_shapes_id = 0
+                for i in range(len(input_specs)):
+                    if type(input_specs[i]) == list:
+                        for j in range(len(input_specs[i])):
+                            input_specs[i][j].shape = d2s_input_shapes[
+                                d2s_shapes_id
+                            ]
+                            d2s_input_names.append(input_specs[i][j].name)
+                            d2s_shapes_id += 1
+                    else:
+                        input_specs[i].shape = d2s_input_shapes[d2s_shapes_id]
+                        d2s_input_names.append(input_specs[i].name)
+                        d2s_shapes_id += 1
 
+                input_specs = [input_specs]
                 mylayer = WrappedLayer(args[0])
                 model = paddle.jit.to_static(
                     mylayer, input_spec=input_specs, full_graph=True
                 )
                 paddle.jit.save(model, save_path)
+
+                # save d2s_shapes
+                assert len(d2s_input_names) == len(d2s_input_shapes)
+                with open(d2s_input_info_path, "w") as f:
+                    for i in range(len(d2s_input_names)):
+                        line = d2s_input_names[i] + ":"
+                        line += (
+                            ",".join([str(s) for s in d2s_input_shapes[i]])
+                            + "\n"
+                        )
+                        f.write(line)
 
             # create predictor
             model_dir = save_model_dir + func.__name__ + "/"
@@ -111,7 +204,8 @@ def inference(
 
             config = Config(model_file, params_file)
             config.enable_memory_optim()
-            config.switch_ir_debug()
+            config.switch_ir_debug(switch_ir_debug)
+            config.switch_ir_optim(switch_ir_optim)
 
             def get_infer_precision():
                 if precision_mode == "fp32":
@@ -124,14 +218,16 @@ def inference(
                     raise AssertionError("unsupported precision_mode")
 
             gpu_precision = get_infer_precision()
-            config.enable_use_gpu(1000, 0, gpu_precision)
+            device_num = paddle.device.get_device()
+            gpu_id = (int)(device_num.split(':')[1])
+            config.enable_use_gpu(1000, gpu_id, gpu_precision)
 
             if with_trt:
                 dynamic_names = []
                 min_input_shape = {}
                 max_input_shape = {}
                 opt_input_shape = {}
-                shape_range_file = model_dir + "/shape.txt"
+                shape_range_file = model_dir + "/trt_shape.txt"
                 if collect_shape:
                     config.collect_shape_range_info(shape_range_file)
                 elif os.path.exists(shape_range_file):
@@ -139,11 +235,16 @@ def inference(
                         shape_range_file, True
                     )
                 else:
-                    for i in range(len(args)):
-                        if i > 0:
-                            min_input_shape[arg_names[i]] = args[i].shape
-                            max_input_shape[arg_names[i]] = args[i].shape
-                            opt_input_shape[arg_names[i]] = args[i].shape
+                    for i in range(len(input_tensor_lists)):
+                        min_input_shape[
+                            d2s_input_names[i]
+                        ] = input_tensor_lists[i].shape
+                        max_input_shape[
+                            d2s_input_names[i]
+                        ] = input_tensor_lists[i].shape
+                        opt_input_shape[
+                            d2s_input_names[i]
+                        ] = input_tensor_lists[i].shape
 
                     config.set_trt_dynamic_shape_info(
                         min_input_shape, max_input_shape, opt_input_shape
@@ -157,7 +258,8 @@ def inference(
                     use_static=True,
                     use_calib_mode=False,
                 )
-
+            if predictors[0] is not None:
+                del predictors[0]
             predictors[0] = create_predictor(config)
 
             results = predictors[0].run(input_tensor_lists)
