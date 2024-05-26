@@ -20,30 +20,23 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/ir_context.h"
-
-namespace {
-
-void SetNewLayoutForValue(pir::Value value, common::DataLayout new_layout) {
-  if (!value || !value.type()) {
-    return;
-  }
-  auto tensor_type = value.type().dyn_cast<pir::DenseTensorType>();
-  if (!tensor_type) {
-    return;
-  }
-  auto new_tensor_type = pir::DenseTensorType::get(pir::IrContext::Instance(),
-                                                   tensor_type.dtype(),
-                                                   tensor_type.dims(),
-                                                   new_layout,
-                                                   tensor_type.lod(),
-                                                   tensor_type.offset());
-  value.set_type(new_tensor_type);
-}
-
-}  // namespace
+#include "paddle/pir/include/pass/utils.h"
 
 namespace paddle {
 namespace dialect {
+
+template <typename ConcreteOp>
+void RewriteByInfermeta(pir::Operation* op, common::DataLayout new_layout) {
+  std::vector<pir::Type> new_outputs = ConcreteOp::InferMeta(
+      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
+  for (size_t i = 0; i < new_outputs.size(); ++i) {
+    op->result(i).set_type(new_outputs[i]);
+  }
+
+  for (auto value : RelevantOutputsImpl<ConcreteOp>(op)) {
+    pir::SetNewLayoutForValue(value, new_layout);
+  }
+}
 
 template <>
 common::DataLayout PreferLayoutImpl<Conv2dOp>(pir::Operation* op) {
@@ -77,16 +70,7 @@ void RewriteByLayoutImpl<Conv2dOp>(pir::Operation* op,
       "data_format",
       pir::StrAttribute::get(pir::IrContext::Instance(),
                              common::DataLayoutToString(new_layout)));
-
-  std::vector<pir::Type> new_outputs = Conv2dOp::InferMeta(
-      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
-  for (size_t i = 0; i < new_outputs.size(); ++i) {
-    op->result(i).set_type(new_outputs[i]);
-  }
-
-  for (auto value : RelevantOutputsImpl<Conv2dOp>(op)) {
-    SetNewLayoutForValue(value, new_layout);
-  }
+  RewriteByInfermeta<Conv2dOp>(op, new_layout);
 }
 
 template <>
@@ -120,7 +104,6 @@ common::DataLayout PreferLayoutImpl<FusedConv2dAddActOp>(pir::Operation* op) {
 
   if (auto filter = concrete_op.filter()) {
     if (auto filter_type = filter.type()) {
-      std::cout << "The filter type is: " << filter_type << std::endl;
       if (filter_type.isa<DenseTensorType>()) {
         if (auto tensor_type = filter_type.dyn_cast<DenseTensorType>()) {
           if (tensor_type.dtype().isa<pir::Float16Type>()) {
@@ -146,13 +129,7 @@ void RewriteByLayoutImpl<FusedConv2dAddActOp>(pir::Operation* op,
       pir::StrAttribute::get(pir::IrContext::Instance(),
                              common::DataLayoutToString(new_layout)));
 
-  std::vector<pir::Type> new_outputs =
-      paddle::dialect::FusedConv2dAddActOp::InferMeta(
-          op->operands_source(),
-          const_cast<pir::AttributeMap*>(&op->attributes()));
-  for (size_t i = 0; i < new_outputs.size(); ++i) {
-    op->result(i).set_type(new_outputs[i]);
-  }
+  RewriteByInfermeta<FusedConv2dAddActOp>(op, new_layout);
 }
 
 template <>
@@ -162,15 +139,7 @@ void RewriteByLayoutImpl<GroupNormOp>(pir::Operation* op,
       "data_format",
       pir::StrAttribute::get(pir::IrContext::Instance(),
                              common::DataLayoutToString(new_layout)));
-  auto new_outputs = paddle::dialect::GroupNormOp::InferMeta(
-      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
-  for (size_t i = 0; i < new_outputs.size(); ++i) {
-    op->result(i).set_type(new_outputs[i]);
-  }
-
-  for (auto value : RelevantOutputsImpl<GroupNormOp>(op)) {
-    SetNewLayoutForValue(value, new_layout);
-  }
+  RewriteByInfermeta<GroupNormOp>(op, new_layout);
 }
 
 template <>
@@ -230,27 +199,13 @@ bool CanBeModifiedImpl<SqueezeOp>(pir::Operation* op) {
 template <>
 void RewriteByLayoutImpl<SiluOp>(pir::Operation* op,
                                  common::DataLayout new_layout) {
-  auto new_outputs = paddle::dialect::SiluOp::InferMeta(
-      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
-  for (size_t i = 0; i < new_outputs.size(); ++i) {
-    op->result(i).set_type(new_outputs[i]);
-  }
-  for (auto value : RelevantOutputsImpl<SiluOp>(op)) {
-    SetNewLayoutForValue(value, new_layout);
-  }
+  RewriteByInfermeta<SiluOp>(op, new_layout);
 }
 
 template <>
 void RewriteByLayoutImpl<AddOp>(pir::Operation* op,
                                 common::DataLayout new_layout) {
-  auto new_outputs = paddle::dialect::AddOp::InferMeta(
-      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
-  for (size_t i = 0; i < new_outputs.size(); ++i) {
-    op->result(i).set_type(new_outputs[i]);
-  }
-  for (auto value : RelevantOutputsImpl<AddOp>(op)) {
-    SetNewLayoutForValue(value, new_layout);
-  }
+  RewriteByInfermeta<AddOp>(op, new_layout);
 }
 
 template <>
@@ -273,14 +228,7 @@ bool CanBeModifiedImpl<AddOp>(pir::Operation* op) {
 template <>
 void RewriteByLayoutImpl<CastOp>(pir::Operation* op,
                                  common::DataLayout new_layout) {
-  auto new_outputs = paddle::dialect::CastOp::InferMeta(
-      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
-  for (size_t i = 0; i < new_outputs.size(); ++i) {
-    op->result(i).set_type(new_outputs[i]);
-  }
-  for (auto value : RelevantOutputsImpl<CastOp>(op)) {
-    SetNewLayoutForValue(value, new_layout);
-  }
+  RewriteByInfermeta<CastOp>(op, new_layout);
 }
 
 template <>
@@ -324,14 +272,7 @@ void RewriteByLayoutImpl<ConcatOp>(pir::Operation* op,
       ScalarAttribute::get(pir::IrContext::Instance(), phi::Scalar(3)));
 
   // infer new meta for concat
-  auto new_outputs = ConcatOp::InferMeta(
-      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
-  for (size_t i = 0; i < new_outputs.size(); ++i) {
-    op->result(i).set_type(new_outputs[i]);
-  }
-  for (auto value : RelevantOutputsImpl<ConcatOp>(op)) {
-    SetNewLayoutForValue(value, new_layout);
-  }
+  RewriteByInfermeta<ConcatOp>(op, new_layout);
 }
 
 template <>
@@ -365,53 +306,25 @@ void RewriteByLayoutImpl<Pool2dOp>(pir::Operation* op,
       pir::StrAttribute::get(pir::IrContext::Instance(),
                              common::DataLayoutToString(new_layout)));
 
-  std::vector<pir::Type> new_outputs = Pool2dOp::InferMeta(
-      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
-  for (size_t i = 0; i < new_outputs.size(); ++i) {
-    op->result(i).set_type(new_outputs[i]);
-  }
-  for (auto value : RelevantOutputsImpl<Pool2dOp>(op)) {
-    SetNewLayoutForValue(value, new_layout);
-  }
+  RewriteByInfermeta<Pool2dOp>(op, new_layout);
 }
 
 template <>
 void RewriteByLayoutImpl<MultiplyOp>(pir::Operation* op,
                                      common::DataLayout new_layout) {
-  std::vector<pir::Type> new_outputs = MultiplyOp::InferMeta(
-      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
-  for (size_t i = 0; i < new_outputs.size(); ++i) {
-    op->result(i).set_type(new_outputs[i]);
-  }
-  for (auto value : RelevantOutputsImpl<MultiplyOp>(op)) {
-    SetNewLayoutForValue(value, new_layout);
-  }
+  RewriteByInfermeta<MultiplyOp>(op, new_layout);
 }
 
 template <>
 void RewriteByLayoutImpl<AssignOp>(pir::Operation* op,
                                    common::DataLayout new_layout) {
-  std::vector<pir::Type> new_outputs = AssignOp::InferMeta(
-      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
-  for (size_t i = 0; i < new_outputs.size(); ++i) {
-    op->result(i).set_type(new_outputs[i]);
-  }
-  for (auto value : RelevantOutputsImpl<AssignOp>(op)) {
-    SetNewLayoutForValue(value, new_layout);
-  }
+  RewriteByInfermeta<AssignOp>(op, new_layout);
 }
 
 template <>
 void RewriteByLayoutImpl<SwishOp>(pir::Operation* op,
                                   common::DataLayout new_layout) {
-  std::vector<pir::Type> new_outputs = SwishOp::InferMeta(
-      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
-  for (size_t i = 0; i < new_outputs.size(); ++i) {
-    op->result(i).set_type(new_outputs[i]);
-  }
-  for (auto value : RelevantOutputsImpl<SwishOp>(op)) {
-    SetNewLayoutForValue(value, new_layout);
-  }
+  RewriteByInfermeta<SwishOp>(op, new_layout);
 }
 
 }  // namespace dialect

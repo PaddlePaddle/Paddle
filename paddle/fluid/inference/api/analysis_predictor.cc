@@ -52,7 +52,6 @@
 #include "paddle/fluid/inference/utils/model_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/pir/transforms/general/transfer_layout_pass.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -938,9 +937,6 @@ bool AnalysisPredictor::PrepareExecutor() {
               pass->Set("use_cutlass", new bool(config_.use_cutlass_));
             }
             pass_pm.AddPass(std::move(pass));
-          }
-          if (config_.use_transfer_layout_pass_) {
-            pass_pm.AddPass(pir::CreateTransferLayoutPass());
           }
         }
 

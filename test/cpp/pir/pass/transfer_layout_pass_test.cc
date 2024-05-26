@@ -69,7 +69,6 @@ TEST(transfer_layout_pass, pass_test) {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   auto program = paddle::TranslateLegacyProgramToProgram(p);
-  std::cout << *program << std::endl;
 
   pir::PassManager pass_pm(::pir::IrContext::Instance(), 3);
 
@@ -101,7 +100,7 @@ TEST(transfer_layout_pass, pass_test) {
   }
   pass_pm.Run(program.get());
 
-  pir::PassManager transfer_layout_manager(::pir::IrContext::Instance(), 3);
+  pir::PassManager transfer_layout_manager(::pir::IrContext::Instance(), 4);
   transfer_layout_manager.AddPass(pir::CreateTransferLayoutPass());
   transfer_layout_manager.Run(program.get());
 }

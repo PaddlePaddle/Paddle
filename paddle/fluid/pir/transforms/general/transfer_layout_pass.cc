@@ -41,27 +41,7 @@
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
-
-namespace {
-
-void SetNewLayoutForValue(pir::Value value, common::DataLayout new_layout) {
-  if (!value || !value.type()) {
-    return;
-  }
-  auto tensor_type = value.type().dyn_cast<pir::DenseTensorType>();
-  if (!tensor_type) {
-    return;
-  }
-  auto new_tensor_type = pir::DenseTensorType::get(pir::IrContext::Instance(),
-                                                   tensor_type.dtype(),
-                                                   tensor_type.dims(),
-                                                   new_layout,
-                                                   tensor_type.lod(),
-                                                   tensor_type.offset());
-  value.set_type(new_tensor_type);
-}
-
-}  // namespace
+#include "paddle/pir/include/pass/utils.h"
 
 struct Node;
 
@@ -312,6 +292,8 @@ struct FlowGraph {
         Node op_node(&op);
         nhwc_nodes.insert(op_node);
         AddEdge(op_node, dst_node(), INF);
+        VLOG(10) << "[PreProcess] node: " << op_node
+                 << " should be set to NHWC";
       }
     }
 
@@ -481,7 +463,7 @@ struct FlowGraph {
     return ret;
   }
 
-  float max_flow() {
+  float MaxFlow() {
     VLOG(10)
         << "--------------------[max flow start]---------------------------";
     float total_flow = 0.0f;
@@ -497,8 +479,8 @@ struct FlowGraph {
     return total_flow;
   }
 
-  std::tuple<std::unordered_set<Node>, std::vector<Edge>> min_cut() {  // NOLINT
-    max_flow();
+  std::tuple<std::unordered_set<Node>, std::vector<Edge>> MinCut() {  // NOLINT
+    MaxFlow();
     // from src_node get its reachable nodes and call them S
     // other nodes are in T
     // collect edges between S and T
@@ -550,14 +532,16 @@ using Edge = FlowGraph::Edge;
 
 class TransferLayoutPass : public pir::Pass {
  public:
-  TransferLayoutPass() : pir::Pass("transfer_layout_pass", 2) {}
+  TransferLayoutPass() : pir::Pass("transfer_layout_pass", 4) {}
+
+  bool CanApplyOn(pir::Operation* op) const override {
+    if (!op->isa<pir::ModuleOp>()) {
+      return false;
+    }
+    return op->num_regions() > 0;
+  }
 
   void Run(pir::Operation* op) override {
-    PADDLE_ENFORCE(
-        op->isa<pir::ModuleOp>(),
-        common::errors::InvalidArgument(
-            "The target of TransferLayoutPass should be a Module Op"));
-
     pir::IrContext* ctx = pir::IrContext::Instance();
     ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
     ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -565,14 +549,10 @@ class TransferLayoutPass : public pir::Pass {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     auto* program = module_op.program();
 
-    VLOG(10)
-        << "---------------------[program before pass]---------------------";
-    std::cout << *program << std::endl;
-
     // MinCut
     VLOG(10) << "---------------------MinCut---------------------";
     FlowGraph graph(*program);
-    auto&& [src_set, cut] = graph.min_cut();
+    auto&& [src_set, cut] = graph.MinCut();
     for (auto& e : cut) {
       VLOG(10) << e;
     }
@@ -714,7 +694,7 @@ class TransferLayoutPass : public pir::Pass {
         auto replace_uses_without_self = [&](pir::OpOperand arg) {
           return arg.owner() != transpose_op.operation();
         };
-        SetNewLayoutForValue(transpose_op.out(), new_layout);
+        pir::SetNewLayoutForValue(transpose_op.out(), new_layout);
         dst_value.ReplaceUsesWithIf(transpose_op.out(),
                                     replace_uses_without_self);
       }
@@ -755,14 +735,10 @@ class TransferLayoutPass : public pir::Pass {
           return (operation_set.find(arg.owner()) != operation_set.end()) &&
                  (arg.owner() != transpose_op.operation());
         };
-        SetNewLayoutForValue(transpose_op.out(), new_layout);
+        pir::SetNewLayoutForValue(transpose_op.out(), new_layout);
         value.ReplaceUsesWithIf(transpose_op.out(), replace_uses_in_cut_set);
       }
     }
-
-    VLOG(10) << "---------------------[program after "
-                "pass]---------------------";
-    std::cout << *program << std::endl;
   }
 };
 
