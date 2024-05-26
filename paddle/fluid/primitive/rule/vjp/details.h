@@ -1707,6 +1707,8 @@ void prod_grad(const Tensor& x,
                bool reduce_all,
                Tensor* x_grad) {
   if (x_grad) {
+    // NOTE: there is a bug when use composite of prod grad in static graph on
+    // cpu, it will use inplace mode
     std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
     int64_t axis_size = axis.size();
     int64_t x_dim_size = x_dim.size();
@@ -1796,7 +1798,8 @@ void prod_grad(const Tensor& x,
       auto x_transpose = transpose<T>(x, transpose_dim);
       x_reshape = reshape<T>(x_transpose, cumprod_shape);
       auto left_cumprod = cumprod<T>(x_reshape, -1, true, false);
-      auto right_cumprod = cumprod<T>(x_reshape, -1, true, true);
+      auto x_reshape2 = scale<T>(x_reshape, 1.0, 0.0);
+      auto right_cumprod = cumprod<T>(x_reshape2, -1, true, true);
       auto x_grad_tmp = left_cumprod * right_cumprod;
       auto x_grad_reshape = reshape<T>(x_grad_tmp, transpose_shape);
       auto x_grad_tmp2 = transpose<T>(x_grad_reshape, origin_position);
