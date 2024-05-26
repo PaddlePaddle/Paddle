@@ -4013,10 +4013,13 @@ void RmsNormInferMeta(const MetaTensor& x,
   auto out_dims = common::make_ddim(x_dims_vec);
 
   out->set_dims(out_dims);
-  if (quant_max_bound == 127.0f) {
-    out->set_dtype(phi::DataType::INT8);
-  } else if (quant_max_bound == 448.0f) {
-    out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+
+  if (quant_scale > 0) {
+    if (fabs(quant_max_bound - 127.0f) < 0.000001){
+      out->set_dtype(phi::DataType::INT8);
+    } else if (fabs(quant_max_bound - 448.0f) < 0.000001){
+      out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+    } 
   } else {
     out->set_dtype(x.dtype());
   }
