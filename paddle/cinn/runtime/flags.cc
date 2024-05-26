@@ -207,6 +207,7 @@ PD_DEFINE_string(
     StringFromEnv("FLAGS_cinn_dump_group_instruction", ""),
     "Specify the path for dump instruction by group, which is used for debug.");
 
+// Todo(CZ): support kernel name check for multiple kernel code gen.
 PD_DEFINE_string(cinn_debug_custom_code_path,
                  StringFromEnv("FLAGS_cinn_debug_custom_code_path", ""),
                  "Specify custom code path for cinn.");
