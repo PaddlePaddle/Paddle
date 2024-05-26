@@ -15,14 +15,15 @@
 import unittest
 
 import numpy as np
-from cinn import Target
-from cinn.framework import Tensor
+
+from paddle.cinn import Target
+from paddle.cinn.framework import Tensor
 
 
 class TensorTest(unittest.TestCase):
     def test_basic(self):
         target = Target()
-        target.arch = Target.Arch.X86
+        target.arch = Target.X86Arch()
         target.bits = Target.Bit.k64
         target.os = Target.OS.Linux
         tensor = Tensor()

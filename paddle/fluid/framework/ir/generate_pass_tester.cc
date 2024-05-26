@@ -32,8 +32,7 @@ REGISTER_GENERATE_PASS(generate_fc_fuse) {
       }
     };
     // replace
-    SUBGRAPH_(replace) = [subgraph = &replace, with_relu](
-                             VAR_(x), VAR_(y), VAR_(z)) {
+    SUBGRAPH_(replace) = [subgraph = &replace](VAR_(x), VAR_(y), VAR_(z)) {
       auto& fc = OP_(fc)({{"Input", x}, {"W", y}, {"Bias", z}});
       return fc.Out("Out");
     };

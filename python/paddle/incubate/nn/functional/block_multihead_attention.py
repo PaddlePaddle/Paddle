@@ -38,6 +38,8 @@ def block_multihead_attention(
     qkv_bias=None,
     out_shift=None,
     out_smooth=None,
+    max_enc_len_this_time=None,
+    max_dec_len_this_time=None,
     rope_emb=None,
     mask=None,
     tgt_mask=None,
@@ -76,6 +78,8 @@ def block_multihead_attention(
         qkv_bias (Tensor): The bias of qkv. Its shape is [3 * num_head * head_size].
         out_shift (Tensor): Shift bias of fmha_out, which is the 1st return value. Its shape is [num_head * head_size].
         out_smooth (Tensor): Smooth weight of fmha_out. Its shape is [num_head * head_size].
+        max_enc_len_this_time (Tensor): Sentence length of the encoder this time. Its shape is [1].
+        max_dec_len_this_time (Tensor): Sentence length of the decoder this time. Its shape is [1].
         rope_emb (Tensor): The RoPE embedding. Its shape is [2, batchsize, max_seq_len, 1, head_size // 2].
         mask (Tensor): The mask of qk_matmul in encoder. Its shape is [batchsize, 1, max_seq_len, max_seq_len].
         tgt_mask (Tensor): The mask of qk_matmul in decoder. Its shape is [batchsize, 1, 1, max_seq_len].
@@ -83,7 +87,7 @@ def block_multihead_attention(
         block_size (Int): The block_size of cache. Default is 64.
         use_neox_style (Bool): Whether neox_style RoPE is used or not. Default is False.
         use_dynamic_cachekv_quant (Bool): Whether dynamic cache kv quantization is applied or not. Default is False.
-        quant_round_type (Int): The quant rount type in cache kv quantization and fmha_out quantization. If 0 is set, value will be rounding to nearest ties to even. If 1 is set, value will be rounding to nearest ties away from zero.
+        quant_round_type (Int): The quant round type in cache kv quantization and fmha_out quantization. If 0 is set, value will be rounding to nearest ties to even. If 1 is set, value will be rounding to nearest ties away from zero.
         quant_max_bound (Float32): The max bound of float type to int type.
         quant_min_bound (Float32): The min bound of float type to int type.
         out_scale (Float32): The quant scale of fmha_out. Default is -1, which means do not apply quantization for fmha_out.
@@ -251,6 +255,8 @@ def block_multihead_attention(
             ...     None, # qkv_bias
             ...     None, # out_shift
             ...     None, # out_smooth
+            ...     None, # max_enc_len_this_time
+            ...     None, # max_dec_len_this_time
             ...     None, # rotary_embs
             ...     None, # attn_mask
             ...     None, # tgt_mask
@@ -301,6 +307,8 @@ def block_multihead_attention(
             qkv_bias,
             out_shift,
             out_smooth,
+            max_enc_len_this_time,
+            max_dec_len_this_time,
             max_seq_len,
             block_size,
             use_neox_style,
@@ -353,6 +361,10 @@ def block_multihead_attention(
         inputs["out_shift"] = out_shift
     if out_smooth is not None:
         inputs["out_smooth"] = out_smooth
+    if max_enc_len_this_time is not None:
+        inputs["max_enc_len_this_time"] = max_enc_len_this_time
+    if max_dec_len_this_time is not None:
+        inputs["max_dec_len_this_time"] = max_dec_len_this_time
 
     outputs = {
         'fmha_out': out,

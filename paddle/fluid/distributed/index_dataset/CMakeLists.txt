@@ -3,11 +3,11 @@ cc_library(
   index_wrapper
   SRCS index_wrapper.cc
   DEPS index_dataset_proto framework_io)
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   cc_library(
     index_sampler
     SRCS index_sampler.cc
-    DEPS xxhash index_wrapper eigen3 mkldnn)
+    DEPS xxhash index_wrapper eigen3 onednn)
 else()
   cc_library(
     index_sampler

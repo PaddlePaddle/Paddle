@@ -109,7 +109,6 @@ void OpCompatibleMap::InitOpCompatibleMap() {
   op_compatible_map_["unique"] = {"1.6.0", OpCompatibleType::definite_not};
   op_compatible_map_["unique_with_counts"] = {"1.6.0",
                                               OpCompatibleType::definite_not};
-  op_compatible_map_["var_conv_2d"] = {"1.6.0", OpCompatibleType::definite_not};
 
   op_compatible_map_["reshape2"] = {"1.6.0", OpCompatibleType::possible};
   op_compatible_map_["slice"] = {"1.6.0", OpCompatibleType::possible};

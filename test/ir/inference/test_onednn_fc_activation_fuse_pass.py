@@ -136,7 +136,7 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
         config = self.create_inference_config(
             use_mkldnn=True,
             passes=[
-                "fc_act_mkldnn_fuse_pass",
+                "fc_act_onednn_fuse_pass",
                 "operator_scale_onednn_fuse_pass",
             ],
         )
@@ -146,7 +146,7 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             passes=[
-                "fc_act_mkldnn_fuse_pass",
+                "fc_act_onednn_fuse_pass",
                 "operator_scale_onednn_fuse_pass",
             ],
         )

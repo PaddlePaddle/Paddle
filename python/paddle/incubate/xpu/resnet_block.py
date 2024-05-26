@@ -151,7 +151,7 @@ def resnet_basic_block(
             var2,
             mean3,
             var3,
-            *attrs
+            *attrs,
         )
         return out
     helper = LayerHelper('resnet_basic_block', **locals())
@@ -517,9 +517,7 @@ class ResNetBasicBlock(Layer):
         valid_format = {'NCHW'}
         if data_format not in valid_format:
             raise ValueError(
-                "conv_format must be one of {}, but got conv_format={}".format(
-                    valid_format, data_format
-                )
+                f"conv_format must be one of {valid_format}, but got conv_format={data_format}"
             )
 
         def _get_default_param_initializer(channels, kernel_size):

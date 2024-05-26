@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fused_elemwise_activation_op.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(fused_elemwise_activation,
                           GPU,
@@ -23,14 +22,14 @@ PD_REGISTER_STRUCT_KERNEL(fused_elemwise_activation,
                           ops::FusedElemwiseActivationKernel,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}
 PD_REGISTER_STRUCT_KERNEL(fused_elemwise_activation_grad,
                           GPU,
                           ALL_LAYOUT,
                           ops::FusedElemwiseActivationGradKernel,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}
 
 PD_REGISTER_STRUCT_KERNEL(fused_elemwise_add_activation,
                           GPU,
@@ -38,11 +37,11 @@ PD_REGISTER_STRUCT_KERNEL(fused_elemwise_add_activation,
                           ops::FusedElemwiseAddActivationKernel,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}
 PD_REGISTER_STRUCT_KERNEL(fused_elemwise_add_activation_grad,
                           GPU,
                           ALL_LAYOUT,
                           ops::FusedElemwiseAddActivationGradKernel,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

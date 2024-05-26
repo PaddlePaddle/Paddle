@@ -14,7 +14,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/c_sync_calc_stream_op.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_sync_calc_stream,
                           GPU,
@@ -24,5 +23,5 @@ PD_REGISTER_STRUCT_KERNEL(c_sync_calc_stream,
                           double,
                           int,
                           int64_t,
-                          plat::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::float16,
+                          phi::dtype::bfloat16) {}

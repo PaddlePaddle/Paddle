@@ -272,6 +272,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (3, 3))
 
+    @test_with_pir_api
     @prog_scope()
     def test_dist(self):
         x = paddle.to_tensor([[3, 3], [3, 3]], dtype="float32")
@@ -288,11 +289,12 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (2, 2))
-        self.assertEqual(res[1].shape, (2, 2))
+        self.assertEqual(res[2].shape, (2, 2))
         np.testing.assert_array_equal(res[0], np.array(2).astype(np.float32))
 
+    @test_with_pir_api
     @prog_scope()
-    def test_linalg_norm(self):
+    def test_linalg_norm1(self):
         # 1D input, p = fro ,axis = None, using reduceInferMeta
         x_1 = paddle.arange(24, dtype="float32") - 12
         x_1.stop_gradient = False
@@ -306,85 +308,120 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (24,))
 
+    @test_with_pir_api
+    @prog_scope()
+    def test_linalg_norm2(self):
         # 1D input, p = 1 ,axis = None,
         # using p_norm, as_vector = True
         x_2 = paddle.arange(24, dtype="float32") - 12
         x_2.stop_gradient = False
         out_2 = paddle.linalg.norm(x_2, p=1)
-        paddle.static.append_backward(out_2.sum())
+        ((_, x_2_grad),) = paddle.static.append_backward(
+            out_2.sum(), parameter_list=[x_2]
+        )
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out_2, x_2.grad_name])
+        res = self.exe.run(prog, fetch_list=[out_2, x_2_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (24,))
 
+    @test_with_pir_api
+    @prog_scope()
+    def test_linalg_norm3(self):
         # 1D input, p = 1 ,axis = 0,
         # using p_norm, as_vector = False
         x_2_p = paddle.arange(24, dtype="float32") - 12
         x_2_p.stop_gradient = False
         out_2_p = paddle.linalg.norm(x_2_p, p=1, axis=0)
-        paddle.static.append_backward(out_2_p.sum())
+        ((_, x_2_p_grad),) = paddle.static.append_backward(
+            out_2_p.sum(), parameter_list=[x_2_p]
+        )
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out_2_p, x_2_p.grad_name])
+        res = self.exe.run(prog, fetch_list=[out_2_p, x_2_p_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (24,))
 
+    @test_with_pir_api
+    @prog_scope()
+    def test_linalg_norm4(self):
         # 1D input, p = fro ,axis = 0,
         # using p_norm, as_vector = False
         x_2_fro = paddle.arange(24, dtype="float32") - 12
         x_2_fro.stop_gradient = False
         out_2_fro = paddle.linalg.norm(x_2_fro, p="fro", axis=0)
-        paddle.static.append_backward(out_2_fro.sum())
+        ((_, x_2_fro_grad),) = paddle.static.append_backward(
+            out_2_fro.sum(), parameter_list=[x_2_fro]
+        )
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out_2_fro, x_2_fro.grad_name])
+        res = self.exe.run(prog, fetch_list=[out_2_fro, x_2_fro_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (24,))
 
+    @test_with_pir_api
+    @prog_scope()
+    def test_linalg_norm5(self):
         # 2D input, p = 1, axis = [0, 1]
         # using p_matrix_norm, depends on paddle.sum
         x_3 = paddle.arange(24, dtype="float32").reshape([4, 6])
         x_3.stop_gradient = False
         out_3 = paddle.linalg.norm(x_3, p=1, axis=[0, 1])
-        paddle.static.append_backward(out_3.sum())
+        ((_, x_3_grad),) = paddle.static.append_backward(
+            out_3.sum(), parameter_list=[x_3]
+        )
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out_3, x_3.grad_name])
+        res = self.exe.run(prog, fetch_list=[out_3, x_3_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (4, 6))
 
+    @test_with_pir_api
+    @prog_scope()
+    def test_linalg_norm6(self):
         # 2D input, p = 1, axis = None
         # using p_matrix_norm, depends on paddle.sum
         x_4 = paddle.arange(24, dtype="float32").reshape([4, 6])
         x_4.stop_gradient = False
         out_4 = paddle.linalg.norm(x_4)
-        paddle.static.append_backward(out_4.sum())
+        ((_, x_4_grad),) = paddle.static.append_backward(
+            out_4.sum(), parameter_list=[x_4]
+        )
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out_4, x_4.grad_name])
+        res = self.exe.run(prog, fetch_list=[out_4, x_4_grad])
 
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (4, 6))
 
+    @test_with_pir_api
+    @prog_scope()
+    def test_linalg_norm7(self):
         # 2D input, p = inf, axis = None
         x_5 = paddle.arange(24, dtype="float32").reshape([4, 6])
         x_5.stop_gradient = False
         out_5 = paddle.linalg.norm(x_5)
-        paddle.static.append_backward(out_5.sum())
+        ((_, x_5_grad),) = paddle.static.append_backward(
+            out_5.sum(), parameter_list=[x_5]
+        )
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out_5, x_5.grad_name])
+        res = self.exe.run(prog, fetch_list=[out_5, x_5_grad])
 
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (4, 6))
 
+    @test_with_pir_api
+    @prog_scope()
+    def test_linalg_norm8(self):
         # 2D input, p = -inf, axis = [0, 1]
         x_6 = paddle.arange(24, dtype="float32").reshape([4, 6])
         x_6.stop_gradient = False
         out_6 = paddle.linalg.norm(x_6, p=-float("inf"), axis=[0, 1])
-        paddle.static.append_backward(out_6.sum())
+        ((_, x_6_grad),) = paddle.static.append_backward(
+            out_6.sum(), parameter_list=[x_6]
+        )
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out_6, x_6.grad_name])
+        res = self.exe.run(prog, fetch_list=[out_6, x_6_grad])
 
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (4, 6))
@@ -499,6 +536,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, (2,))
         self.assertEqual(res[1].shape, (2, 4, 4))
 
+    @test_with_pir_api
     @prog_scope()
     def test_trace(self):
         x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")

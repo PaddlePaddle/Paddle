@@ -89,16 +89,6 @@ func TestNewConfig(t *testing.T) {
 	t.Log(config.Summary())
 }
 
-func TestLite(t *testing.T) {
-	config := NewConfig()
-	config.SetModel("model", "params")
-	t.Log(config.ProgFile())
-	t.Log(config.ParamsFile())
-
-	config.EnableLiteEngine(PrecisionFloat32, true, []string{}, []string{})
-	t.Logf("LiteEngineEnabled:%+v", config.LiteEngineEnabled())
-}
-
 func TestMkldnn(t *testing.T) {
 	config := NewConfig()
 	config.SetModelDir("modelDir")

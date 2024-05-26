@@ -60,9 +60,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   std::shared_ptr<ProgramDesc> GetMutableCopyProgram() override;
 
-  void Build(
-      const std::vector<std::string>& feed_names,
-      std::vector<paddle::framework::OpFuncNode>* op_func_nodes) override;
+  void Build(const std::vector<std::string>& feed_names,
+             std::vector<paddle::framework::OpFuncNode>* op_func_nodes,
+             bool switch_stream = false) override;
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
@@ -101,6 +101,10 @@ class ProgramInterpreter : public InterpreterBaseImpl {
     input_hookfuncs_ = hookfuncs;
   }
 
+  void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) override {}
+
+  void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) override {}
+
   std::unordered_map<std::string, std::shared_ptr<EventInter>>*
   GetForceEventsToWaitInfo() {
     return force_events_to_wait_;
@@ -127,8 +131,6 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   void BuildSkipShareLoDInfo();
   void UpdateSyncOpNum();
   void AnalyseExecuteOrderForTrace();
-  void BuildOpFuncNode(
-      std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
 
   // inplace
   void BuildInplace();

@@ -331,6 +331,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
 void ArgsortInferMeta(const MetaTensor& input,
                       int axis,
                       bool descending,
+                      bool stable,
                       MetaTensor* output,
                       MetaTensor* indices) {
   auto in_dims = input.dims();
@@ -839,7 +840,9 @@ void DiagEmbedInferMeta(
                         dim1,
                         dim2));
 
-  int new_dim_len = static_cast<int>(offset_ + x_dims[x_dims.size() - 1]);
+  int x_last_dim = x_dims[x_dims.size() - 1];
+  int new_dim_len =
+      (x_last_dim == -1) ? -1 : static_cast<int>(offset_ + x_last_dim);
   auto sizes = common::vectorize(x_dims);
   sizes.pop_back();
   sizes.insert(sizes.begin() + std::min(dim1_, dim2_), new_dim_len);
@@ -1219,7 +1222,7 @@ void EinsumRawInferMeta(const std::vector<const MetaTensor*>& inputs,
 void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out) {
-#define MAX_RANK_SUPPORTED 6
+#define EXPAND_MAX_RANK_SUPPORTED 8
   auto x_dims = x.dims();
   auto expand_shape = shape.GetData();
 
@@ -1238,11 +1241,11 @@ void ExpandInferMeta(const MetaTensor& x,
           static_cast<size_t>(x_dims.size())));
   PADDLE_ENFORCE_LE(
       expand_shape.size(),
-      MAX_RANK_SUPPORTED,
+      EXPAND_MAX_RANK_SUPPORTED,
       phi::errors::InvalidArgument("The number of elements (%d) of 'shape' for "
                                    "must not be greater than %d.",
                                    expand_shape.size(),
-                                   MAX_RANK_SUPPORTED));
+                                   EXPAND_MAX_RANK_SUPPORTED));
   PADDLE_ENFORCE_GE(
       expand_shape.size(),
       0,
@@ -1283,6 +1286,73 @@ void ExpandInferMeta(const MetaTensor& x,
   if (out_rank > 0 && out_shape[0] == x_dims[0]) {
     out->share_lod(x);
   }
+#undef EXPAND_MAX_RANK_SUPPORTED
+}
+
+void FakeChannelWiseQuantizeAbsMaxInferMeta(const MetaTensor& x,
+                                            int bit_length,
+                                            int round_type,
+                                            int quant_axis,
+                                            bool is_test,
+                                            MetaTensor* out,
+                                            MetaTensor* out_scale) {
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  PADDLE_ENFORCE_EQ(
+      quant_axis == 0 || quant_axis == 1,
+      true,
+      phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                   "the received is %d",
+                                   quant_axis));
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+  out_scale->set_dims({x.dims()[quant_axis]});
+  out->share_lod(x);
+}
+
+void FakeChannelWiseQuantizeDequantizeAbsMaxInferMeta(const MetaTensor& x,
+                                                      int bit_length,
+                                                      int round_type,
+                                                      int quant_axis,
+                                                      MetaTensor* out,
+                                                      MetaTensor* out_scale) {
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  PADDLE_ENFORCE_EQ(
+      quant_axis == 0 || quant_axis == 1,
+      true,
+      phi::errors::InvalidArgument("'quant_axis' should be 0 or 1, but "
+                                   "the received is %d",
+                                   quant_axis));
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+  out_scale->set_dims({x.dims()[quant_axis]});
+  out->share_lod(x);
+}
+
+void FakeQuantizeAbsMaxInferMeta(const MetaTensor& x,
+                                 int bit_length,
+                                 int round_type,
+                                 MetaTensor* out,
+                                 MetaTensor* out_scale) {
+  PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'bit_length' should be between 1 and 16, but "
+                        "the received is %d",
+                        bit_length));
+  out->set_dtype(x.dtype());
+  out->set_dims(x.dims());
+  out_scale->set_dims({1});
+  out->share_lod(x);
 }
 
 void FillAnyLikeInferMeta(const MetaTensor& x,
@@ -2537,7 +2607,7 @@ void ModeInferMeta(const MetaTensor& x,
 
   indices->set_dims(dims);
   indices->share_lod(x);
-  indices->set_dtype(x.dtype());
+  indices->set_dtype(DataType::INT64);
 }
 
 void MultinomialInferMeta(const MetaTensor& x,
@@ -3634,7 +3704,7 @@ void RepeatInterleaveInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument(
           "repeat_interleave's output tensor can't be nullptr"));
 
-  output_dim[n_dim] = input_dim[n_dim] * repeats;
+  if (input_dim[n_dim] != -1) output_dim[n_dim] = input_dim[n_dim] * repeats;
   out->set_dims(common::make_ddim(output_dim));
   out->share_lod(x);
   out->set_dtype(x.dtype());
@@ -3885,6 +3955,17 @@ void ShardIndexInferMeta(const MetaTensor& in,
 void NumelInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
   out->set_dims(common::make_ddim({}));
+}
+
+void ShuffleChannelInferMeta(const MetaTensor& x, int group, MetaTensor* out) {
+  auto input_dims = x.dims();
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      4,
+      phi::errors::InvalidArgument("The layout of input is NCHW."));
+
+  out->set_dtype(x.dtype());
+  out->set_dims(input_dims);
 }
 
 // This logic is copied from
@@ -4244,21 +4325,16 @@ void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dtype(x.dtype());
 }
 
+void L1NormInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(common::make_ddim({}));
+  out->set_dtype(x.dtype());
+}
+
 void SqueezeInferMeta(const MetaTensor& x,
                       const IntArray& axes,
                       MetaTensor* out,
                       MetaConfig config) {
   const auto& x_dims = x.dims();
-  // Check input tensor dims (<6) Eigen limit.
-  PADDLE_ENFORCE_LE(x_dims.size(),
-                    6,
-                    phi::errors::InvalidArgument(
-                        "The dimensions of Input(X) "
-                        "should be in the range of [1, 6] (Eigen limit)."
-                        "But received X's dimensions = %d, X's shape = [%s].",
-                        x_dims.size(),
-                        x_dims));
-
   if (!config.is_runtime && axes.FromTensor()) {
     // compile time infershape, set all elements to -1.
     int output_size = static_cast<int>(x.dims().size() - axes.GetData().size());
@@ -4722,7 +4798,7 @@ void TileInferMeta(const MetaTensor& x,
                    const IntArray& repeat_times,
                    MetaTensor* out,
                    MetaConfig config) {
-#define MAX_RANK_SUPPORTED 6
+#define TILE_MAX_RANK_SUPPORTED 6
 
   auto repeat_times_data = repeat_times.GetData();
   auto x_dims = x.dims();
@@ -4732,19 +4808,19 @@ void TileInferMeta(const MetaTensor& x,
 
   PADDLE_ENFORCE_LE(
       x_dims.size(),
-      MAX_RANK_SUPPORTED,
+      TILE_MAX_RANK_SUPPORTED,
       errors::InvalidArgument(
           "The rank of the input 'x' for tile op "
           "must not be greater than %d, but the value received is %d.",
-          MAX_RANK_SUPPORTED,
+          TILE_MAX_RANK_SUPPORTED,
           x_dims.size()));
   PADDLE_ENFORCE_LE(
       repeat_times_data.size(),
-      MAX_RANK_SUPPORTED,
+      TILE_MAX_RANK_SUPPORTED,
       errors::InvalidArgument(
           "The size of the shape of input 'repeat_times' for tile op "
           "must not be greater than %d, but the value received is %d.",
-          MAX_RANK_SUPPORTED,
+          TILE_MAX_RANK_SUPPORTED,
           repeat_times_data.size()));
   PADDLE_ENFORCE_GE(
       repeat_times_data.size(),
@@ -4785,6 +4861,7 @@ void TileInferMeta(const MetaTensor& x,
     out->share_lod(x);
   }
   out->set_dtype(x.dtype());
+#undef TILE_MAX_RANK_SUPPORTED
 }
 
 void TopKInferMeta(const MetaTensor& x,
@@ -5476,14 +5553,16 @@ void UnsqueezeInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         MetaTensor* out,
                         MetaConfig config) {
+#define UNSQUEEZE_MAX_RANK_SUPPORTED 8
   const auto& x_dims = x.dims();
-  // Validity Check: input tensor dims (<6).
+  // Validity Check: input tensor dims (<=8).
   PADDLE_ENFORCE_LE(x_dims.size(),
-                    6,
+                    UNSQUEEZE_MAX_RANK_SUPPORTED,
                     phi::errors::InvalidArgument(
                         "Invalid "
                         "dimensions, the rank of Input(X) "
-                        "should be in the range of [1, 6] (Eigen limit)"));
+                        "should be in the range of [1, %d] (Eigen limit)",
+                        UNSQUEEZE_MAX_RANK_SUPPORTED));
   if (!config.is_runtime && axes.FromTensor()) {
     // compile time infershape.  set all elements to -1.
     int output_size = static_cast<int>(x.dims().size() + axes.GetData().size());
@@ -5498,6 +5577,7 @@ void UnsqueezeInferMeta(const MetaTensor& x,
     }
     out->set_dtype(x.dtype());
   }
+#undef UNSQUEEZE_MAX_RANK_SUPPORTED
 }
 
 void UnsqueezeWithXShapeInferMeta(const MetaTensor& x,

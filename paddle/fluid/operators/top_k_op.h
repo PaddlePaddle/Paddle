@@ -18,8 +18,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -61,13 +61,13 @@ class TopkKernel : public framework::OpKernel<T> {
       vec.reserve(col);
       // 1D vector
       if (inputdims.size() == 1) {
-        auto eg_input = framework::EigenVector<T>::Flatten(*input);
+        auto eg_input = phi::EigenVector<T>::Flatten(*input);
         for (size_t j = 0; j < col; j++) {
           vec.push_back(std::pair<T, size_t>(eg_input(j), j));
         }
       } else {
         auto eg_input =
-            framework::EigenMatrix<T>::Reshape(*input, inputdims.size() - 1);
+            phi::EigenMatrix<T>::Reshape(*input, inputdims.size() - 1);
         for (size_t j = 0; j < col; j++) {
           vec.push_back(std::pair<T, size_t>(eg_input(i, j), j));
         }

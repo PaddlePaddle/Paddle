@@ -17,9 +17,9 @@
 #include <vector>
 
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -52,7 +52,7 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
       auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
       phi::DenseTensor cpu_shape_tensor;
       paddle::framework::TensorCopySync(
-          *img_real_size, platform::CPUPlace(), &cpu_shape_tensor);
+          *img_real_size, phi::CPUPlace(), &cpu_shape_tensor);
       std::vector<int> img_real_h;
       std::vector<int> img_real_w;
       std::vector<int> output_height;
@@ -163,9 +163,10 @@ class Im2SequenceGradKernel : public framework::OpKernel<T> {
     auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     d_x->mutable_data<T>(ctx.GetPlace());
 
-    auto x_v = framework::EigenVector<T>::Flatten(*d_x);
+    auto x_v = phi::EigenVector<T>::Flatten(*d_x);
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-    EigenConstant<std::decay_t<decltype(place)>, T, 1>::Eval(place, x_v, 0.0);
+    phi::funcs::EigenConstant<std::decay_t<decltype(place)>, T, 1>::Eval(
+        place, x_v, 0.0);
 
     auto in_dim = in->dims();
     int batch_size = in_dim[0];

@@ -21,7 +21,6 @@ DEFINE_C_REDUCE_XPU_KERNEL(CReduceMax, kRedMax);
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(
     c_reduce_max, XPU, ALL_LAYOUT, ops::CReduceMaxXPUKernel, float) {}

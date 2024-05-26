@@ -101,10 +101,8 @@ SpmdInfo RmsNormInferSpmdReverse(const DistMetaTensor& x,
   std::string scale_axes(1, x_axes[x_ndim - 1]);
 
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
-  axes_sharding_info.emplace_back(
-      std::make_pair(out_axes, out_dims_mapping_src));
-  axes_sharding_info.emplace_back(
-      std::make_pair(variance_axes, invvar_dims_mapping_src));
+  axes_sharding_info.emplace_back(out_axes, out_dims_mapping_src);
+  axes_sharding_info.emplace_back(variance_axes, invvar_dims_mapping_src);
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
 

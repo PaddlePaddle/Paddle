@@ -23,7 +23,7 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/top_k_op.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
 // set cub base traits in order to handle float16
 
@@ -61,10 +61,9 @@ template <typename DeviceContext, typename T>
 class TopkOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
-        true,
-        platform::errors::InvalidArgument("It must use CUDAPlace."));
+    PADDLE_ENFORCE_EQ(ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+                      true,
+                      phi::errors::InvalidArgument("It must use CUDAPlace."));
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
     auto* indices = ctx.Output<phi::DenseTensor>("Indices");
@@ -124,12 +123,12 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
                                                         gridx,
                                                         input_height));
         default:
-          PADDLE_THROW(platform::errors::Fatal(
+          PADDLE_THROW(phi::errors::Fatal(
               "the input k has error when use getMaxLength function to get the "
               "maxLength."));
       });
       default:
-        PADDLE_THROW(platform::errors::Unavailable(
+        PADDLE_THROW(phi::errors::Unavailable(
             "Calculation error occurred in TopK Operator's CUDA Kernel."));
     }
   }
@@ -139,10 +138,9 @@ template <typename DeviceContext, typename T>
 class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(context.GetPlace()),
-        true,
-        platform::errors::InvalidArgument("It must use CUDAPlace."));
+    PADDLE_ENFORCE_EQ(context.GetPlace().GetType() == phi::AllocationType::GPU,
+                      true,
+                      phi::errors::InvalidArgument("It must use CUDAPlace."));
     auto* x = context.Input<phi::DenseTensor>("X");
     auto* out_grad =
         context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
@@ -169,7 +167,7 @@ class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
               x_grad_data, indices_data, out_grad_data, row, col, k));
       default:
         PADDLE_THROW(
-            platform::errors::Unavailable("Error occurs when Assign Grad."));
+            phi::errors::Unavailable("Error occurs when Assign Grad."));
     }
   }
 };
@@ -184,8 +182,7 @@ REGISTER_OP_CUDA_KERNEL(
     paddle::operators::TopkOpCUDAKernel<phi::GPUContext, double>,
     paddle::operators::TopkOpCUDAKernel<phi::GPUContext, int>,
     paddle::operators::TopkOpCUDAKernel<phi::GPUContext, int64_t>,
-    paddle::operators::TopkOpCUDAKernel<phi::GPUContext,
-                                        paddle::platform::float16>);
+    paddle::operators::TopkOpCUDAKernel<phi::GPUContext, phi::dtype::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
     top_k_grad,
@@ -194,4 +191,4 @@ REGISTER_OP_CUDA_KERNEL(
     paddle::operators::TopkOpGradCUDAKernel<phi::GPUContext, int>,
     paddle::operators::TopkOpGradCUDAKernel<phi::GPUContext, int64_t>,
     paddle::operators::TopkOpGradCUDAKernel<phi::GPUContext,
-                                            paddle::platform::float16>);
+                                            phi::dtype::float16>);

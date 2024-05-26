@@ -77,7 +77,6 @@ that were saved using the SaveCombine operator.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(load_combine,
                   ops::LoadCombineOp,
@@ -89,7 +88,7 @@ PD_REGISTER_STRUCT_KERNEL(load_combine,
                           ops::LoadCombineOpKernel,
                           float,
                           double,
-                          plat::bfloat16,
+                          phi::dtype::bfloat16,
                           int,
                           int8_t,
                           int64_t) {}

@@ -70,6 +70,19 @@ void AddLayernormXPUInferMeta(const MetaTensor& x,
                               float epsilon,
                               MetaTensor* out);
 
+void GroupNormalizeSiluXPUInferMeta(const MetaTensor& x,
+                                    const MetaTensor& scale,
+                                    const MetaTensor& bias,
+                                    int groups,
+                                    float epsilon,
+                                    MetaTensor* out);
+
+void BlhaGetMaxLenInferMeta(const MetaTensor& seq_lens_encoder,
+                            const MetaTensor& seq_lens_decoder,
+                            const MetaTensor& batch_size,
+                            MetaTensor* max_enc_len_this_time,
+                            MetaTensor* max_dec_len_this_time);
+
 void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const MetaTensor& key_cache,
                                       const MetaTensor& value_cache,
@@ -94,6 +107,8 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const MetaTensor& qkv_bias,
                                       const MetaTensor& out_shift,
                                       const MetaTensor& out_smooth,
+                                      const MetaTensor& max_enc_len_this_time,
+                                      const MetaTensor& max_dec_len_this_time,
                                       int max_seq_len,
                                       int block_size,
                                       bool use_neox_style,
@@ -144,6 +159,26 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                         DataType out_dtype,
                         MetaTensor* out,
                         MetaTensor* out_max);
+
+void SpatialTransformerResblockXPUInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& x_max,
+    const std::vector<const MetaTensor*>& conv_bias,
+    const std::vector<const MetaTensor*>& conv_filter,
+    const std::vector<const MetaTensor*>& conv_filter_max,
+    const std::vector<const MetaTensor*>& gn_bias,
+    const std::vector<const MetaTensor*>& gn_scale,
+    const std::vector<int>& dilations,
+    const std::vector<int>& paddings,
+    const std::vector<int>& strides,
+    const std::vector<float>& gn_eps,
+    const std::vector<int>& gn_groups,
+    const std::vector<int>& groups,
+    bool conv_fix,
+    bool has_silu_fc_input,
+    bool include_silu,
+    MetaTensor* out,
+    MetaTensor* out_max);
 
 void EmbeddingWithEltwiseAddXPUInferMeta(
     const std::vector<const MetaTensor*>& ids,
@@ -862,21 +897,41 @@ void QKVAttentionXPUInferMeta(const MetaTensor& q,
                               const MetaTensor& q_max,
                               const MetaTensor& k_max,
                               const MetaTensor& v_max,
+                              const MetaTensor& qk_max,
+                              const MetaTensor& qkv_max,
                               float alpha,
                               int head_num,
                               int head_dim,
                               bool qkv_fc_fusion,
                               DataType out_dtype,
-                              MetaTensor* qkv,
-                              MetaTensor* qkv_max);
+                              MetaTensor* qkv);
 void SinePosXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& y,
                          MetaTensor* out);
+void Pad2dXPUInferMeta(const MetaTensor& x,
+                       const std::vector<int>& paddings,
+                       const std::string& mode,
+                       float pad_value,
+                       const std::string& data_format,
+                       MetaTensor* out);
 void RoformerRelativePosXPUInferMeta(const MetaTensor& x,
                                      const MetaTensor& sin_emb,
                                      const MetaTensor& cos_emb,
                                      int max_pos_len,
                                      MetaTensor* out);
+void CrossAttentionXPUInferMeta(
+    const MetaTensor& input_q,
+    const MetaTensor& input_kv,
+    const std::vector<const MetaTensor*>& fc_weight,
+    const std::vector<const MetaTensor*>& fc_weight_max,
+    const std::vector<const MetaTensor*>& fc_bias,
+    const MetaTensor& mask,
+    int head_num,
+    int head_dim,
+    float alpha,
+    DataType out_dtype,
+    MetaTensor* qkv,
+    MetaTensor* qkv_max);
 
 void MultiGruInferMeta(
     const MetaTensor& x,
@@ -893,6 +948,15 @@ void MultiGruInferMeta(
     float shift_data,
     bool force_fp32_output,
     MetaTensor* hidden);
+
+void MaskAdaptiveXPUInferMeta(const MetaTensor& mask,
+                              MetaTensor* length,
+                              MetaTensor* seq_lod,
+                              MetaTensor* pad_seq_len);
+
+void SequenceUnpadXPUInferMeta(const MetaTensor& x,
+                               const MetaTensor& length,
+                               MetaTensor* out);
 
 void FusionLstmInferMeta(const MetaTensor& x,
                          const MetaTensor& weight_x,
@@ -919,5 +983,22 @@ void FusionLstmInferMeta(const MetaTensor& x,
                          MetaTensor* reordered_h0,
                          MetaTensor* reordered_c0,
                          MetaTensor* checked_cell);
+
+void FusionSeqpoolCvmConcatInferMeta(const std::vector<const MetaTensor*>& x,
+                                     const MetaTensor& cvm,
+                                     const std::string& pooltype,
+                                     bool use_cvm,
+                                     int axis,
+                                     MetaTensor* out,
+                                     MetaConfig config = MetaConfig());
+
+void FusedTokenPruneInferMeta(const MetaTensor& attn,
+                              const MetaTensor& x,
+                              const MetaTensor& mask,
+                              const MetaTensor& new_mask,
+                              bool keep_first_token,
+                              bool keep_order,
+                              MetaTensor* slimmed_x,
+                              MetaTensor* cls_inds);
 
 }  // namespace phi

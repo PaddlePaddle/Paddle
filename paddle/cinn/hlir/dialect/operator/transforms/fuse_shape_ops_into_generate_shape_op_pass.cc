@@ -63,7 +63,7 @@ std::vector<pir::Value> FindSourceDenseTensorOfDimTensor(
           Visit(input_value);
         }
       };
-  const auto& IsDimTensorOrListDimExpr = symbol::Overloaded{
+  const auto& IsDimTensorOrListDimExpr = ::common::Overloaded{
       [](const symbol::TensorShapeOrDataDimExprs& dim_expr) {
         return dim_expr.data().has_value();
       },
@@ -207,21 +207,6 @@ std::vector<pir::Operation*> GetSubGraphFromOutputToInputsValue(
   return ops;
 }
 
-void InferSymbolicShapeForSubgraph(
-    const std::vector<pir::Operation*>& ops,
-    pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  for (auto* op : ops) {
-    auto infer_symbolic_shape_interface =
-        op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
-    if (infer_symbolic_shape_interface) {
-      infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis);
-    } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
-    }
-  }
-}
-
 void UpdateLocalShapeAnalysis(
     const std::vector<pir::Value>& input_tensors,
     pir::Value shape,
@@ -258,10 +243,6 @@ void UpdateLocalShapeAnalysis(
           input_tensor, symbol::TensorShapeOrDataDimExprs(new_shape));
     }
   }
-  // infer new symbol shape for shape value
-  std::vector<pir::Operation*> sub_graph_ops =
-      GetSubGraphFromOutputToInputsValue(input_tensors, shape);
-  InferSymbolicShapeForSubgraph(sub_graph_ops, shape_analysis);
 }
 
 std::optional<pir::Value> GetOutOfRewrittenGenerateShapeOp(
@@ -348,15 +329,12 @@ bool ReplaceShapeOpsToGenerateShape(
   auto ShapeOrDataDimExprs4Value =
       [&shape_analysis](
           pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
-    CHECK(shape_analysis->HasShapeOrDataForValue(value));
     return shape_analysis->GetShapeOrDataForValue(value);
   };
   std::optional<pir::Value> opt_generated_shape =
       GetOutOfRewrittenGenerateShapeOp(
           shape_operand, rewriter, ShapeOrDataDimExprs4Value);
   if (!opt_generated_shape.has_value()) return false;
-  shape_analysis->SetShapeOrDataForValue(
-      opt_generated_shape.value(), ShapeOrDataDimExprs4Value(shape_operand));
   rewriter->ReplaceAllUsesWith(shape_operand, opt_generated_shape.value());
   return true;
 }

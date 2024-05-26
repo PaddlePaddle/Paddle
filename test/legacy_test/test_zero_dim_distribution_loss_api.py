@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -293,12 +293,12 @@ class TestLossAPIStatic(unittest.TestCase):
         out1 = F.sigmoid_focal_loss(
             logit, label, normalizer=fg_num_1, reduction='mean'
         )
-        paddle.static.append_backward(out0.sum())
+        [(_, out0_grad), (_, logit_grad)] = paddle.static.append_backward(
+            out0.sum(), parameter_list=[out0, logit]
+        )
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog, fetch_list=[out0, out1, out0.grad_name, logit.grad_name]
-        )
+        res = self.exe.run(prog, fetch_list=[out0, out1, out0_grad, logit_grad])
         np.testing.assert_allclose(res[0], res[1])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, ())
@@ -315,10 +315,12 @@ class TestLossAPIStatic(unittest.TestCase):
         loss = paddle.nn.functional.cross_entropy(
             input, label, reduction='mean'
         )
-        paddle.static.append_backward(loss)
+        [(_, input_grad)] = paddle.static.append_backward(
+            loss, parameter_list=[input]
+        )
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        res = self.exe.run(prog, fetch_list=[loss, input_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (3, 5))
 
@@ -329,10 +331,12 @@ class TestLossAPIStatic(unittest.TestCase):
         label = paddle.rand([3, 5])
 
         loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
-        paddle.static.append_backward(loss)
+        [(_, input_grad)] = paddle.static.append_backward(
+            loss, parameter_list=[input]
+        )
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        res = self.exe.run(prog, fetch_list=[loss, input_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (3, 5))
 
@@ -347,10 +351,12 @@ class TestLossAPIStatic(unittest.TestCase):
         label.stop_gradient = False
 
         loss = paddle.nn.functional.nll_loss(log_out, label)
-        paddle.static.append_backward(loss)
+        [(_, input_grad)] = paddle.static.append_backward(
+            loss, parameter_list=[input]
+        )
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        res = self.exe.run(prog, fetch_list=[loss, input_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (5, 3))
 
@@ -363,10 +369,12 @@ class TestLossAPIStatic(unittest.TestCase):
         label.stop_gradient = False
 
         loss = paddle.nn.functional.nll_loss(log_out, label)
-        paddle.static.append_backward(loss)
+        [(_, input_grad)] = paddle.static.append_backward(
+            loss, parameter_list=[input]
+        )
 
         prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        res = self.exe.run(prog, fetch_list=[loss, input_grad])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (5, 3, 2, 4))
 

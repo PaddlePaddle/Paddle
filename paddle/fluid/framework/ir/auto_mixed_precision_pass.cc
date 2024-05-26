@@ -773,15 +773,6 @@ bool AutoMixedPrecisionPass::OutputVarsNotConvert(
     if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
       return true;
     }
-  } else if (GetOpOriginalType(op_desc->Type()) == "instance_norm") {
-    auto vecs = op_desc->Output("SavedMean");
-    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
-      return true;
-    }
-    vecs = op_desc->Output("SavedVariance");
-    if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
-      return true;
-    }
   }
 
   return false;

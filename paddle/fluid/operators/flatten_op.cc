@@ -43,12 +43,12 @@ class Flatten2Op : public framework::OperatorWithKernel {
     const auto &in_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(axis,
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The axis should be greater than or equal to 0."));
     PADDLE_ENFORCE_LE(
         axis,
         in_dims.size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The axis should be less than or equal to input tensor's rank"));
 
     const auto &out_dims = Flatten2Op::GetOutputShape(axis, in_dims);
@@ -77,7 +77,7 @@ class Flatten2Op : public framework::OperatorWithKernel {
   }
 
   static std::vector<int32_t> GetOutputShape(const int axis,
-                                             const framework::DDim &in_dims) {
+                                             const phi::DDim &in_dims) {
     if (in_dims.size() == 0) {
       return {1};
     }

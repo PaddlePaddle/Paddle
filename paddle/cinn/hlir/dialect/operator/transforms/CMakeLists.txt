@@ -7,7 +7,7 @@ set(cinn_transforms_deps
     cinn_op_dialect
     op_dialect_vjp
     cinn_runtime_dialect
-    # group_cluster
+    op_fusion
     pir_compiler)
 
 cinn_cc_library(cinn_transforms SRCS ${cinn_transforms_srcs} DEPS
@@ -16,4 +16,4 @@ cinn_cc_library(cinn_transforms SRCS ${cinn_transforms_srcs} DEPS
 cc_library(
   add_cinn_pass
   SRCS add_cinn_pass.cc
-  DEPS op_dialect pir cinn_op_dialect cinnapi pir_transforms cinn_transforms)
+  DEPS pir_transforms cinn_transforms)

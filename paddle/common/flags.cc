@@ -629,6 +629,10 @@ PHI_DEFINE_EXPORTED_uint64(
     "The real chunk size is max(request_size, "
     "FLAGS_auto_growth_chunk_size_in_mb).");
 
+PHI_DEFINE_EXPORTED_bool(custom_device_mem_record,
+                         false,
+                         "Enable mem record event on custom device");
+
 #endif
 
 /**
@@ -737,13 +741,13 @@ PHI_DEFINE_EXPORTED_bool(set_to_1d, false, "set 0D Tensor to 1D numpy");
 
 /**
  * Debug related FLAG
- * Name: tracer_mkldnn_ops_on
+ * Name: tracer_onednn_ops_on
  * Since Version: 2.0.0
  * Value Range: string, default=empty
  * Example:
  * Note: Holds list of operation types with OneDNN kernels to be enabled.
  */
-PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,
+PHI_DEFINE_EXPORTED_string(tracer_onednn_ops_on,
                            "",
                            "List of OneDNN operation types to be turned on");
 
@@ -761,13 +765,13 @@ PHI_DEFINE_EXPORTED_string(static_runtime_data_save_path,
 
 /**
  * Debug related FLAG
- * Name: tracer_mkldnn_ops_off
+ * Name: tracer_onednn_ops_off
  * Since Version: 2.0.0
  * Value Range: string, default=empty
  * Example:
  * Note: Holds list of operation types with OneDNN kernels to be disabled.
  */
-PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_off,
+PHI_DEFINE_EXPORTED_string(tracer_onednn_ops_off,
                            "",
                            "List of OneDNN operation types to be turned off");
 
@@ -1023,18 +1027,27 @@ PHI_DEFINE_EXPORTED_string(deny_cinn_ops,
 
 /*
  * CINN related FLAG
- * Name: FLAGS_enable_pe_launch_cinn
- * Since Version: 2.3
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 3.0 Beta
  * Value Range: bool, default=true
- * Example: FLAGS_enable_pe_launch_cinn=true would execute the CINN compiled
- * instructions of a paddle graph with ParallelExecutor, otherwise with the
- * CINN compiled runtime program in sequential order.
+ * Example: FLAGS_enable_cinn_compile_cache=true would reuse cached Kernel
+ * function
  */
-PHI_DEFINE_EXPORTED_bool(enable_pe_launch_cinn,
-                         true,
-                         "It controls whether to execute cinn compiled "
-                         "program with ParallelExecutor");
-
+PHI_DEFINE_EXPORTED_bool(
+    enable_cinn_compile_cache,
+    true,
+    "It controls whether to enable cinn compilation cache.");
+/*
+ * CINN related FLAG
+ * Name: FLAGS_deny_cinn_ops
+ * Since Version: 3.0 Beta
+ * Value Range: bool, default=-1
+ * Example: FLAGS_cinn_compile_thread_nume=8
+ */
+PHI_DEFINE_EXPORTED_int64(
+    cinn_compile_thread_num,
+    -1,
+    "It controls how many thread numbers applying compilation cache.");
 /*
  * CINN related FLAG
  * Name: FLAGS_enable_interpretercore_launch_cinn
@@ -1245,6 +1258,37 @@ PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
 PHI_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
 
 /**
+ * CINN training related FLAG
+ * Name: FLAGS_disable_dyshape_in_train
+ * Since Version: 2.7.0
+ * Value Range: bool, default=false
+ * Example:
+ */
+PHI_DEFINE_EXPORTED_bool(disable_dyshape_in_train,
+                         false,
+                         "Whether disable dyshape in training.");
+
+/**
+ * CINN accuracy check related FLAG
+ * Name: FLAGS_enable_cinn_accuracy_check
+ * Since Version: 3.0 beta
+ * Value Range: bool, default=false
+ */
+PHI_DEFINE_EXPORTED_bool(enable_cinn_accuracy_check,
+                         false,
+                         "Whether enable accuracy check in cinn.");
+
+/**
+ * CINN fuse parallel matmul pass related FLAG
+ * Name: FLAGS_enable_fuse_parallel_matmul_pass
+ * Since Version: 3.0 beta
+ * Value Range: bool, default=true
+ */
+PHI_DEFINE_EXPORTED_bool(enable_fuse_parallel_matmul_pass,
+                         true,
+                         "Whether enable fuse_parallel_matmul_pass in cinn.");
+
+/**
  * Conv Search cache max number related FLAG
  * Name: FLAGS_search_cache_max_number
  * Since Version: 2.3.0
@@ -1346,6 +1390,19 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,
                          "Use shm cache in mmap_allocator.");
 
 /**
+ * mmap_allocator related FLAG
+ * Name: dataloader_use_file_descriptor
+ * Since Version: 2.6.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: . If True, mmap_allocator will use file descripor to open shared memory
+ * operation.
+ */
+PHI_DEFINE_EXPORTED_bool(dataloader_use_file_descriptor,
+                         false,
+                         "Use file descriptor in mmap_allocator.");
+
+/**
  * Tensor operants related FLAG
  * Name: tensor_operants_mode
  * Since Version: 2.5.0
@@ -1367,11 +1424,11 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If Ture, executor will use new IR
+ * Note: If True, executor will use PIR
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
                          false,
-                         "Enable new IR in executor");
+                         "Enable PIR in executor");
 
 /**
  * Using PIR by translating legacy program to pir program
@@ -1380,12 +1437,21 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
  * Since Version: 2.6.0
  * Value Range: bool, default=true
  * Example:
- * Note: If Ture, program will be translated to pir program
+ * Note: If True, program will be translated to pir program
  * and then run in executor for dy2st mode.
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_with_pt_in_dy2st,
                          true,
-                         "Enable new IR in executor");
+                         "Enable PIR in executor");
+
+PHI_DEFINE_EXPORTED_string(logging_pir_py_code_dir,
+                           "",
+                           "the logging directory to save pir py code");
+
+PHI_DEFINE_EXPORTED_bool(logging_trunc_pir_py_code,
+                         true,
+                         "whether truncate the logging files under directory "
+                         "FLAGS_logging_pir_py_code_dir");
 
 /**
  * Using PIR API in Python
@@ -1393,9 +1459,9 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_with_pt_in_dy2st,
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If True, New IR API will be used in Python
+ * Note: If True, PIR API will be used in Python
  */
-PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
+PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable PIR API in Python");
 
 /**
  * Using PIR in executor FLAG
@@ -1403,20 +1469,20 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
- * Note: If True, executor will use new IR and run in beta version by for trace
+ * Note: If True, executor will use PIR and run in beta version by for trace
  * version.
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor_trace_run,
                          false,
-                         "Enable new IR in executor");
+                         "Enable PIR in executor");
 
 /**
- * Apply inplace pass to new IR FLAG
+ * Apply inplace pass to PIR FLAG
  * Name: pir_apply_inplace_pass
  * Since Version: 2.6.0
  * Value Range: bool, default=true
  * Example:
- * Note: If True, will apply inplace pass to new IR.
+ * Note: If True, will apply inplace pass to PIR.
  */
 PHI_DEFINE_EXPORTED_bool(pir_apply_inplace_pass,
                          true,
@@ -1462,8 +1528,12 @@ PHI_DEFINE_EXPORTED_int32(
     "been dropped when you are profiling, try increasing this value.");
 
 PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
-PHI_DEFINE_EXPORTED_bool(prim_skip_dynamic,
+
+PHI_DEFINE_EXPORTED_bool(pir_debug,
                          false,
+                         "Whether print more pir debug info.");
+PHI_DEFINE_EXPORTED_bool(prim_skip_dynamic,
+                         true,
                          "Whether to skip decomposing op with dynamic shape.");
 PHI_DEFINE_EXPORTED_bool(prim_check_ops,
                          false,
@@ -1525,12 +1595,12 @@ PHI_DEFINE_EXPORTED_int64(alloc_fill_value,
                           "This is useful for debugging.");
 
 /**
- * Apply shape optimization pass to new IR FLAG
+ * Apply shape optimization pass to PIR FLAG
  * Name: pir_apply_shape_optimization_pass
  * Since Version: 3.0.0
  * Value Range: bool, default=false
  * Example:
- * Note: If Ture, will apply shape_optimization pass to new IR.
+ * Note: If True, will apply shape_optimization pass to PIR.
  */
 PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
                          false,
@@ -1593,6 +1663,42 @@ PHI_DEFINE_EXPORTED_bool(
     "Whether to use check_infer_symbolic_pass. This pass can check "
     "the symbolic inference accuracy by comparing the the value "
     "shape between dynamic shape and static shape.");
+
+/**
+ * Name: manually_trans_conv_filter
+ * Since Version: 3.0.0 Beta
+ * Value Range: bool, default=false
+ */
+PHI_DEFINE_EXPORTED_bool(
+    manually_trans_conv_filter,
+    false,
+    "Whether to manually transpose the filter of conv2d. This pass can "
+    "accelerate the performance of conv2d since it transpose filter ahead");
+
+/**
+ * Apply CSE optimize pass in Dy2St
+ * Name: enable_cse_in_dy2st
+ * Since Version: 3.0.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will apply CSE optimize pass in Dy2St.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_cse_in_dy2st,
+                         false,
+                         "Apply CSE optimize pass in Dy2St");
+
+/**
+ * Max count of eliminate redundant computation in CSE, for debug usage
+ * Name: cse_max_count
+ * Since Version: 3.0.0
+ * Value Range: int32, default=-1
+ * Example:
+ * Note: If -1, will not limit the max count of eliminate redundant computation.
+ */
+PHI_DEFINE_EXPORTED_int32(
+    cse_max_count,
+    -1,
+    "Max count of eliminate redundant computation in CSE, for debug usage");
 
 PHI_DEFINE_EXPORTED_string(
     mkl_dir,  // NOLINT

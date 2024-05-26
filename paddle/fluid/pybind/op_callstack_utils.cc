@@ -24,7 +24,7 @@ pir::Attribute CallStackRecorder::GetOpCallstackInfo() {
   PyObject* traceback_str = PyUnicode_FromString("traceback");
   PyObject* traceback_module = PyImport_Import(traceback_str);
 
-  if (NULL == traceback_module) {
+  if (nullptr == traceback_module) {
     Py_DECREF(traceback_str);
     Py_DECREF(traceback_module);
     PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
@@ -33,8 +33,8 @@ pir::Attribute CallStackRecorder::GetOpCallstackInfo() {
         api_name_));
   }
   PyObject* tb = PyObject_GetAttrString(traceback_module, "extract_stack");
-  PyObject* stack = PyObject_CallObject(tb, NULL);
-  if (NULL == stack) {
+  PyObject* stack = PyObject_CallObject(tb, nullptr);
+  if (nullptr == stack) {
     Py_DECREF(tb);
     Py_DECREF(traceback_str);
     Py_DECREF(traceback_module);

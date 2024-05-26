@@ -27,11 +27,13 @@ from paddle.framework import core
 from ....infer_meta import MetaInfo
 from ....symbolic.statement_ir import Symbol
 from ....utils import (
+    ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     BreakGraphError,
     ConstTypes,
     FallbackError,
     NameGenerator,
     paddle_tensor_methods,
+    printable,
 )
 from ....utils.exceptions import HasNoAttributeError, InnerError
 from ..dispatch_functions import tensor_numel
@@ -39,6 +41,7 @@ from ..guard import (
     StringifyExpression,
     check_guard,
     object_equal_stringify_guard,
+    stringify_pyobject,
     union_free_vars,
 )
 from ..mutable_data import MutableDictLikeData
@@ -170,6 +173,24 @@ class ConstantVariable(VariableBase):
             DummyTracker([self]),
         )
 
+    @check_guard
+    def make_stringify_guard(self) -> list[StringifyExpression]:
+        if (
+            ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+            and isinstance(self.value, int)
+            and self.tracker.need_guard()
+        ):
+            from ..executor_cache import OpcodeExecutorCache
+
+            frame_value_tracer = self.tracker.trace_value_from_frame()
+            symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
+            symbolic_inputs.setdefault(frame_value_tracer.inlined_expr, {})
+            symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
+            symbolic_input.setdefault(self.value, 0)
+            symbolic_input[self.value] += 1
+
+        return super().make_stringify_guard()
+
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if type(value) in ConstTypes:
@@ -259,11 +280,15 @@ class TensorDtypeVariable(DataVariable):
             tensor_value_tracer = (
                 self.tracker.obj.tracker.trace_value_from_frame()
             )
+            dtype_str, dtype_free_vars = stringify_pyobject(self.value)
             return [
                 StringifyExpression(
-                    f"str(MetaInfo.from_tensor({{}}).dtype) == '{str(self.value)}'",
+                    f"MetaInfo.from_tensor({{}}).dtype == {dtype_str}",
                     [tensor_value_tracer],
-                    {"MetaInfo": MetaInfo},
+                    union_free_vars(
+                        {"MetaInfo": MetaInfo},
+                        dtype_free_vars,
+                    ),
                 )
             ]
         else:
@@ -321,9 +346,7 @@ class TensorVariable(VariableBase):
             self.meta = tensor
         else:
             raise InnerError(
-                "Required type(tensor) is paddle.Tensor or ProxyTensor, but received {}.".format(
-                    type(tensor).__name__
-                )
+                f"Required type(tensor) is paddle.Tensor or ProxyTensor, but received {type(tensor).__name__}."
             )
         self.origin_meta = self.meta
         self.var_name = TensorVariable.var_name_generator.next()
@@ -572,6 +595,93 @@ class TensorVariable(VariableBase):
         return None
 
 
+class SymbolicVariable(VariableBase):
+    """
+    TODO
+    """
+
+    var_name_generator = NameGenerator("symint_")
+
+    def __init__(
+        self,
+        value: int | MetaInfo,
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(graph, tracker)
+        self.var_name = self.var_name_generator.next()
+        if isinstance(value, MetaInfo):
+            self.value = None
+            self.meta = value
+        else:
+            self.value = value
+            self.meta = MetaInfo(
+                [], paddle.int64, True, self.var_name, False, None, None
+            )
+
+    def get_py_value(self, allow_tensor=False):
+        return self.value
+
+    def get_py_type(self):
+        return int
+
+    def get_symbol(self) -> Symbol:
+        return Symbol(self.var_name)
+
+    @property
+    def out_var_name(self):
+        return f"{self.graph.OUT_VAR_PREFIX}{self.var_name}"
+
+    def _reconstruct(self, codegen: PyCodeGen):
+        codegen.gen_load_fast(self.out_var_name)
+        codegen.gen_load_method("item")
+        codegen.gen_call_method(0)  # TODO
+
+    @check_guard
+    def make_stringify_guard(self) -> list[StringifyExpression]:
+        assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+        from ..executor_cache import OpcodeExecutorCache
+
+        frame_value_tracer = self.tracker.trace_value_from_frame()
+        symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
+
+        assert frame_value_tracer.inlined_expr in symbolic_inputs
+
+        # TODO(zrr1999): Once dynamic shape is used, there will be no new guards
+        symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
+        symbolic_input.setdefault(self.value, 0)
+        symbolic_input[self.value] += 1
+
+        return [
+            StringifyExpression(
+                "isinstance({}, int)",
+                [frame_value_tracer],
+                union_free_vars(frame_value_tracer.free_vars),
+            )
+        ]
+
+    @VariableFactory.register_from_value(successor="ConstantVariable")
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
+            return
+        if not isinstance(value, int):
+            return
+        if not tracker.need_guard():
+            return
+
+        from ..executor_cache import OpcodeExecutorCache
+
+        symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
+
+        for tracker_expr, symbolic_input in symbolic_inputs.items():
+            if tracker.match_expr(tracker_expr):
+                symbolic_input.setdefault(value, 0)
+                symbolic_input[value] += 1
+                # TODO(zrr1999): determine frequency
+                return SymbolicVariable(value, graph, tracker)
+        return None
+
+
 class ParameterVariable(TensorVariable):
     def __init__(
         self,
@@ -606,7 +716,12 @@ class ObjectVariable(VariableBase):
 
     @property
     def main_info(self) -> dict[str, Any]:
-        return {"value": self.value}
+        # NOTE(SigureMo): There are some objects that cannot be printed, such as
+        # uninitialized dataclass, we should fallback to the class name.
+        if printable(self.value):
+            return {"value": self.value}
+        else:
+            return {"value": f"instance {self.value.__class__.__name__}"}
 
     def get_py_value(self, allow_tensor=False) -> Any:
         return self.value

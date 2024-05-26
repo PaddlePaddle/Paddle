@@ -183,9 +183,7 @@ class TestMNISTWithToStatic(TestMNIST):
             dygraph_loss_cpu,
             dygraph_loss_mkldnn,
             rtol=1e-05,
-            err_msg='cpu dygraph is {}\n mkldnn dygraph is \n{}'.format(
-                dygraph_loss_cpu, dygraph_loss_mkldnn
-            ),
+            err_msg=f'cpu dygraph is {dygraph_loss_cpu}\n mkldnn dygraph is \n{dygraph_loss_mkldnn}',
         )
 
     def train(self, to_static=False):
@@ -221,13 +219,7 @@ class TestMNISTWithToStatic(TestMNIST):
                 mnist.clear_gradients()
                 if batch_id % 10 == 0:
                     print(
-                        "Loss at epoch {} step {}: loss: {:}, acc: {}, cost: {}".format(
-                            epoch,
-                            batch_id,
-                            avg_loss.numpy(),
-                            acc.numpy(),
-                            time() - start,
-                        )
+                        f"Loss at epoch {epoch} step {batch_id}: loss: {avg_loss.numpy()}, acc: {acc.numpy()}, cost: {time() - start}"
                     )
                     start = time()
                 if batch_id == 50:

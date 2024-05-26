@@ -24,7 +24,6 @@ from dygraph_to_static_utils import (
 
 import paddle
 import paddle.nn.functional as F
-from paddle.base.framework import use_pir_api
 from paddle.jit.dy2static.transformers.loop_transformer import NameVisitor
 from paddle.utils import gast
 
@@ -282,16 +281,12 @@ class TestNameVisitor(Dy2StTestBase):
                 self.assertEqual(
                     loop_var_names,
                     self.loop_var_names[i],
-                    msg="loop_var_names : {}, \nexpected loop_var_names : {}".format(
-                        loop_var_names, self.loop_var_names[i]
-                    ),
+                    msg=f"loop_var_names : {loop_var_names}, \nexpected loop_var_names : {self.loop_var_names[i]}",
                 )
                 self.assertEqual(
                     create_var_names,
                     self.create_var_names[i],
-                    msg="i = {}\ncreate_var_names : {}, \nexpected create_var_names : {}".format(
-                        i, create_var_names, self.create_var_names[i]
-                    ),
+                    msg=f"i = {i}\ncreate_var_names : {create_var_names}, \nexpected create_var_names : {self.create_var_names[i]}",
                 )
                 i += 1
 
@@ -470,9 +465,7 @@ class TestForLoopMeetDict(Dy2StTestBase):
             ],
         )
         temp_dir = tempfile.TemporaryDirectory()
-        # TODO(pir-save-load): Fix this after we support save/load in PIR
-        if not use_pir_api():
-            paddle.jit.save(model, temp_dir.name)
+        paddle.jit.save(model, temp_dir.name)
         temp_dir.cleanup()
 
 

@@ -46,7 +46,7 @@ class CSoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
         if (ctx->IsRuntime() || (logits_dims[i] > 0 && labels_dims[i] > 0)) {
           PADDLE_ENFORCE_EQ(logits_dims[i],
                             labels_dims[i],
-                            platform::errors::InvalidArgument(
+                            phi::errors::InvalidArgument(
                                 "Input(Logits) and Input(Label) should in "
                                 "same shape in dimensions except axis."));
         }
@@ -56,7 +56,7 @@ class CSoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         labels_dims[logits_rank - 1],
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "the last dimension of Input(Label) should be 1."
             "But received: the last dimension of Input(Label) is [%d],"
             "the last dimension is [%d]",
@@ -130,22 +130,22 @@ class CSoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Loss")),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(Loss@Grad) should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Softmax"),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(Softmax) should be not null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Loss")),
+        true,
+        phi::errors::InvalidArgument("Input(Loss@Grad) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Softmax"),
+        true,
+        phi::errors::InvalidArgument("Input(Softmax) should be not null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Label"),
         true,
-        platform::errors::InvalidArgument("Input(Label) should be not null."));
+        phi::errors::InvalidArgument("Input(Label) should be not null."));
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Logits")),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Output(Logits@Grad) should be not null."));
 
     ctx->SetOutputDim(framework::GradVarName("Logits"),
@@ -189,7 +189,6 @@ DECLARE_INPLACE_OP_INFERER(CSoftmaxWithCrossEntropyGradInplaceInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(
     c_softmax_with_cross_entropy,
@@ -209,4 +208,4 @@ PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
                           ops::CSoftmaxWithCrossEntropyOpCPUKernel,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

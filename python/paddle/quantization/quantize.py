@@ -74,7 +74,7 @@ class Quantization(metaclass=abc.ABCMeta):
             if isinstance(child, ConvertibleQuantedLayer):
                 if child.converted:
                     continue
-                if (
+                if hasattr(child, 'weight_quanter') and (
                     child.weight_quanter is None
                     or child.weight_quanter.scales() is None
                 ):
@@ -109,7 +109,12 @@ class Quantization(metaclass=abc.ABCMeta):
             if config._need_observe(child):
                 replaced[name] = config._get_observe_wrapper(child)
             else:
-                self._insert_activation_observers(child, config)
+                if (
+                    type(child) not in config._qat_layer_mapping.values()
+                    and type(child)
+                    not in config._customized_qat_layer_mapping.values()
+                ):
+                    self._insert_activation_observers(child, config)
         for key, value in replaced.items():
             model._sub_layers[key] = value
 

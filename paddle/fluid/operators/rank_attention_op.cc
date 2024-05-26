@@ -27,32 +27,32 @@ class RankAttentionOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(X) of RankAttentionOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("RankOffset"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(RankOffset) of RankAttentionOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("RankParam"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(RankParam) of RankAttentionOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("InsRank"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Output(InsRank) of RankAttentionOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("InputHelp"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Output(InputHelp) of RankAttentionOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Out"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Output(Out) of RankAttentionOp should not be null."));
     auto max_rank = ctx->Attrs().Get<int>("MaxRank");
 
@@ -64,13 +64,13 @@ class RankAttentionOp : public framework::OperatorWithKernel {
     auto x_fea_dim = x_dims[1];
     auto block_matrix_row = max_rank * x_fea_dim;
 
-    PADDLE_ENFORCE_EQ((rank_offset_dims[1] - 1) / 2,
-                      max_rank,
-                      platform::errors::InvalidArgument(
-                          "Input(RankOffset) has wrong columns, "
-                          "except columns to be %d, but got %d",
-                          max_rank,
-                          (rank_offset_dims[1] - 1) / 2));
+    PADDLE_ENFORCE_EQ(
+        (rank_offset_dims[1] - 1) / 2,
+        max_rank,
+        phi::errors::InvalidArgument("Input(RankOffset) has wrong columns, "
+                                     "except columns to be %d, but got %d",
+                                     max_rank,
+                                     (rank_offset_dims[1] - 1) / 2));
 
     ctx->SetOutputDim("Out", {ins_num, para_col});
     ctx->SetOutputDim("InputHelp", {ins_num, block_matrix_row});
@@ -94,23 +94,23 @@ class RankAttentionGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"),
         true,
-        platform::errors::InvalidArgument("Input(X) should not be null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("RankParam"),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(RankParam) should not be null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("RankOffset"),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(RankOffset) should not be null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("InputHelp"),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(InputHelp) should not be null"));
+        phi::errors::InvalidArgument("Input(X) should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("RankParam"),
+        true,
+        phi::errors::InvalidArgument("Input(RankParam) should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("RankOffset"),
+        true,
+        phi::errors::InvalidArgument("Input(RankOffset) should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("InputHelp"),
+        true,
+        phi::errors::InvalidArgument("Input(InputHelp) should not be null"));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("InsRank"),
         true,
-        platform::errors::InvalidArgument("Input(InsRank) should not be null"));
+        phi::errors::InvalidArgument("Input(InsRank) should not be null"));
 
     ctx->SetOutputDim(framework::GradVarName("RankParam"),
                       ctx->GetInputDim("RankParam"));

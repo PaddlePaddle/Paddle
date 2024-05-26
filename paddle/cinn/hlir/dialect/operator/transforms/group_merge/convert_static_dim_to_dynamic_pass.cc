@@ -150,11 +150,18 @@ struct StaticDimToDynamicConverter {
         &pir::ShapeAnalysisManager::Instance().Get(
             this->fusion_op->GetParentProgram());
     ForEachValue([&](pir::Value value) {
-      CHECK(shape_analysis->HasShapeOrDataForValue(value));
       const auto& origin_shape = GetOriginValueShape(value);
       const auto& target_shape = GetTargetValueShape(
           shape_analysis->GetShapeOrDataForValue(value).shape());
-      CHECK_EQ(origin_shape.size(), target_shape.size());
+      PADDLE_ENFORCE_EQ(
+          origin_shape.size(),
+          target_shape.size(),
+          phi::errors::InvalidArgument(
+              "The size of origin shape and target shape is not equal,"
+              "where the size of origin shape:%d but the size of target "
+              "shape:%d.",
+              origin_shape.size(),
+              target_shape.size()));
       const auto& origin_type = value.type().dyn_cast<::pir::DenseTensorType>();
       pir::DenseTensorType target_type =
           pir::DenseTensorType::get(pir::IrContext::Instance(),
@@ -361,26 +368,8 @@ struct StaticDimToDynamicConverter {
       pir::Value value,
       int64_t constant,
       const std::string& symbol) {
-    if (shape_analysis->HasShapeOrDataForValue(value)) {
-      const auto& old = shape_analysis->GetShapeOrDataForValue(value).shape();
-      return ConvertShapeOrDataDimExprs(Converter, old, constant, symbol);
-    } else {
-      auto& dims = value.type().dyn_cast<::pir::DenseTensorType>().dims();
-      const auto& int_dims = ::common::vectorize<int>(dims);
-      std::vector<symbol::DimExpr> old{};
-      for (int dim : int_dims) {
-        old.emplace_back(static_cast<std::int64_t>(dim));
-      }
-      const auto& opt_exprs =
-          ConvertShapeOrDataDimExprs(Converter, old, constant, symbol);
-      if (opt_exprs.has_value()) {
-        return opt_exprs.value();
-      } else {
-        return symbol::ShapeOrDataDimExprs{
-            symbol::TensorShapeOrDataDimExprs(old)};
-      }
-    }
-    PADDLE_THROW(phi::errors::Fatal("Dead code"));
+    const auto& old = shape_analysis->GetShapeOrDataForValue(value).shape();
+    return ConvertShapeOrDataDimExprs(Converter, old, constant, symbol);
   }
 
   template <typename ConverterT>

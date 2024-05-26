@@ -96,12 +96,16 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   const platform::Place& GetPlace() const override { return place_; }
 
-  void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {
-    output_hookfuncs_ = hookfuncs;
+  void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) override {}
+
+  void SetInputHooks(const std::vector<HookFunc>& hookfuncs) override {}
+
+  void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) override {
+    pir_output_hookfuncs_ = hookfuncs;
   }
 
-  void SetInputHooks(const std::vector<HookFunc>& hookfuncs) override {
-    input_hookfuncs_ = hookfuncs;
+  void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) override {
+    pir_input_hookfuncs_ = hookfuncs;
   }
 
   std::string GetNameByValue(::pir::Value value) const;
@@ -138,9 +142,9 @@ class PirInterpreter : public InterpreterBaseImpl {
   void CheckCUDAGraphBeforeRun(const std::vector<std::string>& feed_names);
   void PrepareForCUDAGraphCapture();
 
-  void Build(
-      const std::vector<std::string>& feed_names,
-      std::vector<paddle::framework::OpFuncNode>* op_func_nodes) override;
+  void Build(const std::vector<std::string>& feed_names,
+             std::vector<paddle::framework::OpFuncNode>* op_func_nodes,
+             bool switch_stream = false) override;
 
   bool IsStaticBuild() const override { return static_build_; }
 
@@ -200,8 +204,8 @@ class PirInterpreter : public InterpreterBaseImpl {
   int64_t onednn_op_num_{-1};
   std::vector<size_t> trace_execute_order_;
 
-  std::vector<HookFunc> output_hookfuncs_;
-  std::vector<HookFunc> input_hookfuncs_;
+  std::vector<PirHookFunc> pir_output_hookfuncs_;
+  std::vector<PirHookFunc> pir_input_hookfuncs_;
 
   /// ======================== ///
   ///        For new ir        ///

@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -24,9 +24,9 @@ class BatchFCKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
-        platform::errors::Unimplemented("BatchFC only supports GPU now."));
+        phi::errors::Unimplemented("BatchFC only supports GPU now."));
   }
 };
 }  // namespace operators
