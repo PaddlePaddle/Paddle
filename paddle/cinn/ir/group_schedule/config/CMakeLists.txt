@@ -1,4 +1,4 @@
-cinn_proto_library(filetileconfig_proto SRCS tileconfig_desc.proto)
+cinn_proto_library(tile_config_proto SRCS tileconfig_desc.proto)
 
 core_gather_headers()
 

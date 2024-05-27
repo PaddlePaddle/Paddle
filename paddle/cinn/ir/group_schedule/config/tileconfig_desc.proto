@@ -21,7 +21,6 @@ message Dimension{
     int32 upper_bound=2;
     string iter_type=3;
     bool is_dynamic=4;
-    // std::vector<double> weights;
 }
 
 message BucketInfo{
