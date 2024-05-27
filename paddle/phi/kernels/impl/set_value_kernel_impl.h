@@ -293,7 +293,7 @@ void SetValueKernel(const Context& dev_ctx,
   if (is_full_set_one_value && std::is_same<T, float>::value) {
     dev_ctx.template Alloc<T>(out);
     phi::funcs::set_constant(
-        *dev_ctx, out, static_cast<float>(assign_values[0]));
+        dev_ctx, out, static_cast<float>(assign_values[0]));
     return;
   }
 
