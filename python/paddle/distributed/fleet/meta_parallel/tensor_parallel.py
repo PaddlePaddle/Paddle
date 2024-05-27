@@ -13,11 +13,11 @@
 # limitations under the License.
 
 from ..utils.hybrid_parallel_util import (
+    broadcast_cp_parameters,
     broadcast_dp_parameters,
     broadcast_input_data,
     broadcast_mp_parameters,
     broadcast_sep_parameters,
-    broadcast_cp_parameters,
     broadcast_sharding_parameters,
 )
 from ..utils.log_util import logger

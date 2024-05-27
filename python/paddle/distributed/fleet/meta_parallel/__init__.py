@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .context_parallel import ContextParallel  # noqa: F401
 from .parallel_layers import (  # noqa: F401
     ColumnParallelLinear,
     LayerDesc,
@@ -30,7 +31,6 @@ from .pipeline_parallel import (  # noqa: F401
     PipelineParallelWithInterleaveFthenB,
 )
 from .segment_parallel import SegmentParallel  # noqa: F401
-from .context_parallel import ContextParallel  # noqa: F401
 from .sharding_parallel import ShardingParallel  # noqa: F401
 from .tensor_parallel import TensorParallel  # noqa: F401
 

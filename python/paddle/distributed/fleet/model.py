@@ -17,12 +17,12 @@ from paddle.distributed import fleet
 
 from .base.topology import ParallelMode
 from .meta_parallel import (
+    ContextParallel,
     PipelineLayer,
     PipelineParallel,
     PipelineParallelWithInterleave,
     PipelineParallelWithInterleaveFthenB,
     SegmentParallel,
-    ContextParallel,
     ShardingParallel,
     TensorParallel,
 )

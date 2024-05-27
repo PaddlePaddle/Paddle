@@ -611,11 +611,9 @@ class Fleet:
         assert (
             self.sep_degree >= 0
         ), "sep_degree should be greater or equal to 0"
-        assert (
-            self.cp_degree >= 0
-        ), "cp_degree should be greater or equal to 0"
-        assert (
-            not(self.sep_degree > 1 and self.cp_degree > 1)
+        assert self.cp_degree >= 0, "cp_degree should be greater or equal to 0"
+        assert not (
+            self.sep_degree > 1 and self.cp_degree > 1
         ), "cp and sep should not be used at the same time"
         assert (
             self.sharding_degree >= 0

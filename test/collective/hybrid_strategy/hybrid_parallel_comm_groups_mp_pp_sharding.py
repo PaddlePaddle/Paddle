@@ -22,7 +22,8 @@ class TestHybridParallelNewGroup:
     def __init__(self):
         paddle.distributed.init_parallel_env()
         topo = fleet.CommunicateTopology(
-            ["data", "pipe", "sharding", "sep", "model"], [1, 2, 2, 1, 2]
+            ["data", "pipe", "sharding", "sep", "cp", "model"],
+            [1, 2, 2, 1, 1, 2],
         )
         self.hcg = fleet.HybridCommunicateGroup(topo)
 

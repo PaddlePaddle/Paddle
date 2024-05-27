@@ -187,13 +187,19 @@ class HybridCommunicateGroup:
         self._pp_degree = self._topo.get_dim('pipe')
         self._sharding_degree = self._topo.get_dim('sharding')
         self._sep_degree = self._topo.get_dim('sep')
-        self._cp_degree = self._topo.get_dim('cp')
+        if "cp" in self._topo.get_hybrid_group_names():
+            self._cp_degree = self._topo.get_dim('cp')
+        else:
+            self._cp_degree = 1
 
         self._data_parallel_id = self._get_data_parallel_id()
         self._model_parallel_id = self._get_model_parallel_id()
         self._sharding_parallel_id = self._get_sharding_parallel_id()
         self._sep_parallel_id = self._get_sep_parallel_id()
-        self._cp_parallel_id = self._get_cp_parallel_id()
+        if "cp" in self._topo.get_hybrid_group_names():
+            self._cp_parallel_id = self._get_cp_parallel_id()
+        else:
+            self._cp_parallel_id = 0
         self.stage_id = self._get_pipe_parallel_id()
 
         assert (
@@ -261,7 +267,6 @@ class HybridCommunicateGroup:
             self._pp_mp_group, self._pp_mp_comm_group = self.create_fuse_group(
                 ["pipe", "model"]
             )
-        
 
         (
             self.sharding_check_group,
@@ -364,7 +369,7 @@ class HybridCommunicateGroup:
 
     def _check_cp_exist(self):
         assert self._cp_degree > 1, "cp not exist"
-        
+
     def _set_comm_group(self, parallel_method="data"):
         parallel_group = []
         parallel_comm_group = None
@@ -531,7 +536,7 @@ class HybridCommunicateGroup:
     def get_sep_parallel_group_src_rank(self):
         self._check_sep_exist()
         return self._sep_comm_group.ranks[0]
-    
+
     def _get_cp_parallel_id(self):
         return self._topo.get_coord(self.global_rank).cp
 
@@ -600,9 +605,11 @@ class HybridCommunicateGroup:
     def get_dp_cp_parallel_group(self):
         self._check_cp_exist()
         return self._dp_cp_comm_group
-    
+
     def get_pp_mp_parallel_group(self):
-        assert self._sep_degree > 1 or self._cp_degree > 1, "sep and cp both not exist"
+        assert (
+            self._sep_degree > 1 or self._cp_degree > 1
+        ), "sep and cp both not exist"
         return self._pp_mp_comm_group
 
     def create_fuse_group(self, fused_strategy_list):

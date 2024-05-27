@@ -284,12 +284,14 @@ def broadcast_sep_parameters(model, hcg):
     src_rank = hcg.get_sep_parallel_group_src_rank()
     sync_params_buffers(model, sep_group, src_rank, is_model_parallel=False)
 
+
 def broadcast_cp_parameters(model, hcg):
     # TODO TO save memory, use un-fused broadcast to avoid potential OOM
     logger.debug("cp start init parameters sync")
     cp_group = hcg.get_cp_parallel_group()
     src_rank = hcg.get_cp_parallel_group_src_rank()
     sync_params_buffers(model, cp_group, src_rank, is_model_parallel=False)
+
 
 def unwrap_optimizer(optimizer, optimizer_instances=()):
     _inner_opt = optimizer
