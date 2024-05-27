@@ -64,7 +64,20 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
 void StreamSafeCUDAAllocation::EraseStream(gpuStream_t stream) {
   VLOG(8) << "Try remove stream " << stream << " for address " << ptr();
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
-  outstanding_event_map_.erase(stream);
+  auto it = outstanding_event_map_.find(stream);
+  PADDLE_ENFORCE_NE(
+      it,
+      outstanding_event_map_.end(),
+      phi::errors::NotFound(
+          "Cannot find recorded stream %p for allocation address %p.",
+          stream,
+          ptr()));
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(it->second));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event));
+#endif
+  outstanding_event_map_.erase(it);
 }
 
 bool StreamSafeCUDAAllocation::CanBeFreed() {
