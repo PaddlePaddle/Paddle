@@ -24,6 +24,10 @@ if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
 
+if [-z ${change_files} ]; then
+    change_files=""
+fi
+
 
 function print_usage() {
     echo -e "\n${RED}Usage${NONE}:
@@ -1137,6 +1141,8 @@ function generate_upstream_develop_api_spec() {
 
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/python
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+
+    change_files=`git diff --name-only upstream/$BRANCH`
 
     cd ${PADDLE_ROOT}
     git checkout -b develop_base_pr -t upstream/$BRANCH
@@ -3628,18 +3634,12 @@ function clang-tidy_check() {
     set +x
     trap 'abort' 0
     set -e
-    git branch
 
-    merge_branch=$(git branch | grep \* | cut -d ' ' -f2)
-
-    echo "Current git branch: ${merge_branch}"  # 输出当前git分支名
-
-    diff_files=$(git diff --name-only ${merge_branch})
-    num_diff_files=$(echo "$diff_files" | wc -l)
-    echo -e "diff files ${num_diff_files} between pr and ${merge_branch}:\n${diff_files}"
+    num_diff_files=$(echo "$change_files" | wc -l)
+    echo -e "diff files ${num_diff_files}:\n${change_files}"
 
     # 输出具体存在差异的文件
-    for file in ${diff_files}
+    for file in ${change_files}
     do
         echo "Diff file: ${file}"
     done
