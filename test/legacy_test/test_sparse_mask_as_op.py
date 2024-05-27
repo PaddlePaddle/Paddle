@@ -43,46 +43,67 @@ class TestMaskAs(unittest.TestCase):
 
     def check(self, shape, dtype, place, check_grad=True):
         paddle.disable_static()
-        data_np, mask_np = generate_data(shape, dtype)
+        dense_data_np, dense_mask_np = generate_data(shape, dtype)
 
-        data = paddle.to_tensor(data_np, dtype=dtype, place=place)
-        data.stop_gradient = False
+        dense_data_pd = paddle.to_tensor(
+            dense_data_np, dtype=dtype, place=place
+        )
+        dense_data_pd.stop_gradient = False
 
         if self.format == 'coo':
-            mask = paddle.to_tensor(
-                mask_np, dtype=dtype, place=place
+            sparse_mask_pd = paddle.to_tensor(
+                dense_mask_np, dtype=dtype, place=place
             ).to_sparse_coo(len(shape))
         else:
-            mask = paddle.to_tensor(
-                mask_np, dtype=dtype, place=place
+            sparse_mask_pd = paddle.to_tensor(
+                dense_mask_np, dtype=dtype, place=place
             ).to_sparse_csr()
 
-        sparse_out = paddle.sparse.mask_as(data, mask)
-        np_sparse = data_np * (mask_np != 0)
+        sparse_out_pd = paddle.sparse.mask_as(dense_data_pd, sparse_mask_pd)
 
+        # compare the tensor from sparse->dense with reference numpy data
+        # the result only keeps the values where mask not zero, like:
+        # dense_data_np
+        # [[ 38.  15.  76.]
+        #  [-98. -75.  10.]
+        #  [-52.  49. -48.]]
+        # dense_mask_np
+        # [[-70.   0.   0.]
+        #  [-50.  34.  60.]
+        #  [-34.   0. -18.]]
+        # dense_data_np_ref
+        # [[ 38.   0.   0.]
+        #  [-98. -75.  10.]
+        #  [-52.   0. -48.]]
+        dense_data_np_ref = dense_data_np * (dense_mask_np != 0)
         np.testing.assert_allclose(
-            sparse_out.to_dense().numpy(), np_sparse, rtol=1e-05
+            sparse_out_pd.to_dense().numpy(), dense_data_np_ref
         )
 
         if check_grad:
-            sparse_out.backward()
-            sparse_grad = data.grad
+            # with sparse_out_pd backward, we get the grad from dense_data_pd
+            sparse_out_pd.backward()
+            dense_data_grad = dense_data_pd.grad
 
-            self.assertEqual(list(sparse_grad.shape), list(data.shape))
-            self.assertEqual(sparse_grad.dtype, data.dtype)
+            self.assertEqual(
+                list(dense_data_grad.shape), list(dense_data_pd.shape)
+            )
+            self.assertEqual(dense_data_grad.dtype, dense_data_pd.dtype)
 
-            # make a dense tensor to compare the grad from sparse_out
-            dense_tensor = paddle.to_tensor(data_np)
-            dense_tensor.stop_gradient = False
-            dense_out = (
-                dense_tensor
-                * paddle.to_tensor(mask_np != 0).astype(dense_tensor.dtype)
+            # make a dense tensor to compare the grad from sparse_out_pd
+            dense_data_ref = paddle.to_tensor(dense_data_np)
+            dense_data_ref.stop_gradient = False
+            dense_data_ref_out = (
+                dense_data_ref
+                * paddle.to_tensor(dense_mask_np != 0).astype(
+                    dense_data_ref.dtype
+                )
             ).astype(dtype)
-            dense_out.backward()
+            dense_data_ref_out.backward()
 
             np.testing.assert_allclose(
-                data.grad.numpy(),
-                dense_tensor.grad.numpy(),
+                dense_data_pd.grad.numpy(),
+                dense_data_ref.grad.numpy(),
             )
 
     def check_with_dtypes(self, shape):

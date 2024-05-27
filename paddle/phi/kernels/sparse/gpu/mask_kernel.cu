@@ -319,10 +319,10 @@ void MaskCsr3DGPUKernel(const GPUContext& dev_ctx,
  * x and mask must have the same shape.
  **/
 template <typename T, typename Context>
-void MaskCooKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const SparseCooTensor& mask,
-                   SparseCooTensor* out) {
+void MaskAsCooKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const SparseCooTensor& mask,
+                     SparseCooTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
       mask.indices().dtype(), "MaskCooGPUKernel", ([&] {
         MaskCooGPUKernel<T, data_t>(dev_ctx, x, mask, out);
@@ -335,10 +335,10 @@ void MaskCooKernel(const Context& dev_ctx,
  * x and mask must have the same shape.
  **/
 template <typename T, typename Context>
-void MaskCsrKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const SparseCsrTensor& mask,
-                   SparseCsrTensor* out) {
+void MaskAsCsrKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const SparseCsrTensor& mask,
+                     SparseCsrTensor* out) {
   const phi::DDim& x_dims = x.dims();
   if (x_dims.size() == 2) {
     PD_VISIT_BASE_INTEGRAL_TYPES(
@@ -530,42 +530,8 @@ void MaskHelperCooKernel(const Context& dev_ctx,
       }));
 }
 
-template <typename T, typename Context>
-void MaskAsCooKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const SparseCooTensor& mask,
-                     SparseCooTensor* out) {
-  MaskCooKernel<T, Context>(dev_ctx, x, mask, out);
-}
-
-template <typename T, typename Context>
-void MaskAsCsrKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const SparseCsrTensor& mask,
-                     SparseCsrTensor* out) {
-  MaskCsrKernel<T, Context>(dev_ctx, x, mask, out);
-}
-
 }  // namespace sparse
 }  // namespace phi
-
-PD_REGISTER_KERNEL(mask_coo,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::sparse::MaskCooKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
-  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
-}
 
 PD_REGISTER_KERNEL(mask_helper_coo,
                    GPU,

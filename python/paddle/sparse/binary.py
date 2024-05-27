@@ -474,7 +474,6 @@ def mask_as(x, mask, name=None):
     Examples:
         .. code-block:: python
 
-            >>> import numpy as np
             >>> import paddle
 
             >>> # csr sparse tensor
@@ -483,30 +482,28 @@ def mask_as(x, mask, name=None):
             >>> values = [1., 2., 3., 4., 5.]
             >>> dense_shape = [3, 4]
             >>> csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-            >>> np.random.seed(2024)
-            >>> d = np.random.rand(*dense_shape)
-            >>> x = paddle.to_tensor(d, dtype=csr.dtype)
+            >>> paddle.seed(2024)
+            >>> x = paddle.rand(dense_shape).astype(csr.dtype)
             >>> out = paddle.sparse.mask_as(x, csr)
             >>> print(out)
             Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
             crows=[0, 2, 3, 5],
             cols=[1, 3, 2, 0, 1],
-            values=[0.69910872, 0.04380856, 0.72724015, 0.47384569, 0.44829583])
+            values=[0.29755771, 0.73894459, 0.19635069, 0.85167211, 0.02056761])
 
             >>> # coo sparse tensor
             >>> indices = [[0, 1, 2], [1, 2, 0]]
             >>> values = [1.0, 2.0, 3.0]
             >>> dense_shape = [3, 3]
             >>> coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
-            >>> np.random.seed(2024)
-            >>> d = np.random.rand(*dense_shape)
-            >>> x = paddle.to_tensor(d, dtype=coo.dtype)
+            >>> paddle.seed(2024)
+            >>> x = paddle.rand(dense_shape).astype(coo.dtype)
             >>> out = paddle.sparse.mask_as(x, coo)
             >>> print(out)
             Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
             indices=[[0, 1, 2],
                      [1, 2, 0]],
-            values=[0.69910872, 0.10606287, 0.72724015])
+            values=[0.29755771, 0.32066503, 0.19635069])
 
     """
     return _C_ops.sparse_mask_as(x, mask)
