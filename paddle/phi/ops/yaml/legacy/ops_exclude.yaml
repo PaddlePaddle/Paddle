@@ -33,6 +33,7 @@
 - enable_check_model_nan_inf
 - eye
 - frobenius_norm
+- full
 - full_
 - full_batch_size_like
 - full_like
@@ -58,6 +59,7 @@
 - repeat_interleave_with_tensor_index
 - rnn
 - rrelu
+- sequence_mask
 - set_value_with_tensor
 - strided_slice
 - swish

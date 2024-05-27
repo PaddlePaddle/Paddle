@@ -3461,6 +3461,15 @@
   optional: padding_data
   backward: sequence_conv_grad
 
+- op : sequence_mask
+  args: (Tensor x, Scalar(int) max_len, DataType out_dtype)
+  output: Tensor(y)
+  infer_meta:
+    func: SequenceMaskScalarInferMeta
+  kernel:
+    func: sequence_mask_scalar
+    data_type : x
+
 - op : set_value_with_tensor
   args : (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
   output : Tensor(out)
