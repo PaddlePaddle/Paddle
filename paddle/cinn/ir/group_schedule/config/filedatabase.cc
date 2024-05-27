@@ -20,6 +20,8 @@
 
 #include "paddle/cinn/utils/multi_threading.h"
 
+PD_DECLARE_string(cinn_tile_config_filename_label);
+
 namespace cinn {
 namespace ir {
 
@@ -90,8 +92,7 @@ std::string IterSpaceTypeToDir(const common::Target target,
                             test_path));
     }
   };
-  std::string root_path =
-      "../../../../../paddle/cinn/ir/group_schedule/config/";
+  std::string root_path = FLAGS_cinn_tile_config_filename_label;
   checkexist(root_path + target.arch_str());
   checkexist(root_path + target.arch_str() + "/" + dirname);
   VLOG(3) << "Dump_path is " << root_path + dirname + "/" + filename + ".json";
