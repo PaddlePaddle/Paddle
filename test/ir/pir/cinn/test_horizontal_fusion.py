@@ -18,6 +18,9 @@ import utils
 
 import paddle
 
+# NOTE(SigureMo): Disable the CSE optimization to avoid op number change.
+paddle.set_flags({"FLAGS_enable_cse_in_dy2st": False})
+
 
 class HorizontalSubGraph(paddle.nn.Layer):
     def __init__(self):
