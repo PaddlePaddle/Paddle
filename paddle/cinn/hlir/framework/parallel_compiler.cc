@@ -20,7 +20,7 @@
 
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/codegen_cuda_host.h"
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/compiler.h"
 #include "paddle/cinn/backends/llvm/codegen_x86.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
@@ -81,9 +81,14 @@ void ParallelCompiler::SplitTask() {
         context_->graph->fusion_groups.size() ==
             context_->lowered_funcs.size());
   int device_id = 0;
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  CUDA_CALL(cudaGetDevice(&device_id));
+        CUDA_CALL(cudaGetDevice(&device_id));
 #endif
+      });
   for (int group_id = 0; group_id < context_->graph->fusion_groups.size();
        ++group_id) {
     tasks_.emplace_back(device_id, group_id, this, context_);
@@ -132,9 +137,14 @@ void ParallelCompiler::RunTask() {
 
 void ParallelCompiler::LaunchTask() {
   int device_id = 0;
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  CUDA_CALL(cudaGetDevice(&device_id));
+        CUDA_CALL(cudaGetDevice(&device_id));
 #endif
+      });
   int num_threads = FLAGS_cinn_parallel_compile_thread;
 #if defined(PADDLE_WITH_DISTRIBUTE)
   if (device_id > 0) {
@@ -238,7 +248,7 @@ void ParallelCompiler::Task::CodegenAndJit() {
   auto ir_module = builder.Build();
   if (context->target == cinn::common::DefaultNVGPUTarget()) {
 #ifdef CINN_WITH_CUDA
-    auto splited_module = backends::SplitCudaAndHostModule(ir_module);
+    auto splited_module = backends::SplitDeviceAndHostModule(ir_module);
     auto hmodule = std::get<0>(splited_module);
     auto dmodule = std::get<1>(splited_module);
 

@@ -61,6 +61,7 @@ class ExprWrapper {
 
 
     result.expr = result.expr_builder->operation(op, *a.expr, *b.expr);
+
     return result;
   }
 

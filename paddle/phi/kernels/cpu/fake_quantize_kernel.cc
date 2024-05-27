@@ -44,3 +44,15 @@ PD_REGISTER_KERNEL(fake_channel_wise_quantize_dequantize_abs_max,
                    ALL_LAYOUT,
                    phi::FakeChannelWiseQuantizeDequantizeAbsMaxKernel,
                    float) {}
+
+PD_REGISTER_KERNEL(fake_quantize_dequantize_moving_average_abs_max,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FakeQuantizeDequantizeMovingAverageAbsMaxKernel,
+                   float) {}
+
+PD_REGISTER_KERNEL(fake_quantize_dequantize_abs_max,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FakeQuantizeDequantizeAbsMaxKernel,
+                   float) {}
