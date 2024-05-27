@@ -2328,53 +2328,6 @@ void GraphKhopSamplerInferMeta(const MetaTensor& row,
   reindex_x->set_dtype(x.dtype());
 }
 
-void GraphReindexInferMeta(const MetaTensor& x,
-                           const MetaTensor& neighbors,
-                           const MetaTensor& count,
-                           const MetaTensor& hashtable_value,
-                           const MetaTensor& hashtable_index,
-                           MetaTensor* reindex_src,
-                           MetaTensor* reindex_dst,
-                           MetaTensor* out_nodes) {
-  bool flag_buffer_hashtable =
-      hashtable_value.initialized() && hashtable_index.initialized();
-  auto GraphReindexShapeCheck = [](const phi::DDim& dims,
-                                   std::string tensor_name) {
-    if (dims.size() == 2) {
-      PADDLE_ENFORCE_EQ(
-          dims[1],
-          1,
-          phi::errors::InvalidArgument("The last dim of %s should be 1 when it "
-                                       "is 2D, but we get %d",
-                                       tensor_name,
-                                       dims[1]));
-    } else {
-      PADDLE_ENFORCE_EQ(
-          dims.size(),
-          1,
-          phi::errors::InvalidArgument(
-              "The %s should be 1D, when it is not 2D, but we get %d",
-              tensor_name,
-              dims.size()));
-    }
-  };
-
-  GraphReindexShapeCheck(x.dims(), "X");
-  GraphReindexShapeCheck(neighbors.dims(), "Neighbors");
-  GraphReindexShapeCheck(count.dims(), "Count");
-  if (flag_buffer_hashtable) {
-    GraphReindexShapeCheck(hashtable_value.dims(), "HashTable_Value");
-    GraphReindexShapeCheck(hashtable_index.dims(), "HashTable_Index");
-  }
-
-  reindex_src->set_dims({-1});
-  reindex_src->set_dtype(neighbors.dtype());
-  reindex_dst->set_dims({-1});
-  reindex_dst->set_dtype(neighbors.dtype());
-  out_nodes->set_dims({-1});
-  out_nodes->set_dtype(x.dtype());
-}
-
 void GruUnitInferMeta(const MetaTensor& input,
                       const MetaTensor& hidden_prev,
                       const MetaTensor& weight,
@@ -2457,6 +2410,53 @@ void GruUnitInferMeta(const MetaTensor& input,
   gate->set_dtype(input.dtype());
   reset_hidden_prev->set_dtype(input.dtype());
   hidden->set_dtype(input.dtype());
+}
+
+void GraphReindexInferMeta(const MetaTensor& x,
+                           const MetaTensor& neighbors,
+                           const MetaTensor& count,
+                           const MetaTensor& hashtable_value,
+                           const MetaTensor& hashtable_index,
+                           MetaTensor* reindex_src,
+                           MetaTensor* reindex_dst,
+                           MetaTensor* out_nodes) {
+  bool flag_buffer_hashtable =
+      hashtable_value.initialized() && hashtable_index.initialized();
+  auto GraphReindexShapeCheck = [](const phi::DDim& dims,
+                                   std::string tensor_name) {
+    if (dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          dims[1],
+          1,
+          phi::errors::InvalidArgument("The last dim of %s should be 1 when it "
+                                       "is 2D, but we get %d",
+                                       tensor_name,
+                                       dims[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dims.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              dims.size()));
+    }
+  };
+
+  GraphReindexShapeCheck(x.dims(), "X");
+  GraphReindexShapeCheck(neighbors.dims(), "Neighbors");
+  GraphReindexShapeCheck(count.dims(), "Count");
+  if (flag_buffer_hashtable) {
+    GraphReindexShapeCheck(hashtable_value.dims(), "HashTable_Value");
+    GraphReindexShapeCheck(hashtable_index.dims(), "HashTable_Index");
+  }
+
+  reindex_src->set_dims({-1});
+  reindex_src->set_dtype(neighbors.dtype());
+  reindex_dst->set_dims({-1});
+  reindex_dst->set_dtype(neighbors.dtype());
+  out_nodes->set_dims({-1});
+  out_nodes->set_dtype(x.dtype());
 }
 
 void GraphSampleNeighborsInferMeta(const MetaTensor& row,

@@ -483,15 +483,6 @@ void GraphKhopSamplerInferMeta(const MetaTensor& row,
                                MetaTensor* reindex_x,
                                MetaTensor* out_eids);
 
-void GraphReindexInferMeta(const MetaTensor& x,
-                           const MetaTensor& neighbors,
-                           const MetaTensor& count,
-                           const MetaTensor& hashtable_value,
-                           const MetaTensor& hashtable_index,
-                           MetaTensor* reindex_src,
-                           MetaTensor* reindex_dst,
-                           MetaTensor* out_nodes);
-
 void GruUnitInferMeta(const MetaTensor& input,
                       const MetaTensor& hidden_prev,
                       const MetaTensor& weight,
@@ -503,6 +494,15 @@ void GruUnitInferMeta(const MetaTensor& input,
                       MetaTensor* reset_hidden_prev,
                       MetaTensor* hidden,
                       MetaConfig config = MetaConfig());
+
+void GraphReindexInferMeta(const MetaTensor& x,
+                           const MetaTensor& neighbors,
+                           const MetaTensor& count,
+                           const MetaTensor& hashtable_value,
+                           const MetaTensor& hashtable_index,
+                           MetaTensor* reindex_src,
+                           MetaTensor* reindex_dst,
+                           MetaTensor* out_nodes);
 
 void GraphSampleNeighborsInferMeta(const MetaTensor& row,
                                    const MetaTensor& col_ptr,
