@@ -193,6 +193,37 @@ std::vector<std::vector<pir::Value>> BatchNorm_Op::Decomp(pir::Operation* op) {
   return res;
 }
 
+std::vector<std::vector<pir::Value>> ClipOp::Decomp(pir::Operation* op) {
+  VLOG(4) << "Decomp call clip's decomp interface begin";
+
+  ClipOp op_obj = op->dyn_cast<ClipOp>();
+  (void)op_obj;
+
+  FLAGS_tensor_operants_mode = "static";
+
+  VLOG(6) << "Decomp Prepare inputs of clip";
+
+  Tensor x(std::make_shared<primitive::LazyTensor>(op_obj.x()));
+  Tensor min(std::make_shared<primitive::LazyTensor>(op_obj.min()));
+  Tensor max(std::make_shared<primitive::LazyTensor>(op_obj.max()));
+
+  VLOG(6) << "Decomp call clip's forward composite rule prepare";
+
+  auto org_res = op->results();
+  std::vector<std::vector<pir::Value>> res(org_res.size());
+
+  VLOG(6) << "Decomp call clip's forward composite rule begin";
+  Tensor op_res =
+      paddle::primitive::details::clip_decomp<primitive::LazyTensor>(
+          x, min, max);
+  VLOG(6) << "Decomp call clip's forward composite rule end";
+  res[0].push_back(
+      std::static_pointer_cast<primitive::LazyTensor>(op_res.impl())->value());
+
+  VLOG(4) << "Decomp call clip's decomp interface end";
+  return res;
+}
+
 std::vector<std::vector<pir::Value>> OneHotOp::Decomp(pir::Operation* op) {
   VLOG(4) << "Decomp call one_hot's decomp interface begin";
 

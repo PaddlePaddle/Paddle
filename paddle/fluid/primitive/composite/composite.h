@@ -110,7 +110,7 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   }
 }
 
-static bool valid_type(const DataType& dtype) {
+static void check_valid_type(const DataType& dtype) {
   switch (dtype) {
     case DataType::INT8:
     case DataType::INT16:
@@ -123,9 +123,10 @@ static bool valid_type(const DataType& dtype) {
     case DataType::FLOAT16:
     case DataType::FLOAT32:
     case DataType::FLOAT64:
-      return true;
+      break;
     default:
-      return false;
+      PADDLE_THROW(phi::errors::InvalidArgument("Unsupported data type: %s",
+                                                phi::DataTypeToString(dtype)));
   }
 }
 
@@ -192,13 +193,8 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
     x_cast = cast<T>(x, DataType::FLOAT32);
   }
 
-  Tensor y_full;
-  if (valid_type(y.dtype())) {
-    y_full = full<T>(empty_shape, y, x_cast.dtype());
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Unsupported data type: %s", phi::DataTypeToString(y.dtype())));
-  }
+  check_valid_type(y.dtype());
+  Tensor y_full = full<T>(empty_shape, y, x_cast.dtype());
 
   auto ans = elementwise_pow<T>(x_cast, y_full);
   if (need_cast) {
@@ -1040,6 +1036,30 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 
     return std::make_tuple(reshape<T>(x, out_shape), xshape);
   }
+}
+
+template <typename T>
+Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
+  auto min_reshape = min;
+  auto max_reshape = max;
+
+  if (has_dynamic_shape(x.shape())) {
+    min_reshape = backend::expand_with_tensor<T>(min, shape<T>(x));
+    max_reshape = backend::expand_with_tensor<T>(max, shape<T>(x));
+  } else {
+    min_reshape = expand<T>(min, x.shape());
+    max_reshape = expand<T>(max, x.shape());
+  }
+  if (min_reshape.dtype() != x.dtype()) {
+    min_reshape = cast<T>(min_reshape, x.dtype());
+  }
+
+  if (max_reshape.dtype() != x.dtype()) {
+    max_reshape = cast<T>(max_reshape, x.dtype());
+  }
+
+  auto ans = maximum<T>(minimum<T>(x, max_reshape), min_reshape);
+  return ans;
 }
 
 template <typename T>
