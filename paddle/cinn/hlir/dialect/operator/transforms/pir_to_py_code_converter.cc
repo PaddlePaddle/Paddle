@@ -903,7 +903,7 @@ struct PirToPyCodeConverterHelper {
     using AdtTypeId = ::common::AdtTypeId<T>;
 
     std::string operator()(AdtTypeId<cinn::dialect::ir::NullType>) {
-      return "self.t_null";
+      return "self.t_null()";
     }
 
     std::string operator()(AdtTypeId<::pir::VectorType>) {
