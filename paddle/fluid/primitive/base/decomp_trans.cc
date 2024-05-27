@@ -48,7 +48,6 @@ std::unordered_set<std::string> dynamic_shape_blacklist = {
     "pd_op.batch_norm",
     "pd_op.batch_norm_",
     "pd_op.bmm",
-    "pd_op.elu",
     "pd_op.flatten",
     "pd_op.instance_norm",
     "pd_op.one_hot"};

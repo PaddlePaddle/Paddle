@@ -197,14 +197,14 @@ class MatmulAddActFusePass : public pir::PatternRewritePass {
         ps.Add(paddle::drr::Create<MatmulAddActPattern>(
             context, act_op, paddle::dialect::GemmEpilogueOp::name()));
       }
-    } else {
-      /// MatmulAddPattern
-      ps.Add(paddle::drr::Create<MatmulAddPattern>(
-          context, paddle::dialect::FcOp::name(), false));
-      /// MatmulAddActPattern
-      ps.Add(paddle::drr::Create<MatmulAddActPattern>(
-          context, "relu", paddle::dialect::FcOp::name()));
     }
+    /// MatmulAddPatternw
+    ps.Add(paddle::drr::Create<MatmulAddPattern>(
+        context, paddle::dialect::FcOp::name(), false));
+    /// MatmulAddActPattern
+    ps.Add(paddle::drr::Create<MatmulAddActPattern>(
+        context, "relu", paddle::dialect::FcOp::name()));
+
     return ps;
   }
 };
