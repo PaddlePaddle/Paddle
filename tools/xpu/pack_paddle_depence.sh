@@ -127,7 +127,7 @@ else
     xhpc_prepare
 
     cp -r $XRE_DIR_NAME/include/xpu/* xpu/include/xpu/
-    cp -r $XRE_DIR_NAME/so/libxpurt* xpu/lib/
+    cp -r $XRE_DIR_NAME/so/* xpu/lib/
     cp -r $XCCL_DIR_NAME/include/* xpu/include/xpu/
     cp -r $XCCL_DIR_NAME/so/* xpu/lib/
 fi

@@ -116,7 +116,7 @@ endif()
 set(XPU_XPTI_DIR_NAME "xpti")
 
 set(XPU_XRE_URL
-    "${XPU_BASE_URL}/${XPU_XRE_DIR_NAME}.tar.gz"
+    "${XPU_XRE_BASE_URL}/${XPU_XRE_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
 set(XPU_XDNN_URL
     "${XPU_XDNN_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz"
