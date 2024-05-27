@@ -48,7 +48,14 @@ class ExprWrapper {
     if (b.expr_builder) {
       result.expr_builder = b.expr_builder;
     }
-    assert(result.expr);
+    if (!result.expr_builder) {
+      result.expr_builder = std::make_shared<ExprBuilder>();
+    }
+
+    // 检查 a.expr 和 b.expr 是否已初始化
+    assert(a.expr && "a.expr is uninitialized");
+    assert(b.expr && "b.expr is uninitialized");
+
     result.expr = result.expr_builder->operation(op, *a.expr, *b.expr);
     return result;
   }
