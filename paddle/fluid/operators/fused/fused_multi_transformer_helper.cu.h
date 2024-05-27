@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/operators/fused/attn_gemm_int8.h"
-#include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h"
 #include "paddle/phi/kernels/funcs/cublaslt.h"
 #include "paddle/phi/kernels/funcs/load_store_util.h"
 #include "paddle/phi/kernels/funcs/quant_dequant.h"
 #include "paddle/phi/kernels/fusion/gpu/attention_layer.norm.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
+#include "paddle/phi/kernels/fusion/gpu/attn_gemm_int8.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
 
 /*
 Note(Zhengzekang):
@@ -61,7 +61,7 @@ class BiasActHelper {
       // Note(Zhengzekang): For GLU structure, we need divide the cols by 2.
       VLOG(5) << "doing geglu";
       LaunchActFFNGlu<T,
-                      paddle::operators::GeluFunctor<T>,
+                      phi::fusion::LayerNormParamTypeGeluFunctor<T>,
                       LoadFunc,
                       StoreFunc,
                       LoadT>(
@@ -74,7 +74,7 @@ class BiasActHelper {
       if (FLAGS_use_fast_math) {
         VLOG(5) << "doing Fast GELU";
         LaunchBiasAct<T,
-                      paddle::operators::FastGeluFunctor<T>,
+                      phi::fusion::FastGeluFunctor<T>,
                       LoadFunc,
                       StoreFunc,
                       LoadT>(
@@ -82,7 +82,7 @@ class BiasActHelper {
       } else {
         VLOG(5) << "doing GELU";
         LaunchBiasAct<T,
-                      paddle::operators::GeluFunctor<T>,
+                      phi::fusion::LayerNormParamTypeGeluFunctor<T>,
                       LoadFunc,
                       StoreFunc,
                       LoadT>(
@@ -175,10 +175,10 @@ class NormHelper {
                               // Layernorm. Need support rmsnorm.
         layernorm_helper_(dev_ctx_, epsilon_, rows_, cols_) {
     // VLOG(0) << "NormHelper residual_alpha:" << residual_alpha_;
-    paddle::operators::DropoutParam dropout_param(
+    phi::fusion::DropoutParam dropout_param(
         true, 0, true, true, 0.0, nullptr, 0);
     residual_bias_add_layernorm_helper_ =
-        paddle::operators::FusedDropoutLayerNormHelper<T, uint8_t>(
+        phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>(
             dev_ctx, rows_, cols_, dropout_param, epsilon_);
   }
 
@@ -199,7 +199,7 @@ class NormHelper {
                         phi::DenseTensor *var,
                         phi::DenseTensor *bias_residual_out,
                         phi::DenseTensor *output) {
-    using U = paddle::operators::LayerNormParamType<T>;
+    using U = phi::fusion::LayerNormParamType<T>;
     const T *bias_data = bias ? bias->data<T>() : nullptr;
     U *mean_data = mean ? mean->data<U>() : nullptr;
     U *var_data = var ? var->data<U>() : nullptr;
@@ -236,7 +236,7 @@ class NormHelper {
             phi::DenseTensor *mean,
             phi::DenseTensor *var,
             phi::DenseTensor *output) {
-    using U = paddle::operators::LayerNormParamType<T>;
+    using U = phi::fusion::LayerNormParamType<T>;
     U *mean_data = mean ? mean->data<U>() : nullptr;
     U *var_data = var ? var->data<U>() : nullptr;
     T *output_data = output->data<T>();
@@ -265,7 +265,7 @@ class NormHelper {
   int cols_;
   float epsilon_;
   float residual_alpha_;
-  paddle::operators::FusedDropoutLayerNormHelper<T, uint8_t>
+  phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
       residual_bias_add_layernorm_helper_;
   AttnLayerNorm<T> layernorm_helper_;
 };

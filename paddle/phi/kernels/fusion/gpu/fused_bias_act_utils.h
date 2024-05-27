@@ -33,6 +33,17 @@
 namespace phi {
 namespace fusion {
 
+template <typename T>
+struct FastGeluFunctor {
+  inline __device__ T operator()(const T x) const {
+#ifdef PADDLE_WITH_HIP
+    assert(0 && "ROCM does not support FastGelu");
+#else
+    return phi::GeluFwd<T, true>(x);
+#endif
+  }
+};
+
 #ifndef PADDLE_WITH_HIP
 template <typename T>
 struct GeluComputeType;
@@ -105,13 +116,6 @@ struct ReluFunctor {
   inline __host__ __device__ T operator()(const T x) const {
     T zero = static_cast<T>(0.0);
     return x > zero ? x : zero;
-  }
-};
-
-template <typename T>
-struct FastGeluFunctor {
-  inline __device__ T operator()(const T x) const {
-    return phi::GeluFwd<T, true>(x);
   }
 };
 
