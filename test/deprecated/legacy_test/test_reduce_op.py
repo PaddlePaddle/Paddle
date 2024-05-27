@@ -546,10 +546,6 @@ def raw_reduce_prod(x, dim=[0], keep_dim=False):
 
 
 # NOTE: there is a bug when use composite of prod in static graph on cpu, it will use inplace mode
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda(),
-    "prod grad composite test runs only on GPU",
-)
 class TestProdOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
@@ -576,13 +572,50 @@ class TestProdOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.CUDAPlace(0),
-            ['X'],
-            'Out',
-            check_prim=True,
-            check_pir=True,
-            check_prim_pir=True,
+        if paddle.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                paddle.CUDAPlace(0),
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+            )
+        else:
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_pir=True,
+            )
+
+    def test_only_dygraph_prim(self):
+        def actual(primal):
+            paddle.disable_static()
+            core.set_prim_eager_enabled(True)
+            x = paddle.to_tensor(
+                primal, dtype=self.data_type, stop_gradient=False
+            ).cpu()
+            y = paddle.prod(x, axis=0)
+            x_cotangent = paddle.grad(
+                y, x, create_graph=False, retain_graph=True
+            )
+            return x_cotangent[0]
+
+        def desired(primal):
+            paddle.disable_static()
+            core.set_prim_eager_enabled(False)
+            x = paddle.to_tensor(
+                primal, dtype=self.data_type, stop_gradient=False
+            ).cpu()
+            y = paddle.prod(x, axis=0)
+            x_cotangent = paddle.grad(
+                y, x, create_graph=False, retain_graph=True
+            )
+            return x_cotangent[0]
+
+        x = np.random.random((5, 6, 10)).astype(self.data_type)
+        np.testing.assert_allclose(
+            actual=actual(x), desired=desired(x), atol=1e-8, rtol=1e-8
         )
 
 
@@ -605,6 +638,9 @@ class TestProdFP16OP(TestProdOp):
             check_pir=True,
             check_prim_pir=True,
         )
+
+    def test_only_dygraph_prim(self):
+        pass
 
 
 @unittest.skipIf(
@@ -639,20 +675,15 @@ class TestProdBFP16OP(TestProdOp):
             check_prim_pir=True,
         )
 
+    def test_only_dygraph_prim(self):
+        pass
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda(),
-    "prod grad composite test runs only on GPU",
-)
+
 class TestProdOpFp64(TestProdOp):
     def init_data_type(self):
         self.data_type = "float64"
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda(),
-    "prod grad composite test runs only on GPU",
-)
 class TestProdOp_ZeroDim(OpTest):
     def setUp(self):
         self.python_api = raw_reduce_prod
@@ -682,10 +713,6 @@ class TestProdOp_ZeroDim(OpTest):
         )
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda(),
-    "prod grad composite test runs only on GPU",
-)
 class TestProdOp_ZeroDim1(TestProdOp):
     def setUp(self):
         self.python_api = paddle.prod
@@ -695,6 +722,7 @@ class TestProdOp_ZeroDim1(TestProdOp):
         self.init_inputs_and_outputs()
         # 0-D tensor doesn't support in cinn
         self.enable_cinn = False
+        self.data_type = "float64"
 
     def init_inputs_and_outputs(self):
         self.inputs = {'X': np.random.random([100]).astype("float64")}
@@ -702,10 +730,6 @@ class TestProdOp_ZeroDim1(TestProdOp):
         self.attrs = {'dim': [], 'reduce_all': True}
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda(),
-    "prod grad composite test runs only on GPU",
-)
 class TestProdOp_ZeroDim2(TestProdOp_ZeroDim1):
     def init_inputs_and_outputs(self):
         self.inputs = {'X': np.random.random([5, 6, 10]).astype("float64")}
@@ -713,10 +737,6 @@ class TestProdOp_ZeroDim2(TestProdOp_ZeroDim1):
         self.attrs = {'dim': [], 'reduce_all': True}
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda(),
-    "prod grad composite test runs only on GPU",
-)
 class TestProd6DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
@@ -748,9 +768,21 @@ class TestProd6DOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
-        )
+        if paddle.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                paddle.CUDAPlace(0),
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+            )
+        else:
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_pir=True,
+            )
 
 
 @unittest.skipIf(
@@ -767,6 +799,9 @@ class TestProd6DFP16OP(TestProd6DOp):
         self.check_grad_with_place(
             paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
         )
+
+    def test_only_dygraph_prim(self):
+        pass
 
 
 @unittest.skipIf(
@@ -796,6 +831,9 @@ class TestProd6DBFP16OP(TestProd6DOp):
         self.check_grad_with_place(
             paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
         )
+
+    def test_only_dygraph_prim(self):
+        pass
 
 
 class TestProd8DOp(OpTest):
@@ -844,6 +882,9 @@ class TestProd8DFP16OP(TestProd8DOp):
             paddle.CUDAPlace(0), ['X'], 'Out', check_pir=True
         )
 
+    def test_only_dygraph_prim(self):
+        pass
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -869,6 +910,9 @@ class TestProd8DBFP16OP(TestProd8DOp):
         self.check_grad_with_place(
             paddle.CUDAPlace(0), ['X'], 'Out', check_pir=True
         )
+
+    def test_only_dygraph_prim(self):
+        pass
 
 
 def reduce_all_wrapper(x, axis=None, keepdim=False, reduce_all=True, name=None):
