@@ -2468,24 +2468,41 @@ void MatmulInferMeta(const MetaTensor& x,
                         "The Input(y) dims size must be greater than 0,"
                         " but received dims size is 0. "));
 
-  if (ndims_x <= 2 && ndims_y <= 2) {
-    if (!trans_x && !trans_y && dims_x[ndims_x - 1] != -1 && dims_y[0] != -1)
-      PADDLE_ENFORCE_EQ(dims_x[ndims_x - 1],
-                        dims_y[0],
-                        phi::errors::InvalidArgument("shape can not matmul"));
-    else if (!trans_x && trans_y && dims_x[ndims_x - 1] != -1 &&
-             dims_y[ndims_y - 1] != -1)
-      PADDLE_ENFORCE_EQ(dims_x[ndims_x - 1],
-                        dims_y[ndims_y - 1],
-                        phi::errors::InvalidArgument("shape can not matmul"));
-    else if (trans_x && !trans_y && dims_x[0] != -1 && dims_y[0] != -1)
-      PADDLE_ENFORCE_EQ(dims_x[0],
-                        dims_y[0],
-                        phi::errors::InvalidArgument("shape can not matmul"));
-    else if (trans_x && trans_y && dims_x[0] != -1 && dims_y[ndims_y - 1] != -1)
-      PADDLE_ENFORCE_EQ(dims_x[0],
-                        dims_y[ndims_y - 1],
-                        phi::errors::InvalidArgument("shape can not matmul"));
+  auto TransposeDims = [](std::vector<int64_t> dims) -> std::vector<int64_t> {
+    if (dims.size() < 2) return dims;
+    std::vector<int64_t> dim_trans(dims);
+    std::swap(dim_trans[dim_trans.size() - 1], dim_trans[dim_trans.size() - 2]);
+    return dim_trans;
+  };
+  std::vector<int64_t> dims_x_new = trans_x ? TransposeDims(dims_x) : dims_x;
+  std::vector<int64_t> dims_y_new = trans_y ? TransposeDims(dims_y) : dims_y;
+
+  if (ndims_x >= 2 && ndims_y >= 2) {
+    if (dims_x_new[ndims_x - 1] != -1 && dims_y_new[ndims_y - 2] != -1) {
+      PADDLE_ENFORCE_EQ(dims_x_new[ndims_x - 1],
+                        dims_y_new[ndims_y - 2],
+                        phi::errors::InvalidArgument(
+                            "matmul infermeat error, shape can not matmul."));
+    }
+    for (size_t i = 3; i <= ndims_x && i <= ndims_y; i++) {
+      if (dims_x_new[ndims_x - i] == -1 || dims_y_new[ndims_y - i] == -1)
+        continue;
+      if (dims_x_new[ndims_x - i] == 1 || dims_y_new[ndims_y - i] == 1 ||
+          dims_x_new[ndims_x - i] == dims_y_new[ndims_y - i])
+        continue;
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "matmul infermeat error, shape can not broadcast"));
+    }
+  } else if (ndims_x == 1 && ndims_y >= 2) {
+    PADDLE_ENFORCE_EQ(dims_x_new[0],
+                      dims_y_new[ndims_y - 2],
+                      phi::errors::InvalidArgument(
+                          "matmul infermeat error, shape can not matmul"));
+  } else if (ndims_x >= 2 && ndims_y == 1) {
+    PADDLE_ENFORCE_EQ(dims_x_new[ndims_x - 1],
+                      dims_y_new[0],
+                      phi::errors::InvalidArgument(
+                          "matmul infermeat error, shape can not matmul"));
   }
 
   bool x_broadcasted = false, y_broadcasted = false;

@@ -93,20 +93,6 @@ std::shared_ptr<pir::ShapeConstraintIRAnalysis> MakeOpShapeAnalysis(
   auto shape_analysis = std::make_shared<pir::ShapeConstraintIRAnalysis>();
   shape_analysis->Init();
   InitLocalShapeAnalysis(*op, shape_analysis.get(), GraphDimExprs4Value);
-
-  pir::Operation* mut_op = const_cast<pir::Operation*>(op);
-  auto interface =
-      mut_op->dyn_cast<paddle::dialect::InferSymbolicShapeInterface>();
-  if (!interface) {
-    return std::shared_ptr<pir::ShapeConstraintIRAnalysis>();
-    PADDLE_THROW(phi::errors::Unimplemented(
-        op->name() + " DOES NOT have InferSymbolicShapeInterface!"));
-  } else {
-    bool infer_result = interface.InferSymbolicShape(
-        shape_analysis.get()->GetInferSymbolicShapeContext());
-    PADDLE_ENFORCE(
-        infer_result, "InferSymbolicShape for %s failed.", op->name());
-  }
   return shape_analysis;
 }
 

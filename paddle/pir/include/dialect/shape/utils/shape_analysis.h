@@ -63,8 +63,6 @@ class IR_API InferSymbolicShapeContext {
 
   void PrintShapeOrDatas() const;
 
-  int64_t GetSymbolIndex();
-
   const symbol::ConstraintsManager& constraints_manager() const {
     return constraints_manager_;
   }
@@ -140,14 +138,6 @@ class IR_API ShapeConstraintIRAnalysis final
 
   symbol::DimExpr GetProductDimExpr(Value lhs,
                                     const std::vector<int>& lhs_dim_idxs);
-
-  int64_t GetSymbolIndex();
-
-  // TODO(hongqing-work): make it a private component only for infer friend
-  // class
-  InferSymbolicShapeContext* GetInferSymbolicShapeContext() {
-    return &context_;
-  }
 
   const symbol::ConstraintsManager& constraints_manager() const {
     return context_.constraints_manager();

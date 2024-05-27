@@ -283,10 +283,6 @@ void InferSymbolicShapeContext::PrintShapeOrDatas() const {
   }
 }
 
-int64_t InferSymbolicShapeContext::GetSymbolIndex() {
-  return next_sym_idx_ - 1;
-}
-
 void ShapeConstraintIRAnalysis::Init() { context_.Init(); }
 
 const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
@@ -615,10 +611,6 @@ pir::PrintHooks ShapeConstraintIRAnalysis::PrintHook() {
     printer.os << "\t(op_" << op->id() << ")";
   };
   return print_hook;
-}
-
-int64_t ShapeConstraintIRAnalysis::GetSymbolIndex() {
-  return context_.GetSymbolIndex();
 }
 
 ShapeAnalysisManager& ShapeAnalysisManager::Instance() {

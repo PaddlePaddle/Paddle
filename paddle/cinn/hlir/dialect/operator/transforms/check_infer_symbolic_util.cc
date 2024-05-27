@@ -113,16 +113,17 @@ struct ShapeSignatureGenerator {
   void Generate(const DoEachShapeSignatureT& DoEachShapeSignature) {
     auto op_shape_analysis = MakeOpShapeAnalysis(op, GraphDimExprs4Value);
     if (op_shape_analysis.use_count() == 0) return;
+    const std::unordered_set<symbol::DimExpr>& symbols =
+        GetAllSymbols(*op, op_shape_analysis);
     op_shape_analysis->PrintShapeOrDatas();
     VisitInputSymbolBinding(
         op_shape_analysis, [&](const SymbolBindings& bindings) {
-          VLOG(0) << " ";
           VLOG(0) << "SymbolBindings";
           for (auto pair : bindings) {
             VLOG(0) << pair.first << " : " << pair.second;
           }
           const auto& substitute_pattern =
-              GetSubstitutePattern(bindings, op_shape_analysis);
+              GetSubstitutePattern(bindings, symbols, op_shape_analysis);
           VLOG(0) << "substitute_pattern: size=" << substitute_pattern.size();
           for (auto pair : substitute_pattern) {
             VLOG(0) << pair.first << " : " << pair.second;
@@ -137,17 +138,83 @@ struct ShapeSignatureGenerator {
         });
   }
 
+  void GetSymbolsForOneDimExpr(const symbol::DimExpr& dim_expr,
+                               std::unordered_set<symbol::DimExpr>* symbols) {
+    auto DimExprVisitor = common::Overloaded{
+        [&](std::int64_t) {},
+        [&](const std::string& str) { symbols->insert(symbol::DimExpr(str)); },
+        [&](const symbol::Negative<symbol::DimExpr>& negative) {
+          GetSymbolsForOneDimExpr(negative->data, symbols);
+        },
+        [&](const symbol::Reciprocal<symbol::DimExpr>& reciprocal) {
+          GetSymbolsForOneDimExpr(reciprocal->data, symbols);
+        },
+        [&](const symbol::Add<symbol::DimExpr>& add) {
+          for (const auto& dim_expr : *add.operands) {
+            GetSymbolsForOneDimExpr(dim_expr, symbols);
+          }
+        },
+        [&](const symbol::Mul<symbol::DimExpr>& mul) {
+          for (const auto& dim_expr : *mul.operands) {
+            GetSymbolsForOneDimExpr(dim_expr, symbols);
+          }
+        },
+        [&](const symbol::Max<symbol::DimExpr>& max) {
+          for (const auto& dim_expr : *max.operands) {
+            GetSymbolsForOneDimExpr(dim_expr, symbols);
+          }
+        },
+        [&](const symbol::Min<symbol::DimExpr>& min) {
+          for (const auto& dim_expr : *min.operands) {
+            GetSymbolsForOneDimExpr(dim_expr, symbols);
+          }
+        },
+        [&](const symbol::Broadcast<symbol::DimExpr>& broadcast) {
+          for (const auto& dim_expr : *broadcast.operands) {
+            GetSymbolsForOneDimExpr(dim_expr, symbols);
+          }
+        }};
+    std::visit(DimExprVisitor, dim_expr.variant());
+  }
+
+  std::unordered_set<symbol::DimExpr> GetAllSymbols(
+      const pir::Operation& op,
+      const std::shared_ptr<pir::ShapeConstraintIRAnalysis>&
+          op_shape_analysis) {
+    std::unordered_set<symbol::DimExpr> symbols;
+    auto GetSymbolsForOneValue = [&](pir::Value value) {
+      const auto& shape_or_data =
+          op_shape_analysis->GetShapeOrDataForValue(value);
+      if (shape_or_data.isa<symbol::TensorListShapeOrDataDimExprs>()) return;
+      for (const auto& dim_expr : shape_or_data.shape()) {
+        GetSymbolsForOneDimExpr(dim_expr, &symbols);
+      }
+      if (shape_or_data.data().has_value()) {
+        for (const auto& dim_expr : *shape_or_data.data()) {
+          GetSymbolsForOneDimExpr(dim_expr, &symbols);
+        }
+      }
+    };
+
+    for (std::size_t i = 0; i < op.num_operands(); ++i) {
+      GetSymbolsForOneValue(op.operand_source(i));
+    }
+    for (std::size_t i = 0; i < op.num_results(); ++i) {
+      GetSymbolsForOneValue(op.result(i));
+    }
+    return symbols;
+  }
+
   std::unordered_map<symbol::DimExpr, symbol::DimExpr> GetSubstitutePattern(
       const SymbolBindings& bindings,
+      const std::unordered_set<symbol::DimExpr>& symbols,
       std::shared_ptr<pir::ShapeConstraintIRAnalysis> op_shape_analysis) {
     std::random_device rd;
     std::default_random_engine eng(rd());
     std::uniform_int_distribution<int> distr(0, 1000);
     std::unordered_map<symbol::DimExpr, symbol::DimExpr> substitute_pattern(
         bindings.begin(), bindings.end());
-    int64_t symbol_index = op_shape_analysis->GetSymbolIndex();
-    for (int i = 0; i <= symbol_index; i++) {
-      symbol::DimExpr dim_expr("S" + std::to_string(i));
+    for (const auto& dim_expr : symbols) {
       if (substitute_pattern.count(dim_expr) <= 0) {
         substitute_pattern[dim_expr] = symbol::DimExpr(distr(eng));
       }
@@ -189,9 +256,9 @@ struct ShapeSignatureGenerator {
           substitute_pattern) {
     ShapeList shape_list;
     DataList data_list;
-    VLOG(0) << "    GetInputShapes: ";
+    VLOG(0) << "GetInputShapes: ";
     for (std::size_t i = 0; i < op.num_operands(); ++i) {
-      VLOG(0) << "      ShapeOrData:"
+      VLOG(0) << "  ShapeOrData:"
               << op_shape_analysis->GetShapeOrDataForValue(
                      op.operand_source(i));
       const symbol::ShapeOrDataDimExprs& shape_or_data =
@@ -202,8 +269,8 @@ struct ShapeSignatureGenerator {
       shape_list.emplace_back(*shape);
       data_list.emplace_back(*data);
     }
-    VLOG(0) << "      shape_list: " << shape_list;
-    VLOG(0) << "      data_list: " << data_list;
+    VLOG(0) << "  shape_list: " << shape_list;
+    VLOG(0) << "  data_list: " << data_list;
     return std::make_pair(shape_list, data_list);
   }
 
@@ -213,9 +280,9 @@ struct ShapeSignatureGenerator {
       const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
           substitute_pattern) {
     ShapeList shape_list;
-    VLOG(0) << "    GetOutputShapes: ";
+    VLOG(0) << "GetOutputShapes: ";
     for (std::size_t i = 0; i < op.num_results(); ++i) {
-      VLOG(0) << "      ShapeOrData:"
+      VLOG(0) << "  ShapeOrData:"
               << op_shape_analysis->GetShapeOrDataForValue(op.result(i));
       const symbol::ShapeOrDataDimExprs& shape_or_data =
           op_shape_analysis->GetShapeOrDataForValue(op.result(i));
@@ -224,7 +291,7 @@ struct ShapeSignatureGenerator {
       if (!shape.has_value()) return ShapeList();
       shape_list.emplace_back(*shape);
     }
-    VLOG(0) << "      shape_list: " << shape_list;
+    VLOG(0) << "  shape_list: " << shape_list;
     return shape_list;
   }
 
@@ -250,24 +317,6 @@ struct ShapeSignatureGenerator {
       const DoEachSymbolBindingT& DoEachSymbolBinding) {
     ConstrainedSymbolNamesList constrained_sym_list =
         GetConstrainedSymbolNamesList(op_shape_analysis);
-    VLOG(0) << "constrained_sym_list: " << constrained_sym_list.size();
-    for (ConstrainedSymbolNames constraint : constrained_sym_list) {
-      if (std::holds_alternative<CstrEqSymbolNames>(constraint)) {
-        auto eq = std::get<CstrEqSymbolNames>(constraint);
-        VLOG(0) << "equal";
-        for (const auto& a : eq.symbol_names) {
-          VLOG(0) << "    " << a;
-        }
-      }
-      if (std::holds_alternative<CstrBroadcastableSymbolNames>(constraint)) {
-        auto eq = std::get<CstrBroadcastableSymbolNames>(constraint);
-        VLOG(0) << "bcable";
-        for (const auto& a : eq.symbol_names) {
-          VLOG(0) << "    " << a;
-        }
-      }
-    }
-
     VisitSymbolsBindings(constrained_sym_list, [&](const auto& syms_and_dims) {
       VisitSymbolBindings(syms_and_dims, {}, DoEachSymbolBinding);
     });
@@ -357,28 +406,31 @@ struct ShapeSignatureGenerator {
     const auto& cstr_manager = op_shape_analysis->constraints_manager();
 
     VLOG(0) << "constraints:" << cstr_manager;
-    cstr_manager.VisitEqualClusters([&](auto clusters) {
-      CstrEqSymbolNames equals;
-      for (const symbol::DimExpr& dim_expr : clusters) {
-        if (dim_expr.isa<std::string>())
-          equals.symbol_names.push_back(dim_expr.Get<std::string>());
-      }
-      if (!equals.symbol_names.empty()) cstr_list.emplace_back(equals);
-    });
+    std::function<void(const std::vector<symbol::DimExpr>&)> GetEquals =
+        [&](const auto& clusters) {
+          CstrEqSymbolNames equals;
+          for (const symbol::DimExpr& dim_expr : clusters) {
+            if (dim_expr.isa<std::string>())
+              equals.symbol_names.push_back(dim_expr.Get<std::string>());
+          }
+          if (!equals.symbol_names.empty()) cstr_list.emplace_back(equals);
+        };
+    cstr_manager.VisitEqualClusters(GetEquals);
 
-    cstr_manager.BroadcastableConstraintsVisitor([&](auto it) {
-      VLOG(0) << "bcable:" << it->data->lhs << "  " << it->data->rhs;
-      if (it->data->lhs.template isa<std::string>() &&
-          it->data->rhs.template isa<std::string>()) {
-        CstrBroadcastableSymbolNames bcables;
-        bcables.symbol_names.push_back(
-            it->data->lhs.template Get<std::string>());
-        bcables.symbol_names.push_back(
-            it->data->rhs.template Get<std::string>());
-        cstr_list.emplace_back(bcables);
-      }
-    });
-
+    std::function<void(std::unordered_set<
+                       symbol::Broadcastable<symbol::DimExpr>>::const_iterator)>
+        GetBroadcastables = [&](const auto& it) {
+          if (it->data->lhs.template isa<std::string>() &&
+              it->data->rhs.template isa<std::string>()) {
+            CstrBroadcastableSymbolNames bcables;
+            bcables.symbol_names.push_back(
+                it->data->lhs.template Get<std::string>());
+            bcables.symbol_names.push_back(
+                it->data->rhs.template Get<std::string>());
+            cstr_list.emplace_back(bcables);
+          }
+        };
+    cstr_manager.BroadcastableConstraintsVisitor(GetBroadcastables);
     return cstr_list;
   }
 
@@ -542,10 +594,6 @@ void CheckOpDimExprConstraints(pir::Operation* op,
 void CheckProgramDimExprConstraints(
     pir::Program* program, const DimExprs4ValueT& GraphDimExprs4Value) {
   WalkLeafOp(program, [&](pir::Operation* op) {
-    if (op->isa<pir::ShadowOutputOp>() ||
-        op->isa<paddle::dialect::SearchsortedOp>() ||
-        op->isa<paddle::dialect::DataOp>())
-      return;
     VLOG(0) << " ";
     VLOG(0) << " ";
     VLOG(0) << " ";
