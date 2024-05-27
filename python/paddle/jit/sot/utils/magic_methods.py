@@ -25,40 +25,6 @@ if TYPE_CHECKING:
     UnaryOp = Callable[[Any], Any]
 
 
-NON_INPLACE_BOOL_BINARY_OPS_TO_MAGIC_NAMES: dict[
-    BinaryOp, tuple[str, str | None]
-] = {
-    # op fn: (magic name, reverse magic name)
-    operator.eq: ("__eq__", "__eq__"),
-    operator.ge: ("__ge__", "__le__"),
-    operator.gt: ("__gt__", "__lt__"),
-    operator.le: ("__le__", "__ge__"),
-    operator.lt: ("__lt__", "__gt__"),
-    operator.ne: ("__ne__", "__ne__"),
-}
-
-NON_INPLACE_NON_BOOL_BINARY_OPS_TO_MAGIC_NAMES: dict[
-    BinaryOp, tuple[str, str | None]
-] = {
-    # op fn: (magic name, reverse magic name)
-    operator.add: ("__add__", "__radd__"),
-    operator.and_: ("__and__", "__rand__"),
-    operator.contains: ("__contains__", None),
-    operator.delitem: ("__delitem__", None),
-    operator.floordiv: ("__floordiv__", "__rfloordiv__"),
-    operator.getitem: ("__getitem__", None),
-    operator.lshift: ("__lshift__", "__rlshift__"),
-    operator.matmul: ("__matmul__", "__rmatmul__"),
-    operator.mod: ("__mod__", "__rmod__"),
-    operator.mul: ("__mul__", "__rmul__"),
-    operator.or_: ("__or__", "__ror__"),
-    operator.pow: ("__pow__", "__rpow__"),
-    operator.rshift: ("__rshift__", "__rrshift__"),
-    operator.sub: ("__sub__", "__rsub__"),
-    operator.truediv: ("__truediv__", "__rtruediv__"),
-    operator.xor: ("__xor__", "__rxor__"),
-}
-
 INPLACE_BINARY_OPS_TO_MAGIC_NAMES: dict[BinaryOp, tuple[str, BinaryOp]] = {
     # inplace op fn: (magic name, non-inplace op fn)
     operator.iadd: ("__iadd__", operator.add),
@@ -79,11 +45,31 @@ INPLACE_BINARY_OPS_TO_MAGIC_NAMES: dict[BinaryOp, tuple[str, BinaryOp]] = {
 
 NON_INPLACE_BINARY_OPS_TO_MAGIC_NAMES: dict[
     BinaryOp, tuple[str, str | None]
-] = (
-    NON_INPLACE_BOOL_BINARY_OPS_TO_MAGIC_NAMES
-    | NON_INPLACE_NON_BOOL_BINARY_OPS_TO_MAGIC_NAMES
-)
-
+] = {
+    # op fn: (magic name, reverse magic name)
+    operator.add: ("__add__", "__radd__"),
+    operator.and_: ("__and__", "__rand__"),
+    operator.contains: ("__contains__", None),
+    operator.delitem: ("__delitem__", None),
+    operator.eq: ("__eq__", "__eq__"),
+    operator.floordiv: ("__floordiv__", "__rfloordiv__"),
+    operator.ge: ("__ge__", "__le__"),
+    operator.getitem: ("__getitem__", None),
+    operator.gt: ("__gt__", "__lt__"),
+    operator.le: ("__le__", "__ge__"),
+    operator.lshift: ("__lshift__", "__rlshift__"),
+    operator.lt: ("__lt__", "__gt__"),
+    operator.matmul: ("__matmul__", "__rmatmul__"),
+    operator.mod: ("__mod__", "__rmod__"),
+    operator.mul: ("__mul__", "__rmul__"),
+    operator.ne: ("__ne__", "__ne__"),
+    operator.or_: ("__or__", "__ror__"),
+    operator.pow: ("__pow__", "__rpow__"),
+    operator.rshift: ("__rshift__", "__rrshift__"),
+    operator.sub: ("__sub__", "__rsub__"),
+    operator.truediv: ("__truediv__", "__rtruediv__"),
+    operator.xor: ("__xor__", "__rxor__"),
+}
 
 UNARY_OPS_TO_MAGIC_NAMES: dict[UnaryOp, str] = {
     operator.neg: "__neg__",
