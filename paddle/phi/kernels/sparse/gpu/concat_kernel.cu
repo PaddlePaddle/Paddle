@@ -115,14 +115,14 @@ static void check_cat_sparse_dims(const SparseCooTensor* t,
                     t->dense_dim());
 }
 
-template <typename IndexT, typename DarrayWrapperT>
+template <typename IndexT>
 __global__ void ConcatCooSetIndicesKernel(const IndexT out_nnz,
                                           const IndexT axis,
-                                          DarrayWrapperT indice_offsets,
-                                          DarrayWrapperT d_nnz_offsets,
+                                          IndexT* indice_offsets,
+                                          IndexT* d_nnz_offsets,
                                           IndexT* out_indices) {
   IndexT index = 0;
-
+  // out_nnz, axis, d_indice_offsets, d_nnz_offsets, out_indices_data
   CUDA_KERNEL_LOOP_TYPE(tid_x, out_nnz, IndexT) {
     IndexT next_offset = d_nnz_offsets[index + 1];
     // TODO(bapijun) 这里注意这里的bug,如果col_length的某一段为0的时候会有bug
@@ -130,7 +130,7 @@ __global__ void ConcatCooSetIndicesKernel(const IndexT out_nnz,
       ++index;
       next_offset = d_nnz_offsets[index + 1];
     }
-    out_indices[axis * out_nnz + tid_x] = index;
+    out_indices[axis * out_nnz + tid_x] += indice_offsets[index];
   }
 }
 
@@ -142,7 +142,8 @@ __global__ void ConcatCsr2D0AGetHelpArrayKernel(
     IndexT* out_crows_offsets  // out_crows中每个位置需要增加的叠加值
 ) {
   CUDA_KERNEL_LOOP_TYPE(tid_x, in_num, IndexT) {
-    out_crows_offsets[tid_x] = in_crows_vec[tid_x][crows_offsets[tid_x]];
+    // out_crows_offsets[tid_x] = in_crows_vec[tid_x][crows_offsets[tid_x]];
+    out_crows_offsets[tid_x] = crows_offsets[tid_x];
   }
 }
 
@@ -539,6 +540,7 @@ void ConcatCooGPUKernel(const Context& dev_ctx,
       out_nnz += t->nnz();
       nnz_offsets.push_back(out_nnz);
       out_cols += t->dims()[axis];
+      VLOG(6) << "rabit hole: nnz_offsets" << out_nnz;
       indice_offsets.push_back(out_cols);
     }
 
@@ -552,8 +554,39 @@ void ConcatCooGPUKernel(const Context& dev_ctx,
     out_indices = phi::Empty<int64_t, Context>(dev_ctx, {sparse_dim, out_nnz});
     int64_t* out_indices_data = out_indices.data<int64_t>();
 
-    DArray<int64_t> d_indice_offsets(dev_ctx, indice_offsets);
-    DArray<int64_t> d_nnz_offsets(dev_ctx, nnz_offsets);
+    // DArray<int64_t> d_indice_offsets(dev_ctx, indice_offsets);
+    // DArray<int64_t> d_nnz_offsets(dev_ctx, nnz_offsets);
+
+    auto d_nnz_offsets_tensor = memory_utils::Alloc(
+        dev_ctx.GetPlace(),
+        sizeof(int64_t) * nnz_offsets.size(),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+
+    int64_t* d_nnz_offsets =
+        reinterpret_cast<int64_t*>(d_nnz_offsets_tensor->ptr());
+
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       d_nnz_offsets,
+                       phi::CPUPlace(),
+                       nnz_offsets.data(),
+                       sizeof(int64_t) * nnz_offsets.size(),
+                       dev_ctx.stream());
+
+    auto d_indice_offsets_tensor = memory_utils::Alloc(
+        dev_ctx.GetPlace(),
+        sizeof(int64_t) * indice_offsets.size(),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+
+    int64_t* d_indice_offsets =
+        reinterpret_cast<int64_t*>(d_indice_offsets_tensor->ptr());
+
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       d_indice_offsets,
+                       phi::CPUPlace(),
+                       indice_offsets.data(),
+                       sizeof(int64_t) * indice_offsets.size(),
+                       dev_ctx.stream());
+
     // 因为在前面进行了检查,所以这个维度的nnz都一样
     phi::sparse::ConcatFunctor<int64_t, Context>(
         dev_ctx, indices, static_cast<int>(1), &out_indices);
@@ -561,12 +594,11 @@ void ConcatCooGPUKernel(const Context& dev_ctx,
         dev_ctx, values, static_cast<int>(0), &out_values);
 
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
-    ConcatCooSetIndicesKernel<int64_t, decltype(d_indice_offsets)>
-        <<<config.block_per_grid.x,
-           config.thread_per_block.x,
-           0,
-           dev_ctx.stream()>>>(
-            out_nnz, axis, d_indice_offsets, d_nnz_offsets, out_indices_data);
+    ConcatCooSetIndicesKernel<int64_t><<<config.block_per_grid.x,
+                                         config.thread_per_block.x,
+                                         0,
+                                         dev_ctx.stream()>>>(
+        out_nnz, axis, d_indice_offsets, d_nnz_offsets, out_indices_data);
     out->SetMember(out_indices, out_values, out_dims, x[0]->coalesced());
   } else {
     int64_t values_dim = axis - sparse_dim + 1;
@@ -636,10 +668,10 @@ void ConcatCooKernel(const Context& dev_ctx,
 template <typename T, typename IndexT, typename Context>
 void ConcatCsrGPU2D0A(const Context& dev_ctx,
                       const std::vector<const SparseCsrTensor*>& x,
-                      size_t in_num,
+                      const size_t in_num,
+                      const int64_t out_values_size,
                       const phi::DDim& out_dims,
-                      DenseTensor* out_values_ptr,
-                      DenseTensor* out_cols_ptr,
+
                       const std::vector<const T*>& values_vec,
                       const std::vector<const int64_t*>& cols_vec,
                       const std::vector<const int64_t*>& crows_vec,
@@ -660,11 +692,16 @@ void ConcatCsrGPU2D0A(const Context& dev_ctx,
   DenseTensor out_crows = phi::Empty<int64_t>(dev_ctx, {out_crows_size});
   int64_t* d_out_crows = out_crows.data<int64_t>();
 
+  DenseTensor out_values = phi::Empty<T>(dev_ctx, {out_values_size});
+  DenseTensor out_cols = phi::Empty<int64_t>(dev_ctx, {out_values_size});
+  VLOG(6) << "rabit hole: out_crows_size" << out_crows_size;
+  VLOG(6) << "rabit hole: out_values_size" << out_values_size;
+  VLOG(6) << "rabit hole: out_values_size" << out_values_size;
   auto gpu_place = dev_ctx.GetPlace();
   auto stream = dev_ctx.stream();
   int64_t value_offset = 0;
-  T* d_out_values = out_values_ptr->data<T>();
-  int64_t* d_out_cols = out_cols_ptr->data<int64_t>();
+  T* d_out_values = out_values.data<T>();
+  int64_t* d_out_cols = out_cols.data<int64_t>();
   for (size_t i = 0; i < in_num; i++) {
     int nnz = nnz_vec[i];
     // nnz == 0 的特殊情况,此时out_values指针很可能是错误的
@@ -687,7 +724,7 @@ void ConcatCsrGPU2D0A(const Context& dev_ctx,
   const int64_t* const* in_crows_vec = crows_vec.data();
   PointerToPointer<int64_t> d_in_crows_vec(dev_ctx, in_num, in_crows_vec);
   DArray<int64_t> d_crows_offsets(dev_ctx, crows_offsets);
-  // out_crows中基于index的偏移值
+  // // out_crows中基于index的偏移值
   DenseTensor out_crows_offsets =
       phi::Empty<int64_t>(dev_ctx, {static_cast<int64_t>(in_num)});
   int64_t* d_out_crows_offsets = out_crows_offsets.data<int64_t>();
@@ -702,22 +739,23 @@ void ConcatCsrGPU2D0A(const Context& dev_ctx,
          dev_ctx.stream()>>>(
           in_num, d_in_crows_vec, d_crows_offsets, d_out_crows_offsets);
 
-  config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_crows_size - 1, 1);
+  // config =
+  //     phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_crows_size - 1,
+  //     1);
 
-  ConcatCsr2D0ASetCrowsKernel<int64_t,
-                              decltype(d_in_crows_vec),
-                              decltype(d_crows_offsets)>
-      <<<config.block_per_grid.x,
-         config.thread_per_block.x,
-         0,
-         dev_ctx.stream()>>>(out_crows_size - 1,
-                             d_in_crows_vec,
-                             d_crows_offsets,
-                             d_out_crows_offsets,
-                             d_out_crows);
+  // ConcatCsr2D0ASetCrowsKernel<int64_t,
+  //                             decltype(d_in_crows_vec),
+  //                             decltype(d_crows_offsets)>
+  //     <<<config.block_per_grid.x,
+  //        config.thread_per_block.x,
+  //        0,
+  //        dev_ctx.stream()>>>(out_crows_size - 1,
+  //                            d_in_crows_vec,
+  //                            d_crows_offsets,
+  //                            d_out_crows_offsets,
+  //                            d_out_crows);
 
-  out->SetMember(out_crows, *out_cols_ptr, *out_values_ptr, out_dims);
+  out->SetMember(out_crows, out_cols, out_values, out_dims);
 }
 
 template <typename T, typename IndexT, typename Context>
@@ -833,10 +871,10 @@ void ConcatCsrGPU3D0A(const Context& dev_ctx,
   DenseTensor out_crows = phi::Empty<int64_t>(dev_ctx, {out_crows_size});
   // axis==0 简单拼接所有的三个即可即可完成
   phi::sparse::ConcatFunctor<T, Context>(
-      dev_ctx, values, static_cast<T>(0), &out_values);
+      dev_ctx, values, static_cast<T>(0), out_values);
   // cols的形状与value一致
   phi::sparse::ConcatFunctor<int64_t, Context>(
-      dev_ctx, cols, static_cast<int64_t>(0), &out_cols);
+      dev_ctx, cols, static_cast<int64_t>(0), out_cols);
 
   phi::sparse::ConcatFunctor<int64_t, Context>(
       dev_ctx, crows, static_cast<int64_t>(0), &out_crows);
@@ -1088,7 +1126,9 @@ void ConcatCsrGPUKernel(const Context& dev_ctx,
     crows_vec.push_back(t->crows().data<int64_t>());
     out_values_size += t->nnz();
   }
+  DenseTensor out_values = phi::Empty<T>(dev_ctx, {out_values_size});
 
+  DenseTensor out_cols = phi::Empty<int64_t>(dev_ctx, {out_values_size});
   phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
   int x_dim = x_dims[0].size();
   if (x_dim == 2) {
@@ -1096,6 +1136,7 @@ void ConcatCsrGPUKernel(const Context& dev_ctx,
       ConcatCsrGPU2D0A<T, int64_t, Context>(dev_ctx,
                                             x,
                                             in_num,
+                                            out_values_size,
                                             out_dims,
 
                                             values_vec,
@@ -1107,7 +1148,8 @@ void ConcatCsrGPUKernel(const Context& dev_ctx,
                                             x,
                                             in_num,
                                             out_dims,
-
+                                            &out_values,
+                                            &out_cols,
                                             values_vec,
                                             cols_vec,
                                             crows_vec,
@@ -1120,7 +1162,8 @@ void ConcatCsrGPUKernel(const Context& dev_ctx,
                                             x,
                                             in_num,
                                             out_dims,
-
+                                            &out_values,
+                                            &out_cols,
                                             values_vec,
                                             cols_vec,
                                             crows_vec,
@@ -1130,7 +1173,8 @@ void ConcatCsrGPUKernel(const Context& dev_ctx,
                                             x,
                                             in_num,
                                             out_dims,
-
+                                            &out_values,
+                                            &out_cols,
                                             values_vec,
                                             cols_vec,
                                             crows_vec,
@@ -1140,7 +1184,8 @@ void ConcatCsrGPUKernel(const Context& dev_ctx,
                                             x,
                                             in_num,
                                             out_dims,
-
+                                            &out_values,
+                                            &out_cols,
                                             values_vec,
                                             cols_vec,
                                             crows_vec,
