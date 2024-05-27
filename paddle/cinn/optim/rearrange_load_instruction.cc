@@ -118,7 +118,6 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
   VisitImpl(For);
   VisitImpl(Cast);
   VisitImpl(PolyFor);
-  // VisitImpl(Select);
   VisitImpl(Call);
   VisitImpl(_Module_);
   VisitImpl(_Var_);
@@ -130,7 +129,6 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
   VisitImpl(Let);
   VisitImpl(Reduce);
   VisitImpl(Ramp);
-  // VisitImpl(Broadcast);
   VisitImpl(FracOp);
   VisitImpl(Product);
   VisitImpl(Sum);

@@ -21,7 +21,6 @@
 #include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
-#include "paddle/cinn/optim/rearrange_load_instruction.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
 #include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
@@ -34,6 +33,7 @@
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
 #include "paddle/cinn/optim/if_fusion.h"
+#include "paddle/cinn/optim/rearrange_load_instruction.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
@@ -833,7 +833,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     }
     // 4.Apply low level pass
     func = optim::Optimize(Expr(func), target_, false).as_lowered_func_ref();
-    optim::RearrangeLoadInstruction(&(func_body));
+    optim::RearrangeLoadInstruction(&(func->body));
     lowered_funcs.push_back(std::move(func));
   }
 
