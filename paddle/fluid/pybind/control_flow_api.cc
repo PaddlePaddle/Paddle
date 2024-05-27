@@ -329,13 +329,16 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
     res.push_back(result(i));
   }
   for (size_t operand_index = 1u, arg_index = 0u; operand_index < operand_num;
-       ++operand_index) {
+       ++operand_index, ++arg_index) {
+    if (!body_block.arg(arg_index).type().isa<pir::DenseTensorType>()) {
+      continue;
+    }
+
     auto l_type =
         body_block.arg(arg_index).type().dyn_cast<pir::DenseTensorType>();
     auto r_type = yield_op.operand_source(operand_index)
                       .type()
                       .dyn_cast<pir::DenseTensorType>();
-    VLOG(4) << "l_dim " << l_type.dims() << " r_dim " << r_type.dims();
     if (l_type.dims().size() == r_type.dims().size() &&
         l_type.dims() != r_type.dims()) {
       VLOG(4) << "while op input " << operand_index
@@ -353,7 +356,10 @@ std::vector<Value> PyWhileOp::OptimizeUpdate() {
       result(arg_index).set_type(new_type);
       VLOG(4) << "change shape as: " << new_type.dims();
     }
+  }
 
+  for (size_t operand_index = 1u, arg_index = 0u; operand_index < operand_num;
+       ++operand_index) {
     if (yield_op.operand_source(operand_index) == body_block.arg(arg_index)) {
       operand_source(operand_index).set_type(body_block.arg(arg_index).type());
       body_block.arg(arg_index).ReplaceAllUsesWith(

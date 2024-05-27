@@ -158,7 +158,7 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
         infer_model_prefix = os.path.join(
             self.temp_dir.name, "test_dy2stat_inference_in_guard/model_pylayer"
         )
-
+        print("use pir ", use_pir_api())
         paddle.jit.save(
             layer=layer,
             path=infer_model_prefix,
@@ -171,7 +171,10 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
         loss_out_numpy = float(loss_out)
         self.check_save_inference_model(layer, [x_data], loss_out_numpy)
         self.check_save_inference_model(
-            layer, [x_data], loss_out_numpy, fetch=[loss]
+            layer,
+            [x_data],
+            loss_out_numpy,
+            fetch=[0] if use_pir_api() else [loss],
         )
         self.check_save_inference_model(
             layer, [x_data], loss_out_numpy, feed=[x]
