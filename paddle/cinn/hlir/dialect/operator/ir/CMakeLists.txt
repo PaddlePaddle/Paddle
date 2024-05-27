@@ -9,7 +9,7 @@ set(cinn_op_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/op_gen.py)
 
 set(cinn_op_compat_yaml_file
-    ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
+    ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml)
 
 set(cinn_op_yaml_file
     ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/operator/ir/ops.yaml)

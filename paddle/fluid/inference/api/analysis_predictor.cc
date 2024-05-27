@@ -361,7 +361,20 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
 }  // namespace
 
 AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
-    : config_(config) {
+    : config_(config),
+      fusion_statis_(),
+      executor_(nullptr),
+      feeds_(),
+      feed_names_(),
+      idx2feeds_(),
+      fetches_(),
+      idx2fetches_(),
+      feed_tensors_(),
+      output_hookfuncs_(),
+      input_hookfuncs_(),
+      shape_info_(),
+      shape_tensor_value_(),
+      device_contexts_() {
   if (config_.shape_range_info_collected()) {
     config_.SwitchIrOptim(false);
   }
@@ -932,11 +945,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         // gpu
         if (!config_.custom_pass_only_) {
           for (const auto &gpu_pass : kPirGpuPasses) {
-            auto pass = pir::PassRegistry::Instance().Get(gpu_pass);
-            if (pass->name() == "matmul_add_act_fuse_pass") {
-              pass->Set("use_cutlass", new bool(config_.use_cutlass_));
-            }
-            pass_pm.AddPass(std::move(pass));
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
           }
         }
 
@@ -976,6 +985,14 @@ bool AnalysisPredictor::PrepareExecutor() {
         pass_pm.EnableIRPrinting(
             std::make_unique<pir::PassManager::IRPrinterOption>(
                 ir_printing_conditions, ir_printing_conditions));
+      }
+      // set attr
+      for (const auto &pass : pass_pm.passes()) {
+        if (pass->name() == "matmul_add_act_fuse_pass" ||
+            pass->name() == "conv2d_add_act_fuse_pass" ||
+            pass->name() == "conv2d_add_fuse_pass") {
+          pass->Set("use_cutlass", new bool(config_.use_cutlass_));
+        }
       }
       pass_pm.Run(pir_program_.get());
 
@@ -1484,6 +1501,8 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   inference::DisplayMemoryInfo(place_, "before run");
   if (private_context_) {
     paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+    auto &pool = paddle::experimental::DeviceContextPool::Instance();
+    pool.SyncDeviceContext(place_);
   }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
@@ -1512,6 +1531,30 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   if (config_.shape_range_info_collected()) {
     HookCollectShapeRangeInfo();
   }
+#ifdef PADDLE_WITH_XPU
+  InferXPUContext *infer_xpu_ctx = nullptr;
+  if (config_.use_xpu_) {
+    PADDLE_ENFORCE(
+        private_context_,
+        paddle::platform::errors::Fatal(
+            "Must use private context if run predictor on xpu place."));
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place,
+        std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        this->GetDeviceContexts());
+    infer_xpu_ctx =
+        static_cast<InferXPUContext *>(dev_ctxs->at(place_).get().get());
+    auto *x_context = static_cast<xpu::Context *>(config_.xpu_config_.context);
+    if (x_context != nullptr) {
+      infer_xpu_ctx->SetXContext(x_context);
+    }
+    infer_xpu_ctx->SetStream(predictor_stream_);
+    infer_xpu_ctx->SetL3Info(config_.xpu_config_.l3_size,
+                             config_.xpu_config_.l3_ptr,
+                             config_.xpu_config_.l3_autotune_size,
+                             place_);
+  }
+#endif
 
   if (config_.new_executor_enabled()) {  // NOLINT
     executor_->RunInterpreterCore();
@@ -1522,7 +1565,11 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   }
 
   inference::DisplayMemoryInfo(place_, "after run");
-
+#ifdef PADDLE_WITH_XPU
+  if (config_.use_xpu_ && infer_xpu_ctx != nullptr) {
+    infer_xpu_ctx->L3CacheAutotune();
+  }
+#endif
   // get fetch variable
   if (!GetFetch(outputs, scope)) {
     LOG(ERROR) << "fail to get fetches";
@@ -2409,6 +2456,8 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
 #endif
   if (private_context_) {
     paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+    auto &pool = paddle::experimental::DeviceContextPool::Instance();
+    pool.SyncDeviceContext(place_);
   }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
@@ -2530,8 +2579,6 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
           UpdatePrivateDeviceContext(gpu_context, gpu_resource, place_);
           return std::unique_ptr<phi::DeviceContext>(gpu_context);
         }));
-    auto &pool = paddle::experimental::DeviceContextPool::Instance();
-    pool.SyncDeviceContext(place_);
     switch_stream = true;
   }
   return ZeroCopyRun(switch_stream);
@@ -3344,7 +3391,7 @@ USE_TRT_CONVERTER(dequantize_linear)
 
 namespace paddle_infer {
 
-Predictor::Predictor(const Config &config) {
+Predictor::Predictor(const Config &config) : predictor_(nullptr) {
   // The second parameter indicates that the discard log is not printed
   if (config.use_onnxruntime()) {
 #ifdef PADDLE_WITH_ONNXRUNTIME
@@ -3504,7 +3551,7 @@ std::shared_ptr<Predictor> CreatePredictor(const Config &config) {  // NOLINT
 }
 
 namespace services {
-PredictorPool::PredictorPool(const Config &config, size_t size) {
+PredictorPool::PredictorPool(const Config &config, size_t size) : preds_() {
   PADDLE_ENFORCE_GE(
       size,
       1UL,

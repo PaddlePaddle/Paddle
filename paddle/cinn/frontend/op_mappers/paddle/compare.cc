@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
@@ -28,19 +28,29 @@ static const std::string& GetCompareDebugString(const std::string& compare_op) {
       {"Equal", " == "},
       {"NotEqual", " != "},
   };
-  CHECK_GT(compare_debug_map.count(compare_op), 0)
-      << "Unsupported compare op " << compare_op;
+  PADDLE_ENFORCE_GT(compare_debug_map.count(compare_op),
+                    0,
+                    phi::errors::InvalidArgument("Unsupported compare op"));
   return compare_debug_map[compare_op];
 }
 
 #define COMPARE_OPMAPPER_FUNCTION(OP_NAME)                                    \
   void OP_NAME##OpMapper(const paddle::cpp::OpDesc& op_desc,                  \
                          const OpMapperContext& ctx) {                        \
-    CHECK_EQ(op_desc.Input("X").size(), 1UL);                                 \
+    PADDLE_ENFORCE_EQ(                                                        \
+        op_desc.Input("X").size(),                                            \
+        1UL,                                                                  \
+        phi::errors::InvalidArgument("The input of op must be 1."));          \
     auto x_name = op_desc.Input("X").front();                                 \
-    CHECK_EQ(op_desc.Input("Y").size(), 1UL);                                 \
+    PADDLE_ENFORCE_EQ(                                                        \
+        op_desc.Input("Y").size(),                                            \
+        1UL,                                                                  \
+        phi::errors::InvalidArgument("The input of op must be 1."));          \
     auto y_name = op_desc.Input("Y").front();                                 \
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);                              \
+    PADDLE_ENFORCE_EQ(                                                        \
+        op_desc.Output("Out").size(),                                         \
+        1UL,                                                                  \
+        phi::errors::InvalidArgument("The output of op must be 1."));         \
     auto out_name = op_desc.Output("Out").front();                            \
     auto axis = utils::GetAttrOrDefault<int>(op_desc, "axis", -1);            \
     VLOG(4) << out_name << " = " << x_name << GetCompareDebugString(#OP_NAME) \

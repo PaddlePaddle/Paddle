@@ -61,7 +61,8 @@ class IR_API GroupOp
 
 // FusionOp represents a subgraphs that can be fused to one kernel.
 // Every GroupOp can be lowered to at least one FusionOp
-class IR_API FusionOp : public pir::Op<FusionOp> {
+class IR_API FusionOp
+    : public pir::Op<FusionOp, paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.fusion"; }
@@ -80,6 +81,8 @@ class IR_API FusionOp : public pir::Op<FusionOp> {
   pir::Block *block() const;
 
   std::vector<pir::Operation *> GetOperators() const;
+
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 
   void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT

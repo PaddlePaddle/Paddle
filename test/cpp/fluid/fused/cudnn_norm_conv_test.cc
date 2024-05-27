@@ -20,14 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/fused/cudnn_norm_conv.cu.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/fusion/gpu/cudnn_norm_conv.cu.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
-namespace op = paddle::operators;
 
 USE_OP_ITSELF(conv2d);
 USE_OP_ITSELF(conv2d_grad);
@@ -343,14 +342,14 @@ class CudnnNormConvolutionTester {
     auto input_shape = common::vectorize<int>(input.dims());
     auto filter_shape = common::vectorize<int>(filter_nhwc.dims());
     auto output_shape = common::vectorize<int>(output.dims());
-    op::CudnnNormConvolution<T> conv_op(ctx,
-                                        input_shape,
-                                        filter_shape,
-                                        output_shape,
-                                        padding_,
-                                        stride_,
-                                        dilation_,
-                                        group_);
+    phi::fusion::CudnnNormConvolution<T> conv_op(ctx,
+                                                 input_shape,
+                                                 filter_shape,
+                                                 output_shape,
+                                                 padding_,
+                                                 stride_,
+                                                 dilation_,
+                                                 group_);
     conv_op.Forward(ctx, input, filter_nhwc, &output, &sum, &sum_of_square);
 
     paddle::framework::TensorCopySync(output, platform::CPUPlace(), cpu_output);
@@ -379,14 +378,14 @@ class CudnnNormConvolutionTester {
     auto input_shape = common::vectorize<int>(input.dims());
     auto filter_shape = common::vectorize<int>(filter_nhwc.dims());
     auto output_shape = common::vectorize<int>(output_grad.dims());
-    op::CudnnNormConvolutionGrad<T> conv_grad_op(ctx,
-                                                 input_shape,
-                                                 filter_shape,
-                                                 output_shape,
-                                                 padding_,
-                                                 stride_,
-                                                 dilation_,
-                                                 group_);
+    phi::fusion::CudnnNormConvolutionGrad<T> conv_grad_op(ctx,
+                                                          input_shape,
+                                                          filter_shape,
+                                                          output_shape,
+                                                          padding_,
+                                                          stride_,
+                                                          dilation_,
+                                                          group_);
     conv_grad_op.Backward(
         ctx, input, filter_nhwc, output_grad, &input_grad, &filter_grad);
 
