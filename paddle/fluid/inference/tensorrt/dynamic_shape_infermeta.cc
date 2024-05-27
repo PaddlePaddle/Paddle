@@ -47,7 +47,6 @@ class ExprWrapper {
     assert(a.expr);
     assert(b.expr);
 
-
     if (a.expr_builder) {
       result.expr_builder = a.expr_builder;
     } else if (b.expr_builder) {
@@ -62,7 +61,6 @@ class ExprWrapper {
 
 
     result.expr = result.expr_builder->operation(op, *a.expr, *b.expr);
-
     return result;
   }
 
