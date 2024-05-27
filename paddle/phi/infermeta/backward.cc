@@ -647,21 +647,21 @@ void GruUnitGradInferMeta(const MetaTensor& input,
             bias_height,
             bias_width,
             frame_size * 3));
-    if (bias_grad->initialized()) {
+    if (bias_grad != nullptr) {
       bias_grad->set_dims(bias_dims);
       bias_grad->set_dtype(bias.dtype());
     }
   }
 
-  if (input_grad->initialized()) {
+  if (input_grad != nullptr) {
     input_grad->set_dims(input_dims);
     input_grad->set_dtype(input.dtype());
   }
-  if (hidden_prev_grad->initialized()) {
+  if (hidden_prev_grad != nullptr) {
     hidden_prev_grad->set_dims(hidden_prev_dims);
     hidden_prev_grad->set_dtype(hidden_prev.dtype());
   }
-  if (weight_grad->initialized()) {
+  if (weight_grad != nullptr) {
     weight_grad->set_dims(weight_dims);
     weight_grad->set_dtype(weight.dtype());
   }
