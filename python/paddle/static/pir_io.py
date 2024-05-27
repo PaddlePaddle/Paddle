@@ -67,7 +67,7 @@ def get_pir_parameters(program):
     params = []
     opts = []
     for var in program.list_vars():
-        if var.is_parameter:
+        if var.is_parameter and var.persistable:
             params.append(var)
         elif var.persistable and var.get_defining_op().name() == "pd_op.data":
             opts.append(var)
