@@ -703,14 +703,21 @@ class TestProdOp_ZeroDim(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.CUDAPlace(0),
-            ['X'],
-            'Out',
-            check_prim=True,
-            check_pir=True,
-            check_prim_pir=True,
-        )
+        if paddle.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                paddle.CUDAPlace(0),
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+            )
+        else:
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_pir=True,
+            )
 
 
 class TestProdOp_ZeroDim1(TestProdOp):
