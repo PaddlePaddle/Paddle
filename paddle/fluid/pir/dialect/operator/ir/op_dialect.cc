@@ -301,7 +301,8 @@ void PrintAttributeImpl(pir::Attribute attr, std::ostream& os) {
   os << '.';
   if (auto int_array_attr = attr.dyn_cast<IntArrayAttribute>()) {
     phi::IntArray data = int_array_attr.data();
-    os << "IntArray)" << "[";
+    os << "IntArray)"
+       << "[";
     const auto& inner_data = data.GetData();
     pir::detail::PrintInterleave(
         inner_data.begin(),

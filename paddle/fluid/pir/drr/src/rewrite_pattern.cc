@@ -514,7 +514,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
         } else if (max_input_op_index ==
                    op_2_temp_program_index.at(ir_input_op)) {
           const auto& ops_vec = temp_program[max_input_op_index];
-          for (const auto &op_vec : ops_vec) {
+          for (const auto& op_vec : ops_vec) {
             if (op_vec == max_index_op) {
               break;
             } else if (op_vec == ir_input_op) {
