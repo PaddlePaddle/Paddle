@@ -141,11 +141,7 @@ struct CachedDimExprToValueConverter {
             .dyn_cast<paddle::dialect::DenseTensorType>()
             .dims()
             .size() == 0) {
-      return CastToInt64IfNeed(
-          rewriter
-              ->Build<paddle::dialect::ReshapeOp>(tensor_dim.value,
-                                                  std::vector<int64_t>{1})
-              .out());
+      return CastToInt64IfNeed(tensor_dim.value);
     }
     return CastToInt64IfNeed(rewriter
                                  ->Build<paddle::dialect::SliceOp>(
@@ -304,7 +300,43 @@ class SplitGenerateShapeIntoShapeOps
         MakeGetterTensorDim4SymbolName(op);
     if (!TensorDim4SymbolName) return std::nullopt;
     CachedDimExprToValueConverter converter{TensorDim4SymbolName, rewriter};
-    return GetValueOfRewrittenOps(dim_exprs, &converter);
+    std::optional<pir::Value> new_output =
+        GetValueOfRewrittenOps(dim_exprs, &converter);
+    if (!new_output.has_value()) return std::nullopt;
+    const auto& gs_out_type =
+        op->result(0).type().dyn_cast<paddle::dialect::DenseTensorType>();
+    const auto& new_output_type =
+        new_output->type().dyn_cast<paddle::dialect::DenseTensorType>();
+    if (gs_out_type.dtype() != new_output_type.dtype()) {
+      new_output =
+          rewriter
+              ->Build<paddle::dialect::CastOp>(
+                  new_output.value(),
+                  paddle::dialect::TransToPhiDataType(gs_out_type.dtype()))
+              .out();
+    }
+    if (gs_out_type.dims() != new_output_type.dims()) {
+      PADDLE_ENFORCE_EQ(
+          ::common::contain_unknown_dim(gs_out_type.dims()),
+          false,
+          ::common::errors::PreconditionNotMet(
+              "The shape of the output tensor of generate_shape_op should not "
+              "contain unknown dim, but received [%s].",
+              gs_out_type.dims().to_str()));
+      PADDLE_ENFORCE_LE(
+          ::common::product(gs_out_type.dims()),
+          9,
+          ::common::errors::PreconditionNotMet(
+              "The numel of the output tensor of generate_shape_op should be "
+              "less than 9, but received [%s].",
+              ::common::product(gs_out_type.dims())));
+      return rewriter
+          ->Build<paddle::dialect::ReshapeOp>(
+              new_output.value(),
+              ::common::vectorize<int64_t>(gs_out_type.dims()))
+          .out();
+    }
+    return new_output;
   }
 
   TensorDim4SymbolNameT MakeGetterTensorDim4SymbolName(

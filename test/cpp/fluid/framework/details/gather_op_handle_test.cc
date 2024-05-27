@@ -30,6 +30,15 @@ using DeviceType = paddle::platform::DeviceType;
 const f::DDim kDims = {20, 20};
 
 struct TestGatherOpHandle {
+  TestGatherOpHandle()
+      : ctxs_(),
+        local_scopes_(),
+        param_scopes_(),
+        g_scope_(),
+        op_handle_(nullptr),
+        vars_(),
+        gpu_list_(),
+        nodes_() {}
   std::vector<std::unique_ptr<p::DeviceContext>> ctxs_;
   std::vector<Scope*> local_scopes_;
   std::vector<Scope*> param_scopes_;

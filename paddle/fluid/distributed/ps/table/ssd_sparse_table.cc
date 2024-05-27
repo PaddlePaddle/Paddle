@@ -193,7 +193,7 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
     std::vector<std::future<int>> tasks;
     RocksDBItem* cur_ctx = context.switch_item();
     cur_ctx->reset();
-    FixedFeatureValue* ret = NULL;
+    FixedFeatureValue* ret = nullptr;
     auto& local_shard = _local_shards[shard_id];
     float data_buffer[value_size];  // NOLINT
     float* data_buffer_ptr = data_buffer;
@@ -2612,11 +2612,11 @@ int32_t SSDSparseTable::LoadWithString(
     ssd_values.clear();
     tmp_key.clear();
     std::string line_data;
-    char* end = NULL;
+    char* end = nullptr;
     int local_shard_id = i % _avg_local_shard_num;
     auto& shard = _local_shards[local_shard_id];
-    float data_buffer[FLAGS_pserver_load_batch_size *
-                      feature_value_size];  // NOLINT
+    float data_buffer[FLAGS_pserver_load_batch_size *  // NOLINT
+                      feature_value_size];
     float* data_buffer_ptr = data_buffer;
     uint64_t mem_count = 0;
     uint64_t ssd_count = 0;

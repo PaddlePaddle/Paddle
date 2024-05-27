@@ -22,8 +22,9 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/utils/none.h"
 
-#if CUDA_VERSION >= 11000 && (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
+#if defined(__CUDACC__) && CUDA_VERSION >= 11000
 #define CUDA_BFLOAT16_AVALIABLE
+#include <cuda_bf16.h>
 #endif
 
 namespace phi {
@@ -74,7 +75,9 @@ __forceinline__ __device__ half add_mul<half>(half a, half b, half c) {
 template <>
 __forceinline__ __device__ __nv_bfloat16
 add_mul<__nv_bfloat16>(__nv_bfloat16 a, __nv_bfloat16 b, __nv_bfloat16 c) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800)
   return __hmul(__hadd(a, b), c);
+#endif
 }
 #endif
 
