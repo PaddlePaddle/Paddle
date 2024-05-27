@@ -347,6 +347,17 @@ bool ProcessOp(OP_TYPE op,
       op->operand_source(1), rewriter, shape_analysis);
 }
 
+template <>
+bool ProcessOp<paddle::dialect::SliceOp>(
+    paddle::dialect::SliceOp op,
+    pir::PatternRewriter* rewriter,
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  return ReplaceShapeOpsToGenerateShape(
+             op->operand_source(1), rewriter, shape_analysis) &&
+         ReplaceShapeOpsToGenerateShape(
+             op->operand_source(2), rewriter, shape_analysis);
+}
+
 }  // namespace
 
 template <typename OPTYPE>
@@ -376,7 +387,8 @@ class FuseShapeOpsIntoGenerateShapeOpPass : public pir::PatternRewritePass {
         context);
     ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::ReshapeOp>>(
         context);
-
+    ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::SliceOp>>(
+        context);
     return ps;
   }
 
