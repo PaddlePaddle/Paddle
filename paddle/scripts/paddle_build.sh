@@ -4395,7 +4395,7 @@ function main() {
         export FLAGS_PIR_OPTEST=True
         parallel_test true
         ;;
-      hyg_dcu)
+      hyg_dcu_test)
         parallel_test
         ;;
       nv_cicheck_coverage)
