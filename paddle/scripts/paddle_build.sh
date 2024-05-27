@@ -3628,6 +3628,7 @@ function clang-tidy_check() {
     set +x
     trap 'abort' 0
     set -e
+    echo "git branch"
 
     merge_branch=$(git branch | grep \* | cut -d ' ' -f2)
 
