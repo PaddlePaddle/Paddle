@@ -16,14 +16,6 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/meta_tensor.h"
-#include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/infermeta/multiary.h"
-#include "paddle/phi/kernels/concat_kernel.h"
-#include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
-#include "paddle/phi/kernels/funcs/concat_funcs.h"
-#include "paddle/phi/kernels/sparse/empty_kernel.h"
 
 namespace phi {
 namespace sparse {
@@ -83,13 +75,14 @@ void ConcatCooKernel(const Context& dev_ctx,
   phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
   if (axis < sparse_dim) {
     int64_t out_nnz = 0, out_cols = 0;
-    std::vector<int64_t> indice_offset(x.size() + 1, 0);
+    std::vector<int64_t> indice_offset;
+    indice_offset.push_back(out_cols);
     for (const auto* t : x) {
       indices.emplace_back(t->indices());
       values.emplace_back(t->values());
       out_nnz += t->nnz();
-      out_cols += t.dims()[axis];
-      indice_offset[i] = out_cols;
+      out_cols += t->dims()[axis];
+      indice_offset.push_back(out_cols);
     }
     out_indices = phi::Empty<int64_t, Context>(dev_ctx, {sparse_dim, out_nnz});
     // TODO(bapijun)  改掉这个 参考可能得算法写出来
@@ -154,7 +147,7 @@ void ConcatCooKernel(const Context& dev_ctx,
       auto concat_value =
           std::make_shared<DenseTensor>();  // 创建DenseTensor的智能指针
       concat_functor_value(dev_ctx, now_values, values_dim, concat_value.get());
-      // 用 phi::funcs::StridedNumelCopyWithAxis<T, Context>
+
       values.push_back(*concat_value);
       indices.push_back(t->indices());
     }
@@ -231,10 +224,11 @@ void ConcatCsrKernel(const Context& dev_ctx,
       // 替换掉方便编写的方法
       int64_t value_offset = 0;
       // 改成合并的concat方法
+      auto cpu_place = dev_ctx.GetPlace();
       for (size_t i = 0; i < num_split; i++) {
         int nnz = nnz_vec[i];
         // nnz == 0 的特殊情况,此时out_values_data指针很可能是错误的
-        memory_utils::Copy(out_values_data,
+        memory_utils::Copy(cpu_place,
                            out_values_data + value_offset,
                            cpu_place,
                            values_data_vec[i],
@@ -352,6 +346,7 @@ void ConcatCsrKernel(const Context& dev_ctx,
       const int64_t* now_cols_ptr = nullptr;
       const int64_t* now_crows_ptr = nullptr;
       std::vector<int64_t> values_index(num_split + 1, 0);
+      auto cpu_place = dev_ctx.GetPlace();
       for (size_t b = 0; b < batch; b++) {
         // 针对每一轮batch的初始化
         out_crows_data[crow_index] = 0;

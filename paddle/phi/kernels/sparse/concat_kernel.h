@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -24,10 +23,10 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/kernels/concat_kernel.h"
-#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
+#include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
 namespace phi {
@@ -35,20 +34,20 @@ namespace sparse {
 
 template <typename T, typename Context>
 void ConcatFunctor(const Context& context,
-  const std::vector<phi::DenseTensor>& inputs,
-  int axis,
-  phi::DenseTensor* output) {
-  // Sometimes direct copies will be faster, this maybe need deeply analysis.  
+                   const std::vector<phi::DenseTensor>& x,
+                   int axis,
+                   phi::DenseTensor* out) {
+  // Sometimes direct copies will be faster, this maybe need deeply analysis.
   if (axis == 0 && x.size() < 10) {
     size_t output_offset = 0;
-    for (auto* in : x) {
+    for (auto in : x) {
       if (in.numel() == 0UL) {
         continue;
       }
       auto in_stride = common::stride_numel(in.dims());
       auto out_stride = common::stride_numel(out->dims());
       phi::funcs::StridedNumelCopyWithAxis<T, Context>(
-          dev_ctx,
+          context,
           axis,
           out->data<T>() + output_offset,
           out_stride,
@@ -59,9 +58,8 @@ void ConcatFunctor(const Context& context,
     }
   } else {
     phi::funcs::ConcatFunctor<Context, T> functor;
-    functor(dev_ctx, inputs, axis, out);
-  }  
- 
+    functor(context, x, axis, out);
+  }
 }
 
 template <typename T, typename Context>

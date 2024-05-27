@@ -12,17 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/kernels/sparse/concat_grad_kernel.h"
 #include "glog/logging.h"
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/meta_tensor.h"
-#include "paddle/phi/core/sparse_csr_tensor.h"
-#include "paddle/phi/infermeta/multiary.h"
-#include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
-#include "paddle/phi/kernels/funcs/concat_funcs.h"
-#include "paddle/phi/kernels/sparse/empty_kernel.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/sparse/concat_kernel.h"
 #include "paddle/phi/kernels/sparse/unary_kernel.h"
 namespace phi {
 namespace sparse {

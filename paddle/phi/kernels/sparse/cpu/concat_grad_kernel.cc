@@ -98,7 +98,6 @@ void ConcatCsrGradKernel(const Context& dev_ctx,
       phi::errors::InvalidArgument("concat_grad: axis should be larger than or "
                                    "equal to 0, but received axis is %d.",
                                    axis));
-  VLOG(6) << "rabit hole 2";
   int64_t cumulative_offset = 0;
   // TODO(bapijun) 如果有了split的函数可以进行替换
   for (size_t i = 0; i < num_split; ++i) {
