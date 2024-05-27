@@ -371,6 +371,14 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
                            MetaTensor* sequencenum,
                            MetaTensor* out);
 
+void FakeChannelWiseDequantizeMaxAbsInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& scales,
+    const std::vector<int>& quant_bits,
+    int quant_axis,
+    int x_num_col_dims,
+    MetaTensor* out);
+
 void FakeQuantOrWithDequantMovingAverageAbsMaxInferMeta(
     const MetaTensor& x,
     const MetaTensor& in_scale,

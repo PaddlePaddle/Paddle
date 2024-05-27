@@ -14,6 +14,7 @@
 
 import paddle
 
+from .process_group import get_process_group
 from .reshard_funcs.base_reshard_func import (
     choose_reshard_func,
 )
@@ -92,6 +93,12 @@ def apply_partition_pass(program):
     cur_rank = paddle.distributed.get_rank()
     for op in program.global_block().ops[::-1]:
         if op.name() in partition_skip_op_list:
+            can_delete = True
+            for val in op.results():
+                if not val.use_empty():
+                    can_delete = False
+            if can_delete:
+                op.erase()
             continue
         if cur_rank not in op.dist_attr.process_mesh.process_ids:
             op.erase()
@@ -150,6 +157,20 @@ def apply_reshard_pass(program):
             if out_value is not None:
                 op.result(0).replace_all_uses_with(out_value)
             if op.result(0).use_empty():
+                op.erase()
+
+
+# Note: this is the pass in the dense program
+comm_ops = ["pd_op.c_allreduce_sum_", "pd_op.c_allgather"]
+
+
+def remove_unuseful_comm_op_pass(program):
+    for op in program.global_block().ops:
+        if op.name() in comm_ops:
+            ring_id = op.int_attr("ring_id")
+            process_group = get_process_group(ring_id)
+            if process_group.nranks == 1:
+                op.result(0).replace_all_uses_with(op.operand_source(0))
                 op.erase()
 
 
