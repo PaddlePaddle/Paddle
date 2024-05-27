@@ -26,12 +26,31 @@ from typing import Any, Callable, Literal
 
 from typing_extensions import TypeAlias
 
+logging.basicConfig(style="{", format="{message}", level=logging.INFO)
+logger = logging.getLogger("Generating stub file for paddle.Tensor")
+logger.setLevel(logging.INFO)
 
-def add_dll_directory(paddle_binary_dir, env_dict_dir=None):
+INDENT_SIZE = 4
+INDENT = " " * INDENT_SIZE
+
+MemberType: TypeAlias = Literal[
+    "doc",
+    "attribute",
+    "method",
+]
+
+
+def add_dll_directory(env_dict_dir=None):
     if env_dict_dir is not None and env_dict_dir.strip():
         sys.path.append(env_dict_dir)
 
-    from env_dict import env_dict
+    try:
+        from env_dict import env_dict
+    except ImportError:
+        sys.stderr.write(
+            'ERROR: Can NOT import `env_dict`, please check the env_dict_dir!'
+        )
+        raise
 
     DLL_LIBS = [
         env_dict.get("PHI_LIB"),
@@ -61,20 +80,6 @@ def add_dll_directory(paddle_binary_dir, env_dict_dir=None):
         if lib is not None and lib.strip():
             dir_path = os.path.dirname(lib.strip())
             os.add_dll_directory(dir_path)
-
-
-logging.basicConfig(style="{", format="{message}", level=logging.INFO)
-logger = logging.getLogger("Generating stub file for paddle.Tensor")
-logger.setLevel(logging.INFO)
-
-INDENT_SIZE = 4
-INDENT = " " * INDENT_SIZE
-
-MemberType: TypeAlias = Literal[
-    "doc",
-    "attribute",
-    "method",
-]
 
 
 @dataclass
@@ -139,7 +144,6 @@ class TensorGen:
         api = []
         for mo in pattern.finditer(self._template):
             _indent = mo.group('indent')
-            _def_api = mo.group('def_api')
             _signature = mo.group('signature')
             _docstring = mo.group('docstring')
             _ellipsis = mo.group('ellipsis')
@@ -147,26 +151,15 @@ class TensorGen:
             _comment = '' if _comment is None else _comment
 
             _start_index, _end_index = mo.span()
-
-            _start_indent = _start_index
-            _end_indent = _start_indent + len(_indent)
-
-            _start_def_api = _end_indent
-            _end_def_api = _start_def_api + len(_def_api)
-
-            _start_signature = _end_def_api
-            _end_signature = _start_signature + len(_signature)
-
-            _start_docstring = _end_signature
-            _end_docstring = _start_docstring + len(_docstring)
-
-            _start_ellipsis = _end_docstring
-            _end_ellipsis = _start_ellipsis + len(_ellipsis)
-
+            _start_indent, _end_indent = mo.span('indent')
+            _start_signature, _end_signature = mo.span('signature')
+            _start_docstring, _end_docstring = mo.span('docstring')
+            _start_ellipsis, _end_ellipsis = mo.span('ellipsis')
             _start_comment = _end_ellipsis
             _end_comment = _start_comment + len(_comment)
 
-            assert _end_index == _end_comment
+            assert _start_index == _start_indent
+            assert _end_comment == _end_index
 
             _api = {
                 'indent': (_indent, _start_indent, _end_indent),
@@ -377,7 +370,18 @@ def func_doc_to_method_doc(func_doc: str) -> str:
 
 
 def get_tensor_members():
-    import paddle
+    try:
+        import paddle
+    except ImportError:
+        sys.stderr.write(
+            '''ERROR: Can NOT import paddle.
+            We could import paddle without installation, with all libs (.dll or .so) copied into dir `paddle/libs`,
+            or path already been set for the system.
+            1. windows: check `env_dict` in `add_dll_directory` is as good as `setup.py`.
+            2. unix: check all `*.so` path included in `LD_LIBRARY_PATH`.
+            '''
+        )
+        raise
 
     tensor_class = paddle.Tensor
 
@@ -511,7 +515,7 @@ def main():
     # For windows, we should `add_dll_directory` before import paddle.
     # For linux, `LD_LIBRARY_PATH` already set.
     if os.name == 'nt':
-        add_dll_directory(args.binary_dir, args.env_dir)
+        add_dll_directory(args.env_dir)
 
     # Get members of Tensor
     tensor_members = get_tensor_members()
