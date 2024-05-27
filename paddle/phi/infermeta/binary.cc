@@ -2505,7 +2505,7 @@ void MatmulInferMeta(const MetaTensor& x,
                         phi::errors::InvalidArgument(
                             "matmul infermeat error, shape can not matmul."));
     }
-    for (auto i = 3; i <= ndims_x && i <= ndims_y; i++) {
+    for (size_t i = 3; i <= ndims_x && i <= ndims_y; i++) {
       if (dims_x_new[ndims_x - i] == -1 || dims_y_new[ndims_y - i] == -1)
         continue;
       if (dims_x_new[ndims_x - i] == 1 || dims_y_new[ndims_y - i] == 1 ||
