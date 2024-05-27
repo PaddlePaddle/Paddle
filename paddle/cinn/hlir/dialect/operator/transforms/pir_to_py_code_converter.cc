@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
-#include <atomic>
 #include <iomanip>
 #include <mutex>
+#include <random>
 #include <sstream>
 #include <unordered_set>
 #include <variant>
@@ -88,11 +88,6 @@ constexpr int kDefaultIndentSize = 2;
 
 namespace {
 
-int64_t GetAutoIncrementalId() {
-  static std::atomic<int64_t> seq_no(0);
-  return seq_no++;
-}
-
 using ShapeAnalysisGetterT =
     std::function<std::optional<pir::ShapeConstraintIRAnalysis*>(
         const pir::Program*)>;
@@ -105,7 +100,6 @@ struct PirToPyCodeConverterHelper {
       const ShapeAnalysisGetterT& ShapeAnalysisGetter)
       : program_(program),
         indent_size_(kDefaultIndentSize),
-        seq_no_(GetAutoIncrementalId()),
         ShapeAnalysisGetter_(ShapeAnalysisGetter) {}
 
   std::string Convert() { return Convert(*program_); }
@@ -113,7 +107,6 @@ struct PirToPyCodeConverterHelper {
  private:
   const pir::Program* program_;
   const int indent_size_;
-  int64_t seq_no_;
   ShapeAnalysisGetterT ShapeAnalysisGetter_;
 
   std::string Convert(const pir::Program& program) {
@@ -1140,7 +1133,15 @@ struct PirToPyCodeConverterHelper {
   }
 
   std::string GetPyClassName() {
-    return std::string("PirProgram_") + std::to_string(seq_no_);
+    std::ostringstream ss;
+    ss << "PirProgram_" << RandomInt();
+    return ss.str();
+  }
+
+  int64_t RandomInt() {
+    std::random_device rd{};
+    std::mt19937_64 gen(rd());
+    return gen();
   }
 
   std::string ConvertIStringsToString(const IStrings& istrings) {

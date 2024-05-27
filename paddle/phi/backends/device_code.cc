@@ -177,7 +177,7 @@ static std::string FindCUDAIncludePath() {
     return pos != std::string::npos && pos == (str.length() - substr.length());
   };
 
-  struct stat st;
+  struct stat st = {};
   std::string cuda_include_path;
   if (!FLAGS_cuda_dir.empty()) {
     cuda_include_path = FLAGS_cuda_dir;
@@ -220,7 +220,8 @@ static std::string FindCUDAIncludePath() {
 
 GPUDeviceCode::GPUDeviceCode(const Place& place,
                              const std::string& name,
-                             const std::string& kernel) {
+                             const std::string& kernel)
+    : module_(nullptr), function_(nullptr) {
   if (place.GetType() != phi::AllocationType::GPU) {
     PADDLE_THROW(phi::errors::PermissionDenied(
         "GPUDeviceCode can only launch on GPU place."));

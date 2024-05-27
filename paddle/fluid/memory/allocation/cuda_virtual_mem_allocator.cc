@@ -35,7 +35,7 @@ namespace allocation {
 
 CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
     const platform::CUDAPlace& place)
-    : place_(place) {
+    : place_(place), virtual_mem_base_(0), prop_{} {
   CUmemAllocationProp prop = {};
 
   // Setup the properties common for all the chunks
@@ -225,7 +225,7 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   virtual_mem_alloced_offset_ += size;
 
   return new Allocation(
-      reinterpret_cast<void*>(ptr), size, platform::Place(place_));
+      reinterpret_cast<void*>(ptr), size, platform::Place(place_));  // NOLINT
 }
 
 }  // namespace allocation

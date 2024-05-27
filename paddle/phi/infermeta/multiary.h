@@ -331,6 +331,19 @@ void DetectionMapInferMeta(const MetaTensor& detect_res,
                            MetaTensor* m_ap,
                            MetaConfig config = MetaConfig());
 
+void DgcInferMeta(const MetaTensor& u,
+                  const MetaTensor& v,
+                  const MetaTensor& grad,
+                  const MetaTensor& param,
+                  const MetaTensor& current_step_tensor,
+                  const MetaTensor& nranks_tensor,
+                  MetaTensor* u_out,
+                  MetaTensor* v_out,
+                  MetaTensor* encode_grad_out,
+                  MetaTensor* grad_out,
+                  MetaTensor* k_out,
+                  MetaTensor* gather_buff);
+
 void DGCMomentumInferMeta(const MetaTensor& param,
                           const MetaTensor& grad,
                           const MetaTensor& velocity,
@@ -711,13 +724,18 @@ void PsroiPoolInferMeta(const MetaTensor& x,
 
 void QuantizeLinearInferMeta(const MetaTensor& x,
                              const MetaTensor& scale,
+                             const MetaTensor& zero_point,
                              const MetaTensor& in_accum,
                              const MetaTensor& in_state,
                              int quant_axis,
+                             int bit_length,
+                             int round_type,
+                             bool is_test,
+                             bool only_observer,
                              MetaTensor* y,
-                             MetaTensor* out_scale,
+                             MetaTensor* out_state,
                              MetaTensor* out_accum,
-                             MetaTensor* out_state);
+                             MetaTensor* out_scale);
 
 void RAdamInferMeta(const MetaTensor& param,
                     const MetaTensor& grad,

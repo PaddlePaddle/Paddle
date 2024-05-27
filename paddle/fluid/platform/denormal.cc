@@ -70,7 +70,8 @@ static std::pair<bool, bool> GetDenormalState() {
   return {false, false};
 }
 
-ScopedRestoreFlushDenormalState::ScopedRestoreFlushDenormalState() {
+ScopedRestoreFlushDenormalState::ScopedRestoreFlushDenormalState()
+    : flush_zero_mode_(false), denormals_zero_mode_(false) {
   std::tie(flush_zero_mode_, denormals_zero_mode_) = GetDenormalState();
 }
 

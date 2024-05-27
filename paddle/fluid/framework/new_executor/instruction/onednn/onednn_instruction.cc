@@ -69,6 +69,19 @@ static phi::Attribute ConvertPirAttribute2RuntimeAttribute(
       }
     }
     return vec_res;
+  } else if (attr_type_name == "pir::ArrayAttribute<pir::Int64Attribute>") {
+    auto array_list = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
+    std::vector<int64_t> vec_res;
+    if (array_list.size() > 0) {
+      PADDLE_ENFORCE_EQ(array_list[0].isa<pir::Int64Attribute>(),
+                        true,
+                        phi::errors::Unimplemented(
+                            "the 0th elementwise MUST be pir::Int64Attribute"));
+      for (size_t i = 0; i < array_list.size(); ++i) {
+        vec_res.push_back(array_list[i].dyn_cast<pir::Int64Attribute>().data());
+      }
+    }
+    return vec_res;
   } else if (attr_type_name == "pir::ArrayAttribute<pir::FloatAttribute>") {
     auto array_list = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
     std::vector<float> vec_res;
