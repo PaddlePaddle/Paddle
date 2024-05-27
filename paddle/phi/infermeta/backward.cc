@@ -627,7 +627,7 @@ void GruGradInferMeta(const MetaTensor& input,
             "received %d (width of H0) vs %d (frame_size).",
             h0_dims[1],
             frame_size));
-    if (h0_grad->initialized()) {
+    if (h0_grad != nullptr) {
       h0_grad->set_dims(h0_dims);
       h0_grad->set_dtype(h0.dtype());
     }
@@ -654,16 +654,16 @@ void GruGradInferMeta(const MetaTensor& input,
             bias_height,
             bias_width,
             frame_size * 3));
-    if (bias_grad->initialized()) {
+    if (bias_grad != nullptr) {
       bias_grad->set_dims(bias_dims);
       bias_grad->set_dtype(bias.dtype());
     }
   }
-  if (input_grad->initialized()) {
+  if (input_grad != nullptr) {
     input_grad->set_dims(input_dims);
     input_grad->set_dtype(input.dtype());
   }
-  if (weight_grad->initialized()) {
+  if (weight_grad != nullptr) {
     weight_grad->set_dims(weight_dims);
     weight_grad->set_dtype(weight.dtype());
   }
