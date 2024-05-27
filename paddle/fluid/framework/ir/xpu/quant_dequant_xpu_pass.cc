@@ -17,7 +17,7 @@
 #include <string>
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/mkldnn/mkldnn_pass_util.h"
+#include "paddle/fluid/framework/ir/onednn/onednn_pass_util.h"
 #include "paddle/fluid/framework/ir/quantize_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 

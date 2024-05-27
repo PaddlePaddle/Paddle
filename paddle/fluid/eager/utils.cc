@@ -119,6 +119,18 @@ std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
 }
 
 std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
+    const paddle::optional<std::vector<paddle::Tensor>>& targets) {
+  std::vector<AutogradMeta*> metas;
+  if (targets.get_ptr() != nullptr) {
+    metas.reserve(targets.get_ptr()->size());
+    for (const paddle::Tensor& t : (*(targets.get_ptr()))) {
+      metas.emplace_back(nullable_autograd_meta(t));
+    }
+  }
+  return metas;
+}
+
+std::vector<AutogradMeta*> EagerUtils::nullable_autograd_meta(
     const std::vector<paddle::Tensor*>& targets) {
   std::vector<AutogradMeta*> metas;
   metas.reserve(targets.size());
@@ -717,8 +729,8 @@ std::string EagerUtils::GradNodeStr(const egr::GradNodeBase& node) {
       in_slot_str +=
           paddle::string::Sprintf(SLOT_INFO_TEMPLATE, i, sg_str, edges_str);
     }
-    std::string in_meta_str =
-        paddle::string::Sprintf(GRAD_SLOT_META_TEMPLATE, in_slot_str);
+    std::string in_meta_str = paddle::string::Sprintf(
+        GRAD_SLOT_META_TEMPLATE, in_metas.size(), in_slot_str);
     return paddle::string::Sprintf(
         GRAD_NODE_TEMPLATE, out_meta_str, in_meta_str);
   } else if (VLOG_IS_ON(5)) {

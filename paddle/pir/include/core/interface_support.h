@@ -43,9 +43,12 @@ class ConstructInterfacesOrTraits {
     InterfaceValue val =
         InterfaceValue::Get<T, typename T::template Model<ConcreteT>>();
     auto success = interface_set.insert(std::move(val)).second;
-    IR_ENFORCE(success,
-               "Interface: id[%u] is already registered. inset failed",
-               TypeId::get<T>());
+    PADDLE_ENFORCE_EQ(
+        success,
+        true,
+        phi::errors::PreconditionNotMet(
+            "Interface: id[%u] is already registered. inset failed",
+            TypeId::get<T>()));
   }
 
   /// Placement new trait.

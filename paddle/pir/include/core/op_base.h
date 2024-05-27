@@ -32,7 +32,9 @@ class IR_API OpBase {
   explicit OpBase(Operation *operation = nullptr) : operation_(operation) {}
 
   Operation *operation() const {
-    IR_ENFORCE(operation_, "Can't use operation() in a null op.");
+    PADDLE_ENFORCE_NOT_NULL(
+        operation_,
+        phi::errors::InvalidArgument("Can't use operation() in a null op."));
     return operation_;
   }
 

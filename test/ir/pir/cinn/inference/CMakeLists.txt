@@ -20,4 +20,8 @@ if(WITH_GPU)
                                                           "RUN_TYPE=CINN")
   endforeach()
 
+  set_tests_properties(test_llama_inference PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_llama_forward PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_llama_postprocess PROPERTIES TIMEOUT 300)
+
 endif()

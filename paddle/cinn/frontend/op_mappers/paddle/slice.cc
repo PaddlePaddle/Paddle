@@ -14,23 +14,38 @@
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void SliceOpMapper(const paddle::cpp::OpDesc& op_desc,
                    const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("Input").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Input").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of Slice op must be 1."));
   auto x_name = op_desc.Input("Input").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of Slice op must be 1."));
   auto out_name = op_desc.Output("Out").front();
 
-  CHECK(op_desc.HasAttr("starts"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("starts"),
+      true,
+      phi::errors::InvalidArgument("Slice op must have starts attribute"));
   auto starts = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "starts");
-  CHECK(op_desc.HasAttr("ends"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("ends"),
+      true,
+      phi::errors::InvalidArgument("Slice op must have ends attribute"));
   auto ends = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "ends");
-  CHECK(op_desc.HasAttr("axes"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("axes"),
+      true,
+      phi::errors::InvalidArgument("Slice op must have axes attribute"));
   auto axes = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "axes");
 
   auto infer_flags =

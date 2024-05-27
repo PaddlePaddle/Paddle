@@ -179,9 +179,7 @@ class _WorkerException:
         self.exc_msg = "".join(traceback.format_exception(*exc_info))
 
     def reraise(self):
-        msg = "DataLoader worker({}) caught {} with message:\n{}".format(
-            self.worker_id, self.exc_type.__name__, self.exc_msg
-        )
+        msg = f"DataLoader worker({self.worker_id}) caught {self.exc_type.__name__} with message:\n{self.exc_msg}"
         if getattr(self.exc_type, "message", None):
             raise self.exc_type(message=msg)
         raise self.exc_type(msg)

@@ -143,7 +143,9 @@ class TestDygraphGAN(unittest.TestCase):
         dy_params = {}
         with base.dygraph.guard():
             paddle.seed(1)
-            paddle.framework.random._manual_program_seed(1)
+            with paddle.pir_utils.OldIrGuard():
+                # Note: dygraph use self.main_program.global_block().create_parameter(), it's need manual seed to old Program
+                paddle.framework.random._manual_program_seed(1)
 
             discriminator = Discriminator()
             generator = Generator()
@@ -270,4 +272,5 @@ class TestDygraphGAN(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

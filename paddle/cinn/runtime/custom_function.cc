@@ -37,8 +37,10 @@ void AssertTrueMsgTool::SetMsg(int key, const std::string& msg) {
 }
 
 const std::string& AssertTrueMsgTool::GetMsg(int key) {
-  CHECK(global_msg_.find(key) != global_msg_.end())
-      << "Cannot find assert_true message key " << key;
+  PADDLE_ENFORCE_NE(
+      global_msg_.find(key),
+      global_msg_.end(),
+      phi::errors::NotFound("Cannot find assert_true message key (%d).", key));
   return global_msg_[key];
 }
 
@@ -69,9 +71,12 @@ void AssertTrueMsgTool::InitFlagInfo() {
       continue;
     }
     const auto& flag_arg = cinn::utils::Split(str, "=");
-    CHECK_EQ(flag_arg.size(), 2UL)
-        << "The FLAGS_cinn_check_fusion_accuracy_pass must be the format of "
-           "\"only_warning=false;rtol=1e-5;atol=1e-8;equal_nan=false\"";
+    PADDLE_ENFORCE_EQ(
+        flag_arg.size(),
+        2UL,
+        phi::errors::InvalidArgument(
+            "The FLAGS_cinn_check_fusion_accuracy_pass must be the format of "
+            "\"only_warning=false;rtol=1e-5;atol=1e-8;equal_nan=false\"."));
 
     if (flag_arg[0] == "only_warning" || flag_arg[0] == "equal_nan") {
       // bool type parameter

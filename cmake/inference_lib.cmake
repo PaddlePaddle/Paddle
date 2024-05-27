@@ -114,17 +114,17 @@ function(copy_part_of_third_party TARGET DST)
     endif()
   endif()
 
-  if(WITH_MKLDNN)
-    set(dst_dir "${DST}/third_party/install/mkldnn")
+  if(WITH_ONEDNN)
+    set(dst_dir "${DST}/third_party/install/onednn")
     if(WIN32)
       copy(
         ${TARGET}
-        SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_LIB}
+        SRCS ${ONEDNN_INC_DIR} ${ONEDNN_SHARED_LIB} ${ONEDNN_LIB}
         DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
     else()
       copy(
         ${TARGET}
-        SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
+        SRCS ${ONEDNN_INC_DIR} ${ONEDNN_SHARED_LIB}
         DSTS ${dst_dir} ${dst_dir}/lib)
       if(WITH_STRIP)
         add_custom_command(
@@ -181,6 +181,14 @@ function(copy_part_of_third_party TARGET DST)
     ${TARGET}
     SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
     DSTS ${dst_dir} ${dst_dir}/lib)
+
+  if(WITH_FLASHATTN)
+    set(dst_dir "${DST}/third_party/install/flashattn")
+    copy(
+      ${TARGET}
+      SRCS ${FLASHATTN_INCLUDE_DIR} ${FLASHATTN_LIBRARIES}
+      DSTS ${dst_dir} ${dst_dir}/lib)
+  endif()
 
   if(NOT PROTOBUF_FOUND OR WIN32)
     set(dst_dir "${DST}/third_party/install/protobuf")

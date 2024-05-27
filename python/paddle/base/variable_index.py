@@ -125,9 +125,7 @@ def get_value_for_bool_tensor(var, item):
         if dim_len != -1 and var.shape[i] != -1 and dim_len != var.shape[i]:
             raise IndexError(
                 "The dimension of bool index doesn't match indexed array along "
-                "dimension {}, the target dimension is {}, but received {}.".format(
-                    i, var.shape[i], dim_len
-                )
+                f"dimension {i}, the target dimension is {var.shape[i]}, but received {dim_len}."
             )
         i += 1
     if len(item.shape) == len(var.shape):
@@ -160,9 +158,7 @@ def _setitem_for_tensor_array(var, item, value):
         return array_write(x=value, i=item, array=var)
     else:
         raise NotImplementedError(
-            "Only support __setitem__ by Int/Variable in tensor_array, but gets {}".format(
-                type(item)
-            )
+            f"Only support __setitem__ by Int/Variable in tensor_array, but gets {type(item)}"
         )
 
 
@@ -362,9 +358,7 @@ def parse_index(x, indices):
                 and len(slice_item) != x.shape[dim]
             ):
                 raise IndexError(
-                    "The shape of boolean index {} did not match indexed tensor {} along axis {}".format(
-                        len(slice_item), x.shape[dim], dim
-                    )
+                    f"The shape of boolean index {len(slice_item)} did not match indexed tensor {x.shape[dim]} along axis {dim}"
                 )
 
             has_advanced_index = True
@@ -382,9 +376,7 @@ def parse_index(x, indices):
 
                 elif slice_item.shape[0] != x.shape[dim]:
                     raise IndexError(
-                        "The shape of boolean index {} did not match indexed tensor {} along axis {}".format(
-                            slice_item.shape[0], x.shape[dim], dim
-                        )
+                        f"The shape of boolean index {slice_item.shape[0]} did not match indexed tensor {x.shape[dim]} along axis {dim}"
                     )
             advanced_index[estimated_dim] = (estimated_dim, slice_item)
             has_advanced_index = True
@@ -399,9 +391,7 @@ def parse_index(x, indices):
 
                 elif slice_item.shape[0] != x.shape[dim]:
                     raise IndexError(
-                        "The shape of boolean index {} did not match indexed tensor {} along axis {}".format(
-                            slice_item.shape[0], x.shape[dim], dim
-                        )
+                        f"The shape of boolean index {slice_item.shape[0]} did not match indexed tensor {x.shape[dim]} along axis {dim}"
                     )
             advanced_index[estimated_dim] = (estimated_dim, slice_item)
             has_advanced_index = True
@@ -409,9 +399,7 @@ def parse_index(x, indices):
             dim += 1
         else:
             raise IndexError(
-                "Valid index accept int / bool / slice / ellipsis / list / Tuple / Ndarray / Tensor, but received {}.".format(
-                    slice_item
-                )
+                f"Valid index accept int / bool / slice / ellipsis / list / Tuple / Ndarray / Tensor, but received {slice_item}."
             )
         if not slice_is_same_to_original(start, end, step):
             starts.append(start)

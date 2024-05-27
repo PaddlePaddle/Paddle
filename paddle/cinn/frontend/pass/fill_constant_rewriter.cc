@@ -206,9 +206,16 @@ class FillConstantRewriterPass : public ProgramPass {
       const Input2Instr& input2instr,
       const std::unordered_set<std::string>& fetch_ids,
       std::unordered_set<const Instruction*>* remove_instr) {
-    CHECK_EQ(fill_constant->op_type, std::string("fill_constant"));
-    CHECK_EQ(fill_constant->outputs.size(), 1UL)
-        << "The fill_constant op should just has one output! Please check.";
+    PADDLE_ENFORCE_EQ(fill_constant->op_type,
+                      std::string("fill_constant"),
+                      phi::errors::InvalidArgument(
+                          "The type of fill constant op is incorrect."));
+    PADDLE_ENFORCE_EQ(fill_constant->outputs.size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The size of fill constant outputs is incorrect."
+                          "Expected size is 1, but receive %d.",
+                          fill_constant->outputs.size()));
     const auto& out = fill_constant->outputs[0];
 
     if (!input2instr.count(out->id)) {

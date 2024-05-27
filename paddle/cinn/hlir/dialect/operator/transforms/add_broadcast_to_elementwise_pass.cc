@@ -107,6 +107,14 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
 
   if (x_dims != y_dims) {
     auto output_shape = GetOutputShape(x_dims, y_dims);
+    pir::ShapeConstraintIRAnalysis& shape_analysis =
+        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
+    std::vector<symbol::DimExpr> out_dim;
+    out_dim.reserve(output_shape.size());
+    for (auto d : output_shape) {
+      out_dim.emplace_back(d);
+    }
+
     if (!IsSameDim(x_dims, output_shape)) {
       // add broadcast to input 0
       if (auto full_op = op->operand_source(0)
@@ -231,6 +239,8 @@ class AddBroadcastToElementwisePass : public pir::PatternRewritePass {
         context);
 
     // bitwise ops
+    ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseAndOp>>(
+        context);
     ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseOrOp>>(
         context);
     ps.Add<AddBroadcastToElementwisePattern<paddle::dialect::BitwiseXorOp>>(
@@ -242,7 +252,7 @@ class AddBroadcastToElementwisePass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->num_regions() > 0;
+    return op->num_regions() > 0 && op->isa<cinn::dialect::GroupOp>();
   }
 };
 

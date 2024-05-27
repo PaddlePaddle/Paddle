@@ -16,7 +16,7 @@
 
 import unittest
 
-from cinn.common import Bool, Float, Int, UInt, make_const
+from paddle.cinn.common import Bool, Float, Int, UInt, make_const
 
 
 class TestType(unittest.TestCase):

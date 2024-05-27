@@ -2457,9 +2457,7 @@ class Resharder:
 
         assert (
             op_input_attrs
-        ), "The input '{}' of op '{}' has no distributed attributes in subblock".format(
-            op.name, var_name
-        )
+        ), f"The input '{op.name}' of op '{var_name}' has no distributed attributes in subblock"
 
         return op_input_attrs
 

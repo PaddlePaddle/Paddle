@@ -32,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/framework/variable.h"
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/operators/cuda_graph_with_in_out.h"
@@ -58,7 +58,7 @@ static void CheckInputVarStatus(const Variable &var,
                                 const std::string &var_name) {
   PADDLE_ENFORCE_EQ(var.IsType<phi::DenseTensor>(),
                     true,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The input variable %s of "
                         "RunProgram(Grad)Op holds "
                         "wrong type. Expect type is phi::DenseTensor, but "
@@ -68,10 +68,10 @@ static void CheckInputVarStatus(const Variable &var,
   PADDLE_ENFORCE_EQ(
       var.Get<phi::DenseTensor>().IsInitialized(),
       true,
-      platform::errors::InvalidArgument("The tensor in input variable %s of "
-                                        "RunProgram(Grad)Op "
-                                        "is not initialized.",
-                                        var_name));
+      phi::errors::InvalidArgument("The tensor in input variable %s of "
+                                   "RunProgram(Grad)Op "
+                                   "is not initialized.",
+                                   var_name));
 }
 
 static void CheckOutputVarStatus(const Variable &src_var,
@@ -81,7 +81,7 @@ static void CheckOutputVarStatus(const Variable &src_var,
     PADDLE_ENFORCE_EQ(
         src_var.IsType<phi::DenseTensor>(),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The output variable %s get from "
             "RunProgram(Grad)Op's internal scope holds "
             "wrong type. Expect type is phi::DenseTensor, but receive type is "
@@ -90,7 +90,7 @@ static void CheckOutputVarStatus(const Variable &src_var,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
     PADDLE_ENFORCE_EQ(src_var.Get<phi::DenseTensor>().IsInitialized(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The tensor in output variable %s get from "
                           "RunProgram(Grad)Op's internal "
                           "scope is not initialized.",
@@ -99,7 +99,7 @@ static void CheckOutputVarStatus(const Variable &src_var,
     PADDLE_ENFORCE_EQ(
         src_var.IsType<phi::SelectedRows>(),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The output variable %s get from "
             "RunProgram(Grad)Op's internal scope holds "
             "wrong type. Expect type is SelectedRows, but receive type is %s.",
@@ -107,14 +107,14 @@ static void CheckOutputVarStatus(const Variable &src_var,
             platform::demangle(framework::ToTypeName(src_var.Type()))));
     PADDLE_ENFORCE_EQ(src_var.Get<phi::SelectedRows>().value().IsInitialized(),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The tensor in output variable %s get from "
                           "RunProgram(Grad)Op's "
                           "internal scope is not initialized.",
                           var_name));
 
   } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(phi::errors::InvalidArgument(
         "The RunProgram(Grad)Op only support output "
         "variable of type phi::DenseTensor or SelectedRows, "
         "but received variable %s's type is %s",
@@ -173,10 +173,10 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
     auto *var = scope->FindVar(var_names[i]);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        platform::errors::NotFound("The output variable %s is not in "
-                                   "RunProgram(Grad)Op'"
-                                   "s internal scope.",
-                                   var_names[i]));
+        phi::errors::NotFound("The output variable %s is not in "
+                              "RunProgram(Grad)Op'"
+                              "s internal scope.",
+                              var_names[i]));
     CheckOutputVarStatus(*var, *vars[i], var_names[i]);
     VariableShare(*var, vars[i]);
   }
@@ -228,7 +228,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
         phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
                                      "valid when using NVIDIA GPU."));
@@ -312,14 +312,14 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           use_cuda_graph,
           true,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "If not provide OutScope then must run under cuda graph mode."));
       inner_scope = std::make_unique<framework::Scope>();
     } else {
       PADDLE_ENFORCE_EQ(
           out_scope_vec->size(),
           1,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The OutScope of RunProgramGradOp should only hold one scope."));
     }
 
@@ -425,7 +425,7 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
         phi::errors::InvalidArgument("The cuda_graph_capture_mode is only "
                                      "valid when using NVIDIA GPU."));
@@ -511,7 +511,7 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         out_scope_vec->size(),
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The OutScope of RunProgramGradOp should only hold one scope."));
 
     framework::Scope *global_inner_scope = out_scope_vec->front();
@@ -519,7 +519,7 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     VLOG(2) << "The number of sub scopes before backward: " << sub_scope_num;
     PADDLE_ENFORCE_GT(sub_scope_num,
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The OutScope of RunProgramGradOp should hold at "
                           "least one sub scope."));
 

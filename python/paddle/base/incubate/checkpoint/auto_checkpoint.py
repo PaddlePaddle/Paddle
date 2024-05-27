@@ -147,18 +147,9 @@ class AutoCheckpointChecker:
         )
 
     def __str__(self):
-        return "run_env:{} platform:{} job_id:{} \
-            hdfs_home:{} hdfs_name:{} hdfs_ugi:{} \
-            hdfs_checkpoint_path:{} trainer_id:{} ce_test".format(
-            self._run_env,
-            self._platform,
-            self._hdfs_home,
-            self._hdfs_name,
-            self._hdfs_ugi,
-            self._hdfs_checkpoint_path,
-            self._trainer_id,
-            self._ce_test,
-        )
+        return f"run_env:{self._run_env} platform:{self._platform} job_id:{self._hdfs_home} \
+            hdfs_home:{self._hdfs_name} hdfs_name:{self._hdfs_ugi} hdfs_ugi:{self._hdfs_checkpoint_path} \
+            hdfs_checkpoint_path:{self._trainer_id} trainer_id:{self._ce_test} ce_test"
 
     @property
     def trainer_id(self):

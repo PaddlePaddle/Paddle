@@ -27,49 +27,49 @@ class BatchFCOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Input"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "X(Input) of Batch Fully Connected should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Out"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Out(Output) of Batch Fully Connected should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("W"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "W(Input) of Batch Fully Connected should not be null."));
 
     auto input_dims = ctx->GetInputDim("Input");
     auto w_dims = ctx->GetInputDim("W");
 
-    PADDLE_ENFORCE_EQ(input_dims.size(),
-                      3,
-                      platform::errors::InvalidArgument(
-                          "Input of BatchFCOp should have 3D."));
+    PADDLE_ENFORCE_EQ(
+        input_dims.size(),
+        3,
+        phi::errors::InvalidArgument("Input of BatchFCOp should have 3D."));
     PADDLE_ENFORCE_EQ(
         w_dims.size(),
         3,
-        platform::errors::InvalidArgument("W of BatchFCOp should have 3D."));
+        phi::errors::InvalidArgument("W of BatchFCOp should have 3D."));
     PADDLE_ENFORCE_EQ(
         input_dims[0],
         w_dims[0],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input.dim[0] and W.dim[0] of BatchFCOp should be same."));
     PADDLE_ENFORCE_EQ(
         input_dims[2],
         w_dims[1],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input.dim[2] and W.dim[1] of BatchFCOp should be same."));
 
     auto bias_dims = ctx->GetInputDim("Bias");
     PADDLE_ENFORCE_EQ(bias_dims[0],
                       input_dims[0],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Bias.dim[0] should be same as input.dim[0]."));
     PADDLE_ENFORCE_EQ(bias_dims[1],
                       w_dims[2],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Bias.dim[1] should be same as input.dim[2]."));
 
     ctx->SetOutputDim("Out", {input_dims[0], input_dims[1], w_dims[2]});
@@ -89,14 +89,13 @@ class BatchFCGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Input"),
-        true,
-        platform::errors::InvalidArgument("Input should not be null"));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"),
+                      true,
+                      phi::errors::InvalidArgument("Input should not be null"));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("W"),
         true,
-        platform::errors::InvalidArgument("Input(W) should not be null"));
+        phi::errors::InvalidArgument("Input(W) should not be null"));
 
     ctx->SetOutputDim(framework::GradVarName("Input"),
                       ctx->GetInputDim("Input"));

@@ -19,7 +19,7 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 namespace phi {
 namespace dynload {
@@ -49,6 +49,7 @@ TEST_API extern void EnforceCUDNNLoaded(const char* fn_name);
  * different cudnn version has different interfaces
  **/
 #define CUDNN_DNN_ROUTINE_EACH(__macro)                    \
+  __macro(cudnnSetCallback);                               \
   __macro(cudnnSetTensor4dDescriptor);                     \
   __macro(cudnnSetTensor4dDescriptorEx);                   \
   __macro(cudnnSetTensorNdDescriptor);                     \

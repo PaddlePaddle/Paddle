@@ -37,10 +37,12 @@ namespace {
 pir::Value GetOutputDimTensor(pir::PatternRewriter* rewriter,
                               pir::Value x,
                               pir::Value y) {
-  pir::Value x_shape = rewriter->Build<paddle::dialect::ShapeOp>(x).out();
-  pir::Value y_shape = rewriter->Build<paddle::dialect::ShapeOp>(y).out();
-  return rewriter->Build<paddle::dialect::ShapeBroadcastOp>(x_shape, y_shape)
-      .out();
+  pir::Operation* x_shape_op = rewriter->Build<paddle::dialect::ShapeOp>(x);
+  pir::Operation* y_shape_op = rewriter->Build<paddle::dialect::ShapeOp>(y);
+  pir::Operation* shape_broadcast_op =
+      rewriter->Build<paddle::dialect::ShapeBroadcastOp>(x_shape_op->result(0),
+                                                         y_shape_op->result(0));
+  return shape_broadcast_op->result(0);
 }
 
 bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
@@ -52,24 +54,20 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   const auto& y_shape = shape_analysis.GetShapeOrDataForValue(y);
   const auto& out_shape = shape_analysis.GetShapeOrDataForValue(op->result(0));
 
-  if (x_shape == y_shape) {
+  if (x_shape.shape() == y_shape.shape()) {
     return false;
   }
 
   pir::Value output_dim_tensor = GetOutputDimTensor(rewriter, x, y);
-  if (x_shape.shape() != out_shape.shape() ||
-      x_shape.data() != out_shape.data()) {
+  if (x_shape.shape() != out_shape.shape()) {
     pir::Value broadcasted_x =
         rewriter->Build<paddle::dialect::ExpandOp>(x, output_dim_tensor).out();
     op->operand(0).set_source(broadcasted_x);
-    shape_analysis.SetShapeOrDataForValue(broadcasted_x, out_shape);
   }
-  if (y_shape.shape() != out_shape.shape() ||
-      y_shape.data() != out_shape.data()) {
+  if (y_shape.shape() != out_shape.shape()) {
     pir::Value broadcasted_y =
         rewriter->Build<paddle::dialect::ExpandOp>(y, output_dim_tensor).out();
     op->operand(1).set_source(broadcasted_y);
-    shape_analysis.SetShapeOrDataForValue(broadcasted_y, out_shape);
   }
   return true;
 }
@@ -112,7 +110,13 @@ class InsertBroadcastPass : public pir::PatternRewritePass {
     ps.Add<InsertBroadcastPattern<paddle::dialect::GreaterThanOp>>(context);
     ps.Add<InsertBroadcastPattern<paddle::dialect::GreaterEqualOp>>(context);
 
+    // logical ops
+    ps.Add<InsertBroadcastPattern<paddle::dialect::LogicalAndOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::LogicalOrOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::LogicalXorOp>>(context);
+
     // bitwise ops
+    ps.Add<InsertBroadcastPattern<paddle::dialect::BitwiseAndOp>>(context);
     ps.Add<InsertBroadcastPattern<paddle::dialect::BitwiseOrOp>>(context);
     ps.Add<InsertBroadcastPattern<paddle::dialect::BitwiseXorOp>>(context);
     ps.Add<InsertBroadcastPattern<paddle::dialect::BitwiseNotOp>>(context);

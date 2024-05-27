@@ -32,8 +32,6 @@ from .optimizer import Optimizer
 
 __all__ = []
 
-GRAD_TYPES = [int(paddle.float32), int(paddle.float16), int(paddle.bfloat16)]
-
 
 class Adam(Optimizer):
     r"""
@@ -63,13 +61,13 @@ class Adam(Optimizer):
         learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a LRScheduler. The default value is 0.001.
         beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
-            It should be a float number or a Tensor with shape [1] and data type as float32.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.9.
         beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
-            It should be a float number or a Tensor with shape [1] and data type as float32.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.999.
         epsilon (float|Tensor, optional): A small float value for numerical stability.
-            It should be a float number or a Tensor with shape [1] and data type as float32.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 1e-08.
         parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
@@ -570,13 +568,16 @@ class Adam(Optimizer):
                 params = [pair[0] for pair in parameters_and_grads]
                 grads_types = core.eager.get_grads_types(params)
                 for index, tp in enumerate(grads_types):
-                    if tp == GRAD_TYPES[0]:
+                    if tp == core.DataType.FLOAT32:
                         grad_dict['FP32_LODTensor'].append(
                             parameters_and_grads[index][1]
                         )
                         lr = self._create_param_lr(parameters_and_grads[index])
                         lr_dict['FP32_LODTensor'].append(lr)
-                    elif tp == GRAD_TYPES[1] or tp == GRAD_TYPES[2]:
+                    elif (
+                        tp == core.DataType.FLOAT16
+                        or tp == core.DataType.BFLOAT16
+                    ):
                         grad_dict['FP16_LODTensor'].append(
                             parameters_and_grads[index][1]
                         )

@@ -25,7 +25,7 @@ namespace pir {
 
 using PassCreator = std::function<std::unique_ptr<Pass>()>;
 
-class PassRegistry {
+class IR_API PassRegistry {
  public:
   static PassRegistry &Instance();
 
@@ -34,14 +34,18 @@ class PassRegistry {
   }
 
   void Insert(const std::string &pass_type, const PassCreator &pass_creator) {
-    IR_ENFORCE(
-        Has(pass_type) != true, "Pass %s has been registered.", pass_type);
+    PADDLE_ENFORCE_NE(Has(pass_type),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Pass %s has been registered.", pass_type));
     pass_map_.insert({pass_type, pass_creator});
   }
 
   std::unique_ptr<Pass> Get(const std::string &pass_type) const {
-    IR_ENFORCE(
-        Has(pass_type) == true, "Pass %s has not been registered.", pass_type);
+    PADDLE_ENFORCE_EQ(Has(pass_type),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Pass %s has not been registered.", pass_type));
     return pass_map_.at(pass_type)();
   }
 
@@ -53,7 +57,7 @@ class PassRegistry {
 };
 
 template <typename PassType>
-class PassRegistrar {
+class IR_API PassRegistrar {
  public:
   // In our design, various kinds of passes,
   // have their corresponding registry and registrar. The action of
@@ -83,7 +87,7 @@ class PassRegistrar {
       "REGISTER_IR_PASS must be called in global namespace"); \
   static ::pir::PassRegistrar<pass_class>                     \
       __pir_pass_registrar_##pass_type##__(#pass_type);       \
-  int TouchPirPassRegistrar_##pass_type() {                   \
+  IR_API int TouchPirPassRegistrar_##pass_type() {            \
     __pir_pass_registrar_##pass_type##__.Touch();             \
     return 0;                                                 \
   }                                                           \

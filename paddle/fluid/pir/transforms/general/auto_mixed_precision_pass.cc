@@ -58,11 +58,18 @@ class AutoMixedPrecisionPass : public pir::Pass {
   AutoMixedPrecisionPass()
       : pir::Pass("auto_mixed_precision_pass", 1),
         place_(phi::CPUPlace{}),
-        precision_mode_(phi::DataType::FLOAT16) {}
+        precision_mode_(phi::DataType::FLOAT16),
+        enable_low_precision_io_(false),
+        context_(nullptr),
+        black_list_(),
+        white_list_(),
+        op_run_low_precision_(),
+        op_should_not_handle_(),
+        cached_cast_ops_() {}
 
   bool Initialize(pir::IrContext* context) override {
     PADDLE_ENFORCE_EQ(
-        Has(pir::kPlaceAttr),
+        Has(pir::Pass::kPlaceAttr),
         true,
         phi::errors::InvalidArgument(
             "Pass initialize failed."
@@ -77,7 +84,7 @@ class AutoMixedPrecisionPass : public pir::Pass {
             "required!"
             "Use Set method to set the scope attribute."));
 
-    place_ = Get<phi::Place>(pir::kPlaceAttr);
+    place_ = Get<phi::Place>(pir::Pass::kPlaceAttr);
     precision_mode_ = Get<phi::DataType>("__mixed_precision_mode__");
     context_ = context;
     enable_low_precision_io_ = false;
@@ -571,8 +578,8 @@ class AutoMixedPrecisionPass : public pir::Pass {
       return;
     }
 
-    // Rewrite ShareDataOp
-    if (op->isa<paddle::dialect::ShareDataOp>() && OpRunLowPrecision(op)) {
+    // Rewrite ShareData_Op
+    if (op->isa<paddle::dialect::ShareData_Op>() && OpRunLowPrecision(op)) {
       SetResultDataType(op->result(0), precision_mode_, builder.ir_context());
       return;
     }

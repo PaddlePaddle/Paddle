@@ -46,9 +46,12 @@ class CinnBufferAllocHelper {
   template <typename T>
   T* mutable_data(const Target& target) {
     if (target_ != cinn::common::UnkTarget()) {
-      CHECK_EQ(target, target_)
-          << "Cannot alloc twice, the memory had alloced at " << target_
-          << "! Please check.";
+      PADDLE_ENFORCE_EQ(
+          target,
+          target_,
+          phi::errors::AlreadyExists(
+              "Cannot alloc twice, the memory had alloced at %d! Please check.",
+              target_));
       return reinterpret_cast<T*>(buffer_->memory);
     }
 

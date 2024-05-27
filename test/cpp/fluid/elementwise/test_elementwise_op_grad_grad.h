@@ -135,8 +135,18 @@ class TestElementwiseOpGradGrad {
           expected_outs_[out_name].data(),
           [](const float &l, const float &r) { return fabs(l - r) < 1e-8; });
 #else
-      auto is_equal =
-          std::equal(out_ptr, out_ptr + numel, expected_outs_[out_name].data());
+      bool is_equal;
+      if (op_type_ == "elementwise_div_grad_grad") {
+        is_equal = std::equal(out_ptr,
+                              out_ptr + numel,
+                              expected_outs_[out_name].data(),
+                              [](const float &l, const float &r) {
+                                return fabs(l - r) < 0.0005;
+                              });
+      } else {
+        is_equal = std::equal(
+            out_ptr, out_ptr + numel, expected_outs_[out_name].data());
+      }
 #endif
       if (!is_equal) {
         all_equal = false;

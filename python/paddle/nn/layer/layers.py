@@ -69,9 +69,7 @@ def record_program_ops_pre_hook(layer, inputs):
         else:
             layer._op_recorder.is_valid = False
             warnings.warn(
-                "{} has recorded the op information before. Please check whether you call this layer twice.".format(
-                    layer._full_name
-                )
+                f"{layer._full_name} has recorded the op information before. Please check whether you call this layer twice."
             )
 
 
@@ -1239,9 +1237,7 @@ class Layer:
             raise ValueError("super().__init__() should be called first")
         elif not isinstance(name, str):
             raise TypeError(
-                "The name of buffer should be a string, but received {}.".format(
-                    type(name).__name__
-                )
+                f"The name of buffer should be a string, but received {type(name).__name__}."
             )
         elif '.' in name:
             raise KeyError(
@@ -1255,9 +1251,7 @@ class Layer:
             raise KeyError(f"attribute '{name}' already exists.")
         elif tensor is not None and not (type(tensor) == core.eager.Tensor):
             raise TypeError(
-                "The registered buffer should be a Paddle.Tensor, but received {}.".format(
-                    type(tensor).__name__
-                )
+                f"The registered buffer should be a Paddle.Tensor, but received {type(tensor).__name__}."
             )
         else:
             self._buffers[name] = tensor
@@ -1355,9 +1349,13 @@ class Layer:
                 name = layer_prefix + ('.' if layer_prefix else '') + key
                 yield name, buffer
 
-    def clear_gradients(self):
+    def clear_gradients(self, set_to_zero=True):
         """
         Clear the gradients of all parameters for this layer.
+
+        Args:
+            set_to_zero (bool, optional): Whether to set the trainable parameters'
+                gradients to zero or None. Default is True.
 
         Returns:
             None
@@ -1381,7 +1379,7 @@ class Layer:
         """
         for p in self.parameters():
             if p.trainable:
-                p.clear_gradient()
+                p.clear_gradient(set_to_zero)
 
     def _build_once(self, *args, **kwargs):
         pass
@@ -1532,9 +1530,7 @@ class Layer:
             raise RuntimeError("super().__init__() should be called firstly.")
         elif not isinstance(name, str):
             raise TypeError(
-                "The name of parameter should be a string, but received {}.".format(
-                    type(name).__name__
-                )
+                f"The name of parameter should be a string, but received {type(name).__name__}."
             )
         elif '.' in name:
             raise KeyError(
@@ -1547,12 +1543,10 @@ class Layer:
         elif hasattr(self, name) and name not in self._parameters:
             raise KeyError(f"The parameter '{name}' already exists.")
         elif parameter is not None and not isinstance(
-            parameter, framework.Parameter
+            parameter, (framework.Parameter, paddle.pir.Value)
         ):
             raise TypeError(
-                "The parameter to be added should be a Parameter, but received {}.".format(
-                    type(parameter).__name__
-                )
+                f"The parameter to be added should be a Parameter, but received {type(parameter).__name__}."
             )
         else:
             if parameter is None:
@@ -1561,9 +1555,7 @@ class Layer:
             if len(self._loaddict_holder) > 0:
                 assert (
                     parameter.name in self._loaddict_holder
-                ), "Parameter not found, Can't not find [ {} ] in state_dict".format(
-                    parameter.name
-                )
+                ), f"Parameter not found, Can't not find [ {parameter.name} ] in state_dict"
 
                 parameter.set_value(self._loaddict_holder[parameter.name])
 
@@ -1687,9 +1679,7 @@ class Layer:
         elif params is not None and name in params:
             if value is not None:
                 raise TypeError(
-                    "assignment to parameter '{}' should be of type Parameter or None, but got '{}'".format(
-                        name, type(value).__name__
-                    )
+                    f"assignment to parameter '{name}' should be of type Parameter or None, but got '{type(value).__name__}'"
                 )
             params[name] = None
         else:
@@ -1705,9 +1695,7 @@ class Layer:
             elif layers is not None and name in layers:
                 if value is not None:
                     raise TypeError(
-                        "assignment to sublayer '{}' should be of type Layer or None, but got '{}'".format(
-                            name, type(value).__name__
-                        )
+                        f"assignment to sublayer '{name}' should be of type Layer or None, but got '{type(value).__name__}'"
                     )
                 layers[name] = None
             else:
@@ -1754,9 +1742,7 @@ class Layer:
                             assign(value, getattr(self, name))
                     elif value is not None:
                         raise TypeError(
-                            "assignment to buffers '{}' should be of type core.Tensor or None, but got '{}'".format(
-                                name, type(value).__name__
-                            )
+                            f"assignment to buffers '{name}' should be of type core.Tensor or None, but got '{type(value).__name__}'"
                         )
                     else:
                         # Assigning None will remove the buffer, but if re-assign a new varBase to it,
@@ -1885,6 +1871,7 @@ class Layer:
         structured_name_prefix="",
         include_non_persistable_buffer=False,
         use_hook=True,
+        keep_vars=True,
     ):
         """
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
@@ -1894,23 +1881,30 @@ class Layer:
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
             include_non_persistable_buffer(bool, optional): If true, include non persistable buffers of current layer and its sub-layers, it is used in pure fp16 and jit.save. Default: False.
             use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
+            keep_vars(bool, optional) : If false, the returned tensors in the state dict are detached from autograd. Default: True.
         """
 
         if destination is None:
             destination = collections.OrderedDict()
         for name, data in self._parameters.items():
             if data is not None:
-                destination[structured_name_prefix + name] = data
+                destination[structured_name_prefix + name] = (
+                    data if keep_vars else data.detach()
+                )
         for name, buffer in self._buffers.items():
             if not include_non_persistable_buffer:
                 if (
                     buffer is not None
                     and name not in self._non_persistable_buffer_names_set
                 ):
-                    destination[structured_name_prefix + name] = buffer
+                    destination[structured_name_prefix + name] = (
+                        buffer if keep_vars else buffer.detach()
+                    )
             else:
                 if buffer is not None:
-                    destination[structured_name_prefix + name] = buffer
+                    destination[structured_name_prefix + name] = (
+                        buffer if keep_vars else buffer.detach()
+                    )
 
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
@@ -1923,6 +1917,7 @@ class Layer:
                             structured_name_prefix + layer_name + ".",
                             include_non_persistable_buffer,
                             use_hook,
+                            keep_vars,
                         )
                     )
                     destination = destination_temp
@@ -1940,6 +1935,7 @@ class Layer:
         include_sublayers=True,
         structured_name_prefix="",
         use_hook=True,
+        keep_vars=True,
     ):
         '''
 
@@ -1949,6 +1945,7 @@ class Layer:
             destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None.
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
             use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
+            keep_vars(bool, optional) : If false, the returned tensors in the state dict are detached from autograd. Default: True.
 
         Returns:
             dict, a dict contains all the parameters and persistable buffers.
@@ -1970,6 +1967,7 @@ class Layer:
             structured_name_prefix=structured_name_prefix,
             include_non_persistable_buffer=True,
             use_hook=use_hook,
+            keep_vars=keep_vars,
         )
 
     def state_dict(
@@ -1978,6 +1976,7 @@ class Layer:
         include_sublayers=True,
         structured_name_prefix="",
         use_hook=True,
+        keep_vars=True,
     ):
         '''
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
@@ -1986,6 +1985,7 @@ class Layer:
             destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None.
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True.
             use_hook(bool, optional) : If true, the operations contained in _state_dict_hooks will be appended to the destination. Default: True.
+            keep_vars(bool, optional) : If false, the returned tensors in the state dict are detached from autograd. Default: True.
 
         Returns:
             dict: a dict contains all the parameters and persistable buffers.
@@ -2007,6 +2007,7 @@ class Layer:
             structured_name_prefix=structured_name_prefix,
             include_non_persistable_buffer=False,
             use_hook=use_hook,
+            keep_vars=keep_vars,
         )
 
     @framework.deprecate_stat_dict
@@ -2064,9 +2065,7 @@ class Layer:
                 if list(state_shape) != list(param.shape):
                     missing_keys.append(key)
                     raise ValueError(
-                        "{} receives a shape {}, but the expected shape is {}.".format(
-                            key, list(state_shape), list(param.shape)
-                        )
+                        f"{key} receives a shape {list(state_shape)}, but the expected shape is {list(param.shape)}."
                     )
                 match_keys.add(key)
                 return param, state

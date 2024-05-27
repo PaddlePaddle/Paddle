@@ -81,11 +81,9 @@ class NestSequence:
                     warning_types.add(type(var))
             if warning_types:
                 logging_utils.warn(
-                    "Output of traced function contains non-tensor type values: {}. "
+                    f"Output of traced function contains non-tensor type values: {list(warning_types)}. "
                     "Currently, We don't support to update them while training and will return "
-                    "what we first saw. Please try to return them as tensor.".format(
-                        list(warning_types)
-                    )
+                    "what we first saw. Please try to return them as tensor."
                 )
 
     @property
@@ -241,7 +239,7 @@ class PartialProgramLayer:
                 program_id=self.program_id, use_scope_cache=True
             ),
             self._cuda_graph_vec,
-            *attrs
+            *attrs,
         )
 
         restored_nest_out = self._restore_out(out_vars)
@@ -268,7 +266,7 @@ class PartialProgramLayer:
                 program_id=self.program_id, use_scope_cache=True
             ),
             self._cuda_graph_vec,
-            *attrs
+            *attrs,
         )
 
         return out_vars
@@ -1119,9 +1117,7 @@ class PartialProgramLayer:
             # self._params contains parameters and buffers with persistable=True.
             if not isinstance(var, core.eager.Tensor):
                 raise TypeError(
-                    'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.format(
-                        i, type(var)
-                    )
+                    f'Type of self._params[{i}] in PartialProgramLayer should be Parameter or Variable, but received {type(var)}.'
                 )
             param_and_buffer_names_set.add(var.name)
 
@@ -1155,7 +1151,7 @@ def partial_program_from(concrete_program, from_method=False):
         inputs,
         concrete_program.outputs,
         concrete_program.parameters,
-        **concrete_program.kwargs
+        **concrete_program.kwargs,
     )
 
 

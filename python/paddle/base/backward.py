@@ -119,10 +119,7 @@ class ProgramStats:
         while idx_ > pre_segment_end_idx:
             if is_amp_cast(self.ops[idx_]):
                 _logger.info(
-                    "found amp-cast op: {}, : {}".format(
-                        self.ops[idx_].desc.type(),
-                        self.ops[idx_].desc.input_arg_names()[0],
-                    )
+                    f"found amp-cast op: {self.ops[idx_].desc.type()}, : {self.ops[idx_].desc.input_arg_names()[0]}"
                 )
                 updated_min_idx = idx_
                 idx_ -= 1
@@ -409,9 +406,7 @@ def _infer_var_data_type_shape_(grad_var_name, block):
     else:
         # TODO(jiabin): Maybe we should not to this to cause some unexpected error on dtype
         warnings.warn(
-            "Set grad var: {} dtype to default FP32, since we can't find its related forward var".format(
-                grad_var_name
-            )
+            f"Set grad var: {grad_var_name} dtype to default FP32, since we can't find its related forward var"
         )
         grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
@@ -1038,25 +1033,17 @@ def _append_backward_ops_with_checkpoints_(
     for i, (idx1, idx2) in enumerate(recompute_segments):
         _logger.info(f"recompute segment[{i}]")
         _logger.info(
-            "segment start op: [{}]: [{}]".format(
-                ops[idx1].desc.type(), ops[idx1].desc.input_arg_names()
-            )
+            f"segment start op: [{ops[idx1].desc.type()}]: [{ops[idx1].desc.input_arg_names()}]"
         )
         _logger.info(
-            "segment end op: [{}]: [{}]".format(
-                ops[idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()
-            )
+            f"segment end op: [{ops[idx2 - 1].desc.type()}]: [{ops[idx2 - 1].desc.input_arg_names()}]"
         )
         _logger.info(f"recompute segment[{i}]")
         _logger.info(
-            "segment start op: [{}]: [{}]".format(
-                ops[idx1].desc.type(), ops[idx1].desc.input_arg_names()
-            )
+            f"segment start op: [{ops[idx1].desc.type()}]: [{ops[idx1].desc.input_arg_names()}]"
         )
         _logger.info(
-            "segment end op: [{}]: [{}]".format(
-                ops[idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()
-            )
+            f"segment end op: [{ops[idx2 - 1].desc.type()}]: [{ops[idx2 - 1].desc.input_arg_names()}]"
         )
 
     # 2) go through all forward ops and induct all variables that will be hold in memory
@@ -1069,9 +1056,7 @@ def _append_backward_ops_with_checkpoints_(
 
     cross_vars = set(vars_should_be_hold) - set(checkpoints_name)
     _logger.info(
-        "found [{}] vars which cross recompute segment: [{}], better checkpoints might be set to reduce those vars".format(
-            len(cross_vars), cross_vars
-        )
+        f"found [{len(cross_vars)}] vars which cross recompute segment: [{cross_vars}], better checkpoints might be set to reduce those vars"
     )
 
     # b. output of seed op should be kept in memory
@@ -1942,9 +1927,7 @@ def _get_no_grad_set_name(no_grad_set):
                     )
         else:
             raise TypeError(
-                "The type of no_grad_set should be set or list or tuple, but received {}".format(
-                    type(no_grad_set)
-                )
+                f"The type of no_grad_set should be set or list or tuple, but received {type(no_grad_set)}"
             )
     return no_grad_set_name
 
@@ -1963,9 +1946,7 @@ def _get_no_grad_set_value(no_grad_set):
                     )
         else:
             raise TypeError(
-                "The type of no_grad_set should be set or list or tuple, but received {}".format(
-                    type(no_grad_set)
-                )
+                f"The type of no_grad_set should be set or list or tuple, but received {type(no_grad_set)}"
             )
     return no_grad_set_value
 
@@ -2553,9 +2534,7 @@ def calc_gradient_helper(
                 raise ValueError("all targets must be in the same block")
             if target.shape != grad.shape:
                 raise ValueError(
-                    "The shapes of target and grad are different: {} {}".format(
-                        target.name, grad.name
-                    )
+                    f"The shapes of target and grad are different: {target.name} {grad.name}"
                 )
             target_grad_map[_append_grad_suffix_(target.name)] = grad.name
             input_grad_names_set.add(grad.name)

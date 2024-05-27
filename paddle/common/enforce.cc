@@ -64,12 +64,16 @@ int GetCallStackLevel() { return FLAGS_call_stack_level; }
 std::string SimplifyErrorTypeFormat(const std::string& str) {
   std::ostringstream sout;
   size_t type_end_pos = str.find(':', 0);
-  if (type_end_pos == std::string::npos) {
-    sout << str;
-  } else {
-    // Remove "Error:", add "()""
+  if (type_end_pos != str.npos && type_end_pos >= 5 &&
+      str.substr(type_end_pos - 5, 6) == "Error:") {
+    // Remove "Error:", add "()"
+    // Examples:
+    //    InvalidArgumentError: xxx -> (InvalidArgument) xxx
     sout << "(" << str.substr(0, type_end_pos - 5) << ")"
          << str.substr(type_end_pos + 1);
+  } else {
+    // type_end_pos == std::string::npos
+    sout << str;
   }
   return sout.str();
 }
@@ -91,7 +95,7 @@ std::string GetCurrentTraceBackString(bool for_signal) {
 #if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
   static constexpr int TRACE_STACK_LIMIT = 100;
 
-  std::array<void*, TRACE_STACK_LIMIT> call_stack;
+  std::array<void*, TRACE_STACK_LIMIT> call_stack = {};
   auto size = backtrace(call_stack.data(), TRACE_STACK_LIMIT);
   auto symbols = backtrace_symbols(call_stack.data(), size);
   Dl_info info;

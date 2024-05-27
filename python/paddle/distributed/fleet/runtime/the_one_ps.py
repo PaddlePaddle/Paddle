@@ -139,16 +139,12 @@ def check_embedding_dim(accessor, varname, o_main_program):
     fea_dim = accessor.fea_dim
     if fea_dim != embedding_dim:
         raise ValueError(
-            "The fea_dim is wrong, it will be sparse_embedding_dim: {}, but got {}".format(
-                embedding_dim, fea_dim
-            )
+            f"The fea_dim is wrong, it will be sparse_embedding_dim: {embedding_dim}, but got {fea_dim}"
         )
     embedx_dim = accessor.embedx_dim
     if embedx_dim != embedding_dim - 3:
         raise ValueError(
-            "The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {}, but got {}".format(
-                embedding_dim - 3, embedx_dim
-            )
+            f"The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {embedding_dim - 3}, but got {embedx_dim}"
         )
 
 
@@ -1201,9 +1197,7 @@ class TheOnePSRuntime(RuntimeBase):
             for var_name in var_names:
                 if var_name not in distributed_varnames:
                     raise ValueError(
-                        "fleet.init server can only load sparse variables in {}".format(
-                            distributed_varnames
-                        )
+                        f"fleet.init server can only load sparse variables in {distributed_varnames}"
                     )
             load_varnames = var_names
 

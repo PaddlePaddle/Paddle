@@ -1366,32 +1366,40 @@ llvm::Value *CodeGenLLVM::CreateVecSlice(llvm::Value *vec,
       vec, undef, llvm::ConstantVector::get(indices));
 }
 
+int GetNaiveVecAlignmentImpl(common::UnknownArch, const Target &target) {
+  PADDLE_THROW(phi::errors::InvalidArgument("unknown Arch found"));
+}
+
+int GetNaiveVecAlignmentImpl(common::X86Arch, const Target &target) {
+  if (target.bits == Target::Bit::k32) {
+    return 256;
+  } else if (target.bits == Target::Bit::k64) {
+    return 512;
+  }
+  PADDLE_THROW(phi::errors::InvalidArgument("get unknown bits"));
+}
+
+int GetNaiveVecAlignmentImpl(common::ARMArch, const Target &target) {
+  return 128;
+}
+
+int GetNaiveVecAlignmentImpl(common::NVGPUArch, const Target &target) {
+  return 128;
+}
+
+int GetNaiveVecAlignment(const Target &target) {
+  return std::visit(
+      [&](const auto &impl) { return GetNaiveVecAlignmentImpl(impl, target); },
+      target.arch.variant());
+}
+
 void CodeGenLLVM::InitTarget(const Target &target) {
   llvm::InitializeAllTargetInfos();
   llvm::InitializeAllTargets();
   llvm::InitializeAllTargetMCs();
   llvm::InitializeAllAsmParsers();
   llvm::InitializeAllAsmPrinters();
-  switch (target.arch) {
-    case Target::Arch::X86:
-      if (target.bits == Target::Bit::k32) {
-        naive_vec_alignment_ = 256;
-      } else if (target.bits == Target::Bit::k64) {
-        naive_vec_alignment_ = 512;
-      } else {
-        PADDLE_THROW(phi::errors::InvalidArgument("get unknown bits"));
-      }
-      break;
-    case Target::Arch::ARM:
-      naive_vec_alignment_ = 128;
-      break;
-    case Target::Arch::NVGPU:
-      naive_vec_alignment_ = 128;
-      break;
-    case Target::Arch::Unk:
-      PADDLE_THROW(phi::errors::InvalidArgument("unknown Arch found"));
-      break;
-  }
+  naive_vec_alignment_ = GetNaiveVecAlignment(target);
 }
 
 bool LLVM_WillVarLowerAsPointer(const std::string &var_name) {

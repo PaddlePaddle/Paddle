@@ -17,24 +17,17 @@
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 
 PD_DECLARE_bool(support_reduce_stride_read);
+PD_DECLARE_bool(support_trivial_stride_read);
 
 namespace cinn {
 namespace ir {
 
 bool IsInnerThreadSpatialLoopGT(const ScheduleConfig& config, int num) {
   return config.tile_config.spatial_inner_num > num;
-}
-
-bool IsPerThreadReduceGELoopExtent(const ScheduleConfig& config,
-                                   const ir::Expr& loop) {
-  if (loop.As<ir::For>()->extent.is_constant()) {
-    int extent = ir::GetLoopExtent(loop);
-    return extent <= config.tile_config.tree_reduce_num;
-  }
-  return false;
 }
 
 bool IsReduceBlock(const ScheduleConfig& config, const std::string& block_id) {
@@ -134,6 +127,9 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   VLOG(6) << "After BindCudaInfo on block: [" << block_id << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];
   VariableTypeAssignment(sch, block_id);
+  VLOG(6) << "After VariableTypeAssignment on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   Unroll(sch, block_id);
   VLOG(6) << "After Unroll on block: [" << block_id << "], loop nest:\n"
           << sch->GetLoops(block_id)[0];
@@ -149,7 +145,21 @@ void TileFirstGeneralTactic::MergeFlattenAxis(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
                                              const std::string& block_id) {
-  if (vec_reduce_axis_.size() >= 2 && !ir::IsReduceInitTensorName(block_id)) {
+  std::vector<ir::Expr> loops = sch->GetLoops(block_id);
+  int32_t max_loop_idx = 0;
+  for (int32_t idx : vec_reduce_axis_) {
+    max_loop_idx = std::max(max_loop_idx, idx);
+    PADDLE_ENFORCE_EQ(idx < loops.size() || loops.size() == 1,
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The reduce axis should meet: axis's idx < "
+                          "loops.size() or loops.size() == 1, but received "
+                          "idx= %d ,loops.size() = %d",
+                          idx,
+                          loops.size()));
+  }
+  if (max_loop_idx < loops.size() && vec_reduce_axis_.size() >= 2 &&
+      !ir::IsReduceInitTensorName(block_id)) {
     sch->Fuse(block_id, vec_reduce_axis_);
   }
 }
@@ -157,13 +167,22 @@ void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
 void TileFirstGeneralTactic::SplitSptialInner(ir::IRSchedule* sch,
                                               const std::string& block_id) {
   if (IsInnerThreadSpatialLoopGT(context_->config, 1)) {
-    auto loops = sch->GetLoops(block_id);
-    auto split_loops =
-        sch->Split(loops[0],
-                   std::vector<int>(
-                       {-1,
-                        static_cast<int>(
-                            context_->config.tile_config.spatial_inner_num)}));
+    if (FLAGS_support_trivial_stride_read) {
+      auto loops = sch->GetLoops(block_id);
+      std::vector<int> split_factors{
+          static_cast<int>(context_->config.tile_config.spatial_inner_num), -1};
+      sch->Split(loops[0], split_factors);
+      loops = sch->GetLoops(block_id);
+      sch->Reorder({loops[1], loops[0]});
+    } else {
+      auto loops = sch->GetLoops(block_id);
+      auto split_loops = sch->Split(
+          loops[0],
+          std::vector<int>(
+              {-1,
+               static_cast<int>(
+                   context_->config.tile_config.spatial_inner_num)}));
+    }
   }
 }
 
@@ -173,10 +192,6 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
 
   auto loops = sch->GetLoops(block_id);
   auto reduce_loop = loops[reduce_current_axis_].As<ir::For>();
-
-  if (IsPerThreadReduceGELoopExtent(context_->config, reduce_loop)) {
-    return;
-  }
 
   if (FLAGS_support_reduce_stride_read) {
     if (context_->config.base_info->reduce_numel <= 256) {
@@ -232,19 +247,21 @@ void TileFirstGeneralTactic::SplitWarpNumber(ir::IRSchedule* sch,
   };
   if (!IsWarpNumGT(1)) return;
 
-  const auto LimitWarpNum = [&](const ir::Expr& loop, ScheduleConfig* config) {
+  const auto GetMinimalWarpNum = [&](const ir::Expr& loop,
+                                     const ScheduleConfig& config) -> int {
     ir::Expr extent = loop.As<ir::For>()->extent;
     common::cas_intervals_t var_intervals =
         common::CollectVarIntervalsOfExprs({extent});
     common::SymbolicExprAnalyzer analyzer(var_intervals);
     const auto& proved_gt =
-        analyzer.ProveGT(ir::Expr(config->tile_config.warp_num), extent);
+        analyzer.ProveGT(ir::Expr(config.tile_config.warp_num * 32), extent);
     if (proved_gt.value_or(false)) {
       ir::Expr upper_bound = analyzer.UpperBound(extent);
       if (upper_bound.is_constant()) {
-        config->tile_config.warp_num = upper_bound.get_constant();
+        return (static_cast<int>(upper_bound.get_constant()) + 31) / 32;
       }
     }
+    return config.tile_config.warp_num;
   };
 
   auto loops = sch->GetLoops(block_id);
@@ -261,9 +278,9 @@ void TileFirstGeneralTactic::SplitWarpNumber(ir::IRSchedule* sch,
     }
   } else if (IsWarpReduce(context_->config)) {
     // get num warp from flatten num
-    LimitWarpNum(loops[0], &(context_->config));
-    int thread_y = context_->config.tile_config.warp_num * 32 /
-                   context_->config.tile_config.tree_reduce_num;
+    int minimal_warp_number = GetMinimalWarpNum(loops[0], context_->config);
+    int thread_y =
+        minimal_warp_number * 32 / context_->config.tile_config.tree_reduce_num;
     sch->Split(loops[0], std::vector<int>({-1, thread_y}));
 
     if (IsReduceBlock(context_->config, block_id) &&
@@ -304,13 +321,17 @@ void TileFirstGeneralTactic::Unroll(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::VariableTypeAssignment(
     ir::IRSchedule* sch, const std::string& block_id) {
-  const auto IsOutputTensor = [&](const std::string& tensor_name) {
+  const auto IsOutputTensor = [&](const std::string& tensor_name) -> bool {
     return context_->config.base_info->direct_output_var_names.count(
                tensor_name) > 0;
   };
+  const auto HasConsumers = [&](const ir::Expr& block) -> bool {
+    return !ir::analyzer::GetConsumerSBlocks(block, sch->GetRootBlock(block))
+                .empty();
+  };
 
   auto block = sch->GetBlock(block_id);
-  if (!IsOutputTensor(block_id)) {
+  if (!IsOutputTensor(block_id) && HasConsumers(block)) {
     sch->SetBuffer(block, "local", false);
   }
 

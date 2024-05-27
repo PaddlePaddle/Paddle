@@ -439,9 +439,7 @@ def set_var_dst_dtype(
                 var.desc.set_dtype(dtype)
 
         _logger.debug(
-            "---- op type: {}, var name: {}, var dtype: {} ----".format(
-                op.type, var_name, var.dtype
-            )
+            f"---- op type: {op.type}, var name: {var_name}, var dtype: {var.dtype} ----"
         )
 
     return low_precision_var_names

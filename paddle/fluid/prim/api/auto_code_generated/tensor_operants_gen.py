@@ -131,7 +131,7 @@ Tensor EagerTensorOperants::pow(const Tensor& x, const Tensor& y) {
 }
 
 Tensor EagerTensorOperants::pow(const Tensor& x, const Scalar& y) {
-  return ::elementwise_pow_ad_func(x, ::full_like_ad_func(x, y));
+  return ::pow_ad_func(x, y);
 }
 
 """
@@ -490,7 +490,7 @@ def main():
         '--api_yaml_path',
         help='path to api yaml file',
         nargs='+',
-        default=['paddle/phi/api/yaml/ops.yaml'],
+        default=['paddle/phi/ops/yaml/ops.yaml'],
     )
 
     parser.add_argument(

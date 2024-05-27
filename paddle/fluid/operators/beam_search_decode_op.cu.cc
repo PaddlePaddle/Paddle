@@ -23,6 +23,6 @@ PD_REGISTER_STRUCT_KERNEL(beam_search_decode,
                           ops::BeamSearchDecodeOpKernel,
                           float,
                           double,
-                          paddle::platform::float16,
+                          phi::dtype::float16,
                           int,
                           int64_t) {}

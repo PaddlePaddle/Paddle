@@ -92,9 +92,7 @@ class TestCastBase(Dy2StTestBase):
         res = self.do_test().numpy()
         self.assertTrue(
             res.dtype == self.cast_dtype,
-            msg='The target dtype is {}, but the casted dtype is {}.'.format(
-                self.cast_dtype, res.dtype
-            ),
+            msg=f'The target dtype is {self.cast_dtype}, but the casted dtype is {res.dtype}.',
         )
         ref_val = self.input.astype(self.cast_dtype)
         np.testing.assert_allclose(
@@ -159,9 +157,7 @@ class TestMixCast(TestCastBase):
         res = self.do_test().numpy()
         self.assertTrue(
             res.dtype == self.cast_dtype,
-            msg='The target dtype is {}, but the casted dtype is {}.'.format(
-                self.cast_dtype, res.dtype
-            ),
+            msg=f'The target dtype is {self.cast_dtype}, but the casted dtype is {res.dtype}.',
         )
         ref_val = (
             self.input.astype(self.cast_int)

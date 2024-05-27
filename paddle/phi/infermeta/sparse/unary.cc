@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/sparse/unary.h"
-
 #include "paddle/phi/core/infermeta_utils.h"
 
 namespace phi {
@@ -34,6 +33,22 @@ void ValuesInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims({-1, x_dims[x_dims.size() - 1]});
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
+}
+
+void CastInferMeta(const MetaTensor& x,
+                   DataType index_dtype,
+                   DataType out_dtype,
+                   MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+  // In inplace case, setting the dtype of out will reset the dtype of x at the
+  // same time, which will cause bugs, so move the dtype setting of out to the
+  // kernel
+
+  if (!(out->is_same_tensor(x))) {
+    out->set_dtype(out_dtype);
+  }
 }
 
 }  // namespace sparse

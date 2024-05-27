@@ -39,9 +39,7 @@ def _get_image_size(img):
             return img.shape[2:][::-1]  # nchw -> wh
         else:
             raise ValueError(
-                "The dim for input Tensor should be 3-D or 4-D, but received {}".format(
-                    len(img.shape)
-                )
+                f"The dim for input Tensor should be 3-D or 4-D, but received {len(img.shape)}"
             )
     else:
         raise TypeError(f"Unexpected type {type(img)}")

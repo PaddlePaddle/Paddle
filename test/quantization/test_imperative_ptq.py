@@ -153,9 +153,7 @@ class TestImperativePTQ(unittest.TestCase):
 
             if batch_id % 50 == 0:
                 _logger.info(
-                    "Test | At step {}: acc1 = {:}, acc5 = {:}".format(
-                        batch_id, acc_top1.numpy(), acc_top5.numpy()
-                    )
+                    f"Test | At step {batch_id}: acc1 = {acc_top1.numpy()}, acc5 = {acc_top5.numpy()}"
                 )
 
             if batch_num > 0 and batch_id + 1 >= batch_num:
@@ -196,9 +194,7 @@ class TestImperativePTQ(unittest.TestCase):
 
             if total_num % 50 == 49:
                 _logger.info(
-                    "Test | Test num {}: acc1 = {:}".format(
-                        total_num, top1_correct_num / total_num
-                    )
+                    f"Test | Test num {total_num}: acc1 = {top1_correct_num / total_num}"
                 )
 
             if batch_num > 0 and batch_id + 1 >= batch_num:

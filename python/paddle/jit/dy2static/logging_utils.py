@@ -162,13 +162,9 @@ class TranslatorLogger:
         if self.has_code_level(level):
             source_code = ast_to_source_code(ast_node)
             if level == LOG_AllTransformer:
-                header_msg = "After the last level ast transformer: '{}', the transformed code:\n".format(
-                    transformer_name
-                )
+                header_msg = f"After the last level ast transformer: '{transformer_name}', the transformed code:\n"
             else:
-                header_msg = "After the level {} ast transformer: '{}', the transformed code:\n".format(
-                    level, transformer_name
-                )
+                header_msg = f"After the level {level} ast transformer: '{transformer_name}', the transformed code:\n"
 
             msg = header_msg + source_code
             self.logger.info(msg, *args, **kwargs)

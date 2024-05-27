@@ -225,8 +225,8 @@ def _convert_to_place(device):
         if available_gpu_device:
             if not core.is_compiled_with_cuda():
                 raise ValueError(
-                    "The device should not be {}, since PaddlePaddle is "
-                    "not compiled with CUDA".format(available_gpu_device)
+                    f"The device should not be {available_gpu_device}, since PaddlePaddle is "
+                    "not compiled with CUDA"
                 )
             device_info_list = device.split(':', 1)
             device_id = device_info_list[1]
@@ -235,8 +235,8 @@ def _convert_to_place(device):
         if available_xpu_device:
             if not core.is_compiled_with_xpu():
                 raise ValueError(
-                    "The device should not be {}, since PaddlePaddle is "
-                    "not compiled with XPU".format(available_xpu_device)
+                    f"The device should not be {available_xpu_device}, since PaddlePaddle is "
+                    "not compiled with XPU"
                 )
             device_info_list = device.split(':', 1)
             device_id = device_info_list[1]
@@ -827,9 +827,7 @@ class Stream:
         return hash((self.stream_base, self.device))
 
     def __repr__(self):
-        return '<paddle.device.Stream device={} stream={:#x}>'.format(
-            self.device, self._as_parameter_.value
-        )
+        return f'<paddle.device.Stream device={self.device} stream={self._as_parameter_.value:#x}>'
 
 
 def current_stream(device=None):

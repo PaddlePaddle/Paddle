@@ -19,6 +19,8 @@
 
 import os
 
+from paddle.framework import use_pir_api
+
 from .. import logging_utils
 from ..utils import ast_to_source_code
 from .assert_transformer import AssertTransformer
@@ -92,6 +94,7 @@ class DygraphToStaticAst(BaseTransformer):
         self.visit(node)
 
         transformers = [
+            TypeHintTransformer,  # remove all typehint
             RegisterHookTransformer,
             EarlyReturnTransformer,
             AttributeJstTransformer,  # Tensor.size -> Tensor.size(), it's unnecessary in PIR mode
@@ -101,14 +104,17 @@ class DygraphToStaticAst(BaseTransformer):
             LogicalTransformer,  # logical and/or/not
             CreateVariableTransformer,  # create undefined var for if / while / for
             LoopTransformer,  # for/while -> while_op
-            IfElseTransformer,  # if/else -> cond_op
+            IfElseTransformer,  # if/else -> if_op
             AssertTransformer,  # assert statement
             CallTransformer,  # transform call recursively
             CastTransformer,  # type casting statement
             DecoratorTransformer,  # transform decorators to function call
             NameloadJstTransformer,
-            TypeHintTransformer,  # remove all typehint in gast.Name
         ]
+
+        if use_pir_api():
+            # It's unnecessary in PIR mode
+            transformers.remove(AttributeJstTransformer)
 
         apply_optimization(transformers)
 

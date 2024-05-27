@@ -104,13 +104,17 @@ class InterpreterBaseImpl {
 
   virtual void SetInputHooks(const std::vector<HookFunc>& hookfuncs) = 0;
 
+  virtual void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) = 0;
+
+  virtual void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) = 0;
+
   virtual std::shared_ptr<std::vector<size_t>> GetDependencyCount() const = 0;
 
   virtual bool IsSharedResultsBuild() const = 0;
 
-  virtual void Build(
-      const std::vector<std::string>& feed_names,
-      std::vector<paddle::framework::OpFuncNode>* op_func_nodes) = 0;
+  virtual void Build(const std::vector<std::string>& feed_names,
+                     std::vector<paddle::framework::OpFuncNode>* op_func_nodes,
+                     bool switch_stream = false) = 0;
 
   virtual bool IsStaticBuild() const = 0;
 
