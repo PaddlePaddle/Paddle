@@ -753,25 +753,30 @@ void SplitFunctionDispatchWithDifferentShape(
       outs->size() * sizeof(char*),
       phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
 
+  IndexT* device_val_array_real_ptr = nullptr;
   memory_utils::Copy(ctx.GetPlace(),
                      device_array_ptr->ptr(),
                      phi::CPUPlace(),
                      setter.array.data,
                      outs->size() * sizeof(char*),
                      ctx.stream());
+  if (Size != SegmentedArraySize::kVariableLength) {
+    auto device_val_array_ptr = memory_utils::Alloc(
+        ctx.GetPlace(),
+        static_cast<int>(Size) * sizeof(T),
+        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
 
-  auto device_val_array_ptr = memory_utils::Alloc(
-      ctx.GetPlace(),
-      static_cast<int>(Size) * sizeof(T),
-      phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
-
-  memory_utils::Copy(ctx.GetPlace(),
-                     device_val_array_ptr->ptr(),
-                     phi::CPUPlace(),
-                     setter.val_array.data,
-                     static_cast<int>(Size) * sizeof(T),
-                     ctx.stream());
-
+    memory_utils::Copy(ctx.GetPlace(),
+                       device_val_array_ptr->ptr(),
+                       phi::CPUPlace(),
+                       setter.val_array.data,
+                       static_cast<int>(Size) * sizeof(T),
+                       ctx.stream());
+    device_val_array_real_ptr =
+        reinterpret_cast<IndexT*>(device_val_array_ptr->ptr());
+  } else {
+    device_val_array_real_ptr = setter.val_array.data;
+  }
   SplitTensorWithDifferentShape<T,
                                 IndexT,
                                 decltype(setter.array.data),
@@ -781,7 +786,7 @@ void SplitFunctionDispatchWithDifferentShape(
           out_row,
           cumulative_col,
           reinterpret_cast<T**>(device_array_ptr->ptr()),
-          reinterpret_cast<IndexT*>(device_val_array_ptr->ptr()));
+          device_val_array_real_ptr);
 }
 
 template <typename T, typename IndexT>
