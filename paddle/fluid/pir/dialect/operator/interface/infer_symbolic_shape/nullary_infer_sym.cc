@@ -72,7 +72,7 @@ bool AssignValueOpInferSymbolicShape(
                          .data()
                          .to<int64_t>());
   }
-  if (values.size() > 0 && sym_dims.size() == 1) {
+  if (values.size() > 0 && sym_dims.size() <= 1) {
     std::vector<symbol::DimExpr> data;
     for (const auto &value : values) {
       data.emplace_back(symbol::DimExpr(value));
