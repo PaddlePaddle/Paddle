@@ -772,7 +772,7 @@
     func : concat
     data_type : x
   backward : concat_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : conj
   args : (Tensor x)
@@ -793,7 +793,7 @@
     func : conv2d
     data_type : input
   backward : conv2d_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : conv2d_transpose
   args : (Tensor x, Tensor filter, int[] strides={1, 1}, int[] paddings={0, 0}, int[] output_padding={}, IntArray output_size={}, str padding_algorithm="EXPLICIT", int groups=1, int[] dilations={1, 1}, str data_format="NCHW")
@@ -1936,7 +1936,7 @@
   optional : scale, bias
   intermediate : mean, variance
   backward : group_norm_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : gumbel_softmax
   args : (Tensor x, float temperature = 1.0, bool hard = false, int axis = -1)
@@ -2995,6 +2995,7 @@
     func : pool2d
     param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   backward : pool2d_grad
+  interfaces : paddle::dialect::LayoutTransformationInterface
 
 - op : pool3d
   args : (Tensor x, int[] kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -3550,6 +3551,7 @@
   kernel :
     func : silu
   backward : silu_grad
+  interfaces : paddle::dialect::LayoutTransformationInterface
 
 - op : sin
   args : (Tensor x)
@@ -3690,7 +3692,7 @@
   view: (x -> out)
   intermediate : xshape
   backward : squeeze_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : stack
   args : (Tensor[] x, int axis = 0)
@@ -3770,6 +3772,7 @@
   kernel :
     func : swish
   backward : swish_grad
+  interfaces : paddle::dialect::LayoutTransformationInterface
 
 - op : sync_batch_norm_
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)
