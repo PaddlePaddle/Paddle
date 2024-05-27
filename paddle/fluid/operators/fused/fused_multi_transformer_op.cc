@@ -61,8 +61,6 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
     // x: qkv's input [batch_size, seq_len, dim_embed]
     // y: qkv's weight: [3, num_head, dim_head, dim_embed]
     auto x_dim = ctx->GetInputDim("X");
-    auto y_dim = ctx->GetInputsDim("QKVW")[0];
-    bool trans_qkvw = ctx->Attrs().Get<bool>("trans_qkvw");
     PADDLE_ENFORCE_EQ(
         x_dim.size(),
         3,
@@ -71,25 +69,6 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
                                      "but received dimensions of"
                                      "Input is [%d]",
                                      x_dim.size()));
-    PADDLE_ENFORCE_EQ(
-        y_dim.size(),
-        4,
-        phi::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
-                                     "(3, num_head, dim_head, dim_embed),"
-                                     "but received dimensions of"
-                                     "Input is [%d]",
-                                     y_dim.size()));
-    PADDLE_ENFORCE_EQ(
-        x_dim[2],
-        trans_qkvw ? y_dim[3] : y_dim[0],
-        phi::errors::InvalidArgument(
-            "ShapeError: the dimension of x_dim[2] and y_dim[3](trans_qkvw is "
-            "true) or y_dim[0](trans_qkvw is false)"
-            "must be equal. But received: the shape "
-            "of input x = [%s], and the shape of "
-            "input qkv_weight = [%s]",
-            x_dim,
-            y_dim));
 
     if (ctx->HasInputs("CacheKV")) {
       // [2, batch_size, num_head, max_seq_len, head_size]
@@ -113,20 +92,6 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
                             "batch size %d, but got %d",
                             x_dim[0],
                             c_dim[1]));  // batch_size
-      PADDLE_ENFORCE_EQ(c_dim[2],
-                        trans_qkvw ? y_dim[1] : y_dim[2],
-                        phi::errors::InvalidArgument(
-                            "The third dim of CacheKV must be equal with num "
-                            "head %d, but got %d",
-                            trans_qkvw ? y_dim[1] : y_dim[2],
-                            c_dim[2]));  // num_head
-      PADDLE_ENFORCE_EQ(c_dim[4],
-                        trans_qkvw ? y_dim[2] : y_dim[3],
-                        phi::errors::InvalidArgument(
-                            "The fifth dim of CacheKV must be equal with head "
-                            "size %d, but got %d",
-                            trans_qkvw ? y_dim[2] : y_dim[3],
-                            c_dim[4]));  // head_size
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -166,6 +131,7 @@ class FusedMultiTransformerOpOpMaker
     AddInput("LnBias",
              "Bias is a 1-dimensional tensor of size "
              "H. Here, H represents the last dimension of its input tensor.")
+        .AsDispensable()
         .AsDuplicable();
     AddInput("QKVW", "The qkv weight tensor.").AsDuplicable();
     AddInput("QKVBias", "The qkv bias tensor.").AsDispensable().AsDuplicable();
@@ -178,6 +144,9 @@ class FusedMultiTransformerOpOpMaker
         .AsDuplicable();
     AddInput("RotaryPosEmb",
              "(optional) The RoPE embeddings for generation inference.")
+        .AsDispensable();
+    AddInput("BeamCacheOffset",
+             "(optional) The offset of CacheKV when using BeamSearch.")
         .AsDispensable();
     AddInput("TimeStep",
              "(optional, int) The time step for generation inference.")
@@ -194,6 +163,7 @@ class FusedMultiTransformerOpOpMaker
     AddInput("FFNLnScale", "The layer_norm scale of FusedFeedForward op")
         .AsDuplicable();
     AddInput("FFNLnBias", "The layer_norm bias of FusedFeedForward op")
+        .AsDispensable()
         .AsDuplicable();
     AddInput("FFN1Weight", "The linear1 weight of FusedFeedForward op")
         .AsDuplicable();
@@ -240,6 +210,10 @@ class FusedMultiTransformerOpOpMaker
                                 epsilon));
         });
 
+    AddAttr<float>("residual_alpha",
+                   "Constant for residual_alpha [default 1.0].")
+        .SetDefault(1.0f);
+
     AddAttr<float>("dropout_rate", "Probability of setting units to zero.")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
@@ -269,12 +243,14 @@ class FusedMultiTransformerOpOpMaker
     AddAttr<std::string>("act_method", "act_method")
         .SetDefault("gelu")
         .AddCustomChecker([](const std::string &act_type) {
-          PADDLE_ENFORCE_EQ(
-              act_type == "gelu" || act_type == "relu" || act_type == "none",
-              true,
-              phi::errors::InvalidArgument(
-                  "Only support `gelu`, `relu`, `none` activation in "
-                  "FusedMultiTransformer. "));
+          PADDLE_ENFORCE_EQ(act_type == "gelu" || act_type == "geglu" ||
+                                act_type == "swiglu" || act_type == "relu" ||
+                                act_type == "none",
+                            true,
+                            phi::errors::InvalidArgument(
+                                "Only support `gelu`, `geglu`, `swiglu`, "
+                                "`relu`, `none` activation in "
+                                "FusedMultiTransformer. "));
         });
 
     AddAttr<bool>(
@@ -290,6 +266,23 @@ class FusedMultiTransformerOpOpMaker
         "ring id for tensor model parallel. distributed training and inference")
         .SetDefault(-1);
 
+    AddAttr<std::string>("norm_type", "norm_type")
+        .SetDefault("layernorm")
+        .AddCustomChecker([](const std::string &norm_type) {
+          PADDLE_ENFORCE_EQ(
+              norm_type == "layernorm" || norm_type == "rmsnorm",
+              true,
+              phi::errors::InvalidArgument(
+                  "Only support `layernorm`, `rmsnorm` method for in"
+                  "FusedMultiTransformerDyquant. "));
+        });
+
+    AddAttr<bool>("use_neox_rotary_style",
+                  "Whether use neox rotary embedding. ")
+        .SetDefault(false);
+
+    AddAttr<int>("gqa_group_size", "(int, default -1) the group size of GQA")
+        .SetDefault(-1);
     AddComment(R"DOC(fused multi transformer layers op)DOC");
   }
 };

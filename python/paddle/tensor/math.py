@@ -1835,7 +1835,10 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
             [9. , 18.])
     """
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'nansum'
+        x,
+        'x',
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+        'nansum',
     )
     check_type(axis, 'axis', (int, list, tuple, type(None)), 'nansum')
 
@@ -2359,7 +2362,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             f"The dimension of input should be 2 or 1 but receive input's shape: {input_shape}"
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.addmm(input, x, y, beta, alpha)
     else:
         inputs = {'Input': input, "X": x, "Y": y}
@@ -3963,10 +3966,16 @@ def kron(x, y, name=None):
     else:
         helper = LayerHelper('kron', **locals())
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+            'kron',
         )
         check_variable_and_dtype(
-            y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron'
+            y,
+            'y',
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+            'kron',
         )
 
         out = helper.create_variable_for_type_inference(dtype=x.dtype)

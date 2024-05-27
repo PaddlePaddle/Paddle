@@ -110,7 +110,7 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   }
 }
 
-static bool valid_type(const DataType& dtype) {
+static void check_valid_type(const DataType& dtype) {
   switch (dtype) {
     case DataType::INT8:
     case DataType::INT16:
@@ -123,9 +123,10 @@ static bool valid_type(const DataType& dtype) {
     case DataType::FLOAT16:
     case DataType::FLOAT32:
     case DataType::FLOAT64:
-      return true;
+      break;
     default:
-      return false;
+      PADDLE_THROW(phi::errors::InvalidArgument("Unsupported data type: %s",
+                                                phi::DataTypeToString(dtype)));
   }
 }
 
@@ -192,13 +193,8 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
     x_cast = cast<T>(x, DataType::FLOAT32);
   }
 
-  Tensor y_full;
-  if (valid_type(y.dtype())) {
-    y_full = full<T>(empty_shape, y, x_cast.dtype());
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "Unsupported data type: %s", phi::DataTypeToString(y.dtype())));
-  }
+  check_valid_type(y.dtype());
+  Tensor y_full = full<T>(empty_shape, y, x_cast.dtype());
 
   auto ans = elementwise_pow<T>(x_cast, y_full);
   if (need_cast) {
@@ -265,6 +261,23 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
               DataType::FLOAT32),
       output_dim);
   return ans;
+}
+
+template <typename T>
+Tensor squared_l2_norm_decomp(const Tensor& x) {
+  Tensor reduce_x;
+  if (has_dynamic_shape(x.shape())) {
+    reduce_x = backend::reshape_with_tensor<T>(
+        x, prod<T>(shape<T>(x), {0}, true, false));
+  } else {
+    int reduce_num = 1;
+    for (size_t i = 0; i < x.shape().size(); i++) {
+      reduce_num *= x.shape()[i];
+    }
+    reduce_x = reshape<T>(x, {reduce_num});
+  }
+  auto res = sum<T>(reduce_x * reduce_x, {0}, x.dtype(), true);
+  return res;
 }
 
 template <typename T>
@@ -1026,6 +1039,30 @@ std::tuple<Tensor, Tensor> flatten_decomp(const Tensor& x,
 }
 
 template <typename T>
+Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
+  auto min_reshape = min;
+  auto max_reshape = max;
+
+  if (has_dynamic_shape(x.shape())) {
+    min_reshape = backend::expand_with_tensor<T>(min, shape<T>(x));
+    max_reshape = backend::expand_with_tensor<T>(max, shape<T>(x));
+  } else {
+    min_reshape = expand<T>(min, x.shape());
+    max_reshape = expand<T>(max, x.shape());
+  }
+  if (min_reshape.dtype() != x.dtype()) {
+    min_reshape = cast<T>(min_reshape, x.dtype());
+  }
+
+  if (max_reshape.dtype() != x.dtype()) {
+    max_reshape = cast<T>(max_reshape, x.dtype());
+  }
+
+  auto ans = maximum<T>(minimum<T>(x, max_reshape), min_reshape);
+  return ans;
+}
+
+template <typename T>
 Tensor index_select_decomp(const Tensor& x, const Tensor& index, int axis) {
   int axis_tmp = axis;
   if (axis < 0) {
@@ -1173,6 +1210,73 @@ Tensor square_decomp(const Tensor& x) {
   two = full<T>(empty_shape, 2, x_cast.dtype());
 
   auto ans = elementwise_pow<T>(x_cast, two);
+  if (need_cast) {
+    return cast<T>(ans, org_dtype);
+  } else {
+    return ans;
+  }
+}
+
+template <typename T>
+Tensor sigmoid_cross_entropy_with_logits_decomp(
+    const Tensor& x,
+    const Tensor& label,
+    const paddle::optional<Tensor>& pos_weight,
+    bool normalize,
+    int ignore_index) {
+  auto dims = x.shape();
+  const Tensor zero = full<T>(dims, 0, x.type());
+  const Tensor one = full<T>(dims, 1, x.type());
+  Tensor pos_weight_tensor;
+  if (pos_weight) {
+    pos_weight_tensor = pos_weight.get();
+  } else {
+    pos_weight_tensor = one;
+  }
+  auto term1 = where<T>(x > zero, x, zero);
+  auto term2 = x * label;
+  auto term3 = log<T>(1 + exp<T>(-abs<T>(x)));
+  const Tensor tmp_out = term1 - term2 + term3 * pos_weight_tensor;
+  const Tensor ignore_index_tensor = full<T>(dims, ignore_index, label.type());
+  auto out = where<T>(label == ignore_index_tensor, zero, tmp_out);
+  if (normalize) {
+    // Follow the implementation in
+    // paddle/phi/kernels/cpu/sigmoid_cross_entropy_with_logits_kernel.cc
+    const Tensor eps1 = full<T>(dims, 1e-6, x.type());
+    auto diff = label - ignore_index_tensor;
+    const Tensor tmp_norm = sum<T>(where<T>(abs<T>(diff) > eps1, one, zero));
+    // Follow the implementation in
+    // paddle/phi/kernels/cpu/sigmoid_cross_entropy_with_logits_kernel.cc
+    const Tensor eps2 = full<T>(empty_shape, 1e-5, x.type());
+    auto norm = where<T>(tmp_norm > eps2, tmp_norm, eps2);
+    out = out / norm;
+  }
+  return out;
+}
+
+template <typename T>
+Tensor mean_all_decomp(const Tensor& x) {
+  auto org_dtype = x.dtype();
+  auto x_cast = x;
+  auto x_shape = x.shape();
+  bool need_cast = is_half_dtype(org_dtype);
+  if (need_cast) {
+    x_cast = cast<T>(x, DataType::FLOAT32);
+  }
+
+  Tensor ans;
+  if (has_dynamic_shape(x_shape)) {
+    Tensor x_shape_tensor = shape<T>(x_cast);
+    Tensor value = get_slice<T>(x_shape_tensor, 0);
+    for (size_t i = 1; i < x_shape.size(); i++) {
+      value = value * get_slice<T>(x_shape_tensor, i);
+    }
+    value = reshape<T>(value, {});
+    ans = sum<T>(x_cast) / cast<T>(value, x_cast.dtype());
+  } else {
+    ans = sum<T>(x_cast) / x_cast.numel();
+  }
+
   if (need_cast) {
     return cast<T>(ans, org_dtype);
   } else {

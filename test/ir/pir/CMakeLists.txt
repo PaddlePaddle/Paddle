@@ -15,7 +15,8 @@ set(TEST_IR_SYSTEM_CASES
     test_pir_to_static
     test_stop_gradient
     test_cse_pass
-    test_override_operator)
+    test_override_operator
+    test_ir_save_load)
 list(REMOVE_ITEM TEST_INTERP_CASES ${TEST_IR_SYSTEM_CASES})
 list(REMOVE_ITEM TEST_INTERP_CASES test_subgraph_exporter)
 

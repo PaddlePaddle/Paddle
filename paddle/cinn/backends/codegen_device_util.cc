@@ -72,6 +72,13 @@ std::string
 detail::CollectBucketStrategyHostFunctionVisitor::GenDeviceKernelName(
     const std::string &fn_name, ir::Expr predicate) {
   std::string cond_str = Predicate2String(predicate);
+  // replace '-' with 'NEG'
+  size_t pos = cond_str.find("-", 0);
+  const std::string replacement = "NEG";
+  while (pos != std::string::npos) {
+    cond_str.replace(pos, 1, replacement);
+    pos = cond_str.find("-", pos + replacement.length());
+  }
   VLOG(3) << "predicate string: " << cond_str;
   return fn_name + "__COND_" + cond_str + "__kernel";
 }

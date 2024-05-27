@@ -67,7 +67,7 @@ static void AssignZeroToOutsideTensor(const phi::Place &place,
   outside_tensor->Resize(input_tensor.dims());
   outside_tensor->mutable_data(place, input_tensor.dtype());
   const platform::DeviceContext *dev_ctx =
-      platform::DeviceContextPool::Instance().Get(place);
+      phi::DeviceContextPool::Instance().Get(place);
   phi::funcs::set_constant(*dev_ctx, outside_tensor, 0.0f);
   outside_tensor->set_lod(input_tensor.lod());
 }
@@ -166,7 +166,7 @@ static void AssignLocalGradientToParentScope(
       continue;
     }
     platform::DeviceContext *dev_ctx =
-        platform::DeviceContextPool::Instance().Get(place);
+        phi::DeviceContextPool::Instance().Get(place);
     framework::VisitVarType(*inside_var, AssignFunctor(outside_var, *dev_ctx));
   }
   // Assign zero to the grad_vars that are in outside_grads but not in

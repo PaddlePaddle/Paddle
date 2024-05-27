@@ -139,6 +139,7 @@ void FusedMultiTransformerInferMeta(
     const paddle::optional<std::vector<const MetaTensor*>>& cache_kvs,
     const paddle::optional<std::vector<const MetaTensor*>>& pre_caches,
     const MetaTensor& rotary_tensor,
+    const MetaTensor& beam_offset,
     const MetaTensor& time_step,
     const MetaTensor& seq_lengths,
     const MetaTensor& src_mask,
@@ -152,6 +153,7 @@ void FusedMultiTransformerInferMeta(
     const paddle::optional<std::vector<const MetaTensor*>>& ffn2_biases,
     bool pre_layer_norm,
     float epsilon,
+    float residual_alpha,
     float dropout_rate,
     int rotary_emb_dims,
     bool is_test,
@@ -159,6 +161,9 @@ void FusedMultiTransformerInferMeta(
     const std::string& act_method,
     bool trans_qkvw,
     int ring_id,
+    const std::string& norm_type,
+    bool use_neox_rotary_style,
+    int gqa_group_size,
     std::vector<MetaTensor*> cache_kv_outs,
     MetaTensor* out) {
   // x: qkv's input [batch_size, seq_len, dim_embed]
@@ -924,6 +929,7 @@ void FusedAttentionInferMeta(const MetaTensor& x,
   }
 
   out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
 }
 
 void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
@@ -998,19 +1004,19 @@ void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
                         "GradOp is only callable when is_test is false"));
 
   if (!pre_layer_norm) {
-    if (ln_scale_2_grad) {
+    if (ln_scale_2_grad && ln_scale_2) {
       ln_scale_2_grad->set_dims(ln_scale_2.dims());
     }
-    if (ln_bias_2_grad) {
+    if (ln_bias_2_grad && ln_bias_2) {
       ln_bias_2_grad->set_dims(ln_bias_2.dims());
     }
   }
 
-  if (pre_layer_norm) {
+  if (pre_layer_norm && ln_scale) {
     if (ln_scale_grad) {
       ln_scale_grad->set_dims(ln_scale.dims());
     }
-    if (ln_bias_grad) {
+    if (ln_bias_grad && ln_bias) {
       ln_bias_grad->set_dims(ln_bias.dims());
     }
   }
@@ -1019,7 +1025,7 @@ void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
     x_grad->set_dims(x.dims());
   }
 
-  if (out_linear_bias_grad) {
+  if (out_linear_bias_grad && out_linear_bias) {
     out_linear_bias_grad->set_dims(out_linear_bias.dims());
   }
 
@@ -1031,7 +1037,7 @@ void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
     qkv_weight_grad->set_dims(qkv_weight.dims());
   }
 
-  if (qkv_bias_grad) {
+  if (qkv_bias_grad && qkv_bias) {
     qkv_bias_grad->set_dims(qkv_bias.dims());
   }
 
@@ -1040,7 +1046,7 @@ void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
       ln_out_grad->set_dims(ln_out.dims());
     }
   } else {
-    if (bias_dropout_residual_out_grad) {
+    if (bias_dropout_residual_out_grad && bias_dropout_residual_out) {
       bias_dropout_residual_out_grad->set_dims(
           bias_dropout_residual_out.dims());
     }
@@ -1556,36 +1562,36 @@ void FusedFeedForwardGradInferMeta(const MetaTensor& out_grad,
                                    bool add_residual,
                                    int ring_id,
                                    MetaTensor* x_grad,
-                                   MetaTensor* ln1_scale_grad,
-                                   MetaTensor* ln1_bias_grad,
-                                   MetaTensor* ln2_scale_grad,
-                                   MetaTensor* ln2_bias_grad,
                                    MetaTensor* linear1_weight_grad,
                                    MetaTensor* linear1_bias_grad,
                                    MetaTensor* linear2_weight_grad,
-                                   MetaTensor* linear2_bias_grad) {
+                                   MetaTensor* linear2_bias_grad,
+                                   MetaTensor* ln1_scale_grad,
+                                   MetaTensor* ln1_bias_grad,
+                                   MetaTensor* ln2_scale_grad,
+                                   MetaTensor* ln2_bias_grad) {
   auto d_out_dim = out_grad.dims();
   x_grad->set_dims(d_out_dim);
-  if (ln1_scale_grad) {
+  if (ln1_scale_grad && ln1_scale) {
     ln1_scale_grad->set_dims(ln1_scale.dims());
   }
-  if (ln1_bias_grad) {
+  if (ln1_bias_grad && ln1_bias) {
     ln1_bias_grad->set_dims(ln1_bias.dims());
   }
-  if (ln2_scale_grad) {
+  if (ln2_scale_grad && ln2_scale) {
     ln2_scale_grad->set_dims(ln2_scale.dims());
   }
-  if (ln2_bias_grad) {
+  if (ln2_bias_grad && ln2_bias) {
     ln2_bias_grad->set_dims(ln2_bias.dims());
   }
 
   linear1_weight_grad->set_dims(linear1_weight.dims());
-  if (linear1_bias_grad) {
+  if (linear1_bias_grad && linear1_bias) {
     linear1_bias_grad->set_dims(linear1_bias.dims());
   }
 
   linear2_weight_grad->set_dims(linear2_weight.dims());
-  if (linear2_bias_grad) {
+  if (linear2_bias_grad && linear2_bias) {
     linear2_bias_grad->set_dims(linear2_bias.dims());
   }
 }

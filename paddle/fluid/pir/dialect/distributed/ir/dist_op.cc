@@ -28,8 +28,8 @@
 namespace paddle {
 namespace dialect {
 
-const char* ShardTensorOp::attributes_name[1] = {"op_dist_attr"};
-const char* ReshardOp::attributes_name[1] = {"op_dist_attr"};
+const char* ShardTensorOp::attributes_name[1] = {"op_dist_attr"};  // NOLINT
+const char* ReshardOp::attributes_name[1] = {"op_dist_attr"};      // NOLINT
 
 void ShardTensorOp::VerifySig() {
   VLOG(4)

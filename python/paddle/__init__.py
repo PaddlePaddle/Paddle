@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import typing
+
 try:
     from paddle.cuda_env import *  # noqa: F403
     from paddle.version import (  # noqa: F401
@@ -69,8 +72,11 @@ from .framework.dtype import (
     uint8,
 )
 
-Tensor = framework.core.eager.Tensor
-Tensor.__qualname__ = 'Tensor'
+if typing.TYPE_CHECKING:
+    from .tensor.tensor import Tensor
+else:
+    Tensor = framework.core.eager.Tensor
+    Tensor.__qualname__ = 'Tensor'
 
 import paddle.distributed.fleet
 import paddle.text
@@ -516,6 +522,7 @@ from .tensor.math import (  # noqa: F401
 )
 from .tensor.random import (
     bernoulli,
+    bernoulli_,
     binomial,
     check_shape,
     multinomial,
@@ -808,6 +815,7 @@ __all__ = [
     'expm1',
     'expm1_',
     'bernoulli',
+    'bernoulli_',
     'binomial',
     'poisson',
     'standard_gamma',

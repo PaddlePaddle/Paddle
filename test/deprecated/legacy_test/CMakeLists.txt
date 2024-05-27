@@ -99,7 +99,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
-  list(REMOVE_ITEM TEST_OPS test_downpoursgd)
+  list(REMOVE_ITEM TEST_OPS test_downpoursgd_deprecated)
   list(REMOVE_ITEM TEST_OPS test_fleet)
   list(REMOVE_ITEM TEST_OPS test_fleet_nocvm_1)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker)
@@ -405,7 +405,7 @@ list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
 list(REMOVE_ITEM TEST_OPS test_nearest_interp_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
-list(REMOVE_ITEM TEST_OPS test_layers)
+list(REMOVE_ITEM TEST_OPS test_layers_deprecated)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
 list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
 list(REMOVE_ITEM TEST_OPS test_install_check)
@@ -431,7 +431,6 @@ if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_process)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exit_func)
-  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_static)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_iterable_dataset)
 endif()
 
@@ -453,8 +452,8 @@ endif()
 
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
-set(TEST_OPS_WITH_GC test_affine_channel_op test_gather_nd_op test_lod_reset_op
-                     test_scatter_op test_slice_op)
+set(TEST_OPS_WITH_GC test_affine_channel_op test_gather_nd_op test_scatter_op
+                     test_slice_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -627,7 +626,7 @@ py_test_modules(
 
 if(NOT WIN32)
   # TODO: fix these unittests failure on Windows
-  py_test_modules(test_layers MODULES test_layers ENVS
+  py_test_modules(test_layers_deprecated MODULES test_layers_deprecated ENVS
                   FLAGS_cudnn_deterministic=1)
 endif()
 
@@ -635,17 +634,10 @@ set_tests_properties(
   test_data_norm_op test_dataloader_keep_order test_dataloader_unkeep_order
   PROPERTIES LABELS "RUN_TYPE=DIST")
 
-if(NOT WIN32 AND NOT APPLE)
-  set_tests_properties(test_multiprocess_dataloader_static
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-  set_tests_properties(test_multiprocess_dataloader_static PROPERTIES TIMEOUT
-                                                                      120)
-endif()
-
 if(NOT WIN32)
   set_tests_properties(test_multiprocess_reader_exception
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-  set_tests_properties(test_layers PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_layers_deprecated PROPERTIES TIMEOUT 120)
 endif()
 
 # setting timeout value as 15S

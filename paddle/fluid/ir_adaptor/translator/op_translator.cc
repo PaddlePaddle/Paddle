@@ -90,8 +90,8 @@ constexpr char kTargetDialectPrefix[] = "pd_op.";  // NOLINT
 #ifdef PADDLE_WITH_DNNL
 constexpr char kOneDNNTargetDialectPrefix[] = "onednn_op.";  // NOLINT
 #endif
-constexpr char kCustomOpDialectPrefix[] = "custom_op.";
-constexpr char kEmptyVarName[] = "@EMPTY@";  // NOLINT
+constexpr char kCustomOpDialectPrefix[] = "custom_op.";  // NOLINT
+constexpr char kEmptyVarName[] = "@EMPTY@";              // NOLINT
 
 static const std::unordered_set<std::string> SpecialNonInplaceOps = {};
 
@@ -306,7 +306,8 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
     std::map<std::string, std::vector<std::string>> inputs = op_desc.Inputs();
     std::vector<std::string> input_types;
     for (const auto& pair : inputs) {
-      if (op_desc.Type() == "sparse_sum" || op_desc.Type() == "sparse_slice") {
+      if (op_desc.Type() == "sparse_sum" || op_desc.Type() == "sparse_slice" ||
+          op_desc.Type() == "sparse_reshape") {
         if (pair.first != "x") {
           continue;
         }
