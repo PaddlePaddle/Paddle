@@ -2854,24 +2854,21 @@ class ShardDataloader:
             batch_data = next(iter(dataset))
         elif isinstance(dataset, paddle.io.Dataset):
             batch_data = []
-            for i in range(len(dataset[0])):
-                tmp_data = []
-                for j in range(batch_size):
-                    tmp_data.append(dataset[j][i])
-                batch_data.append(np.stack(tmp_data))
+            for i in range(batch_size):
+                batch_data.append(dataset[i])
         else:
             raise TypeError(
                 f"Data should be a Dataset or IterableDataset, but received {type(dataset).__name__}."
             )
 
         collate_fn = self._dataloader.collate_fn
-        if collate_fn is not None:
-            if isinstance(batch_data, dict):
-                batch_data = [batch_data]
-            batch_data = collate_fn(batch_data)
+        if collate_fn is None:
+            collate_fn = paddle.io.dataloader.collate.default_collate_fn
+        batch_data = collate_fn(batch_data)
         if isinstance(batch_data, list):
             for i in range(len(batch_data)):
-                batch_data[i] = paddle.to_tensor(batch_data[i])
+                if collate_fn is not None:
+                    batch_data[i] = paddle.to_tensor(batch_data[i])
         elif isinstance(batch_data, tuple):
             batch_data = list(batch_data)
             for i in range(len(batch_data)):
