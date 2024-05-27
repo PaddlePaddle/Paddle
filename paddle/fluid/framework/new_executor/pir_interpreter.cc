@@ -863,6 +863,9 @@ void PirInterpreter::BuildInstruction() {
         CREATE_INSTR(AssertInstruction);
       } else if (op.isa<paddle::dialect::SelectInputOp>()) {
         CREATE_INSTR(SelectInputInstruction);
+      } else if (op.isa<paddle::dialect::RegisterHookOp>()) {
+        std::cout << "RegisterHookInstruction" << std::endl;
+        // CREATE_INSTR(SelectInputListInstruction);
       } else if (op.isa<paddle::dialect::SelectOutputOp>()) {
         CREATE_INSTR(SelectOutputInstruction);
       } else {

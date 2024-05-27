@@ -292,5 +292,13 @@ pir::Value array_pop(pir::Value input, int index) {
   }
 }
 
+pir::Value register_hook(pybind11::object* hook_func, pir::Value input) {
+  auto register_hook_op =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::RegisterHookOp>(hook_func, input);
+  return register_hook_op.result(0);
+}
+
 }  // namespace dialect
 }  // namespace paddle

@@ -24,8 +24,9 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
     paddle::dialect::ArrayToTensorOp, paddle::dialect::TensorToArrayOp,
     paddle::dialect::IncrementOp, paddle::dialect::Increment_Op,
     paddle::dialect::ShapeBroadcastOp, paddle::dialect::MemcpyD2hMultiIoOp,
-    paddle::dialect::ArrayPopOp
+    paddle::dialect::ArrayPopOp, paddle::dialect::RegisterHookOp
 #else
+// paddle::dialect::RegisterHookGradOp
 
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -4511,6 +4512,156 @@ phi::DataType ArrayPopOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
+const char *RegisterHookOp::attributes_name[2] = {"hook_func", "input"};
+
+void RegisterHookOp::Build(pir::Builder &builder,
+                           pir::OperationArgument &argument,
+                           pybind11::object *hook_func,
+                           pir::Value input) {
+  VLOG(4) << "Start build RegisterHookOp";
+  VLOG(4) << "Builder construction inputs";
+  std::vector<pir::Value> argument_inputs = {input};
+  argument.AddInputs(argument_inputs);
+
+  VLOG(4) << "Builder construction attributes";
+  pir::AttributeMap argument_attributes = {};
+  pir::Attribute attr_hook_func =
+      pir::PointerAttribute::get(pir::IrContext::Instance(), hook_func);
+  argument.AddAttribute("hook_func", attr_hook_func);
+  argument_attributes.insert({"hook_func", attr_hook_func});
+
+  std::vector<pir::Type> argument_outputs =
+      RegisterHookOp::InferMeta(argument_inputs, &argument_attributes);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  ::pir::PassStopGradientsDefaultly(argument);
+}
+
+void RegisterHookOp::VerifySig() {}
+
+std::vector<pir::Type> RegisterHookOp::InferMeta(
+    const std::vector<pir::Value> &input_values,
+    pir::AttributeMap *p_attributes) {
+  PADDLE_ENFORCE_NOT_NULL(
+      p_attributes,
+      common::errors::Fatal(
+          "AttributeMap pointer in InferMeta function is nullptr."));
+  auto &attributes = *p_attributes;
+  VLOG(4) << "Start infermeta RegisterHookOp";
+  PADDLE_ENFORCE_EQ(input_values.size(),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Num of inputs is expected to be 1 but got %d.",
+                        input_values.size()));
+  pir::Value input = input_values[0];
+
+  VLOG(4) << "Builder construction outputs";
+  paddle::dialect::DenseTensorType input_type;
+  if (input.type().isa<paddle::dialect::DenseTensorType>()) {
+    input_type = input.type().dyn_cast<paddle::dialect::DenseTensorType>();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support paddle::dialect::DenseTensorType or "
+        "paddle::dialect::AllocatedDenseTensorType"));
+  }
+
+  PADDLE_ENFORCE_NE(
+      attributes.find("hook_func"),
+      attributes.end(),
+      phi::errors::InvalidArgument(
+          "'hook_func' Attribute is expected for RegisterHookOp. "));
+
+  paddle::dialect::IrTensor dense_input(
+      paddle::dialect::TransToPhiDataType(input_type.dtype()),
+      input_type.dims(),
+      input_type.data_layout(),
+      input_type.lod(),
+      input_type.offset());
+  paddle::dialect::IrMetaTensor meta_input(&dense_input);
+  paddle::dialect::IrTensor dense_out;
+  paddle::dialect::IrMetaTensor meta_out(&dense_out);
+  dense_out.SetDtype(dense_input.dtype());
+  dense_out.SetDims(dense_input.dims());
+  dense_out.SetLayout(dense_input.layout());
+  dense_out.SetLod(dense_input.lod());
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
+  return argument_outputs;
+}
+
+// const char *RegisterHookGradOp::attributes_name[2] = {"hook_func_grad",
+// "input_grad"};
+
+// void RegisterHookGradOp::Build(pir::Builder &builder, pir::OperationArgument
+// &argument, pybind11::object* hook_func_grad, pir::Value input_grad){
+//   VLOG(4) << "Start build RegisterHookGradOp";
+//   VLOG(4) << "Builder construction inputs";
+//   std::vector<pir::Value> argument_inputs = {input_grad};
+//   argument.AddInputs(argument_inputs);
+
+//   VLOG(4) << "Builder construction attributes";
+//   pir::AttributeMap argument_attributes = {};
+//   pir::Attribute attr_hook_func_grad =
+//   pir::PointerAttribute::get(pir::IrContext::Instance(), hook_func_grad);
+//   argument.AddAttribute("hook_func_grad", attr_hook_func_grad);
+//   argument_attributes.insert({"hook_func_grad", attr_hook_func_grad});
+
+//   std::vector<pir::Type> argument_outputs =
+//   RegisterHookGradOp::InferMeta(argument_inputs, &argument_attributes);
+//   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+//   ::pir::PassStopGradientsDefaultly(argument);
+// }
+
+// void RegisterHookGradOp::VerifySig(){
+// }
+
+// std::vector<pir::Type> RegisterHookGradOp::InferMeta(const
+// std::vector<pir::Value> &input_values, pir::AttributeMap *p_attributes){
+//   PADDLE_ENFORCE_NOT_NULL(p_attributes, common::errors::Fatal("AttributeMap
+//   pointer in InferMeta function is nullptr.")); auto &attributes =
+//   *p_attributes; VLOG(4) << "Start infermeta RegisterHookGradOp";
+//   PADDLE_ENFORCE_EQ(input_values.size(), 1, phi::errors::InvalidArgument("Num
+//   of inputs is expected to be 1 but got %d.", input_values.size()));
+//   pir::Value input = input_values[0];
+
+//   VLOG(4) << "Builder construction outputs";
+//   paddle::dialect::DenseTensorType input_type;
+//   if (input.type().isa<paddle::dialect::DenseTensorType>()) {
+//     input_type = input.type().dyn_cast<paddle::dialect::DenseTensorType>();
+//   } else {
+//     PADDLE_THROW(phi::errors::Unimplemented("Only support
+//     paddle::dialect::DenseTensorType or
+//     paddle::dialect::AllocatedDenseTensorType"));
+//   }
+
+//   PADDLE_ENFORCE_NE(attributes.find("hook_func_grad"), attributes.end(),
+//   phi::errors::InvalidArgument("'hook_func_grad' Attribute is expected for
+//   RegisterHookGradOp. "));
+
+//   // paddle::dialect::IrTensor
+//   dense_input(paddle::dialect::TransToPhiDataType(input_type.dtype()),
+//   input_type.dims(), input_type.data_layout(), input_type.lod(),
+//   input_type.offset());
+//   // paddle::dialect::IrMetaTensor meta_input(&dense_input);
+//   paddle::dialect::IrTensor dense_out;
+//   paddle::dialect::IrMetaTensor meta_out(&dense_out);
+
+//   std::vector<pir::Type> argument_outputs;
+//   pir::Type out_dense_tensor_type =
+//   paddle::dialect::DenseTensorType::get(pir::IrContext::Instance(),
+//   paddle::dialect::TransToIrDataType(dense_out.dtype()), dense_out.dims(),
+//   dense_out.layout(), dense_out.lod(), dense_out.offset());
+//   argument_outputs.push_back(out_dense_tensor_type);
+//   return argument_outputs;
+// }
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -4538,4 +4689,6 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::Increment_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::MemcpyD2hMultiIoOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayPopOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::RegisterHookOp)
+// IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::RegisterHookGradOp)
 #endif

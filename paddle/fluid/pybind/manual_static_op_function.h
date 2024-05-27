@@ -29,6 +29,7 @@
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builtin_op.h"
+#include "pybind11/pytypes.h"
 
 namespace paddle {
 
@@ -954,6 +955,32 @@ static PyObject *static_api_array_pop(PyObject *self,
   }
 }
 
+static PyObject *static_api_register_hook(PyObject *self,
+                                          PyObject *args,
+                                          PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add register_hook op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *hook_func_obj = PyTuple_GET_ITEM(args, 0);
+    auto hook_func = ::py::handle(hook_func_obj).cast<pybind11::object>();
+
+    PyObject *input_obj = PyTuple_GET_ITEM(args, 1);
+    auto input = CastPyArg2Value(input_obj, "register_hook", 1);
+
+    // Call ir static api
+    CallStackRecorder callstack_recoder("register_hook");
+    callstack_recoder.Record();
+    auto static_api_out = paddle::dialect::register_hook(&hook_func, input);
+    callstack_recoder.AttachToOps();
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 extern PyObject *eager_api_fused_gemm_epilogue(PyObject *self,
                                                PyObject *args,
                                                PyObject *kwargs);
@@ -1039,6 +1066,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_array_pop,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for array_pop."},
+    {"register_hook",
+     (PyCFunction)(void (*)(void))static_api_register_hook,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for register_hook."},
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind

@@ -19,6 +19,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/value.h"
+#include "pybind11/pytypes.h"
 
 namespace paddle {
 namespace dialect {
@@ -97,7 +98,10 @@ std::tuple<pir::Value, pir::Value> fused_gemm_epilogue(pir::Value x,
                                                        bool trans_x,
                                                        bool trans_y,
                                                        std::string activation);
+
 pir::Value array_pop(pir::Value input, int index);
+
+pir::Value register_hook(pybind11::object* hook_func, pir::Value input);
 
 }  // namespace dialect
 }  // namespace paddle

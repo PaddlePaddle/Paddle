@@ -30,6 +30,7 @@
 #include "paddle/pir/include/core/ir_printer.h"
 #include "paddle/pir/include/core/op_base.h"
 #include "paddle/pir/include/core/operation_utils.h"
+#include "pybind11/pytypes.h"
 
 namespace paddle {
 namespace dialect {
@@ -798,6 +799,52 @@ class ArrayPopOp : public pir::Op<ArrayPopOp,
       pir::AttributeMap *p_attributes);
 };
 
+class RegisterHookOp : public pir::Op<RegisterHookOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.register_hook"; }
+  static const char *attributes_name[2];
+  static constexpr uint32_t attributes_num = 2;
+  void VerifySig();
+
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pybind11::object *hook_func,
+                    pir::Value input);
+
+  pir::Value hook_func() { return operand_source(0); }
+  pir::Value input() { return operand_source(1); }
+  pir::Value out() { return result(0); }
+
+  //   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<pir::Type> InferMeta(
+      const std::vector<pir::Value> &input_values,
+      pir::AttributeMap *p_attributes);
+};
+
+// class RegisterHookGradOp : public pir::Op<RegisterHookOp> {
+//  public:
+//   using Op::Op;
+//   static const char *name() { return "pd_op.register_hook_grad"; }
+//   static const char *attributes_name[2];
+//   static constexpr uint32_t attributes_num = 2;
+//   void VerifySig();
+
+//   static void Build(pir::Builder &builder,             // NOLINT
+//                     pir::OperationArgument &argument,  // NOLINT
+//                     pybind11::object* hook_func,
+//                     pir::Value input);
+
+//   pir::Value hook_func() { return operand_source(0); }
+//   pir::Value input() { return operand_source(1); }
+//   pir::Value out() { return result(0); }
+
+// //   static void InferMeta(phi::InferMetaContext *infer_meta);
+//   static std::vector<pir::Type> InferMeta(
+//       const std::vector<pir::Value> &input_values,
+//       pir::AttributeMap *p_attributes);
+// };
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -825,3 +872,5 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::Increment_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShapeBroadcastOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::MemcpyD2hMultiIoOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayPopOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::RegisterHookOp)
+// IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::RegisterHookGradOp)
