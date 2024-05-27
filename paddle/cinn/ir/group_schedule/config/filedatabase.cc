@@ -93,6 +93,7 @@ std::string IterSpaceTypeToDir(const common::Target target,
     }
   };
   std::string root_path = FLAGS_cinn_tile_config_filename_label;
+  checkexist(root_path);
   checkexist(root_path + target.arch_str());
   checkexist(root_path + target.arch_str() + "/" + dirname);
   VLOG(3) << "Dump_path is " << root_path + dirname + "/" + filename + ".json";
