@@ -22,17 +22,16 @@
 
 namespace cinn::fusion {
 
-template <typename T>
-struct AnchorSearchPolicy final : public PolicyBase<T> {
+struct AnchorSearchPolicy final : public PolicyBase {
   static constexpr PolicyKind Kind = PolicyKind::AnchorSearch;
-  bool HasUpstreamAnchor(const PatternNodePtr<T>& upstream,
-                         const PatternNodePtr<T>& downstream);
-  bool HasDownstreamAnchor(const PatternNodePtr<T>& upstream,
-                           const PatternNodePtr<T>& downstream);
+  bool HasUpstreamAnchor(const PatternNodePtr& upstream,
+                         const PatternNodePtr& downstream);
+  bool HasDownstreamAnchor(const PatternNodePtr& upstream,
+                           const PatternNodePtr& downstream);
   std::optional<AnchorTransformRoute> FindUpstreamAnchorTransformRoute(
-      const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream);
+      const PatternNodePtr& upstream, const PatternNodePtr& downstream);
   std::optional<AnchorTransformRoute> FindDownstreamAnchorTransformRoute(
-      const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream);
+      const PatternNodePtr& upstream, const PatternNodePtr& downstream);
 
   std::string Name() { return "AnchorSearchPolicy"; }
 };

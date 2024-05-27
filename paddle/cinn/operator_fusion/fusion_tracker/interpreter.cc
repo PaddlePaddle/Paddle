@@ -17,8 +17,7 @@
 #include "glog/logging.h"
 
 #include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
-#include "paddle/cinn/operator_fusion/backend/pattern.h"
-#include "paddle/cinn/operator_fusion/backend/pattern_fuser.h"
+#include "paddle/cinn/operator_fusion/fusion_tracker/interpreter.h"
 
 namespace cinn::fusion {
 

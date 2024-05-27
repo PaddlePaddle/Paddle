@@ -23,8 +23,7 @@
 
 namespace cinn::fusion {
 
-template <typename T>
-class RelativeJudgePolicy final : public PolicyBase<T> {
+class RelativeJudgePolicy final : public PolicyBase {
  public:
   static constexpr PolicyKind Kind = PolicyKind::RelativeJudge;
   RelativeJudgePolicy(const std::vector<pir::Operation*>& ops,
@@ -34,13 +33,13 @@ class RelativeJudgePolicy final : public PolicyBase<T> {
     index_expr_map_ = AnalysisIndexExprRelation(ops);
     VLOG(4) << "[relative_judge_policy] End AnalysisIndexExprRelation.";
   }
-  bool CanFuse(const PatternNodePtr<T>& upstream,
-               const PatternNodePtr<T>& downstream);
+  bool CanFuse(const PatternNodePtr& upstream,
+               const PatternNodePtr& downstream);
 
   std::string Name() { return "RelativeJudgePolicy"; }
 
-  std::vector<size_t> GetFakeReduceIterIdx(const PatternNodePtr<T>& upstream,
-                                           const PatternNodePtr<T>& downstream);
+  std::vector<size_t> GetFakeReduceIterIdx(const PatternNodePtr& upstream,
+                                           const PatternNodePtr& downstream);
 
   bool IsRelated(DimUsage in, DimUsage out) {
     return index_expr_map_[in].count(out) == 1;
@@ -49,18 +48,16 @@ class RelativeJudgePolicy final : public PolicyBase<T> {
  private:
   DimUsageRelation index_expr_map_;
   ShardableAxesInfoManager axes_info_;
-  bool ReduceTreeGrownCanMerge(const PatternNodePtr<T>&,
-                               const PatternNodePtr<T>&);
-  bool ReducePlusTrivialCanMerge(const PatternNodePtr<T>&,
-                                 const PatternNodePtr<T>&);
+  bool ReduceTreeGrownCanMerge(const PatternNodePtr&, const PatternNodePtr&);
+  bool ReducePlusTrivialCanMerge(const PatternNodePtr&, const PatternNodePtr&);
   std::pair<std::vector<DimUsage>, std::vector<DimUsage>>
   SplitFirstIfRelatedBySecond(const std::vector<DimUsage>& targets,
                               const std::vector<DimUsage>& related_with);
-  std::optional<ReducePattern<T>> GetDownstreamFromCandidate(
-      const ReducePattern<T>& upstream,
-      const std::vector<ReducePattern<T>>& candidates);
+  std::optional<ReducePattern> GetDownstreamFromCandidate(
+      const ReducePattern& upstream,
+      const std::vector<ReducePattern>& candidates);
   bool IsDownstreamStmtDependReduceOp(pir::Operation* reduce,
-                                      const StmtPattern<T>& downstream);
+                                      const StmtPattern& downstream);
 };
 
 }  // namespace cinn::fusion

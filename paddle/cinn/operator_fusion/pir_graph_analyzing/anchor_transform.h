@@ -115,16 +115,29 @@ using AnchorTransform = std::variant<UnsupportTransformPtr,
                                      DeleteDimTransformPtr>;
 using AnchorTransformRoute = std::vector<AnchorTransform>;
 
-template <typename T>
-struct ExprPromise {};
+struct ExprPromise {
+  explicit ExprPromise(const pir::Value& root) : root_value(root) {}
+  AnchorTransformRoute transform_route;
+  pir::Value root_value;
 
-template <typename T>
+  void update(const AnchorTransformRoute& route) {
+    transform_route.insert(transform_route.end(), route.begin(), route.end());
+  }
+
+  std::string DebugStr() const {
+    std::stringstream ss;
+    ss << "[ExprPromise] root_value: " << root_value.impl() << "\n";
+    ss << DebugStrOfAnchorTransformRoute(transform_route) << "\n";
+    return ss.str();
+  }
+};
+
 struct AnchorState {
-  explicit AnchorState(const std::vector<ExprPromise<T>>& init_promise)
+  explicit AnchorState(const std::vector<ExprPromise>& init_promise)
       : promise(init_promise) {}
-  std::vector<ExprPromise<T>> promise;
+  std::vector<ExprPromise> promise;
 
-  void update(AnchorState<T> new_state) {
+  void update(AnchorState new_state) {
     auto new_exprs = new_state.promise;
     promise.insert(promise.end(), new_exprs.begin(), new_exprs.end());
   }

@@ -13,23 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include <memory>
-#include <unordered_map>
+#include "paddle/cinn/operator_fusion/fusion_tracker/tracker.h"
 
-namespace cinn::fusion {
-
-enum PolicyKind { GeneralTopo = 1, RelativeJudge = 2, AnchorSearch = 3 };
-
-struct PolicyKindHash {
-  std::size_t operator()(const PolicyKind& t) const {
-    return static_cast<std::size_t>(t);
-  }
-};
-
-class PolicyBase {};
-
-using PolicyPtr = std::shared_ptr<PolicyBase>;
-
-using PolicyMap = std::unordered_map<PolicyKind, PolicyPtr, PolicyKindHash>;
-
-}  // namespace cinn::fusion
+struct FusionInterpreter {};

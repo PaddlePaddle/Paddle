@@ -18,12 +18,11 @@
 
 namespace cinn::fusion {
 
-template <typename T>
-class GeneralTopoPolicy final : public PolicyBase<T> {
+class GeneralTopoPolicy final : public PolicyBase {
  public:
   static constexpr PolicyKind Kind = PolicyKind::GeneralTopo;
-  bool CanFuse(const PatternNodePtr<T>& upstream,
-               const PatternNodePtr<T>& downstream);
+  bool CanFuse(const PatternNodePtr& upstream,
+               const PatternNodePtr& downstream);
   std::string Name() { return "GeneralTopoPolicy"; }
 };
 

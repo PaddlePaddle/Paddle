@@ -22,28 +22,27 @@
 
 namespace cinn::fusion {
 
-template <typename T>
 class PolicyManager {
  public:
   PolicyManager() {}
 
-  template <template <typename> typename POLICY>
-  void SetPolicy(const std::shared_ptr<POLICY<T>>& policy) {
-    auto key = POLICY<T>::Kind;
-    policies[key] = std::static_pointer_cast<PolicyBase<T>>(policy);
+  template <typename POLICY>
+  void SetPolicy(const std::shared_ptr<POLICY>& policy) {
+    auto key = POLICY::Kind;
+    policies[key] = std::static_pointer_cast<PolicyBase>(policy);
   }
 
-  template <template <typename> typename POLICY>
-  std::shared_ptr<POLICY<T>> GetPolicy() const {
-    auto key = POLICY<T>::Kind;
+  template <typename POLICY>
+  std::shared_ptr<POLICY> GetPolicy() const {
+    auto key = POLICY::Kind;
     PADDLE_ENFORCE_NE(policies.find(key),
                       policies.end(),
                       phi::errors::NotFound("Policy %d Not Found", key));
-    return std::static_pointer_cast<POLICY<T>>(policies.at(key));
+    return std::static_pointer_cast<POLICY>(policies.at(key));
   }
 
  private:
-  PolicyMap<T> policies;
+  PolicyMap policies;
 };
 
 }  // namespace cinn::fusion

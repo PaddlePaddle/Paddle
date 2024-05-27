@@ -21,9 +21,7 @@ namespace cinn::fusion {
 // Operation
 
 struct MergeReduceTreeOperation {
-  template <typename Phrase>
-  PatternNodePtr<Phrase> operator()(PatternGraph<Phrase>* graph,
-                                    PatternNodePtr<Phrase> node) {
+  PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
     PADDLE_ENFORCE_EQ(
         node->downstream().size(),
         1,
@@ -31,7 +29,7 @@ struct MergeReduceTreeOperation {
             "The downstream of the ReduceTree node should be 1, but got %d.",
             node->downstream().size()));
     auto downstream = node->downstream().at(0);
-    auto merged_node = graph->MergeNode(node, downstream, MergePattern<Phrase>);
+    auto merged_node = graph->MergeNode(node, downstream, MergePattern);
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
     VLOG(4) << "MergeReduceTreeOperation: \nupstream " << node->DebugStr()
@@ -42,9 +40,7 @@ struct MergeReduceTreeOperation {
 };
 
 struct MergeReduceTreeAndTrivialOperation {
-  template <typename Phrase>
-  PatternNodePtr<Phrase> operator()(PatternGraph<Phrase>* graph,
-                                    PatternNodePtr<Phrase> node) {
+  PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
     PADDLE_ENFORCE_EQ(
         node->downstream().size(),
         1,
@@ -56,14 +52,14 @@ struct MergeReduceTreeAndTrivialOperation {
                                     .template GetPolicy<RelativeJudgePolicy>()
                                     ->GetFakeReduceIterIdx(node, downstream);
     const auto merge_pattern_fn = [&fake_reduce_iter_idx](
-                                      const StmtPattern<Phrase>& first,
-                                      const StmtPattern<Phrase>& secend) {
-      auto rt_pattern = std::get<ReduceTreePlusTrivialPattern<Phrase>>(
-          MergePattern<Phrase>(first, secend));
+                                      const StmtPattern& first,
+                                      const StmtPattern& secend) {
+      auto rt_pattern =
+          std::get<ReduceTreePlusTrivialPattern>(MergePattern(first, secend));
       rt_pattern.fake_reduce_iter_idx = fake_reduce_iter_idx;
       return rt_pattern;
     };
-    PatternNodePtr<Phrase> merged_node =
+    PatternNodePtr merged_node =
         graph->MergeNode(node, downstream, merge_pattern_fn);
     graph->RemoveNode(downstream);
     graph->RemoveNode(node);
@@ -75,19 +71,15 @@ struct MergeReduceTreeAndTrivialOperation {
 };
 
 struct LiftReduceToReduceTreeOperation {
-  template <typename Phrase>
-  PatternNodePtr<Phrase> operator()(PatternGraph<Phrase>* graph,
-                                    PatternNodePtr<Phrase> node) {
-    const auto& reduce_pattern = ToReducePattern<Phrase>(node->stmt_pattern());
-    node->set_stmt_pattern(ReduceTreePattern<Phrase>({}, reduce_pattern));
+  PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
+    const auto& reduce_pattern = ToReducePattern(node->stmt_pattern());
+    node->set_stmt_pattern(ReduceTreePattern({}, reduce_pattern));
     return node;
   }
 };
 
 struct MergeTrivialPatternOperation {
-  template <typename Phrase>
-  void operator()(PatternGraph<Phrase>* graph,
-                  PatternNodePtr<Phrase> upstream) {
+  void operator()(PatternGraph* graph, PatternNodePtr upstream) {
     PADDLE_ENFORCE_GE(upstream->downstream().size(),
                       1,
                       phi::errors::PreconditionNotMet(
@@ -95,26 +87,21 @@ struct MergeTrivialPatternOperation {
                           "at least 1 downstream , but got %d.",
                           upstream->downstream().size()));
 
-    std::vector<PatternNodePtr<Phrase>> fusion_candidate =
-        upstream->downstream();
+    std::vector<PatternNodePtr> fusion_candidate = upstream->downstream();
     upstream->ClearDownstream();
 
     for (const auto& downstream : fusion_candidate) {
       bool can_fuse =
-          std::holds_alternative<ReducePattern<Phrase>>(
+          std::holds_alternative<ReducePattern>(downstream->stmt_pattern()) ||
+          std::holds_alternative<TrivialPattern>(downstream->stmt_pattern()) ||
+          std::holds_alternative<ReduceTreePattern>(
               downstream->stmt_pattern()) ||
-          std::holds_alternative<TrivialPattern<Phrase>>(
+          std::holds_alternative<ReduceTreePlusTrivialPattern>(
               downstream->stmt_pattern()) ||
-          std::holds_alternative<ReduceTreePattern<Phrase>>(
-              downstream->stmt_pattern()) ||
-          std::holds_alternative<ReduceTreePlusTrivialPattern<Phrase>>(
-              downstream->stmt_pattern()) ||
-          std::holds_alternative<AnchorPattern<Phrase>>(
-              downstream->stmt_pattern());
+          std::holds_alternative<AnchorPattern>(downstream->stmt_pattern());
 
       if (can_fuse) {
-        auto merged_node =
-            graph->MergeNode(upstream, downstream, MergePattern<Phrase>);
+        auto merged_node = graph->MergeNode(upstream, downstream, MergePattern);
         graph->RemoveNode(downstream);
         VLOG(4) << "Spliting trivial pattern: \nupstream "
                 << upstream->DebugStr() << "\ndownstream "
@@ -131,20 +118,16 @@ struct MergeTrivialPatternOperation {
 };
 
 struct LiftToHorizontalFusionPatternOperation {
-  template <typename Phrase>
-  PatternNodePtr<Phrase> operator()(PatternGraph<Phrase>* graph,
-                                    PatternNodePtr<Phrase> node) {
-    node->set_stmt_pattern(HorizontalFusionPattern<Phrase>(
-        {typename HorizontalFusionPattern<Phrase>::PaddingStmtPattern(
+  PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
+    node->set_stmt_pattern(HorizontalFusionPattern(
+        {typename HorizontalFusionPattern::PaddingStmtPattern(
             node->stmt_pattern(), {})}));
     return node;
   }
 };
 
 struct LiftToAnchorPatternOperation {
-  template <typename Phrase>
-  PatternNodePtr<Phrase> operator()(PatternGraph<Phrase>* graph,
-                                    PatternNodePtr<Phrase> node) {
+  PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
     std::vector<pir::Operation*> ops = GetOpsInPattern(node->stmt_pattern());
     // TODO(@wuzhanfei) move sink_op into pattern (currently, part of pattern
     // type has sink and the others not) then, update logic here
@@ -154,19 +137,18 @@ struct LiftToAnchorPatternOperation {
         phi::errors::PreconditionNotMet(
             "Op with multi output value can not lift to AnchorPattern"));
     pir::Value anchor = node->sink_op()->result(0);
-    node->set_stmt_pattern(AnchorPattern<Phrase>(
+    node->set_stmt_pattern(AnchorPattern(
         ops,
         anchor,
-        AnchorState<Phrase>({InitExprPromise(node->stmt_pattern(), anchor)})));
+        AnchorState({InitExprPromise(node->stmt_pattern(), anchor)})));
     return node;
   }
 };
 
 struct FuseUpstreamAnchorOperation {
-  template <typename Phrase>
-  PatternNodePtr<Phrase> operator()(PatternGraph<Phrase>* graph,
-                                    const PatternNodePtr<Phrase>& upstream,
-                                    const PatternNodePtr<Phrase>& downstream) {
+  PatternNodePtr operator()(PatternGraph* graph,
+                            const PatternNodePtr& upstream,
+                            const PatternNodePtr& downstream) {
     auto optional_transform_route =
         graph->policy_manager()
             .template GetPolicy<AnchorSearchPolicy>()
@@ -179,15 +161,15 @@ struct FuseUpstreamAnchorOperation {
     auto transform_route = optional_transform_route.value();
 
     const auto merge_pattern_fn = [transform_route](
-                                      const StmtPattern<Phrase>& source,
-                                      const StmtPattern<Phrase>& destination) {
-      auto new_anchor_pattern = std::get<AnchorPattern<Phrase>>(
-          MergePattern<Phrase>(source, destination));
-      auto transformed_anchor_state = ApplyAnchorTransformRoute<Phrase>(
-          GetAnchorState(std::get<AnchorPattern<Phrase>>(destination)),
+                                      const StmtPattern& source,
+                                      const StmtPattern& destination) {
+      auto new_anchor_pattern =
+          std::get<AnchorPattern>(MergePattern(source, destination));
+      auto transformed_anchor_state = ApplyAnchorTransformRoute(
+          GetAnchorState(std::get<AnchorPattern>(destination)),
           transform_route);
       new_anchor_pattern.anchor_state.update(
-          GetAnchorState(std::get<AnchorPattern<Phrase>>(source)));
+          GetAnchorState(std::get<AnchorPattern>(source)));
       new_anchor_pattern.anchor_state.update(transformed_anchor_state);
       return new_anchor_pattern;
     };
@@ -195,27 +177,21 @@ struct FuseUpstreamAnchorOperation {
     auto merged_node = graph->MergeNode(upstream, downstream, merge_pattern_fn);
     graph->RemoveNode(upstream);
     graph->RemoveNode(downstream);
-    VLOG(4) << "upstream anchor: "
-            << std::get<AnchorPattern<Phrase>>(upstream->stmt_pattern())
-                   .anchor()
-                   .impl()
-            << ", downstream anchor: "
-            << std::get<AnchorPattern<Phrase>>(downstream->stmt_pattern())
-                   .anchor()
-                   .impl()
-            << ", merged node anchor: "
-            << std::get<AnchorPattern<Phrase>>(merged_node->stmt_pattern())
-                   .anchor()
-                   .impl();
+    VLOG(4)
+        << "upstream anchor: "
+        << std::get<AnchorPattern>(upstream->stmt_pattern()).anchor().impl()
+        << ", downstream anchor: "
+        << std::get<AnchorPattern>(downstream->stmt_pattern()).anchor().impl()
+        << ", merged node anchor: "
+        << std::get<AnchorPattern>(merged_node->stmt_pattern()).anchor().impl();
     return merged_node;
   }
 };
 
 struct FuseDownstreamAnchorOperation {
-  template <typename Phrase>
-  PatternNodePtr<Phrase> operator()(PatternGraph<Phrase>* graph,
-                                    const PatternNodePtr<Phrase>& upstream,
-                                    const PatternNodePtr<Phrase>& downstream) {
+  PatternNodePtr operator()(PatternGraph* graph,
+                            const PatternNodePtr& upstream,
+                            const PatternNodePtr& downstream) {
     auto optional_transform_route =
         graph->policy_manager()
             .template GetPolicy<AnchorSearchPolicy>()
@@ -229,15 +205,15 @@ struct FuseDownstreamAnchorOperation {
     auto transform_route = optional_transform_route.value();
 
     const auto merge_pattern_fn = [transform_route](
-                                      const StmtPattern<Phrase>& destination,
-                                      const StmtPattern<Phrase>& source) {
-      auto new_anchor_pattern = std::get<AnchorPattern<Phrase>>(
-          MergePattern<Phrase>(source, destination));
-      auto transformed_anchor_state = ApplyAnchorTransformRoute<Phrase>(
-          GetAnchorState(std::get<AnchorPattern<Phrase>>(destination)),
+                                      const StmtPattern& destination,
+                                      const StmtPattern& source) {
+      auto new_anchor_pattern =
+          std::get<AnchorPattern>(MergePattern(source, destination));
+      auto transformed_anchor_state = ApplyAnchorTransformRoute(
+          GetAnchorState(std::get<AnchorPattern>(destination)),
           transform_route);
       new_anchor_pattern.anchor_state.update(
-          GetAnchorState(std::get<AnchorPattern<Phrase>>(source)));
+          GetAnchorState(std::get<AnchorPattern>(source)));
       new_anchor_pattern.anchor_state.update(transformed_anchor_state);
       return new_anchor_pattern;
     };
@@ -245,54 +221,46 @@ struct FuseDownstreamAnchorOperation {
     auto merged_node = graph->MergeNode(upstream, downstream, merge_pattern_fn);
     graph->RemoveNode(upstream);
     graph->RemoveNode(downstream);
-    VLOG(4) << "upstream anchor: "
-            << std::get<AnchorPattern<Phrase>>(upstream->stmt_pattern())
-                   .anchor()
-                   .impl()
-            << ", downstream anchor: "
-            << std::get<AnchorPattern<Phrase>>(downstream->stmt_pattern())
-                   .anchor()
-                   .impl()
-            << ", merged node anchor: "
-            << std::get<AnchorPattern<Phrase>>(merged_node->stmt_pattern())
-                   .anchor()
-                   .impl();
+    VLOG(4)
+        << "upstream anchor: "
+        << std::get<AnchorPattern>(upstream->stmt_pattern()).anchor().impl()
+        << ", downstream anchor: "
+        << std::get<AnchorPattern>(downstream->stmt_pattern()).anchor().impl()
+        << ", merged node anchor: "
+        << std::get<AnchorPattern>(merged_node->stmt_pattern()).anchor().impl();
     return merged_node;
   }
 };
 
 struct SplitRecomputeOperation {
-  template <typename Phrase>
-  void operator()(PatternGraph<Phrase>* graph,
-                  PatternNodePtr<Phrase> upstream) {
+  void operator()(PatternGraph* graph, PatternNodePtr upstream) {
     upstream->set_stmt_pattern(RecoverAnchorPatternToTrivial(
-        std::get<AnchorPattern<Phrase>>(upstream->stmt_pattern())));
+        std::get<AnchorPattern>(upstream->stmt_pattern())));
 
     MergeTrivialPatternOperation()(graph, upstream);
   }
 };
 
 struct HorizontalFusionOperation {
-  template <typename Phrase>
-  PatternNodePtr<Phrase> operator()(PatternGraph<Phrase>* graph,
-                                    const PatternNodePtr<Phrase>& i,
-                                    const PatternNodePtr<Phrase>& j) {
+  PatternNodePtr operator()(PatternGraph* graph,
+                            const PatternNodePtr& i,
+                            const PatternNodePtr& j) {
     VLOG(4) << "Start HorizontalFusionOperation";
     PADDLE_ENFORCE_EQ(
         GetPatternName(i->stmt_pattern()),
-        HorizontalFusionPattern<Phrase>::name(),
+        HorizontalFusionPattern::name(),
         phi::errors::PreconditionNotMet(
             "The pattern of the first node should be HorizontalFusionPattern, "
             "but got %s.",
             GetPatternName(i->stmt_pattern())));
     PADDLE_ENFORCE_EQ(
         GetPatternName(j->stmt_pattern()),
-        HorizontalFusionPattern<Phrase>::name(),
+        HorizontalFusionPattern::name(),
         phi::errors::PreconditionNotMet(
             "The pattern of the second node should be HorizontalFusionPattern, "
             "but got %s.",
             GetPatternName(j->stmt_pattern())));
-    auto merged_node = graph->MergeNode(i, j, MergePattern<Phrase>);
+    auto merged_node = graph->MergeNode(i, j, MergePattern);
     VLOG(4) << "MergeHorizontalPattern: \ni " << i->DebugStr() << "\nj "
             << j->DebugStr() << "\nmerged " << merged_node->DebugStr();
     graph->RemoveNode(i);

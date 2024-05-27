@@ -18,9 +18,8 @@
 
 namespace cinn::fusion {
 
-template <typename T>
-bool IsDownstreamNode(const PatternNodePtr<T> start,
-                      const PatternNodePtr<T> target) {
+bool IsDownstreamNode(const PatternNodePtr& start,
+                      const PatternNodePtr& target) {
   if (start == target) return true;
   for (const auto& down_node : start->downstream()) {
     if (IsDownstreamNode(down_node, target)) return true;
@@ -28,9 +27,8 @@ bool IsDownstreamNode(const PatternNodePtr<T> start,
   return false;
 }
 
-template <typename T>
-bool IsIndirectDownstreamNode(const PatternNodePtr<T> start,
-                              const PatternNodePtr<T> target) {
+bool IsIndirectDownstreamNode(const PatternNodePtr& start,
+                              const PatternNodePtr& target) {
   for (const auto& node : start->downstream()) {
     if (node == target) continue;
     if (IsDownstreamNode(node, target)) return true;
@@ -38,9 +36,8 @@ bool IsIndirectDownstreamNode(const PatternNodePtr<T> start,
   return false;
 }
 
-template <typename T>
-bool GeneralTopoPolicy<T>::CanFuse(const PatternNodePtr<T>& first,
-                                   const PatternNodePtr<T>& second) {
+bool GeneralTopoPolicy::CanFuse(const PatternNodePtr& first,
+                                const PatternNodePtr& second) {
   VLOG(4) << "Start GeneralTopoPolicy";
   return !(IsIndirectDownstreamNode(first, second) ||
            IsIndirectDownstreamNode(second, first));

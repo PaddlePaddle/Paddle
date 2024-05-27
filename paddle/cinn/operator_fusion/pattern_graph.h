@@ -21,20 +21,18 @@
 
 namespace cinn::fusion {
 
-template <typename T>
-using PatternNodePtrSet = std::unordered_set<PatternNodePtr<T>>;
-template <typename T>
-using MergePatternFn =
-    std::function<StmtPattern<T>(const StmtPattern<T>&, const StmtPattern<T>&)>;
+using PatternNodePtrSet = std::unordered_set<PatternNodePtr>;
 
-template <typename T>
+using MergePatternFn =
+    std::function<StmtPattern(const StmtPattern&, const StmtPattern&)>;
+
 class PatternGraph {
  public:
-  PatternGraph(const std::vector<PatternContent<T>>& nodes,
+  PatternGraph(const std::vector<PatternContent>& nodes,
                const std::vector<pir::Value>& outputs,
-               const PolicyManager<T> policy_manager);
+               const PolicyManager policy_manager);
 
-  std::vector<PatternNodePtr<T>> ClusterOps();
+  std::vector<PatternNodePtr> ClusterOps();
 
   void SinkTrivialPattern();
   void HorizontalFusion();
@@ -45,25 +43,25 @@ class PatternGraph {
   void AnchorPatternFusion();
   void SplitRecomputePattern();
 
-  void RemoveNode(const PatternNodePtr<T>& node);
-  void AppendNode(const PatternNodePtr<T>& node);
+  void RemoveNode(const PatternNodePtr& node);
+  void AppendNode(const PatternNodePtr& node);
   std::string GraphInfo() const;
-  PatternNodePtr<T> MergeNode(const PatternNodePtr<T>& upstream,
-                              const PatternNodePtr<T>& downstream,
-                              MergePatternFn<T> merge_pattern_fn);
-  std::vector<PatternNodePtr<T>> SortByTopoOrder();
-  std::vector<PatternNodePtr<T>> SortByReverseTopoOrder();
+  PatternNodePtr MergeNode(const PatternNodePtr& upstream,
+                           const PatternNodePtr& downstream,
+                           MergePatternFn merge_pattern_fn);
+  std::vector<PatternNodePtr> SortByTopoOrder();
+  std::vector<PatternNodePtr> SortByReverseTopoOrder();
 
-  const PatternNodePtrSet<T>& all_pattern_nodes() const {
+  const PatternNodePtrSet& all_pattern_nodes() const {
     return all_pattern_nodes_;
   }
   const std::vector<pir::Value>& outputs() const { return outputs_; }
-  const PolicyManager<T>& policy_manager() const { return policy_manager_; }
+  const PolicyManager& policy_manager() const { return policy_manager_; }
 
  private:
-  PatternNodePtrSet<T> all_pattern_nodes_;
+  PatternNodePtrSet all_pattern_nodes_;
   std::vector<pir::Value> outputs_;
-  PolicyManager<T> policy_manager_;
+  PolicyManager policy_manager_;
 };
 
 }  // namespace cinn::fusion

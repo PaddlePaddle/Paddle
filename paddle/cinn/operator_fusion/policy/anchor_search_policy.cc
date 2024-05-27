@@ -81,14 +81,13 @@ std::optional<AnchorTransformRoute> FindAnchorTransformRoute(
   return result;
 }
 
-template <typename T>
 std::optional<AnchorTransformRoute>
-AnchorSearchPolicy<T>::FindUpstreamAnchorTransformRoute(
-    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
+AnchorSearchPolicy::FindUpstreamAnchorTransformRoute(
+    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
   const auto& upstream_anchor_pattern =
-      std::get<AnchorPattern<T>>(upstream->stmt_pattern());
+      std::get<AnchorPattern>(upstream->stmt_pattern());
   const auto& downstream_anchor_pattern =
-      std::get<AnchorPattern<T>>(downstream->stmt_pattern());
+      std::get<AnchorPattern>(downstream->stmt_pattern());
 
   return FindAnchorTransformRoute(
       upstream_anchor_pattern.anchor(),
@@ -97,14 +96,13 @@ AnchorSearchPolicy<T>::FindUpstreamAnchorTransformRoute(
                                   downstream_anchor_pattern.ops())));
 }
 
-template <typename T>
 std::optional<AnchorTransformRoute>
-AnchorSearchPolicy<T>::FindDownstreamAnchorTransformRoute(
-    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
+AnchorSearchPolicy::FindDownstreamAnchorTransformRoute(
+    const PatternNodePtr& upstream, const PatternNodePtr& downstream) {
   const auto& upstream_anchor_pattern =
-      std::get<AnchorPattern<T>>(upstream->stmt_pattern());
+      std::get<AnchorPattern>(upstream->stmt_pattern());
   const auto& downstream_anchor_pattern =
-      std::get<AnchorPattern<T>>(downstream->stmt_pattern());
+      std::get<AnchorPattern>(downstream->stmt_pattern());
 
   return FindAnchorTransformRoute(
       downstream_anchor_pattern.anchor(),
@@ -113,9 +111,8 @@ AnchorSearchPolicy<T>::FindDownstreamAnchorTransformRoute(
                                   downstream_anchor_pattern.ops())));
 }
 
-template <typename T>
-bool AnchorSearchPolicy<T>::HasUpstreamAnchor(
-    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
+bool AnchorSearchPolicy::HasUpstreamAnchor(const PatternNodePtr& upstream,
+                                           const PatternNodePtr& downstream) {
   auto result =
       FindUpstreamAnchorTransformRoute(upstream, downstream) != std::nullopt;
   VLOG(4) << "[AnchorSearchPolicy] HasUpstreamAnchor between " << upstream
@@ -123,9 +120,8 @@ bool AnchorSearchPolicy<T>::HasUpstreamAnchor(
   return result;
 }
 
-template <typename T>
-bool AnchorSearchPolicy<T>::HasDownstreamAnchor(
-    const PatternNodePtr<T>& upstream, const PatternNodePtr<T>& downstream) {
+bool AnchorSearchPolicy::HasDownstreamAnchor(const PatternNodePtr& upstream,
+                                             const PatternNodePtr& downstream) {
   auto result =
       FindDownstreamAnchorTransformRoute(upstream, downstream) != std::nullopt;
   VLOG(4) << "[AnchorSearchPolicy] HasDownstreamAnchor between " << upstream
@@ -133,6 +129,4 @@ bool AnchorSearchPolicy<T>::HasDownstreamAnchor(
   return result;
 }
 
-template class AnchorSearchPolicy<FrontendStage>;
-template class AnchorSearchPolicy<BackendStage>;
 }  // namespace cinn::fusion

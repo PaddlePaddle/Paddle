@@ -23,24 +23,21 @@ struct GraphPattern {};     // not implemented.
 struct NodePairPattern {};  // not implemented.
 struct ReverseTopoNodePairPattern {};
 
-template <typename Kind,
-          typename Phrase,
-          typename GraphMatcher,
-          typename GraphOperation>
+template <typename Kind, typename GraphMatcher, typename GraphOperation>
 struct SearchAlgorithm {};
 
-template <typename Phrase, typename GraphMatcher, typename GraphOperation>
-struct SearchAlgorithm<NodePattern, Phrase, GraphMatcher, GraphOperation> {
-  PatternGraph<Phrase>* graph_;
-  PatternNodePtrSet<Phrase> visited_nodes;
+template <typename GraphMatcher, typename GraphOperation>
+struct SearchAlgorithm<NodePattern, GraphMatcher, GraphOperation> {
+  PatternGraph* graph_;
+  PatternNodePtrSet visited_nodes;
 
-  explicit SearchAlgorithm(PatternGraph<Phrase>* graph) {
+  explicit SearchAlgorithm(PatternGraph* graph) {
     VLOG(4) << "Create NodePattern algorithm.";
     graph_ = graph;
   }
 
-  PatternNodePtr<Phrase> FindMatchedNode() {
-    for (PatternNodePtr<Phrase> iter_node : graph_->all_pattern_nodes()) {
+  PatternNodePtr FindMatchedNode() {
+    for (PatternNodePtr iter_node : graph_->all_pattern_nodes()) {
       if (GraphMatcher()(*graph_, iter_node) &&
           !visited_nodes.count(iter_node)) {
         visited_nodes.insert(iter_node);
@@ -54,7 +51,7 @@ struct SearchAlgorithm<NodePattern, Phrase, GraphMatcher, GraphOperation> {
 
   void operator()() {
     while (true) {
-      PatternNodePtr<Phrase> node = FindMatchedNode();
+      PatternNodePtr node = FindMatchedNode();
       if (node == nullptr) {
         break;
       }
@@ -63,19 +60,17 @@ struct SearchAlgorithm<NodePattern, Phrase, GraphMatcher, GraphOperation> {
   }
 };
 
-template <typename Phrase, typename GraphMatcher, typename GraphOperation>
-struct SearchAlgorithm<NodePairPattern, Phrase, GraphMatcher, GraphOperation> {
-  PatternGraph<Phrase>* graph_;
-  std::set<std::pair<PatternNodePtr<Phrase>, PatternNodePtr<Phrase>>>
-      visited_node_pair;
-  explicit SearchAlgorithm(PatternGraph<Phrase>* graph) {
+template <typename GraphMatcher, typename GraphOperation>
+struct SearchAlgorithm<NodePairPattern, GraphMatcher, GraphOperation> {
+  PatternGraph* graph_;
+  std::set<std::pair<PatternNodePtr, PatternNodePtr>> visited_node_pair;
+  explicit SearchAlgorithm(PatternGraph* graph) {
     VLOG(4) << "Create NodePairPattern algorithm.";
     graph_ = graph;
   }
-  std::optional<std::pair<PatternNodePtr<Phrase>, PatternNodePtr<Phrase>>>
-  FindMatchedPair() {
-    for (PatternNodePtr<Phrase> i : graph_->all_pattern_nodes()) {
-      for (PatternNodePtr<Phrase> j : graph_->all_pattern_nodes()) {
+  std::optional<std::pair<PatternNodePtr, PatternNodePtr>> FindMatchedPair() {
+    for (PatternNodePtr i : graph_->all_pattern_nodes()) {
+      for (PatternNodePtr j : graph_->all_pattern_nodes()) {
         if (i == j) continue;
         const auto& pair = std::make_pair(i, j);
         if (GraphMatcher()(*graph_, i, j) && !visited_node_pair.count(pair)) {
@@ -98,16 +93,15 @@ struct SearchAlgorithm<NodePairPattern, Phrase, GraphMatcher, GraphOperation> {
   }
 };
 
-template <typename Phrase, typename GraphMatcher, typename GraphOperation>
+template <typename GraphMatcher, typename GraphOperation>
 struct SearchAlgorithm<ReverseTopoNodePairPattern,
-                       Phrase,
                        GraphMatcher,
                        GraphOperation> {
-  PatternGraph<Phrase>* graph_;
-  std::queue<PatternNodePtr<Phrase>> reverse_topo_queue;
-  std::unordered_map<PatternNodePtr<Phrase>, int> degree;
+  PatternGraph* graph_;
+  std::queue<PatternNodePtr> reverse_topo_queue;
+  std::unordered_map<PatternNodePtr, int> degree;
 
-  explicit SearchAlgorithm(PatternGraph<Phrase>* graph) {
+  explicit SearchAlgorithm(PatternGraph* graph) {
     VLOG(4) << "Create ReverseTopoNodePairPattern algorithm.";
     graph_ = graph;
     for (const auto& node : graph_->all_pattern_nodes()) {
@@ -120,7 +114,7 @@ struct SearchAlgorithm<ReverseTopoNodePairPattern,
 
   void operator()() {
     while (!reverse_topo_queue.empty()) {
-      PatternNodePtr<Phrase> node = reverse_topo_queue.front();
+      PatternNodePtr node = reverse_topo_queue.front();
       reverse_topo_queue.pop();
 
       for (const auto& upstream : node->upstream()) {
@@ -140,14 +134,10 @@ struct SearchAlgorithm<ReverseTopoNodePairPattern,
   }
 };
 
-template <typename Kind,
-          typename Phrase,
-          typename GraphMatcher,
-          typename GraphOperation>
-void GraphTransformer(PatternGraph<Phrase>* graph) {
+template <typename Kind, typename GraphMatcher, typename GraphOperation>
+void GraphTransformer(PatternGraph* graph) {
   VLOG(4) << "Start GraphTransformer...";
-  auto alog =
-      SearchAlgorithm<Kind, Phrase, GraphMatcher, GraphOperation>(graph);
+  auto alog = SearchAlgorithm<Kind, GraphMatcher, GraphOperation>(graph);
   alog();
 }
 

@@ -20,14 +20,13 @@
 
 namespace cinn::fusion {
 
-template <typename T>
 struct PatternNode {
-  using PatternNodePtr = std::shared_ptr<PatternNode<T>>;
-  using MergePatternFn = std::function<StmtPattern<T>(const StmtPattern<T>&,
-                                                      const StmtPattern<T>&)>;
+  using PatternNodePtr = std::shared_ptr<PatternNode>;
+  using MergePatternFn =
+      std::function<StmtPattern(const StmtPattern&, const StmtPattern&)>;
 
-  explicit PatternNode(const PatternContent<T>& content)
-      : sink_op_(content.op), stmt_pattern_(ConvertToStmtPattern<T>(content)) {}
+  explicit PatternNode(const PatternContent& content)
+      : sink_op_(content.op), stmt_pattern_(ConvertToStmtPattern(content)) {}
 
   explicit PatternNode(PatternNodePtr fused_up_node,
                        PatternNodePtr fused_down_node,
@@ -60,10 +59,8 @@ struct PatternNode {
   }
 
   pir::Operation* sink_op() const { return sink_op_; }
-  const StmtPattern<T>& stmt_pattern() const { return stmt_pattern_; }
-  void set_stmt_pattern(const StmtPattern<T>& pattern) {
-    stmt_pattern_ = pattern;
-  }
+  const StmtPattern& stmt_pattern() const { return stmt_pattern_; }
+  void set_stmt_pattern(const StmtPattern& pattern) { stmt_pattern_ = pattern; }
   const std::vector<PatternNodePtr>& upstream() const { return upstream_; }
   const std::vector<PatternNodePtr>& downstream() const { return downstream_; }
   void AddNodeToUpstream(PatternNodePtr node) { upstream_.push_back(node); }
@@ -80,7 +77,7 @@ struct PatternNode {
   void UniqueDownstream() { downstream_ = UniqueVectorBySet(downstream_); }
 
  private:
-  StmtPattern<T> stmt_pattern_;
+  StmtPattern stmt_pattern_;
   pir::Operation* sink_op_;
 
   std::vector<PatternNodePtr> upstream_;
@@ -88,5 +85,5 @@ struct PatternNode {
 };
 
 template <typename T>
-using PatternNodePtr = std::shared_ptr<PatternNode<T>>;
+using PatternNodePtr = std::shared_ptr<PatternNode>;
 }  // namespace cinn::fusion

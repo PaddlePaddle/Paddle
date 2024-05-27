@@ -36,21 +36,17 @@
 
 namespace cinn::fusion {
 
-template <typename T>
-ReducePattern<T> ToReducePattern(const StmtPattern<T>& second) {
-  return std::get<ReducePattern<T>>(second);
+ReducePattern ToReducePattern(const StmtPattern& second) {
+  return std::get<ReducePattern>(second);
 }
 
-template <typename T>
-std::string GetPatternName(const StmtPattern<T>& s) {
+std::string GetPatternName(const StmtPattern& s) {
   return std::visit([](const auto& impl) { return impl.name(); }, s.variant());
 }
 
-template <typename T>
-StmtPattern<T> ConvertToStmtPattern(const PatternContent<T>& content);
+StmtPattern ConvertToStmtPattern(const PatternContent& content);
 
-template <typename T>
-std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern<T>& pattern) {
+std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern) {
   return std::visit([](const auto& impl) { return impl.ops(); },
                     pattern.variant());
 }
@@ -61,8 +57,7 @@ using LoopFramework = std::vector<symbol::DimExpr>;
 // std::optional will cause SegmentFault, TODO: fix this.
 using MaybeLoopFramework = LoopFramework;
 
-template <typename T>
-MaybeLoopFramework GetLoopFramework(const StmtPattern<T>& pattern);
+MaybeLoopFramework GetLoopFramework(const StmtPattern& pattern);
 
 static MaybeLoopFramework SqueezeLoopFramework(
     const MaybeLoopFramework& loop_framework) {
@@ -77,9 +72,7 @@ static MaybeLoopFramework SqueezeLoopFramework(
   return result;
 }
 
-template <typename T>
-bool IsLoopFrameworkEqual(const StmtPattern<T>& lhs,
-                          const StmtPattern<T>& rhs) {
+bool IsLoopFrameworkEqual(const StmtPattern& lhs, const StmtPattern& rhs) {
   auto lhs_loop = GetLoopFramework(lhs);
   auto rhs_loop = GetLoopFramework(rhs);
   VLOG(4) << "lhs loop range is:" << utils::Join(lhs_loop, ",");
@@ -87,15 +80,13 @@ bool IsLoopFrameworkEqual(const StmtPattern<T>& lhs,
   return SqueezeLoopFramework(lhs_loop) == SqueezeLoopFramework(rhs_loop);
 }
 
-template <typename T>
-pir::Operation* GetSinkOpInPattern(const StmtPattern<T>& pattern) {
+pir::Operation* GetSinkOpInPattern(const StmtPattern& pattern) {
   return std::visit([](const auto& impl) { return impl.sink_op(); },
                     pattern.variant());
 }
 
-template <typename T>
 struct LoopFrameworkVisitor {
-  MaybeLoopFramework operator()(const ReducePattern<T>& pattern) {
+  MaybeLoopFramework operator()(const ReducePattern& pattern) {
     pir::Operation* reduce_op = pattern.GetReduceOp();
     const auto& flatten_loops = GetDimExprsFromValue(reduce_op->result(0));
     const auto& reduce_axes = GetReduceAxisIdx(reduce_op);
@@ -104,21 +95,21 @@ struct LoopFrameworkVisitor {
     return ConcatVector(flatten_loops, reduce_loops);
   }
 
-  MaybeLoopFramework operator()(const ReduceTreePattern<T>& pattern) {
-    return GetLoopFramework(StmtPattern<T>(pattern.GetRootPattern()));
+  MaybeLoopFramework operator()(const ReduceTreePattern& pattern) {
+    return GetLoopFramework(StmtPattern(pattern.GetRootPattern()));
   }
 
-  MaybeLoopFramework operator()(const TrivialPattern<T>& pattern) {
+  MaybeLoopFramework operator()(const TrivialPattern& pattern) {
     pir::Operation* t_op = pattern.sink_op();
     const auto& exprs = GetDimExprsFromValue(t_op->result(0));
     return exprs;
   }
 
-  MaybeLoopFramework operator()(const HorizontalFusionPattern<T>& pattern) {
+  MaybeLoopFramework operator()(const HorizontalFusionPattern& pattern) {
     // Horizontal Fusion must have the same loop framework.
     VLOG(4) << "Get horizontal fusion pattern for loop framework.";
-    const auto& base_exprs = GetLoopFramework(
-        StmtPattern<T>(pattern.padding_patterns_.back().pattern));
+    const auto& base_exprs =
+        GetLoopFramework(StmtPattern(pattern.padding_patterns_.back().pattern));
     const auto& padding_vector = pattern.padding_patterns_.back().padding_pos;
     std::vector<symbol::DimExpr> exprs(
         base_exprs.size() + padding_vector.size(), 1);
@@ -132,17 +123,16 @@ struct LoopFrameworkVisitor {
     return exprs;
   }
 
-  MaybeLoopFramework operator()(
-      const ReduceTreePlusTrivialPattern<T>& pattern) {
+  MaybeLoopFramework operator()(const ReduceTreePlusTrivialPattern& pattern) {
     const auto& sink_trivial = pattern.sink_trivial;
     const auto& trivial_loop =
-        GetLoopFramework(StmtPattern<T>(pattern.sink_trivial));
+        GetLoopFramework(StmtPattern(pattern.sink_trivial));
     if (pattern.fake_reduce_iter_idx.empty()) {
       // we add reduce loop to the end;
       int reduce_axes_len =
           GetReduceAxisIdx(pattern.tree.GetRootPattern().GetReduceOp()).size();
       const auto& reduce_loop =
-          GetLoopFramework(StmtPattern<T>(pattern.tree.GetRootPattern()));
+          GetLoopFramework(StmtPattern(pattern.tree.GetRootPattern()));
       return ConcatVector(
           trivial_loop,
           SliceVector(reduce_loop, -reduce_axes_len, reduce_loop.size()));
@@ -157,49 +147,42 @@ struct LoopFrameworkVisitor {
     }
   }
 
-  MaybeLoopFramework operator()(const UnsupportPattern<T>& pattern) {
+  MaybeLoopFramework operator()(const UnsupportPattern& pattern) {
     PADDLE_ENFORCE(false, "Not support GetLoopRange.");
   }
 
-  MaybeLoopFramework operator()(const AnchorPattern<T>& pattern) {
+  MaybeLoopFramework operator()(const AnchorPattern& pattern) {
     const auto& exprs = GetDimExprsFromValue(pattern.anchor());
     return exprs;
   }
 };
 
-template <typename T>
-MaybeLoopFramework GetLoopFramework(const StmtPattern<T>& pattern) {
-  return std::visit(LoopFrameworkVisitor<T>(), pattern.variant());
+MaybeLoopFramework GetLoopFramework(const StmtPattern& pattern) {
+  return std::visit(LoopFrameworkVisitor(), pattern.variant());
 }
 
-template <typename T>
-bool IsReducePattern(const StmtPattern<T>& pattern) {
-  return std::holds_alternative<ReducePattern<T>>(pattern);
+bool IsReducePattern(const StmtPattern& pattern) {
+  return std::holds_alternative<ReducePattern>(pattern);
 }
 
-template <typename T>
-bool IsReduceTreePattern(const StmtPattern<T>& pattern) {
-  return std::holds_alternative<ReduceTreePattern<T>>(pattern);
+bool IsReduceTreePattern(const StmtPattern& pattern) {
+  return std::holds_alternative<ReduceTreePattern>(pattern);
 }
 
-template <typename T>
-bool IsOpsDependents(const StmtPattern<T>& pattern) {
-  return std::holds_alternative<ReduceTreePattern<T>>(pattern);
+bool IsOpsDependents(const StmtPattern& pattern) {
+  return std::holds_alternative<ReduceTreePattern>(pattern);
 }
 
-template <typename T>
-bool IsUnsupportPattern(const StmtPattern<T>& pattern) {
-  return std::holds_alternative<UnsupportPattern<T>>(pattern);
+bool IsUnsupportPattern(const StmtPattern& pattern) {
+  return std::holds_alternative<UnsupportPattern>(pattern);
 }
 
-template <typename T>
-bool IsReduceTrivialPattern(const StmtPattern<T>& pattern) {
-  return std::holds_alternative<ReduceTreePlusTrivialPattern<T>>(pattern);
+bool IsReduceTrivialPattern(const StmtPattern& pattern) {
+  return std::holds_alternative<ReduceTreePlusTrivialPattern>(pattern);
 }
 
-template <typename T>
 std::unordered_set<pir::Value> GetPatternInputValuesIncludeInner(
-    const StmtPattern<T>& A) {
+    const StmtPattern& A) {
   std::unordered_set<pir::Value> result;
   for (const auto& op : GetOpsInPattern(A)) {
     for (const auto& value : op->operands()) {
@@ -209,9 +192,8 @@ std::unordered_set<pir::Value> GetPatternInputValuesIncludeInner(
   return result;
 }
 
-template <typename T>
 std::unordered_set<pir::Value> GetPatternOutputValuesIncludedInner(
-    const StmtPattern<T>& A) {
+    const StmtPattern& A) {
   std::unordered_set<pir::Value> result;
   for (const auto& op : GetOpsInPattern(A)) {
     for (const auto& value : op->results()) {
@@ -221,8 +203,7 @@ std::unordered_set<pir::Value> GetPatternOutputValuesIncludedInner(
   return result;
 }
 
-template <typename T>
-std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern<T>& A) {
+std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A) {
   auto all_input_values = GetPatternInputValuesIncludeInner(A);
   for (const auto& value : GetPatternOutputValuesIncludedInner(A)) {
     all_input_values.erase(value);
@@ -231,8 +212,7 @@ std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern<T>& A) {
   return all_input_values;
 }
 
-template <typename T>
-std::string StmtPatternDebugStr(const StmtPattern<T>& stmt) {
+std::string StmtPatternDebugStr(const StmtPattern& stmt) {
   std::stringstream ss;
   auto all_ops = GetOpsInPattern(stmt);
   ss << "StmtPattern, size " << all_ops.size() << " :\n";
@@ -252,9 +232,8 @@ static bool IsDirectUpstream(const pir::Operation* upstream,
   return false;
 }
 
-template <typename T>
-int InsertDownstreamIntoTree(const ReduceTreePattern<T>& upstream,
-                             ReduceTreePattern<T>& downstream) {  // NOLINT
+int InsertDownstreamIntoTree(const ReduceTreePattern& upstream,
+                             ReduceTreePattern& downstream) {  // NOLINT
   if (IsDirectUpstream(upstream.GetRootPattern().GetReduceOp(),
                        downstream.GetRootPattern().GetReduceOp())) {
     downstream.InsertChild(upstream);
@@ -267,10 +246,9 @@ int InsertDownstreamIntoTree(const ReduceTreePattern<T>& upstream,
   return insert_num;
 }
 
-template <typename T>
-StmtPattern<T> MergePatternImpl(const ReduceTreePattern<T>& upstream,
-                                const ReduceTreePattern<T>& downstream) {
-  ReduceTreePattern<T> result = downstream;  // copy first.
+StmtPattern MergePatternImpl(const ReduceTreePattern& upstream,
+                             const ReduceTreePattern& downstream) {
+  ReduceTreePattern result = downstream;  // copy first.
   int insert_num = InsertDownstreamIntoTree(upstream, result);
   CHECK(insert_num == 1) << "Must insert only once, but insert " << insert_num;
   return result;
@@ -315,17 +293,13 @@ inline auto GetPaddingVector(const MaybeLoopFramework& first,
   return std::tuple(padding_f, padding_s);
 }
 
-template <typename T>
-StmtPattern<T> MergePatternImpl(const HorizontalFusionPattern<T>& first,
-                                const HorizontalFusionPattern<T>& second) {
-  const auto& [f, s] =
-      GetPaddingVector(GetLoopFramework(StmtPattern<T>(first)),
-                       GetLoopFramework(StmtPattern<T>(second)));
-  typename HorizontalFusionPattern<T>::PaddingStmtPattern pad_first = {first,
-                                                                       f};
-  typename HorizontalFusionPattern<T>::PaddingStmtPattern pad_second = {second,
-                                                                        s};
-  return HorizontalFusionPattern<T>({pad_first, pad_second});
+StmtPattern MergePatternImpl(const HorizontalFusionPattern& first,
+                             const HorizontalFusionPattern& second) {
+  const auto& [f, s] = GetPaddingVector(GetLoopFramework(StmtPattern(first)),
+                                        GetLoopFramework(StmtPattern(second)));
+  typename HorizontalFusionPattern::PaddingStmtPattern pad_first = {first, f};
+  typename HorizontalFusionPattern::PaddingStmtPattern pad_second = {second, s};
+  return HorizontalFusionPattern({pad_first, pad_second});
 }
 
 template <typename A, typename B>
@@ -339,88 +313,78 @@ B FusePatternIfConnected(A up_pattern,
   }
 }
 
-template <typename T>
-StmtPattern<T> MergePatternImpl(const ReduceTreePattern<T>& first,
-                                const TrivialPattern<T>& second);
+StmtPattern MergePatternImpl(const ReduceTreePattern& first,
+                             const TrivialPattern& second);
 
-template <typename T>
-StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
-                                const ReducePattern<T>& second);
+StmtPattern MergePatternImpl(const TrivialPattern& first,
+                             const ReducePattern& second);
 
-template <typename T>
-StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
-                                const TrivialPattern<T>& second);
+StmtPattern MergePatternImpl(const TrivialPattern& first,
+                             const TrivialPattern& second);
 
-template <typename T>
-StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
-                                const ReduceTreePattern<T>& second) {
+StmtPattern MergePatternImpl(const TrivialPattern& first,
+                             const ReduceTreePattern& second) {
   auto connect_ops = FindDownstreamOps(first.sink_op());
 
   auto old_childs = second.childs();
-  std::vector<ReduceTreePattern<T>> new_childs;
+  std::vector<ReduceTreePattern> new_childs;
   for (const auto& old_child : old_childs) {
     new_childs.emplace_back(
         FusePatternIfConnected(first, old_child, connect_ops));
   }
 
-  return ReduceTreePattern<T>(
+  return ReduceTreePattern(
       new_childs,
       FusePatternIfConnected(first, second.GetRootPattern(), connect_ops));
 }
 
-template <typename T>
-StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
-                                const ReduceTreePlusTrivialPattern<T>& second) {
+StmtPattern MergePatternImpl(const TrivialPattern& first,
+                             const ReduceTreePlusTrivialPattern& second) {
   auto connect_ops = FindDownstreamOps(first.sink_op());
-  return ReduceTreePlusTrivialPattern<T>(
+  return ReduceTreePlusTrivialPattern(
       FusePatternIfConnected(first, second.tree, connect_ops),
       FusePatternIfConnected(first, second.sink_trivial, connect_ops));
 }
 
-template <typename T>
-StmtPattern<T> MergePatternImpl(const TrivialPattern<T>& first,
-                                const AnchorPattern<T>& second);
+StmtPattern MergePatternImpl(const TrivialPattern& first,
+                             const AnchorPattern& second);
 
-template <typename T>
-StmtPattern<T> MergePatternImpl(const AnchorPattern<T>& source,
-                                const AnchorPattern<T>& dest);
+StmtPattern MergePatternImpl(const AnchorPattern& source,
+                             const AnchorPattern& dest);
 
-template <typename T>
-StmtPattern<T> MergePattern(const StmtPattern<T>& first,
-                            const StmtPattern<T>& second) {
+StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
   VLOG(4) << "MergePattern: " << GetPatternName(first) << " x "
           << GetPatternName(second);
   const auto PatternMatch = adt::match{
-      [&](const ReduceTreePattern<T>& lhs, const ReduceTreePattern<T>& rhs) {
+      [&](const ReduceTreePattern& lhs, const ReduceTreePattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
-      [&](const ReduceTreePattern<T>& lhs, const TrivialPattern<T>& rhs) {
+      [&](const ReduceTreePattern& lhs, const TrivialPattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
-      [&](const TrivialPattern<T>& lhs, const ReducePattern<T>& rhs) {
+      [&](const TrivialPattern& lhs, const ReducePattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
-      [&](const TrivialPattern<T>& lhs, const TrivialPattern<T>& rhs) {
+      [&](const TrivialPattern& lhs, const TrivialPattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
-      [&](const TrivialPattern<T>& lhs, const ReduceTreePattern<T>& rhs) {
+      [&](const TrivialPattern& lhs, const ReduceTreePattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
-      [&](const TrivialPattern<T>& lhs,
-          const ReduceTreePlusTrivialPattern<T>& rhs) {
+      [&](const TrivialPattern& lhs, const ReduceTreePlusTrivialPattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
-      [&](const TrivialPattern<T>& lhs, const AnchorPattern<T>& rhs) {
+      [&](const TrivialPattern& lhs, const AnchorPattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
-      [&](const AnchorPattern<T>& lhs, const AnchorPattern<T>& rhs) {
+      [&](const AnchorPattern& lhs, const AnchorPattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
-      [&](const HorizontalFusionPattern<T>& lhs,
-          const HorizontalFusionPattern<T>& rhs) {
+      [&](const HorizontalFusionPattern& lhs,
+          const HorizontalFusionPattern& rhs) {
         return MergePatternImpl(lhs, rhs);
       },
-      [&](const auto& lhs, const auto& rhs) -> StmtPattern<T> {
+      [&](const auto& lhs, const auto& rhs) -> StmtPattern {
         CHECK(false) << "Found not support merge!" << GetPatternName(first)
                      << "X" << GetPatternName(second);
       },
@@ -428,47 +392,38 @@ StmtPattern<T> MergePattern(const StmtPattern<T>& first,
   return std::visit(PatternMatch, first.variant(), second.variant());
 }
 
-template <typename T>
-ExprPromise<T> InitExprPromiseImpl(const TrivialPattern<T>& pattern,
-                                   pir::Value anchor);
+ExprPromise InitExprPromiseImpl(const TrivialPattern& pattern,
+                                pir::Value anchor);
 
-template <typename T>
-ExprPromise<T> InitExprPromiseImpl(const ReducePattern<T>& pattern,
-                                   pir::Value anchor);
+ExprPromise InitExprPromiseImpl(const ReducePattern& pattern,
+                                pir::Value anchor);
 
-template <typename T>
-ExprPromise<T> InitExprPromiseImpl(const ReduceTreePattern<T>& pattern,
-                                   pir::Value anchor) {
+ExprPromise InitExprPromiseImpl(const ReduceTreePattern& pattern,
+                                pir::Value anchor) {
   return InitExprPromiseImpl(pattern.GetRootPattern(), anchor);
 }
 
 template <typename T, template <typename> typename PATTERN>
-ExprPromise<T> InitExprPromiseImpl(const PATTERN<T>& pattern,
-                                   pir::Value anchor) {
+ExprPromise InitExprPromiseImpl(const PATTERN& pattern, pir::Value anchor) {
   PADDLE_THROW("Can not Init ExprPromise");
 }
 
-template <typename T>
-ExprPromise<T> InitExprPromise(const StmtPattern<T>& pattern,
-                               pir::Value anchor) {
+ExprPromise InitExprPromise(const StmtPattern& pattern, pir::Value anchor) {
   return std::visit(
       [anchor](const auto& arg) { return InitExprPromiseImpl(arg, anchor); },
       pattern.variant());
 }
 
-template <typename T>
-TrivialPattern<T> RecoverAnchorPatternToTrivial(
-    const AnchorPattern<T>& anchor_pattern);
+TrivialPattern RecoverAnchorPatternToTrivial(
+    const AnchorPattern& anchor_pattern);
 
-template <typename T>
-AnchorState<T> GetAnchorState(const AnchorPattern<T>& pattern) {
+AnchorState GetAnchorState(const AnchorPattern& pattern) {
   return pattern.anchor_state;
 }
 
-template <typename T>
-AnchorState<T> ApplyAnchorTransformRoute(const AnchorState<T>& anchor_state,
-                                         const AnchorTransformRoute& route) {
-  AnchorState<T> result = anchor_state;
+AnchorState ApplyAnchorTransformRoute(const AnchorState& anchor_state,
+                                      const AnchorTransformRoute& route) {
+  AnchorState result = anchor_state;
   for (auto promise : result.promise) {
     promise.update(route);
   }
