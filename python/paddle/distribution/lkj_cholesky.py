@@ -14,6 +14,7 @@
 
 import math
 import operator
+from collections.abc import Sequence
 from functools import reduce
 
 import paddle
@@ -164,13 +165,17 @@ class LKJCholesky(distribution.Distribution):
         self.dim = dim
         if not self.dim >= 2:
             raise ValueError(
-                f"Expected dim to be an integer greater than or equal to 2. Found dim={dim}."
+                f"Expected dim greater than or equal to 2. Found dim={dim}."
             )
+        elif not isinstance(self.dim, int):
+            raise TypeError(f"Expected dim to be an integer. Found dim={dim}.")
+
+        if not paddle.all(self.concentration > 0):
+            raise ValueError("The arg of `concentration` must be positive.")
 
         self.concentration = concentration
         if isinstance(self.concentration, float):
             self.concentration = (self.concentration,)
-            # self.concentration = paddle.to_tensor([self.concentration])
 
         if not isinstance(self.concentration, paddle.Tensor):
             self.concentration = paddle.to_tensor(self.concentration)
@@ -304,6 +309,9 @@ class LKJCholesky(distribution.Distribution):
 
     def sample(self, sample_shape=()):
         """Generate a sample using the specified sampling method."""
+        if not isinstance(sample_shape, Sequence):
+            raise TypeError('sample shape must be Sequence object.')
+
         # for paddle.static, U need to set sample_shape
         if sample_shape == ():
             sample_shape = (1,)

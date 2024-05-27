@@ -255,5 +255,29 @@ class TestChi2SampleKS(unittest.TestCase):
         return ks < 0.02
 
 
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME),
+    [
+        ('chi2_test_err'),
+    ],
+)
+class Chi2TestError(unittest.TestCase):
+    @parameterize.parameterize_func(
+        [
+            (-1.0, ValueError),  # df < 0
+        ]
+    )
+    def test_bad_parameter(self, df, error):
+        with paddle.base.dygraph.guard(self.place):
+            self.assertRaises(error, chi2.Chi2, df)
+
+    @parameterize.parameterize_func([(10,)])  # not sequence object sample shape
+    def test_bad_sample_shape(self, shape):
+        with paddle.base.dygraph.guard(self.place):
+            _chi2 = chi2.Chi2(1.0)
+            self.assertRaises(TypeError, _chi2.sample, shape)
+
+
 if __name__ == '__main__':
     unittest.main()

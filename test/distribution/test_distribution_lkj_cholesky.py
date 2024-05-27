@@ -139,5 +139,30 @@ class TestLKJCholeskyLogProb(unittest.TestCase):
         return logabsdet
 
 
+@parameterize.place(config.DEVICES)
+@parameterize.parameterize_cls(
+    (parameterize.TEST_CASE_NAME),
+    [
+        ('lkj_cholesky_test_err'),
+    ],
+)
+class LKJCholeskyTestError(unittest.TestCase):
+    @parameterize.parameterize_func(
+        [
+            (1, ValueError),  # dim < 2
+            (3.0, ValueError),  # dim is float
+        ]
+    )
+    def test_bad_parameter(self, dim, error):
+        with paddle.base.dygraph.guard(self.place):
+            self.assertRaises(error, lkj_cholesky.LKJCholesky, dim)
+
+    @parameterize.parameterize_func([(10,)])  # not sequence object sample shape
+    def test_bad_sample_shape(self, shape):
+        with paddle.base.dygraph.guard(self.place):
+            lkj = lkj_cholesky.LKJCholesky(3)
+            self.assertRaises(TypeError, lkj.sample, shape)
+
+
 if __name__ == '__main__':
     unittest.main()

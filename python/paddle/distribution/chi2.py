@@ -47,6 +47,9 @@ class Chi2(Gamma):
                 'Chi2',
             )
 
+        if not df > 0:
+            raise ValueError("The arg of `df` must be positive.")
+
         # Get/convert concentration to tensor.
         if self._validate_args(df):
             self.concentration = 0.5 * df
