@@ -7976,8 +7976,8 @@ def isin(x, test_x, assume_unique=False, invert=False, name=None):
     Tests if each element of `x` is in `test_x`.
 
     Args:
-        x (Tensor): The input Tensor. Supported data type: 'float32', 'float64', 'int32', 'int64'.
-        test_x (Tensor): Tensor values against which to test for each input element. Supported data type: 'float32', 'float64', 'int32', 'int64'.
+        x (Tensor): The input Tensor. Supported data type: 'bfloat16', 'float16', 'float32', 'float64', 'int32', 'int64'.
+        test_x (Tensor): Tensor values against which to test for each input element. Supported data type: 'bfloat16', 'float16', 'float32', 'float64', 'int32', 'int64'.
         assume_unique (bool, optional): If True, indicates both `x` and `test_x` contain unique elements, which could make the calculation faster. Default: False.
         invert (bool, optional): Indicate whether to invert the boolean return tensor. If True, invert the results. Default: False.
         name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
@@ -8065,6 +8065,8 @@ def isin(x, test_x, assume_unique=False, invert=False, name=None):
         x,
         "x",
         [
+            'uint16',
+            'float16',
             'float32',
             'float64',
             'int32',
@@ -8077,6 +8079,8 @@ def isin(x, test_x, assume_unique=False, invert=False, name=None):
         test_x,
         "test_x",
         [
+            'uint16',
+            'float16',
             'float32',
             'float64',
             'int32',
@@ -8090,8 +8094,9 @@ def isin(x, test_x, assume_unique=False, invert=False, name=None):
         x = x.reshape([1])
         x_zero_dim = True
 
-    size_x = paddle.cast(paddle.numel(x), 'float32')
-    if test_x.numel() < 10.0 * paddle.pow(size_x, 0.145):
+    size_x = math.prod(x.shape)
+    size_t = math.prod(test_x.shape)
+    if size_t < math.pow(size_x, 0.145) * 10.0:
         # use brute-force searching if the test_x size is small
         if len(x.shape) == 0:
             return paddle.zeros([], dtype='bool')
@@ -8112,13 +8117,23 @@ def isin(x, test_x, assume_unique=False, invert=False, name=None):
             sorted_x = all_elements[sorted_index]
 
             duplicate_mask = paddle.full_like(sorted_index, False, dtype='bool')
-            duplicate_mask[:-1] = sorted_x[1:] == sorted_x[:-1]
+            if not in_dynamic_mode():
+                duplicate_mask = paddle.static.setitem(
+                    duplicate_mask,
+                    paddle.arange(duplicate_mask.numel() - 1),
+                    sorted_x[1:] == sorted_x[:-1],
+                )
+            else:
+                duplicate_mask[:-1] = sorted_x[1:] == sorted_x[:-1]
 
             if invert:
                 duplicate_mask = duplicate_mask.logical_not()
 
             mask = paddle.empty_like(duplicate_mask)
-            mask[sorted_index] = duplicate_mask
+            if not in_dynamic_or_pir_mode():
+                mask = paddle.static.setitem(mask, sorted_index, duplicate_mask)
+            else:
+                mask[sorted_index] = duplicate_mask
 
             cmp = mask[0 : x.numel()].reshape(x.shape)
         else:
