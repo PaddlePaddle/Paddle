@@ -964,7 +964,7 @@ static PyObject *static_api_register_hook(PyObject *self,
 
     // Get Value from args
     PyObject *hook_func_obj = PyTuple_GET_ITEM(args, 0);
-    auto hook_func = ::py::handle(hook_func_obj).cast<pybind11::object>();
+    auto hook_func = hook_func_obj;
 
     PyObject *input_obj = PyTuple_GET_ITEM(args, 1);
     auto input = CastPyArg2Value(input_obj, "register_hook", 1);

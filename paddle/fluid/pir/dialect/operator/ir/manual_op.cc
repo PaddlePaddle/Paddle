@@ -4516,7 +4516,7 @@ const char *RegisterHookOp::attributes_name[2] = {"hook_func", "input"};
 
 void RegisterHookOp::Build(pir::Builder &builder,
                            pir::OperationArgument &argument,
-                           pybind11::object *hook_func,
+                           void *hook_func,
                            pir::Value input) {
   VLOG(4) << "Start build RegisterHookOp";
   VLOG(4) << "Builder construction inputs";

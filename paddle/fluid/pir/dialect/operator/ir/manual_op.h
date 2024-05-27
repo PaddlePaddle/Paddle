@@ -30,7 +30,6 @@
 #include "paddle/pir/include/core/ir_printer.h"
 #include "paddle/pir/include/core/op_base.h"
 #include "paddle/pir/include/core/operation_utils.h"
-#include "pybind11/pytypes.h"
 
 namespace paddle {
 namespace dialect {
@@ -809,7 +808,7 @@ class RegisterHookOp : public pir::Op<RegisterHookOp> {
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pybind11::object *hook_func,
+                    void *hook_func,
                     pir::Value input);
 
   pir::Value hook_func() { return operand_source(0); }

@@ -292,7 +292,7 @@ pir::Value array_pop(pir::Value input, int index) {
   }
 }
 
-pir::Value register_hook(pybind11::object* hook_func, pir::Value input) {
+pir::Value register_hook(void* hook_func, pir::Value input) {
   auto register_hook_op =
       ApiBuilder::Instance()
           .GetBuilder()
