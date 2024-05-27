@@ -21,17 +21,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/operators/fused/cudnn_bn_stats_finalize.cu.h"
-#include "paddle/fluid/operators/fused/cudnn_scale_bias_add_relu.cu.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/fusion/gpu/cudnn_bn_stats_finalize.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/cudnn_scale_bias_add_relu.cu.h"
 
 COMMON_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
-namespace op = paddle::operators;
 
 template <typename T>
 void InitRandomTensor(const std::vector<int64_t> &dims,
@@ -646,7 +645,7 @@ class CudnnBNAddReluTester {
     saved_var->Resize({1, 1, 1, channels_});
 
     auto param_shape = common::vectorize<int>(bn_scale->dims());
-    op::CudnnBNStatsFinalize<T> bn_op(ctx, param_shape);
+    phi::fusion::CudnnBNStatsFinalize<T> bn_op(ctx, param_shape);
     bn_op.Forward(ctx,
                   *sum,
                   *sum_of_square,
@@ -765,13 +764,13 @@ class CudnnBNAddReluTester {
     auto bitmask_shape = common::vectorize<int>(bitmask.dims());
 
     // 2. Scale Bias + Relu
-    op::CudnnScaleBiasAddRelu<T> sbar_op(ctx,
-                                         act_type_,
-                                         fuse_add_,
-                                         has_shortcut_,
-                                         data_shape,
-                                         param_shape,
-                                         bitmask_shape);
+    phi::fusion::CudnnScaleBiasAddRelu<T> sbar_op(ctx,
+                                                  act_type_,
+                                                  fuse_add_,
+                                                  has_shortcut_,
+                                                  data_shape,
+                                                  param_shape,
+                                                  bitmask_shape);
     sbar_op.Forward(ctx,
                     x,
                     equiv_scale_x,
@@ -844,7 +843,7 @@ class CudnnBNAddReluTester {
     auto bitmask_shape = common::vectorize<int>(bitmask.dims());
 
     std::string act_type = "relu";
-    op::CudnnScaleBiasAddRelu<T> sbar_op(
+    phi::fusion::CudnnScaleBiasAddRelu<T> sbar_op(
         ctx, act_type, true, false, data_shape, param_shape, bitmask_shape);
     sbar_op.Backward(ctx,
                      dy,
