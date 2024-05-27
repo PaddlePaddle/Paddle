@@ -439,15 +439,18 @@ def _create_cond_block_and_update_optimizer(
         # clear gradient_merge_vars
         # NOTE(zhaoyingli): Must use 'set_value' op in pir to assign 0-value for persistable var.
         for _, new_grad in new_params_to_grads:
-            fill_constant_op = cur_block.append_op(
-                type="fill_constant",
-                inputs={},
-                outputs={"Out": new_grad},
+            set_value_op = cur_block.append_op(
+                type="set_value",
+                inputs={"Input": [new_grad]},
+                outputs={"Out": [new_grad]},
                 attrs={
-                    "shape": new_grad.shape,
-                    "value": 0.0,
+                    "values": [float(0)],
                     "dtype": new_grad.dtype,
-                    "place": new_grad.place,
+                    "shape": [1],
+                    "axes": [],
+                    "starts": [],
+                    "ends": [],
+                    "steps": [],
                     OP_ROLE_KEY: OpRole.Optimize,
                 },
             )
@@ -455,7 +458,7 @@ def _create_cond_block_and_update_optimizer(
                 new_grad
             )
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                fill_constant_op,
+                set_value_op,
                 ref_dist_attr.process_mesh,
                 ref_dist_attr.dims_mapping,
                 dist_context,
