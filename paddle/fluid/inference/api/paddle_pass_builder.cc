@@ -541,6 +541,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_adaptive_seqlen_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
+      "weight_only_linear_xpu_pass",
       "fused_multi_transformer_cachekv_layout_trans_pass",
       "fused_multi_transformer_int8_cachekv_layout_trans_pass",
       "cross_attention_xpu_fuse_pass",
@@ -614,7 +615,8 @@ const std::vector<std::string> kPirGpuPasses{
     "matmul_scale_fuse_pass",
     "matmul_transpose_fuse_pass",
     "transpose_flatten_concat_fuse_pass",
-    "remove_redundant_transpose_pass"};
+    "remove_redundant_transpose_pass",
+    "transfer_layout_pass"};
 
 const std::vector<std::string> kPirXpuPasses{// Functional pass
                                              "map_op_to_another_pass",
@@ -627,6 +629,7 @@ const std::vector<std::string> kPirXpuPasses{// Functional pass
 const std::vector<std::string> kPirMkldnnPasses {
   "depthwise_conv_onednn_pass",              //
       "squeeze_transpose_onednn_fuse_pass",  //
+      "conv2d_bn_onednn_fuse_pass",          //
       "conv2d_bias_fuse_pass",               //
       "conv2d_transpose_bias_fuse_pass",     //
       "conv3d_bias_fuse_pass",               //

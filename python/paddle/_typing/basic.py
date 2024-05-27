@@ -13,15 +13,17 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Sequence, TypeVar, Union
 
 import numpy as np
+import numpy.typing as npt
 from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
     from paddle import Tensor
 
 Numberic: TypeAlias = Union[int, float, complex, np.number, "Tensor"]
+TensorLike: TypeAlias = Union[npt.NDArray[Any], "Tensor", Numberic]
 
 _T = TypeVar("_T", bound=Numberic)
 _SeqLevel1: TypeAlias = Sequence[_T]
