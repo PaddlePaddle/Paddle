@@ -273,7 +273,6 @@ void DispatchWithDtype(
   phi::DenseTensor fmha_buf;
 
   VLOG(1) << "fmha_out " << fmha_out->dims();
-  // 1. what out_scale mean here?
   if (out_scale <= 0) {
     dev_ctx.template Alloc<T>(fmha_out);
     fmha_buf = *fmha_out;
@@ -488,6 +487,7 @@ void DispatchWithDtype(
       // Reshape fmha_buf back (to 2-D), to not affect following codes.
       fmha_buf.Resize(fmha_shape);
     } else {
+      // change6: change qkv_transpose_split api here
       qkv_transpose_split<T>(
           dev_ctx,
           q_trans.data<T>(),
@@ -523,6 +523,7 @@ void DispatchWithDtype(
       PADDLE_THROW(phi::errors::Unimplemented(
           "Not supports MultiHeadAttentionVariableForwardKernel."));
 #endif
+      // change7: change InvokeTransposeRemovePadding head
       InvokeTransposeRemovePadding<T>(dev_ctx,
                                       qktv_out.data<T>(),
                                       sequence_lengths_data,
@@ -537,6 +538,7 @@ void DispatchWithDtype(
     }
 
     VLOG(3) << "flash end";
+    // change8: change cache kernel
     if (cache_k_quant_scales && dynamic_cachekv_quant) {
       DynamicQuantCacheKernel<T>(dev_ctx,
                                  qkv_buf,
@@ -584,6 +586,7 @@ void DispatchWithDtype(
   }
   VLOG(3) << "encoder done";
   VLOG(3) << "max_dec_len_this_time: " << max_dec_len_this_time_data;
+  // change9: change decoder kernel
   if (max_dec_len_this_time_data > 0) {
     GetDecoderTensor<T>(dev_ctx,
                         qkv_buf,
@@ -607,6 +610,7 @@ void DispatchWithDtype(
       }
     }
     VLOG(1) << "cachekv_quant_mode " << cachekv_quant_mode;
+    // change10: change blha
     blha<T>(dev_ctx,
             qkv_out_decoder,
             nullptr,  // qkv_bias
