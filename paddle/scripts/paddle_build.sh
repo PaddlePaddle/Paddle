@@ -3635,21 +3635,22 @@ function clang-tidy_check() {
     trap 'abort' 0
     set -e
 
-    num_diff_files=$(echo "$PADDLE_GIT_DIFF_CC_FILE" | wc -l)
-    echo -e "diff files ${num_diff_files}:\n${PADDLE_GIT_DIFF_CC_FILE}"
+    modified_files=$(git diff --name-only test)
+    diff_files=()
 
-    # 输出具体存在差异的文件
-    for file in ${PADDLE_GIT_DIFF_CC_FILE}
+    for file in $modified_files
     do
-        echo "Diff file: ${file}"
+        if [[ $file == *.cpp || $file == *.cc || $file == *.cxx || $file == *.c++ || $file == *.h || $file == *.hpp || $file == *.hh || $file == *.hxx || $file == *.h++ ]]; then
+            diff_files+=($file)
+        fi
     done
 
+    echo ${diff_files[@]}
     echo "Checking code style by clang-tidy ..."
     startTime_s=`date +%s`
-    # 使用详细模式，并输出具体的clang-tidy检查项
-    for file in ${PADDLE_GIT_DIFF_CC_FILE}
+    for file in ${diff_files}
     do
-        python ./tools/codestyle/clang-tidy.py -p=build -j=10 \
+        python ${PADDLE_ROOT}/build/tools/codestyle/clang-tidy.py -p=build -j=10 \
         -clang-tidy-binary=clang-tidy \
         -extra-arg=-Wno-unknown-warning-option \
         -extra-arg=-Wno-pessimizing-move \
