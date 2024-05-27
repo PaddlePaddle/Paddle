@@ -93,6 +93,12 @@ def apply_partition_pass(program):
     cur_rank = paddle.distributed.get_rank()
     for op in program.global_block().ops[::-1]:
         if op.name() in partition_skip_op_list:
+            can_delete = True
+            for val in op.results():
+                if not val.use_empty():
+                    can_delete = False
+            if can_delete:
+                op.erase()
             continue
         if cur_rank not in op.dist_attr.process_mesh.process_ids:
             op.erase()
