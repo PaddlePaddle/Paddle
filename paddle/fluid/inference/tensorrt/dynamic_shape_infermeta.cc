@@ -42,23 +42,30 @@ class ExprWrapper {
                               const ExprWrapper& b,
                               nvinfer1::DimensionOperation op) {
     ExprWrapper result;
+
+
+    assert(a.expr);
+    assert(b.expr);
+
+
     if (a.expr_builder) {
       result.expr_builder = a.expr_builder;
-    }
-    if (b.expr_builder) {
+    } else if (b.expr_builder) {
       result.expr_builder = b.expr_builder;
-    }
-    if (!result.expr_builder) {
-      result.expr_builder = std::make_shared<ExprBuilder>();
+    } else {
+
+      throw std::runtime_error("Both a and b expr_builders are uninitialized");
     }
 
-    // 检查 a.expr 和 b.expr 是否已初始化
-    assert(a.expr && "a.expr is uninitialized");
-    assert(b.expr && "b.expr is uninitialized");
+
+    assert(result.expr_builder);
+
 
     result.expr = result.expr_builder->operation(op, *a.expr, *b.expr);
+
     return result;
   }
+
 
   friend ExprWrapper BinaryOp(const ExprWrapper& a,
                               int b_value,
