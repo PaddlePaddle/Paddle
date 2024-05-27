@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -24,6 +26,7 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 namespace phi {
 
@@ -279,7 +282,7 @@ void SetValueKernel(const Context& dev_ctx,
     assign_values.push_back(val.to<T>());
   }
 
-  is_full_set_one_value = false;
+  bool is_full_set_one_value = false;
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
@@ -287,9 +290,10 @@ void SetValueKernel(const Context& dev_ctx,
       shape.size() == 1 && shape[0] == 1 && assign_values.size() == 1) {
     is_full_set_one_value = true;
   }
-  if (is_full_set_one_value) {
+  if (is_full_set_one_value && std::is_same<T, float>::value) {
     dev_ctx.template Alloc<T>(out);
-    phi::funcs::set_constant(*dev_ctx, out, assign_values[0]);
+    phi::funcs::set_constant(
+        *dev_ctx, out, static_cast<float>(assign_values[0]));
     return;
   }
 
