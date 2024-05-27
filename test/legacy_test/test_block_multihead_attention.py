@@ -2419,6 +2419,7 @@ class TestBlockMultiHeadAttnEncDecQuant(unittest.TestCase):
         ) = get_padding_offset(
             self.batch_size, self.seq_len, self.seq_lens_this_time
         )
+        # batch_size * seq_len
         self.token_num = self.padding_offset.shape[0]
 
     def test_all(self):
@@ -2436,7 +2437,9 @@ class TestBlockMultiHeadAttnEncDecQuant(unittest.TestCase):
         v = paddle.to_tensor(
             value, place=self.place, dtype=self.dtype, stop_gradient=False
         )
-
+        # qkv [batch_size * seq_len, 3 * num_head * hidden_dim]
+        # change1: we need to change qkv shape to
+        # [batch_size * seq_len, (2 * kv_num_head + q_num_head) * hidden_dim]
         qkv = paddle.stack(
             [
                 q.transpose([0, 2, 1, 3]).reshape(

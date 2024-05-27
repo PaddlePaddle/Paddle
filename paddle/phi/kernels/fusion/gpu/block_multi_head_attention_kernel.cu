@@ -270,6 +270,7 @@ void DispatchWithDtype(
   phi::DenseTensor fmha_buf;
 
   VLOG(1) << "fmha_out " << fmha_out->dims();
+  // 1. what out_scale mean here?
   if (out_scale <= 0) {
     dev_ctx.template Alloc<T>(fmha_out);
     fmha_buf = *fmha_out;
@@ -278,17 +279,24 @@ void DispatchWithDtype(
     dev_ctx.template Alloc<T>(&fmha_buf);
     dev_ctx.template Alloc<int8_t>(fmha_out);
   }
-
+  // it is a func init the fmha_buf by {static_cast<T>(0.)}
+  // zero the fmha_buf
   InitValue(dev_ctx, fmha_buf.data<T>(), fmha_buf.numel(), static_cast<T>(0.));
   const auto& input_dims = qkv.dims();
   const auto& key_cache_dims = key_cache.dims();
   const int token_num = input_dims[0];
-  const int num_head = key_cache_dims[1];
+  // change 1: change the num_head to kv_num_head and q_num_head
+  const int kv_num_head = key_cache_dims[1];
   const int dim_head = key_cache_dims[3];
+  // change2: using hidden_dims / dims_per_head - k_head - v_head to cal the
+  // q_head
+  const int total_num_head = qkv.dims()[qkv.dims().size() - 1] / dim_head;
+  const int q_num_head = total_num_head - 2 * kv_num_head;
   const int bsz = cum_offsets.dims()[0];
   const int max_block_per_seq = block_tables.dims()[1];
   VLOG(3) << "bsz: " << bsz << " token_num: " << token_num
-          << " num_head: " << num_head << " dim_head: " << dim_head
+          << " q_num_head: " << q_num_head << "kv_num_head: " << kv_num_head
+          << "total_num_head: " << total_num_head << " dim_head: " << dim_head
           << " max_block_per_seq: " << max_block_per_seq;
   VLOG(3) << "fmha_out_dims: " << fmha_out->dims();
 
@@ -341,10 +349,11 @@ void DispatchWithDtype(
             max_enc_len_this_time.get().place()));
     max_enc_len_this_time_data = *max_enc_len_this_time.get().data<int>();
   }
-
+  // change3: we need change qkv_out_decoder shape to {bsz, total_num_head,
+  // dim_head}
   phi::DenseTensor qkv_out_decoder;
   if (max_dec_len_this_time_data > 0) {
-    qkv_out_decoder.Resize({{bsz, 3, num_head, dim_head}});
+    qkv_out_decoder.Resize({{bsz, total_num_head, dim_head}});
     auto* qkv_out_decoder_data = dev_ctx.template Alloc<T>(
         &qkv_out_decoder, qkv_out_decoder.numel() * sizeof(T));
   }
@@ -352,26 +361,28 @@ void DispatchWithDtype(
   phi::DenseTensor unpadding_q, unpadding_k, unpadding_v;
   phi::DenseTensor softmax_out, softmax_lse, seed_offset;
   phi::DenseTensor q_trans, k_trans, v_trans, qktv_out;
+  // change4: change unpadding Tensor here
   if (max_enc_len_this_time_data > 0) {
     if (!use_pre_cache) {
-      unpadding_q.Resize({{token_num, num_head, dim_head}});
-      unpadding_k.Resize({{token_num, num_head, dim_head}});
-      unpadding_v.Resize({{token_num, num_head, dim_head}});
+      unpadding_q.Resize({{token_num, q_num_head, dim_head}});
+      unpadding_k.Resize({{token_num, kv_num_head, dim_head}});
+      unpadding_v.Resize({{token_num, kv_num_head, dim_head}});
 
       dev_ctx.template Alloc<T>(&unpadding_q, unpadding_q.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&unpadding_k, unpadding_k.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&unpadding_v, unpadding_v.numel() * sizeof(T));
     } else {
-      q_trans.Resize({{bsz, num_head, max_enc_len_this_time_data, dim_head}});
+      q_trans.Resize({{bsz, q_num_head, max_enc_len_this_time_data, dim_head}});
       k_trans.Resize({{bsz,
-                       num_head,
+                       kv_num_head,
                        max_enc_len_this_time_data + pre_cache_length,
                        dim_head}});
       v_trans.Resize({{bsz,
-                       num_head,
+                       kv_num_head,
                        max_enc_len_this_time_data + pre_cache_length,
                        dim_head}});
-      qktv_out.Resize({{bsz, num_head, max_enc_len_this_time_data, dim_head}});
+      qktv_out.Resize(
+          {{bsz, q_num_head, max_enc_len_this_time_data, dim_head}});
 
       dev_ctx.template Alloc<T>(&q_trans, q_trans.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&k_trans, k_trans.numel() * sizeof(T));
@@ -381,7 +392,7 @@ void DispatchWithDtype(
   }
   VLOG(3) << "encoder";
   VLOG(3) << "max_enc_len_this_time: " << max_enc_len_this_time_data;
-
+  // comment: qkv gemm dequant
   if (qkv_out_scale) {
     VLOG(1) << "qkv_out_scale: " << qkv_out_scale.get_ptr()->dims();
     qkv_buf.Resize(qkv.dims());
@@ -404,7 +415,7 @@ void DispatchWithDtype(
     VLOG(1) << "qkv_out_scale is none";
     qkv_buf = qkv;
   }
-
+  // comment: add qkv bias here
   if (qkv_bias) {
     VLOG(1) << "has bias";
     std::vector<const phi::DenseTensor*> ins = {&qkv_buf, qkv_bias.get_ptr()};
@@ -412,7 +423,7 @@ void DispatchWithDtype(
     phi::funcs::BroadcastKernel<T>(
         dev_ctx, ins, &outs, phi::funcs::AddFunctor<T>());
   }
-
+  // change5: change rope api here
   if (max_enc_len_this_time_data > 0) {
     const int* sequence_lengths_data = seq_lens_encoder.data<int>();
     if (rope_emb) {
@@ -423,7 +434,8 @@ void DispatchWithDtype(
                          padding_offsets.data<int>(),
                          sequence_lengths_data,
                          token_num,
-                         num_head,
+                         q_num_head,
+                         kv_num_head,
                          max_seq_len,
                          rope_emb.get().dims()[2],
                          dim_head,
@@ -441,14 +453,15 @@ void DispatchWithDtype(
                              sequence_lengths_data,
                              token_num,
                              bsz,
-                             num_head,
+                             q_num_head,
+                             kv_num_head,
                              max_seq_len,
                              dim_head);
       VLOG(3) << "qkv split end";
       // Reshape fmha_buf to 3-D because FlashAttnUnpaddedKernel requries
       // q,k,v,out all in 3-D [token_num, num_head, dim_head].
       auto fmha_shape = fmha_buf.dims();
-      fmha_buf.Resize({token_num, num_head, dim_head});
+      fmha_buf.Resize({token_num, q_num_head, dim_head});
       phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
                                       unpadding_q,
                                       unpadding_k,
@@ -484,7 +497,8 @@ void DispatchWithDtype(
           sequence_lengths_data,
           token_num,
           bsz,
-          num_head,
+          q_num_head,
+          kv_num_head,
           max_enc_len_this_time_data,
           max_seq_len,
           pre_cache_length,
@@ -511,7 +525,7 @@ void DispatchWithDtype(
                                       sequence_lengths_data,
                                       fmha_buf.data<T>(),
                                       bsz,
-                                      num_head,
+                                      q_num_head,
                                       max_enc_len_this_time_data,
                                       max_seq_len,
                                       dim_head,
@@ -533,7 +547,8 @@ void DispatchWithDtype(
                                  pre_key_cache,
                                  pre_value_cache,
                                  bsz,
-                                 num_head,
+                                 q_num_head,
+                                 kv_num_head,
                                  dim_head,
                                  max_seq_len,
                                  pre_cache_length,
@@ -551,7 +566,8 @@ void DispatchWithDtype(
                      cache_v_quant_scales,
                      bsz,
                      token_num,
-                     num_head,
+                     q_num_head,
+                     kv_num_head,
                      dim_head,
                      max_seq_len,
                      pre_cache_length,
@@ -574,7 +590,8 @@ void DispatchWithDtype(
                         nullptr,
                         token_num,
                         bsz,
-                        num_head,
+                        q_num_head,
+                        kv_num_head,
                         max_seq_len,
                         dim_head);
     VLOG(3) << "qkv_out_decoder: " << qkv_out_decoder.dims();
@@ -603,7 +620,8 @@ void DispatchWithDtype(
             block_size,
             max_seq_len,
             pre_cache_length,
-            num_head,
+            q_num_head,
+            kv_num_head,
             dim_head,
             max_dec_len_this_time_data,
             rope_emb ? 1 : 0,
