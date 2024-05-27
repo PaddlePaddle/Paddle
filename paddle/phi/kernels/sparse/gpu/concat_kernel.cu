@@ -91,6 +91,33 @@ struct PointerToPointer {
   }
 };
 
+template <typename T>
+struct PointerToPointer2 {
+ public:
+  void** ins_addr{nullptr};
+  __device__ inline const void* operator[](int i) const { return ins_addr[i]; }
+
+  PointerToPointer2() = default;
+  PointerToPointer2(const phi::GPUContext& ctx,
+                    const size_t in_num,
+                    const T* const* pre_alloced_host_ptr,
+                    phi::Allocator::AllocationPtr* dev_ins_ptr) {
+    *dev_ins_ptr = phi::memory_utils::Alloc(
+        ctx.GetPlace(),
+        in_num * sizeof(T*),
+        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+    auto* restored = phi::backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
+        pre_alloced_host_ptr, in_num);
+    memory_utils::Copy(ctx.GetPlace(),
+                       (*dev_ins_ptr)->ptr(),
+                       phi::CPUPlace(),
+                       restored,
+                       in_num * sizeof(T*),
+                       ctx.stream());
+    ins_addr = reinterpret_cast<void**>((*dev_ins_ptr)->ptr());
+  }
+};
+
 static void check_cat_sparse_dims(const SparseCooTensor* t,
                                   int64_t pos,
                                   DDim dims,
@@ -138,12 +165,21 @@ template <typename IndexT, typename PointerWrapperT, typename DarrayWrapperT>
 __global__ void ConcatCsr2D0AGetHelpArrayKernel(
     const size_t in_num,
     PointerWrapperT in_crows_vec,
-    DarrayWrapperT crows_offsets,  // out_crows中每个位置需要增加的叠加值
+    DarrayWrapperT crows_poss,  // out_crows中每个位置需要增加的叠加值
     IndexT* out_crows_offsets  // out_crows中每个位置需要增加的叠加值
 ) {
   CUDA_KERNEL_LOOP_TYPE(tid_x, in_num, IndexT) {
-    // out_crows_offsets[tid_x] = in_crows_vec[tid_x][crows_offsets[tid_x]];
-    out_crows_offsets[tid_x] = crows_offsets[tid_x];
+    if (tid_x == 0) {
+      out_crows_offsets[0] = 0;
+    }
+    const IndexT* now_crow =
+        reinterpret_cast<const IndexT*>(in_crows_vec[tid_x]);
+    // out_crows_offsets[tid_x] = in_crows_vec[tid_x][crows_poss[tid_x]];
+    // crows_poss 为了方便复用,他的第0为是0而不是对应的第0个tensor对应的crows
+    // pos
+    out_crows_offsets[tid_x] = now_crow[crows_poss[tid_x + 1]];
+    printf("tid ix %d \n", tid_x);
+    printf("out_crows_offsets%d \n", now_crow[crows_poss[tid_x + 1]]);
   }
 }
 
@@ -155,25 +191,28 @@ __global__ void ConcatCsr2D0ASetCrowsKernel(const IndexT total_crows_offsets,
                                             IndexT* out_crows) {
   // 当前的in_num的位置
   IndexT index = 0;
-
+  IndexT curr_offset = 0;
+  IndexT next_offset = 0;
   CUDA_KERNEL_LOOP_TYPE(tid_x, total_crows_offsets, IndexT) {
-    if (tid_x == 0) {
-      out_crows[0] = 0;
+    if (tid_x != 0) {
+      curr_offset += crows_offsets[index];
+      next_offset = curr_offset + crows_offsets[index + 1];
+      // curr_offset 初始化到最接近tid的对一轮
+      // 感觉这里的逻辑是让代码对应到最近tid那一段,毕竟每一轮tid都要递增
+      while (next_offset <= tid_x) {
+        curr_offset = next_offset;
+        ++index;
+        next_offset += crows_offsets[index + 1];
+      }
+      IndexT local_col = tid_x - curr_offset;
+      const IndexT* now_crow =
+          reinterpret_cast<const IndexT*>(in_crows_vec[index]);
+      // 注意这里tid_x对应的起始位置不包含crows的第0位,同理,在in_crows_vec中也是如此
+      out_crows[tid_x] = now_crow[local_col] + out_crows_offsets[index];
+
+    } else {
+      out_crows[tid_x] = 0;
     }
-    // 优化
-    IndexT next_offset = crows_offsets[index + 1];
-    IndexT curr_offset = crows_offsets[index];
-    // curr_offset 初始化到最接近tid的对一轮
-    // 感觉这里的逻辑是让代码对应到最近tid那一段,毕竟每一轮tid都要递增
-    while (next_offset <= tid_x) {
-      curr_offset = next_offset;
-      ++index;
-      next_offset = crows_offsets[index + 1];
-    }
-    IndexT local_col = tid_x - curr_offset;
-    // 注意这里tid_x对应的起始位置不包含crows的第0位,同理,在in_crows_vec中也是如此
-    out_crows[tid_x + 1] =
-        in_crows_vec[index][local_col + 1] + out_crows_offsets[index];
   }
 }
 
@@ -681,11 +720,11 @@ void ConcatCsrGPU2D0A(const Context& dev_ctx,
   // 除了第一个0 之外,按照row的次数叠加
   int64_t out_crows_size = 1;
   std::vector<int64_t> nnz_vec;
-  std::vector<int64_t> crows_offsets;
-  crows_offsets.push_back(0);
+  std::vector<int64_t> crows_poss;
+  crows_poss.push_back(0);
   for (auto t : x) {
     int64_t rows = static_cast<int>(t->dims()[0]);
-    crows_offsets.push_back(rows + 1);
+    crows_poss.push_back(rows);
     out_crows_size += rows;
     nnz_vec.push_back(t->nnz());
   }
@@ -720,10 +759,12 @@ void ConcatCsrGPU2D0A(const Context& dev_ctx,
                        stream);
     value_offset += nnz;
   }
-
+  phi::Allocator::AllocationPtr dev_ins_ptr{nullptr};
   const int64_t* const* in_crows_vec = crows_vec.data();
-  PointerToPointer<int64_t> d_in_crows_vec(dev_ctx, in_num, in_crows_vec);
-  DArray<int64_t> d_crows_offsets(dev_ctx, crows_offsets);
+
+  PointerToPointer2<int64_t> d_in_crows_vec(
+      dev_ctx, in_num, in_crows_vec, &dev_ins_ptr);
+  DArray<int64_t> d_crows_poss(dev_ctx, crows_poss);
   // // out_crows中基于index的偏移值
   DenseTensor out_crows_offsets =
       phi::Empty<int64_t>(dev_ctx, {static_cast<int64_t>(in_num)});
@@ -732,26 +773,26 @@ void ConcatCsrGPU2D0A(const Context& dev_ctx,
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, in_num, 1);
   ConcatCsr2D0AGetHelpArrayKernel<int64_t,
                                   decltype(d_in_crows_vec),
-                                  decltype(d_crows_offsets)>
+                                  decltype(d_crows_poss)>
       <<<config.block_per_grid.x,
          config.thread_per_block.x,
          0,
          dev_ctx.stream()>>>(
-          in_num, d_in_crows_vec, d_crows_offsets, d_out_crows_offsets);
+          in_num, d_in_crows_vec, d_crows_poss, d_out_crows_offsets);
 
   // config =
-  //     phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_crows_size - 1,
+  //     phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_crows_size,
   //     1);
 
   // ConcatCsr2D0ASetCrowsKernel<int64_t,
   //                             decltype(d_in_crows_vec),
-  //                             decltype(d_crows_offsets)>
+  //                             decltype(d_crows_poss)>
   //     <<<config.block_per_grid.x,
   //        config.thread_per_block.x,
   //        0,
-  //        dev_ctx.stream()>>>(out_crows_size - 1,
+  //        dev_ctx.stream()>>>(out_crows_size,
   //                            d_in_crows_vec,
-  //                            d_crows_offsets,
+  //                            d_crows_poss,
   //                            d_out_crows_offsets,
   //                            d_out_crows);
 
