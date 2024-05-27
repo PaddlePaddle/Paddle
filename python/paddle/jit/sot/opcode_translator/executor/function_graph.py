@@ -593,7 +593,7 @@ class FunctionGraph:
             return None
 
     def symbolic_call(
-        self, infer_meta_fn, compute_fn, func, is_symbolic_int, *args, **kwargs
+        self, infer_meta_fn, compute_fn, func, is_symbolic_var, *args, **kwargs
     ):
         """
         Using infer_meta_fn and compute_fn convert func to symbolic function.
@@ -619,7 +619,7 @@ class FunctionGraph:
 
         log(3, f"         inputs : {inputs_symbols}", "\n")
 
-        if is_symbolic_int:
+        if is_symbolic_var:
             var_cls = SymbolicVariable
             tracker = SymbolicOperationTracker(
                 list(args) + list(kwargs.values()), func
@@ -663,7 +663,7 @@ class FunctionGraph:
                     stmt_stacks,
                 )  # symbolic only contain symbols.
                 self._put_inner(outputs)
-            if is_symbolic_int:
+            if is_symbolic_var:
                 # compute_fn should be call_method
                 tracker = SymbolicOperationTracker(
                     list(args) + list(kwargs.values()), func
