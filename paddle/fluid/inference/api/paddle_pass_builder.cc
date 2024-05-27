@@ -538,6 +538,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "group_norm_silu_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
       "qk_qkv_attention_xpu_fuse_pass",
+      "block_multihead_attention_xpu_pass",
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_adaptive_seqlen_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
