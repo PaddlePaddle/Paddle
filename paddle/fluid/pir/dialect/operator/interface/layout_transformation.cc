@@ -40,6 +40,12 @@ void RewriteByInfermeta(pir::Operation* op, common::DataLayout new_layout) {
 
 template <>
 common::DataLayout PreferLayoutImpl<Conv2dOp>(pir::Operation* op) {
+  // Note(lyk): We exhibit the layout transformation for conv2d
+  // due to issues with its infermeta and kernel not functioning
+  // properly in NHWC layout. However, if the FLAGS_manually_trans_conv_filter
+  // is enabled, the transfer_layout_pass can also operate correctly.
+  return false;
+
   auto data_format_attr = op->attribute<pir::StrAttribute>("data_format");
   if (!data_format_attr) {
     PADDLE_THROW(phi::errors::InvalidArgument(
