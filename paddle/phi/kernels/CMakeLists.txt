@@ -26,20 +26,37 @@ file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
 file(GLOB kernel_primitive_h "primitive/*.h")
 
 # fusion ops would be included here
-file(
-  GLOB kernel_cu
-  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-  "gpu/*.cu"
-  "gpu/*.cu.cc"
-  "gpudnn/*.cu"
-  "kps/*.cu"
-  "legacy/kps/*.cu"
-  "legacy/gpu/*.cu"
-  "selected_rows/gpu/*.cu"
-  "sparse/gpu/*.cu"
-  "strings/gpu/*.cu"
-  "fusion/gpu/*.cu"
-  "fusion/fp8_gemm/*.cu")
+if(PADDLE_WITH_CUTLASS)
+  file(
+    GLOB kernel_cu
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "gpu/*.cu"
+    "gpu/*.cu.cc"
+    "gpudnn/*.cu"
+    "kps/*.cu"
+    "legacy/kps/*.cu"
+    "legacy/gpu/*.cu"
+    "selected_rows/gpu/*.cu"
+    "sparse/gpu/*.cu"
+    "strings/gpu/*.cu"
+    "fusion/gpu/*.cu"
+    "fusion/fp8_gemm/fp8_gemm_with_cutlass/*.cu")
+else()
+  file(
+    GLOB kernel_cu
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "gpu/*.cu"
+    "gpu/*.cu.cc"
+    "gpudnn/*.cu"
+    "kps/*.cu"
+    "legacy/kps/*.cu"
+    "legacy/gpu/*.cu"
+    "selected_rows/gpu/*.cu"
+    "sparse/gpu/*.cu"
+    "strings/gpu/*.cu"
+    "fusion/gpu/*.cu"
+    "fusion/fp8_gemm/fp8_gemm_with_cublasLt/*.cu")
+endif()
 
 if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")

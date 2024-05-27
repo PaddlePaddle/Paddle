@@ -25,6 +25,7 @@ from .tensor.linalg import (
     eigvals,
     eigvalsh,
     fp8_fp8_bf16_gemm_fused,
+    fp8_fp8_fp8_dual_gemm_fused,
     fp8_fp8_fp16_gemm_fused,
     householder_product,
     lstsq,
@@ -82,4 +83,5 @@ __all__ = [
     'fp8_fp8_fp16_gemm_fused',
     'fp8_fp8_bf16_gemm_fused',
     'ormqr',
+    'fp8_fp8_fp8_dual_gemm_fused',
 ]
