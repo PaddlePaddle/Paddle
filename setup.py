@@ -1200,6 +1200,10 @@ def get_package_data_and_package_dir():
         for xpu_rt_lib_file in xpu_rt_lib_list:
             shutil.copy(xpu_rt_lib_file, libs_path)
             package_data['paddle.libs'] += [os.path.basename(xpu_rt_lib_file)]
+        xpu_cuda_lib_list = glob.glob(env_dict.get("XPU_CUDA_LIB") + '*')
+        for xpu_cuda_lib_file in xpu_cuda_lib_list:
+            shutil.copy(xpu_cuda_lib_file, libs_path)
+            package_data['paddle.libs'] += [os.path.basename(xpu_cuda_lib_file)]
 
     if env_dict.get("WITH_XPU_BKCL") == 'ON':
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)

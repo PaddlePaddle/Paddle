@@ -112,7 +112,7 @@ function local_assemble() {
     cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xfa/so/* xpu/lib/
 }
 
-if [[ $XRE_URL != *"$BOS_PATTERN"* ]]; then
+if [[ $XRE_URL != *"http"* ]]; then
     # below is local way
     build_from="local"
     LOCAL_PATH=$(dirname "$XRE_URL")
