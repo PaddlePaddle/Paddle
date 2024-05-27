@@ -17,17 +17,17 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "paddle/phi/backends/dynload/mudnn.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/utils/flags.h"
 
 #define CUDNN_BN_MIN_EPSILON 1e-05
 
-DECLARE_bool(cudnn_deterministic);
+PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 namespace backends {
@@ -184,8 +184,9 @@ class ScopedTensorDescriptor {
         dynload::Tensor::Format::NCHW,
         phi::errors::InvalidArgument("format should ONLY be NCHW in MUDNN."));
 
-    desc_.SetNdInfo(
-        static_cast<int>(dims_with_group.size()), dims_with_group.data(), strides.data());
+    desc_.SetNdInfo(static_cast<int>(dims_with_group.size()),
+                    dims_with_group.data(),
+                    strides.data());
     desc_.SetType(type);
     desc_.SetFormat(format);
 
@@ -227,7 +228,8 @@ class ScopedTensorDescriptor {
     std::vector<int64_t> dims_64(dim.begin(), dim.end());
     std::vector<int64_t> stride_64(dim.begin(), dim.end());
     desc_.SetType(mudnn_type);
-    desc_.SetNdInfo(static_cast<int>(dims_64.size()), dims_64.data(), stride_64.data());
+    desc_.SetNdInfo(
+        static_cast<int>(dims_64.size()), dims_64.data(), stride_64.data());
     return desc_;
   }
 

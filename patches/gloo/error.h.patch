@@ -1,0 +1,13 @@
+diff --git a/gloo/common/error.h b/gloo/common/error.h
+index b1b4bcd..47ad1b9 100644
+--- a/gloo/common/error.h
++++ b/gloo/common/error.h
+@@ -22,7 +22,7 @@ const std::chrono::milliseconds kNoTimeout = std::chrono::milliseconds::zero();
+ 
+ // A base class for all gloo runtime errors
+ struct Exception : public std::runtime_error {
+-  Exception() = default;
++  Exception() : std::runtime_error("error") {}
+   explicit Exception(const std::string& msg) : std::runtime_error(msg) {}
+ };
+ 
