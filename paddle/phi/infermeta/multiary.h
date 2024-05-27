@@ -507,6 +507,18 @@ void GruInferMeta(const MetaTensor& input,
                   MetaTensor* hidden,
                   MetaConfig config = MetaConfig());
 
+void GruUnitInferMeta(const MetaTensor& input,
+                      const MetaTensor& hidden_prev,
+                      const MetaTensor& weight,
+                      const MetaTensor& bias,
+                      int activation,
+                      int gate_activation,
+                      bool origin_mode,
+                      MetaTensor* gate,
+                      MetaTensor* reset_hidden_prev,
+                      MetaTensor* hidden,
+                      MetaConfig config = MetaConfig());
+
 void GraphSampleNeighborsInferMeta(const MetaTensor& row,
                                    const MetaTensor& col_ptr,
                                    const MetaTensor& x,

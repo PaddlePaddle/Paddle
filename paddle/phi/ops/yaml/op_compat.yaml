@@ -4076,6 +4076,13 @@
   outputs:
     {batch_gate : BatchGate, batch_reset_hidden_prev : BatchResetHiddenPrev, batch_hidden : BatchHidden, hidden : Hidden}
 
+- op: gru_unit
+  backward: gru_unit_grad
+  inputs:
+    {input : Input, hidden_prev : HiddenPrev, weight : Weight, bias : Bias}
+  outputs:
+    {gate : Gate, reset_hidden_prev : ResetHiddenPrev, hidden : Hidden}
+
 - op: identity_loss
   inputs :
     x: X

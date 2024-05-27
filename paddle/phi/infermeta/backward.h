@@ -282,6 +282,16 @@ void GruGradInferMeta(const MetaTensor& input,
                       MetaTensor* bias_grad,
                       MetaConfig config = MetaConfig());
 
+void GruUnitGradInferMeta(const MetaTensor& input,
+                          const MetaTensor& hidden_prev,
+                          const MetaTensor& weight,
+                          const MetaTensor& bias,
+                          MetaTensor* input_grad,
+                          MetaTensor* hidden_prev_grad,
+                          MetaTensor* weight_grad,
+                          MetaTensor* bias_grad,
+                          MetaConfig config = MetaConfig());
+
 void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 const MetaTensor& dout,
                                 int axis,
