@@ -294,6 +294,15 @@ void SendURecvInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaTensor* dst_count);
 
+void SequenceConvInferMeta(const MetaTensor& x,
+                           const MetaTensor& padding_data,
+                           const MetaTensor& filter,
+                           int context_length,
+                           bool padding_trainable,
+                           int context_start,
+                           int context_stride,
+                           MetaTensor* out);
+
 void SparseMomentumInferMeta(const MetaTensor& param,
                              const MetaTensor& learning_rate,
                              const MetaTensor& velocity,
