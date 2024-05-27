@@ -158,7 +158,6 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
         infer_model_prefix = os.path.join(
             self.temp_dir.name, "test_dy2stat_inference_in_guard/model_pylayer"
         )
-        print("use pir ", use_pir_api())
         paddle.jit.save(
             layer=layer,
             path=infer_model_prefix,

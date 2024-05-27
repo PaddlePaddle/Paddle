@@ -1712,10 +1712,7 @@ class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_with_dygraph_pir
     def test_save_load_finetune_load(self):
-        if not paddle.framework.use_pir_api():
-            return
         model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_load_save_without_running/model"
         )
@@ -1727,7 +1724,6 @@ class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
             layer_save = LayerSaved(IMAGE_SIZE, IMAGE_SIZE)
             layer_save = paddle.jit.to_static(layer_save, full_graph=True)
         # save
-        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
         paddle.jit.save(
             layer_save,
             model_path,
@@ -1737,14 +1733,11 @@ class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
                 )
             ],
         )
-        print("-----------------------------------")
         result_00 = layer_save(inps0)
         result_01 = layer_save(inps1)
         # load and save without running
         with unique_name.guard():
             layer_load = paddle.jit.load(model_path)
-
-            print("***********************************")
             paddle.jit.save(
                 layer_load,
                 model_path,
