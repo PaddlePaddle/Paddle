@@ -2848,11 +2848,17 @@ class ShardDataloader:
                 dataset = self._dataloader.batch_sampler.sampler.dataset
             elif hasattr(self._dataloader.batch_sampler.sampler, "data_source"):
                 dataset = self._dataloader.batch_sampler.sampler.data_source
+        batch_size = self._dataloader.batch_sampler.batch_size
 
         if isinstance(dataset, paddle.io.IterableDataset):
             batch_data = next(iter(dataset))
         elif isinstance(dataset, paddle.io.Dataset):
-            batch_data = dataset[0]
+            batch_data = []
+            for i in range(len(dataset[0])):
+                tmp_data = []
+                for j in range(batch_size):
+                    tmp_data.append(dataset[j][i])
+                batch_data.append(np.stack(tmp_data))
         else:
             raise TypeError(
                 f"Data should be a Dataset or IterableDataset, but received {type(dataset).__name__}."
