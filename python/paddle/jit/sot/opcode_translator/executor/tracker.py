@@ -136,6 +136,10 @@ class SymbolicOperationTracker(DummyTracker):
         inputs (list[VariableBase]): The input variables associated with the generated variables.
     """
 
+    def __init__(self, inputs: Sequence[VariableBase], method_name: str):
+        super().__init__(inputs)
+        self.method_name = method_name
+
     def gen_instructions(self, codegen: PyCodeGen):
         raise InnerError("SymbolicOperationTracker has no instructions")
 

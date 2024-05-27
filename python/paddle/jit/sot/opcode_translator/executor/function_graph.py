@@ -580,7 +580,14 @@ class FunctionGraph:
         try:
             return inner_error_default_handler(
                 self.symbolic_call, message_handler
-            )(ast_infer_meta, compute_fn, static_function, *args, **kwargs)
+            )(
+                ast_infer_meta,
+                compute_fn,
+                static_function,
+                False,
+                *args,
+                **kwargs,
+            )
         except Exception as e:
             log(3, f"[call AST] {e}")
             return None
@@ -612,14 +619,21 @@ class FunctionGraph:
 
         log(3, f"         inputs : {inputs_symbols}", "\n")
 
-        var_cls = SymbolicVariable if is_symbolic_int else TensorVariable
+        if is_symbolic_int:
+            var_cls = SymbolicVariable
+            tracker = SymbolicOperationTracker(
+                list(args) + list(kwargs.values()), func
+            )
+        else:
+            var_cls = TensorVariable
+            tracker = DummyTracker(list(args) + list(kwargs.values()))
         outputs = map_if(
             out_metas,
             pred=lambda x: isinstance(x, MetaInfo),
             true_fn=lambda x: var_cls(
                 x,
                 self,
-                tracker=DummyTracker(list(args) + list(kwargs.values())),
+                tracker=tracker,
             ),
             false_fn=lambda x: x,
         )
@@ -649,10 +663,10 @@ class FunctionGraph:
                     stmt_stacks,
                 )  # symbolic only contain symbols.
                 self._put_inner(outputs)
-
             if is_symbolic_int:
+                # compute_fn should be call_method
                 tracker = SymbolicOperationTracker(
-                    list(args) + list(kwargs.values())
+                    list(args) + list(kwargs.values()), func
                 )
             else:
                 tracker = DummyTracker(list(args) + list(kwargs.values()))

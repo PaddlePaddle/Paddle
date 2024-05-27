@@ -576,12 +576,12 @@ Dispatcher.register(
 # bool
 Dispatcher.register(
     bool,
-    ("ContainerVariable",),
+    ("ContainerVariable | SymbolicVariable",),
     lambda var: var.bool(),
 )
 Dispatcher.register(
     operator.truth,
-    ("ConstantVariable",),
+    ("ConstantVariable | SymbolicVariable",),
     lambda var: var.bool(),
 )
 
@@ -941,19 +941,6 @@ for binary_fn in BINARY_OPS:
                     magic_method.name,
                 ),
             )
-            Dispatcher.register(
-                binary_fn,
-                (
-                    "SymbolicVariable",
-                    "ConstantVariable | SymbolicVariable",
-                ),
-                partial(
-                    lambda magic_name, var, other: var.graph.call_symbolic_method(
-                        magic_name, var, other
-                    ),
-                    magic_method.name,
-                ),
-            )
         else:
             # skip __mod__ for str and TensorVariable
             if magic_method.name == "__rmod__":
@@ -983,7 +970,69 @@ for binary_fn in BINARY_OPS:
                         magic_method.name,
                     ),
                 )
+# Symbolic
+to_bool_binary_method = {
+    operator.eq,
+    operator.ge,
+    operator.gt,
+    operator.le,
+    operator.lt,
+    operator.ne,
+}
 
+for binary_fn in BINARY_OPS:
+    for magic_method in magic_method_builtin_dispatch(binary_fn):
+        # skip all inplace magic method name, we will dispatch it to non-inplace
+        # magic methods
+        if magic_method.is_inplace:
+            continue
+
+        if not magic_method.is_reverse:
+            if binary_fn in to_bool_binary_method:
+                Dispatcher.register(
+                    binary_fn,
+                    (
+                        "SymbolicVariable",
+                        "ConstantVariable | SymbolicVariable",
+                    ),
+                    partial(
+                        lambda fn, var, other: VariableFactory.from_value(
+                            fn(var.get_py_value(), other.get_py_value()),
+                            var.graph,
+                            tracker=DummyTracker([var, other]),
+                        ),
+                        binary_fn,
+                    ),
+                )
+            else:
+                Dispatcher.register(
+                    binary_fn,
+                    (
+                        "SymbolicVariable",
+                        "ConstantVariable | SymbolicVariable",
+                    ),
+                    partial(
+                        lambda magic_name, var, other: var.graph.call_symbolic_method(
+                            magic_name, var, other
+                        ),
+                        magic_method.name,
+                    ),
+                )
+        else:
+            if binary_fn in to_bool_binary_method:
+                Dispatcher.register(
+                    binary_fn,
+                    ("ConstantVariable", "SymbolicVariable"),
+                    partial(
+                        lambda fn, var, other: VariableFactory.from_value(
+                            fn(var.get_py_value(), other.get_py_value()),
+                            var.graph,
+                            tracker=DummyTracker([var, other]),
+                        ),
+                        binary_fn,
+                    ),
+                )
+            else:
                 Dispatcher.register(
                     binary_fn,
                     ("ConstantVariable", "SymbolicVariable"),
