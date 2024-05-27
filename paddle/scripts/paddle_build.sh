@@ -3635,11 +3635,11 @@ function clang-tidy_check() {
     trap 'abort' 0
     set -e
 
-    num_diff_files=$(echo "$change_files" | wc -l)
-    echo -e "diff files ${num_diff_files}:\n${change_files}"
+    num_diff_files=$(echo "$PADDLE_GIT_DIFF_CC_FILE" | wc -l)
+    echo -e "diff files ${num_diff_files}:\n${PADDLE_GIT_DIFF_CC_FILE}"
 
     # 输出具体存在差异的文件
-    for file in ${change_files}
+    for file in ${PADDLE_GIT_DIFF_CC_FILE}
     do
         echo "Diff file: ${file}"
     done
@@ -3647,7 +3647,7 @@ function clang-tidy_check() {
     echo "Checking code style by clang-tidy ..."
     startTime_s=`date +%s`
     # 使用详细模式，并输出具体的clang-tidy检查项
-    for file in ${diff_files}
+    for file in ${PADDLE_GIT_DIFF_CC_FILE}
     do
         python ./tools/codestyle/clang-tidy.py -p=build -j=10 \
         -clang-tidy-binary=clang-tidy \
