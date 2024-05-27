@@ -495,35 +495,6 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
 
   infer_context->SetShapeOrDataForValue(op->result(0),
                                         ShapeOrData{TensorExprs(out_dims)});
-
-  VLOG(0) << "in old constraints adding";
-  if ((ndims_x == ndims_y) && ndims_x >= 2) {
-    if (transpose_x_attr == false && transpose_y_attr == false) {
-      VLOG(0) << "AddEqualCstr: " << x_dims[ndims_x - 1] << " = "
-              << y_dims[ndims_x - 2];
-      infer_context->AddEqualCstr(x_dims[ndims_x - 1], y_dims[ndims_x - 2]);
-    } else if (transpose_x_attr == false && transpose_y_attr == true) {
-      VLOG(0) << "AddEqualCstr: " << x_dims[ndims_x - 1] << " = "
-              << y_dims[ndims_x - 1];
-      infer_context->AddEqualCstr(x_dims[ndims_x - 1], y_dims[ndims_x - 1]);
-    } else if (transpose_x_attr == true && transpose_y_attr == false) {
-      VLOG(0) << "AddEqualCstr: " << x_dims[ndims_x - 2] << " = "
-              << y_dims[ndims_x - 2];
-      infer_context->AddEqualCstr(x_dims[ndims_x - 2], y_dims[ndims_x - 2]);
-    } else {
-      VLOG(0) << "AddEqualCstr: " << x_dims[ndims_x - 2] << " = "
-              << y_dims[ndims_x - 1];
-      infer_context->AddEqualCstr(x_dims[ndims_x - 2], y_dims[ndims_x - 1]);
-    }
-
-    for (size_t i = 0; i < ndims_x - 2; ++i) {
-      VLOG(0) << "AddEqualCstr: " << x_dims[i] << " = " << y_dims[i];
-      infer_context->AddEqualCstr(x_dims[i], y_dims[i]);
-    }
-  }
-
-  VLOG(0) << "out_dims: " << out_dims;
-
   return true;
 }
 

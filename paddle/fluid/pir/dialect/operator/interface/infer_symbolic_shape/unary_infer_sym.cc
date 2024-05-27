@@ -617,9 +617,7 @@ bool ReshapeOpInferSymbolicShape(
 
   const auto &IsNotMinusOne = [&](const symbol::DimExpr &dim_expr) {
     if (dim_expr.isa<int64_t>()) {
-      if (dim_expr.dyn_cast<int64_t>() == static_cast<int64_t>(-1)) {
-        return dim_expr.dyn_cast<int64_t>() != static_cast<int64_t>(-1);
-      }
+      return dim_expr.dyn_cast<int64_t>() != static_cast<int64_t>(-1);
     }
     return true;
   };
