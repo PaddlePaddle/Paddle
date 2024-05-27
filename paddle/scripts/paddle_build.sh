@@ -3628,7 +3628,7 @@ function clang-tidy_check() {
     set +x
     trap 'abort' 0
     set -e
-    echo "git branch"
+    git branch
 
     merge_branch=$(git branch | grep \* | cut -d ' ' -f2)
 
@@ -3723,6 +3723,8 @@ function build_pr_and_develop() {
     mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
 
+    clang-tidy_check
+
     git checkout $BRANCH
     dev_commit=`git log -2|grep -w 'commit'|awk '{print $2}'`
     for commit_id in $dev_commit
@@ -3755,7 +3757,6 @@ function build_pr_and_develop() {
     fi
 
     generate_api_spec "$1" "DEV"
-    clang-tidy_check
 
 }
 
