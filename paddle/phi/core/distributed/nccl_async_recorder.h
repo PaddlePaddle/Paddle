@@ -16,10 +16,15 @@
 #include <memory>
 #include <string>
 
-#include "paddle/phi/backends/dynload/nccl.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/enforce.h"
+
+#if defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/backends/dynload/rccl.h"
+#else
+#include "paddle/phi/backends/dynload/nccl.h"
+#endif
 
 namespace phi {
 namespace distributed {

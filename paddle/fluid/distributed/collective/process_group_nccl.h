@@ -16,7 +16,6 @@
 
 #include <chrono>
 #include <memory>
-#include <ostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -267,11 +266,12 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   int64_t pg_timeout_;
   int nccl_comm_init_option_;
 
+  // using for comm time profiler
+  std::string recorder_name_;
+
   // optimize memory for process_group
   std::vector<std::pair<std::weak_ptr<phi::Allocation>, gpuStream_t>>
       allocation_stream_pairs;
-
-  std::string recorder_name_;
 };
 
 }  //  namespace distributed

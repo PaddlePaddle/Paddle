@@ -14,7 +14,6 @@
 
 #include "paddle/phi/core/distributed/nccl_async_recorder.h"
 #include "paddle/common/macros.h"
-#include "paddle/phi/backends/dynload/nccl.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
@@ -48,8 +47,8 @@ void NCCLAsyncRecorder::EventDestroy() {
   CUDA_CHECK(cudaEventDestroy(nccl_start_event_));
   CUDA_CHECK(cudaEventDestroy(nccl_end_event_));
 #else  // PADDLE_WITH_HIP
-  HIP_CHECK(cudaEventDestroy(nccl_start_event_));
-  HIP_CHECK(cudaEventDestroy(nccl_end_event_));
+  HIP_CHECK(hipEventDestroy(nccl_start_event_));
+  HIP_CHECK(hipEventDestroy(nccl_end_event_));
 #endif
 }
 
