@@ -1291,22 +1291,25 @@ def _split_and_replace_recv(types, sub_program_list):
         sub_program_list
     ), f"len of sub_program_list({len(sub_program_list)}) should equal == len of types({len(types)})"
     for i in range(len(sub_program_list)):
-        program = sub_program_list[i]
+        no_recv_program = sub_program_list[i].clone()
         recv4_program = paddle.base.framework.Program()
         # Insert a record_stream_op to achieve cross-stream sync of subsequent recv_ops.
         with paddle.static.program_guard(recv4_program):
-            paddle.full(shape=[3, 2], fill_value=1.0)
+            paddle.full(shape=[1], fill_value=1.0)
 
         # Move all recv_ops at the beginning of program into recv4_program, and replace the recv_ops with data_ops.
-        for index, op in enumerate(list(program.global_block().ops)):
+        for index, op in enumerate(list(no_recv_program.global_block().ops)):
             if op.type == "recv_v2":
                 recv_arg_name = op.output("Out")[0]
-                recv_var = program.global_block().var(recv_arg_name)
+                recv_var = no_recv_program.global_block().var(recv_arg_name)
 
                 _create_program(
-                    program.global_block(), recv4_program.global_block(), op
+                    no_recv_program.global_block(),
+                    recv4_program.global_block(),
+                    op,
                 )
                 recv4_program._sync_with_cpp()
+
                 recv4_program.global_block().append_op(
                     type="shadow_output",
                     inputs={"x": recv_arg_name},
@@ -1314,8 +1317,8 @@ def _split_and_replace_recv(types, sub_program_list):
                     attrs={"name": recv_arg_name},
                 )
 
-                program.global_block()._remove_op(index, sync=False)
-                program.global_block()._insert_op(
+                no_recv_program.global_block()._remove_op(index, sync=False)
+                no_recv_program.global_block()._insert_op(
                     index,
                     type="data",
                     outputs={"out": recv_arg_name},
@@ -1326,6 +1329,8 @@ def _split_and_replace_recv(types, sub_program_list):
                         "name": recv_arg_name,
                     },
                 )
+            elif op.type == "feed":
+                continue
             else:
                 break
 
@@ -1333,7 +1338,10 @@ def _split_and_replace_recv(types, sub_program_list):
             recv4_program._sync_with_cpp()
             rtn_types.append("recv4_" + types[i])
             rtn_sub_program_list.append(recv4_program)
-        program._sync_with_cpp()
+
+            no_recv_program._sync_with_cpp()
+            rtn_types.append("no_recv_" + types[i])
+            rtn_sub_program_list.append(no_recv_program)
         rtn_types.append(types[i])
-        rtn_sub_program_list.append(program)
+        rtn_sub_program_list.append(sub_program_list[i])
     return rtn_types, rtn_sub_program_list
