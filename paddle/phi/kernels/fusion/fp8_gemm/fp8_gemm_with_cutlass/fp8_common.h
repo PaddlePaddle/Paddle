@@ -49,6 +49,33 @@ typedef struct {
 
 typedef bool (*func)(GemmEpilogueAllParams);
 
+typedef struct {
+  const void *A;
+  const void *B0;
+  const void *B1;
+  void *D;
+  float scale0 = 1.0;
+  float scale1 = 1.0;
+  float scale_out = 1.0;
+  int M;
+  int N;
+  int K;
+  int lda;
+  int ldb;
+  int ldd;
+  int batch_count = 1;
+  const phi::GPUPlace &place;
+  cudaStream_t stream;
+  int sm_version = 80;
+  const void *bias0;
+  const void *bias1;
+  std::vector<int64_t> &bias_dims0;
+  std::vector<int64_t> &bias_dims1;
+  std::string &gemm_config;
+} DualGemmEpilogueAllParams;
+
+typedef bool (*func1)(DualGemmEpilogueAllParams);
+
 }  // namespace cutlass_internal
 }  // namespace fusion
 }  // namespace phi
