@@ -261,6 +261,16 @@ void GeneralQuaternaryGradInferMeta(const MetaTensor& x,
                                     MetaTensor* dz,
                                     MetaTensor* dk);
 
+void GruUnitGradInferMeta(const MetaTensor& input,
+                          const MetaTensor& hidden_prev,
+                          const MetaTensor& weight,
+                          const MetaTensor& bias,
+                          MetaTensor* input_grad,
+                          MetaTensor* hidden_prev_grad,
+                          MetaTensor* weight_grad,
+                          MetaTensor* bias_grad,
+                          MetaConfig config = MetaConfig());
+
 void GeneralQuinaryGradInferMeta(const MetaTensor& x,
                                  const MetaTensor& y,
                                  const MetaTensor& z,
@@ -271,16 +281,6 @@ void GeneralQuinaryGradInferMeta(const MetaTensor& x,
                                  MetaTensor* dz,
                                  MetaTensor* dk,
                                  MetaTensor* dl);
-
-void GruUnitGradInferMeta(const MetaTensor& input,
-                          const MetaTensor& hidden_prev,
-                          const MetaTensor& weight,
-                          const MetaTensor& bias,
-                          MetaTensor* input_grad,
-                          MetaTensor* hidden_prev_grad,
-                          MetaTensor* weight_grad,
-                          MetaTensor* bias_grad,
-                          MetaConfig config = MetaConfig());
 
 void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 const MetaTensor& dout,

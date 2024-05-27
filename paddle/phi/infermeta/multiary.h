@@ -492,18 +492,6 @@ void GraphReindexInferMeta(const MetaTensor& x,
                            MetaTensor* reindex_dst,
                            MetaTensor* out_nodes);
 
-void GraphSampleNeighborsInferMeta(const MetaTensor& row,
-                                   const MetaTensor& col_ptr,
-                                   const MetaTensor& x,
-                                   const MetaTensor& eids,
-                                   const MetaTensor& perm_buffer,
-                                   int sample_size,
-                                   bool return_eids,
-                                   bool flag_perm_buffer,
-                                   MetaTensor* out,
-                                   MetaTensor* out_count,
-                                   MetaTensor* out_eids);
-
 void GruUnitInferMeta(const MetaTensor& input,
                       const MetaTensor& hidden_prev,
                       const MetaTensor& weight,
@@ -515,6 +503,18 @@ void GruUnitInferMeta(const MetaTensor& input,
                       MetaTensor* reset_hidden_prev,
                       MetaTensor* hidden,
                       MetaConfig config = MetaConfig());
+
+void GraphSampleNeighborsInferMeta(const MetaTensor& row,
+                                   const MetaTensor& col_ptr,
+                                   const MetaTensor& x,
+                                   const MetaTensor& eids,
+                                   const MetaTensor& perm_buffer,
+                                   int sample_size,
+                                   bool return_eids,
+                                   bool flag_perm_buffer,
+                                   MetaTensor* out,
+                                   MetaTensor* out_count,
+                                   MetaTensor* out_eids);
 
 void HSigmoidLossInferMeta(const MetaTensor& x,
                            const MetaTensor& label,

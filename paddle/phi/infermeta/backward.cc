@@ -568,12 +568,6 @@ void GeneralQuinaryGradInferMeta(const MetaTensor& x,
   }
 }
 
-void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx) {
-  if (dx) {
-    dx->share_meta(x);
-  }
-}
-
 void GruUnitGradInferMeta(const MetaTensor& input,
                           const MetaTensor& hidden_prev,
                           const MetaTensor& weight,
@@ -664,6 +658,12 @@ void GruUnitGradInferMeta(const MetaTensor& input,
   if (weight_grad != nullptr) {
     weight_grad->set_dims(weight_dims);
     weight_grad->set_dtype(weight.dtype());
+  }
+}
+
+void GeneralUnaryGradInferMeta(const MetaTensor& x, MetaTensor* dx) {
+  if (dx) {
+    dx->share_meta(x);
   }
 }
 
