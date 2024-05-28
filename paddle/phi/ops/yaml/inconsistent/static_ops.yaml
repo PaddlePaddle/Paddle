@@ -44,7 +44,7 @@
   infer_meta :
     func : UnchangedInferMeta
   kernel :
-    func : assign
+    func : assign_raw
   backward : assign_grad
   inplace : (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
