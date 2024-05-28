@@ -70,7 +70,6 @@ void PowKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(out,
                           errors::NotFound("Output Out should not be nullptr"));
   dev_ctx.template Alloc<T>(out);
-  std::cout << "factor dtype:" << factor.dtype() << std::endl;
   auto x_flatten = phi::EigenVector<T>::Flatten(
       GET_DATA_SAFELY(&x, "Input", "X", "Activation"));
   auto out_flatten = phi::EigenVector<T>::Flatten(

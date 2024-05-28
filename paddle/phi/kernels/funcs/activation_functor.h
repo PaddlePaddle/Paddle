@@ -117,12 +117,16 @@ struct Real {
 
 template <typename T>
 struct RealCp {
-  HOSTDEVICE T operator()(const ComplexType<T>& val) const { return val.real; }
+  HOSTDEVICE const T operator()(const ComplexType<T>& val) const {
+    return val.real;
+  }
 };
 
 template <typename T>
 struct ImagCp {
-  HOSTDEVICE T operator()(const ComplexType<T>& val) const { return val.imag; }
+  HOSTDEVICE const T operator()(const ComplexType<T>& val) const {
+    return val.imag;
+  }
 };
 
 template <typename T>
@@ -2997,8 +3001,8 @@ struct PowGradFunctor<ComplexType<T>>
     auto d_ = factor.imag;
     auto arctan_ = (b_ / a_).unaryExpr(Atan<T>());
     auto square_ = a_ * a_ + b_ * b_;
-    auto e_ = (c_ / 2 * square_.log() - d_ * arctan_).exp();
-    auto v_ = d_ / 2 * square_.log() + c_ * arctan_;
+    auto e_ = (square_.log() * c_ / 2 - d_ * arctan_).exp();
+    auto v_ = square_.log() * d_ / 2 + c_ * arctan_;
 
     auto ux = e_ / square_ *
               ((a_ * c_ + b_ * d_) * v_.unaryExpr(Cosine<T>()) +
