@@ -361,7 +361,7 @@ class CublasLtAlgoCache {
                     sizeof(custom_option));
                 status = dyl::cublasLtMatmulAlgoConfigSetAttribute(
                     &algo, CUBLASLT_ALGO_CONFIG_CTA_SWIZZLING, &k, sizeof(k));
-                int split_k_val = 0;
+                int split_k_val = 1;
                 int reduction_scheme = CUBLASLT_REDUCTION_SCHEME_NONE;
                 status = dyl::cublasLtMatmulAlgoConfigSetAttribute(
                     &algo,
