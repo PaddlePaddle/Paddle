@@ -54,6 +54,8 @@ class WeightedSamplingTrailObjectiveFunc : public BaseObjectiveFunc {
   int max_sampling_times_;
   int repeats_;
   int sampling_times_;
+  std::vector<std::unordered_map<std::string, std::vector<int64_t>>>
+      inputs_sampling_;
 
   utils::LinearRandomEngine::StateType rand_seed_ = 1;
 };
