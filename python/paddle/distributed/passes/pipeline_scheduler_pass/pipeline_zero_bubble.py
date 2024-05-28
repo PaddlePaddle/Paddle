@@ -236,15 +236,25 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
         types, sub_program_list = _program_for_zero_bubble_vpp(
             program, num_model_chunks, dist_context, enable_send_recv_overlap
         )
+
+        rank = paddle.distributed.get_rank()
+        pp_group = []
+        for process_mesh in dist_context.process_meshes:
+            if rank in process_mesh.process_ids:
+                pp_idx = process_mesh.process_ids.index(rank)
+                for process_mesh in dist_context.process_meshes:
+                    pp_group.append(process_mesh.process_ids[pp_idx])
+                break
+
         self._estimate_program_mem_usagess(
-            types, sub_program_list, dist_context
+            types, sub_program_list, dist_context, pp_group
         )
-        self._get_all_device_base_memory()
+        self._get_all_device_base_memory(pp_group)
 
         return types, sub_program_list
 
     def _estimate_program_mem_usagess(
-        self, types, sub_program_list, dist_context
+        self, types, sub_program_list, dist_context, pp_group
     ):
         types = types[:-1]
         type_to_program = dict(zip(types, sub_program_list))
@@ -268,20 +278,23 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
             paddle.distributed.all_gather_object(all_mem_usages, mem_usages)
             paddle.distributed.all_gather_object(all_max_usages, max_mem_usages)
 
-        self.program_mem_usages = [{} for _ in range(len(all_mem_usages))]
-        self.program_max_mem_usages = [{} for _ in range(len(all_max_usages))]
+        self.program_mem_usages = [{} for _ in range(len(pp_group))]
+        self.program_max_mem_usages = [{} for _ in range(len(pp_group))]
 
-        for id in range(len(all_mem_usages)):
+        for id in pp_group:
             for i, type in enumerate(types):
                 self.program_mem_usages[id][type] = all_mem_usages[id][i]
                 self.program_max_mem_usages[id][type] = all_max_usages[id][i]
 
-    def _get_all_device_base_memory(self):
+    def _get_all_device_base_memory(self, pp_group):
         with paddle.base.dygraph.guard():
             self.base_memory = []
-            rank = self.get_attr("pp_stage")
+            all_base_memory = []
+            rank = paddle.distributed.get_rank()
             base_memory = paddle.device.cuda.memory_allocated(rank)
-            paddle.distributed.all_gather_object(self.base_memory, base_memory)
+            paddle.distributed.all_gather_object(all_base_memory, base_memory)
+            for id in pp_group:
+                self.base_memory.append(all_base_memory[id])
 
     def _get_max_memory(self):
         memory_limit_times = self.get_attr("memory_limit_times")
