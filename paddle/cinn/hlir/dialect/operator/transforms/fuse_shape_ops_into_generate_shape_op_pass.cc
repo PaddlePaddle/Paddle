@@ -348,11 +348,12 @@ bool ProcessOp(OP_TYPE op,
 }
 
 template <>
-bool ProcessOp(paddle::dialect::SliceOp op,
-               pir::PatternRewriter* rewriter,
-               pir::ShapeConstraintIRAnalysis* shape_analysis) {
+bool ProcessOp<paddle::dialect::SliceOp>(
+    paddle::dialect::SliceOp op,
+    pir::PatternRewriter* rewriter,
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
   return ReplaceShapeOpsToGenerateShape(
-             op->operand_source(1), rewriter, shape_analysis) ||
+             op->operand_source(1), rewriter, shape_analysis) &&
          ReplaceShapeOpsToGenerateShape(
              op->operand_source(2), rewriter, shape_analysis);
 }

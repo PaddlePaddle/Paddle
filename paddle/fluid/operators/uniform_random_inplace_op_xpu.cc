@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/uniform_random_op.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/generator.h"
 

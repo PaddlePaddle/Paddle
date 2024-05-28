@@ -52,8 +52,7 @@ struct MemoryInterface {
    * @param[size_t]     size      memory size
    * @param[phi::Stream]stream    the stream that is used for allocator
    */
-
-  Allocator::AllocationPtr (*alloc_with_stream)(const phi::GPUPlace& place,
+  Allocator::AllocationPtr (*alloc_with_stream)(const phi::Place& place,
                                                 size_t size,
                                                 const phi::Stream& stream);
 
@@ -192,7 +191,7 @@ class MemoryUtils {
     memory_method_ = std::move(memory_method);
   }
 
-  Allocator::AllocationPtr Alloc(const phi::GPUPlace& place,
+  Allocator::AllocationPtr Alloc(const phi::Place& place,
                                  size_t size,
                                  const phi::Stream& stream) {
     CheckMemoryMethod();
@@ -419,7 +418,7 @@ class MemoryUtils {
 
 namespace memory_utils {
 
-TEST_API Allocator::AllocationPtr Alloc(const phi::GPUPlace& place,
+TEST_API Allocator::AllocationPtr Alloc(const phi::Place& place,
                                         size_t size,
                                         const phi::Stream& stream);
 
