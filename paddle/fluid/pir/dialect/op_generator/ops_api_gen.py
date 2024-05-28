@@ -188,7 +188,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'sparse_momentum',
     'tdm_sampler',
     'soft_relu',
-    'uniform_random_batch_size_like',
     'match_matrix_tensor',
     'c_reduce_max',
     'c_reduce_max_',
