@@ -1112,6 +1112,12 @@
     num_columns :
       support_tensor : true
 
+- op : fake_channel_wise_dequantize_max_abs
+  inputs :
+    {x : X, scales : Scales}
+  outputs :
+    out : Out
+
 - op : fake_channel_wise_quantize_abs_max
   inputs :
     x : X
@@ -3912,6 +3918,20 @@
     length: Length
   outputs:
     viterbi_path: ViterbiPath
+
+- op: cross_entropy
+  backward: cross_entropy_grad
+  inputs:
+    {x : X, label : Label}
+  outputs:
+    out : Y
+
+- op: cross_entropy2
+  backward: cross_entropy_grad2
+  inputs:
+    {x : X, label : Label}
+  outputs:
+    {out : Y, x_shape : XShape, match_x : MatchX}
 
 - op: ctc_align
   inputs:

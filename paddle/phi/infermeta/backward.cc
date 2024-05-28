@@ -216,6 +216,90 @@ void CropGradInferMeta(const MetaTensor& out_grad,
     x_grad->set_dtype(x.dtype());
   }
 }
+
+void CrossEntropyGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& label,
+                               const MetaTensor& out_grad,
+                               bool soft_label,
+                               int ignore_index,
+                               MetaTensor* x_grad,
+                               MetaConfig config) {
+  const auto& x_dims = x.dims();
+  const auto& label_dims = label.dims();
+  const auto& dy_dims = out_grad.dims();
+  int rank = x_dims.size();
+  PADDLE_ENFORCE_EQ(dy_dims.size(),
+                    label_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(Y@Grad) and Input(Y) should have the same rank."
+                        "But received: Y@Grad's rank is [%d], Y's rank is [%d]",
+                        dy_dims.size(),
+                        label_dims.size()));
+
+  bool contain_unknown_dim = common::contain_unknown_dim(x_dims) ||
+                             common::contain_unknown_dim(dy_dims);
+
+  bool check = config.is_runtime || !contain_unknown_dim;
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(common::slice_ddim(x_dims, 0, rank - 1),
+                      common::slice_ddim(dy_dims, 0, rank - 1),
+                      phi::errors::InvalidArgument(
+                          "The Input(X) and Input(Y@Grad) should have the same "
+                          "shape except the last dimension. but received: "
+                          "the shape of Input(X) is [%s], "
+                          "the shape of Input(Y@Grad) is [%s].",
+                          x_dims,
+                          dy_dims));
+  }
+
+  x_grad->set_dims(x_dims);
+  x_grad->share_lod(x);
+  x_grad->set_dtype(x.dtype());
+}
+
+void CrossEntropyGrad2InferMeta(const MetaTensor& x_shape,
+                                const MetaTensor& label,
+                                const MetaTensor& match_x,
+                                const MetaTensor& out_grad,
+                                int ignore_index,
+                                MetaTensor* x_grad,
+                                MetaConfig config) {
+  const auto& x_shape_dims = x_shape.dims();
+  const auto& x_dims = phi::DDim(x_shape_dims.Get(), x_shape_dims.size() - 1);
+  const auto& label_dims = label.dims();
+  const auto& dy_dims = out_grad.dims();
+  int rank = x_dims.size();
+  PADDLE_ENFORCE_EQ(dy_dims.size(),
+                    label_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(Y@Grad) and Input(Y) should have the same rank."
+                        "But received: Y@Grad's rank is [%d], Y's rank is [%d]",
+                        dy_dims.size(),
+                        label_dims.size()));
+
+  bool contain_unknown_dim = common::contain_unknown_dim(x_dims) ||
+                             common::contain_unknown_dim(dy_dims);
+
+  bool check = config.is_runtime || !contain_unknown_dim;
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(common::slice_ddim(x_dims, 0, rank - 1),
+                      common::slice_ddim(dy_dims, 0, rank - 1),
+                      phi::errors::InvalidArgument(
+                          "The Input(X) and Input(Y@Grad) should have the same "
+                          "shape except the last dimension. but received: "
+                          "the shape of Input(X) is [%s], "
+                          "the shape of Input(Y@Grad) is [%s].",
+                          x_dims,
+                          dy_dims));
+  }
+
+  x_grad->set_dims(x_dims);
+  x_grad->share_lod(x_shape);
+  x_grad->set_dtype(x_shape.dtype());
+}
+
 void CSoftmaxWithCrossEntropyGradInferMeta(const MetaTensor& softmax,
                                            const MetaTensor& label,
                                            const MetaTensor& loss_grad,

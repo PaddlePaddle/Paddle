@@ -25,6 +25,7 @@ from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.distributed.auto_parallel.placement_type import (
     to_placements,
 )
+from paddle.jit.pir_translated_layer import PirTranslatedLayer
 from paddle.jit.translated_layer import TranslatedLayer
 from paddle.nn.layer import layers
 
@@ -58,7 +59,8 @@ class FunctionSpec:
         # parse *args
         self.varargs_name = parse_varargs_name(function)
         if self.varargs_name is not None and isinstance(
-            getattr(function, '__self__', None), TranslatedLayer
+            getattr(function, '__self__', None),
+            (TranslatedLayer, PirTranslatedLayer),
         ):
             self._arg_names += function.__self__._input_args_names
 
