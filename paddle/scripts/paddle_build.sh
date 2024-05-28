@@ -3650,7 +3650,7 @@ function clang-tidy_check() {
     startTime_s=`date +%s`
     for file in ${diff_files}
     do
-        python ${PADDLE_ROOT}/build/tools/codestyle/clang-tidy.py -p=build -j=10 \
+        python ${PADDLE_ROOT}/tools/codestyle/clang-tidy.py -p=build -j=10 \
         -clang-tidy-binary=clang-tidy \
         -extra-arg=-Wno-unknown-warning-option \
         -extra-arg=-Wno-pessimizing-move \
