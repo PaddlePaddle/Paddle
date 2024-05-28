@@ -496,7 +496,7 @@ void* GetCUPTIDsoHandle() {
         FLAGS_cupti_dir, "libcupti.so", false, {cupti_lib_path});
 #endif
 
-  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION <= 12030) {
+  } else if (CUDA_VERSION >= 12000 && CUDA_VERSION < 12030) {
 #ifdef WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(
         FLAGS_cupti_dir, "libcupti.so.12", false, {cupti_lib_path});

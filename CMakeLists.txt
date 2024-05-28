@@ -99,12 +99,6 @@ if(WITH_GPU AND WITH_ROCM)
 endif()
 
 if(WITH_GPU AND NOT APPLE)
-  if(WIN32)
-    add_definitions(-DWITH_PIP_CUDA_LIBRARIES)
-    set(WITH_PIP_CUDA_LIBRARIES
-        ON
-        CACHE BOOL "" FORCE)
-  endif()
   #(Note risemeup1): The cudart dynamic library libcudart.so is used by set CUDA_USE_STATIC_CUDA_RUNTIME and CMAKE_CUDA_FLAGS
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL
                                             "x86_64")
