@@ -49,7 +49,7 @@ PyLayerInstruction::PyLayerInstruction(
     pir::Operation* op,
     ValueExecutionInfo* value_exec_info,
     interpreter::ExecutionConfig execution_config)
-    : InstructionBase(id, place) {
+    : InstructionBase(id, place), output_vars_(), fwd_skip_gc_names_() {
   PADDLE_ENFORCE(op->isa<paddle::dialect::PyLayerOp>(),
                  phi::errors::PreconditionNotMet(
                      "Cond instruction only support pylayer op"));

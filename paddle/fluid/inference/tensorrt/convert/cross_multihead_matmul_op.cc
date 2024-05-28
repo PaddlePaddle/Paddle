@@ -234,16 +234,13 @@ class CrossMultiheadMatMulOpConverter : public OpConverter {
     auto creator = GetPluginRegistry()->getPluginCreator("fMHCA", "1");
     assert(creator != nullptr);
     std::vector<nvinfer1::PluginField> fields{};
-    nvinfer1::PluginFieldCollection* plugin_collection =
-        static_cast<nvinfer1::PluginFieldCollection*>(
-            malloc(sizeof(*plugin_collection) +
-                   fields.size() *
-                       sizeof(nvinfer1::PluginField)));  // remember to free
+    std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_collection(
+        new nvinfer1::PluginFieldCollection);
 
     plugin_collection->nbFields = static_cast<int>(fields.size());
     plugin_collection->fields = fields.data();
-    auto plugin = creator->createPlugin("fMHA_V2", plugin_collection);
-    free(plugin_collection);
+    auto plugin = creator->createPlugin("fMHA_V2", plugin_collection.get());
+    plugin_collection.reset();
     std::vector<nvinfer1::ITensor*> plugin_inputs;
     plugin_inputs.emplace_back(reshape_after_fc_q_layer->getOutput(0));
     plugin_inputs.emplace_back(reshape_after_fc_layer->getOutput(0));

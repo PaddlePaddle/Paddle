@@ -121,9 +121,11 @@ void MaskHelperCooCPUKernel(const CPUContext& dev_ctx,
   for (uint64_t i = 0; i < x_indexs.size(); i++) {
     x_indexs_map[x_indexs[i]] = i;
   }
+
   *out = phi::EmptyLike<T>(dev_ctx, x.values());
+  phi::funcs::SetConstant<CPUContext, T> set_zero;
+  set_zero(dev_ctx, out, static_cast<T>(0));
   T* out_ptr = out->data<T>();
-  memset(out_ptr, static_cast<T>(0), out->numel() * sizeof(T));
   const int64_t stride =
       x.dims().size() == sparse_dim ? 1 : x.values().dims()[1];
   const T* in_ptr = x.values().data<T>();
@@ -166,7 +168,9 @@ PD_REGISTER_KERNEL(mask_coo,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -176,9 +180,12 @@ PD_REGISTER_KERNEL(mask_helper_coo,
                    phi::sparse::MaskHelperCooKernel,
                    float,
                    double,
+                   phi::dtype::float16,
                    uint8_t,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

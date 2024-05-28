@@ -185,6 +185,13 @@ static bool NeedSkipPlaceTransfer(const pir::Operation* op) {
 static bool NeedFallBackCpu(const pir::Operation* op,
                             const std::string& kernel,
                             const phi::KernelKey& kernel_key) {
+  if (op->HasAttribute(kForceBackendAttr) &&
+      op->attributes()
+              .at(kForceBackendAttr)
+              .dyn_cast<pir::StrAttribute>()
+              .AsString() == "cpu") {
+    return true;
+  }
   if (UnchangeOutputOps.count(op->name()) || kernel == "" ||
       phi::KernelFactory::Instance().HasKernel(kernel, kernel_key)) {
     return false;
@@ -208,6 +215,14 @@ static bool NeedFallBackCpu(const pir::Operation* op,
 static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
                                        const std::string& kernel_name,
                                        const phi::KernelKey kernel_key) {
+  if (op->HasAttribute(kForceBackendAttr) &&
+      op->attributes()
+              .at(kForceBackendAttr)
+              .dyn_cast<pir::StrAttribute>()
+              .AsString() == "gpu") {
+    return true;
+  }
+
   // NOTE(phlrain): keep the same kernel select strategy with
   // GetExpectKernelKey
   if (op->isa<Pool2dOp>() || op->isa<Pool2dGradOp>() || op->isa<Pool3dOp>() ||
@@ -537,9 +552,7 @@ static pir::Value AddOneDNN2PaddleLayoutTransferOp(
   }
 
   block->push_back(op);
-  auto new_in = op->result(0);
-
-  return new_in;
+  return op->result(0);
 }
 #endif
 
@@ -1279,6 +1292,12 @@ phi::KernelKey GetKernelKey(
     kernel_backend = paddle::experimental::ParseBackend(place);
   }
 
+#ifdef PADDLE_WITH_DNNL
+  if (kernel_backend != phi::Backend::ONEDNN &&
+      kernel_layout == phi::DataLayout::ONEDNN) {
+    kernel_layout = phi::DataLayout::ANY;
+  }
+#endif
   phi::KernelKey res(kernel_backend, kernel_layout, kernel_dtype);
 
   // kernel backend infered incorrectly from memcpy op operands,
@@ -1310,6 +1329,11 @@ phi::KernelKey GetKernelKey(
 
   if (NeedFallBackCpu((op), kernel_fn_str, res)) {
     res.set_backend(phi::Backend::CPU);
+#ifdef PADDLE_WITH_DNNL
+    if (res.layout() == phi::DataLayout::ONEDNN) {
+      res.set_layout(phi::DataLayout::ANY);
+    }
+#endif
     VLOG(8) << "kernel backend must be on CPU when need fallback";
   }
 
@@ -2420,6 +2444,38 @@ std::vector<pir::Value> BuildInputs(
           new_in = AddOneDNN2PaddleLayoutTransferOp(
               new_in, phi::DataLayout::ANY, block);
         }
+      } else if (new_in_type.isa<pir::VectorType>() &&
+                 new_in.defining_op()->isa<::pir::CombineOp>()) {
+        bool need_replace_combine_op = false;
+        std::vector<pir::Value> new_vec_inputs;
+        std::vector<pir::Type> types_in_vec;
+        for (auto& in : new_in.defining_op()->operands()) {
+          auto in_value = in.source();
+          if (in_value.type().isa<AllocatedDenseTensorType>()) {
+            if (in_value.type()
+                    .dyn_cast<AllocatedDenseTensorType>()
+                    .data_layout() == phi::DataLayout::ONEDNN) {
+              need_replace_combine_op = true;
+              in_value = AddOneDNN2PaddleLayoutTransferOp(
+                  in_value, phi::DataLayout::ANY, block);
+            }
+            new_vec_inputs.push_back(in_value);
+            types_in_vec.push_back(in_value.type());
+          }
+        }
+        if (need_replace_combine_op) {
+          std::string combine_op_name(pir::CombineOp::name());
+          pir::OpInfo op_info = ctx->GetRegisteredOpInfo(combine_op_name);
+
+          pir::Type target_vec_type = pir::VectorType::get(ctx, types_in_vec);
+          pir::Operation* operation = pir::Operation::Create(
+              new_vec_inputs, {}, {target_vec_type}, op_info);
+          new_in.defining_op()->ReplaceAllUsesWith(operation->results());
+          block->erase(*new_in.defining_op());
+
+          new_in = operation->result(0);
+          block->push_back(operation);
+        }
       }
     }
 #endif
@@ -3093,16 +3149,27 @@ void ProcessBlock(
         op_item = op_item_inner;
         op_info_parser = GetOpYamlInfoParser(op_item_inner);
         kernel_key.set_backend(phi::Backend::ONEDNN);
+        kernel_key.set_layout(phi::DataLayout::ONEDNN);
       }
     } else if (FLAGS_use_mkldnn && kernel_key.backend() == phi::Backend::CPU &&
                !op_item->HasTrait<OneDNNTrait>() &&
-               SupportsMKLDNN(kernel_name, phi::DataType::BFLOAT16)) {
+               SupportsMKLDNN(kernel_name, kernel_key.dtype())) {
       // Support FLAGS_use_mkldnn
       auto op_item_inner = PdOp2OneDNNOp(op_item, block, ctx);
       if (op_item_inner != op_item) {
         op_item = op_item_inner;
         op_info_parser = GetOpYamlInfoParser(op_item_inner);
         kernel_key.set_backend(phi::Backend::ONEDNN);
+        kernel_key.set_layout(phi::DataLayout::ONEDNN);
+      }
+    } else if (kernel_key.backend() == phi::Backend::ONEDNN &&
+               !op_item->HasTrait<OneDNNTrait>()) {
+      auto op_item_inner = PdOp2OneDNNOp(op_item, block, ctx);
+      if (op_item_inner != op_item) {
+        op_item = op_item_inner;
+        op_info_parser = GetOpYamlInfoParser(op_item_inner);
+        kernel_key.set_backend(phi::Backend::ONEDNN);
+        kernel_key.set_layout(phi::DataLayout::ONEDNN);
       }
     }
 #endif

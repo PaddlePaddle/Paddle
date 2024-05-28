@@ -778,6 +778,138 @@ def _program_for_vpp(
     return list(type_to_program.keys()), list(type_to_program.values())
 
 
+def _program_for_vpp_split_bwk(
+    program,
+    num_model_chunks,
+    dist_context,
+    enable_send_recv_overlap=False,
+):
+    if enable_send_recv_overlap:
+        _overlap_send_recv(program)
+    else:
+        _insert_sync_for_fthenb_1f1b(program, dist_context)
+
+    oprole_type = {
+        0: "forward",
+        1: "backward",
+        2: "backward_b",
+        3: 'backward_w',
+        4: "optimizer",
+    }
+
+    def _split_ops(block):
+        type_to_ops = OrderedDict()
+        for type in oprole_type.values():
+            chunk_ids = list(range(num_model_chunks))
+            if type == "optimizer":
+                type_to_ops[type] = []
+            else:
+                chunk_ids = (
+                    chunk_ids if "backward" not in type else reversed(chunk_ids)
+                )
+                for chunk_id in chunk_ids:
+                    type_to_ops[type + str(chunk_id)] = []
+        type_to_ops["fetch"] = []
+
+        dealed_op_idx = 0
+        for ip, op in enumerate(block.ops):
+            if ip < dealed_op_idx:
+                continue
+            if is_forward_op(op):
+                type = oprole_type[0]
+            elif is_backward_op(op):
+                types = _get_backward_op_type(block, op, ip)
+                dealed_op_idx = dealed_op_idx + len(types) - 1
+            elif is_optimize_op(op):
+                type = oprole_type[4]
+            else:
+                raise ValueError(
+                    "The op role: "
+                    + str(op.attr('op_role'))
+                    + " isn't one of Forward, Backward or Optimizer."
+                )
+
+            dist_op = dist_context.get_dist_op_for_program(op)
+            if _is_fetch_op(op):
+                type_to_ops["fetch"].append(op)
+            elif is_optimize_op(op):
+                type_to_ops[type].append(op)
+            elif op.type == "feed":
+                type_to_ops[type + str(0)].append(op)
+            elif op.type == "share_buffer":
+                dist_pre_op = dist_context.get_dist_op_for_program(
+                    block.ops[ip - 1]
+                )
+                type_to_ops[type + str(dist_pre_op.dist_attr.chunk_id)].append(
+                    op
+                )
+            elif (
+                dist_op
+                and type + str(dist_op.dist_attr.chunk_id) in type_to_ops
+                and not is_backward_op(op)
+            ):
+                type_to_ops[type + str(dist_op.dist_attr.chunk_id)].append(op)
+            elif (
+                dist_op
+                and type + str(dist_op.dist_attr.chunk_id) in type_to_ops
+                and is_backward_op(op)
+            ):
+                for i, type in enumerate(types):
+                    type_to_ops[
+                        "backward" + str(dist_op.dist_attr.chunk_id)
+                    ].append(block.ops[ip + i])
+                    type_to_ops[type + str(dist_op.dist_attr.chunk_id)].append(
+                        block.ops[ip + i]
+                    )
+            else:
+                raise ValueError(f"There is not dist_attr for op[{op.type}].")
+            dealed_op_idx = dealed_op_idx + 1
+
+        return type_to_ops
+
+    type_to_program = OrderedDict()
+
+    for ib, src_block in enumerate(program.blocks):
+        type_to_ops = _split_ops(src_block)
+        fetch_ops = type_to_ops.pop("fetch", [])
+        dst_blocks = []
+
+        if ib == 0:
+            for type, ops in type_to_ops.items():
+                type_to_program[type] = Program()
+                dst_block = type_to_program[type].block(0)
+                _add_ops_into_block(src_block, dst_block, ops)
+                dst_blocks.append(dst_block)
+        else:
+            for type, ops in type_to_ops.items():
+                if len(ops) > 0:
+                    dst_block = type_to_program[type]._create_block(
+                        parent_idx=src_block.parent_idx
+                    )
+                    dst_block._set_forward_block_idx(
+                        src_block.forward_block_idx
+                    )
+                    _add_ops_into_block(src_block, dst_block, ops)
+                    dst_blocks.append(dst_block)
+
+        for fetch_op in fetch_ops:
+            in_name = fetch_op.input('X')[0]
+            fetch_block = None
+            for dst_block in dst_blocks:
+                if dst_block._find_var_recursive(in_name):
+                    fetch_block = dst_block
+                    break
+
+            if fetch_block:
+                _create_program(src_block, fetch_block, fetch_op)
+
+    for prog in type_to_program.values():
+        prog._sync_with_cpp()
+        prog._roll_to_global_block()
+
+    return list(type_to_program.keys()), list(type_to_program.values())
+
+
 def _get_backward_op_type(block, cur_op, idx):
     # deal the ops pattern: [reshape2, reshape2, matmul_v2, reshape2, elementwise_add]
     def is_reshape_matmul_pattern(cur_op, idx, ops, ops_len):
