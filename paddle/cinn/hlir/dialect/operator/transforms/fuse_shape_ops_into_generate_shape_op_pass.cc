@@ -357,9 +357,9 @@ bool ProcessOp<paddle::dialect::SliceOp>(
     pir::PatternRewriter* rewriter,
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   return ReplaceShapeOpsToGenerateShape(
-             op->operand_source(1), rewriter, shape_analysis) &&
+             op->operand(1), rewriter, shape_analysis) &&
          ReplaceShapeOpsToGenerateShape(
-             op->operand_source(2), rewriter, shape_analysis);
+             op->operand(2), rewriter, shape_analysis);
 }
 
 }  // namespace
