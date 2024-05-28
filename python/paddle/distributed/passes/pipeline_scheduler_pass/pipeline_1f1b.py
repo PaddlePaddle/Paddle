@@ -14,6 +14,7 @@
 
 import logging
 
+import paddle
 from paddle.base import core
 from paddle.distributed.auto_parallel.static.cost import calc_time_by_cost_model
 
@@ -23,6 +24,7 @@ from ..pass_utils import (
     AutoParallelStreamType,
     _add_event_dependency,
     _program_for_fthenb_and_1f1b,
+    shadow_var_between_sub_programs,
     split_program,
 )
 from .pipeline_pass_base import PipelinePassBase
@@ -333,6 +335,12 @@ class Pipeline1F1BPass(PipelinePassBase):
                 f"type = {types[i]}, sub_programs = {sub_programs[i]}\n"
             )
         logger.debug(f"jobs_in_stable_phase = {self.jobs_in_stable_phase}")
+
+        enable_pir_in_executor = paddle.framework.get_flags(
+            "FLAGS_enable_pir_in_executor"
+        )['FLAGS_enable_pir_in_executor']
+        if enable_pir_in_executor:
+            shadow_var_between_sub_programs(sub_programs)
 
         return types, sub_programs
 

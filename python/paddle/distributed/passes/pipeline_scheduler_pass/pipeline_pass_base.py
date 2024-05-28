@@ -19,7 +19,7 @@ from paddle.base import core
 
 from ...utils.log_utils import get_logger
 from ..pass_base import PassBase
-from ..pass_utils import set_skip_gc_vars, shadow_var_between_sub_programs
+from ..pass_utils import set_skip_gc_vars
 
 logger = get_logger(logging.INFO)
 
@@ -58,17 +58,14 @@ class PipelinePassBase(PassBase):
         to implement two interfaces above, 'create_job_list' and 'partial_programs'.
         """
         job_types, sub_programs = self._partial_programs(main_program)
-
-        enable_pir_in_executor = paddle.framework.get_flags(
-            "FLAGS_enable_pir_in_executor"
-        )['FLAGS_enable_pir_in_executor']
-        if enable_pir_in_executor:
-            shadow_var_between_sub_programs(sub_programs)
-
         for i in range(len(job_types)):
             logger.debug(
                 f"sub_program type: {job_types[i]}, sum_program:\n{sub_programs[i]}"
             )
+
+        enable_pir_in_executor = paddle.framework.get_flags(
+            "FLAGS_enable_pir_in_executor"
+        )['FLAGS_enable_pir_in_executor']
 
         jobs = self._create_job_list()
         type_to_program = set_skip_gc_vars(

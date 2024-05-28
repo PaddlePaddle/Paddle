@@ -14,11 +14,15 @@
 
 import logging
 
+import paddle
 from paddle.base import core
 
 from ...utils.log_utils import get_logger
 from ..pass_base import register_pass
-from ..pass_utils import _program_for_fthenb_and_1f1b
+from ..pass_utils import (
+    _program_for_fthenb_and_1f1b,
+    shadow_var_between_sub_programs,
+)
 from .pipeline_pass_base import PipelinePassBase
 
 FORWARD = "forward"
@@ -82,4 +86,9 @@ class PipelineEager1F1BPass(PipelinePassBase):
         sub_program_list = _program_for_fthenb_and_1f1b(
             program, enable_send_recv_overlap
         )
+        enable_pir_in_executor = paddle.framework.get_flags(
+            "FLAGS_enable_pir_in_executor"
+        )['FLAGS_enable_pir_in_executor']
+        if enable_pir_in_executor:
+            shadow_var_between_sub_programs(sub_program_list)
         return types, sub_program_list

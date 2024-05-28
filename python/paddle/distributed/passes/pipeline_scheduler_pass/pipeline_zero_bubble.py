@@ -14,11 +14,16 @@
 
 import logging
 
+import paddle
 from paddle.base import core
 
 from ...utils.log_utils import get_logger
 from ..pass_base import register_pass
-from ..pass_utils import _program_for_zero_bubble, split_matmul_grad_to_matmul
+from ..pass_utils import (
+    _program_for_zero_bubble,
+    shadow_var_between_sub_programs,
+    split_matmul_grad_to_matmul,
+)
 from .pipeline_pass_base import PipelinePassBase
 
 FORWARD = "forward"
@@ -132,4 +137,9 @@ class PipelineZeroBubblePipelinePass(PipelinePassBase):
         types, sub_program_list = _program_for_zero_bubble(
             program, enable_send_recv_overlap
         )
+        enable_pir_in_executor = paddle.framework.get_flags(
+            "FLAGS_enable_pir_in_executor"
+        )['FLAGS_enable_pir_in_executor']
+        if enable_pir_in_executor:
+            shadow_var_between_sub_programs(sub_program_list)
         return types, sub_program_list

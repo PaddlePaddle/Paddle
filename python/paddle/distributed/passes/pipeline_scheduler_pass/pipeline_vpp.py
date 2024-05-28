@@ -14,6 +14,7 @@
 
 import logging
 
+import paddle
 from paddle.base import core
 
 from ...utils.log_utils import get_logger
@@ -22,6 +23,7 @@ from ..pass_utils import (
     _program_for_vpp,
     _program_for_vpp_split_bwk,
     _split_and_replace_recv,
+    shadow_var_between_sub_programs,
     split_matmul_grad_to_matmul,
 )
 from .pipeline_pass_base import PipelinePassBase
@@ -223,6 +225,11 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                 dist_context,
                 enable_send_recv_overlap,
             )
+        enable_pir_in_executor = paddle.framework.get_flags(
+            "FLAGS_enable_pir_in_executor"
+        )['FLAGS_enable_pir_in_executor']
+        if enable_pir_in_executor:
+            shadow_var_between_sub_programs(sub_program_list)
         if enable_send_recv_overlap:
             types, sub_program_list = _split_and_replace_recv(
                 types, sub_program_list
