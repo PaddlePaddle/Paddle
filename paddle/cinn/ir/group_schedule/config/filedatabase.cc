@@ -58,12 +58,12 @@ bool TileConfigToProto(group_schedule::config::proto::TileData* tile_data,
 void AppendLineToFile(const std::string& file_path,
                       const std::vector<std::string>& lines) {
   std::ofstream os(file_path, std::ofstream::app);
+  PADDLE_ENFORCE_EQ(os.good(),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "Cannot open the file to write:  %s", file_path));
   VLOG(3) << "Start append tile_config to json";
   for (auto& line : lines) {
-    PADDLE_ENFORCE_EQ(os.good(),
-                      true,
-                      ::common::errors::InvalidArgument(
-                          "Cannot open the file to write:  %s", file_path));
     os << line << std::endl;
     VLOG(3) << "Add config line: " << line;
   }
@@ -86,7 +86,7 @@ std::string IterSpaceTypeToDir(const common::Target target,
     if (!PathExists(test_path)) {
       PADDLE_ENFORCE_NE(MKDIR(test_path.c_str()),
                         -1,
-                        ::common::errors::InvalidArgument(
+                        ::common::errors::PreconditionNotMet(
                             "Can not create directory: %s, Make sure you "
                             "have permission to write",
                             test_path));
@@ -110,7 +110,8 @@ bool FileTileConfigDatabase::Tofile(const common::Target& target,
   auto is_success =
       TileConfigToProto(&tile_data, tile_config_map, iter_space_type, priority);
   if (is_success == false) {
-    PADDLE_THROW(::common::errors::InvalidArgument("TileConfigToProto Failed"));
+    PADDLE_THROW(::common::errors::Unavailable(
+        "Can't convert tile_config_map to its proto message."));
   }
   // Step2. ToJson
   std::string dump_path = IterSpaceTypeToDir(target, iter_space_type);
@@ -220,7 +221,8 @@ void FileTileConfigDatabase::AddConfig(const common::Target& target,
     target_config_data_.clear();
     return;
   } else {
-    PADDLE_THROW(::common::errors::InvalidArgument("Add config failed."));
+    PADDLE_THROW(
+        ::common::errors::Unavailable("Can't add tile config to json file."));
   }
 }
 }  // namespace ir
