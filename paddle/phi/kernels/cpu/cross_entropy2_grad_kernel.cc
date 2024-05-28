@@ -12,29 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/phi/kernels/impl/cross_entropy2_kernel_impl.h"
 
-#include <memory>
+PD_REGISTER_KERNEL(cross_entropy_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CrossEntropyGradientOpKernel,
+                   float,
+                   double) {}
 
-#include "paddle/pir/include/pass/pass.h"
-
-namespace pir {
-class Value;
-class PatternRewriter;
-}  // namespace pir
-namespace cinn {
-namespace dialect {
-class GenerateShapeOp;
-
-namespace ir {
-
-namespace details {
-std::optional<pir::Value> GetOutReplacement(cinn::dialect::GenerateShapeOp op,
-                                            pir::PatternRewriter* rewriter);
-}  // namespace details
-
-std::unique_ptr<pir::Pass> CreateSplitGenerateShapeIntoShapeOpsPass();
-
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn
+PD_REGISTER_KERNEL(cross_entropy_grad2,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CrossEntropyGradientOpKernel2,
+                   float,
+                   double) {
+  kernel->InputAt(1).SetDataType(phi::DataType::INT64);
+}
