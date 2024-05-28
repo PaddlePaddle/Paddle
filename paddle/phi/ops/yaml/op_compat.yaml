@@ -1783,11 +1783,6 @@
   attrs:
     data_format: data_layout
 
-- op : gru
-  backward : gru_grad
-  extra :
-    attrs : [bool is_test = false]
-
 - op : gumbel_softmax
   inputs :
     x : X
@@ -4081,6 +4076,9 @@
     {input : Input, h0 : H0, weight : Weight, bias : Bias}
   outputs:
     {batch_gate : BatchGate, batch_reset_hidden_prev : BatchResetHiddenPrev, batch_hidden : BatchHidden, hidden : Hidden}
+  extra :
+    attrs : [bool is_test = false]
+    outputs : [batch_gate, batch_reset_hidden_prev, batch_hidden]
 
 - op: gru_unit
   backward: gru_unit_grad
