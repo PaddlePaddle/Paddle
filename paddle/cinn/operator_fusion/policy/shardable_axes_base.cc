@@ -66,12 +66,12 @@ std::vector<std::string> CreateNewNamesWithRank(int64_t rank) {
 ShardableAxesSignature CreateDefaultSignature(pir::Operation* op) {
   ShardableAxesSignature result = ShardableAxesSignature();
   for (int i = 0; i < op->num_operands(); ++i) {
-    VLOG(0) << "##### operand: " << i << " " << op->operand_source(i).type();
+    // VLOG(0) << "##### operand: " << i << " " << op->operand_source(i).type();
     result.inputs.emplace_back(
         CreateNewNamesWithRank(GetCompitableRank(op->operand_source(i))));
   }
   for (int i = 0; i < op->num_results(); ++i) {
-    VLOG(0) << "##### result: " << i << " " << op->result(i).type();
+    // VLOG(0) << "##### result: " << i << " " << op->result(i).type();
     result.outputs.emplace_back(
         CreateNewNamesWithRank(GetCompitableRank(op->result(i))));
   }
@@ -227,7 +227,7 @@ ShardableAxesSignature CreateSignatureForBroadcast(
 
 ShardableAxesSignature ShardableAxesInfoManager::CreateShardableSignature(
     pir::Operation* op) {
-  VLOG(0) << "### CreateShardableSignature:  " << op->name();
+  // VLOG(0) << "### CreateShardableSignature:  " << op->name();
   auto special_result = CreateSignatureForSpecialOps(op);
   if (special_result != std::nullopt) {
     VLOG(4) << "[ShardableAxesInfoManager] Create Shardable Axes Signature for "

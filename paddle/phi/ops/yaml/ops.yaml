@@ -3073,6 +3073,7 @@
   kernel :
     func : qkv_unpack_mha
     data_type : q
+  optional : src_mask
 
 - op : qr
   args : (Tensor x, str mode = "reduced")
