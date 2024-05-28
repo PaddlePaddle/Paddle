@@ -738,12 +738,14 @@ class FunctionGraph:
         def is_graph_output(
             var,
         ) -> TypeGuard[TensorVariable | SymbolicVariable]:
-            return isinstance(var.tracker, DummyTracker) and isinstance(
-                var, (TensorVariable, SymbolicVariable)
-            )
+            return isinstance(
+                var.tracker, (DummyTracker, SymbolicOperationTracker)
+            ) and isinstance(var, (TensorVariable, SymbolicVariable))
 
         def collect_related_dummy_tensor(var):
-            if isinstance(var.tracker, DummyTracker):
+            if isinstance(
+                var.tracker, (DummyTracker, SymbolicOperationTracker)
+            ):
                 if is_graph_output(var):
                     return [var]
                 else:
@@ -758,7 +760,9 @@ class FunctionGraph:
         ] = OrderedSet()
         # Find Tensor Variables from outputs.
         for output in outputs:
-            if isinstance(output.tracker, DummyTracker):
+            if isinstance(
+                output.tracker, (DummyTracker, SymbolicOperationTracker)
+            ):
                 if is_graph_output(output):
                     output_tensors.add(output)
                 else:
