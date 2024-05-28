@@ -1019,11 +1019,11 @@ struct AssignOpTranscriber : public OpTranscriber {
                              TranslationContext* param_map,
                              const OpDesc& op_desc,
                              pir::Block* block) override {
-    if (param_map->count(op_desc.Output("Out")[0])) {
-      return Assign2AssignOutOpTranscriber()(ctx, param_map, op_desc, block);
-    } else {
-      return Assign2AssignOpTranscriber()(ctx, param_map, op_desc, block);
-    }
+    // if (param_map->count(op_desc.Output("Out")[0])) {
+    //   return Assign2AssignOutOpTranscriber()(ctx, param_map, op_desc, block);
+    // } else {
+    return Assign2AssignOpTranscriber()(ctx, param_map, op_desc, block);
+    //}
   }
 };
 

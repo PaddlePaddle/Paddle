@@ -1068,11 +1068,13 @@ class _ExecutorCache:
                         param_mapping,
                     ) = translate_to_pir_with_param_map(new_program.desc)
 
+                    # decomp.decompose_pir_program(
+                    #     pir_program, param_mapping, new_program._grad_var_to_var
+                    # )
                     from paddle.decomposition import decomp
 
-                    decomp.decompose_pir_program(
-                        pir_program, param_mapping, new_program._grad_var_to_var
-                    )
+                    with decomp.prim_guard():
+                        decomp.decompose_dist_program(pir_program)
 
                     if in_cinn_mode():
                         apply_cinn_pass(pir_program)
