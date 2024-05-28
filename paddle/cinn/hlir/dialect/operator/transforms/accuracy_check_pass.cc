@@ -81,16 +81,21 @@ class AddAccuracyCheckPattern
 
         rewriter.ReplaceAllUsesWith(cloned_op->result(0),
                                     out_replacement.value());
-        if (cloned_op->use_empty()) {
-          rewriter.EraseOp(cloned_op);
-        }
-
-        ir_mapping.Add(cloned_op->result(0), out_replacement.value());
+        PADDLE_ENFORCE_EQ(
+            cloned_op->use_empty(),
+            true,
+            phi::errors::InvalidArgument("cinn_op.generate_shape op shouldn't "
+                                         "be used outside fusion block."));
+        rewriter.EraseOp(cloned_op);
         ir_mapping.Add(op->result(0), out_replacement.value());
         rewriter.SetInsertionPointAfter(out_replacement.value().defining_op());
         return;
       }
-
+      if (op->isa<cinn::dialect::YieldStoreOp>()) {
+        VLOG(6) << "skip yield_store op";
+        ir_mapping.Add(op->result(0), ir_mapping.Lookup(op->operand_source(0)));
+        return;
+      }
       pir::Operation* pd_op =
           cinn::dialect::details::RewriteCinnOpToPdOp(op, ir_mapping, rewriter);
       rewriter.SetInsertionPointAfter(pd_op);
