@@ -30,6 +30,8 @@ namespace framework {
 struct BucketLoweredFuncsWrapper {
   std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>>
       predicate2funcs;
+  std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>>
+      predicate2funcsCX86;
   ir::LoweredFunc infer_shape_func;
 };
 
