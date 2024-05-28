@@ -467,7 +467,7 @@ void OneDNNPhiKernelInstruction::Run() {
       dnnl::memory::desc out_mem_desc =
           phi::funcs::make_memory_desc(*input, from_layout);
       transed_tensor->set_mem_desc(out_mem_desc);
-      kernel_context_->UpdataInput(i, transed_tensor);
+      kernel_context_.UpdataInput(i, transed_tensor);
     }
   }
 

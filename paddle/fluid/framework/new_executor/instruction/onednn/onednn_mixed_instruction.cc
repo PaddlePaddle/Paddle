@@ -95,7 +95,7 @@ void OneDNNMixedPhiKernelInstruction::Run() {
           transed_tensor->set_layout(tmp_layout);
           phi::funcs::MatchShapeToLayout(
               transed_tensor, phi::DataLayout::ONEDNN, tmp_layout);
-          kernel_context_->UpdataInput(i, transed_tensor);
+          kernel_context_.UpdataInput(i, transed_tensor);
         } else {
           tmp_holders.emplace_back();
           auto transed_tensor = tmp_holders.back().get();
@@ -105,7 +105,7 @@ void OneDNNMixedPhiKernelInstruction::Run() {
                                                 *input,
                                                 transed_tensor,
                                                 phi::CPUPlace());
-          kernel_context_->UpdataInput(i, transed_tensor);
+          kernel_context_.UpdataInput(i, transed_tensor);
         }
       }
     }
