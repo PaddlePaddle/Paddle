@@ -1032,6 +1032,36 @@ if '${WITH_STRIP}' == 'ON':
     if os.system(command) != 0:
         raise Exception("strip *.so failed, command: %s" % command)
 
+
+def check_build_dependency():
+    missing_modules = '''Missing build dependency: {dependency}
+Please run 'pip install -r python/requirements.txt' to make sure you have all the dependencies installed.
+'''.strip()
+
+    with open('${PADDLE_SOURCE_DIR}' + '/python/requirements.txt') as f:
+        build_dependencies = (
+            f.read().splitlines()
+        )  # Specify the dependencies to install
+
+    python_dependencies_module = []
+    installed_packages = []
+
+    for dependency in build_dependencies:
+        python_dependencies_module.append(
+            re.sub("_|-", '', re.sub(r"==.*|>=.*|<=.*", '', dependency))
+        )
+    reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
+
+    for r in reqs.split():
+        installed_packages.append(
+            re.sub("_|-", '', r.decode().split('==')[0]).lower()
+        )
+
+    for dependency in python_dependencies_module:
+        if dependency.lower() not in installed_packages:
+            raise RuntimeError(missing_modules.format(dependency=dependency))
+
+
 def install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir):
     """install cpp distribution and build test target
 
@@ -1072,6 +1102,9 @@ def install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir):
     subprocess.check_call(cmake_args)
     subprocess.check_call(["cmake", "--build", paddle_lib_test_dir])
 
+
+# check build dependency
+check_build_dependency()
 
 # install cpp distribution
 if '${WITH_CPP_DIST}' == 'ON':
