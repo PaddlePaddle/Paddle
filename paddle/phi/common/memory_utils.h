@@ -177,6 +177,9 @@ struct MemoryInterface {
   // phi::Allocator* (*get_pinned_allocator)();
   std::shared_ptr<std::remove_pointer<XPUEvent>::type> (*get_new_xpu_event)(
       int device_id);
+
+  void (*record_stream)(std::shared_ptr<Allocation> allocation,
+                        XPUStream stream);
 #endif
 };
 
@@ -398,6 +401,10 @@ class MemoryUtils {
       int device_id) {
     return memory_method_->get_new_xpu_event(device_id);
   }
+
+  void RecordStream(std::shared_ptr<Allocation> allocation, XPUStream stream) {
+    memory_method_->record_stream(allocation, stream);
+  }
 #endif
 
  private:
@@ -484,6 +491,8 @@ const Allocator* GetHostAllocator();
 const Allocator* GetZeroAllocator(int device_id);
 
 const Allocator* GetHostZeroAllocator();
+
+void RecordStream(std::shared_ptr<Allocation> allocation, XPUStream stream);
 
 // XPUs do not have the concept of pinned memory,
 // so the get_pinned_allocator function is not set.

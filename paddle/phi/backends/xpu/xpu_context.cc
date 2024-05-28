@@ -449,5 +449,9 @@ void XPUContext::StreamWaitStream(int wait_stream, int record_stream) const {
 
 int64_t XPUContext::GetStreamNum() const { return impls_.size(); }
 
+void XPUContext::RecordStream(const DenseTensor& tensor, int i) const {
+  memory_utils::RecordStream(tensor.Holder(), stream(i));
+}
+
 void XPUContext::Init() { impls_[0]->Init(); }
 }  // namespace phi

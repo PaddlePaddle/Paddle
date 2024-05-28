@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 
 namespace Eigen {
@@ -87,6 +88,8 @@ class XPUContext : public DeviceContext,
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
 
   XPUStream stream(int i = 0) const;
+
+  void RecordStream(const DenseTensor& tensor, int i) const;
 
   static const char* name() { return "XPUContext"; }
 

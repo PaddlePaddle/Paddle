@@ -1853,6 +1853,11 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
   }
   return m->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
 }
+
+void AllocatorFacade::RecordStream(std::shared_ptr<phi::Allocation> allocation,
+                                   XPUStream stream) {
+  GetPrivate()->RecordStream(allocation, stream);
+}
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

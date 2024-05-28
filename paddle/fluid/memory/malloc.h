@@ -58,6 +58,9 @@ void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
 gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
 #endif
+#ifdef PADDLE_WITH_XPU
+void RecordStream(std::shared_ptr<Allocation> allocation, XPUStream stream);
+#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 void RecordStream(std::shared_ptr<Allocation> allocation,
                   phi::stream::stream_t stream);

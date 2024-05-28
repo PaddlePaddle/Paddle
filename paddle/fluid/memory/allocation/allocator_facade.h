@@ -96,6 +96,7 @@ class AllocatorFacade {
 #elif defined(PADDLE_WITH_XPU)
   TEST_API const std::shared_ptr<Allocator>& GetAllocator(
       const platform::Place& place, XPUStream stream);
+  void RecordStream(std::shared_ptr<Allocation> allocation, XPUStream stream);
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

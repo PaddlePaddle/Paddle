@@ -501,6 +501,7 @@ void InitMemoryMethod() {
           .GetZeroAllocator(phi::CPUPlace())
           .get();
     };
+    memory_method->record_stream = paddle::memory::RecordStream;
     // XPUs do not have the concept of pinned memory,
     // so the get_pinned_allocator function is not set.
     memory_method->get_new_xpu_event = [](int device_id) {

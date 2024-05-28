@@ -133,6 +133,10 @@ const phi::Allocator* GetHostZeroAllocator() {
   return MemoryUtils::Instance().GetHostZeroAllocator();
 }
 
+void RecordStream(std::shared_ptr<Allocation> allocation, XPUStream stream) {
+  return MemoryUtils::Instance().RecordStream(allocation, stream);
+}
+
 // XPUs do not have the concept of pinned memory,
 // so the get_pinned_allocator function is not set.
 std::shared_ptr<std::remove_pointer<XPUEvent>::type> GetXpuEvent(
