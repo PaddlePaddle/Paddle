@@ -14,27 +14,11 @@
 
 #pragma once
 
-#include <memory>
-
-#include "paddle/pir/include/pass/pass.h"
+#include "paddle/common/layout.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace pir {
-class Value;
-class PatternRewriter;
+
+void SetNewLayoutForValue(pir::Value value, common::DataLayout new_layout);
+
 }  // namespace pir
-namespace cinn {
-namespace dialect {
-class GenerateShapeOp;
-
-namespace ir {
-
-namespace details {
-std::optional<pir::Value> GetOutReplacement(cinn::dialect::GenerateShapeOp op,
-                                            pir::PatternRewriter* rewriter);
-}  // namespace details
-
-std::unique_ptr<pir::Pass> CreateSplitGenerateShapeIntoShapeOpsPass();
-
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn

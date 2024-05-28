@@ -166,17 +166,19 @@ std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
 
   VLOG(2) << "===================== Create CINN ExecutionEngine end "
              "====================";
+  engine->ctx = std::make_unique<llvm::LLVMContext>();
+  engine->b = std::make_unique<llvm::IRBuilder<>>(*engine->ctx);
+  llvm::SMDiagnostic error;
+  engine->m = llvm::parseAssemblyString(
+      AsStringRef(backends::kRuntimeLlvmIr), error, *engine->ctx);
+
   return engine;
 }
 
 template <typename CodeGenT>
 void ExecutionEngine::Link(const ir::Module &module) {
   utils::RecordEvent("ExecutionEngine Link", utils::EventType::kOrdinary);
-  llvm::SMDiagnostic error;
-  auto ctx = std::make_unique<llvm::LLVMContext>();
-  auto m = llvm::parseAssemblyString(
-      AsStringRef(backends::kRuntimeLlvmIr), error, *ctx);
-  auto b = std::make_unique<llvm::IRBuilder<>>(*ctx);
+
   auto ir_emitter = std::make_unique<CodeGenT>(m.get(), b.get());
   VLOG(3) << "ir_emitter->Compile(module) Begin";
   ir_emitter->Compile(module);
@@ -199,8 +201,6 @@ void ExecutionEngine::Link(const ir::Module &module) {
   machine->addPassesToEmitFile(
       pass_manager, rawstream, nullptr, llvm::CGFT_ObjectFile);
   pass_manager.run(*m);
-
-  CHECK(AddModule(std::move(m), std::move(ctx)));
 
   if (VLOG_IS_ON(5)) {
     VLOG(5) << "======= dump jit execution session ======";
