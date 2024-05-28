@@ -586,6 +586,7 @@ class TestProdOp(OpTest):
                 ['X'],
                 'Out',
                 check_pir=True,
+                check_prim_pir=True,
             )
 
     def test_only_dygraph_prim(self):
@@ -613,7 +614,7 @@ class TestProdOp(OpTest):
             )
             return x_cotangent[0]
 
-        x = np.random.random((5, 6, 10)).astype(self.data_type)
+        x = np.random.random((5, 6, 5, 6, 7)).astype(self.data_type)
         np.testing.assert_allclose(
             actual=actual(x), desired=desired(x), atol=1e-8, rtol=1e-8
         )
@@ -717,6 +718,7 @@ class TestProdOp_ZeroDim(OpTest):
                 ['X'],
                 'Out',
                 check_pir=True,
+                check_prim_pir=True,
             )
 
 
@@ -789,6 +791,7 @@ class TestProd6DOp(OpTest):
                 ['X'],
                 'Out',
                 check_pir=True,
+                check_prim_pir=True,
             )
 
 
