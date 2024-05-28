@@ -2997,12 +2997,14 @@ struct PowGradFunctor<ComplexType<T>>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
     auto a_ = x.unaryExpr(RealCp<T>());
     auto b_ = x.unaryExpr(ImagCp<T>());
+    auto c_2 = factor.real / 2;
+    auto d_2 = factor.imag / 2;
     auto c_ = factor.real;
     auto d_ = factor.imag;
     auto arctan_ = (b_ / a_).unaryExpr(Atan<T>());
     auto square_ = a_ * a_ + b_ * b_;
-    auto e_ = (square_.log() * c_ / 2 - d_ * arctan_).exp();
-    auto v_ = square_.log() * d_ / 2 + c_ * arctan_;
+    auto e_ = (square_.log() * c_2 - d_ * arctan_).exp();
+    auto v_ = square_.log() * d_2 + c_ * arctan_;
 
     auto ux = e_ / square_ *
               ((a_ * c_ + b_ * d_) * v_.unaryExpr(Cosine<T>()) +
