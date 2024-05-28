@@ -58,6 +58,7 @@ OneDNNMixedPhiKernelInstruction::OneDNNMixedPhiKernelInstruction(
 }
 
 void OneDNNMixedPhiKernelInstruction::Run() {
+  std::vector<std::shared_ptr<phi::DenseTensor>> tmp_holders;
   // Step1. Mixed Dynamic Choose Kernel
   if (!has_choose_kernel_) {
     has_choose_kernel_ = true;
@@ -89,19 +90,22 @@ void OneDNNMixedPhiKernelInstruction::Run() {
         // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
         // data_transfer.cc
         if (!input->IsInitialized() && tmp_layout == DataLayout::NHWC) {
-          auto transed_tensor = const_cast<phi::DenseTensor*>(input);
+          tmp_holders.emplace_back(*input);
+          auto transed_tensor = tmp_holders.back().get();
           transed_tensor->set_layout(tmp_layout);
           phi::funcs::MatchShapeToLayout(
               transed_tensor, phi::DataLayout::ONEDNN, tmp_layout);
+          kernel_context_->UpdataInput(i, transed_tensor);
         } else {
-          phi::DenseTensor transed_tensor;
-          transed_tensor.set_meta(input->meta());
+          tmp_holders.emplace_back();
+          auto transed_tensor = tmp_holders.back().get();
+          transed_tensor->set_meta(input->meta());
           phi::funcs::TransDataLayoutFromOneDNN(phi::DataLayout::ONEDNN,
                                                 tmp_layout,
                                                 *input,
-                                                &transed_tensor,
+                                                transed_tensor,
                                                 phi::CPUPlace());
-          *(const_cast<phi::DenseTensor*>(input)) = transed_tensor;
+          kernel_context_->UpdataInput(i, transed_tensor);
         }
       }
     }

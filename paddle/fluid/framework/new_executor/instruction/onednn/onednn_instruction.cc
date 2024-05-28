@@ -407,6 +407,7 @@ OneDNNPhiKernelInstruction::~OneDNNPhiKernelInstruction() {
 }
 
 void OneDNNPhiKernelInstruction::Run() {
+  std::vector<std::shared_ptr<phi::DenseTensor>> tmp_holders;
   // Step1. TransLayout
   auto inputs = kernel_context_.InputsBetween<phi::DenseTensor>(
       size_t(0), kernel_context_.InputsSize());
@@ -424,7 +425,8 @@ void OneDNNPhiKernelInstruction::Run() {
     VLOG(6) << "input[" << i << "].layout() = " << input->layout();
     if (input->layout() != phi::DataLayout::ONEDNN) {
       phi::DataLayout from_layout = input->layout();
-      auto transed_tensor = const_cast<phi::DenseTensor*>(input);
+      tmp_holders.emplace_back(*input);
+      auto transed_tensor = tmp_holders.back().get();
 
       std::set<std::string> elementwise_kernels = {
           "add", "subtract", "multiply", "divide"};
@@ -465,6 +467,7 @@ void OneDNNPhiKernelInstruction::Run() {
       dnnl::memory::desc out_mem_desc =
           phi::funcs::make_memory_desc(*input, from_layout);
       transed_tensor->set_mem_desc(out_mem_desc);
+      kernel_context_->UpdataInput(i, transed_tensor);
     }
   }
 
