@@ -75,7 +75,7 @@ void StreamSafeCUDAAllocation::EraseStream(gpuStream_t stream) {
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(it->second));
 #else
-  PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(event));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(it->second));
 #endif
   outstanding_event_map_.erase(it);
 }
