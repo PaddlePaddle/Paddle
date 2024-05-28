@@ -39,7 +39,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
   constexpr int kMaxThreadsPerBlock = 1024;
 
   // Step 1: Construct iter space and tile config.
-  cinn::ir::search::IterSpace iter_space;
+  cinn::ir::BucketInfo bucket_info;
   int s_dimension_lower = 32;
   int s_dimension_upper = 128;
   auto s_dimension_type = "S";
@@ -49,23 +49,19 @@ TEST(ConfigSearcher, TestReduceDemo) {
   auto r_dimension_type = "R";
   auto r_dimension_is_dynamic = true;
 
-  iter_space.space.push_back(cinn::ir::search::IterSpace::Dimension{
-      s_dimension_lower,
-      s_dimension_upper,
-      s_dimension_type,
-      s_dimension_is_dynamic,
-      std::vector<double>(128 - 32, 1.0)});
-  iter_space.space.push_back(
-      cinn::ir::search::IterSpace::Dimension{r_dimension_lower,
-                                             r_dimension_upper,
-                                             r_dimension_type,
-                                             r_dimension_is_dynamic,
-                                             std::vector<double>(1, 1.0)});
-  cinn::ir::BucketInfo bucket_info;
-  bucket_info.sp_lower_bound = iter_space.space[0].lower_bound;
-  bucket_info.sp_upper_bound = iter_space.space[0].upper_bound;
-  bucket_info.rb_lower_bound = iter_space.space[1].lower_bound;
-  bucket_info.rb_upper_bound = iter_space.space[1].upper_bound;
+  bucket_info.space.push_back(
+      cinn::ir::BucketInfo::Dimension{s_dimension_lower,
+                                      s_dimension_upper,
+                                      s_dimension_type,
+                                      s_dimension_is_dynamic,
+                                      std::vector<double>(128 - 32, 1.0)});
+  bucket_info.space.push_back(
+      cinn::ir::BucketInfo::Dimension{r_dimension_lower,
+                                      r_dimension_upper,
+                                      r_dimension_type,
+                                      r_dimension_is_dynamic,
+                                      std::vector<double>(1, 1.0)});
+
   cinn::ir::ScheduleConfig::TileConfig tile_config;
   tile_config.spatial_inner_num = 32;
   tile_config.warp_num = 32;
@@ -74,11 +70,8 @@ TEST(ConfigSearcher, TestReduceDemo) {
       std::make_pair("R", "dynamic"), std::make_pair("S", "dynamic")};
   // Step 2: Add to json/Read from json
   cinn::ir::FileTileConfigDatabase file_database;
-  file_database.AddConfig(cinn::common::DefaultTarget(),
-                          iter_space_type,
-                          bucket_info,
-                          tile_config,
-                          2);
+  file_database.AddConfig(
+      cinn::common::DefaultTarget(), bucket_info, tile_config, 2);
   cinn::ir::TileConfigMap tile_config_map =
       file_database.GetConfigs(cinn::common::DefaultTarget(), iter_space_type);
   for (auto& it : tile_config_map) {

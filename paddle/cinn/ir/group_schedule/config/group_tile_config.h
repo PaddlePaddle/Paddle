@@ -57,27 +57,64 @@ struct ScheduleConfig {
 };
 
 struct BucketInfo {
-  int64_t sp_lower_bound = 1;
-  int64_t sp_upper_bound = INT64_MAX;
-  int64_t rb_lower_bound = 1;
-  int64_t rb_upper_bound = INT64_MAX;
+  struct Dimension {
+    int lower_bound;
+    int upper_bound;
+    std::string iter_type;
+    bool is_dynamic;
+    std::vector<double> weights;
+    Dimension(int low, int upper, std::string iter_type, bool is_dynamic)
+        : lower_bound(low),
+          upper_bound(upper),
+          iter_type(iter_type),
+          is_dynamic(is_dynamic) {}
+    Dimension(int low,
+              int upper,
+              std::string iter_type,
+              bool is_dynamic,
+              std::vector<double> weights)
+        : lower_bound(low),
+          upper_bound(upper),
+          iter_type(iter_type),
+          is_dynamic(is_dynamic),
+          weights(weights) {}
+  };
+  std::vector<Dimension> space;
 
-  bool operator==(const BucketInfo& other) const {
-    return this->sp_lower_bound == other.sp_lower_bound &&
-           this->sp_upper_bound == other.sp_upper_bound &&
-           this->rb_lower_bound == other.rb_lower_bound &&
-           this->rb_upper_bound == other.rb_upper_bound;
-  }
+  std::string ToString() const;
+  BucketInfo(int sp_lower_bound,
+             int sp_upper_bound,
+             int rb_lower_bound,
+             int rb_upper_bound,
+             bool sp_is_dynamic,
+             bool rb_is_dynamic) BucketInfo(size_t size)
+      : space(std::vector<Dimension>(size)) {}
+  bool operator==(const BucketInfo& other) const;
 };
 
 struct BucketInfoHash {
   std::size_t operator()(const BucketInfo& bucket_info) const noexcept {
-    std::size_t hash_spl = std::hash<uint64_t>{}(bucket_info.sp_lower_bound);
-    std::size_t hash_spu = std::hash<uint64_t>{}(bucket_info.sp_upper_bound);
-    std::size_t hash_rbl = std::hash<uint64_t>{}(bucket_info.rb_lower_bound);
-    std::size_t hash_rbu = std::hash<uint64_t>{}(bucket_info.rb_upper_bound);
-    return adt::hash_combine(adt::hash_combine(hash_spl, hash_spu),
-                             adt::hash_combine(hash_rbl, hash_rbu));
+    PADDLE_ENFORCE_GT(
+        bucket_info.space.size(),
+        0,
+        ::common::errors::InvalidArgument(
+            "Bucketinfo 's dimension number should be more than 0"));
+
+    std::size_t hash_past_dims = adt::hash_combine(
+        std::hash<uint64_t>{}(bucket_info.space[0].lower_bound),
+        std::hash<uint64_t>{}(bucket_info.space[0].upper_bound));
+    int dims = bucket_info.space.size();
+    if (dims == 1) {
+      return hash_past_dims;
+    } else {
+      for (int i = 0; i < dims; i++) {
+        std::size_t hash_temp_dim = adt::hash_combine(
+            std::hash<uint64_t>{}(bucket_info.space[i].lower_bound),
+            std::hash<uint64_t>{}(bucket_info.space[i].upper_bound));
+        hash_past_dims = adt::hash_combine(hash_past_dims, hash_temp_dim);
+      }
+      return hash_past_dims;
+    }
   }
 };
 

@@ -27,22 +27,21 @@ namespace ir {
 
 bool TileConfigToProto(group_schedule::config::proto::TileData* tile_data,
                        const TileConfigMap& tile_config_map,
-                       const IterSpaceType& iter_space_type,
                        const int& priority) {
   for (auto& it : tile_config_map) {
-    group_schedule::config::proto::Dimension s_dimension, r_dimension;
+    group_schedule::config::proto::Dimension cur_dimension, r_dimension;
 
     // prepare key---convert bucket info to proto::bucket_info
-    s_dimension.set_lower_bound(it.first.sp_lower_bound);
-    s_dimension.set_upper_bound(it.first.sp_upper_bound);
-    s_dimension.set_iter_type(iter_space_type[0].first);
-    s_dimension.set_is_dynamic(iter_space_type[0].second == "dynamic");
-    r_dimension.set_lower_bound(it.first.rb_lower_bound);
-    r_dimension.set_upper_bound(it.first.rb_upper_bound);
-    r_dimension.set_iter_type(iter_space_type[1].first);
-    r_dimension.set_is_dynamic(iter_space_type[1].second == "dynamic");
-    *(tile_data->mutable_bucket_info()->add_dimension()) = s_dimension;
-    *(tile_data->mutable_bucket_info()->add_dimension()) = r_dimension;
+    BucketInfo bucket_info = it.first;
+    int dims = bucket_info.space.size();
+    for (int i = 0; i < dims; i++) {
+      group_schedule::config::proto::Dimension cur_dimension;
+      cur_dimension.set_lower_bound(bucket_info.space[i].lower_bound);
+      cur_dimension.set_upper_bound(bucket_info.space[i].upper_bound);
+      cur_dimension.set_iter_type(bucket_info.space[i].iter_type);
+      cur_dimension.set_is_dynamic(bucket_info.space[i].is_dynamic);
+      *(tile_data->mutable_bucket_info()->add_dimension()) = cur_dimension;
+    }
 
     // prepare value---transfer tile_config to proto::tile_config
     group_schedule::config::proto::TileConfig tc;
@@ -102,18 +101,23 @@ std::string IterSpaceTypeToDir(const common::Target target,
 }
 
 bool FileTileConfigDatabase::Tofile(const common::Target& target,
-                                    const IterSpaceType& iter_space_type,
                                     int priority) {
   // Step1. To proto
   TileConfigMap& tile_config_map = target_config_data_;
   group_schedule::config::proto::TileData tile_data;
-  auto is_success =
-      TileConfigToProto(&tile_data, tile_config_map, iter_space_type, priority);
+  auto is_success = TileConfigToProto(&tile_data, tile_config_map, priority);
   if (is_success == false) {
     PADDLE_THROW(::common::errors::Unavailable(
         "Can't convert tile_config_map to its proto message."));
   }
   // Step2. ToJson
+  IterSpaceType iter_space_type = [&] {
+    std::vector<std::pair<std::string, std::string>> res;
+    for (const auto& dim : bucket_info_.space) {
+      res.emplace_back(dim.iter_type, (dim.is_dynamic ? "dynamic" : "static"));
+    }
+    return res;
+  }();
   std::string dump_path = IterSpaceTypeToDir(target, iter_space_type);
   size_t length = tile_config_map.size();
   std::vector<std::string> json_lines(length);
@@ -175,7 +179,7 @@ bool comparepriority(group_schedule::config::proto::TileData tile_data1,
 
 TileConfigMap FileTileConfigDatabase::GetConfigs(
     const common::Target& target, const IterSpaceType& iter_space_type) const {
-  // Step1. ReadFromJsonFile->Message;
+  // Step 1: Read from json file and convert json to proto message
   std::string file_path = IterSpaceTypeToDir(target, iter_space_type);
   auto json_lines = ReadLinesFromFile(file_path);
   size_t line_length = json_lines.size();
@@ -184,39 +188,41 @@ TileConfigMap FileTileConfigDatabase::GetConfigs(
       line_length);
   JsonStringToMessageOfTileConfig(&tile_database, json_lines);
 
-  // Step2. ParseFromProtoMessage();
+  // Step 2: Parse from proto message
   TileConfigMap tile_config_map;
   // order tile_database according to priority
   std::sort(tile_database.begin(), tile_database.end(), comparepriority);
   for (const auto& piece_tileconfig : tile_database) {
     group_schedule::config::proto::BucketInfo its =
         piece_tileconfig.bucket_info();
-    // proto::BucketInfo to  bucketinfo
-    BucketInfo bucket_info;
-    bucket_info.sp_lower_bound = its.dimension(0).lower_bound();
-    bucket_info.sp_upper_bound = its.dimension(0).upper_bound();
-    bucket_info.rb_lower_bound = its.dimension(1).lower_bound();
-    bucket_info.rb_upper_bound = its.dimension(1).upper_bound();
+    //  Step 2.1: Convert proto bucketinfo to source bucketinfo
+    int dims = its.dimension_size();
+    BucketInfo bucket_info(static_cast<size_t>(dims));
+    for (int i = 0; i < dims; i++) {
+      bucket_info.space.[i].lower_bound = its.dimension(i).lower_bound();
+      bucket_info.space.[i].upper_bound = its.dimension(i).upper_bound();
+      bucket_info.space.[i].iter_type = its.dimension(i).iter_type();
+      bucket_info.space.[i].is_dynamic = its.dimension(i).is_dynamic();
+    }
+    //  Step 2.2: Convert proto tile_config to source tile_config
     ScheduleConfig::TileConfig tconfig;
     tconfig.tree_reduce_num = piece_tileconfig.tile_config().tree_reduce_num();
     tconfig.spatial_inner_num =
         piece_tileconfig.tile_config().spatial_inner_num();
     tconfig.warp_num = piece_tileconfig.tile_config().warp_num();
     tile_config_map[bucket_info] = tconfig;
-    // Tode[XiaZichao] Add function to cut one lattice into smaller ones.
+    // TODO(XiaZichao): Add function to cut one lattice into smaller ones
   }
-  // ToDo[XiaZichao] update json file using top view of tileconfigMap
+  // TODO(XiaZichao): update json file using top view of tileconfigMap
   return tile_config_map;
 }
 
 void FileTileConfigDatabase::AddConfig(const common::Target& target,
-                                       const IterSpaceType& iter_space_type,
                                        const BucketInfo& bucket_info,
                                        const ScheduleConfig::TileConfig& config,
                                        int priority) {
   target_config_data_[bucket_info] = config;
-  auto status =
-      FileTileConfigDatabase::Tofile(target, iter_space_type, priority);
+  auto status = FileTileConfigDatabase::Tofile(target, priority);
   if (status == true) {
     target_config_data_.clear();
     return;
