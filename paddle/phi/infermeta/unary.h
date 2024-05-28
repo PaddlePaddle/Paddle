@@ -542,14 +542,6 @@ void QrInferMeta(const MetaTensor& x,
                  MetaTensor* q,
                  MetaTensor* r);
 
-void QuantizeInferMeta(const MetaTensor& input,
-                       bool is_negative_input,
-                       float scale,
-                       float shift,
-                       const std::string& output_format,
-                       bool bfloat16,
-                       MetaTensor* output);
-
 void QuantizeXPUInferMeta(const MetaTensor& x,
                           DataType out_dtype,
                           float scale,
