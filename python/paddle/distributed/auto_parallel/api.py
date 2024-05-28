@@ -2210,30 +2210,15 @@ class DistModel:
         self.outs = outs
 
         if self._mode == "predict":
-            if "outputs" in self.outs:
-                return self.outs["outputs"]
+            if "outputs" in outs:
+                return outs["outputs"]
             else:
                 return None
         else:
-            if "loss" in self.outs:
-                return self.outs["loss"]
+            if "loss" in outs:
+                return outs["loss"]
             else:
                 return None
-
-    def _fetch_value(self, value, name=None):
-        """
-        Get the value of the variable with the given name.
-
-        Args:
-            value (pir.Value): The pir Value to fetch.
-            name (str|None, optional): The user-defined name of
-                the fetched result. If None, the order of the Value
-                in the fetch list will be used. Default: None.
-        """
-        self._engine._pir_fetch_values.append(value)
-        if name is None:
-            name = len(self._engine._pir_fetch_values) - 1
-        self._engine._pir_user_defined_fetch_names.append(name)
 
     def state_dict(self, mode="all"):
         """
@@ -2834,49 +2819,6 @@ class ShardDataloader:
             return dist_batch_data
         else:
             raise ValueError(f"Unsupported batch_data type {type(batch_data)}")
-
-    # Get data from DataLoader iterator directly may affect data generation randomness
-    # of BatchSampler when `Shuffle=True`. It may cause difference of data feeding
-    # between dynamic and to_static mode.
-    def _get_input_spec(self):
-        if isinstance(
-            self._dataloader.batch_sampler, paddle.io.DistributedBatchSampler
-        ):
-            dataset = self._dataloader.batch_sampler.dataset
-        elif isinstance(self._dataloader.batch_sampler, paddle.io.BatchSampler):
-            if hasattr(self._dataloader.batch_sampler.sampler, "dataset"):
-                dataset = self._dataloader.batch_sampler.sampler.dataset
-            elif hasattr(self._dataloader.batch_sampler.sampler, "data_source"):
-                dataset = self._dataloader.batch_sampler.sampler.data_source
-        batch_size = self._dataloader.batch_sampler.batch_size
-
-        if isinstance(dataset, paddle.io.IterableDataset):
-            batch_data = next(iter(dataset))
-        elif isinstance(dataset, paddle.io.Dataset):
-            batch_data = []
-            for i in range(batch_size):
-                batch_data.append(dataset[i])
-        else:
-            raise TypeError(
-                f"Data should be a Dataset or IterableDataset, but received {type(dataset).__name__}."
-            )
-
-        collate_fn = self._dataloader.collate_fn
-        if collate_fn is None:
-            collate_fn = paddle.io.dataloader.collate.default_collate_fn
-        batch_data = collate_fn(batch_data)
-        if isinstance(batch_data, list):
-            for i in range(len(batch_data)):
-                if collate_fn is not None:
-                    batch_data[i] = paddle.to_tensor(batch_data[i])
-        elif isinstance(batch_data, tuple):
-            batch_data = list(batch_data)
-            for i in range(len(batch_data)):
-                batch_data[i] = paddle.to_tensor(batch_data[i])
-        elif isinstance(batch_data, dict):
-            for key, value in batch_data.items():
-                batch_data[key] = paddle.to_tensor(value)
-        return self._get_batch(batch_data)
 
     def __next__(self):
         batch_data = next(self.iter)
