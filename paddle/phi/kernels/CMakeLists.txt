@@ -46,19 +46,18 @@ file(
 if(WITH_MUSA)
   # 创建要排除的文件模式列表
   file(
-  GLOB files_to_remove
-  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-  "sparse/gpu/*.cu"
-  "gpudnn/*.cu")
+    GLOB files_to_remove
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "sparse/gpu/*.cu" "gpudnn/*.cu")
 
   list(REMOVE_ITEM kernel_cu ${files_to_remove})
   message(STATUS "files_to_remove:${files_to_remove}")
 
   list(
-    REMOVE_ITEM 
-    kernel_cu 
-    "strings/gpu/strings_lower_upper_kernel.cu" 
-    "strings/gpu/strings_copy_kernel.cu" 
+    REMOVE_ITEM
+    kernel_cu
+    "strings/gpu/strings_lower_upper_kernel.cu"
+    "strings/gpu/strings_copy_kernel.cu"
     "fusion/gpu/block_multi_head_attention_kernel.cu"
     "gpu/cudnn_lstm_kernel.cu"
     "gpu/cudnn_lstm_grad_kernel.cu"
@@ -69,8 +68,6 @@ if(WITH_MUSA)
     "gpu/weighted_sample_neighbors_kernel.cu"
     "gpu/cross_entropy_kernel.cu"
     "gpu/cross_entropy_grad_kernel.cu"
-    "gpu/gelu_kernel.cu"
-    "gpu/gelu_grad_kernel.cu"
     "gpu/rnn_kernel.cu.cc"
     "gpu/rnn_grad_kernel.cu.cc"
     "gpu/clip_by_norm_kernel.cu"
@@ -78,8 +75,7 @@ if(WITH_MUSA)
     "gpu/softmax_grad_kernel.cu"
     "gpu/softmax_kernel.cu"
     "gpu/put_along_axis_grad_kernel.cu"
-    "gpu/put_along_axis_kernel.cu"
-    )
+    "gpu/put_along_axis_kernel.cu")
 endif()
 
 if(APPLE OR WIN32)
@@ -262,8 +258,8 @@ set(cc_search_pattern
     "stride/*.cc"
     "fusion/cpu/*.cc")
 if(WITH_MUSA)
-    list(REMOVE_ITEM cc_search_pattern "sparse/*.cc")
-    list(REMOVE_ITEM cc_search_pattern "sparse/cpu/*.cc")    
+  list(REMOVE_ITEM cc_search_pattern "sparse/*.cc")
+  list(REMOVE_ITEM cc_search_pattern "sparse/cpu/*.cc")
 endif()
 
 if(WITH_MKLDNN)
@@ -298,7 +294,9 @@ file(
   "xpu/*.cc" "legacy/xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc"
   "sparse/xpu/*.cc")
 
-if(WITH_GPU OR WITH_ROCM OR WITH_MUSA)
+if(WITH_GPU
+   OR WITH_ROCM
+   OR WITH_MUSA)
   collect_srcs(kernels_srcs SRCS ${kernel_cu})
   kernel_declare("${kernel_cu}")
 endif()
