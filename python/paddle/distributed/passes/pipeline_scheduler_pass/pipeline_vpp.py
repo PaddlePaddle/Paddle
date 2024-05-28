@@ -215,9 +215,7 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
         accumulate_steps = self.get_attr("num_micro_batches")
         num_stages = self.get_attr("pp_degree")
         split_backward = self.get_attr("split_backward", False)
-        types, sub_program_list = _program_for_vpp(
-            program, num_model_chunks, dist_context, enable_send_recv_overlap
-        )
+
         if split_backward and accumulate_steps == num_stages:
             self._split_matmul_grad_ops_to_matmul(program, dist_context)
             types, sub_program_list = _program_for_vpp_split_bwk(
@@ -226,11 +224,20 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                 dist_context,
                 enable_send_recv_overlap,
             )
+        else:
+            types, sub_program_list = _program_for_vpp(
+                program,
+                num_model_chunks,
+                dist_context,
+                enable_send_recv_overlap,
+            )
+
         enable_pir_in_executor = paddle.framework.get_flags(
             "FLAGS_enable_pir_in_executor"
         )['FLAGS_enable_pir_in_executor']
         if enable_pir_in_executor:
             shadow_var_between_sub_programs(sub_program_list)
+
         if enable_send_recv_overlap:
             types, sub_program_list = _split_and_replace_recv(
                 types, sub_program_list
