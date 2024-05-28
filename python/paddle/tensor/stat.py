@@ -589,7 +589,10 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
                 index_along_axis * x_isnan, axis=axis, keepdim=True
             )
             nan_index_mask = paddle.sum(x_isnan, axis=axis, keepdim=True)
-            out_idx = out_idx * paddle.logical_not(nan_index_mask) + nan_index
+            out_idx = (
+                out_idx * paddle.logical_not(nan_index_mask).astype('int64')
+                + nan_index
+            )
 
     if is_flatten:
         if keepdim:
