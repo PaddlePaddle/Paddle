@@ -54,13 +54,13 @@ ir::Tensor LogicalRightShift(const ir::Tensor &A,
                              const Target &target,
                              const std::string &output_name) {
   std::string extern_func = "cinn_";
-  if (target == cinn::common::DefaultHostTarget()) {
-    extern_func += "host_";
-  } else if (target == cinn::common::DefaultNVGPUTarget()) {
-    extern_func += "nvgpu_";
-  } else {
-    CINN_NOT_IMPLEMENTED
-  }
+  target.arch.Visit(adt::match{
+      [&](std::variant<common::X86Arch>) { extern_func += "host_"; },
+      [&](std::variant<common::NVGPUArch>) { extern_func += "nvgpu_"; },
+      [&](std::variant<common::UnknownArch, common::ARMArch>) {
+        CINN_NOT_IMPLEMENTED
+      },
+  });
 
   extern_func += "logical_right_shift";
 
