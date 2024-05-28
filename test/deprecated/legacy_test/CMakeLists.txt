@@ -735,6 +735,7 @@ set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 300)
 set_tests_properties(test_split_program PROPERTIES TIMEOUT 120)
 set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
+set_tests_properties(test_uniform_random_op_deprecated PROPERTIES TIMEOUT 60)
 
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
 set_tests_properties(test_model PROPERTIES TIMEOUT 300)
