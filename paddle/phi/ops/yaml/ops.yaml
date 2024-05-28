@@ -3519,6 +3519,15 @@
   kernel :
     func : shard_index
 
+- op : shuffle_channel
+  args : (Tensor x, int group = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : ShuffleChannelInferMeta
+  kernel :
+    func : shuffle_channel
+  backward : shuffle_channel_grad
+
 - op : sigmoid
   args : (Tensor x)
   output : Tensor
