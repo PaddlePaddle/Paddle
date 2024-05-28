@@ -17,7 +17,6 @@ from __future__ import annotations
 import argparse
 import inspect
 import logging
-import os
 import re
 import sys
 from dataclasses import dataclass
@@ -38,48 +37,6 @@ MemberType: TypeAlias = Literal[
     "attribute",
     "method",
 ]
-
-
-def add_dll_directory(env_dict_dir=None):
-    if env_dict_dir is not None and env_dict_dir.strip():
-        sys.path.append(env_dict_dir)
-
-    try:
-        from env_dict import env_dict
-    except ImportError:
-        sys.stderr.write(
-            'ERROR: Can NOT import `env_dict`, please check the env_dict_dir!'
-        )
-        raise
-
-    DLL_LIBS = [
-        env_dict.get("PHI_LIB"),
-        env_dict.get("IR_LIB"),
-        env_dict.get("COMMON_LIB"),
-        env_dict.get("WARPCTC_LIBRARIES"),
-        env_dict.get("WARPRNNT_LIBRARIES"),
-        env_dict.get("BLAS_LIB"),
-        env_dict.get("LAPACK_LIB"),
-        env_dict.get("GFORTRAN_LIB"),
-        env_dict.get("GNU_RT_LIB_1"),
-        env_dict.get("GNU_RT_LIB_2"),
-        env_dict.get("MKLML_SHARED_LIB"),
-        env_dict.get("MKLML_SHARED_IOMP_LIB"),
-        env_dict.get("OPENBLAS_SHARED_LIB"),
-        env_dict.get("FLASHATTN_LIBRARIES"),
-        env_dict.get("CINN_LIB_LOCATION") + '/' + env_dict.get("CINN_LIB_NAME"),
-        env_dict.get("PSLIB_LIB"),
-        env_dict.get("JVM_LIB"),
-        env_dict.get("PSLIB_VERSION_PY"),
-        env_dict.get("ONEDNN_SHARED_LIB"),
-        env_dict.get("ONNXRUNTIME_SHARED_LIB"),
-        env_dict.get("PADDLE2ONNX_LIB"),
-    ]
-
-    for lib in DLL_LIBS:
-        if lib is not None and lib.strip():
-            dir_path = os.path.dirname(lib.strip())
-            os.add_dll_directory(dir_path)
 
 
 @dataclass
@@ -377,8 +334,6 @@ def get_tensor_members():
             '''ERROR: Can NOT import paddle.
             We could import paddle without installation, with all libs (.dll or .so) copied into dir `paddle/libs`,
             or path already been set for the system.
-            1. windows: check `env_dict` in `add_dll_directory` is as good as `setup.py`.
-            2. unix: check all `*.so` path included in `LD_LIBRARY_PATH`.
             '''
         )
         raise
@@ -479,7 +434,7 @@ def get_tensor_template(path: str) -> str:
         return ''.join(f.readlines())
 
 
-def main():
+def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -494,35 +449,24 @@ def main():
         type=str,
         default="python/paddle/tensor/tensor.pyi",
     )
-    parser.add_argument(
-        "--source-dir",
-        type=str,
-        default="",
-    )
-    parser.add_argument(
-        "--binary-dir",
-        type=str,
-        default="",
-    )
-    parser.add_argument(
-        "--env-dir",
-        type=str,
-        default="",
-    )
 
     args = parser.parse_args()
 
-    # For windows, we should `add_dll_directory` before import paddle.
-    # For linux, `LD_LIBRARY_PATH` already set.
-    if os.name == 'nt':
-        add_dll_directory(args.env_dir)
+    return args
+
+
+def generate_stub_file(input_file=None, output_file=None):
+    if input_file is None or output_file is None:
+        args = parse_args()
+        input_file = args.input_file
+        output_file = args.output_file
 
     # Get members of Tensor
     tensor_members = get_tensor_members()
     logging.debug(f'total members in Tensor: {len(tensor_members)}')
 
     # Get tensor template
-    tensor_template = get_tensor_template(args.input_file)
+    tensor_template = get_tensor_template(input_file)
 
     # Generate the Tensor stub
     tensor_gen = TensorGen(tensor_template)
@@ -538,9 +482,9 @@ def main():
             tensor_gen.add_doc(member.doc)
 
     # Write to target file
-    with open(args.output_file, "w", encoding="utf-8") as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         f.write(tensor_gen.codegen())
 
 
 if __name__ == "__main__":
-    main()
+    generate_stub_file()

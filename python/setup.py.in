@@ -1090,6 +1090,28 @@ package_data['paddle.base'] = package_data.get('paddle.base', []) + [
 package_data['paddle.tensor'] = package_data.get('paddle.tensor', []) + ['tensor.pyi']
 
 
+def generate_tensor_stub(paddle_binary_dir, paddle_source_dir):
+    print('-'*2, 'Generate stub file tensor.pyi ... ')
+    script_path = paddle_source_dir + '/tools/'
+    sys.path.append(script_path)
+    import gen_tensor_stub
+
+    gen_tensor_stub.generate_stub_file(
+        input_file=paddle_source_dir
+        + '/python/paddle/tensor/tensor.prototype.pyi',
+        output_file=paddle_binary_dir + '/python/paddle/tensor/tensor.pyi',
+    )
+
+    shutil.copy(
+        paddle_binary_dir + '/python/paddle/tensor/tensor.pyi',
+        paddle_source_dir + '/python/paddle/tensor/tensor.pyi',
+    )
+    print('-'*2, 'End Generate stub file tensor.pyi ... ')
+
+# generate stub file `tensor.pyi`
+generate_tensor_stub('${PADDLE_BINARY_DIR}', '${PADDLE_SOURCE_DIR}')
+
+
 with redirect_stdout():
     setup(name='${PACKAGE_NAME}',
         version='${PADDLE_VERSION}',

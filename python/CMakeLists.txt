@@ -175,30 +175,31 @@ add_custom_target(paddle_python ALL
                   DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
 
 # -------------- Generate tensor.pyi stub file --------------
-add_custom_target(
-  paddle_stub ALL
-  # generate tensor.pyi for type hints
-  COMMAND
-    ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-    ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/gen_tensor_stub.py
-    --input-file ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.prototype.pyi
-    --output-file ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
-    --source-dir ${PADDLE_SOURCE_DIR} --binary-dir ${PADDLE_BINARY_DIR}
-  # copy tensor.pyi to source dir
-  COMMAND
-    ${CMAKE_COMMAND} -E copy
-    ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
-    ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.pyi
-  COMMENT "Generate tensor.pyi------>>>"
-  DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
+# add_custom_target(
+#   paddle_stub ALL
+#   # generate tensor.pyi for type hints
+#   COMMAND
+#     ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
+#     ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/gen_tensor_stub.py
+#     --input-file ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.prototype.pyi
+#     --output-file ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
+#     --source-dir ${PADDLE_SOURCE_DIR} --binary-dir ${PADDLE_BINARY_DIR}
+#   # copy tensor.pyi to source dir
+#   COMMAND
+#     ${CMAKE_COMMAND} -E copy
+#     ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
+#     ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.pyi
+#   COMMENT "Generate tensor.pyi------>>>"
+#   DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
 
-add_dependencies(paddle_stub paddle_python copy_libpaddle)
+# add_dependencies(paddle_stub paddle_python copy_libpaddle)
 # -------------- End Generate tensor.pyi stub file --------------
 
 if(BUILD_WHL_PACKAGE AND NOT WITH_SETUP_INSTALL)
   add_custom_target(paddle_copy ALL
                     DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel)
-  add_dependencies(paddle_copy paddle_python paddle_stub)
+  # add_dependencies(paddle_copy paddle_python paddle_stub)
+  add_dependencies(paddle_copy paddle_python)
 endif()
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
