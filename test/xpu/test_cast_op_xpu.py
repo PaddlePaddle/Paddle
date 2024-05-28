@@ -66,7 +66,8 @@ class XPUTestCastOp(XPUOpTestWrapper):
 
     class TestCastOp(XPUOpTest):
         def setUp(self):
-            ipt = np.random.random(size=[10, 10])
+            self.init_shape()
+            ipt = np.random.random(size=self.shape)
             in_typename = self.in_type_str
             out_typename = (
                 'float32'
@@ -93,8 +94,103 @@ class XPUTestCastOp(XPUOpTestWrapper):
             self.op_type = 'cast'
             self.__class__.no_need_check_grad = True
 
+        def init_shape(self):
+            self.shape = [10, 10]
+
         def test_check_output(self):
             self.check_output()
+
+    class TestCastOpLargeShape1(TestCastOp):
+        def init_shape(self):
+            self.shape = [1, 8192, 5120]
+
+    class TestCastOpLargeShape2(TestCastOp):
+        def init_shape(self):
+            self.shape = [1, 8192]
+
+    class TestCastOpLargeShape3(TestCastOp):
+        def init_shape(self):
+            self.shape = [1, 8192, 1, 128]
+
+    class TestCastOpLargeShape4(TestCastOp):
+        def init_shape(self):
+            self.shape = [8192]
+
+    class TestCastOpLargeShape5(TestCastOp):
+        def init_shape(self):
+            self.shape = [31776]
+
+    class TestCastOpLargeShape6(TestCastOp):
+        def init_shape(self):
+            self.shape = [5120]
+
+    class TestCastOpLargeShape7(TestCastOp):
+        def init_shape(self):
+            self.shape = [3456]
+
+    class TestCastOpLargeShape8(TestCastOp):
+        def init_shape(self):
+            self.shape = [1920]
+
+    class TestCastOpLargeShape9(TestCastOp):
+        def init_shape(self):
+            self.shape = [31776, 5120]
+
+    class TestCastOpLargeShape10(TestCastOp):
+        def init_shape(self):
+            self.shape = [5120, 1920]
+
+    class TestCastOpLargeShape11(TestCastOp):
+        def init_shape(self):
+            self.shape = [640, 5120]
+
+    class TestCastOpLargeShape12(TestCastOp):
+        def init_shape(self):
+            self.shape = [5120, 3456]
+
+    class TestCastOpLargeShape13(TestCastOp):
+        def init_shape(self):
+            self.shape = [1728, 5120]
+
+    class TestCastOpLargeShape14(TestCastOp):
+        def init_shape(self):
+            self.shape = [5120, 31776]
+
+    class TestCastOpLargeShape15(TestCastOp):
+        def init_shape(self):
+            self.shape = [27724]
+
+    class TestCastOpLargeShape16(TestCastOp):
+        def init_shape(self):
+            self.shape = [32, 5120]
+
+    class TestCastOpLargeShape17(TestCastOp):
+        def init_shape(self):
+            self.shape = [1728, 32]
+
+    class TestCastOpLargeShape18(TestCastOp):
+        def init_shape(self):
+            self.shape = [32, 3456]
+
+    class TestCastOpLargeShape19(TestCastOp):
+        def init_shape(self):
+            self.shape = [32, 3456]
+
+    class TestCastOpLargeShape20(TestCastOp):
+        def init_shape(self):
+            self.shape = [5120, 32]
+
+    class TestCastOpLargeShape21(TestCastOp):
+        def init_shape(self):
+            self.shape = [640, 32]
+
+    class TestCastOpLargeShape22(TestCastOp):
+        def init_shape(self):
+            self.shape = [32, 1920]
+
+    class TestCastOpLargeShape23(TestCastOp):
+        def init_shape(self):
+            self.shape = [19984]
 
 
 support_types = get_xpu_op_support_types('cast')

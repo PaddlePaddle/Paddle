@@ -114,6 +114,12 @@ class XPUTestStackOp(XPUOpTestWrapper):
             self.axis = 0
             self.dtype = np.int32
 
+    class TestStackOp9(TestStackOp):
+        def initParameters(self):
+            self.num_inputs = 5
+            self.input_dim = (1, 8192, 64)
+            self.axis = 2
+
 
 support_types = get_xpu_op_support_types('stack')
 for stype in support_types:

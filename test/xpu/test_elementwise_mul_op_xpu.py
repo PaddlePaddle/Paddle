@@ -212,6 +212,22 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             self.cal_x = self.x.reshape(1, 1, 10, 10)
             self.axis = 2
 
+    class TestElementwiseMulOpLargeShape1(ElementwiseMulOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([8192, 1])
+            self.y = self.gen_data_depend_on_dtype([1, 64])
+
+    class TestElementwiseMulOpLargeShape2(ElementwiseMulOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([1, 8192, 5, 128])
+            self.y = self.gen_data_depend_on_dtype([1, 8192, 1, 128])
+
+    class TestElementwiseMulOpLargeShape3(ElementwiseMulOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([8192, 1728])
+            self.y = self.gen_data_depend_on_dtype([8192])
+            self.cal_y = self.y.reshape([8192, 1])
+
 
 support_types = get_xpu_op_support_types('elementwise_mul')
 for stype in support_types:
