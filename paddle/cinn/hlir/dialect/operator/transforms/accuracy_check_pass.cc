@@ -66,20 +66,31 @@ class AddAccuracyCheckPattern
     };
 
     const auto& ConvertCinnOpToPdOp = [&](::pir::Operation* op) -> void {
-      if (op->isa<cinn::dialect::GenerateShapeOp>()) {
-        auto cinn_op = op->dyn_cast<cinn::dialect::GenerateShapeOp>();
-        std::optional<pir::Value> out_replacement =
-            details::GetOutReplacement(cinn_op, &rewriter);
-        if (!out_replacement.has_value()) return;
-        ir_mapping.Add(op->result(0), out_replacement.value());
-        rewriter.SetInsertionPointAfter(out_replacement.value().defining_op());
-        return;
-      }
       for (size_t i = 0; i < op->num_operands(); ++i) {
         if (!ir_mapping.GetMap<pir::Value>().count(op->operand_source(i))) {
           ir_mapping.Add(op->operand_source(i), op->operand_source(i));
         }
       }
+      if (op->isa<cinn::dialect::GenerateShapeOp>()) {
+        auto cloned_op = op->Clone(ir_mapping, clone_options);
+        rewriter.Insert(cloned_op);
+        auto cinn_op = cloned_op->dyn_cast<cinn::dialect::GenerateShapeOp>();
+        std::optional<pir::Value> out_replacement =
+            details::GetOutReplacement(cinn_op, &rewriter);
+        if (!out_replacement.has_value()) return;
+
+        rewriter.ReplaceAllUsesWith(cloned_op->result(0),
+                                    out_replacement.value());
+        if (cloned_op->use_empty()) {
+          rewriter.EraseOp(cloned_op);
+        }
+
+        ir_mapping.Add(cloned_op->result(0), out_replacement.value());
+        ir_mapping.Add(op->result(0), out_replacement.value());
+        rewriter.SetInsertionPointAfter(out_replacement.value().defining_op());
+        return;
+      }
+
       pir::Operation* pd_op =
           cinn::dialect::details::RewriteCinnOpToPdOp(op, ir_mapping, rewriter);
       rewriter.SetInsertionPointAfter(pd_op);
