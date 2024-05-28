@@ -2503,13 +2503,13 @@ inline __device__ void zero(T& dst) {  // NOLINT
   dst = tmp.raw;
 }
 
-template <int WARPS_PER_BLOCK, int WARP_SIZE = 32>
+template <int WARPS_PER_BLOCK, int WARP_SIZE_T = 32>
 inline __device__ float block_sum(float* red_smem, float sum) {
-  int warp = threadIdx.x / WARP_SIZE;
-  int lane = threadIdx.x % WARP_SIZE;
+  int warp = threadIdx.x / WARP_SIZE_T;
+  int lane = threadIdx.x % WARP_SIZE_T;
 
 #pragma unroll
-  for (int mask = WARP_SIZE / 2; mask >= 1; mask /= 2) {
+  for (int mask = WARP_SIZE_T / 2; mask >= 1; mask /= 2) {
     sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
   }
 
@@ -2830,7 +2830,7 @@ struct Qk_dot<float16, 4> {
   }
 };
 
-constexpr int32_t WARP_SIZE = 32;
+constexpr int32_t WARP_SIZE_TMP = 32;
 constexpr int32_t HALF_WARP = 16;
 constexpr float QUANT_MAX_BOUND = 127.0;
 constexpr float QUANT_MIN_BOUND = -127.0;
@@ -2920,16 +2920,17 @@ template <typename T>
 __inline__ __device__ T WarpReduceAbsMax(T val, unsigned lane_mask) {
 #pragma unroll
   for (int mask = HALF_WARP; mask > 0; mask >>= 1) {
-    val = MaxFunc<T>()(val, __shfl_xor_sync(lane_mask, val, mask, WARP_SIZE));
+    val =
+        MaxFunc<T>()(val, __shfl_xor_sync(lane_mask, val, mask, WARP_SIZE_TMP));
   }
   return val;
 }
 
 template <typename T>
 __inline__ __device__ T BlockReduceAbsMax(T val, unsigned mask) {
-  static __shared__ T smem[WARP_SIZE];
-  int32_t lane_id = threadIdx.x % WARP_SIZE;
-  int32_t warp_id = threadIdx.x / WARP_SIZE;
+  static __shared__ T smem[WARP_SIZE_TMP];
+  int32_t lane_id = threadIdx.x % WARP_SIZE_TMP;
+  int32_t warp_id = threadIdx.x / WARP_SIZE_TMP;
 
   val = WarpReduceAbsMax(val, mask);
 
@@ -2939,7 +2940,7 @@ __inline__ __device__ T BlockReduceAbsMax(T val, unsigned mask) {
 
   __syncthreads();
 
-  T abs_max_val = (threadIdx.x < (blockDim.x / WARP_SIZE))
+  T abs_max_val = (threadIdx.x < (blockDim.x / WARP_SIZE_TMP))
                       ? smem[threadIdx.x]
                       : static_cast<T>(0.0f);
   abs_max_val = WarpReduceAbsMax(abs_max_val, mask);
