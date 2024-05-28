@@ -47,7 +47,7 @@ class Chi2(Gamma):
                 'Chi2',
             )
 
-        if not df > 0:
+        if not paddle.all(paddle.to_tensor(df) > 0):
             raise ValueError("The arg of `df` must be positive.")
 
         # Get/convert concentration to tensor.
