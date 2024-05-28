@@ -3635,7 +3635,7 @@ function clang-tidy_check() {
     trap 'abort' 0
     set -e
 
-    modified_files=$(git diff --name-only test)
+    modified_files=$(git diff --name-only test..upstream/develop)
     diff_files=()
 
     for file in $modified_files
