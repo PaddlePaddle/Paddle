@@ -153,7 +153,7 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
         super().__init__()
         self.set_attr("enable_optimizer_post_validation", 0)
         self.set_attr("program_runtimes", [61, 72, 71, 34, 3])
-        self.set_attr("memory_limit_times", 5)
+        self.set_attr("memory_limit_times", 2)
 
         self.program_mem_usages = []
         self.program_max_mem_usages = []
