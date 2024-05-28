@@ -140,7 +140,6 @@ OTHER_PRIM_VJP_OPS = [
     'roll_grad',
     'transpose_grad',
     'max_grad',
-    'slice_grad',
     'squeeze_grad',
     'unsqueeze_grad',
 ]
