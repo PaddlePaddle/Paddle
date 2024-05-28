@@ -15,10 +15,12 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import inspect
 import logging
 import re
 import sys
+import types
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
 from typing import Any, Callable, Literal
@@ -326,17 +328,26 @@ def func_doc_to_method_doc(func_doc: str) -> str:
     return method_doc
 
 
-def get_tensor_members():
+def try_import_paddle() -> types.ModuleType | None:
     try:
-        import paddle
-    except ImportError:
+        return importlib.import_module('paddle')
+    except ModuleNotFoundError:
         sys.stderr.write(
             '''ERROR: Can NOT import paddle.
             We could import paddle without installation, with all libs (.dll or .so) copied into dir `paddle/libs`,
             or path already been set for the system.
             '''
         )
-        raise
+
+
+def get_tensor_members():
+    paddle = try_import_paddle()
+    if not paddle:
+        raise (
+            ModuleNotFoundError(
+                'Can NOT import paddle from tools/gen_tensor_stub.py.'
+            )
+        )
 
     tensor_class = paddle.Tensor
 
@@ -456,11 +467,6 @@ def parse_args():
 
 
 def generate_stub_file(input_file=None, output_file=None):
-    if input_file is None or output_file is None:
-        args = parse_args()
-        input_file = args.input_file
-        output_file = args.output_file
-
     # Get members of Tensor
     tensor_members = get_tensor_members()
     logging.debug(f'total members in Tensor: {len(tensor_members)}')
@@ -486,5 +492,10 @@ def generate_stub_file(input_file=None, output_file=None):
         f.write(tensor_gen.codegen())
 
 
+def main():
+    args = parse_args()
+    generate_stub_file(args.input_file, args.output_file)
+
+
 if __name__ == "__main__":
-    generate_stub_file()
+    main()
