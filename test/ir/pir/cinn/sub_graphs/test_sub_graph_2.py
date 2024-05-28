@@ -67,7 +67,7 @@ class TestLayer(TestBase):
                 shape=(-1, 256, -1, -1),
                 dtype=paddle.float32,
                 name=None,
-                stop_gradient=True,
+                stop_gradient=False,
             )
         ]
         self.inputs = (
