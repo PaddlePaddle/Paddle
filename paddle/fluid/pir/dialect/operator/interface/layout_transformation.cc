@@ -48,18 +48,10 @@ common::DataLayout PreferLayoutImpl<Conv2dOp>(pir::Operation* op) {
         data_format_attr));
   }
 
-  auto concrete_op = op->dyn_cast<Conv2dOp>();
-  if (auto in = concrete_op.input()) {
-    if (auto in_type = in.type()) {
-      if (in_type.isa<DenseTensorType>()) {
-        if (auto tensor_type = in_type.dyn_cast<DenseTensorType>()) {
-          if (tensor_type.dtype().isa<pir::Float16Type>()) {
-            return common::DataLayout::NHWC;
-          }
-        }
-      }
-    }
-  }
+  // Note(lyk): We exhibit the layout transformation for conv2d
+  // due to issues with its infermeta and kernel not functioning
+  // properly in NHWC layout. However, if the FLAGS_manually_trans_conv_filter
+  // is enabled, the transfer_layout_pass can also operate correctly.
   return common::StringToDataLayout(data_format_attr.AsString());
 }
 
