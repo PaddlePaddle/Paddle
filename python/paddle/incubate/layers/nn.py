@@ -38,14 +38,16 @@ def inference(
     cache_static_model=False,
     with_trt=False,
     save_model_dir="/root/.cache/",
-    precision_mode="fp32",
+    precision_mode="float32",
     switch_ir_optim=True,
     switch_ir_debug=False,
     collect_shape=False,
+    delete_pass_lists=[],
 ):
     def decorator(func=None):
         import inspect
         import os
+        import sys
 
         predictors = [None]
         signature = inspect.signature(func)
@@ -84,16 +86,20 @@ def inference(
                 elif isinstance(run_time_args, list):
                     this_input_tensor_lists = []
                     for ele in run_time_args:
-                        assert isinstance(ele, paddle.Tensor)
+                        assert isinstance(
+                            ele, paddle.Tensor
+                        ), "the elements in list must be paddle.Tensor"
                         this_input_tensor_lists.append(ele)
                     return this_input_tensor_lists
+                else:
+                    raise AssertionError(
+                        f"we only support adding @paddle.incubate.layers.inference in functions whose arguments are paddle.Tensor or list[paddle.Tensor], but here we get {type(run_time_args)}, please modify your function to meet our requirement."
+                    )
 
             input_tensor_lists = []
             for i in range(len(args)):
                 if i > 0:
                     input_tensor_lists += get_tensor(args[i])
-                else:
-                    print(type(args[0]))
 
             for i in range(len(arg_names)):
                 if arg_names[i] in kwargs.keys():
@@ -107,16 +113,16 @@ def inference(
             re_do_d2s = False
             # check whether the shape is changed
             for i in range(len(d2s_input_shapes)):
-                if d2s_input_shapes[i] is not None:
-                    for j in range(len(d2s_input_shapes[i])):
-                        if (
-                            d2s_input_shapes[i][j] != -1
-                            and d2s_input_shapes[i][j]
-                            != input_tensor_lists[i].shape[j]
-                        ):
-                            re_do_d2s = True
-                            d2s_input_shapes[i][j] = -1
-                            print("shape are changed, we need re do d2s.")
+                for j in range(len(d2s_input_shapes[i])):
+                    if (
+                        d2s_input_shapes[i][j] != -1
+                        and d2s_input_shapes[i][j]
+                        != input_tensor_lists[i].shape[j]
+                    ):
+                        re_do_d2s = True
+                        d2s_input_shapes[i][j] = -1
+                        print("shape are changed, we need re do d2s.")
+                        sys.stdout.flush()
 
             if predictors[0] is not None and not re_do_d2s:
                 results = predictors[0].run(input_tensor_lists)
@@ -178,6 +184,10 @@ def inference(
                         d2s_input_names.append(input_specs[i].name)
                         d2s_shapes_id += 1
 
+                print("we are doing d2s!!")
+                sys.stdout.flush()
+                print("input_specs", input_specs)
+                sys.stdout.flush()
                 input_specs = [input_specs]
                 mylayer = WrappedLayer(args[0])
                 model = paddle.jit.to_static(
@@ -195,6 +205,8 @@ def inference(
                             + "\n"
                         )
                         f.write(line)
+                print("d2s are done!!")
+                sys.stdout.flush()
 
             # create predictor
             model_dir = save_model_dir + func.__name__ + "/"
@@ -208,11 +220,11 @@ def inference(
             config.switch_ir_optim(switch_ir_optim)
 
             def get_infer_precision():
-                if precision_mode == "fp32":
+                if precision_mode == "float32":
                     return PrecisionType.Float32
-                elif precision_mode == "fp16":
+                elif precision_mode == "float16":
                     return PrecisionType.Half
-                elif precision_mode == "bf16":
+                elif precision_mode == "bfloat16":
                     return PrecisionType.Bfloat16
                 else:
                     raise AssertionError("unsupported precision_mode")
@@ -260,6 +272,10 @@ def inference(
                 )
             if predictors[0] is not None:
                 del predictors[0]
+
+            for pass_name in delete_pass_lists:
+                config.delete_pass(pass_name)
+
             predictors[0] = create_predictor(config)
 
             results = predictors[0].run(input_tensor_lists)
