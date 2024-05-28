@@ -54,7 +54,7 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
                         data.size()));
 
   CPUPlace place;
-  int XPU_PlaceNo = paddle::phi::backends::xpu::GetXPUCurrentDeviceId();
+  int XPU_PlaceNo = phi::backends::xpu::GetXPUCurrentDeviceId();
 
   XPUPlace xpu_place(XPU_PlaceNo);
 
