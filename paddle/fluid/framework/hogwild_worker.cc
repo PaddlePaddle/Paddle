@@ -915,9 +915,10 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
       }
       str_os << "\n";
     }
-    char filename[512] = {0};
-    snprintf(filename, sizeof(filename), "./device_%d_ops.txt", thread_id_);
-    WriteToFile(filename, str_os.str());
+    std::string filename = "./device_";
+    filename += std::to_string(thread_id_);
+    filename += "_ops.txt";
+    WriteToFile(filename.c_str(), str_os.str());
   }
   // debug
   VLOG(0) << "device id=" << thread_id_
