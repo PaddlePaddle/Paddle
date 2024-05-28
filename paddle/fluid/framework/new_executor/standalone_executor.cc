@@ -54,8 +54,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
   const auto& jobs = plan_.JobList();
 
   const auto event_names = plan.AllEvents();
-  std::unordered_map < std::string,
-      std::shared_ptr<platform::DeviceEvent> events;
+  std::unordered_map<std::string, std::shared_ptr<platform::DeviceEvent>>
+      events;
   for (auto event_name : event_names) {
     events[event_name] = std::make_shared<platform::DeviceEvent>(
         place_, platform::GenerateDeviceEventFlag());

@@ -125,11 +125,11 @@ class PirInterpreter : public InterpreterBaseImpl {
   }
 
   void AddEventToRecord(std::shared_ptr<platform::DeviceEvent> event) {
-    std::cout << "Add event to record " << event->get() << std::endl;
+    std::cout << "Add event to record " << event.get() << std::endl;
     events_to_record_.push_back(event);
   }
   void AddEventToWait(std::shared_ptr<platform::DeviceEvent> event) {
-    std::cout << "Add event to wait " << event->get() << std::endl;
+    std::cout << "Add event to wait " << event.get() << std::endl;
     events_to_wait_.push_back(event);
   }
 
