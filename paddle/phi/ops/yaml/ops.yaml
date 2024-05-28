@@ -3074,16 +3074,6 @@
   backward : put_along_axis_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : qkv_unpack_mha
-  args : (Tensor q, Tensor k, Tensor v, Tensor src_mask)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [q]
-  kernel :
-    func : qkv_unpack_mha
-    data_type : q
-
 - op : qr
   args : (Tensor x, str mode = "reduced")
   output : Tensor(q), Tensor(r)
