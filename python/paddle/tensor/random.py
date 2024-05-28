@@ -322,7 +322,7 @@ def standard_gamma(x, name=None):
 def log_normal(mean=0.0, std=1.0, shape=None, name=None):
     r"""
     Returns a Tensor filled with random values sampled from a Log Normal
-    Distribution, with ``mean``, ``std``, ``shape`` and ``dtype``.
+    Distribution, with ``mean``, ``std``.
     The Log Normal Distribution is defined as follows
 
     .. math::
