@@ -475,6 +475,7 @@ def mask_as(x, mask, name=None):
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.set_device('cpu')
 
             >>> # csr sparse tensor
             >>> crows = [0, 2, 3, 5]
@@ -486,10 +487,10 @@ def mask_as(x, mask, name=None):
             >>> x = paddle.rand(dense_shape).astype(csr.dtype)
             >>> out = paddle.sparse.mask_as(x, csr)
             >>> print(out)
-            Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
             crows=[0, 2, 3, 5],
             cols=[1, 3, 2, 0, 1],
-            values=[0.29755771, 0.73894459, 0.19635069, 0.85167211, 0.02056761])
+            values=[0.23659813, 0.08467803, 0.64152628, 0.66596609, 0.90394485])
 
             >>> # coo sparse tensor
             >>> indices = [[0, 1, 2], [1, 2, 0]]
@@ -500,10 +501,10 @@ def mask_as(x, mask, name=None):
             >>> x = paddle.rand(dense_shape).astype(coo.dtype)
             >>> out = paddle.sparse.mask_as(x, coo)
             >>> print(out)
-            Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
             indices=[[0, 1, 2],
                      [1, 2, 0]],
-            values=[0.29755771, 0.32066503, 0.19635069])
+            values=[0.23659813, 0.40340215, 0.64152628])
 
     """
     return _C_ops.sparse_mask_as(x, mask)
