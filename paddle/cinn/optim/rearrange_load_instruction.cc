@@ -15,7 +15,9 @@
 #include "paddle/cinn/optim/rearrange_load_instruction.h"
 
 #include <stack>
+#include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_compare.h"
@@ -45,6 +47,12 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
  private:
   void Visit(const ir::Load *op, Expr *expr) override {
     if (is_inner_store) {
+      if (op->tensor.as_tensor_ref()->buffer->memory_type ==
+              ir::MemoryType::GPULocal ||
+          op->tensor.as_tensor_ref()->buffer->memory_type ==
+              ir::MemoryType::GPUShared)
+        return;
+
       auto local_var =
           ir::_Var_::Make(common::UniqName("local_var"), op->type());
       auto let_op = ir::Let::Make(local_var, const_cast<ir::Load *>(op));
@@ -109,6 +117,7 @@ struct RearrangeLoadInstructionMutator : public ir::IRMutator<Expr *> {
     op->stmts = new_stmts;
   }
 
+  std::unordered_map<std::string, ir::Expr> collection_name_map_expr;
   std::vector<Expr> let_list;
   std::vector<Expr> stmts_list;
   bool is_inner_store;
