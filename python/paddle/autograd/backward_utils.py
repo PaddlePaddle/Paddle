@@ -174,10 +174,20 @@ class ValueDict:
         for key, val in self._items.items():
             yield key._value, val
 
+    def get(self, key, default=None):
+        if not self.__contains__(key):
+            return default
+        return self._items[ValueWrapper(key)]
+
     def pop(self, key):
         if not self.__contains__(key):
             raise KeyError(f'{key} is not in ValueDict')
         return self._items.pop(ValueWrapper(key))
+
+    def setdefault(self, key, default=None):
+        if not self.__contains__(key):
+            self[key] = default
+        return self[key]
 
     def __setitem__(self, key, val: Any):
         self._items[ValueWrapper(key)] = val

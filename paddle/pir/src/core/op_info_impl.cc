@@ -28,14 +28,14 @@ void OpInfo::AttachInterface(InterfaceValue &&interface_value) {
 }
 
 void OpInfoImpl::AttachInterface(InterfaceValue &&interface_value) {
+  auto type_id = interface_value.type_id();
   auto success = interface_set_.insert(std::move(interface_value)).second;
-  PADDLE_ENFORCE_EQ(success,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "Interface: id[%u] is already registered. inset failed",
-                        interface_value.type_id()));
-  VLOG(10) << "Attach a interface: id[" << interface_value.type_id() << "]. to "
-           << op_name_;
+  PADDLE_ENFORCE_EQ(
+      success,
+      true,
+      phi::errors::InvalidArgument(
+          "Interface: id[%u] is already registered. inset failed", type_id));
+  VLOG(10) << "Attach a interface: id[" << type_id << "]. to " << op_name_;
 }
 
 OpInfoImpl::OpInfoImpl(std::set<InterfaceValue> &&interface_set,

@@ -124,6 +124,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'send_v2',
     'recv_v2',
     'c_allgather',
+    'qkv_unpack_mha',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -197,6 +198,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_reduce_prod',
     'c_reduce_prod_',
     'c_scatter',
+    "cross_entropy_grad2",
     'prune_gate_by_capacity',
     'push_sparse_v2',
     'push_sparse_v2_',

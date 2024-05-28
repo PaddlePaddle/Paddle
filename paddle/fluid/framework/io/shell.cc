@@ -59,6 +59,7 @@ static int close_open_fds_internal() {
     off_t d_off;
     unsigned short d_reclen = 0;  // NOLINT
     char d_name[256];             // NOLINT
+    linux_dirent() : d_off(0), d_name{} {}
   };
 
   int dir_fd = open("/proc/self/fd", O_RDONLY);
@@ -151,7 +152,7 @@ static int shell_popen_fork_internal(const char* real_cmd,
 }
 
 static int read_from_pipe(FILE* fp, std::string* output) {
-  std::array<char, 4096> buf;
+  std::array<char, 4096> buf = {};
   while (true) {
     int n = static_cast<int>(fread(buf.data(), 1, 4096, fp));
     if (n <= 0) {
@@ -187,7 +188,7 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
 
   std::string real_cmd = "set -o pipefail; " + cmd;
 
-  std::array<int, 2> pipe_fds;
+  std::array<int, 2> pipe_fds = {};
   if (pipe(pipe_fds.data()) != 0) {
     *err_no = -1;
     return nullptr;
@@ -300,8 +301,8 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
 
   std::string real_cmd = "set -o pipefail; " + cmd;
 
-  std::array<int, 2> pipein_fds;
-  std::array<int, 2> pipeout_fds;
+  std::array<int, 2> pipein_fds = {};
+  std::array<int, 2> pipeout_fds = {};
   if (pipe(pipein_fds.data()) != 0) {
     return {nullptr, nullptr};
   }
