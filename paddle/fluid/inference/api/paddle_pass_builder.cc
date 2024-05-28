@@ -615,7 +615,8 @@ const std::vector<std::string> kPirGpuPasses{
     "matmul_scale_fuse_pass",
     "matmul_transpose_fuse_pass",
     "transpose_flatten_concat_fuse_pass",
-    "remove_redundant_transpose_pass"};
+    "remove_redundant_transpose_pass",
+    "transfer_layout_pass"};
 
 const std::vector<std::string> kPirXpuPasses{// Functional pass
                                              "map_op_to_another_pass",

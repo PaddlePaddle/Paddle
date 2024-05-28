@@ -12,19 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/fake_dequantize_kernel_impl.h"
+#pragma once
 
-PD_REGISTER_KERNEL(fake_dequantize_max_abs,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::FakeDequantizeMaxAbsKernel,
-                   float,
-                   double) {}
+#include "paddle/common/layout.h"
+#include "paddle/pir/include/core/value.h"
 
-PD_REGISTER_KERNEL(fake_channel_wise_dequantize_max_abs,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::FakeChannelWiseDequantizeMaxAbsKernel,
-                   float,
-                   double) {}
+namespace pir {
+
+void SetNewLayoutForValue(pir::Value value, common::DataLayout new_layout);
+
+}  // namespace pir

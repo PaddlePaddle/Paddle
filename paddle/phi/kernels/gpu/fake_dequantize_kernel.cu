@@ -22,3 +22,11 @@ PD_REGISTER_KERNEL(fake_dequantize_max_abs,
                    float,
                    double,
                    phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(fake_channel_wise_dequantize_max_abs,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FakeChannelWiseDequantizeMaxAbsKernel,
+                   float,
+                   double,
+                   phi::dtype::float16) {}

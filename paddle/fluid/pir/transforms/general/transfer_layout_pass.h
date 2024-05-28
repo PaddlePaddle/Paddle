@@ -12,19 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/fake_dequantize_kernel_impl.h"
+#pragma once
 
-PD_REGISTER_KERNEL(fake_dequantize_max_abs,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::FakeDequantizeMaxAbsKernel,
-                   float,
-                   double) {}
+#include <memory>
 
-PD_REGISTER_KERNEL(fake_channel_wise_dequantize_max_abs,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::FakeChannelWiseDequantizeMaxAbsKernel,
-                   float,
-                   double) {}
+#include "paddle/pir/include/core/dll_decl.h"
+
+namespace pir {
+
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateTransferLayoutPass();
+
+}  // namespace pir

@@ -1112,6 +1112,12 @@
     num_columns :
       support_tensor : true
 
+- op : fake_channel_wise_dequantize_max_abs
+  inputs :
+    {x : X, scales : Scales}
+  outputs :
+    out : Out
+
 - op : fake_channel_wise_quantize_abs_max
   inputs :
     x : X
