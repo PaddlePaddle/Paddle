@@ -1408,6 +1408,21 @@ void PirInterpreter::ConstructEventForJitInput() {
   }
 }
 
+void PirInterpreter::ConstructEvent() {
+  InstructionBase* last_inst = vec_instruction_base_.back().get();
+  for (size_t i = 0; i < events_to_record_->size(); ++i) {
+    VLOG(0) << "Add record event for: " << last_inst->Name();
+    last_inst->AddEventToRecord(events_to_record_[i],
+                                ir_stream_analyzer_.GetWaiterType(last_inst));
+  }
+  InstructionBase* first_inst = vec_instruction_base_[0].get();
+  for (size_t i = 0; i < events_to_wait_->size(); ++i) {
+    VLOG(0) << "Add wait event for: " << first_inst->Name();
+    first_inst->AddEventToWait(
+        0, events_to_wait_[i], ir_stream_analyzer_.GetWaiterType(first_inst));
+  }
+}
+
 paddle::framework::FetchList PirInterpreter::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors,
@@ -1950,6 +1965,9 @@ void PirInterpreter::PreAnalysis() {
   // from gpu_pinned place to gpu place on compute stream.
   ConstructEventForJitInput();
   VLOG(4) << "AddEventToWait for JitInputVars";
+
+  ConstructEvent();
+  VLOG(0) << "AddEvent";
 
   CalculateLastLiveOps();
   VLOG(4) << "Done CalculateLastLiveOps";

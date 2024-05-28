@@ -125,11 +125,11 @@ class PirInterpreter : public InterpreterBaseImpl {
   }
 
   void AddEventToRecord(std::shared_ptr<platform::DeviceEvent> event) {
-    std::cout << "Add event to record " << event.get() << std::endl;
+    VLOG(0) << "Add event to record " << event.get();
     events_to_record_.push_back(event);
   }
   void AddEventToWait(std::shared_ptr<platform::DeviceEvent> event) {
-    std::cout << "Add event to wait " << event.get() << std::endl;
+    VLOG(0) << "Add event to wait " << event.get();
     events_to_wait_.push_back(event);
   }
 
@@ -143,6 +143,7 @@ class PirInterpreter : public InterpreterBaseImpl {
       InstructionSchedulingPriorityLess compare);
   void ConstructEventForJitInput();
   void CalculateLastLiveOps();
+  void ConstructEvent();
 
   // gc
   void ClearLoDTensorArrayInLocalScope();
