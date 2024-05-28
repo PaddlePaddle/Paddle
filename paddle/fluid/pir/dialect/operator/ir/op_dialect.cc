@@ -14,10 +14,12 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
+#include "paddle/fluid/pir/dialect/operator/interface/layout_transformation.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -170,12 +172,14 @@ struct SliceOpInferSymbolicShapeInterfaceModel
       pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
     const auto index =
         op->attributes().at("index").dyn_cast<pir::Int32Attribute>().data();
-    const auto output_value =
-        (op->operand(0).type().dyn_cast<pir::VectorType>())[index]
-            .dyn_cast<pir::Value>();
-
-    infer_context->SetShapeOrDataForValue(
-        op->result(0), infer_context->GetShapeOrDataForValue(output_value));
+    const auto& input_shape =
+        infer_context->GetShapeOrDataForValue(op->operand_source(0));
+    CHECK(input_shape.isa<symbol::TensorListShapeOrDataDimExprs>());
+    const symbol::TensorListShapeOrDataDimExprs& data_shape_list =
+        input_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+    const symbol::TensorShapeOrDataDimExprs& output_shape =
+        data_shape_list[index];
+    infer_context->SetShapeOrDataForValue(op->result(0), output_shape);
 
     return true;
   }
@@ -235,6 +239,9 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
   info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
                                CombineOpInferSymbolicShapeInterfaceModel>());
+  info.AttachInterface(pir::InterfaceValue::Get<
+                       LayoutTransformationInterface,
+                       LayoutTransformationInterface::Model<pir::CombineOp>>());
 
   info = ctx->GetRegisteredOpInfo(pir::ParameterOp::name());
   info.AttachInterface(
@@ -377,6 +384,11 @@ void OperatorDialect::initialize() {
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.cc"  // NOLINT
       >();
 
+  RegisterOps<
+#define GET_OP_LIST
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.cc"  // NOLINT
+      >();
+
 #ifdef PADDLE_WITH_DNNL
   RegisterOps<
 #define GET_OP_LIST
@@ -416,7 +428,7 @@ pir::Attribute OperatorDialect::ParseAttribute(
 }
 
 pir::OpPrintFn OperatorDialect::PrintOperation(pir::Operation* op) const {
-  if (op->isa<IfOp>() || op->isa<WhileOp>()) {
+  if (op->isa<IfOp>() || op->isa<WhileOp>() || op->isa<PyLayerOp>()) {
     return PrintOperationImpl;
   }
   return nullptr;
@@ -429,7 +441,9 @@ class IdManager {
     return instance;
   }
 
-  ~IdManager() {
+  IdManager() : ids_() {}
+
+  ~IdManager() {  // NOLINT
     for (auto id : ids_) {
       delete id;
     }
@@ -453,7 +467,9 @@ class AttributeManager {
     return instance;
   }
 
-  ~AttributeManager() {
+  AttributeManager() : char_pointers_(), pointers_size_() {}
+
+  ~AttributeManager() {  // NOLINT
     for (size_t i = 0; i < char_pointers_.size(); i++) {
       for (size_t j = 0; j < pointers_size_[i]; j++) {
         delete char_pointers_[i][j];

@@ -431,6 +431,9 @@ class OpTest(unittest.TestCase):
         cls._check_cinn = False
         cls.check_pir_onednn = False
 
+        # Todo(CZ): to be removed in future
+        core._clear_prim_vjp_skip_default_ops()
+
         np.random.seed(123)
         random.seed(124)
 
@@ -1526,6 +1529,10 @@ class OpTest(unittest.TestCase):
         check_cinn=False,
     ):
         with paddle.pir_utils.OldIrGuard():
+            if hasattr(self, "attrs"):
+                for k, v in self.attrs.items():
+                    if isinstance(v, paddle.base.core.DataType):
+                        self.attrs[k] = paddle.pir.core.datatype_to_vartype[v]
             program = Program()
             block = program.global_block()
             op = self._append_ops(block)
@@ -3202,6 +3209,13 @@ class OpTest(unittest.TestCase):
                         python_api_info=python_api_info,
                     )
                     runtime_envs = get_subprocess_runtime_envs(place)
+
+                    num_devices = len(
+                        runtime_envs["CUDA_VISIBLE_DEVICES"].split(",")
+                    )
+                    if num_devices > paddle.device.cuda.device_count():
+                        self.skipTest("number of GPUs is not enough")
+
                     start_command = get_subprocess_command(
                         runtime_envs["CUDA_VISIBLE_DEVICES"],
                         generated_grad_test_path,
@@ -3241,6 +3255,11 @@ class OpTest(unittest.TestCase):
         if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
             op_attrs["use_mkldnn"] = False
             use_onednn = True
+        if hasattr(self, "attrs"):
+            for k, v in self.attrs.items():
+                if isinstance(v, paddle.base.core.DataType):
+                    self.attrs[k] = paddle.pir.core.datatype_to_vartype[v]
+
         self.op = create_op(
             self.scope,
             self.op_type,

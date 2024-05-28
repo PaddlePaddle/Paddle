@@ -154,17 +154,26 @@ def _load_state_dict_from_save_inference_model(model_path, config):
     # 1. load program desc & construct _ProgramHolder
     # TODO(GGBond8488):From a long-term perspective, it is inappropriate for the framework to
     # rely on jit. It is necessary to migrate the dependency from jit to the framework in the future
-    from paddle.jit.translated_layer import (
-        _construct_params_and_buffers,
-        _construct_program_holders,
-    )
+    if in_pir_mode():
+        from paddle.jit.pir_translated_layer import (
+            _construct_params_and_buffers,
+            _construct_program_holders,
+        )
 
-    programs = _construct_program_holders(model_path, config.model_filename)
+        programs = _construct_program_holders(model_path, config.model_filename)
+
+    else:
+        from paddle.jit.translated_layer import (
+            _construct_params_and_buffers,
+            _construct_program_holders,
+        )
+
+        programs = _construct_program_holders(model_path, config.model_filename)
 
     # 2. load layer parameters & buffers
     with base.dygraph.guard():
         persistable_var_dict = _construct_params_and_buffers(
-            model_path, programs, config.params_filename, append_suffix=False
+            model_path, programs, config.params_filename
         )
 
         # 3. construct state_dict
@@ -256,12 +265,18 @@ def _build_load_path_and_config(path, config):
     # raise error, avoid confusing behavior
     # TODO(GGBond8488):From a long-term perspective, it is inappropriate for the framework to
     # rely on jit. It is necessary to migrate the dependency from jit to the framework in the future
+    from paddle.jit.pir_translated_layer import (
+        PIR_INFER_MODEL_SUFFIX,
+    )
     from paddle.jit.translated_layer import (
         INFER_MODEL_SUFFIX,
         INFER_PARAMS_SUFFIX,
     )
 
-    prefix_format_path = path + INFER_MODEL_SUFFIX
+    if in_pir_mode():
+        prefix_format_path = path + PIR_INFER_MODEL_SUFFIX
+    else:
+        prefix_format_path = path + INFER_MODEL_SUFFIX
     prefix_format_exist = os.path.exists(prefix_format_path)
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
@@ -294,7 +309,10 @@ def _build_load_path_and_config(path, config):
                     "specified file prefix, the ``model_filename`` config does "
                     "not take effect."
                 )
-            config.model_filename = file_prefix + INFER_MODEL_SUFFIX
+            if in_pir_mode():
+                config.model_filename = file_prefix + PIR_INFER_MODEL_SUFFIX
+            else:
+                config.model_filename = file_prefix + INFER_MODEL_SUFFIX
             if config.params_filename is not None:
                 warnings.warn(
                     "When loading the result saved with the "

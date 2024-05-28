@@ -14,12 +14,12 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/single_op_fallback_to_phi.h"
 
-#include "build/paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
-#include "build/paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 namespace cinn {
@@ -64,9 +64,6 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(fusion_op.result(i),
                                   paddle_op.value()->result(i));
-      shape_analysis.SetShapeOrDataForValue(
-          paddle_op.value()->result(i),
-          shape_analysis.GetShapeOrDataForValue(fusion_op.result(i)));
     }
 
     rewriter.EraseOp(fusion_op);

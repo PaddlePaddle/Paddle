@@ -34,6 +34,7 @@
 #include "paddle/fluid/ir_adaptor/translator/type_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -89,8 +90,8 @@ constexpr char kTargetDialectPrefix[] = "pd_op.";  // NOLINT
 #ifdef PADDLE_WITH_DNNL
 constexpr char kOneDNNTargetDialectPrefix[] = "onednn_op.";  // NOLINT
 #endif
-constexpr char kCustomOpDialectPrefix[] = "custom_op.";
-constexpr char kEmptyVarName[] = "@EMPTY@";  // NOLINT
+constexpr char kCustomOpDialectPrefix[] = "custom_op.";  // NOLINT
+constexpr char kEmptyVarName[] = "@EMPTY@";              // NOLINT
 
 static const std::unordered_set<std::string> SpecialNonInplaceOps = {};
 
@@ -305,7 +306,8 @@ pir::OpInfo OpTranscriber::LookUpOpInfo(pir::IrContext* ctx,
     std::map<std::string, std::vector<std::string>> inputs = op_desc.Inputs();
     std::vector<std::string> input_types;
     for (const auto& pair : inputs) {
-      if (op_desc.Type() == "sparse_sum" || op_desc.Type() == "sparse_slice") {
+      if (op_desc.Type() == "sparse_sum" || op_desc.Type() == "sparse_slice" ||
+          op_desc.Type() == "sparse_reshape") {
         if (pair.first != "x") {
           continue;
         }
@@ -945,7 +947,17 @@ pir::Operation* OpTranscriber::operator()(pir::IrContext* ctx,
   return operation;
 }
 
-struct AssignOpTranscriber : public OpTranscriber {
+struct ArgsortOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "stable") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    }
+  }
+};
+
+struct Assign2AssignOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
     std::string target_op_name;
@@ -975,6 +987,53 @@ struct AssignOpTranscriber : public OpTranscriber {
     }
 
     return op_info;
+  }
+};
+
+struct Assign2AssignOutOpTranscriber : public OpTranscriber {
+  pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
+                           const OpDesc& op_desc) override {
+    const auto& op_info =
+        ctx->GetRegisteredOpInfo(paddle::dialect::AssignOut_Op::name());
+    if (!op_info) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Op assign should have corresponding OpInfo %s.",
+          paddle::dialect::AssignOut_Op::name()));
+    }
+
+    return op_info;
+  }
+
+  std::vector<pir::Value> GenerateOperationInput(
+      pir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      pir::Block* block) override {
+    std::vector<pir::Value> op_inputs;
+    auto x_vars = op_desc.Input("X", true);
+    auto x_defining_info = (*param_map)[x_vars[0]];
+    op_inputs.push_back(x_defining_info.value);
+
+    auto out_vars = op_desc.Output("Out");
+    auto out_defining_info = (*param_map)[out_vars[0]];
+    op_inputs.push_back(out_defining_info.value);
+
+    return op_inputs;
+  }
+};
+
+struct AssignOpTranscriber : public OpTranscriber {
+  pir::Operation* operator()(pir::IrContext* ctx,
+                             TranslationContext* param_map,
+                             const OpDesc& op_desc,
+                             pir::Block* block) override {
+    if (param_map->count(op_desc.Output("Out")[0])) {
+      return Assign2AssignOutOpTranscriber()(ctx, param_map, op_desc, block);
+    } else {
+      return Assign2AssignOpTranscriber()(ctx, param_map, op_desc, block);
+    }
   }
 };
 
@@ -1040,7 +1099,7 @@ struct IncrementOpTranscriber : public OpTranscriber {
 };
 
 // The `assign_value` in static_ops.yaml is different from the one in
-// `legacy_ops.yaml`. For this op we simulate the logic in
+// `dygraph_ops.yaml`. For this op we simulate the logic in
 // python/paddle/tensor/creation.py::assign(x, output)
 struct AssignValueOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
@@ -2928,12 +2987,12 @@ struct FusedFeedForwardOpTranscriber : public OpTranscriber {
 struct ShareBufferOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
-    std::string target_op_name = dialect::ShareDataOp::name();
+    std::string target_op_name = dialect::ShareData_Op::name();
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Op share_buffer should have corresponding OpInfo "
-          "pd_op.share_data"));
+          "pd_op.share_data_"));
     }
 
     return op_info;
@@ -3410,6 +3469,7 @@ OpTranslator::OpTranslator() {
 
   general_handler = OpTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();
+  special_handlers["argsort"] = ArgsortOpTranscriber();
   special_handlers["assign"] = AssignOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["range"] = ArangeOpTranscriber();

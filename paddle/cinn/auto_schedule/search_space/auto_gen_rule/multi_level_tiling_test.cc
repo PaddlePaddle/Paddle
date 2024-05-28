@@ -447,7 +447,7 @@ TEST_F(TestMultiLevelTiling, Pool2d) {
               {
                 i0, i1, i2, i3 = axis.bind(i, j, k, a)
                 {
-                  pad_temp_0[i0, i1, i2, i3] = select(((i3 < (1 + 16)) and ((i3 >= 1) and ((i2 < (1 + 16)) and (i2 >= 1)))), input[i0, i1, (i2 - 1), (i3 - 1)], -3.40282347e+38f)
+                  pad_temp_0[i0, i1, i2, i3] = select(((i3 < (1 + 16)) and ((i3 >= 1) and ((i2 < (1 + 16)) and (i2 >= 1)))), input[i0, i1, (i2 - 1), (i3 - 1)], -3.40282346e+38f)
                 }
               }
             }
@@ -471,7 +471,7 @@ TEST_F(TestMultiLevelTiling, Pool2d) {
                     {
                       i0_0, i1_0, i2_0, i3_0 = axis.bind(((((i_j_k_a_fused / 2) / 2) / 2) + ((i_0_j_0_k_0_a_0_fused / 4) + i_1)), ((4 * (((i_j_k_a_fused / 2) / 2) % 2)) + j_1), ((i_0_j_0_k_0_a_0_fused % 4) + ((4 * ((i_j_k_a_fused / 2) % 2)) + k_1)), ((4 * (i_j_k_a_fused % 2)) + a_1))
                       {
-                        var_0__reduce_init[i0_0, i1_0, i2_0, i3_0] = -3.40282347e+38f
+                        var_0__reduce_init[i0_0, i1_0, i2_0, i3_0] = -3.40282346e+38f
                       }
                     }
                   }

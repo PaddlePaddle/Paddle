@@ -438,9 +438,14 @@ std::string Instruction::DumpInstruction() const {
 
 void Instruction::CheckResults(
     const std::map<std::string, cinn_pod_value_t>* name2podargs, void* stream) {
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  cudaStreamSynchronize(static_cast<cudaStream_t>(stream));
+        cudaStreamSynchronize(static_cast<cudaStream_t>(stream));
 #endif
+      });
 
   if (fn_names_.size() == 1) {
     std::unordered_set<std::string> skipped_instr_set = {

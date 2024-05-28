@@ -50,7 +50,7 @@ class SameStatusReshardFunction(ReshardFunction):
         for src, dst in zip(src_mesh.process_ids, dst_mesh.process_ids):
             if src == cur_global_rank:
                 dst_local_rank = all_process_ids.index(dst)
-                paddle._pir_ops.send_v2(
+                paddle._C_ops.send_v2(
                     src_value,
                     comm_group.id,
                     dst_local_rank,
@@ -73,8 +73,8 @@ class SameStatusReshardFunction(ReshardFunction):
                 assert (
                     -1 not in dst_type.shape
                 ), "dynamic shape is not supported by pir-auto parallel yet."
-                recv_value = paddle._pir_ops.recv_v2(
-                    dst_type.shape,
+                recv_value = paddle._C_ops.recv_v2(
+                    dst_type._local_shape,
                     dst_type.dtype,
                     src_local_rank,
                     comm_group.id,

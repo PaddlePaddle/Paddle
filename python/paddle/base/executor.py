@@ -1168,6 +1168,11 @@ class _ExecutorCache:
                     op.result(0).persistable,
                 )
                 data_op_infos.append(tup)
+        from paddle.decomposition import decomp
+
+        if core._enable_dist_prim_all():
+            with decomp.prim_guard():
+                decomp.decompose_dist_program(program)
         return program, new_exe, data_op_infos
 
 
@@ -2116,12 +2121,10 @@ class Executor:
 
             lr_scheduler = program.lr_scheduler
             lr_value = lr_scheduler()
-            lr_var = program.lr_var
+            lr_var = program.get_parameter_value_by_name(program.lr_name)
 
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-            tensor = core.get_variable_tensor(
-                global_scope(), lr_scheduler._var_name
-            )
+            tensor = core.get_variable_tensor(global_scope(), program.lr_name)
             # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
             cpu_tensor = _as_lodtensor(data, core.CPUPlace())
             if core.is_cuda_graph_capturing():
@@ -2533,8 +2536,8 @@ class Executor:
         reused_trainer = program._heter_pipeline_opt is not None or (
             program._fleet_opt is not None
             and program._fleet_opt.get("use_ps_gpu", False)
+            and program._fleet_opt.get("dump_fields_path", "") == ""
         )
-
         if reused_trainer is False:
             trainer_instance = (
                 self._default_executor.init_for_dataset(  # -->InitForDataset

@@ -197,6 +197,19 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   os << printer.indentation() << "}";
 }
 
+bool FusionOp::InferSymbolicShape(
+    ::pir::InferSymbolicShapeContext* infer_context) {
+  ::pir::InferSymExprForBlock(*block(), infer_context);
+
+  for (uint32_t rst_idx = 0; rst_idx < num_results(); rst_idx++) {
+    auto inner_yield_value = block()->back().operand_source(rst_idx);
+    const auto& shape =
+        infer_context->GetShapeOrDataForValue(inner_yield_value);
+    infer_context->SetShapeOrDataForValue(result(rst_idx), shape);
+  }
+  return true;
+}
+
 void YieldStoreOp::Build(pir::Builder& builder,
                          pir::OperationArgument& argument,
                          pir::Value x,
@@ -268,7 +281,7 @@ void SplitOp::Build(pir::Builder& builder,             // NOLINT
                     pir::Value input,
                     const std::vector<int>& sections,
                     int axis) {
-  VLOG(4) << "Start build ConcatOp";
+  VLOG(4) << "Start build SplitOp";
 
   argument.inputs.push_back(input);
 

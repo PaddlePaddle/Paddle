@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/operators/uniform_random_op.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/generator.h"
 
@@ -66,7 +65,7 @@ class XPUUniformRandomInplaceKernel : public framework::OpKernel<T> {
     }
     phi::memory_utils::Copy(ctx.GetPlace(),
                             data,
-                            platform::CPUPlace(),
+                            phi::CPUPlace(),
                             reinterpret_cast<void *>(data_cpu.get()),
                             size * sizeof(T));
   }
@@ -86,7 +85,7 @@ class XPUUniformRandomInplaceGradKernel : public framework::OpKernel<T> {
       }
       phi::memory_utils::Copy(ctx.GetPlace(),
                               data,
-                              platform::CPUPlace(),
+                              phi::CPUPlace(),
                               reinterpret_cast<void *>(data_cpu.get()),
                               size * sizeof(T));
     }

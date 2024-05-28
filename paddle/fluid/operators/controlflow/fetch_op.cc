@@ -41,14 +41,13 @@ static void DataCopy(const phi::DenseTensor &src_item,
               : phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
           src_item,
           &out,
-          platform::CPUPlace());
-      paddle::framework::TensorCopySync(out, platform::CPUPlace(), dst_item);
+          phi::CPUPlace());
+      paddle::framework::TensorCopySync(out, phi::CPUPlace(), dst_item);
     } else {
-      paddle::framework::TensorCopySync(
-          src_item, platform::CPUPlace(), dst_item);
+      paddle::framework::TensorCopySync(src_item, phi::CPUPlace(), dst_item);
     }
 #else
-    paddle::framework::TensorCopySync(src_item, platform::CPUPlace(), dst_item);
+    paddle::framework::TensorCopySync(src_item, phi::CPUPlace(), dst_item);
 #endif
   } else {
     // Not copy, if the src tensor is empty.
@@ -68,7 +67,7 @@ class FetchOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     OP_INOUT_CHECK(HasInputs("X"), "Input", "X", "Fetch");
     OP_INOUT_CHECK(HasOutputs("Out"), "Output", "Out", "Fetch");
 

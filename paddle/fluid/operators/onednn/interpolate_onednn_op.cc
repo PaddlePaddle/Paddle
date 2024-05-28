@@ -28,7 +28,7 @@ class InterpolateOneDNNHandler
  public:
   InterpolateOneDNNHandler(const dnnl::algorithm algo,
                            const dnnl::engine engine,
-                           platform::Place cpu_place,
+                           phi::Place cpu_place,
                            const phi::DenseTensor* x,
                            phi::DenseTensor* out)
       : phi::funcs::OneDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
@@ -48,7 +48,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
     const auto* x = ctx.Input<phi::DenseTensor>("X");
     const auto& in_dims = x->dims();
 
-    const framework::DDim in_dhw_dims =
+    const phi::DDim in_dhw_dims =
         common::slice_ddim(in_dims, 2, in_dims.size());
 
     std::vector<int> out_dims;
@@ -137,7 +137,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
                                      : dnnl::algorithm::resampling_linear;
 
     const auto out_dims_vec = ComputeOutputShape(ctx);
-    framework::DDim dim_out = common::make_ddim(out_dims_vec);
+    phi::DDim dim_out = common::make_ddim(out_dims_vec);
     out->Resize(dim_out);
 
     InterpolateOneDNNHandler<T> handler(
