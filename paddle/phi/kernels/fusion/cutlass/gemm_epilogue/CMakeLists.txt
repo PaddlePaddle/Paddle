@@ -30,8 +30,7 @@ execute_process(
 find_package(CUDA)
 
 set(CUDA_NVCC_FLAGS
-    -std=c++17 -gencode
-    arch=compute_${COMPUTE_CAPABILITY},code=sm_${COMPUTE_CAPABILITY};)
+    -gencode arch=compute_${COMPUTE_CAPABILITY},code=sm_${COMPUTE_CAPABILITY};)
 #set(CMAKE_CXX_FLAGS -fvisibility=hidden)
 set(CMAKE_BUILD_TYPE "Release")
 file(GLOB all_cutlass_gemm_epilogue_cu

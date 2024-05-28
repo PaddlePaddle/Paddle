@@ -60,13 +60,15 @@ if(WITH_CUTLASS)
       "kai===================================================== WITH_CUTLASS")
   add_custom_target(
     gemm_epilogue_compile_script ALL
-    COMMAND bash compile.sh
+    COMMAND bash compile.sh "${PYTHON_EXECUTABLE}" "${CUDA_TOOLKIT_ROOT_DIR}"
+            "${NVCC_ARCH_BIN}"
     WORKING_DIRECTORY
       ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/gemm_epilogue
     COMMENT "GemmEpilogue compile script")
   add_custom_target(
     fused_conv2d_add_act_compile_script ALL
-    COMMAND bash compile.sh
+    COMMAND bash compile.sh "${PYTHON_EXECUTABLE}" "${CUDA_TOOLKIT_ROOT_DIR}"
+            "${NVCC_ARCH_BIN}"
     WORKING_DIRECTORY
       ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/conv2d
     COMMENT "FusedConv2dAddAct compile script")

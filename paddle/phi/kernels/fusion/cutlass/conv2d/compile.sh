@@ -13,21 +13,23 @@
 # limitations under the License.
 set -e
 
-cutlass_repo_directory="cutlass"
-if [ ! -d "$cutlass_repo_directory" ]; then
-     git clone --branch v3.0.0  https://github.com/NVIDIA/cutlass
-fi
-
 build_directory="build"
 if [ ! -d "$build_directory" ]; then
     mkdir $build_directory
 fi
 
-python_exe_path="python"
-cuda_root_path="/usr/local/cuda"
-gpu_cc="80"
+libname="$build_directory/libCutlassConv2d.so"
+if [ -e "$libname" ]; then
+    exit 0 
+fi
+
+cutlass_repo_directory="cutlass"
+if [ ! -d "$cutlass_repo_directory" ]; then
+     git clone --branch v3.0.0  https://github.com/NVIDIA/cutlass
+fi
+
 
 cd $build_directory
-cmake .. -DPYTHON_EXECUTABLE=$python_exe_path -DCUDA_TOOLKIT_ROOT_DIR=$cuda_root_path -DCOMPUTE_CAPABILITY=$gpu_cc
+cmake .. -DPYTHON_EXECUTABLE=$1 -DCUDA_TOOLKIT_ROOT_DIR=$2 -DCOMPUTE_CAPABILITY=$3
 make -j10
 cd -
