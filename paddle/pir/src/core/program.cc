@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/pir/include/core/program.h"
+#include <limits>
+#include <random>
 #include "glog/logging.h"
 #include "paddle/pir/include/core/ir_context.h"
 
@@ -20,6 +22,13 @@ namespace pir {
 
 Program::Program(IrContext* context) {
   module_ = ModuleOp::Create(context, this);
+  random_logging_id_ = [] {
+    std::random_device rd{};
+    std::mt19937_64 gen(rd());
+    std::uniform_int_distribution<int64_t> dis(
+        0, std::numeric_limits<int64_t>::max());
+    return dis(gen);
+  }();
 }
 
 Program::~Program() {
@@ -36,6 +45,7 @@ std::shared_ptr<Program> Program::Clone(IrMapping& ir_mapping) const {
     auto* new_op = op.Clone(ir_mapping, clone_options);
     new_program->block()->push_back(new_op);
   }
+  new_program->random_logging_id_ = this->random_logging_id();
   return new_program;
 }
 

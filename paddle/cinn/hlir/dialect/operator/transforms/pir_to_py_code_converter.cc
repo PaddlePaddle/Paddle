@@ -1138,16 +1138,8 @@ struct PirToPyCodeConverterHelper {
 
   std::string GetPyClassName() {
     std::ostringstream ss;
-    ss << "PirProgram_" << RandomInt();
+    ss << "PirProgram_" << program_->random_logging_id();
     return ss.str();
-  }
-
-  int64_t RandomInt() {
-    std::random_device rd{};
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<int64_t> dis(
-        0, std::numeric_limits<int64_t>::max());
-    return dis(gen);
   }
 
   std::string ConvertIStringsToString(const IStrings& istrings) {
