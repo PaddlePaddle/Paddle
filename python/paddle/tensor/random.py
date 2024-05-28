@@ -372,32 +372,6 @@ def log_normal(mean=0.0, std=1.0, shape=None, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [10.31321430, 8.97369766 , 35.76752090])
     """
-    if not in_dynamic_mode():
-        check_type(
-            mean, 'mean', (int, float, Variable, paddle.pir.Value), 'log_normal'
-        )
-        check_type(
-            std, 'std', (int, float, Variable, paddle.pir.Value), 'log_normal'
-        )
-        if isinstance(mean, (Variable, paddle.pir.Value)):
-            check_dtype(
-                mean.dtype,
-                'mean',
-                ['float32', 'float64'],
-                'log_normal',
-                "If mean is Tensor, it's data type only support float32, float64.",
-            )
-        if isinstance(std, (Variable, paddle.pir.Value)):
-            check_dtype(
-                std.dtype,
-                'std',
-                ['float32', 'float64'],
-                'log_normal',
-                "If std is Tensor, it's data type only support float32, float64.",
-            )
-        if shape is not None:
-            check_shape(shape, 'log_normal')
-
     normal_sample = paddle.normal(mean=mean, std=std, shape=shape, name=name)
     return paddle.exp(normal_sample)
 

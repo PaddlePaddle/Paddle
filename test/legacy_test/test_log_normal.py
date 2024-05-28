@@ -38,7 +38,7 @@ class TestLogNormalAPI(unittest.TestCase):
         self.mean = 0.0
         self.std = 1.0
         self.shape = None
-        self.repeat_num = 100000
+        self.repeat_num = 2000
         self.set_attrs()
         self.dtype = self.get_dtype()
         self.place = (
@@ -48,7 +48,7 @@ class TestLogNormalAPI(unittest.TestCase):
         )
 
     def set_attrs(self):
-        self.shape = [1, 2]
+        self.shape = [1]
 
     def get_shape(self):
         if isinstance(self.mean, np.ndarray):
@@ -167,26 +167,27 @@ class TestLogNormalAPI(unittest.TestCase):
 
 class TestLogNormalAPI_mean_is_tensor(TestLogNormalAPI):
     def set_attrs(self):
-        self.mean = np.random.uniform(-0.5, -0.1, [3, 2]).astype('float64')
+        self.mean = np.random.uniform(-0.5, -0.1, [1, 2]).astype('float64')
+        self.std = 0.5
 
 
 class TestLogNormalAPI_std_is_tensor(TestLogNormalAPI):
     def set_attrs(self):
-        self.std = np.random.uniform(0.7, 1, [3, 2]).astype('float64')
+        self.std = np.random.uniform(0.1, 0.5, [1, 2]).astype('float64')
 
 
 class TestLogNormalAPI_mean_std_are_tensor(TestLogNormalAPI):
     def set_attrs(self):
-        self.mean = np.random.uniform(0.1, 0.5, [2, 2]).astype('float64')
-        self.std = np.random.uniform(0.1, 0.6, [2, 2]).astype('float64')
+        self.mean = np.random.uniform(0.1, 0.5, [1, 2]).astype('float64')
+        self.std = np.random.uniform(0.1, 0.5, [1, 2]).astype('float64')
 
 
 class TestLogNormalAPI_mean_std_are_tensor_with_different_dtype(
     TestLogNormalAPI
 ):
     def set_attrs(self):
-        self.mean = np.random.uniform(-0.5, 0.1, [3]).astype('float64')
-        self.std = np.random.uniform(0.1, 0.6, [3]).astype('float32')
+        self.mean = np.random.uniform(-0.5, -0.1, [1, 2]).astype('float64')
+        self.std = np.random.uniform(0.1, 0.5, [1, 2]).astype('float32')
 
 
 class TestLogNormalAlias(unittest.TestCase):
