@@ -53,28 +53,14 @@ def _generate_unique_var_name(prefix):
     return unique_name.generate(prefix)
 
 
-def get_pir_parameters_jit(program):
-    """
-    Get parameters and optimizer variables from program.
-    The parameters are not filted by persistable flag.
-        Args:
-            program(Program): The program to get parameters and optimizer variables.
-    """
-    params = []
-    opts = []
-    for var in program.list_vars():
-        if var.is_parameter:
-            params.append(var)
-        elif var.persistable and var.get_defining_op().name() == "pd_op.data":
-            opts.append(var)
-    return params, opts
+from paddle.static.pir_io import get_pir_parameters
 
 
 def _get_pir_parameters_var_names(program):
     persistable_vars = []
     persistable_names = []
     rename_new_old_dict = {}
-    param, opt = get_pir_parameters_jit(program)
+    param, opt = get_pir_parameters(program)
     vars = param + opt
     for var in vars:
         persistable_vars.append(var)
