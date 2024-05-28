@@ -1329,7 +1329,7 @@ def _split_and_replace_recv(types, sub_program_list):
                         "name": recv_arg_name,
                     },
                 )
-            elif op.type == "feed":
+            elif op.type == "feed" or op.type == "data":
                 continue
             else:
                 break
