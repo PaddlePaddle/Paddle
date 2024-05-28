@@ -425,7 +425,7 @@ void OneDNNPhiKernelInstruction::Run() {
     VLOG(6) << "input[" << i << "].layout() = " << input->layout();
     if (input->layout() != phi::DataLayout::ONEDNN) {
       phi::DataLayout from_layout = input->layout();
-      tmp_holders.emplace_back(*input);
+      tmp_holders.emplace_back(std::make_shared<phi::DenseTensor>(*input));
       auto transed_tensor = tmp_holders.back().get();
 
       std::set<std::string> elementwise_kernels = {

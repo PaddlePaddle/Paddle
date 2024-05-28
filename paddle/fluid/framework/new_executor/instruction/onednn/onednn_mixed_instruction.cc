@@ -90,14 +90,14 @@ void OneDNNMixedPhiKernelInstruction::Run() {
         // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
         // data_transfer.cc
         if (!input->IsInitialized() && tmp_layout == DataLayout::NHWC) {
-          tmp_holders.emplace_back(*input);
+          tmp_holders.emplace_back(std::make_shared<phi::DenseTensor>(*input));
           auto transed_tensor = tmp_holders.back().get();
           transed_tensor->set_layout(tmp_layout);
           phi::funcs::MatchShapeToLayout(
               transed_tensor, phi::DataLayout::ONEDNN, tmp_layout);
           kernel_context_.UpdataInput(i, transed_tensor);
         } else {
-          tmp_holders.emplace_back();
+          tmp_holders.emplace_back(std::make_shared<phi::DenseTensor>());
           auto transed_tensor = tmp_holders.back().get();
           transed_tensor->set_meta(input->meta());
           phi::funcs::TransDataLayoutFromOneDNN(phi::DataLayout::ONEDNN,
