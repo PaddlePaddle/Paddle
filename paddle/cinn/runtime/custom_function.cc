@@ -124,10 +124,11 @@ bool MemcpyToHost(void* dst,
       [&](common::X86Arch) { memcpy(dst, src, bytes); },
       [&](std::variant<common::UnknownArch, common::ARMArch>) {
         std::stringstream ss;
-        ss << "MemcpyToHost Only support cpu or nvgpu -> cpu, but here the "
-              "input target is "
-           << input_target << "! Please check.";
-        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+        ss << input_target;
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "MemcpyToHost Only support cpu or nvgpu -> cpu, but here the "
+            "input target is %s! Please check.",
+            ss.str()));
       });
   return true;
 }
@@ -166,10 +167,11 @@ bool MemcpyToDevice(void* dst,
       },
       [&](std::variant<common::UnknownArch, common::ARMArch>) {
         std::stringstream ss;
-        ss << "MemcpyToHost Only support cpu or nvgpu -> cpu, but here the "
-              "input target is "
-           << input_target << "! Please check.";
-        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+        ss << input_target;
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "MemcpyToDevice Only support gpu or cpu -> gpu, but here the "
+            "input target is %s! Please check.",
+            ss.str()));
       });
   return true;
 }
