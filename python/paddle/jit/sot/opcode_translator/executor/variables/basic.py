@@ -629,9 +629,10 @@ class SymbolicVariable(VariableBase):
             ), f"self.value is None, but tracker is not SymbolicOperationTracker. tracker: {self.tracker}"
             inputs = self.tracker.inputs
             assert len(inputs) >= 1
+            other_inputs_value = [x.get_py_value() for x in inputs[1:]]
             self.value = getattr(
                 inputs[0].get_py_value(), self.tracker.method_name
-            )(inputs)
+            )(*other_inputs_value)
         return self.value
 
     def get_py_type(self):
