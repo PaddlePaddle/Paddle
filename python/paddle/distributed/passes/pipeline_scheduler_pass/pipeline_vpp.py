@@ -111,6 +111,7 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                 enable_send_recv_overlap
                 and ("recv4_" + fwd_job_name) in self._types
                 and len(job_list) > 0
+                and micro_step > 0
             ):
                 fwd_event = "vpp_steady_fwd_" + str(fwd_micro_step)
                 recv4_fwd_job = core.Job("recv4_" + fwd_job_name)
