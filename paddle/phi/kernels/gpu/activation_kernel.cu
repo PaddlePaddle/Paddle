@@ -100,7 +100,7 @@ DEFINE_GPU_ACTIVATION_KERNEL(Asinh, CudaAsinhFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Acosh, CudaAcoshFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Atanh, CudaAtanhFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Relu, CudaReluFunctor)
-// DEFINE_GPU_ACTIVATION_KERNEL(Tanh, CudaTanhFunctor)
+DEFINE_GPU_ACTIVATION_KERNEL(Tanh, CudaTanhFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(TanhShrink, CudaTanhShrinkFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Silu, CudaSiluFunctor)
 DEFINE_GPU_ACTIVATION_KERNEL(Reciprocal, CudaReciprocalFunctor)
@@ -138,7 +138,8 @@ DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardTanh,
                                      CudaHardTanhFunctor,
                                      t_min,
                                      t_max)
-// DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Stanh, CudaSTanhFunctor, scale_a, scale_b)
+// DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Stanh, CudaSTanhFunctor, scale_a,
+// scale_b)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus,
                                      CudaSoftplusFunctor,
                                      beta,
@@ -240,7 +241,11 @@ PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(cosh, CoshKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(asinh, AsinhKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(acosh, AcoshKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(atanh, AtanhKernel)
-// PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(tanh, TanhKernel)
+#ifdef PADDLE_WITH_MUSA
+PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
+#else
+PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(tanh, TanhKernel)
+#endif
 PD_REGISTER_ACTIVATION_KERNEL(hardtanh, HardTanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)

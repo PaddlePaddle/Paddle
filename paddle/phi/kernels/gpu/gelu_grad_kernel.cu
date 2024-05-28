@@ -25,6 +25,11 @@ PD_DECLARE_bool(use_fast_math);
 
 namespace phi {
 
+// Avoid find symbol of normcdff(__host__) in crt/math_functions.h
+#ifdef PADDLE_WITH_MUSA
+static inline HOSTDEVICE float normcdf(float __a) { return normcdff(__a); }
+#endif
+
 template <typename T>
 struct GeluWithApproximateGradFunctor {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;

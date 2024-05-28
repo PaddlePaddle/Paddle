@@ -65,8 +65,6 @@ if(WITH_MUSA)
     "gpu/log_softmax_kernel.cu"
     "gpu/log_softmax_grad_kernel.cu"
     "gpu/weighted_sample_neighbors_kernel.cu"
-    "gpu/gelu_kernel.cu"
-    "gpu/gelu_grad_kernel.cu"
     "gpu/rnn_kernel.cu.cc"
     "gpu/rnn_grad_kernel.cu.cc"
     "gpu/clip_by_norm_kernel.cu"
