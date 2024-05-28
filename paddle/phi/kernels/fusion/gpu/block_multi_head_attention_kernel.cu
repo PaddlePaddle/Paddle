@@ -290,8 +290,7 @@ void DispatchWithDtype(
   // change 1: change the num_head to kv_num_head and q_num_head
   const int kv_num_head = key_cache_dims[1];
   const int dim_head = key_cache_dims[3];
-  // change2: using hidden_dims / dims_per_head - k_head - v_head to cal the
-  // q_head
+  // change2: using q_head: hidden_dims / dims_per_head - k_head - v_head
   const int total_num_head = qkv.dims()[qkv.dims().size() - 1] / dim_head;
   const int q_num_head = total_num_head - 2 * kv_num_head;
   const int bsz = cum_offsets.dims()[0];
