@@ -443,7 +443,7 @@ class IdManager {
 
   IdManager() : ids_() {}
 
-  ~IdManager() {
+  ~IdManager() {  // NOLINT
     for (auto id : ids_) {
       delete id;
     }
@@ -469,7 +469,7 @@ class AttributeManager {
 
   AttributeManager() : char_pointers_(), pointers_size_() {}
 
-  ~AttributeManager() {
+  ~AttributeManager() {  // NOLINT
     for (size_t i = 0; i < char_pointers_.size(); i++) {
       for (size_t j = 0; j < pointers_size_[i]; j++) {
         delete char_pointers_[i][j];
