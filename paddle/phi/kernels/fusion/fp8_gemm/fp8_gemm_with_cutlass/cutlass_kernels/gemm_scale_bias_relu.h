@@ -84,7 +84,7 @@ bool dispatch_gemm_scale_bias_relu(GemmEpilogueAllParams params) {
                            // function
 
   // Number of pipelines you want to use
-  constexpr int NumStages = 1;
+  constexpr int NumStages = 3;
 
   using Gemm =
       cutlass::gemm::device::GemmUniversal<ElementInputA,
