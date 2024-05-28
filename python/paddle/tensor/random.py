@@ -319,7 +319,7 @@ def standard_gamma(x, name=None):
         return out
 
 
-def log_normal(mean=0.0, std=1.0, shape=None, dtype=None, name=None):
+def log_normal(mean=0.0, std=1.0, shape=None, name=None):
     r"""
     Returns a Tensor filled with random values sampled from a Log Normal
     Distribution, with ``mean``, ``std``, ``shape`` and ``dtype``.
@@ -374,17 +374,17 @@ def log_normal(mean=0.0, std=1.0, shape=None, dtype=None, name=None):
     """
     if not in_dynamic_mode():
         check_type(
-            mean, 'mean', (int, float, Variable, paddle.pir.Value), 'normal'
+            mean, 'mean', (int, float, Variable, paddle.pir.Value), 'log_normal'
         )
         check_type(
-            std, 'std', (int, float, Variable, paddle.pir.Value), 'normal'
+            std, 'std', (int, float, Variable, paddle.pir.Value), 'log_normal'
         )
         if isinstance(mean, (Variable, paddle.pir.Value)):
             check_dtype(
                 mean.dtype,
                 'mean',
                 ['float32', 'float64'],
-                'normal',
+                'log_normal',
                 "If mean is Tensor, it's data type only support float32, float64.",
             )
         if isinstance(std, (Variable, paddle.pir.Value)):
@@ -392,32 +392,14 @@ def log_normal(mean=0.0, std=1.0, shape=None, dtype=None, name=None):
                 std.dtype,
                 'std',
                 ['float32', 'float64'],
-                'normal',
+                'log_normal',
                 "If std is Tensor, it's data type only support float32, float64.",
             )
         if shape is not None:
-            check_shape(shape, 'normal')
+            check_shape(shape, 'log_normal')
 
-    if isinstance(mean, (Variable, paddle.pir.Value)):
-        if isinstance(std, (Variable, paddle.pir.Value)):
-            if std.dtype != mean.dtype:
-                std = paddle.cast(std, mean.dtype)
-            mean_shape = paddle.shape(mean)
-            std = paddle.reshape(std, mean_shape)
-        else:
-            std = float(std)
-        out = standard_normal(paddle.shape(mean), mean.dtype, name)
-    elif isinstance(std, (Variable, paddle.pir.Value)):
-        mean = float(mean)
-        out = standard_normal(paddle.shape(std), std.dtype, name)
-    else:
-        log_output = gaussian(shape=shape, mean=mean, std=std, name=name)
-        return paddle.exp(log_output)
-
-    out = paddle.exp(out * std + mean)
-    if not in_dynamic_or_pir_mode():
-        out.stop_gradient = True
-    return out
+    normal_sample = paddle.normal(mean=mean, std=std, shape=shape, name=name)
+    return paddle.exp(normal_sample)
 
 
 @dygraph_only
