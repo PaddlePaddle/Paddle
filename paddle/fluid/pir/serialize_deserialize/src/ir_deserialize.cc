@@ -14,16 +14,34 @@
 
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_deserialize.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/deserialize_utils.h"
+#include "paddle/pir/include/core/dialect.h"
 namespace pir {
 void ProgramReader::RecoverProgram(Json* program_json,
                                    pir::Program* recover_program) {
+
+  VLOG(0)<<"RecoverProgram函数";
+  pir::IrContext* ctx_ = pir::IrContext::Instance();
+  LOG(INFO)<<"ctx_ "<<ctx_;
+  auto dilect_list = ctx_-> GetRegisteredDialects();
+  for (auto *dialect_1 : dilect_list) {
+    LOG(INFO)<<"dialect_1->name() " <<dialect_1->name();
+  }                                 
   id_value_map[0] = pir::Value();
   ReadProgram(program_json, recover_program);
   VLOG(6) << "Finish json to program.";
+  LOG(INFO)<<*recover_program ;
   return;
 }
 void ProgramReader::ReadProgram(Json* program_json, pir::Program* program) {
   auto top_level_op = program->module_op();
+  LOG(INFO)<<"Top level module operation: "<<top_level_op;
+  LOG(INFO)<<"ModuleOp details: ";
+  LOG(INFO)<<"Name: "<<top_level_op.name();
+  LOG(INFO)<<"Block num_ops: "<<top_level_op.block().num_ops();
+  LOG(INFO)<<"Attribute num: "<<top_level_op.attributes_num;
+  for (uint32_t i = 0; i < top_level_op.attributes_num; ++i) {
+    VLOG(0) << "  Attribute " << i << ": " << top_level_op.attributes_name[i];
+  }
   PADDLE_ENFORCE_EQ(
       program_json->at(REGIONS).size(),
       1,
@@ -65,9 +83,12 @@ void ProgramReader::ReadBlock(Json* block_json, pir::Block* block) {
   Json& ops_json = block_json->at(BLOCKOPS);
   if (!ops_json.empty()) {
     for (auto& op_json : ops_json) {
+      pir::Operation* op =ReadOp(&op_json);
       block->push_back(ReadOp(&op_json));
+      LOG(INFO)<<"ReadOp函数后 "<<op->name();
     }
   }
+
 
   VLOG(6) << "Finish Read " << block_name;
   return;

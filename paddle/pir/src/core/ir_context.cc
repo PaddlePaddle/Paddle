@@ -219,6 +219,7 @@ AbstractType *IrContext::GetRegisteredAbstractType(TypeId id) {
   auto search = impl().registed_abstract_types_.find(id);
   if (search != impl().registed_abstract_types_.end()) {
     return search->second;
+
   }
   return nullptr;
 }

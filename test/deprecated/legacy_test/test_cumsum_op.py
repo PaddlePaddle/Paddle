@@ -594,30 +594,30 @@ class TestTensorAxis(unittest.TestCase):
             startup_prog = paddle.static.Program()
             with paddle.static.program_guard(main_prog, startup_prog):
                 # run static
-                x = paddle.static.data(
-                    shape=np_x.shape, name='x', dtype=np_x.dtype
-                )
-                linear = paddle.nn.Linear(np_x.shape[-1], np_x.shape[-1])
-                linear_out = linear(x)
-                relu_out = paddle.nn.functional.relu(linear_out)
+                # x = paddle.static.data(
+                #     shape=np_x.shape, name='x', dtype=np_x.dtype
+                # )
+                # linear = paddle.nn.Linear(np_x.shape[-1], np_x.shape[-1])
+                # linear_out = linear(x)
+                # relu_out = paddle.nn.functional.relu(linear_out)
             
-                # axis = paddle.full([1], 2, dtype='int64')
-                # out = paddle.cumsum(relu_out, axis=axis)
+                # # axis = paddle.full([1], 2, dtype='int64')
+                # # out = paddle.cumsum(relu_out, axis=axis)
                 
-                exe = paddle.static.Executor(self.place)
-                exe.run(startup_prog)
-                static_out = exe.run(feed={'x': np_x}, fetch_list=[relu_out])
+                # exe = paddle.static.Executor(self.place)
+                # exe.run(startup_prog)
+                # static_out = exe.run(feed={'x': np_x}, fetch_list=[relu_out])
 
-                # run infer
-                paddle.static.save_inference_model(
-                    self.save_path, [x], [relu_out], exe, program=main_prog
-                )
+                # # run infer
+                # paddle.static.save_inference_model(
+                #     self.save_path, [x], [relu_out], exe, program=main_prog
+                # )
                 config =paddle_infer.Config(
                     self.save_path + '.json',self.save_path + '.pdiparams'
                 )
                 config.enable_new_ir()
                 config.enable_new_executor()
-                config.switch_ir_debug(True)
+                # config.switch_ir_debug(True)
                 if paddle.is_compiled_with_cuda():
                     config.enable_use_gpu(100, 0)
                 else:

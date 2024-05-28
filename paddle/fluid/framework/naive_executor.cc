@@ -61,13 +61,13 @@ void NaiveExecutor::PrepareInterpreterCore(
     const ::pir::Program &pir_program,
     const framework::interpreter::ExecutionConfig &execution_config) {
   
-  auto var =scope->FindVar("linear_0.b_0");
-  if(var ==nullptr)
-  {
-    LOG(ERROR) << "Variable linear_0.b_0 not found in scope before creating InterpreterCore.";
-  } else {
-    LOG(INFO) << "Variable linear_0.b_0 found in scope before creating InterpreterCore.";
-  }
+  // auto var =scope->FindVar("linear_0.b_0");
+  // if(var ==nullptr)
+  // {
+  //   LOG(ERROR) << "Variable linear_0.b_0 not found in scope before creating InterpreterCore.";
+  // } else {
+  //   LOG(INFO) << "Variable linear_0.b_0 found in scope before creating InterpreterCore.";
+  // }
   interpreter_core_ =
       std::make_unique<framework::InterpreterCore>(place_,
                                                    std::vector<std::string>{},

@@ -18,6 +18,10 @@
 #include "paddle/pir/include/core/storage_manager.h"
 #include "paddle/pir/include/core/storage_manager_support.h"
 #include "paddle/pir/include/core/type_id.h"
+// #include "paddle/pir/include/core/attribute.h"
+// #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/binary_infer_sym.h"
+// #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+// #include "paddle/fluid/pir/dialect/operator/ir/attribute_storage.h"
 namespace pir {
 class Dialect;
 
@@ -154,6 +158,19 @@ struct IR_API AttributeManager {
   ///
   template <typename T, typename... Args>
   static T get(IrContext *ctx, Args &&...args) {
+    std::cout << "template " << typeid(T).name() << std::endl;
+    // auto type_id = pir::TypeId::get<T>();
+    std::cout << "pir::TypeId::get<T>()" << pir::TypeId::get<T>() << std::endl;
+    // auto type = ctx->GetRegisteredAbstractType(type_id);
+    // std::cout<<type->type_id();
+    // if (type.isa<paddle::dialect::IntArrayAttribute>())
+    // {
+    //   std::cout << type.dyn_cast<paddle::dialect::IntArrayAttribute>().name() << std::endl;
+    // }
+    // if (type->isa<paddle::dialect::IntArrayAttribute>()){
+    //   std::cout << type.dyn_cast<paddle::dialect::IntArrayAttribute>().name() << std::endl;
+    // }
+    
     return get<T, Args...>(
         ctx, pir::TypeId::get<T>(), std::forward<Args>(args)...);
   }

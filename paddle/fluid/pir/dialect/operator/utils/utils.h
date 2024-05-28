@@ -109,6 +109,7 @@ static inline pir::Attribute TransToIrAttribute(phi::Scalar scalar,
   if (ctx == nullptr) {
     ctx = pir::IrContext::Instance();
   }
+  
   switch (scalar.dtype()) {
     case phi::DataType::FLOAT32:
       return pir::FloatAttribute::get(ctx, scalar.to<float>());

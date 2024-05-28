@@ -21,6 +21,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <iostream>
 #include <utility>
 #include <vector>
 #include "paddle/pir/include/core/program.h"
@@ -464,6 +465,11 @@ bool AnalysisPredictor::Init(
       return false;
     }
   }
+
+  if(!config_.new_ir_enabled() && extension_ !="json")
+  {
+    PrepareFeedFetch();
+  }
   // Get the feed_target_names and fetch_target_names
   if (config_.new_ir_enabled() && extension_ == "json") {
     LOG(INFO) << "调用了PreparePirFeedFetch";
@@ -763,6 +769,7 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
+    paddle::framework::InitPir();
     paddle::framework::InitMemoryMethod();
     paddle::framework::InitDevices();
     paddle::framework::InitDefaultKernelSignatureMap();
@@ -774,23 +781,20 @@ bool AnalysisPredictor::PrepareScope(
   return true;
 }
 
-
-void PrintScopeVariables(const paddle::framework::Scope &scope)
-{
-  auto vars =scope.LocalVarNames();
-  for (const auto& var_name : vars) {
-    auto* var=scope.FindVar(var_name);
-    if(var)
-    {
+void PrintScopeVariables(const paddle::framework::Scope &scope) {
+  auto vars = scope.LocalVarNames();
+  for (const auto &var_name : vars) {
+    auto *var = scope.FindVar(var_name);
+    if (var) {
       LOG(INFO) << "Variable in scope: " << var_name;
-      if(var->IsType<phi::DenseTensor>())
-      {
+      if (var->IsType<phi::DenseTensor>()) {
         auto &tensor = var->Get<phi::DenseTensor>();
         LOG(INFO) << "Tensor shape: " << tensor.dims();
         LOG(INFO) << "Tensor dtype: " << tensor.dtype();
       }
     }
   }
+  LOG(INFO) << "Total variables in scope: " << vars.size();
 }
 
 bool AnalysisPredictor::PreparePirProgram() {
@@ -817,7 +821,7 @@ bool AnalysisPredictor::PreparePirProgram() {
     LOG(INFO) << "Preparing PIR program from file:" << filename;
     bool success = pir::ReadModule(filename, pir_program_.get(), pir_version);
     LOG(INFO) << "suceess" << success;
-    LOG(INFO) << "pir_program" << *(pir_program_.get());
+    std::cout<< "pir_program " << *pir_program_ <<std::endl;
 
     std::vector<std::string> param_names;
     const std::string params_file = config_.params_file();
@@ -830,7 +834,7 @@ bool AnalysisPredictor::PreparePirProgram() {
       return false;
     }
     // 这一步是对应pir_io.py中的487行，得到v,因为只有ParameterOP才有v.name,所以这里只把ParameterOp添加到var
-    //下面的var是pir::value
+    // 下面的var是pir::value
     std::vector<pir::Value> vars;
     for (auto op : block->ops()) {
       LOG(INFO) << "ops的 " << op->name();
@@ -845,10 +849,10 @@ bool AnalysisPredictor::PreparePirProgram() {
             LOG(INFO) << "var_name你猜有没有" << var_name;
             param_names.push_back(var_name);
             vars.push_back(var);
-          }else if (auto data_op =var.defining_op<paddle::dialect::DataOp>())
-          {
-            var_name =data_op.attribute<pir::StrAttribute>("name").AsString();
-            LOG(INFO)<<"Data op的var name"<<var_name;
+          } else if (auto data_op =
+                         var.defining_op<paddle::dialect::DataOp>()) {
+            var_name = data_op.attribute<pir::StrAttribute>("name").AsString();
+            LOG(INFO) << "Data op的var name" << var_name;
             param_names.push_back(var_name);
             vars.push_back(var);
           }
@@ -898,8 +902,8 @@ bool AnalysisPredictor::PreparePirProgram() {
       }
       auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
       tensor_out.push_back(tensor_temp);
-      LOG(INFO) << "Tensor value for " << param_names[i]<<" is "
-      << *tensor_temp;
+      LOG(INFO) << "Tensor value for " << param_names[i] << " is "
+                << *tensor_temp;
     }
     LOG(INFO) << "Printing scope variables before LoadCombineFunction";
     PrintScopeVariables(*sub_scope_);
@@ -908,6 +912,8 @@ bool AnalysisPredictor::PreparePirProgram() {
 
     LOG(INFO) << "Printing scope variables after LoadCombineFunction";
     PrintScopeVariables(*sub_scope_);
+    LOG(INFO)<<"sub_scope_变量的指针";
+    LOG(INFO)<< sub_scope_;
 
     // std::vector<phi::DenseTensor *> tensor_pointers;
     // for (const auto &param : param_names) {
@@ -1074,6 +1080,9 @@ bool AnalysisPredictor::PreparePirProgram() {
     lowered_pm.Run(pir_program_.get());
 
     LOG(INFO) << "======= pir optimization completed =======";
+    PrintScopeVariables(*sub_scope_);
+    LOG(INFO)<<"经过pass之后sub_scope_变量的指针";
+    LOG(INFO)<< sub_scope_;
   }
   return true;
 }
@@ -2549,13 +2558,24 @@ void AnalysisPredictor::PreparePirFeedFetch(
                           platform::errors::InvalidArgument(
                               "The sub_scope should not be nullptr."));
   LOG(INFO) << "sub_scope_ is not null";
+
+  LOG(INFO) << "CreateFeedFetchVar之前打印sub_scope_变量内的值";
+  PrintScopeVariables(*sub_scope_);
   CreateFeedFetchVar(sub_scope_);
+  LOG(INFO) << "CreateFeedFetchVar之后打印sub_scope_变量内的值";
+  PrintScopeVariables(*sub_scope_);
 
   std::string filename = config_.prog_file();
 
+  LOG(INFO) << "还没读pir::ReadModule之前打印pir_program_变量内的值";
+  LOG(INFO) << "pir_program" << *(pir_program_.get());
   uint64_t pir_version = 1;
   pir::ReadModule(filename, pir_program_.get(), pir_version);
+  LOG(INFO) << "读了pir::ReadModule之后打印pir_program_变量内的值";
+  LOG(INFO) << "pir_program" << *(pir_program_.get());
   pir::Block *block = pir_program_->block();
+  LOG(INFO) << "PreparePirFeedFetch之前打印sub_scope_变量内的值";
+  PrintScopeVariables(*sub_scope_);
 
   int feed_idx = 0;
   for (auto op : block->ops()) {

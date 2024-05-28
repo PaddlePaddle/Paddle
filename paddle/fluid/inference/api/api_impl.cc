@@ -92,6 +92,7 @@ bool NativePaddlePredictor::Init(
                             platform::errors::PreconditionNotMet(
                                 "The sub_scope should not be nullptr."));
   } else {
+    paddle::framework::InitPir();
     paddle::framework::InitMemoryMethod();
     paddle::framework::InitDevices();
     paddle::framework::InitDefaultKernelSignatureMap();
