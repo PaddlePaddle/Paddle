@@ -40,17 +40,26 @@ TEST(ConfigSearcher, TestReduceDemo) {
 
   // Step 1: Construct iter space and tile config.
   cinn::ir::search::IterSpace iter_space;
+  int s_dimension_lower = 32;
+  int s_dimension_upper = 128;
+  auto s_dimension_type = "S";
+  auto s_dimension_is_dynamic = true;
+  int r_dimension_lower = 1024;
+  int r_dimension_upper = 1024;
+  auto r_dimension_type = "R";
+  auto r_dimension_is_dynamic = true;
+
   iter_space.space.push_back(cinn::ir::search::IterSpace::Dimension{
-      33,
-      128,
-      "S",
-      /* is_dynamic = */ true,
+      s_dimension_lower,
+      s_dimension_upper,
+      s_dimension_type,
+      s_dimension_is_dynamic,
       std::vector<double>(128 - 32, 1.0)});
   iter_space.space.push_back(
-      cinn::ir::search::IterSpace::Dimension{1024,
-                                             1024,
-                                             "R",
-                                             /* is_dynamic = */ false,
+      cinn::ir::search::IterSpace::Dimension{r_dimension_lower,
+                                             r_dimension_upper,
+                                             r_dimension_type,
+                                             r_dimension_is_dynamic,
                                              std::vector<double>(1, 1.0)});
   cinn::ir::BucketInfo bucket_info;
   bucket_info.sp_lower_bound = iter_space.space[0].lower_bound;
@@ -73,9 +82,39 @@ TEST(ConfigSearcher, TestReduceDemo) {
   cinn::ir::TileConfigMap tile_config_map =
       file_database.GetConfigs(cinn::common::DefaultTarget(), iter_space_type);
   for (auto& it : tile_config_map) {
+    LOG(INFO) << "sp_lower_bound is " << it.first.sp_lower_bound;
+    LOG(INFO) << "sp_upper_bound is " << it.first.sp_upper_bound;
     LOG(INFO) << "rb_lower_bound is " << it.first.rb_lower_bound;
     LOG(INFO) << "rb_upper_bound is " << it.first.rb_upper_bound;
     LOG(INFO) << "tile config is " << it.second.spatial_inner_num << " "
               << it.second.warp_num << " " << it.second.tree_reduce_num;
+    PADDLE_ENFORCE_EQ(it.first.sp_lower_bound,
+                      s_dimension_lower,
+                      ::common::errors::InvalidArgument(
+                          "GetConfigs function gets wrong s_dimension_lower"));
+    PADDLE_ENFORCE_EQ(it.first.sp_upper_bound,
+                      s_dimension_upper,
+                      ::common::errors::InvalidArgument(
+                          "GetConfigs function gets wrong s_dimension_upper"));
+    PADDLE_ENFORCE_EQ(it.first.rb_lower_bound,
+                      r_dimension_lower,
+                      ::common::errors::InvalidArgument(
+                          "GetConfigs function gets wrong r_dimension_lower"));
+    PADDLE_ENFORCE_EQ(it.first.rb_upper_bound,
+                      r_dimension_upper,
+                      ::common::errors::InvalidArgument(
+                          "GetConfigs function gets wrong r_dimension_upprt"));
+    PADDLE_ENFORCE_EQ(it.second.spatial_inner_num,
+                      tile_config.spatial_inner_num,
+                      ::common::errors::InvalidArgument(
+                          "GetConfigs function gets wrong spatial_inner_num"));
+    PADDLE_ENFORCE_EQ(it.second.warp_num,
+                      tile_config.warp_num,
+                      ::common::errors::InvalidArgument(
+                          "GetConfigs function gets wrong warp_num"));
+    PADDLE_ENFORCE_EQ(it.second.tree_reduce_num,
+                      tile_config.tree_reduce_num,
+                      ::common::errors::InvalidArgument(
+                          "GetConfigs function gets wrong tree_reduce_num"));
   }
 }
