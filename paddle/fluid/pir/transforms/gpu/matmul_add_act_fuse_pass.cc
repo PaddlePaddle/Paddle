@@ -58,6 +58,7 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
       if (!w_dtype.isa<pir::Float16Type>() &&
+          !w_dtype.isa<pir::BFloat16Type>() &&
           !w_dtype.isa<pir::Float32Type>() &&
           !w_dtype.isa<pir::Float64Type>()) {
         return false;
