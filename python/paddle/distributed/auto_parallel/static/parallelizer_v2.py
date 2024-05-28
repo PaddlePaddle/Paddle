@@ -559,4 +559,5 @@ class Parallelizer:
                 "dist_context": self._dist_context,
                 "program_runtimes": self._strategy.pipeline.program_runtimes,
                 "memory_limit_times": self._strategy.pipeline.memory_limit_times,
+                "split_backward": self._strategy.pipeline.split_backward,
             }

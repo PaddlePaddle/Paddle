@@ -56,6 +56,12 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
                      : add(pat.Tensor("matmul_out"), pat.Tensor("y"));
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
+      auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
+      if (!w_dtype.isa<pir::Float16Type>() &&
+          !w_dtype.isa<pir::Float32Type>() &&
+          !w_dtype.isa<pir::Float64Type>()) {
+        return false;
+      }
       auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
       auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
       auto y_dims = pir::GetShapeFromValue(match_ctx.Tensor("y"));
@@ -191,14 +197,14 @@ class MatmulAddActFusePass : public pir::PatternRewritePass {
         ps.Add(paddle::drr::Create<MatmulAddActPattern>(
             context, act_op, paddle::dialect::GemmEpilogueOp::name()));
       }
-    } else {
-      /// MatmulAddPattern
-      ps.Add(paddle::drr::Create<MatmulAddPattern>(
-          context, paddle::dialect::FcOp::name(), false));
-      /// MatmulAddActPattern
-      ps.Add(paddle::drr::Create<MatmulAddActPattern>(
-          context, "relu", paddle::dialect::FcOp::name()));
     }
+    /// MatmulAddPatternw
+    ps.Add(paddle::drr::Create<MatmulAddPattern>(
+        context, paddle::dialect::FcOp::name(), false));
+    /// MatmulAddActPattern
+    ps.Add(paddle::drr::Create<MatmulAddActPattern>(
+        context, "relu", paddle::dialect::FcOp::name()));
+
     return ps;
   }
 };

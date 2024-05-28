@@ -27,7 +27,7 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 #include "paddle/fluid/inference/tensorrt/plugin/fused_token_prune_op_plugin.h"
-#include "paddle/fluid/operators/fused_token_prune_op.cu.h"
+#include "paddle/phi/kernels/funcs/fused_token_prune_utils.h"
 
 namespace paddle {
 namespace inference {

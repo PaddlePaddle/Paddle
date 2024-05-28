@@ -603,6 +603,12 @@ Expr Load::Make(Expr tensor, const std::vector<Expr> &origin_indices) {
   node->set_type(node->type());
   return Expr(node);
 }
+
+void Load::convert_int32_to_int64() {
+  IrNode::convert_int32_to_int64();
+  tensor->convert_int32_to_int64();
+}
+
 Type Load::type() const {
   CHECK(tensor.defined());
   CHECK(tensor.type().valid());

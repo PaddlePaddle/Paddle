@@ -33,6 +33,7 @@ FetchOpHandle::FetchOpHandle(ir::Node *node,
       offset_(offset),
       local_scopes_(local_scopes),
       local_exec_scopes_(local_exec_scopes),
+      tensors_(),
       return_merged_(return_merged) {}
 
 FetchOpHandle::~FetchOpHandle() = default;
