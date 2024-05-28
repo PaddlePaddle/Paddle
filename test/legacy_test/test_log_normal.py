@@ -36,7 +36,7 @@ def log_normal_var(mean, std):
 class TestLogNormalAPI(unittest.TestCase):
     def setUp(self):
         self.mean = 0.0
-        self.std = 1.0
+        self.std = 0.5
         self.shape = None
         self.repeat_num = 2000
         self.set_attrs()
