@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 
-#include <time.h>
+#include <ctime>
 
 #include <algorithm>
 #include <chrono>
