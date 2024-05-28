@@ -62,7 +62,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
   }
   std::cout << "events=======" << std::endl;
   for (auto kv : events) {
-    std::cout << kv.first << "->" << kv.second->get() << std::endl;
+    std::cout << kv.first << "->" << kv.second.get() << std::endl;
   }
   std::cout << "=======" << std::endl;
 
