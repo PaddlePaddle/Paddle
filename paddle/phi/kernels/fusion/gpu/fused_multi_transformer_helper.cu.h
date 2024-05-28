@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h"
 #include "paddle/phi/kernels/funcs/cublaslt.h"
 #include "paddle/phi/kernels/funcs/load_store_util.h"
 #include "paddle/phi/kernels/funcs/quant_dequant.h"
@@ -21,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm.h"
 #include "paddle/phi/kernels/fusion/gpu/attn_gemm_int8.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_multi_transformer_op.cu.h"
 
 /*
 Note(Zhengzekang):
