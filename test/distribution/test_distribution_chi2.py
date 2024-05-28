@@ -266,6 +266,7 @@ class Chi2TestError(unittest.TestCase):
     @parameterize.parameterize_func(
         [
             (-1.0, ValueError),  # df < 0
+            ((1.0, -1.0), ValueError),  # df < 0
         ]
     )
     def test_bad_parameter(self, df, error):

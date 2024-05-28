@@ -47,20 +47,18 @@ class Chi2(Gamma):
                 'Chi2',
             )
 
-        if not paddle.all(paddle.to_tensor(df) > 0):
-            raise ValueError("The arg of `df` must be positive.")
-
         # Get/convert concentration to tensor.
         if self._validate_args(df):
-            self.concentration = 0.5 * df
+            self.df = df
             self.dtype = convert_dtype(df.dtype)
         else:
-            [self.concentration] = self._to_tensor(0.5 * df)
+            [self.df] = self._to_tensor(df)
             self.dtype = paddle.get_default_dtype()
 
-        self.rate = paddle.to_tensor(0.5)
-        super().__init__(self.concentration, self.rate)
+        self.df = self.df * 0.5
+        self.rate = paddle.full_like(self.df, 0.5)
 
-    @property
-    def df(self):
-        return self.concentration * 2
+        if not paddle.all(self.df > 0):
+            raise ValueError("The arg of `df` must be positive.")
+
+        super().__init__(self.df, self.rate)

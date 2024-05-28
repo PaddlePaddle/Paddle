@@ -329,16 +329,6 @@ class Chi2TestError(unittest.TestCase):
     def setUp(self):
         self.program = paddle.static.Program()
 
-    @parameterize.parameterize_func(
-        [
-            (-5.0, ValueError),  # df < 0
-        ]
-    )
-    def test_bad_parameter(self, df, error):
-        with paddle.static.program_guard(self.program):
-            # chi2.Chi2(df)
-            self.assertRaises(error, chi2.Chi2, df)
-
     @parameterize.parameterize_func([(10,)])  # not sequence object sample shape
     def test_bad_sample_shape(self, shape):
         with paddle.static.program_guard(self.program):
