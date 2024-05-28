@@ -235,7 +235,7 @@ thread_local phi::DataType AmpAttrs::amp_dtype_ = phi::DataType::FLOAT32;
 
 AmpAttrs::AmpAttrs() {}
 
-AmpAttrs::~AmpAttrs() = default;
+// AmpAttrs::~AmpAttrs() = default;
 
 bool AmpAttrs::GetUsePromote() const { return use_promote_; }
 

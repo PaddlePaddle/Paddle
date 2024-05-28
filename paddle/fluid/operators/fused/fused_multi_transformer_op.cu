@@ -33,7 +33,7 @@ template <typename T, typename DeviceContext>
 class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    using U = LayerNormParamType<T>;
+    using U = phi::fusion::LayerNormParamType<T>;
     auto &dev_ctx = ctx.cuda_device_context();
 
     auto *time_step = ctx.Input<phi::DenseTensor>("TimeStep");
@@ -359,8 +359,9 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     char *mixgemm_workspace_data = nullptr;
 
     // 7. ffn act + bias
-    DropoutParam ffn1_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
-    FusedDropoutHelper<T, int8_t> fused_act_dropout_helper(
+    phi::fusion::DropoutParam ffn1_dropout_param(
+        true, 0, true, true, 0.0, nullptr, 0);
+    phi::fusion::FusedDropoutHelper<T, int8_t> fused_act_dropout_helper(
         dev_ctx, token_num, dim_ffn, ffn1_dropout_param);
     phi::DenseTensor ffn1_dropout_out, ffn1_dropout_mask;
     int tmp_dim_ffn = dim_ffn;
@@ -377,9 +378,11 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         dev_ctx, token_num, dim_embed, tmp_dim_ffn, "None", false);
 
     // 9. ffn2 residual bias
-    DropoutParam ffn2_dropout_param(true, 0, true, true, 0.0, nullptr, 0);
-    FusedDropoutLayerNormHelper<T, uint8_t> ffn2_fused_dropout_helper(
-        dev_ctx, token_num, dim_embed, ffn2_dropout_param, epsilon);
+    phi::fusion::DropoutParam ffn2_dropout_param(
+        true, 0, true, true, 0.0, nullptr, 0);
+    phi::fusion::FusedDropoutLayerNormHelper<T, uint8_t>
+        ffn2_fused_dropout_helper(
+            dev_ctx, token_num, dim_embed, ffn2_dropout_param, epsilon);
 
     phi::DenseTensor tmp_out, tmp_out_rm_padding;
     tmp_out.Resize({{token_num, dim_embed}});
