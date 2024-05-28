@@ -55,9 +55,6 @@ if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
 endif()
 
 if(WITH_CUTLASS)
-  message(
-    STATUS
-      "kai===================================================== WITH_CUTLASS")
   add_custom_target(
     gemm_epilogue_compile_script ALL
     COMMAND bash compile.sh "${PYTHON_EXECUTABLE}" "${CUDA_TOOLKIT_ROOT_DIR}"

@@ -29,7 +29,15 @@ if [ ! -d "$cutlass_repo_directory" ]; then
 fi
 
 
+default_python_exe_path="/usr/bin/python"
+default_cuda_root_path="/usr/local/cuda"
+default_gpu_cc="80"
+ 
+python_exe_path="${1:-$default_python_exe_path}"  
+cuda_root_path="${2:-$default_cuda_root_path}"  
+gpu_cc="${3:-$default_gpu_cc}"  
+
 cd $build_directory
-cmake .. -DPYTHON_EXECUTABLE=$1 -DCUDA_TOOLKIT_ROOT_DIR=$2 -DCOMPUTE_CAPABILITY=$3
-make -j10
+cmake .. -DPYTHON_EXECUTABLE=$python_exe_path -DCUDA_TOOLKIT_ROOT_DIR=$cuda_root_path -DCOMPUTE_CAPABILITY=$gpu_cc
+make -j8
 cd -
