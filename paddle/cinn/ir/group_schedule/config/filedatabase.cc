@@ -29,8 +29,6 @@ bool TileConfigToProto(group_schedule::config::proto::TileData* tile_data,
                        const TileConfigMap& tile_config_map,
                        const int& priority) {
   for (auto& it : tile_config_map) {
-    group_schedule::config::proto::Dimension cur_dimension, r_dimension;
-
     // prepare key---convert bucket info to proto::bucket_info
     BucketInfo bucket_info = it.first;
     int dims = bucket_info.space.size();
