@@ -66,7 +66,7 @@ class Conv2dAddActFusePattern
     if (next_op->isa<paddle::dialect::TanhOp>()) {
       act_name = "tanh";
     } else if (next_op->isa<paddle::dialect::SigmoidOp>()) {
-      act_name = "sigmoid";
+      // act_name = "sigmoid";
     }
 #endif
     if (act_name == "") return false;
@@ -148,7 +148,7 @@ class Conv2dAdd2ActFusePattern
     if (next_op->isa<paddle::dialect::TanhOp>()) {
       act_name = "tanh";
     } else if (next_op->isa<paddle::dialect::SigmoidOp>()) {
-      act_name = "sigmoid";
+      // act_name = "sigmoid";
     }
 #endif
     if (act_name == "") {
