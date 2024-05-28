@@ -90,20 +90,12 @@ class TestMaskAs(unittest.TestCase):
             )
             self.assertEqual(dense_data_grad.dtype, dense_data_pd.dtype)
 
-            # make a dense tensor to compare the grad from sparse_out_pd
-            dense_data_ref = paddle.to_tensor(dense_data_np)
-            dense_data_ref.stop_gradient = False
-            dense_data_ref_out = (
-                dense_data_ref
-                * paddle.to_tensor(dense_mask_np != 0).astype(
-                    dense_data_ref.dtype
-                )
-            ).astype(dtype)
-            dense_data_ref_out.backward()
+            # make a dense data to compare the grad from sparse_out_pd
+            grad_ref = np.ones_like(dense_mask_np) * (dense_mask_np != 0)
 
             np.testing.assert_allclose(
                 dense_data_pd.grad.numpy(),
-                dense_data_ref.grad.numpy(),
+                grad_ref,
             )
 
     def check_with_dtypes(self, shape):
