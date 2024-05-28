@@ -483,15 +483,18 @@ class TensorVariable(VariableBase):
 
     @tensor_property
     def shape(self):
+        # TODO(zrr1999): support more tensor properties
         if self.meta.is_dynamic_shape():
             raise BreakGraphError(
                 f"Getting shape for a dynamic shape tensor causes graph break. shape = {self.meta.shape}"
             )
         from .container import ListVariable
 
-        return ListVariable(
-            self.meta.shape, self.graph, tracker=DummyTracker([self])
-        )
+        if ENV_SOT_ALLOW_DYNAMIC_SHAPE:
+            tracker = GetAttrTracker(self, "shape")
+        else:
+            tracker = DummyTracker([self])
+        return ListVariable(self.meta.shape, self.graph, tracker=tracker)
 
     def numel(self):
         return self.size
