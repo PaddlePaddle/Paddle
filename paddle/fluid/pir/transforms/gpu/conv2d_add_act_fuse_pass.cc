@@ -28,6 +28,12 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 #include "paddle/common/ddim.h"
+#include "paddle/fluid/platform/flags.h"
+
+PADDLE_DEFINE_EXPORTED_bool(
+    sigmoid,
+    false,
+    "used for debug.");
 
 namespace {
 
@@ -281,7 +287,9 @@ class Conv2dAdd2ActFusePattern
     if (next_op->isa<paddle::dialect::TanhOp>()) {
       act_name = "tanh";
     } else if (next_op->isa<paddle::dialect::SigmoidOp>()) {
-      act_name = "sigmoid";
+      if(FLAGS_sigmoid) {
+        act_name = "sigmoid";
+      }
     }
 #endif
     if (act_name == "") {
