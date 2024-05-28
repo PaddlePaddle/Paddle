@@ -261,15 +261,6 @@ class ShapeOptimizationPass : public pir::Pass {
 
 }  // namespace
 
-symbol::TensorShapeOrDataDimExprs CreateShapeOrDataByDDim(
-    const pir::DDim& dims) {
-  std::vector<symbol::DimExpr> dim_exprs;
-  for (int i = 0; i < dims.size(); ++i) {
-    dim_exprs.emplace_back(dims.at(i));
-  }
-  return symbol::TensorShapeOrDataDimExprs{dim_exprs};
-}
-
 void InferSymExprForBlock(const Block& block,
                           InferSymbolicShapeContext* infer_context) {
   for (auto& op : block) {
