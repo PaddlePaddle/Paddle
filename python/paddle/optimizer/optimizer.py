@@ -960,10 +960,8 @@ class Optimizer:
                 belong_to_optimizer=True,
             )
 
-            if (
-                in_dygraph_mode()
-                and (device == 'cpu' or isinstance(device, core.CPUPlace))
-                and (not core.is_compiled_with_xpu())
+            if in_dygraph_mode() and (
+                device == 'cpu' or isinstance(device, core.CPUPlace)
             ):
                 _C_ops.full_(
                     var,
