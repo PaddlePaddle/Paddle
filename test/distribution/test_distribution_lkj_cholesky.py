@@ -149,13 +149,16 @@ class TestLKJCholeskyLogProb(unittest.TestCase):
 class LKJCholeskyTestError(unittest.TestCase):
     @parameterize.parameterize_func(
         [
-            (1, ValueError),  # dim < 2
-            (3.0, ValueError),  # dim is float
+            (1, 1.0, ValueError),  # dim < 2
+            (3.0, 1.0, TypeError),  # dim is float
+            (3, -1.0, ValueError),  # concentration < 0
         ]
     )
-    def test_bad_parameter(self, dim, error):
+    def test_bad_parameter(self, dim, concentration, error):
         with paddle.base.dygraph.guard(self.place):
-            self.assertRaises(error, lkj_cholesky.LKJCholesky, dim)
+            self.assertRaises(
+                error, lkj_cholesky.LKJCholesky, dim, concentration
+            )
 
     @parameterize.parameterize_func([(10,)])  # not sequence object sample shape
     def test_bad_sample_shape(self, shape):
