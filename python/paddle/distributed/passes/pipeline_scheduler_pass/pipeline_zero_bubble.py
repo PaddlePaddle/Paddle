@@ -190,25 +190,28 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
             self._get_max_memory(),
         )
 
-        schedule, max_bubble = None, None
+        schedule, end_time = None, None
         for fill_w_before_b in [True, False]:
             for fill_w_before_f in [True, False]:
-                if schedule is None:
-                    schedule, _, max_bubble = v_scheduler.create_v_schedule(
-                        fill_w_before_b=fill_w_before_b,
-                        fill_w_before_f=fill_w_before_f,
-                    )
-                else:
-                    (
-                        new_schedule,
-                        _,
-                        new_max_bubble,
-                    ) = v_scheduler.create_v_schedule(
-                        fill_w_before_b=fill_w_before_b,
-                        fill_w_before_f=fill_w_before_f,
-                    )
-                    if new_max_bubble < max_bubble:
-                        schedule, max_bubble = new_schedule, new_max_bubble
+                for fill_loss_stage in [True, False]:
+                    if schedule is None:
+                        schedule, end_time, _ = v_scheduler.create_v_schedule(
+                            fill_w_before_b=fill_w_before_b,
+                            fill_w_before_f=fill_w_before_f,
+                            fill_loss_stage=fill_loss_stage,
+                        )
+                    else:
+                        (
+                            new_schedule,
+                            new_end_time,
+                            _,
+                        ) = v_scheduler.create_v_schedule(
+                            fill_w_before_b=fill_w_before_b,
+                            fill_w_before_f=fill_w_before_f,
+                            fill_loss_stage=fill_loss_stage,
+                        )
+                        if max(new_end_time) < max(end_time):
+                            schedule, end_time = new_schedule, new_end_time
 
         stage_schedule = schedule[self.get_attr("pp_stage")]
         job_list = []
@@ -350,7 +353,11 @@ class VScheduleCreator:
         self._stage_bubbles = [0] * self.num_stage
 
     def create_v_schedule(
-        self, fill_w_before_f=True, fill_w_before_b=True, approved_bubbles=None
+        self,
+        fill_w_before_f=True,
+        fill_w_before_b=True,
+        fill_loss_stage=True,
+        approved_bubbles=None,
     ):
         self.init_schedule()
         if approved_bubbles is None:
@@ -360,7 +367,7 @@ class VScheduleCreator:
         self._insert_forward_jobs_before_forward1()
         self._insert_forward_jobs_before_backward_b()
         self._insert_jobs_after_backward_start(
-            fill_w_before_f, fill_w_before_b, approved_bubbles
+            fill_w_before_f, fill_w_before_b, fill_loss_stage, approved_bubbles
         )
 
         schedule = self._stage_job_schedule.copy()
@@ -369,10 +376,13 @@ class VScheduleCreator:
 
         if max_approved_bubble < 0 or max_bubble < max_approved_bubble:
             new_schedule, new_end_time, new_max_bubble = self.create_v_schedule(
-                fill_w_before_f, fill_w_before_b, self._stage_bubbles
+                fill_w_before_f,
+                fill_w_before_b,
+                fill_loss_stage,
+                self._stage_bubbles,
             )
 
-            if new_max_bubble < max_bubble:
+            if max(new_end_time) < max(end_time):
                 return new_schedule, new_end_time, new_max_bubble
 
         return schedule, end_time, max_bubble
@@ -468,7 +478,11 @@ class VScheduleCreator:
                 )
 
     def _insert_jobs_after_backward_start(
-        self, fill_w_before_f, fill_w_before_b, approved_bubbles
+        self,
+        fill_w_before_f,
+        fill_w_before_b,
+        fill_loss_stage,
+        approved_bubbles,
     ):
         backward_b_job_number = self.num_model_chunks * self.num_micro_batch
 
@@ -507,6 +521,7 @@ class VScheduleCreator:
                                 ],
                             )
                         )
+
                         while len(
                             self._pending_w[stage_id]
                         ) and dependency_job_end_time + self.program_runtime[
@@ -520,10 +535,29 @@ class VScheduleCreator:
                         ):
                             self._put_w_job_into_schedule(stage_id)
 
+                        if (
+                            stage_id == self.calculate_loss_stage
+                            and fill_loss_stage
+                        ):
+                            while (
+                                len(self._pending_w[stage_id])
+                                and dependency_job_end_time
+                                + self.program_runtime["communication"]
+                                >= self._stage_current_time[stage_id]
+                                + self._get_program_runtime(
+                                    "backward_w",
+                                    stage_id,
+                                    self._pending_w[stage_id][0][0],
+                                )
+                                * 0.2
+                            ):
+                                self._put_w_job_into_schedule(stage_id)
+
                         max_stage_bubble = self._get_max_stage_bubble(
                             stage_id, approved_bubbles
                         )
                         stage_bubble = self._stage_bubbles[stage_id]
+
                         if (
                             len(self._pending_w[stage_id])
                             and dependency_job_end_time
