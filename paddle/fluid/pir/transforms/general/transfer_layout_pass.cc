@@ -322,17 +322,14 @@ struct FlowGraph {
 
       auto judge_dense_tensor_type = [](paddle::dialect::DenseTensorType t) {
         if (t.dims().size() == 4) {
-          return false;
+          return true;
         }
-        return true;
+        return false;
       };
 
       bool should_interrupt = std::visit(
           overloaded{
               [&](const pir::Operation* op) {
-                // TODO(lyk): These conditions may be too loose,
-                // we should make a white list here.
-
                 pir::Operation* fop = const_cast<pir::Operation*>(op);
 
                 auto layout_transform_iface = fop->dyn_cast<
@@ -347,20 +344,34 @@ struct FlowGraph {
                 auto vt = v.type();
                 if (!vt) return true;
                 // maybe not DenseTensor, but we can handle other types later
+                bool can_be_transformed = false;
                 if (auto vdt =
                         vt.dyn_cast<paddle::dialect::DenseTensorType>()) {
                   VLOG(10) << "judging var: " << v.defining_op() << " "
-                           << v.type() << " " << vdt.dims() << " "
-                           << (vdt.dims().size() == 4);
-                  return judge_dense_tensor_type(vdt);
+                           << v.type() << " " << vdt.dims();
+                  can_be_transformed = judge_dense_tensor_type(vdt);
                 } else if (auto vdt = vt.dyn_cast<pir::VectorType>()) {
                   if (vdt.size() == 0) return false;
                   auto vt_elem = vdt[0];
                   if (auto vdt_elem =
                           vt_elem.dyn_cast<paddle::dialect::DenseTensorType>())
-                    return judge_dense_tensor_type(vdt_elem);
+                    can_be_transformed = judge_dense_tensor_type(vdt_elem);
                 }
-                return true;
+                if (!can_be_transformed) {
+                  // when the rank of value is not 4, we can't allow it to be
+                  // a point of cut edge. So we set its outputs and inputs to
+                  // immutable.
+                  Node in_node = Node(v.defining_op());
+                  nhwc_nodes.erase(in_node);
+                  VLOG(10) << "erase node: " << in_node << " from nhwc set";
+
+                  for (auto it = v.use_begin(); it != v.use_end(); ++it) {
+                    Node out_node(it->owner());
+                    nhwc_nodes.erase(out_node);
+                    VLOG(10) << "erase node: " << out_node << " from nhwc set";
+                  }
+                }
+                return !can_be_transformed;
               },
               [](const auto&) { return true; },
           },
