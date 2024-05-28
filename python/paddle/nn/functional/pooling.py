@@ -2352,6 +2352,7 @@ def lp_pool1d(
     stride=None,
     padding=0,
     ceil_mode=False,
+    data_format="NCL",
     name=None,
 ):
     """
@@ -2377,6 +2378,9 @@ def lp_pool1d(
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
         ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
+        data_format(str, optional): The data format of the input and output data. An optional string from: `"NCL"`,
+            `"NLC"`. The default is `"NCL"`. When it is `"NCL"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_length]`.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
@@ -2396,13 +2400,20 @@ def lp_pool1d(
             [1, 3, 16]
     """
     # NCL to NCHW
-    data_format = "NCHW"
+    ori_data_format = data_format
+    if data_format == "NCL":
+        data_format = "NCHW"
+        axis = 2
+    else:
+        data_format = "NHWC"
+        axis = 1
+
     if not in_dynamic_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'lp_pool1d'
         )
     _check_input(x, 3)
-    x = unsqueeze(x, [2])
+    x = unsqueeze(x, [axis])
     kernel_size = convert_to_list(kernel_size, 1, 'kernel_size')
     kernel_size = [1] + kernel_size
     if stride is None:
@@ -2414,7 +2425,7 @@ def lp_pool1d(
     _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
     _check_value_limitation(stride, "stride", min_limit=1e-3)
 
-    channel_last = _channel_last("NCL", 1)
+    channel_last = _channel_last(ori_data_format, 1)
     padding, padding_algorithm = _update_padding_nd(
         padding, 1, channel_last=channel_last, ceil_mode=ceil_mode
     )
@@ -2437,7 +2448,7 @@ def lp_pool1d(
             padding_algorithm,
             norm_type,
         )
-        return squeeze(output, [2])
+        return squeeze(output, [axis])
 
     else:
         op_type = 'lp_pool2d'
@@ -2462,7 +2473,7 @@ def lp_pool1d(
                 "norm_type": norm_type,
             },
         )
-        return squeeze(pool_out, [2])
+        return squeeze(pool_out, [axis])
 
 
 def lp_pool2d(

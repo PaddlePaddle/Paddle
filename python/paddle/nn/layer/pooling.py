@@ -154,7 +154,7 @@ class AvgPool2D(Layer):
         divisor_override(float, optional): If specified, it will be used as divisor, otherwise kernel_size will be
             used. Default None.
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`,
-            `"NDHW"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `"NHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
@@ -353,6 +353,9 @@ class LPPool1D(Layer):
             The default value is 0.
         ceil_mode(bool, optional): ${ceil_mode_comment}Whether to use the ceil function to calculate output height
             and width. If it is set to False, the floor function will be used. The default value is False.
+        data_format(str, optional): The data format of the input and output data. An optional string from: `"NCL"`,
+            `"NLC"`. The default is `"NCL"`. When it is `"NCL"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_length]`.
         name(str, optional): For eed to detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no nset and None by default.
 
@@ -387,6 +390,7 @@ class LPPool1D(Layer):
         stride=None,
         padding=0,
         ceil_mode=False,
+        data_format="NCL",
         name=None,
     ):
         super().__init__()
@@ -395,6 +399,7 @@ class LPPool1D(Layer):
         self.stride = stride
         self.padding = padding
         self.ceil_mode = ceil_mode
+        self.data_format = data_format
         self.name = name
 
     def forward(self, x):
@@ -405,6 +410,7 @@ class LPPool1D(Layer):
             self.stride,
             self.padding,
             self.ceil_mode,
+            self.data_format,
             self.name,
         )
         return out
@@ -455,7 +461,7 @@ class LPPool2D(Layer):
             The default value is 0.
         ceil_mode(bool, optional): When True, will use `ceil` instead of `floor` to compute the output shape.
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`,
-            `"NDHW"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `"NHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
@@ -658,7 +664,7 @@ class MaxPool2D(Layer):
             The default value is 0.
         ceil_mode(bool, optional): when True, will use `ceil` instead of `floor` to compute the output shape
         return_mask(bool, optional): Whether to return the max indices along with the outputs.
-        data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+        data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.

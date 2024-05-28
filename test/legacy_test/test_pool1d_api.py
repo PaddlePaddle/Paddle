@@ -122,12 +122,17 @@ def lp_pool1D_forward_naive(
     paddings,
     global_pool=0,
     ceil_mode=False,
+    data_format='NCL',
     norm_type=None,
 ):
     assert norm_type is not None
     if x.dtype == np.float16:
         x = x.astype(np.float32)
-    N, C, L = x.shape
+    if data_format == "NCL":
+        N, C, L = x.shape
+    else:
+        N, L, C = x.shape
+
     if global_pool == 1:
         ksize = [L]
     L_out = (
@@ -136,17 +141,33 @@ def lp_pool1D_forward_naive(
         else (L - ksize[0] + 2 * paddings[0]) // strides[0] + 1
     )
 
-    out = np.zeros((N, C, L_out))
+    if data_format == "NCL":
+        out = np.zeros((N, C, L_out))
+    else:
+        out = np.zeros((N, L_out, C))
     for i in range(L_out):
         r_start = np.max((i * strides[0] - paddings[0], 0))
         r_end = np.min((i * strides[0] + ksize[0] - paddings[0], L))
-        x_masked = x[:, :, r_start:r_end]
-        if norm_type == float('inf'):
-            out[:, :, i] = np.max(x_masked, axis=(2))
+        if data_format == "NCL":
+            x_masked = x[:, :, r_start:r_end]
         else:
-            out[:, :, i] = np.power(
-                np.sum(np.power(x_masked, norm_type), axis=(2)), 1 / norm_type
-            )
+            x_masked = x[:, r_start:r_end, :]
+        if data_format == "NCL":
+            if norm_type == float('inf'):
+                out[:, :, i] = np.max(x_masked, axis=(2))
+            else:
+                out[:, :, i] = np.power(
+                    np.sum(np.power(x_masked, norm_type), axis=(2)),
+                    1 / norm_type,
+                )
+        else:
+            if norm_type == float('inf'):
+                out[:, i, :] = np.max(x_masked, axis=(1))
+            else:
+                out[:, i, :] = np.power(
+                    np.sum(np.power(x_masked, norm_type), axis=(1)),
+                    1 / norm_type,
+                )
     return out
 
 
@@ -505,7 +526,7 @@ class TestPool1D_API(unittest.TestCase):
                 ceil_mode=True,
             )
 
-            result_np = avg_pool1D_forward_naive(
+            result_np = lp_pool1D_forward_naive(
                 input_np,
                 ksize=[2],
                 strides=[2],
@@ -516,18 +537,53 @@ class TestPool1D_API(unittest.TestCase):
 
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
-            avg_pool1d_dg = paddle.nn.LPPool1D(
+            lp_pool1d_dg = paddle.nn.LPPool1D(
                 norm_type=7,
                 kernel_size=2,
                 stride=None,
+                ceil_mode=True,
                 padding=1,
-                exclusive=True,
             )
 
-            result = avg_pool1d_dg(input)
-            np.testing.assert_allclose(
-                result.numpy(), result_np.astype(np.float16), rtol=1e-05
+            result = lp_pool1d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+    def check_lp_dygraph_data_format_results(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 32, 3]).astype("float32")
+            input = paddle.to_tensor(input_np)
+            result = F.lp_pool1d(
+                input,
+                norm_type=7,
+                kernel_size=2,
+                stride=2,
+                padding=[1],
+                ceil_mode=True,
+                data_format="NLC",
             )
+
+            result_np = lp_pool1D_forward_naive(
+                input_np,
+                ksize=[2],
+                strides=[2],
+                paddings=[1],
+                ceil_mode=True,
+                data_format="NLC",
+                norm_type=7,
+            )
+
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            lp_pool1d_dg = paddle.nn.LPPool1D(
+                norm_type=7,
+                kernel_size=2,
+                stride=None,
+                data_format="NLC",
+                padding=1,
+            )
+
+            result = lp_pool1d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_lp_dygraph_inf_norm_type(self, place):
         with base.dygraph.guard(place):
@@ -577,6 +633,8 @@ class TestPool1D_API(unittest.TestCase):
             self.check_lp_dygraph_inf_norm_type(place)
             self.check_lp_dygraph_float16_results(place)
             self.check_lp_dygraph_float64_results(place)
+            self.check_lp_dygraph_ceil_mode_results(place)
+            self.check_lp_dygraph_data_format_results(place)
 
 
 class TestPool1DError_API(unittest.TestCase):
