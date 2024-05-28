@@ -60,11 +60,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     events[event_name] = std::make_shared<platform::DeviceEvent>(
         place_, platform::GenerateDeviceEventFlag());
   }
-  std::cout << "events=======" << std::endl;
-  for (auto kv : events) {
-    std::cout << kv.first << "->" << kv.second.get() << std::endl;
-  }
-  std::cout << "=======" << std::endl;
 
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
     const auto& job = jobs[job_idx];
