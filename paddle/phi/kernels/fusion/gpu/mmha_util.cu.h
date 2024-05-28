@@ -2503,13 +2503,13 @@ inline __device__ void zero(T& dst) {  // NOLINT
   dst = tmp.raw;
 }
 
-template <int WARPS_PER_BLOCK, int WARP_SIZE = 32>
+template <int WARPS_PER_BLOCK, int WARP_SIZE_T = 32>
 inline __device__ float block_sum(float* red_smem, float sum) {
-  int warp = threadIdx.x / WARP_SIZE;
-  int lane = threadIdx.x % WARP_SIZE;
+  int warp = threadIdx.x / WARP_SIZE_T;
+  int lane = threadIdx.x % WARP_SIZE_T;
 
 #pragma unroll
-  for (int mask = WARP_SIZE / 2; mask >= 1; mask /= 2) {
+  for (int mask = WARP_SIZE_T / 2; mask >= 1; mask /= 2) {
     sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
   }
 
