@@ -18,10 +18,10 @@
 #include <algorithm>
 #include <cstdlib>
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <set>
 #include <string>
-#include <iostream>
 #include <utility>
 #include <vector>
 #include "paddle/pir/include/core/program.h"
@@ -466,10 +466,6 @@ bool AnalysisPredictor::Init(
     }
   }
 
-  if(!config_.new_ir_enabled() && extension_ !="json")
-  {
-    PrepareFeedFetch();
-  }
   // Get the feed_target_names and fetch_target_names
   if (config_.new_ir_enabled() && extension_ == "json") {
     LOG(INFO) << "调用了PreparePirFeedFetch";
@@ -784,9 +780,9 @@ bool AnalysisPredictor::PrepareScope(
 void PrintScopeVariables(const paddle::framework::Scope &scope) {
   auto vars = scope.LocalVarNames();
   for (const auto &var_name : vars) {
+    LOG(INFO) << "Variable in scope: " << var_name;
     auto *var = scope.FindVar(var_name);
     if (var) {
-      LOG(INFO) << "Variable in scope: " << var_name;
       if (var->IsType<phi::DenseTensor>()) {
         auto &tensor = var->Get<phi::DenseTensor>();
         LOG(INFO) << "Tensor shape: " << tensor.dims();
@@ -821,9 +817,8 @@ bool AnalysisPredictor::PreparePirProgram() {
     LOG(INFO) << "Preparing PIR program from file:" << filename;
     bool success = pir::ReadModule(filename, pir_program_.get(), pir_version);
     LOG(INFO) << "suceess" << success;
-    std::cout<< "pir_program " << *pir_program_ <<std::endl;
+    std::cout << "pir_program " << *pir_program_ << std::endl;
 
-    std::vector<std::string> param_names;
     const std::string params_file = config_.params_file();
     LOG(INFO) << "param_file" << params_file;
 
@@ -833,11 +828,15 @@ bool AnalysisPredictor::PreparePirProgram() {
       LOG(ERROR) << "block is null";
       return false;
     }
-    // 这一步是对应pir_io.py中的487行，得到v,因为只有ParameterOP才有v.name,所以这里只把ParameterOp添加到var
-    // 下面的var是pir::value
-    std::vector<pir::Value> vars;
+
+    // 创建param_name和var配对列表
+    std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
     for (auto op : block->ops()) {
       LOG(INFO) << "ops的 " << op->name();
+      // if (op->isa<paddle::dialect::FetchOp>()) {
+      //   auto x = op->operand_source(0);
+      //   LOG(INFO) << "op->operand_source(0).use_count(): " << x.use_count();
+      // }
       for (auto var : op->results()) {
         std::string var_name;
         auto is_persistable =
@@ -846,19 +845,34 @@ bool AnalysisPredictor::PreparePirProgram() {
           LOG(INFO) << "is_persistable" << is_persistable.data();
           if (auto param_op = var.defining_op<::pir::ParameterOp>()) {
             var_name = param_op.param_name();
-            LOG(INFO) << "var_name你猜有没有" << var_name;
-            param_names.push_back(var_name);
-            vars.push_back(var);
+            param_name_var_pairs.emplace_back(var_name, var);
           } else if (auto data_op =
                          var.defining_op<paddle::dialect::DataOp>()) {
             var_name = data_op.attribute<pir::StrAttribute>("name").AsString();
-            LOG(INFO) << "Data op的var name" << var_name;
-            param_names.push_back(var_name);
-            vars.push_back(var);
+            param_name_var_pairs.emplace_back(var_name, var);
           }
         }
       }
     }
+
+    // 对param_name_var_pairs进行排序
+    std::sort(param_name_var_pairs.begin(),
+              param_name_var_pairs.end(),
+              [](const std::pair<std::string, pir::Value> &a,
+                 const std::pair<std::string, pir::Value> &b) {
+                return a.first < b.first;
+              });
+
+    // 将排序后的参数名和变量分别存入param_names和vars中
+    std::vector<std::string> param_names;
+    std::vector<pir::Value> vars;
+    for (const auto &pair : param_name_var_pairs) {
+      LOG(INFO) << "pair.first " << pair.first;
+      // LOG(INFO)<<"pair.second" << pair.second;
+      param_names.emplace_back(pair.first);
+      vars.emplace_back(pair.second);
+    }
+
     size_t len = vars.size();
     std::vector<phi::DenseTensor *> tensor_out;
     for (size_t i = 0; i < len; ++i) {
@@ -904,16 +918,22 @@ bool AnalysisPredictor::PreparePirProgram() {
       tensor_out.push_back(tensor_temp);
       LOG(INFO) << "Tensor value for " << param_names[i] << " is "
                 << *tensor_temp;
+      LOG(INFO) << "sub_scope_变量的指针 " << sub_scope_;
     }
+
     LOG(INFO) << "Printing scope variables before LoadCombineFunction";
     PrintScopeVariables(*sub_scope_);
+    LOG(INFO) << "sub_scope_变量的指针";
+    LOG(INFO) << sub_scope_;
+    LOG(INFO) << "params_file的文件 " << params_file;
+
     pir::LoadCombineFunction(
         params_file, param_names, &tensor_out, false, place_);
 
     LOG(INFO) << "Printing scope variables after LoadCombineFunction";
     PrintScopeVariables(*sub_scope_);
-    LOG(INFO)<<"sub_scope_变量的指针";
-    LOG(INFO)<< sub_scope_;
+    LOG(INFO) << "sub_scope_变量的指针";
+    LOG(INFO) << sub_scope_;
 
     // std::vector<phi::DenseTensor *> tensor_pointers;
     // for (const auto &param : param_names) {
@@ -1080,9 +1100,6 @@ bool AnalysisPredictor::PreparePirProgram() {
     lowered_pm.Run(pir_program_.get());
 
     LOG(INFO) << "======= pir optimization completed =======";
-    PrintScopeVariables(*sub_scope_);
-    LOG(INFO)<<"经过pass之后sub_scope_变量的指针";
-    LOG(INFO)<< sub_scope_;
   }
   return true;
 }

@@ -31,7 +31,10 @@ class ReplaceFetchWithShadowOutputPattern
     rewriter.Build<pir::ShadowOutputOp>(
         op->operand_source(0),
         op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString());
+        auto x =  op->operand_source(0);
+        LOG(INFO) << "op->operand_source(0).use_count(): " <<x.use_count();
     rewriter.EraseOp(op);
+    LOG(INFO) << "op->operand_source(0).use_count(): " << x.use_count();
     return true;
   }
 };

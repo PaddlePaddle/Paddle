@@ -88,7 +88,6 @@ bool ReadModule(const std::string& file_path,
     return false;
   }
 
-
   //检查模型版本
   if (data.contains(BASE_CODE) && data[BASE_CODE].contains(MAGIC) &&
       data[BASE_CODE][MAGIC] == PIR) {

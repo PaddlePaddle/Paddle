@@ -157,20 +157,7 @@ struct IR_API AttributeManager {
   /// \return The unique instance of Attribute T from IrContext.
   ///
   template <typename T, typename... Args>
-  static T get(IrContext *ctx, Args &&...args) {
-    std::cout << "template " << typeid(T).name() << std::endl;
-    // auto type_id = pir::TypeId::get<T>();
-    std::cout << "pir::TypeId::get<T>()" << pir::TypeId::get<T>() << std::endl;
-    // auto type = ctx->GetRegisteredAbstractType(type_id);
-    // std::cout<<type->type_id();
-    // if (type.isa<paddle::dialect::IntArrayAttribute>())
-    // {
-    //   std::cout << type.dyn_cast<paddle::dialect::IntArrayAttribute>().name() << std::endl;
-    // }
-    // if (type->isa<paddle::dialect::IntArrayAttribute>()){
-    //   std::cout << type.dyn_cast<paddle::dialect::IntArrayAttribute>().name() << std::endl;
-    // }
-    
+  static T get(IrContext *ctx, Args &&...args) { 
     return get<T, Args...>(
         ctx, pir::TypeId::get<T>(), std::forward<Args>(args)...);
   }

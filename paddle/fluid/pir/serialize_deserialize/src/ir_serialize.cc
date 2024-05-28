@@ -21,6 +21,16 @@
 namespace pir {
 
 Json ProgramWriter::GetProgramJson(const pir::Program* program) {
+  VLOG(0)<<"创建ctx";
+  VLOG(0)<<"GetProgramJson函数";
+  pir::IrContext* ctx_ = pir::IrContext::Instance();
+  LOG(INFO)<<"ctx_ "<<ctx_;
+  auto dilect_list = ctx_-> GetRegisteredDialects();
+  for (auto *dialect : dilect_list) {
+    VLOG(0)<<"AAAAAAAAAA";
+    
+    std::cout << dialect->name() << std::endl;
+  }
   program_json = WriteProgram(program);
   VLOG(6) << "Finish program to json.";
   return program_json;

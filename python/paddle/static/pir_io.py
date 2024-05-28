@@ -375,6 +375,7 @@ def save_vars_pir(
             save_var_list = []
             save_var_names = []
             for name in sorted(save_var_map.keys()):
+                # print("save_var_list",save_var_map[name])
                 save_var_list.append(save_var_map[name])
                 save_var_names.append(name)
 
@@ -382,6 +383,8 @@ def save_vars_pir(
             if save_to_memory is False:
                 save_path = os.path.join(os.path.normpath(dirname), filename)
 
+            print("save_var_names",save_var_names)
+            
             core.save_combine_func(
                 save_var_list,
                 save_var_names,
@@ -468,6 +471,7 @@ def load_vars_pir(
     else:
         if main_program is None:
             main_program = default_main_program()
+            print("main_program",main_program)
 
         # TODO(chenzhiyang):save origin param shape, check vars
         load_var_map = {}

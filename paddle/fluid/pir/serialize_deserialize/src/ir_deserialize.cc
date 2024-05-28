@@ -83,12 +83,12 @@ void ProgramReader::ReadBlock(Json* block_json, pir::Block* block) {
   Json& ops_json = block_json->at(BLOCKOPS);
   if (!ops_json.empty()) {
     for (auto& op_json : ops_json) {
-      pir::Operation* op =ReadOp(&op_json);
+      // pir::Operation* op =ReadOp(&op_json);
       block->push_back(ReadOp(&op_json));
-      LOG(INFO)<<"ReadOp函数后 "<<op->name();
+      // LOG(INFO)<<"ReadOp函数后 "<<op->name();
     }
+    VLOG(6) << "read block size" << block->size() << ".";
   }
-
 
   VLOG(6) << "Finish Read " << block_name;
   return;
