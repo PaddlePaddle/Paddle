@@ -3648,9 +3648,10 @@ function clang-tidy_check() {
     echo ${diff_files[@]}
     echo "Checking code style by clang-tidy ..."
     startTime_s=`date +%s`
+    cd ${PADDLE_ROOT}
     for file in ${diff_files}
     do
-        python ${PADDLE_ROOT}/tools/codestyle/clang-tidy.py -p=build -j=10 \
+        python ./tools/codestyle/clang-tidy.py -p=build -j=10 \
         -clang-tidy-binary=clang-tidy \
         -extra-arg=-Wno-unknown-warning-option \
         -extra-arg=-Wno-pessimizing-move \
