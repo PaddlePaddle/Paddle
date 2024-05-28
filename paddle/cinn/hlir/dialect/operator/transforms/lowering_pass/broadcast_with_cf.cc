@@ -488,7 +488,8 @@ pir::Operation* CompileBroadcastTreeToConditionBlock(
     const std::vector<pir::Value>& group_inputs,
     const std::vector<pir::Type>& output_types,
     pir::PatternRewriter& rewriter) {  // NOLINT
-  auto ShapeOrDataDimExprs4Value = [&group](pir::Value value) {
+  auto ShapeOrDataDimExprs4Value =
+      [&group](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
     return group->GetShapeOrDataExprs(value);
   };
   // 1. broadcast tree to condition op
