@@ -278,7 +278,6 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
 }
 
 bool CanRunOnCpuKernel(const std::vector<::pir::Value>& vec_inputs) {
-  return false;
   bool can_run_cpu = true;
   for (size_t i = 0; i < vec_inputs.size(); ++i) {
     auto tmp_in = vec_inputs[i];
