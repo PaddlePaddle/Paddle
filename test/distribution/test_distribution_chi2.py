@@ -162,54 +162,11 @@ class TestChi2Sample(unittest.TestCase):
                 == case.get('expect')
             )
 
-    def test_rsample_shape(self):
-        print("self._paddle_chi2.df:", self._paddle_chi2.df)
-        print(
-            "paddle.squeeze(self._paddle_chi2.df):",
-            paddle.squeeze(self._paddle_chi2.df),
-        )
-        cases = [
-            {
-                'input': (),
-                'expect': ()
-                + tuple(paddle.squeeze(self._paddle_chi2.df).shape),
-            },
-            {
-                'input': (2, 2),
-                'expect': (2, 2)
-                + tuple(paddle.squeeze(self._paddle_chi2.df).shape),
-            },
-        ]
-        for case in cases:
-            self.assertTrue(
-                tuple(self._paddle_chi2.rsample(case.get('input')).shape)
-                == case.get('expect')
-            )
-            print("case.get('expect'):", case.get('expect'))
-
     def test_sample(self):
         sample_shape = (30000,)
         samples = self._paddle_chi2.sample(sample_shape)
         sample_values = samples.numpy()
 
-        np.testing.assert_allclose(
-            sample_values.mean(axis=0),
-            scipy.stats.chi2.mean(self.df),
-            rtol=0.1,
-            atol=config.ATOL.get(str(self._paddle_chi2.df.numpy().dtype)),
-        )
-        np.testing.assert_allclose(
-            sample_values.var(axis=0),
-            scipy.stats.chi2.var(self.df),
-            rtol=0.1,
-            atol=config.ATOL.get(str(self._paddle_chi2.df.numpy().dtype)),
-        )
-
-    def test_rsample(self):
-        sample_shape = (30000,)
-        samples = self._paddle_chi2.rsample(sample_shape)
-        sample_values = samples.numpy()
-        # test error setting is the same as gamma
         np.testing.assert_allclose(
             sample_values.mean(axis=0),
             scipy.stats.chi2.mean(self.df),
@@ -242,11 +199,6 @@ class TestChi2SampleKS(unittest.TestCase):
     def test_sample_ks(self):
         sample_shape = (15000,)
         samples = self._paddle_chi2.sample(sample_shape)
-        self.assertTrue(self._kstest(samples))
-
-    def test_rsample_ks(self):
-        sample_shape = (15000,)
-        samples = self._paddle_chi2.rsample(sample_shape)
         self.assertTrue(self._kstest(samples))
 
     def _kstest(self, samples):

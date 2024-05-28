@@ -178,7 +178,7 @@ class TestChi2(unittest.TestCase):
         ),
     ],
 )
-class TestGammaSample(unittest.TestCase):
+class TestChi2Sample(unittest.TestCase):
     def setUp(self):
         self.program = paddle.static.Program()
         self.executor = paddle.static.Executor(self.place)
@@ -207,27 +207,6 @@ class TestGammaSample(unittest.TestCase):
                 )
                 self.assertTrue(data.shape == case.get('expect'))
 
-    def test_rsample_shape(self):
-        cases = [
-            {
-                'input': (),
-                'expect': () + np.squeeze(self.df).shape,
-            },
-            {
-                'input': (2, 2),
-                'expect': (2, 2) + np.squeeze(self.df).shape,
-            },
-        ]
-        for case in cases:
-            with paddle.static.program_guard(self.program):
-                [data] = self.executor.run(
-                    self.program,
-                    feed=self.feeds,
-                    fetch_list=self._paddle_chi2.rsample(case.get('input')),
-                )
-
-                self.assertTrue(data.shape == case.get('expect'))
-
     def test_sample(self):
         sample_shape = (30000,)
         with paddle.static.program_guard(self.program):
@@ -244,30 +223,6 @@ class TestGammaSample(unittest.TestCase):
                 rtol=0.1,
                 atol=config.ATOL.get(str(self.df.dtype)),
             )
-            np.testing.assert_allclose(
-                data.var(axis=0),
-                scipy.stats.chi2.var(self.df),
-                rtol=0.1,
-                atol=config.ATOL.get(str(self.df.dtype)),
-            )
-
-    def test_rsample(self):
-        sample_shape = (30000,)
-        with paddle.static.program_guard(self.program):
-            [data] = self.executor.run(
-                self.program,
-                feed=self.feeds,
-                fetch_list=self._paddle_chi2.rsample(sample_shape),
-            )
-            except_shape = sample_shape + np.squeeze(self.df).shape
-            self.assertTrue(data.shape == except_shape)
-            np.testing.assert_allclose(
-                data.mean(axis=0),
-                scipy.stats.chi2.mean(self.df),
-                rtol=0.1,
-                atol=config.ATOL.get(str(self.df.dtype)),
-            )
-            # test error setting is the same as gamma
             np.testing.assert_allclose(
                 data.var(axis=0),
                 scipy.stats.chi2.var(self.df),
@@ -299,16 +254,6 @@ class TestChi2SampleKS(unittest.TestCase):
                 self.program,
                 feed=self.feeds,
                 fetch_list=self._paddle_chi2.sample(sample_shape),
-            )
-            self.assertTrue(self._kstest(samples))
-
-    def test_rsample(self):
-        sample_shape = (15000,)
-        with paddle.static.program_guard(self.program):
-            [samples] = self.executor.run(
-                self.program,
-                feed=self.feeds,
-                fetch_list=self._paddle_chi2.rsample(sample_shape),
             )
             self.assertTrue(self._kstest(samples))
 

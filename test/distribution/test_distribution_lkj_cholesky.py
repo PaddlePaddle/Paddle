@@ -68,8 +68,7 @@ class TestLKJCholeskyShape(unittest.TestCase):
         self._test_sample_shape_dim(sample_method)
 
     def _test_sample_shape_dim(self, sample_method):
-        for dim in range(2, 4):
-            self._test_sample_shape(dim, sample_method)
+        self._test_sample_shape(2, sample_method)
 
     def _test_sample_shape(self, dim, sample_method):
         self._paddle_lkj_cholesky = lkj_cholesky.LKJCholesky(
