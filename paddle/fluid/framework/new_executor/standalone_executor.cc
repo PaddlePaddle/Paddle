@@ -52,6 +52,14 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
   VLOG(6) << ss.str();
 
   const auto& jobs = plan_.JobList();
+
+  const auto events = plan.AllEvents();
+  std::cout << "events=======" << std::endl;
+  for (auto event : events) {
+    std::cout << event << " ";
+  }
+  std::cout << "=======" << std::endl;
+
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
     const auto& job = jobs[job_idx];
     const std::string& job_type = job->Type();

@@ -92,6 +92,19 @@ void Plan::SetIrProgram(const std::string& job_type,
 
 int64_t Plan::MicroBatchNum() const { return micro_batch_num_; }
 
+std::unordered_set<std::string> Plan::AllEvents() const {
+  std::unordered_set<std::string> result;
+  for (size_t i = 0; i < job_list_.size(); ++i) {
+    for (const auto& event : job_list_[i]->EventToRecord()) {
+      result.insert(event);
+    }
+    for (const auto& event : job_list_[i]->EventToWait()) {
+      result.insert(event);
+    }
+  }
+  return result;
+}
+
 }  // namespace interpreter
 }  // namespace framework
 }  // namespace paddle

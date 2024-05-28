@@ -60,11 +60,22 @@ class Job final {
 
   std::vector<std::string> FetchVarNames() { return fetch_var_names_; }
 
+  void SetEventToRecord(const std::string& event) {
+    event_to_record_.push_back(event);
+  }
+  std::vector<std::string> EventToRecord() { return event_to_record_; }
+  void SetEventToWait(const std::string& event) {
+    event_to_wait_.push_back(event);
+  }
+  std::vector<std::string> EventToWait() { return event_to_wait_; }
+
  private:
   const std::string type_;
   int64_t micro_batch_id_;
   std::set<std::string> skip_gc_vars_;
   std::vector<std::string> fetch_var_names_;
+  std::vector<std::string> event_to_record_;
+  std::vector<std::string> event_to_wait_;
 };
 
 }  // namespace interpreter

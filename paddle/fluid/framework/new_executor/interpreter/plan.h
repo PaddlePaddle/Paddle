@@ -16,6 +16,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/new_executor/interpreter/job.h"
@@ -49,6 +50,8 @@ class Plan final {
                     std::shared_ptr<::pir::Program> ir_prog);
 
   int64_t MicroBatchNum() const;
+
+  std::unordered_set<std::string> AllEvents() const;
 
  private:
   const std::vector<std::shared_ptr<Job>> job_list_;

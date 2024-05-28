@@ -2325,6 +2325,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("type", &framework::interpreter::Job::Type)
       .def("set_micro_batch_id", &framework::interpreter::Job::SetMicroBatchId)
       .def("set_skip_gc_vars", &framework::interpreter::Job::SetSkipGcVars);
+  .def("set_event_to_record", &framework::interpreter::Job::SetEventToRecord);
+  .def("set_event_to_wait", &framework::interpreter::Job::SetEventToWait);
 
   py::class_<framework::interpreter::Plan>(m, "Plan")
       .def(
