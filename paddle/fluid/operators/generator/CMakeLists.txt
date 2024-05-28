@@ -193,8 +193,8 @@ endif()
 
 # code generation for op, op makers, and argument mapping functions
 message(
-  "create or remove auto-geneated operators: generated_op(1-4).cc.tmp
-create or remove auto-geneated argument mappings: ${generated_argument_mapping_path}.tmp"
+  "create or remove auto-generated operators: generated_op(1-4).cc.tmp
+create or remove auto-generated argument mappings: ${generated_argument_mapping_path}.tmp"
 )
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator

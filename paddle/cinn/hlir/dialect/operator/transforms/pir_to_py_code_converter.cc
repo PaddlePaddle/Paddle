@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include <iomanip>
+#include <limits>
 #include <mutex>
 #include <random>
 #include <sstream>
@@ -317,13 +318,16 @@ struct PirToPyCodeConverterHelper {
         }
       }());
     }
-    const std::string ret_lambda_name = "ret_lambda";
+    const std::string ret_lambda_name = [&] {
+      return std::string("ret_lambda_") + func_op_name;
+    }();
     const auto GetRetLambda = [&]() {
       const auto& args_str = ConvertValuesAsArgs(block.args());
       const auto& kwargs_str = ConvertKwargsToString(block);
       IString ret_lambda_declare(
           std::string("def ") + ret_lambda_name + "(" + args_str +
-          (kwargs_str.empty() ? "" : ", *, ") + kwargs_str + "):");
+          (args_str.empty() || kwargs_str.empty() ? "" : ", ") + kwargs_str +
+          "):");
       IStrings return_lambda{ret_lambda_declare};
       PushBackIndented(&return_lambda, block_body);
       return return_lambda;
@@ -899,7 +903,7 @@ struct PirToPyCodeConverterHelper {
     using AdtTypeId = ::common::AdtTypeId<T>;
 
     std::string operator()(AdtTypeId<cinn::dialect::ir::NullType>) {
-      return "self.t_null";
+      return "self.t_null()";
     }
 
     std::string operator()(AdtTypeId<::pir::VectorType>) {
@@ -1141,7 +1145,9 @@ struct PirToPyCodeConverterHelper {
   int64_t RandomInt() {
     std::random_device rd{};
     std::mt19937_64 gen(rd());
-    return gen();
+    std::uniform_int_distribution<int64_t> dis(
+        0, std::numeric_limits<int64_t>::max());
+    return dis(gen);
   }
 
   std::string ConvertIStringsToString(const IStrings& istrings) {

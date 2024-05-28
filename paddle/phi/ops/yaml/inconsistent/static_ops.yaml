@@ -14,7 +14,7 @@
     data_type: x
   inplace : (x -> out)
   backward : add_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 # this add_n is only for ops_api_gen.py and onednn
 - op : add_n
@@ -47,7 +47,7 @@
     func : assign
   backward : assign_grad
   inplace : (x -> out)
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : assign_out_
   args : (Tensor x, Tensor output)
@@ -709,7 +709,7 @@
   data_transform :
     support_trans_dtype : x, y
   backward : multiply_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : nop
   args : (Tensor x)

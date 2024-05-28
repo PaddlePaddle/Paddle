@@ -16,25 +16,12 @@
 
 #include <memory>
 
-#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/core/dll_decl.h"
 
 namespace pir {
-class Value;
-class PatternRewriter;
+
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateTransferLayoutPass();
+
 }  // namespace pir
-namespace cinn {
-namespace dialect {
-class GenerateShapeOp;
-
-namespace ir {
-
-namespace details {
-std::optional<pir::Value> GetOutReplacement(cinn::dialect::GenerateShapeOp op,
-                                            pir::PatternRewriter* rewriter);
-}  // namespace details
-
-std::unique_ptr<pir::Pass> CreateSplitGenerateShapeIntoShapeOpsPass();
-
-}  // namespace ir
-}  // namespace dialect
-}  // namespace cinn

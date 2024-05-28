@@ -1,27 +1,27 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
 
 #include <vector>
 
-#include "paddle/fluid/framework/operator_kernel_configs.h"
-#include "paddle/fluid/platform/dynload/cudnn.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/funcs/operator_kernel_configs.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace fusion {
 
 namespace dynload = phi::dynload;
 
@@ -143,10 +143,10 @@ class CudnnFusionOpCache {
     return instance;
   }
 
-  framework::AlgorithmsCache<CudnnFusionOp *> *GetForward() {
+  phi::funcs::AlgorithmsCache<CudnnFusionOp *> *GetForward() {
     return &forward_cache_;
   }
-  framework::AlgorithmsCache<CudnnFusionOp *> *GetBackward() {
+  phi::funcs::AlgorithmsCache<CudnnFusionOp *> *GetBackward() {
     return &backward_cache_;
   }
 
@@ -158,10 +158,10 @@ class CudnnFusionOpCache {
   CudnnFusionOpCache(const CudnnFusionOpCache &) {}
 
  private:
-  framework::AlgorithmsCache<CudnnFusionOp *> forward_cache_;
-  framework::AlgorithmsCache<CudnnFusionOp *> backward_cache_;
+  phi::funcs::AlgorithmsCache<CudnnFusionOp *> forward_cache_;
+  phi::funcs::AlgorithmsCache<CudnnFusionOp *> backward_cache_;
 };
 
 #endif  // CUDNN_VERSION >= 8000
-}  // namespace operators
-}  // namespace paddle
+}  // namespace fusion
+}  // namespace phi
