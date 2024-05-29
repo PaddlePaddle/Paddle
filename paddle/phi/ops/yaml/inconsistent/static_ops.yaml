@@ -551,15 +551,6 @@
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : limit_by_capacity
-  args : (Tensor expert_count, Tensor capacity, int n_worker)
-  output : Tensor(out)
-  infer_meta :
-    func : LimitByCapacityInferMeta
-  kernel :
-    func : limit_by_capacity
-    data_type : expert_count
-
 - op : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
   output : Tensor(out)
