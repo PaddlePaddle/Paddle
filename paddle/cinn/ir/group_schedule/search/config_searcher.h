@@ -19,6 +19,7 @@
 #include <map>
 #include <vector>
 
+#include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
 #include "paddle/cinn/ir/group_schedule/search/measurer.h"
 #include "paddle/cinn/utils/random_engine.h"
 #include "paddle/pir/include/core/program.h"

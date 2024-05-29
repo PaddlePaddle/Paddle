@@ -87,14 +87,14 @@ struct BucketInfo {
   std::vector<Dimension> space;
 
   std::string ToString() const;
-  BucketInfo() : space(std::vector<Dimension>(1)) {}
+  BucketInfo() = default;
   BucketInfo(int sp_lower_bound,
              int sp_upper_bound,
              int rb_lower_bound,
              int rb_upper_bound,
              bool sp_is_dynamic,
              bool rb_is_dynamic);
-  explict BucketInfo(size_t size) : space(std::vector<Dimension>(size)) {}
+  explicit BucketInfo(size_t size) : space(std::vector<Dimension>(size)) {}
   bool operator==(const BucketInfo& other) const;
 };
 
