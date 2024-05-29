@@ -3966,13 +3966,14 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
 
   auto dim_scale = scale.dims();
   int64_t real_channel_shape = -1;
-  if(algo == "weight_only_int8"){
+  if (algo == "weight_only_int8") {
     real_channel_shape = x.dims()[0];
-  } else if (algo == "weight_only_int4"){
+  } else if (algo == "weight_only_int4") {
     real_channel_shape = x.dims()[0] * 2;
   } else {
-    PADDLE_THROW(phi::errors::InvalidArgument("Currently, we only support weight_only_int8"
-                                              " and weight_only_int4 algo."));
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we only support weight_only_int8"
+        " and weight_only_int4 algo."));
   }
 
   // per-channel dequantization
@@ -4013,7 +4014,6 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                           "channel size, but got [%d] not equal to [%d]",
                           scale.dims()[0],
                           real_channel_shape));
-
   }
   int n = static_cast<int>(x.dims()[1]);
   int k = static_cast<int>(real_channel_shape);

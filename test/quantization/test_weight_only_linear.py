@@ -674,7 +674,8 @@ class WeightOnlyLinearTestCaseStatic(WeightOnlyLinearTestCase):
             exe = paddle.static.Executor(paddle.CUDAPlace(0))
             res = exe.run(feed={}, fetch_list=[weight, dequant_weight])
             np.testing.assert_allclose(res[0], res[1], rtol=1e-2, atol=1e-2)
-    # [NOTE, wangbojun] currently, weight_only_int4 do not support gpu weight_quantize, 
+
+    # [NOTE, wangbojun] currently, weight_only_int4 do not support gpu weight_quantize,
     # which may cause error in pir test.
     # def test_weight_quantize_and_dequantize_int4_pir(self):
     #     self.test_weight_quantize_and_dequantize_pir(algo='weight_only_int4')
