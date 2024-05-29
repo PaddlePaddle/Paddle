@@ -44,7 +44,7 @@
   infer_meta :
     func : UnchangedInferMeta
   kernel :
-    func : assign
+    func : assign_raw
   backward : assign_grad
   inplace : (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
@@ -453,6 +453,7 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : pir::SideEffectTrait
 
 - op : get_tensor_from_selected_rows
   args : (Tensor x)
@@ -549,15 +550,6 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : limit_by_capacity
-  args : (Tensor expert_count, Tensor capacity, int n_worker)
-  output : Tensor(out)
-  infer_meta :
-    func : LimitByCapacityInferMeta
-  kernel :
-    func : limit_by_capacity
-    data_type : expert_count
 
 - op : linspace
   args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
@@ -960,6 +952,7 @@
     param: [seed]
   kernel:
     func: seed
+  traits : pir::SideEffectTrait
 
 - op : send_and_recv
   args : (Tensor[] x, str message_name, str[] send_var_name, str[] recv_var_name, int trainer_id = 0, str mode="forward", str[] endpoints={"127.0.0.1:6164"}, str[] next_endpoints={"127.0.0.1:6164"}, str[] previous_endpoints={"127.0.0.1:6164"})
@@ -1034,15 +1027,7 @@
      func: shuffle_batch
      data_type: x
   backward : shuffle_batch_grad
-
-- op : shuffle_channel
-  args : (Tensor x, int group = 1)
-  output : Tensor(out)
-  infer_meta :
-    func : ShuffleChannelInferMeta
-  kernel :
-    func : shuffle_channel
-  backward : shuffle_channel_grad
+  traits : pir::SideEffectTrait
 
 - op : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)

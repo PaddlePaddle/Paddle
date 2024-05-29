@@ -34,6 +34,7 @@
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
 #include "paddle/cinn/optim/if_fusion.h"
+#include "paddle/cinn/optim/rearrange_load_instruction.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
@@ -850,6 +851,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     }
     // 4.Apply low level pass
     func = optim::Optimize(Expr(func), target_, false).as_lowered_func_ref();
+    optim::RearrangeLoadInstruction(&(func->body));
     lowered_funcs.push_back(std::move(func));
   }
 
@@ -994,13 +996,21 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     }
 
     // Insert output tensors into function arg
-    if (!expr.as_tensor_ref()->buffer.defined() ||
-        this->target_ != cinn::common::DefaultNVGPUTarget()) {
-      op_func_arg_tensors->push_back(expr.as_tensor_ref());
-      expr.as_tensor_ref()->WithBuffer();
-    } else {
-      op_func_arg_tensors->push_back(expr.as_tensor_ref());
-    }
+    target_.arch.Match(
+        [&](common::NVGPUArch) {
+          if (!expr.as_tensor_ref()->buffer.defined()) {
+            op_func_arg_tensors->push_back(expr.as_tensor_ref());
+            expr.as_tensor_ref()->WithBuffer();
+          } else {
+            op_func_arg_tensors->push_back(expr.as_tensor_ref());
+          }
+        },
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) {
+          op_func_arg_tensors->push_back(expr.as_tensor_ref());
+          expr.as_tensor_ref()->WithBuffer();
+        });
   }
 
   VLOG(4) << "op_func_arg_tensors.size(): " << op_func_arg_tensors->size();

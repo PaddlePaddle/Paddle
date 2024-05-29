@@ -1304,6 +1304,40 @@
   optional: scale, bias
   inplace : (y_grad -> x_grad)
 
+- backward_op : gru_grad
+  forward: gru (Tensor input, Tensor h0, Tensor weight, Tensor bias, str activation = "tanh",
+    str gate_activation = "sigmoid", bool is_reverse = false, bool origin_mode = false, bool is_test=false) ->
+    Tensor (batch_gate), Tensor (batch_reset_hidden_prev), Tensor (batch_hidden),
+    Tensor (hidden)
+  args: (Tensor input, Tensor h0, Tensor weight, Tensor bias, Tensor batch_gate,
+    Tensor batch_reset_hidden_prev, Tensor batch_hidden, Tensor hidden,
+    Tensor hidden_grad, str activation = "tanh",
+    str gate_activation = "sigmoid", bool is_reverse = false, bool origin_mode = false, bool is_test=false)
+  output: Tensor(input_grad), Tensor(h0_grad), Tensor(weight_grad), Tensor(bias_grad)
+  infer_meta:
+    func: GruGradInferMeta
+    param: [input, h0, weight, bias]
+  kernel:
+    func: gru_grad
+    data_type: hidden_grad
+  optional: h0, bias
+  no_need_buffer: input, bias
+
+- backward_op : gru_unit_grad
+  forward: gru_unit (Tensor input, Tensor hidden_prev, Tensor weight, Tensor bias, int activation
+    = 2, int gate_activation = 1, bool origin_mode = false) -> Tensor (gate), Tensor (reset_hidden_prev), Tensor (hidden)
+  args: (Tensor input, Tensor hidden_prev, Tensor weight, Tensor bias, Tensor gate, Tensor reset_hidden_prev, Tensor hidden_grad,
+    int activation, int gate_activation, bool origin_mode)
+  output: Tensor (input_grad), Tensor (hidden_prev_grad), Tensor (weight_grad), Tensor (bias_grad)
+  infer_meta:
+    func: GruUnitGradInferMeta
+    param : [input, hidden_prev, weight, bias]
+  kernel:
+    func: gru_unit_grad
+    data_type: hidden_grad
+  optional: bias
+  no_need_buffer: bias
+
 - backward_op : gumbel_softmax_grad
   forward : gumbel_softmax (Tensor x, float temperature, bool hard, int axis) -> Tensor(out)
   args : (Tensor out, Tensor out_grad, int axis)
@@ -2563,6 +2597,16 @@
   kernel:
     func: set_value_grad
     param: [out_grad, starts, ends, steps, axes, decrease_axes, none_axes]
+
+- backward_op : shuffle_channel_grad
+  forward : shuffle_channel (Tensor x, int group = 1) -> Tensor(out)
+  args : (Tensor out_grad, int group = 1)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out_grad]
+  kernel :
+    func : shuffle_channel_grad
 
 - backward_op : sigmoid_cross_entropy_with_logits_grad
   forward : sigmoid_cross_entropy_with_logits (Tensor x, Tensor label, Tensor pos_weight, bool normalize=false, int ignore_index=-100) -> Tensor(out)
