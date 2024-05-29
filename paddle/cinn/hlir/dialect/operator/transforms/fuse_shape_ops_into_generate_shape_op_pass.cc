@@ -108,7 +108,7 @@ bool MakeGenerateShapeOpAttribute(
     const std::vector<pir::Value>& origin_inputs,
     std::vector<pir::Value>* minimal_inputs,
     std::vector<pir::Attribute>* output_dim_expr_attrs,
-    SymbolBindings* symbol_bindings) {
+    GenerateShapeOp::SymbolBindings* symbol_bindings) {
   const auto& shape_or_data_dim_exprs = ShapeOrDataDimExprs4Value(output_shape);
   ExprVec data_vec =
       paddle::dialect::details::GetExprVecFromData(shape_or_data_dim_exprs);
@@ -304,7 +304,7 @@ std::optional<pir::Value> GetOutOfRewrittenGenerateShapeOp(
   };
 
   std::vector<pir::Attribute> output_dim_expr_attrs{};
-  SymbolBindings symbol_bindings{};
+  GenerateShapeOp::SymbolBindings symbol_bindings{};
   bool success = MakeGenerateShapeOpAttribute(rewriter->ir_context(),
                                               LocalDimExprs4Value,
                                               shape,
