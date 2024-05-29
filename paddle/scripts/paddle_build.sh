@@ -3637,11 +3637,13 @@ function clang-tidy_check() {
 
     modified_files=$(git diff --name-only test..upstream/develop)
     diff_files=()
+    num_diff_files=0
 
     for file in $modified_files
     do
         if [[ $file == *.cpp || $file == *.cc || $file == *.cxx || $file == *.c++ || $file == *.h || $file == *.hpp || $file == *.hh || $file == *.hxx || $file == *.h++ ]]; then
             diff_files+=($file)
+            num_diff_files+=1
         fi
     done
 
@@ -3651,6 +3653,7 @@ function clang-tidy_check() {
     cd ${PADDLE_ROOT}
     for file in ${diff_files}
     do
+        echo "正在检测的文件路径为：${PADDLE_ROOT}/${file}"
         python ./tools/codestyle/clang-tidy.py -p=build -j=10 \
         -clang-tidy-binary=clang-tidy \
         -extra-arg=-Wno-unknown-warning-option \
@@ -3675,7 +3678,7 @@ function clang-tidy_check() {
         -extra-arg=-Wno-overloaded-virtual  \
         -extra-arg=-Wno-defaulted-function-deleted  \
         -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor  \
-        -extra-arg=-Wno-return-type-c-linkage ${file}
+        -extra-arg=-Wno-return-type-c-linkage ${PADDLE_ROOT}/${file}
         check_error=$?
         if [ ${check_error} != 0 ];then
             break
