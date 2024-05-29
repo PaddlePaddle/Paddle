@@ -48,7 +48,6 @@ std::unordered_set<std::string> dynamic_shape_blacklist = {
     "pd_op.batch_norm",
     "pd_op.batch_norm_",
     "pd_op.bmm",
-    "pd_op.elu",
     "pd_op.flatten",
     "pd_op.instance_norm",
     "pd_op.one_hot"};
@@ -353,15 +352,15 @@ std::vector<pir::Value> DecompProgram::get_dst_vars() {
 bool DecompProgram::enable_decomp_by_filter(const std::string& op_name) {
   bool flag = true;
 
-  if (whitelist_.size() > 0) {
+  if (!whitelist_.empty()) {
     if (whitelist_.find(op_name) == whitelist_.end()) {
       flag = false;
     }
   }
   auto from_flag_blacklist = StringSplit(FLAGS_prim_forward_blacklist);
-  if (from_flag_blacklist.size() > 0)
+  if (!from_flag_blacklist.empty())
     blacklist_.insert(from_flag_blacklist.begin(), from_flag_blacklist.end());
-  if (blacklist_.size() > 0 && blacklist_.find(op_name) != blacklist_.end())
+  if (!blacklist_.empty() && blacklist_.find(op_name) != blacklist_.end())
     flag = false;
   return flag;
 }

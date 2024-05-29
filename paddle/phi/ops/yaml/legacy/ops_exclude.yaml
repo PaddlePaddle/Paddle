@@ -1,0 +1,68 @@
+# These operators have been unified for both dynamic and static modes in the new IR and have been moved to the 'ops.yaml'.
+# However, these operators are inconsistent between dynamic and static modes in the old IR.
+# So when generating static graph operator definitions from ’ops.yaml‘ in the old IR, these operators need to be skipped
+# to avoid generating duplicate or incorrect definitions.
+# This file should be removed after the old IR is deprecated.
+
+- all
+- amax
+- amin
+- any
+- c_allgather
+- c_allreduce_max
+- c_allreduce_min
+- c_allreduce_prod
+- c_allreduce_sum
+- c_broadcast
+- c_concat
+- c_identity
+- c_reduce_sum
+- c_sync_calc_stream
+- c_sync_comm_stream
+- channel_shuffle
+- conv2d_transpose
+- conv2d_transpose_bias
+- copy_to
+- decode_jpeg
+- deformable_conv
+- depthwise_conv2d_transpose
+- dequantize_log
+- disable_check_model_nan_inf
+- dropout
+- empty_like
+- enable_check_model_nan_inf
+- eye
+- frobenius_norm
+- full_
+- full_batch_size_like
+- full_like
+- fused_batch_norm_act
+- fused_bn_add_activation
+- fused_multi_transformer
+- fused_softmax_mask
+- fused_softmax_mask_upper_triangle
+- hsigmoid_loss
+- matrix_rank
+- matrix_rank_tol
+- mean
+- memcpy_d2h
+- memcpy_h2d
+- mish
+- norm
+- one_hot
+- ones
+- ones_like
+- pool2d
+- pool3d
+- read_file
+- repeat_interleave_with_tensor_index
+- rnn
+- rrelu
+- set_value_with_tensor
+- strided_slice
+- swish
+- sync_batch_norm_
+- trans_layout
+- unpool
+- zeros
+- zeros_like

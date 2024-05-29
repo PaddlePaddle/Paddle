@@ -34,5 +34,18 @@ class DequantizeFunctor {
                   DenseTensor* out);
 };
 
+template <typename Context, typename T>
+class ChannelDequantizeFunctor {
+ public:
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor* in,
+                  const DenseTensor** scales,
+                  const int scale_num,
+                  T max_range,
+                  const int quant_axis,
+                  const int x_num_col_dims,
+                  DenseTensor* out);
+};
+
 }  // namespace funcs
 }  // namespace phi

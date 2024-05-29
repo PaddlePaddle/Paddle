@@ -47,6 +47,9 @@ void GetUsedExternalValueImpl(
       for (auto value : block.args()) {
         defined_values.insert(value);
       }
+      for (const auto& [_, value] : block.kwargs()) {
+        defined_values.insert(value);
+      }
     }
     for (auto& block : region) {
       for (auto& inner_op : block) {
