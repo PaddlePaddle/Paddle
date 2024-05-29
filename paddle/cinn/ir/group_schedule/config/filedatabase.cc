@@ -14,13 +14,25 @@
 
 #include "paddle/cinn/ir/group_schedule/config/filedatabase.h"
 
+#include <sys/stat.h>
+
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/util/json_util.h>
 #include <fstream>
 
 #include "paddle/cinn/utils/multi_threading.h"
 
+#define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
 PD_DECLARE_string(cinn_tile_config_filename_label);
+static bool PathExists(const std::string& path) {
+  struct stat statbuf;
+  if (stat(path.c_str(), &statbuf) != -1) {
+    if (S_ISDIR(statbuf.st_mode)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 namespace cinn {
 namespace ir {
