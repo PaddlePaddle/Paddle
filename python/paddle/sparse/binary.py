@@ -459,7 +459,7 @@ def mask_as(x, mask, name=None):
     r"""
     Filter the input dense tensor `x` using the `indices` of the sparse matrix `mask`,
     which in turn generates a sparse matrix of the corresponding format.
-    The input `x` and `mask` must have the same shape, and the sparse tensor returned has the save indices as `mask`
+    The input `x` and `mask` must have the same shape, and the sparse tensor returned has the same indices as `mask`
     even `zero` values exist in the coresponding indices.
 
     Args:
