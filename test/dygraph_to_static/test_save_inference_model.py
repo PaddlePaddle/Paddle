@@ -91,7 +91,7 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
 
     @test_ast_only
     @test_legacy_and_pir
-    def _test_save_inference_model(self):
+    def test_save_inference_model(self):
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
         paddle.seed(SEED)
