@@ -1059,6 +1059,7 @@
   infer_meta :
     func :  KernelWithXShapeInferMeta
     param : [xshape, out_grad]
+    spmd_rule : FlattenGradInferSpmd
   kernel :
     func : flatten_grad
     data_type : out_grad
