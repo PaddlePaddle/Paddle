@@ -25,8 +25,7 @@ namespace paddle::framework::ir {
 size_t PDPattern::id_ = 0UL;
 
 #ifdef PADDLE_WITH_TENSORRT
-}  // namespace paddle::framework::ir 
-namespace paddle::framework::ir::patterns {
+namespace patterns {
 thread_local std::unordered_map<std::string, size_t> KeyCounter::dic_;
 }
 #endif
@@ -5466,4 +5465,4 @@ void patterns::SparseConvOptimPartern::operator()() {
       .LinksTo({sp_conv3d_out});
 }
 
-}  // namespace paddle::framework::ir::patterns 
+}  // namespace paddle::framework::ir
