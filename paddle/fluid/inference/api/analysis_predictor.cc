@@ -28,6 +28,7 @@
 #include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/feed_hook.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
@@ -1443,7 +1444,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to set feed";
     return false;
   }
-
+  if (pir_program_) {
+    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
+  }
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
@@ -1518,7 +1521,9 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     LOG(ERROR) << "fail to set feed";
     return false;
   }
-
+  if (pir_program_) {
+    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
+  }
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
