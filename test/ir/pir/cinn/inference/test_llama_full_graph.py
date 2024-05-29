@@ -129,22 +129,20 @@ class TestLlamaModel(unittest.TestCase):
         )
         ops = {op.name() for op in main_program.global_block().ops}
         ops = list(ops)
-        ops.sort()
-        print("ops************ \n", ops)
+        assert "pd_op.sum" in ops
+        assert "pd_op.sum_grad" not in ops
         return res[0], np.abs(res[1]).mean()
 
     def test_static(self):
         ref = [90.609924, 0.16003144]
         prim_res = self.run_static(mode="prim")
-        print(prim_res)
-        # breakpoint()
         for i in range(len(ref)):
             np.testing.assert_allclose(
                 ref[i],
                 prim_res[i],
                 rtol=1e-05,
                 atol=1e-05,
-                err_msg=f"{i}th value check failed******",
+                err_msg=f"***** {i}th value check failed ******",
             )
 
 

@@ -288,7 +288,7 @@ void MultiTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
   }
   TensorCopy(tmp_root, platform::CPUPlace(), root_tensor);
 }
-void MultiTrainer::MergeWorkerVars(void) {
+void MultiTrainer::MergeWorkerVars() {
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable* root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {

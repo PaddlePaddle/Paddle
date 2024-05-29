@@ -64,7 +64,7 @@ from .side_effects import (
     SideEffectRestorer,
     SideEffects,
 )
-from .tracker import BuiltinTracker, DummyTracker
+from .tracker import BuiltinTracker, DummyTracker, SymbolicOperationTracker
 from .variables import (
     ConstantVariable,
     DictVariable,
@@ -73,7 +73,7 @@ from .variables import (
     NullVariable,
     PaddleLayerVariable,
     ParameterVariable,
-    SymbolicIntVariable,
+    SymbolicVariable,
     TensorVariable,
     VariableBase,
     VariableFactory,
@@ -88,7 +88,7 @@ def convert_to_meta(inputs: Any):
     """
 
     def func(x):
-        if isinstance(x, (TensorVariable, SymbolicIntVariable)):
+        if isinstance(x, (TensorVariable, SymbolicVariable)):
             return x.meta
         if isinstance(x, VariableBase):
             return x.get_py_value()
@@ -103,7 +103,7 @@ def convert_to_symbol(inputs: Any):
     """
 
     def func(x):
-        if isinstance(x, (TensorVariable, SymbolicIntVariable)):
+        if isinstance(x, (TensorVariable, SymbolicVariable)):
             return x.get_symbol()
         if isinstance(x, VariableBase):
             return x.get_py_value()
@@ -118,7 +118,7 @@ def record_symbols(SIR, *args, **kwargs):
     non_params = set()
 
     def fn(value):
-        if isinstance(value, (TensorVariable, SymbolicIntVariable)):
+        if isinstance(value, (TensorVariable, SymbolicVariable)):
             symbol_meta_map[value.get_symbol()] = value.meta
             if isinstance(value, ParameterVariable):
                 params.add(value.get_symbol())
@@ -414,16 +414,16 @@ class FunctionGraph:
             found = False
             for variable in self.input_variables:
                 if (
-                    isinstance(variable, (TensorVariable, SymbolicIntVariable))
+                    isinstance(variable, (TensorVariable, SymbolicVariable))
                     and variable.get_symbol().name == name
                 ):
-                    if isinstance(variable, SymbolicIntVariable):
+                    if isinstance(variable, SymbolicVariable):
                         self.pycode_gen.gen_load_object(
                             paddle.to_tensor, "___paddle_to_tensor"
                         )
                     variable.tracker.gen_instructions(self.pycode_gen)
                     found = True
-                    if isinstance(variable, SymbolicIntVariable):
+                    if isinstance(variable, SymbolicVariable):
                         self.pycode_gen.gen_call_function(1)
                     break
             assert found, f"can't find input {name} in SIR."
@@ -580,13 +580,20 @@ class FunctionGraph:
         try:
             return inner_error_default_handler(
                 self.symbolic_call, message_handler
-            )(ast_infer_meta, compute_fn, static_function, *args, **kwargs)
+            )(
+                ast_infer_meta,
+                compute_fn,
+                static_function,
+                False,
+                *args,
+                **kwargs,
+            )
         except Exception as e:
             log(3, f"[call AST] {e}")
             return None
 
     def symbolic_call(
-        self, infer_meta_fn, compute_fn, func, is_symbolic_int, *args, **kwargs
+        self, infer_meta_fn, compute_fn, func, is_symbolic_var, *args, **kwargs
     ):
         """
         Using infer_meta_fn and compute_fn convert func to symbolic function.
@@ -612,14 +619,21 @@ class FunctionGraph:
 
         log(3, f"         inputs : {inputs_symbols}", "\n")
 
-        var_cls = SymbolicIntVariable if is_symbolic_int else TensorVariable
+        if is_symbolic_var:
+            var_cls = SymbolicVariable
+            tracker = SymbolicOperationTracker(
+                list(args) + list(kwargs.values()), func
+            )
+        else:
+            var_cls = TensorVariable
+            tracker = DummyTracker(list(args) + list(kwargs.values()))
         outputs = map_if(
             out_metas,
             pred=lambda x: isinstance(x, MetaInfo),
             true_fn=lambda x: var_cls(
                 x,
                 self,
-                tracker=DummyTracker(list(args) + list(kwargs.values())),
+                tracker=tracker,
             ),
             false_fn=lambda x: x,
         )
@@ -649,9 +663,15 @@ class FunctionGraph:
                     stmt_stacks,
                 )  # symbolic only contain symbols.
                 self._put_inner(outputs)
-            return VariableFactory.from_value(
-                outputs, self, DummyTracker(list(args) + list(kwargs.values()))
-            )
+            if is_symbolic_var:
+                # compute_fn should be call_method
+                tracker = SymbolicOperationTracker(
+                    list(args) + list(kwargs.values()), func
+                )
+            else:
+                tracker = DummyTracker(list(args) + list(kwargs.values()))
+
+            return VariableFactory.from_value(outputs, self, tracker)
         else:
             return ConstantVariable.wrap_literal(None, self)
 
@@ -707,7 +727,7 @@ class FunctionGraph:
 
     def _find_tensor_outputs(
         self, outputs: list[VariableBase]
-    ) -> OrderedSet[TensorVariable | SymbolicIntVariable]:
+    ) -> OrderedSet[TensorVariable | SymbolicVariable]:
         """
         Return all TensorVariable. find TensorVariables participating in networking from the output Variables
 
@@ -717,9 +737,9 @@ class FunctionGraph:
 
         def is_graph_output(
             var,
-        ) -> TypeGuard[TensorVariable | SymbolicIntVariable]:
+        ) -> TypeGuard[TensorVariable | SymbolicVariable]:
             return isinstance(var.tracker, DummyTracker) and isinstance(
-                var, (TensorVariable, SymbolicIntVariable)
+                var, (TensorVariable, SymbolicVariable)
             )
 
         def collect_related_dummy_tensor(var):
@@ -734,7 +754,7 @@ class FunctionGraph:
             return []
 
         output_tensors: OrderedSet[
-            TensorVariable | SymbolicIntVariable
+            TensorVariable | SymbolicVariable
         ] = OrderedSet()
         # Find Tensor Variables from outputs.
         for output in outputs:

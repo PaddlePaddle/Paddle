@@ -60,6 +60,11 @@ void Tensor::Reshape(const std::vector<int> &shape) {
           "No tensor called [%s] in the runtime scope", name_));
   auto *tensor = var->GetMutable<phi::DenseTensor>();
   tensor->Resize(common::make_ddim(shape));
+#ifdef PADDLE_WITH_DNNL
+  if (tensor->layout() == phi::DataLayout::ONEDNN) {
+    tensor->set_layout(phi::DataLayout::ANY);
+  }
+#endif
 }
 
 void Tensor::ReshapeStrings(const size_t &shape) {
@@ -207,6 +212,11 @@ void Tensor::CopyFromCpu(const T *data) {
   if (place_ == PlaceType::kCPU) {
     auto *t_data = tensor->mutable_data<T>(paddle::platform::CPUPlace());
     std::memcpy(static_cast<void *>(t_data), data, ele_size);
+#ifdef PADDLE_WITH_DNNL
+    if (tensor->layout() == phi::DataLayout::ONEDNN) {
+      tensor->set_layout(phi::DataLayout::ANY);
+    }
+#endif
   } else if (place_ == PlaceType::kGPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
@@ -672,7 +682,12 @@ template PD_INFER_DECL bfloat16 *Tensor::mutable_data<bfloat16>(
 template PD_INFER_DECL bool *Tensor::mutable_data<bool>(PlaceType place);
 
 Tensor::Tensor(void *scope, const void *device_contexts)
-    : scope_{scope}, device_contexts_(device_contexts) {}
+    : dtype_(DataType::FLOAT16),
+      input_or_output_(false),
+      scope_{scope},
+      device_contexts_(device_contexts),
+      place_(PlaceType::kCPU),
+      device_(0) {}
 
 template <typename T>
 void *Tensor::FindTensor() const {
@@ -821,6 +836,7 @@ template void Tensor::ORTCopyToCpu<int32_t>(int32_t *data) const;
 template void Tensor::ORTCopyToCpu<uint8_t>(uint8_t *data) const;
 template void Tensor::ORTCopyToCpu<int8_t>(int8_t *data) const;
 template void Tensor::ORTCopyToCpu<float16>(float16 *data) const;
+template void Tensor::ORTCopyToCpu<bfloat16>(bfloat16 *data) const;
 #endif
 
 namespace experimental {

@@ -571,6 +571,17 @@
     data_type : q
   optional : q_max, k_max, v_max, qk_max, qkv_max
 
+- op : qkv_unpack_mha
+  args : (Tensor q, Tensor k, Tensor v, Tensor src_mask)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [q]
+  kernel :
+    func : qkv_unpack_mha
+    data_type : q
+  optional : src_mask
+
 - op : quantize_xpu
   args : (Tensor x, DataType out_dtype, float scale = 1.0f)
   output : Tensor(y)
@@ -654,6 +665,16 @@
     data_type : query
   optional : mask
   support_dygraph_mode : true
+
+- op : weight_only_linear_xpu
+  args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype, int arch = 80, int group_size = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : WeightOnlyLinearInferMeta
+  kernel :
+    func : weight_only_linear_xpu
+    data_type : x
+  optional : bias
 
 - op : yolo_box_xpu
   args : (Tensor x, Tensor x_max, Tensor grid, Tensor stride, Tensor anchor_grid, float offset)
