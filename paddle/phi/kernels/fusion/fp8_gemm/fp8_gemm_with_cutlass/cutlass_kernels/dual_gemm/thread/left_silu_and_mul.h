@@ -145,7 +145,7 @@ class LeftSiLUAndMul {
     auto silu_lhs = silu(convert_lhs);
     // return ElementOutput(mul(silu_lhs, convert_rhs));
     auto tmp = mul(silu_lhs, convert_rhs);
-    return compute_to_output(mul(alpha_, tmp));
+    return ElementOutput(mul(alpha_, tmp));
   }
 };
 
