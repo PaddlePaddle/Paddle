@@ -26,7 +26,7 @@ class TestQuantizeOp(OpTest):
         self.scale = 255.0
         self.shift = 0.0
         self.input_size = [1, 1, 5, 5]  # Naive nChw16c
-        self.is_negative = False
+        self.is_negative_input = False
         self.output_format = 'NCHW'
         self.bfloat16 = False
         self.set_scale()
@@ -38,7 +38,7 @@ class TestQuantizeOp(OpTest):
         self.prepare_output()
 
     def prepare_input(self):
-        if self.is_negative:
+        if self.is_negative_input:
             # input data values are from interval [-1.0, 1.0)
             self.input = (
                 2 * np.random.random_sample(self.input_size) - 1
@@ -51,7 +51,7 @@ class TestQuantizeOp(OpTest):
 
         self.inputs = {'Input': OpTest.np_dtype_to_base_dtype(self.input)}
         self.attrs = {
-            'is_negative_input': self.is_negative,
+            'is_negative_input': self.is_negative_input,
             'Scale': self.scale,
             'Shift': self.shift,
             'output_format': self.output_format,
@@ -59,7 +59,7 @@ class TestQuantizeOp(OpTest):
         }
 
     def prepare_output(self):
-        if self.is_negative and self.shift == 0.0:
+        if self.is_negative_input and self.shift == 0.0:
             input_data_type = 'int8'
         else:
             input_data_type = 'uint8'
@@ -102,7 +102,7 @@ class TestQuantizeOp1(TestQuantizeOp):
         self.scale = 127.0
 
     def set_is_negative(self):
-        self.is_negative = True
+        self.is_negative_input = True
 
 
 class TestQuantizeOp2(TestQuantizeOp):
@@ -110,7 +110,7 @@ class TestQuantizeOp2(TestQuantizeOp):
         self.scale = 255.0
 
     def set_is_negative(self):
-        self.is_negative = False
+        self.is_negative_input = False
 
 
 # 2-dim input
@@ -120,7 +120,7 @@ class TestQuantizeOpShift_NCHW_2_P(TestQuantizeOp):
         self.output_format = 'NCHW'
 
     def set_is_negative(self):
-        self.is_negative = False
+        self.is_negative_input = False
 
     def set_scale(self):
         self.scale = 255.0
@@ -136,7 +136,7 @@ class TestQuantizeOpShift_NCHW_2_P(TestQuantizeOp):
 # N - negative input
 class TestQuantizeOpShift_NCHW_2_N(TestQuantizeOpShift_NCHW_2_P):
     def set_is_negative(self):
-        self.is_negative = True
+        self.is_negative_input = True
 
     def set_scale(self):
         self.scale = 127.0

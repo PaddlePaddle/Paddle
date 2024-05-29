@@ -24,12 +24,16 @@ using dnnl::memory;
 template <typename T, typename Context>
 void QuantOpKernel(const Context& dev_ctx,
                    const DenseTensor& input,
-                   bool is_negative_input,
                    float scale,
                    float shift,
                    const std::string& output_format,
                    bool bfloat16,
                    DenseTensor* output) {
+  bool is_negative_input =
+      dev_ctx.HasDnnAttr("is_negative_input")
+          ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_negative_input"))
+          : false;
+
   const auto quantization_shift = static_cast<int32_t>(shift);
   const bool with_scale = scale != 1.0f;
   const bool with_shift = quantization_shift != 0.0f;
