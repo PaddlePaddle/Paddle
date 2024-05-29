@@ -2829,5 +2829,5 @@ void PSGPUWrapper::PushSparseGrad(const paddle::platform::Place& place,
 }
 
 }  // namespace framework
-}  // end namespace paddle
+}  // namespace paddle
 #endif

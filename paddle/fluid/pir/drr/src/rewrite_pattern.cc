@@ -26,8 +26,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/operation.h"
 
-namespace paddle {
-namespace drr {
+namespace paddle::drr {
 
 DrrRewritePattern::DrrRewritePattern(
     const std::string& pattern_name,
@@ -634,5 +633,4 @@ std::unique_ptr<DrrRewritePattern> DrrPatternBase::Build(
                                              drr_pattern->shared_from_this());
 }
 
-}  // namespace drr
-}  // namespace paddle
+}  // namespace paddle::drr 

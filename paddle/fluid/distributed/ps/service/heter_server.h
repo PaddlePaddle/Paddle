@@ -682,5 +682,5 @@ class HeterServer {
   int ready_;
 };
 
-}  // end namespace distributed
-}  // end namespace paddle
+}  // namespace distributed
+}  // namespace paddle

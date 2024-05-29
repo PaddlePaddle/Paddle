@@ -53,6 +53,6 @@ void BindMetrics(py::module* m) {
            &framework::Metric::GetMetricNameList,
            py::call_guard<py::gil_scoped_release>());
 }  // end Metrics
-}  // end namespace pybind
-}  // end namespace paddle
+}  // namespace pybind
+}  // namespace paddle
 #endif

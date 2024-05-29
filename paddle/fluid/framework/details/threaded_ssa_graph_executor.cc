@@ -21,9 +21,7 @@
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy,
     const std::vector<Scope *> &local_scopes,
@@ -406,6 +404,4 @@ void ThreadedSSAGraphExecutor::RecordOps(OpHandleBase *op) {
     traced_ops_.emplace_back(op);
   }
 }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details 

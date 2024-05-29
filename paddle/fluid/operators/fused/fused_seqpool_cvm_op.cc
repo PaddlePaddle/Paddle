@@ -15,8 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fused_seqpool_cvm_op.h"
 
 #include <string>
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class FusedSeqpoolCVMOp : public framework::OperatorWithKernel {
  public:
@@ -276,8 +275,7 @@ class FusedSeqpoolCVMGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators 
 
 namespace ops = paddle::operators;
 

@@ -121,5 +121,5 @@ class IndexWrapper {
   std::unordered_map<std::string, TreePtr> tree_map;
 };
 
-}  // end namespace distributed
-}  // end namespace paddle
+}  // namespace distributed
+}  // namespace paddle

@@ -1155,7 +1155,7 @@ class BoxHelper {
   bool get_random_replace_done_ = false;
 };
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 
 #include "paddle/fluid/framework/fleet/box_wrapper_impl.h"

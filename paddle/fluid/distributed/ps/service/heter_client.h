@@ -253,5 +253,5 @@ class HeterClient {
   int trainer_id_;
 };
 
-}  // end namespace distributed
-}  // end namespace paddle
+}  // namespace distributed
+}  // namespace paddle

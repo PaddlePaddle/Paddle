@@ -345,6 +345,6 @@ void BoxWrapper::AddReplaceFeasign(boxps::PSAgentBase* p_agent,
   VLOG(0) << "End AddReplaceFeasign";
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif

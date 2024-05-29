@@ -25,9 +25,7 @@
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
     ExecutionStrategy strategy,
@@ -229,6 +227,4 @@ bool ScopeBufferedSSAGraphExecutor::NeedCreateLocalExeScope() {
   return drop_scope_counter_ == 0;
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details 

@@ -15,9 +15,7 @@
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class SSAGraphBuilderWithChecker : public ir::Pass {
  protected:
@@ -94,9 +92,7 @@ class SSAGraphBuilderWithChecker : public ir::Pass {
   }
 };
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir 
 
 REGISTER_PASS(multi_devices_check_pass,
               paddle::framework::ir::SSAGraphBuilderWithChecker)

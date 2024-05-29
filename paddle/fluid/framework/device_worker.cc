@@ -19,10 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 namespace phi {
 class DenseTensor;
-}  // namespace phi
+}  // namespace phi 
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class Scope;
 
@@ -496,5 +495,4 @@ void DeviceWorker::DumpField(const Scope& scope,
   writer_.Flush();
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework 

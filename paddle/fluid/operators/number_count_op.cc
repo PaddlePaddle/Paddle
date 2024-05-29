@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/operators/number_count_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class NumberCountOp : public framework::OperatorWithKernel {
  public:
@@ -52,8 +51,7 @@ class NumberCountOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators 
 
 namespace ops = paddle::operators;
 

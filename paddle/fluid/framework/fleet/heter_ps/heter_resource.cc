@@ -280,6 +280,6 @@ void HeterPsResource::set_multi_mf(int multi_mf_dim, int max_mf_dim) {
           << " max_mf_dim_: " << max_mf_dim_;
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif

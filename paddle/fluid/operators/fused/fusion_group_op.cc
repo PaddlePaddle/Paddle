@@ -16,8 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/infermeta/multiary.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class FusionGroupOp : public framework::OperatorWithKernel {
  public:
@@ -59,8 +58,7 @@ multiple operators into one. It supports several types:
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators 
 
 DECLARE_INFER_SHAPE_FUNCTOR(fusion_group,
                             FusionGroupInferShapeFunctor,

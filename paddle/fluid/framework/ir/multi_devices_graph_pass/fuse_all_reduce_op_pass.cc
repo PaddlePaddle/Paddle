@@ -21,9 +21,7 @@
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class FuseAllReduceOpPass : public ir::Pass {
  protected:
@@ -378,9 +376,7 @@ class FuseAllReduceOpPass : public ir::Pass {
   }
 };
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir 
 
 REGISTER_PASS(fuse_all_reduce_op_pass,
               paddle::framework::ir::FuseAllReduceOpPass)

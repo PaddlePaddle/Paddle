@@ -20,14 +20,13 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 size_t PDPattern::id_ = 0UL;
 
 #ifdef PADDLE_WITH_TENSORRT
-namespace patterns {
+}  // namespace paddle::framework::ir 
+namespace paddle::framework::ir::patterns {
 thread_local std::unordered_map<std::string, size_t> KeyCounter::dic_;
 }
 #endif
@@ -5467,6 +5466,4 @@ void patterns::SparseConvOptimPartern::operator()() {
       .LinksTo({sp_conv3d_out});
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir::patterns 

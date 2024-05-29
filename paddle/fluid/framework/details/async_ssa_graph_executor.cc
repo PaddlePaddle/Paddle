@@ -20,9 +20,7 @@
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 inline void InitVarsInScope(const std::vector<VarInfo> &var_infos,
                             Scope *scope,
@@ -203,6 +201,4 @@ FetchResultType AsyncSSAGraphExecutor::Run(
   return ret;
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details 

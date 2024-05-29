@@ -23,8 +23,7 @@
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 // NOTE(dengkaipeng): Input(Out) is unnecessary in reduce_mean_grad
 // calcualtion, but will incur a reduce_mean_grad op after
@@ -89,8 +88,7 @@ class ReduceMeanDoubleGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
   }
 };
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceMeanGradNoNeedBufferVarInferer, "X");
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators 
 
 class __reduce_meanMaker__ : public ops::ReduceBaseOpMaker {
  protected:

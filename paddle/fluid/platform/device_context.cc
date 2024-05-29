@@ -33,8 +33,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 DeviceType Place2DeviceType(const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
@@ -261,5 +260,4 @@ IPUDeviceContext::~IPUDeviceContext() {}
 
 #endif
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform 

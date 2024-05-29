@@ -20,9 +20,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class AllReduceDepsPass : public ir::Pass {
  protected:
@@ -211,9 +209,7 @@ class AllReduceDepsPass : public ir::Pass {
     return vars;
   }
 };
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir 
 
 REGISTER_PASS(all_reduce_deps_pass, paddle::framework::ir::AllReduceDepsPass)
     .RequireGraphAttr(paddle::framework::details::kStaleProgramOpDescs);

@@ -257,6 +257,6 @@ class HashTable {
   size_t push_grad_value_size_;
   bool infer_mode_ = false;
 };
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif

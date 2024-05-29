@@ -344,6 +344,6 @@ class BlockRadixTopKRegister {
   unsigned int top_k_mask_;
 };
 
-};  // end namespace framework
-};  // end namespace paddle
+};  // namespace framework
+};  // namespace paddle
 #endif

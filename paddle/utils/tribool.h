@@ -44,7 +44,7 @@ namespace detail {
  */
 struct indeterminate_t {};
 
-}  // end namespace detail
+}  // namespace detail
 
 class tribool;
 
