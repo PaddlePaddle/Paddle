@@ -136,6 +136,7 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                     job_list.insert(-1, recv4_fwd_job)
                 else:
                     job_list.append(recv4_fwd_job)
+
                 fwd_job = core.Job("no_recv_" + fwd_job_name)
                 fwd_job.set_micro_batch_id(fwd_micro_batch_id)
                 fwd_job.set_event_to_wait(fwd_event)
@@ -161,13 +162,17 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                 and ("recv4_" + bwd_job_name) in self._types
                 and len(job_list) > 0
             ):
+                job_name = "recv4_" + bwd_job_name
+                if stage_id == 0 and micro_step == 0:
+                    job_name = job_name + "_with_sync"
                 print("======>recv_overlap for ", micro_step, flush=1)
                 bwd_event = "vpp_steady_bwd_" + str(bw_micro_step)
-                recv4_bwd_job = core.Job("recv4_" + bwd_job_name)
+                recv4_bwd_job = core.Job(job_name)
                 recv4_bwd_job.set_micro_batch_id(bwd_micro_batch_id)
                 recv4_bwd_job.set_event_to_record(bwd_event)
                 print("add event: ", bwd_event, flush=1)
                 job_list.insert(-1, recv4_bwd_job)
+
                 bwd_job = core.Job("no_recv_" + bwd_job_name)
                 bwd_job.set_micro_batch_id(bwd_micro_batch_id)
                 bwd_job.set_event_to_wait(bwd_event)

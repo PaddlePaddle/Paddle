@@ -1293,6 +1293,7 @@ def _split_and_replace_recv(types, sub_program_list):
     for i in range(len(sub_program_list)):
         no_recv_program = sub_program_list[i].clone()
         recv4_program = paddle.base.framework.Program()
+        recv4_program_with_sync = paddle.base.framework.Program()
         # Insert a record_stream_op to achieve cross-stream sync of subsequent recv_ops.
         with paddle.static.program_guard(recv4_program):
             paddle.full(shape=[1], fill_value=1.0)
@@ -1302,6 +1303,7 @@ def _split_and_replace_recv(types, sub_program_list):
             if op.type == "recv_v2":
                 recv_arg_name = op.output("Out")[0]
                 recv_var = no_recv_program.global_block().var(recv_arg_name)
+                recv_ring_id = int(op.attr("ring_id"))
 
                 _create_program(
                     no_recv_program.global_block(),
@@ -1316,6 +1318,28 @@ def _split_and_replace_recv(types, sub_program_list):
                     outputs={"out": recv_arg_name},  # unused
                     attrs={"name": recv_arg_name},
                 )
+
+                if types[i] == "backward0":
+                    _create_program(
+                        no_recv_program.global_block(),
+                        recv4_program_with_sync.global_block(),
+                        op,
+                    )
+                    recv4_program_with_sync._sync_with_cpp()
+
+                    recv4_program_with_sync.global_block().append_op(
+                        type="c_sync_comm_stream",
+                        inputs={'X': recv_arg_name},
+                        outputs={'Out': recv_arg_name},
+                        attrs={'ring_id': recv_ring_id},
+                    )
+
+                    recv4_program_with_sync.global_block().append_op(
+                        type="shadow_output",
+                        inputs={"x": recv_arg_name},
+                        outputs={"out": recv_arg_name},  # unused
+                        attrs={"name": recv_arg_name},
+                    )
 
                 no_recv_program.global_block()._remove_op(index, sync=False)
                 no_recv_program.global_block()._insert_op(
@@ -1342,6 +1366,12 @@ def _split_and_replace_recv(types, sub_program_list):
             no_recv_program._sync_with_cpp()
             rtn_types.append("no_recv_" + types[i])
             rtn_sub_program_list.append(no_recv_program)
+
+            if types[i] == "backward0":
+                recv4_program_with_sync._sync_with_cpp()
+                rtn_types.append("recv4_" + types[i] + "_with_sync")
+                rtn_sub_program_list.append(recv4_program_with_sync)
+
         rtn_types.append(types[i])
         rtn_sub_program_list.append(sub_program_list[i])
     return rtn_types, rtn_sub_program_list
