@@ -14,8 +14,12 @@
 from __future__ import annotations
 
 import collections
+import logging
+import time
 import warnings
 from collections.abc import Sequence
+from contextlib import contextmanager
+from functools import lru_cache
 from typing import Any
 
 from paddle import pir
@@ -112,6 +116,13 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.sigmoid",
     "pd_op.silu",
 ]
+
+
+@contextmanager
+def timer(name: str):
+    start = time.time()
+    yield
+    print(f"{name} cost {time.time() - start:.4f} s")
 
 
 class ValueWrapper:
@@ -660,3 +671,8 @@ def get_split_op(value):
         if op.name() == "builtin.split":
             return op
     return None
+
+
+@lru_cache
+def warning_once(message: str):
+    logging.warning(message)
