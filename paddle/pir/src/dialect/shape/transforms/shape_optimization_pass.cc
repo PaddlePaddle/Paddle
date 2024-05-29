@@ -359,4 +359,4 @@ void AddShapeOptimizationPass(
 
 }  // namespace pir::shape
 
-REGISTER_IR_PASS(shape_optimization_pass, pir::ShapeOptimizationPass);
+// REGISTER_IR_PASS(shape_optimization_pass, pir::ShapeOptimizationPass);
