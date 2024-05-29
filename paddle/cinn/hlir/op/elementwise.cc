@@ -19,7 +19,7 @@
 #include "absl/types/optional.h"
 #include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/common/type.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -366,8 +366,7 @@ Expr GetScalarExpr(const framework::NodeAttr::attr_t &attr) {
     }
     void operator()(const std::vector<cinn::dialect::SymbolBinding> &) {
       PADDLE_THROW(phi::errors::InvalidArgument(
-          "wrong type "
-          "std::vector<cinn::dialect::SymbolBinding>"));
+          "wrong type std::vector<cinn::dialect::SymbolBinding>"));
     }
   };
   absl::visit(Visitor{scalar}, attr);

@@ -972,7 +972,8 @@ std::future<int32_t> BrpcPsClient::PushDenseParam(const Region *regions,
   closure->add_promise(promise);
   std::future<int> fut = promise->get_future();
   static const int REGION_ASSIGN_BUFFER_SIZE = 1024 * 10;
-  static char region_assign_buffer[REGION_ASSIGN_BUFFER_SIZE];  // 用于数据补齐
+  // 用于数据补齐
+  static char region_assign_buffer[REGION_ASSIGN_BUFFER_SIZE];  // NOLINT
   // 开始多shard并行拷贝&请求
   for (size_t i = 0; i < request_call_num; ++i) {
     closure->request(i)->set_cmd_id(PS_PUSH_DENSE_PARAM);
@@ -1731,13 +1732,13 @@ void sparse_local_merge(ValueAccessor *accessor,
                         float *merge_data,
                         const float *another_data) {
   size_t col_num = accessor->GetAccessorInfo().update_dim;
-  float *merge_data_shell[col_num];
-  const float *another_data_shell[col_num];
+  std::vector<float *> merge_data_shell(col_num);
+  std::vector<const float *> another_data_shell(col_num);
   for (size_t i = 0; i < col_num; ++i) {
     merge_data_shell[i] = merge_data + i;
     another_data_shell[i] = another_data + i;
   }
-  accessor->Merge(merge_data_shell, another_data_shell, 1);
+  accessor->Merge(merge_data_shell.data(), another_data_shell.data(), 1);
 }
 
 int BrpcPsClient::PushSparseAsyncShardMerge(

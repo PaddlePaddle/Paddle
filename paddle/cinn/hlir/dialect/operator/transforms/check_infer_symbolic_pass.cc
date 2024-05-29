@@ -145,7 +145,8 @@ class BlockDimExprsAsserter {
   void AssertDimExprForOutput(pir::Operation* op) {  // NOLINT
     VLOG(5) << "Add assert for result of [ " << op->name() << " ]";
     if (op->num_results() == 0) return;
-    if (!op->HasInterface<paddle::dialect::InferSymbolicShapeInterface>()) {
+    if (!op->HasInterface<paddle::dialect::InferSymbolicShapeInterface>() ||
+        op->HasTrait<pir::SideEffectTrait>()) {
       LOG(INFO) << "skip the checking for [ " << op->name() << " ]";
       return;
     }

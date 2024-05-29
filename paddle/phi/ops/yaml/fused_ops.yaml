@@ -571,6 +571,17 @@
     data_type : q
   optional : q_max, k_max, v_max, qk_max, qkv_max
 
+- op : qkv_unpack_mha
+  args : (Tensor q, Tensor k, Tensor v, Tensor src_mask)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [q]
+  kernel :
+    func : qkv_unpack_mha
+    data_type : q
+  optional : src_mask
+
 - op : quantize_xpu
   args : (Tensor x, DataType out_dtype, float scale = 1.0f)
   output : Tensor(y)

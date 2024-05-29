@@ -1681,6 +1681,22 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
     }
   }
 #endif
+#if defined(PADDLE_WITH_XPU)
+  if (platform::is_xpu_place(place)) {
+    if (!GetPrivate()->IsStreamSafeCUDAAllocatorUsed()) {
+      return Alloc(place, size);
+    }
+    platform::XPUPlace p(place);
+    if (LIKELY(size > 0 && FLAGS_use_system_allocator == false)) {
+      XPUStream s = reinterpret_cast<XPUStream>(stream.id());
+      return GetPrivate()
+          ->GetAllocator(p, s, /* create_if_not_found = */ true)
+          ->Allocate(size);
+    } else {
+      return GetPrivate()->GetAllocator(p, size)->Allocate(size);
+    }
+  }
+#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   AllocatorFacadePrivate* m = GetPrivate();
   if (!m->IsStreamSafeCUDAAllocatorUsed() &&
@@ -1698,8 +1714,6 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
   } else {
     return m->GetAllocator(p, size)->Allocate(size);
   }
-#elif defined(PADDLE_WITH_XPU)
-  return GetAllocator(place)->Allocate(size);
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(
       "Not compiled with GPU or XPU or CustomDevice."));

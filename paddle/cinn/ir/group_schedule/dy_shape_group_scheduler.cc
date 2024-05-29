@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/ir/group_schedule/dy_shape_group_scheduler.h"
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/ir/group_schedule/config/database.h"
 #include "paddle/cinn/ir/group_schedule/tactic/compute_inline_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_first_general_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
@@ -103,8 +104,10 @@ void DynamicShapeGroupScheduler::InitBuckets() {
     bucket_contexts_.emplace_back(std::move(bucket_context));
   };
 
+  ScheduleConfigManager& schedule_config_manager =
+      ScheduleConfigManager::Instance();
   std::unordered_map<BucketInfo, ScheduleConfig, BucketInfoHash> configs =
-      BuildScheduleConfig(group_info_, target_);
+      schedule_config_manager.ExtractConfigs(target_, group_info_);
   for (std::pair<BucketInfo, ScheduleConfig>&& config : configs) {
     InitBucket(std::move(config.first), std::move(config.second));
   }
