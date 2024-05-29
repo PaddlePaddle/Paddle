@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/pir/transforms/onednn/conv_concat_activation_onednn_fuse_pass.h"
 
+#include <utility>
+
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -38,11 +40,11 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
 
  public:
   NConvConcatActivationFusePattern(size_t concat_count,
-                                   const std::string &activation_name,
+                                   std::string activation_name,
                                    int fused_level,
                                    int benefit)
       : concat_count_(concat_count),
-        activation_name_(activation_name),
+        activation_name_(std::move(activation_name)),
         fused_level_(fused_level),
         benefit_(benefit) {}
 
@@ -147,7 +149,7 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("activation_out") = activation(pat.Tensor("concat_out"));
 
     if (fused_level_ > 0) {
-      pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
         auto act_type = match_ctx.Attr<std::string>("fuse_activation");
         if (act_type != "") {
           return false;
@@ -155,7 +157,7 @@ class NConvConcatActivationFusePattern : public paddle::drr::DrrPatternBase {
         return true;
       });
     }
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       if (activation_name_ == "leaky_relu") {
         float negative_slope = match_ctx.Attr<float>("negative_slope");
         // leaky relu alpha is a positive number
@@ -293,10 +295,10 @@ class NConvConcatHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
 
  public:
   NConvConcatHardSigmoidFusePattern(size_t concat_count,
-                                    const std::string &activation_name,
+                                    std::string activation_name,
                                     int fused_level)
       : concat_count_(concat_count),
-        activation_name_(activation_name),
+        activation_name_(std::move(activation_name)),
         fused_level_(fused_level) {}
 
   std::string name() const override {
@@ -393,7 +395,7 @@ class NConvConcatHardSigmoidFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("activation_out") = activation(pat.Tensor("concat_out"));
 
     if (fused_level_ > 0) {
-      pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
         auto act_type = match_ctx.Attr<std::string>("fuse_activation");
         if (act_type != "") {
           return false;
@@ -512,10 +514,10 @@ class NConvConcatGeluFusePattern : public paddle::drr::DrrPatternBase {
 
  public:
   NConvConcatGeluFusePattern(size_t concat_count,
-                             const std::string &activation_name,
+                             std::string activation_name,
                              int fused_level)
       : concat_count_(concat_count),
-        activation_name_(activation_name),
+        activation_name_(std::move(activation_name)),
         fused_level_(fused_level) {}
 
   std::string name() const override {
@@ -611,7 +613,7 @@ class NConvConcatGeluFusePattern : public paddle::drr::DrrPatternBase {
     pat.Tensor("activation_out") = activation(pat.Tensor("concat_out"));
 
     if (fused_level_ > 0) {
-      pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
         auto act_type = match_ctx.Attr<std::string>("fuse_activation");
         if (act_type != "") {
           return false;
@@ -737,10 +739,10 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
 
  public:
   NConvConcatClipFusePattern(size_t concat_count,
-                             const std::string &activation_name,
+                             std::string activation_name,
                              int fused_level)
       : concat_count_(concat_count),
-        activation_name_(activation_name),
+        activation_name_(std::move(activation_name)),
         fused_level_(fused_level) {}
 
   std::string name() const override {
@@ -845,7 +847,7 @@ class NConvConcatClipFusePattern : public paddle::drr::DrrPatternBase {
         pat.Tensor("concat_out"), pat.Tensor("min"), pat.Tensor("max"));
 
     if (fused_level_ > 0) {
-      pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+      pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
         auto act_type = match_ctx.Attr<std::string>("fuse_activation");
         if (act_type != "") {
           return false;

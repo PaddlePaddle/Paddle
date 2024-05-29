@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/trainer_factory.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
-#include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -44,7 +43,7 @@ int kProgramId = -1;
 
 ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id)
-    : prog_(prog), block_id_(block_id) {}
+    : prog_(prog), block_id_(block_id), ops_(), unused_vars_() {}
 
 void ExecutorPrepareContext::PrepareUnusedVars(
     const std::vector<std::string>& keep_vars, bool force_disable_gc) {
@@ -53,8 +52,6 @@ void ExecutorPrepareContext::PrepareUnusedVars(
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
         prog_, static_cast<int>(block_id_), ops_);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
-        prog_, static_cast<int>(block_id_), ops_);
-    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
         prog_, static_cast<int>(block_id_), ops_);
   }
 

@@ -333,14 +333,18 @@ class Optimizer:
 
         '''
         state_dict = {}
-        for k, v in self._accumulators.items():
-            for para_name, var_tmp in v.items():
-                state_dict[var_tmp.name] = var_tmp
-                # save scale value for xpu
-                if core.is_compiled_with_xpu():
-                    state_dict[
-                        var_tmp.name + ".SCALE_VALUE"
-                    ] = var_tmp.get_tensor().get_xpu_scale_value()
+        if len(self._accumulators) == 0 and len(self._accumulators_holder) > 0:
+            for name, var in self._accumulators_holder.items():
+                state_dict[name] = var
+        else:
+            for k, v in self._accumulators.items():
+                for para_name, var_tmp in v.items():
+                    state_dict[var_tmp.name] = var_tmp
+                    # save scale value for xpu
+                    if core.is_compiled_with_xpu():
+                        state_dict[
+                            var_tmp.name + ".SCALE_VALUE"
+                        ] = var_tmp.get_tensor().get_xpu_scale_value()
         # if has master weight and then save master weight
         if hasattr(self, "_master_weights"):
             if len(self._master_weights) != 0:
@@ -467,6 +471,7 @@ class Optimizer:
                         param.persistable = True
                         main_program.lr_scheduler = self._learning_rate
                         main_program.lr_var = param
+                        main_program.lr_name = lr_name
                         self._learning_rate_map[main_program] = param
 
                 else:
@@ -955,10 +960,8 @@ class Optimizer:
                 belong_to_optimizer=True,
             )
 
-            if (
-                in_dygraph_mode()
-                and (device == 'cpu' or isinstance(device, core.CPUPlace))
-                and (not core.is_compiled_with_xpu())
+            if in_dygraph_mode() and (
+                device == 'cpu' or isinstance(device, core.CPUPlace)
             ):
                 _C_ops.full_(
                     var,

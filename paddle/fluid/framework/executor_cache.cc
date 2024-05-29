@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/general/remove_shadow_feed_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
@@ -382,6 +383,28 @@ std::unique_ptr<::pir::Program> ApplyIrPass(::pir::Program *program,
   }
 
   return ir_res;
+}
+
+std::unique_ptr<::pir::Program> ApplyRemoveShadowFeedPass(
+    std::unique_ptr<::pir::Program> program,
+    const pir::Block *block,
+    const phi::Place &place,
+    const paddle::framework::Scope *scope) {
+  ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
+  auto pass = ::pir::CreateRemoveShadowFeedPass();
+  pass->SetNotOwned("top_block", block);
+  pass->SetNotOwned(pir::Pass::kPlaceAttr, &place);
+  pass->SetNotOwned(pir::Pass::kParamScopeAttr, scope);
+  pm.AddPass(std::move(pass));
+  pm.Run(program.get());
+
+  if (FLAGS_print_ir) {
+    std::cout << "IR After RemoveShadowFeedPass -------------------"
+              << std::endl;
+    std::cout << *program << std::endl;
+  }
+
+  return program;
 }
 
 std::unique_ptr<::pir::Program> ConstructForwardIrProgram(

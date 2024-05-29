@@ -198,6 +198,50 @@ void tanh_grad(const Tensor& out, const Tensor& grad_out, Tensor* grad_x) {
 }
 
 template <typename T>
+void reduce_as_grad(const Tensor& x,
+                    const Tensor& target,
+                    const Tensor& out_grad,
+                    Tensor* x_grad) {
+  if (!x_grad) {
+    return;
+  }
+  std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+  std::vector<int64_t> axis =
+      common::vectorize<int64_t>(get_reduce_dims(x.dims(), target.dims()));
+  int64_t axis_size = axis.size();
+  int64_t x_dim_size = x_dim.size();
+  bool reduce_all = false;
+  if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
+    reduce_all = true;
+  } else {
+    reduce_all = false;
+  }
+  auto x_grad_tmp = Tensor();
+  if (x_dim_size == 1) {
+    x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+  } else {
+    auto axis_ = std::vector<int64_t>();
+    if (reduce_all) {
+      for (int64_t i = 0; i < x_dim_size; i++) {
+        axis_.push_back(i);
+      }
+    } else {
+      for (int64_t i = 0; i < axis_size; i++) {
+        axis_.push_back(axis[i]);
+        if (axis[i] < 0) {
+          axis_[i] += x_dim_size;
+        }
+      }
+    }
+    auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+    auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+    x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
+  }
+
+  set_output<T>(x_grad_tmp, x_grad);
+}
+
+template <typename T>
 void reshape_grad(const Tensor& x, const Tensor& grad_out, Tensor* grad_x) {
   if (grad_x) {
     auto grad_x_tmp = reshape<T>(grad_out, common::vectorize(x.dims()));
@@ -1024,6 +1068,44 @@ void gather_nd_grad(const Tensor& x,
     auto zero_tensor = full<T>(common::vectorize(x.dims()), 0.0, x.dtype());
     auto x_grad_tmp = scatter_nd_add<T>(zero_tensor, index, out_grad);
     set_output<T>(x_grad_tmp, x_grad);
+  }
+}
+
+template <typename T>
+void cumprod_grad(const Tensor& x,
+                  const Tensor& out,
+                  const Tensor& out_grad,
+                  int dim,
+                  bool exclusive,
+                  bool reverse,
+                  Tensor* x_grad) {
+  if (x_grad) {
+    // dx = cumsum(out * out_grad, dim, false, exclusive, !reverse) / x
+    std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+    auto zero_tensor = full<T>(x_dim, 0.0, x.dtype());
+    auto zero_mask = cast<T>(equal<T>(x, zero_tensor), x.dtype());
+    // determine the index of first zero
+    auto zero_mask_cumsum_exclusive =
+        cumsum<T>(zero_mask, dim, false, true, reverse);
+    auto zero_mask_cumsum = scale<T>(zero_mask_cumsum_exclusive, 2) + zero_mask;
+    auto ones_tensor = full<T>(x_dim, 1.0, x.dtype());
+    auto first_zero_mask =
+        cast<T>(equal<T>(zero_mask_cumsum, ones_tensor), x.dtype());
+    // compute the grad for position with value not equal to 0
+    auto common_dx = cumsum<T>(out * out_grad, dim, false, exclusive, !reverse);
+    // fill the positions of 0 with 1.
+    auto replace_one = (1 - zero_mask) * x + zero_mask;
+    // fill the first positions of 0 with 1.
+    auto replace_first_one = (1 - first_zero_mask) * x + first_zero_mask;
+    // recompute the grad of the first position with 0
+    auto cumprod_recompute =
+        cumprod<T>(replace_first_one, dim, exclusive, reverse);
+    auto zeros_dx = cumsum<T>(
+        cumprod_recompute * out_grad, dim, false, exclusive, !reverse);
+    auto x_grad_res =
+        ((1 - first_zero_mask) * common_dx + first_zero_mask * zeros_dx) /
+        replace_one;
+    set_output<T>(x_grad_res, x_grad);
   }
 }
 

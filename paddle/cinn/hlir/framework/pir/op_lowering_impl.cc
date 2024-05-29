@@ -18,7 +18,8 @@
 
 #include "paddle/cinn/adt/map_expr_ctx.h"
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
+#include "paddle/cinn/common/dim_expr_converter.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
@@ -33,6 +34,7 @@
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
 #include "paddle/cinn/optim/if_fusion.h"
+#include "paddle/cinn/optim/rearrange_load_instruction.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
@@ -41,6 +43,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
+#include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
@@ -71,6 +74,17 @@ NodeAttr CollectAttrs(const ::pir::Operation& op) {
   return node_attrs;
 }
 
+std::optional<std::vector<ir::Expr>> GetTensorValueFromShapeOrData(
+    const symbol::ShapeOrDataDimExprs& shape_or_data) {
+  if (!shape_or_data.data()) return std::nullopt;
+  std::vector<ir::Expr> result;
+  result.reserve(shape_or_data.data()->size());
+  for (const auto& data : *shape_or_data.data()) {
+    result.push_back(common::DimExprConverter().ConvertToIrExpr(data));
+  }
+  return result;
+}
+
 }  // namespace details
 
 std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
@@ -83,25 +97,6 @@ std::shared_ptr<GroupInfo> OpLowererImpl::GetGroupInfo(
   group_info->reduce_var_names =
       std::set<std::string>(fusion_group_info.reduce_var_name.begin(),
                             fusion_group_info.reduce_var_name.end());
-
-  for (auto& op : group->output_ops()) {
-    group_info->direct_output_var_names.insert(ValueName(op->result(0)));
-    // collect all output tensor.
-    if (op->name() == "cinn_op.yield_store") {
-      auto input_var_name = ValueName(op->operand_source(0));
-      if (group_info->broadcast_info.count(input_var_name)) {
-        auto base_info = group_info->broadcast_info[input_var_name];
-        base_info.with_constrain = true;
-        group_info->broadcast_info[ValueName(op->result(0))] = base_info;
-      }
-    }
-    for (auto opresult : op->results()) {
-      if (tensor_map.count(opresult) == 0) {
-        continue;
-      }
-      group_info->direct_output_var_names.insert(ValueName(opresult));
-    }
-  }
 
   for (auto& val : group->output_values()) {
     group_info->direct_output_var_names.insert(ValueName(val));
@@ -221,7 +216,8 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
 
   // =========== OpFusion ============
 
-  func_bodies = OperationFusion(ops, func_bodies);
+  // VLOG(4) << "Bucket Lower output values is : " << group->output_values();
+  func_bodies = OperationFusion(ops, func_bodies, group->output_values());
   const auto& fusion_group_info = GetFusionGroupInfo(func_bodies);
 
   // =========== CodeGen And Optimizer ================
@@ -705,6 +701,19 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
   return {pack[0].operator ir::Expr().as_lowered_func_ref()};
 }
 
+std::unordered_set<std::string> CollectStoreBufferNames(
+    const std::vector<ir::Expr>& func_bodies) {
+  std::unordered_set<std::string> buffer_names;
+  std::vector<ir::Expr> blocks = ir::analyzer::GetAllBlocks(func_bodies);
+  for (const ir::Expr& block : blocks) {
+    ir::Tensor tensor = ir::analyzer::GetStoreTensorOfSBlock(block);
+    if (tensor->buffer.defined()) {
+      buffer_names.insert(tensor->buffer->name);
+    }
+  }
+  return buffer_names;
+}
+
 std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     const OpLoweringGroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
@@ -715,20 +724,25 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     std::vector<ir::Tensor>* infer_shape_arg_tensor) {
   // 1.Prepare function args
   group->mut_input_names().clear();
+  std::unordered_set<std::string> store_buffer_names =
+      CollectStoreBufferNames(func_bodies);
   std::unordered_set<std::string> arg_name_set;
   for (auto& arg_tensor : *group_func_arg_tensors) {
     // input data name.
     group->mut_input_names().push_back(arg_tensor->name);
-    // input args
-    (*group_func_args)
-        .emplace_back(arg_tensor->buffer, ir::Argument::IO::kInput);
+    // args
+    ir::Argument::IO io_type =
+        store_buffer_names.count(arg_tensor->buffer->name) > 0
+            ? ir::Argument::IO::kOutput
+            : ir::Argument::IO::kInput;
+    (*group_func_args).emplace_back(arg_tensor->buffer, io_type);
     arg_name_set.insert(arg_tensor->buffer->name);
   }
 
   group->mut_output_names().clear();
 
   // collect all output tensor.
-  for (auto op_result : group->GetGroupOutputValues()) {
+  for (auto op_result : group->output_values()) {
     if (tensor_map.count(op_result) == 0) {
       continue;
     }
@@ -815,10 +829,16 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   std::vector<ir::LoweredFunc> lowered_funcs;
   for (ir::Expr func_body : func_bodies) {
     optim::EliminateDeadScheduleBlock(&(func_body), group->output_names());
+    cinn::common::DefaultDeviceTarget().arch.Match(
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) {},
+        [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-    optim::EliminateCommonGlobalMemoryRead(&(func_body));
-    optim::OptimizeExprGPU(&(func_body));
+          optim::EliminateCommonGlobalMemoryRead(&(func_body));
+          optim::OptimizeExprGPU(&(func_body));
 #endif
+        });
 
     // 2.Prepare temp buffers
     auto temp_buffers =
@@ -831,6 +851,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     }
     // 4.Apply low level pass
     func = optim::Optimize(Expr(func), target_, false).as_lowered_func_ref();
+    optim::RearrangeLoadInstruction(&(func->body));
     lowered_funcs.push_back(std::move(func));
   }
 
@@ -870,7 +891,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
   }
 
   for (auto* op : ops) {
-    VLOG(4) << "start lowering op:" << op->name();
+    VLOG(4) << "start lowering op:" << op->name() << " id: " << op->id();
     std::string cinn_op_name = CompatibleInfo::OpName(*op);
 
     VLOG(4) << "cinn op name " << cinn_op_name << std::endl;
@@ -975,11 +996,21 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     }
 
     // Insert output tensors into function arg
-    if (!expr.as_tensor_ref()->buffer.defined() ||
-        this->target_ != cinn::common::DefaultNVGPUTarget()) {
-      op_func_arg_tensors->push_back(expr.as_tensor_ref());
-      expr.as_tensor_ref()->WithBuffer();
-    }
+    target_.arch.Match(
+        [&](common::NVGPUArch) {
+          if (!expr.as_tensor_ref()->buffer.defined()) {
+            op_func_arg_tensors->push_back(expr.as_tensor_ref());
+            expr.as_tensor_ref()->WithBuffer();
+          } else {
+            op_func_arg_tensors->push_back(expr.as_tensor_ref());
+          }
+        },
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) {
+          op_func_arg_tensors->push_back(expr.as_tensor_ref());
+          expr.as_tensor_ref()->WithBuffer();
+        });
   }
 
   VLOG(4) << "op_func_arg_tensors.size(): " << op_func_arg_tensors->size();
@@ -1086,13 +1117,16 @@ ir::Tensor OpLowererImpl::GetTensor(const OpLoweringGroupPtr& group,
     if (sym_shape.empty()) {
       sym_shape.emplace_back(input_id, symbol::DimExpr{1});
     }
-    return lang::CreatePlaceHolder(
+    auto tensor = lang::CreatePlaceHolder(
         sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
+    const auto& tensor_value = details::GetTensorValueFromShapeOrData(
+        group->GetShapeOrDataExprs(value));
+    if (tensor_value.has_value()) {
+      tensor->set_value(*tensor_value);
+    }
+    return tensor;
   } else {
     auto shape = ::common::vectorize<int>(type_info.dims());
-    if (shape.empty()) {
-      shape.push_back(1);
-    }
     return lang::CreatePlaceHolder(
         shape, CompatibleInfo::ConvertIRType(dtype), input_id);
   }

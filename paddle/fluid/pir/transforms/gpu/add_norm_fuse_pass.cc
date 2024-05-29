@@ -75,7 +75,7 @@ class RmsNormFusePattern : public paddle::drr::DrrPatternBase {
       pat.Tensor("multiply_out2") =
           multiply2(pat.Tensor("multiply_out1"), pat.Tensor("w"));
     }
-    pat.RequireNativeCall([this](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto axis = match_ctx.Attr<std::vector<int64_t>>("axis");
       if (axis.size() > 1) {
         return false;

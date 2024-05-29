@@ -48,12 +48,14 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::operator()() {
 }
 
 void CompilationTask::Lowering() {
+  VLOG(5) << "Begin to lowering group: " << *context_->group_;
   auto op_lowerer = CreateOpLowerer<pir::OpLoweringGroupPtr>(context_->target_);
   context_->SetLoweredFuncs(
       op_lowerer.BucketLower(context_->group_,
                              /* apply op schedule = */ false,
                              /* apply group schedule = */ true,
                              /* apply pass = */ true));
+  VLOG(5) << "End to lowering: " << context_->PrintPredicate2Funcs();
 }
 
 std::shared_ptr<pir::CompilationResult> CompilationTask::CodegenAndJit() {
@@ -83,6 +85,7 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
   VLOG(5) << "Start to compile module into cuda kernel...";
   backend_resource->GetBackendCompiler()->Build(module, "");
   compilation_result->SetBackendResource(backend_resource);
+  VLOG(5) << "End to compile module into cuda kernel.";
   return compilation_result;
 }
 

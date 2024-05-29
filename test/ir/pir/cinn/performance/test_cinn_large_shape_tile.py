@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
+from os.path import dirname
+
+sys.path.append(dirname(dirname(__file__)))
 
 import numpy as np
 import utils

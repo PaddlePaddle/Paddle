@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import typing
+
 try:
     from paddle.cuda_env import *  # noqa: F403
     from paddle.version import (  # noqa: F401
@@ -34,12 +37,13 @@ from .batch import batch
 # We need remove the duplicated code here once we fix
 # the illogical implement in the monkey-patch methods later.
 from .framework import monkey_patch_math_tensor, monkey_patch_variable
-from .pir import monkey_patch_program, monkey_patch_value
+from .pir import monkey_patch_dtype, monkey_patch_program, monkey_patch_value
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
 monkey_patch_value()
 monkey_patch_program()
+monkey_patch_dtype()
 
 from .base.dataset import *  # noqa: F403
 from .framework import (
@@ -68,8 +72,11 @@ from .framework.dtype import (
     uint8,
 )
 
-Tensor = framework.core.eager.Tensor
-Tensor.__qualname__ = 'Tensor'
+if typing.TYPE_CHECKING:
+    from .tensor.tensor import Tensor
+else:
+    Tensor = framework.core.eager.Tensor
+    Tensor.__qualname__ = 'Tensor'
 
 import paddle.distributed.fleet
 import paddle.text
@@ -104,6 +111,7 @@ from paddle import (  # noqa: F401
 # high-level api
 from . import (  # noqa: F401
     _pir_ops,
+    _typing as _typing,
     callbacks,
     fft,
     hub,
@@ -427,6 +435,9 @@ from .tensor.math import (  # noqa: F401
     isfinite,
     isinf,
     isnan,
+    isneginf,
+    isposinf,
+    isreal,
     kron,
     lcm,
     lcm_,
@@ -475,6 +486,7 @@ from .tensor.math import (  # noqa: F401
     prod,
     rad2deg,
     reciprocal,
+    reduce_as,
     remainder,
     remainder_,
     renorm,
@@ -487,6 +499,8 @@ from .tensor.math import (  # noqa: F401
     signbit,
     sin,
     sin_,
+    sinc,
+    sinc_,
     sinh,
     sinh_,
     sqrt,
@@ -508,6 +522,7 @@ from .tensor.math import (  # noqa: F401
 )
 from .tensor.random import (
     bernoulli,
+    bernoulli_,
     binomial,
     check_shape,
     multinomial,
@@ -716,6 +731,9 @@ __all__ = [
     'to_tensor',
     'gather_nd',
     'isinf',
+    'isneginf',
+    'isposinf',
+    'isreal',
     'uniform',
     'floor_divide',
     'floor_divide_',
@@ -797,11 +815,14 @@ __all__ = [
     'expm1',
     'expm1_',
     'bernoulli',
+    'bernoulli_',
     'binomial',
     'poisson',
     'standard_gamma',
     'sinh',
     'sinh_',
+    'sinc',
+    'sinc_',
     'round',
     'DataParallel',
     'argmin',
@@ -847,6 +868,7 @@ __all__ = [
     'ones',
     'not_equal',
     'sum',
+    'reduce_as',
     'nansum',
     'nanmean',
     'count_nonzero',

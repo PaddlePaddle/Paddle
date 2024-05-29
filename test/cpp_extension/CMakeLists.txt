@@ -7,6 +7,3 @@ if(WITH_TESTING)
     set_tests_properties(test_cpp_extension_jit PROPERTIES TIMEOUT 120)
   endif()
 endif()
-
-py_test(test_mixed_extension_setup SRCS test_mixed_extension_setup.py)
-set_tests_properties(test_mixed_extension_setup PROPERTIES TIMEOUT 120)

@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #endif
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/framework/string_array.h"
@@ -66,8 +66,8 @@ class LoDResetKernel : public framework::OpKernel<T> {
       } else {
         auto* lod = lod_t->data<int>();
         phi::DenseTensor lod_cpu;
-        if (platform::is_gpu_place(lod_t->place())) {
-          framework::TensorCopySync(*lod_t, platform::CPUPlace(), &lod_cpu);
+        if (lod_t->place().GetType() == phi::AllocationType::GPU) {
+          framework::TensorCopySync(*lod_t, phi::CPUPlace(), &lod_cpu);
           lod = lod_cpu.data<int>();
         }
         level0 = std::vector<int>(lod, lod + lod_t->numel());

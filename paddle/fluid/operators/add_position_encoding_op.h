@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -104,11 +104,11 @@ class AddPositionEncodingGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* dOut = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-    auto dout = framework::EigenVector<T>::Flatten(*dOut);
+    auto dout = phi::EigenVector<T>::Flatten(*dOut);
 
     auto* dX = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     dX->mutable_data<T>(context.GetPlace());
-    auto dx = framework::EigenVector<T>::Flatten(*dX);
+    auto dx = phi::EigenVector<T>::Flatten(*dX);
 
     float alpha = context.Attr<float>("alpha");
 

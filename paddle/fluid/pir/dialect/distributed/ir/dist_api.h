@@ -25,9 +25,11 @@
 namespace paddle {
 namespace dialect {
 
-pir::Value shard_tensor(const pir::Value& x,
-                        const phi::distributed::ProcessMesh& process_mesh,
-                        const std::vector<int64_t>& dims_mapping);
+pir::Value shard_tensor(
+    const pir::Value& x,
+    const phi::distributed::ProcessMesh& process_mesh,
+    const std::vector<int64_t>& dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType>& partial_status = {});
 
 pir::Value reshard(
     const pir::Value& x,
