@@ -41,7 +41,7 @@ class TestLayer(TestBase):
     def init(self):
         self.input_specs = []
         self.inputs = ()
-        self.net = LayerCase()
+        self.net = LayerCase
 
 
 if __name__ == '__main__':
