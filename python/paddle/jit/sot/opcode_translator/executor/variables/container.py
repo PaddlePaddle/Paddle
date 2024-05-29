@@ -31,6 +31,7 @@ from ..tracker import (
     DummyTracker,
     GetItemTracker,
     GetIterTracker,
+    GetShapeTracker,
     Tracker,
 )
 from .base import VariableBase, VariableFactory
@@ -171,12 +172,23 @@ class ListVariable(ContainerVariable):
         return self.proxy.length
 
     def getitem(self, key):
+        from .basic import SymbolicVariable, TensorVariable
+
         self.graph.add_global_guarded_variable(key)
         key = key.get_py_value()
         if isinstance(key, int):
             res = self.proxy.get(key)
             if self.proxy.is_empty(res):
                 raise InnerError(f"List {self} out of range (index={key})")
+            if isinstance(res, SymbolicVariable) and isinstance(
+                self.tracker, GetShapeTracker
+            ):
+                tensor = self.tracker.obj
+                assert isinstance(tensor, TensorVariable)
+                if tensor.origin_meta.dynamic_axes is None:
+                    tensor.origin_meta.dynamic_axes = [key]
+                if key not in tensor.origin_meta.dynamic_axes:
+                    tensor.origin_meta.dynamic_axes.append(key)
             return res
         elif isinstance(key, slice):
             items = self.proxy.get_all()

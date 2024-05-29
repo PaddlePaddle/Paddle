@@ -52,6 +52,7 @@ from ..tracker import (
     DummyTracker,
     GetAttrTracker,
     GetIterTracker,
+    GetShapeTracker,
     GlobalTracker,
     SymbolicOperationTracker,
     Tracker,
@@ -399,9 +400,13 @@ class TensorVariable(VariableBase):
     def make_stringify_guard(self) -> list[StringifyExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
 
+        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
+            str_left_expr = f"MetaInfo.from_tensor({{}}, dynamic_axes={self.origin_meta.dynamic_axes}).guard_str()"
+        else:
+            str_left_expr = "MetaInfo.from_tensor({}).guard_str()"
         return [
             StringifyExpression(
-                f"MetaInfo.from_tensor({{}}).guard_str() == '{self.origin_meta.guard_str()}'",
+                f"{str_left_expr} == '{self.origin_meta.guard_str()}'",
                 [frame_value_tracer],
                 union_free_vars(
                     {"MetaInfo": MetaInfo},
@@ -491,7 +496,7 @@ class TensorVariable(VariableBase):
         from .container import ListVariable
 
         if ENV_SOT_ALLOW_DYNAMIC_SHAPE:
-            tracker = GetAttrTracker(self, "shape")
+            tracker = GetShapeTracker(self)
         else:
             tracker = DummyTracker([self])
         return ListVariable(self.meta.shape, self.graph, tracker=tracker)
