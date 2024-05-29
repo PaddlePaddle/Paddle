@@ -1444,7 +1444,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to set feed";
     return false;
   }
-  if (pir_program_) {
+  if (config_.new_ir_enabled()) {
     ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
   }
 #ifdef PADDLE_WITH_TENSORRT
