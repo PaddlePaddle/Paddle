@@ -14,10 +14,10 @@
 #include <algorithm>
 
 #include "paddle/cinn/common/context.h"
-#include "paddle/common/enforce.h"
+
 #include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/framework/node.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace framework {
