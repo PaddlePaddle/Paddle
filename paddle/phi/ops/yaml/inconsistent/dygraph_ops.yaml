@@ -91,19 +91,6 @@
     data_type : weight
   backward : c_embedding_grad
 
-- op : cast
-  args : (Tensor x, DataType dtype)
-  output : Tensor(out)
-  infer_meta :
-    func : CastInferMeta
-    spmd_rule : CastInferSpmd
-  kernel :
-    func : cast
-    param : [x, dtype]
-    data_type : x
-  inplace: (x -> out)
-  backward : cast_grad
-
 - op : distribute_fpn_proposals
   args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
   output : Tensor[](multi_fpn_rois){max_level - min_level + 1}, Tensor[](multi_level_rois_num){max_level - min_level + 1}, Tensor(restore_index)
