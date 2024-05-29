@@ -550,7 +550,6 @@ cc_library(
   executor_gc_helper
   SRCS executor_gc_helper.cc
   DEPS while_op_helper
-       recurrent_op_helper
        conditional_block_op_helper
        pylayer_op_helper
        scope
@@ -585,7 +584,6 @@ if(WITH_DISTRIBUTE)
            device_worker_factory.cc
            data_set.cc
       DEPS fleet_wrapper
-           recurrent_op_helper
            op_registry
            device_context
            scope
@@ -660,8 +658,7 @@ if(WITH_DISTRIBUTE)
            heter_section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS recurrent_op_helper
-           op_registry
+      DEPS op_registry
            device_context
            scope
            framework_proto
@@ -736,8 +733,7 @@ if(WITH_DISTRIBUTE)
            section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS recurrent_op_helper
-           op_registry
+      DEPS op_registry
            device_context
            scope
            framework_proto
@@ -796,8 +792,7 @@ elseif(WITH_PSLIB)
          section_worker.cc
          device_worker_factory.cc
          data_set.cc
-    DEPS recurrent_op_helper
-         op_registry
+    DEPS op_registry
          device_context
          scope
          framework_proto
@@ -843,8 +838,7 @@ else()
          section_worker.cc
          device_worker_factory.cc
          data_set.cc
-    DEPS recurrent_op_helper
-         op_registry
+    DEPS op_registry
          device_context
          scope
          framework_proto
@@ -867,8 +861,14 @@ else()
 endif()
 
 target_link_libraries(
-  executor while_op_helper executor_gc_helper recurrent_op_helper
-  conditional_block_op_helper pylayer_op_helper)
+  executor
+  while_op_helper
+  executor_gc_helper
+  static_prim_api
+  static_utils
+  get_expected_kernel_func
+  conditional_block_op_helper
+  pylayer_op_helper)
 
 cc_library(
   parallel_executor

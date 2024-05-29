@@ -37,6 +37,7 @@ PD_DECLARE_string(cinn_dump_group_lowered_func);
 PD_DECLARE_string(cinn_dump_group_source_code);
 PD_DECLARE_string(cinn_dump_group_ptx);
 PD_DECLARE_string(cinn_dump_group_instruction);
+PD_DECLARE_string(cinn_debug_custom_code_path);
 
 namespace cinn {
 namespace backends {
@@ -267,6 +268,24 @@ void Compiler::BuildDefault(const Module& module) {
   });
 }
 
+namespace {
+std::string GetFileContent(const std::string& path) {
+  std::ifstream file(path);
+
+  if (!file.is_open()) {
+    std::cerr << "Unable to open file: " << path << std::endl;
+    return "";
+  }
+
+  std::ostringstream ss;
+  ss << file.rdbuf();
+  std::string content = ss.str();
+
+  file.close();
+  return content;
+}
+}  // namespace
+
 void Compiler::CompileCudaModule(const Module& module,
                                  const std::string& code) {
 #ifdef CINN_WITH_CUDA
@@ -278,12 +297,17 @@ void Compiler::CompileCudaModule(const Module& module,
 
   VLOG(3) << "[CUDA] device module:\n" << device_module;
   std::string source_code;
-  if (code.empty()) {
+
+  if (!FLAGS_cinn_debug_custom_code_path.empty()) {
+    std::string file_path = FLAGS_cinn_debug_custom_code_path;
+    source_code = GetFileContent(file_path);
+  } else if (code.empty()) {
     CodeGenCUDA_Dev codegen(target_);
     source_code = codegen.Compile(device_module);
   } else {
     source_code = code;
   }
+
   CHECK(!source_code.empty())
       << "Compile CUDA C code failed from device module:\n"
       << device_module;

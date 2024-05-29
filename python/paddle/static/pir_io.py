@@ -833,7 +833,7 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
 
         params, opts = get_pir_parameters(program)
         vars = params + opts
-        vars = [var for var in program.list_vars() if var.persistable]
+        vars = [var for var in vars if var.persistable]
         if len(vars) > 0:
             load_vars_pir(
                 # load from memory, dirname is None
@@ -887,7 +887,7 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
         # load parameters
         params, opts = get_pir_parameters(program)
         vars = params + opts
-        vars = [var for var in program.list_vars() if var.persistable]
+        vars = [var for var in vars if var.persistable]
         if len(vars) > 0:
             load_dirname = os.path.dirname(params_path)
             params_filename = os.path.basename(params_path)

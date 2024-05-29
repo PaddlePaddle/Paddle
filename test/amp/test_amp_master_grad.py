@@ -55,7 +55,7 @@ class TestMasterGrad(unittest.TestCase):
         # Since two additional casts are called when constructing master grad,
         # the number of operators of this type +2
         self.assertEqual(
-            int(op_list['transfer_dtype'].split(',')[0]),
+            int(op_list['cast'].split(',')[0]),
             total_steps * 2 + 2,
         )
 

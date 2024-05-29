@@ -1030,6 +1030,126 @@ void CrossInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void CrossEntropyInferMeta(const MetaTensor& x,
+                           const MetaTensor& label,
+                           bool soft_label,
+                           int ignore_index,
+                           MetaTensor* out,
+                           MetaConfig config) {
+  const auto& x_dims = x.dims();
+  const auto& label_dims = label.dims();
+  int rank = x_dims.size();
+
+  bool contain_unknown_dim = common::contain_unknown_dim(x_dims) ||
+                             common::contain_unknown_dim(label_dims);
+  bool check = config.is_runtime || !contain_unknown_dim;
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(
+        common::slice_ddim(x_dims, 0, rank - 1),
+        common::slice_ddim(label_dims, 0, rank - 1),
+        phi::errors::InvalidArgument(
+            "Input(X) and Input(Label) shall have the same shape "
+            "except the last dimension. But received: the shape of Input(X) "
+            "is "
+            "[%s], the shape of Input(Label) is [%s].",
+            x_dims,
+            label_dims));
+  }
+
+  if (soft_label) {
+    PADDLE_ENFORCE_EQ(
+        rank,
+        label_dims.size(),
+        phi::errors::InvalidArgument(
+            "If Attr(soft_label) == true, Input(X) and Input(Label) "
+            "shall have the same dimensions. But received: the dimensions of "
+            "Input(X) is [%d],"
+            "the shape of Input(X) is [%s], the dimensions of Input(Label) "
+            "is "
+            "[%d], the shape of"
+            "Input(Label) is [%s]",
+            rank,
+            x_dims,
+            label_dims.size(),
+            label_dims));
+
+    if (check) {
+      PADDLE_ENFORCE_EQ(
+          x_dims[rank - 1],
+          label_dims[rank - 1],
+          phi::errors::InvalidArgument(
+              "If Attr(soft_label) == true, the last dimension of "
+              "Input(X) and Input(Label) should be equal. But received: the"
+              "last dimension of Input(X) is [%d], the shape of Input(X) is "
+              "[%s],"
+              "the last dimension of Input(Label) is [%d], the shape of "
+              "Input(Label)"
+              "is [%s], the last dimension is [%d].",
+              x_dims[rank - 1],
+              x_dims,
+              label_dims[rank - 1],
+              label_dims,
+              rank - 1));
+    }
+  } else {
+    if (rank == label_dims.size()) {
+      PADDLE_ENFORCE_EQ(
+          label_dims[rank - 1],
+          1UL,
+          phi::errors::InvalidArgument(
+              "the last dimension of Input(Label) should be 1."
+              "But received: the last dimension of Input(Label) is [%d],"
+              "the last dimension is [%d]",
+              label_dims[rank - 1],
+              rank - 1));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          rank,
+          label_dims.size() + 1,
+          phi::errors::InvalidArgument(
+              "ShapeError: The rank of Input(X) should be equal to "
+              "Input(Label) plus 1."
+              "But received: The dimension of Input(X) is [%d], "
+              "the shape of Input(X) is [%s],"
+              "the dimension of Input(Label) is [%d], the shape of "
+              "Input(Label) is [%s]",
+              rank,
+              x_dims,
+              label_dims.size(),
+              label_dims));
+    }
+  }
+
+  auto y_dims = label_dims;
+  if (rank == label_dims.size()) {
+    y_dims[rank - 1] = 1;
+  }
+  out->set_dims(y_dims);
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
+void CrossEntropy2InferMeta(const MetaTensor& x,
+                            const MetaTensor& label,
+                            int ignore_index,
+                            MetaTensor* out,
+                            MetaTensor* x_shape,
+                            MetaTensor* match_x,
+                            MetaConfig config) {
+  CrossEntropyInferMeta(x, label, false, ignore_index, out);
+
+  auto x_dims = x.dims();
+  auto x_dims_vec = common::vectorize(x_dims);
+  x_dims_vec.push_back(0);
+  x_shape->set_dims(common::make_ddim(x_dims_vec));
+  x_dims[x_dims.size() - 1] = 1;
+  match_x->set_dims(x_dims);
+  x_shape->set_dtype(x.dtype());
+  match_x->set_dtype(x.dtype());
+  x_shape->share_lod(x);
+}
+
 void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
                                       const MetaTensor& label,
                                       bool soft_label,

@@ -110,7 +110,7 @@ std::string GetCurrentTraceBackString(bool for_signal) {
       auto demangled = common::demangle(info.dli_sname);
       std::string path(info.dli_fname);
       // C++ traceback info are from core.so
-      if (path.substr(path.length() - 3).compare(".so") == 0) {
+      if (path.substr(path.length() - 3) == ".so") {
         sout << paddle::string::Sprintf(
             "%-3d %s\n", idx++, SimplifyDemangleStr(demangled));
       }
