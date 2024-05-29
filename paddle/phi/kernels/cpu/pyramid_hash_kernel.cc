@@ -16,7 +16,6 @@
 #include <algorithm>
 #include <cmath>
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math/bloomfilter.h"

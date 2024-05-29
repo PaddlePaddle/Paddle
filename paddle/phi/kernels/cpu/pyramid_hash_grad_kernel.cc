@@ -17,7 +17,6 @@
 #include <algorithm>
 #include <cmath>
 
-#include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/search_compute.h"
 
