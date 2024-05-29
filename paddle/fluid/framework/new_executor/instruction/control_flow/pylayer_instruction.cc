@@ -145,11 +145,7 @@ PyLayerInstruction::PyLayerInstruction(
   VLOG(6) << "finish process forward block interpreter";
 }
 
-PyLayerInstruction::~PyLayerInstruction() {
-  if (fwd_inter_ != nullptr) {
-    delete fwd_inter_;
-  }
-}
+PyLayerInstruction::~PyLayerInstruction() { delete fwd_inter_; }
 
 void PyLayerInstruction::Run() {
   VLOG(6) << "start pylayer forward block interpreter";
