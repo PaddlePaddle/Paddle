@@ -90,8 +90,8 @@ constexpr char kTargetDialectPrefix[] = "pd_op.";  // NOLINT
 #ifdef PADDLE_WITH_DNNL
 constexpr char kOneDNNTargetDialectPrefix[] = "onednn_op.";  // NOLINT
 #endif
-constexpr char kCustomOpDialectPrefix[] = "custom_op.";
-constexpr char kEmptyVarName[] = "@EMPTY@";  // NOLINT
+constexpr char kCustomOpDialectPrefix[] = "custom_op.";  // NOLINT
+constexpr char kEmptyVarName[] = "@EMPTY@";              // NOLINT
 
 static const std::unordered_set<std::string> SpecialNonInplaceOps = {};
 
@@ -946,6 +946,16 @@ pir::Operation* OpTranscriber::operator()(pir::IrContext* ctx,
 
   return operation;
 }
+
+struct ArgsortOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "stable") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    }
+  }
+};
 
 struct Assign2AssignOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
@@ -3459,6 +3469,7 @@ OpTranslator::OpTranslator() {
 
   general_handler = OpTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();
+  special_handlers["argsort"] = ArgsortOpTranscriber();
   special_handlers["assign"] = AssignOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["range"] = ArangeOpTranscriber();

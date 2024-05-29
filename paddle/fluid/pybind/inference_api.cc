@@ -184,6 +184,9 @@ py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
     case PaddleDType::FLOAT16:
       dt = py::dtype::of<phi::dtype::float16>();
       break;
+    case PaddleDType::BFLOAT16:
+      dt = py::dtype::of<phi::dtype::bfloat16>();
+      break;
     case PaddleDType::UINT8:
       dt = py::dtype::of<uint8_t>();
       break;
@@ -196,7 +199,7 @@ py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported data type. Now only supports INT32, INT64, FLOAT64, "
-          "FLOAT32, FLOAT16, INT8, UINT8 and BOOL."));
+          "FLOAT32, FLOAT16, BFLOAT16, INT8, UINT8 and BOOL."));
   }
 
   return dt;
@@ -386,6 +389,9 @@ size_t PaddleGetDTypeSize(PaddleDType dt) {
     case PaddleDType::FLOAT16:
       size = sizeof(phi::dtype::float16);
       break;
+    case PaddleDType::BFLOAT16:
+      size = sizeof(phi::dtype::bfloat16);
+      break;
     case PaddleDType::INT8:
       size = sizeof(int8_t);
       break;
@@ -398,7 +404,7 @@ size_t PaddleGetDTypeSize(PaddleDType dt) {
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported data t ype. Now only supports INT32, INT64, FLOAT64, "
-          "FLOAT32, FLOAT16, INT8, UINT8 and BOOL."));
+          "FLOAT32, FLOAT16, BFLOAT16, INT8, UINT8 and BOOL."));
   }
   return size;
 }
@@ -426,6 +432,10 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
       tensor.copy_to_cpu<phi::dtype::float16>(
           static_cast<phi::dtype::float16 *>(array.mutable_data()));
       break;
+    case PaddleDType::BFLOAT16:
+      tensor.copy_to_cpu<phi::dtype::bfloat16>(
+          static_cast<phi::dtype::bfloat16 *>(array.mutable_data()));
+      break;
     case PaddleDType::UINT8:
       tensor.copy_to_cpu<uint8_t>(static_cast<uint8_t *>(array.mutable_data()));
       break;
@@ -438,7 +448,7 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported data type. Now only supports INT32, INT64, FLOAT64, "
-          "FLOAT32, FLOAT16, INT8, UINT8 and BOOL."));
+          "FLOAT32, FLOAT16, BFLOAT16, INT8, UINT8 and BOOL."));
   }
   return array;
 }
@@ -466,6 +476,10 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
       tensor.CopyToCpu<phi::dtype::float16>(
           static_cast<phi::dtype::float16 *>(array.mutable_data()));
       break;
+    case PaddleDType::BFLOAT16:
+      tensor.CopyToCpu<phi::dtype::bfloat16>(
+          static_cast<phi::dtype::bfloat16 *>(array.mutable_data()));
+      break;
     case PaddleDType::UINT8:
       tensor.CopyToCpu(static_cast<uint8_t *>(array.mutable_data()));
       break;
@@ -478,7 +492,7 @@ py::array PaddleInferTensorToNumpy(paddle_infer::Tensor &tensor) {  // NOLINT
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported data t ype. Now only supports INT32, INT64, FLOAT64, "
-          "FLOAT32, FLOAT16, INT8, UINT8 and BOOL."));
+          "FLOAT32, FLOAT16, BFLOAT16, INT8, UINT8 and BOOL."));
   }
   return array;
 }
@@ -561,6 +575,7 @@ void BindPaddleDType(py::module *m) {
       .value("FLOAT64", PaddleDType::FLOAT64)
       .value("FLOAT32", PaddleDType::FLOAT32)
       .value("FLOAT16", PaddleDType::FLOAT16)
+      .value("BFLOAT16", PaddleDType::BFLOAT16)
       .value("INT64", PaddleDType::INT64)
       .value("INT32", PaddleDType::INT32)
       .value("UINT8", PaddleDType::UINT8)

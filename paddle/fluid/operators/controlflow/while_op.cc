@@ -87,7 +87,7 @@ class WhileOp : public framework::OperatorBase {
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
 
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
     bool is_test = Attr<bool>("is_test");
@@ -125,7 +125,7 @@ class WhileOp : public framework::OperatorBase {
         scope.FindVar(Output(kStepScopes))->GetMutable<StepScopeVar>();
 
     if (!step_scopes->empty()) {
-      platform::DeviceContextPool::Instance().Get(dev_place)->Wait();
+      phi::DeviceContextPool::Instance().Get(dev_place)->Wait();
       for (auto &s : *step_scopes) {
         if (scope.HasKid(s)) {
           scope.DeleteScope(s);
@@ -332,7 +332,7 @@ class WhileGradOp : public framework::OperatorBase {
         phi::errors::InvalidArgument(
             "WhileGradOp is only callable when is_test is false."));
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);

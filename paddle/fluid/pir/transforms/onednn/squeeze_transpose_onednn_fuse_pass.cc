@@ -25,7 +25,7 @@ namespace {
 
 class SqueezeTransposePattern : public paddle::drr::DrrPatternBase {
  public:
-  SqueezeTransposePattern() {}
+  SqueezeTransposePattern() = default;
 
   std::string name() const override { return "SqueezeTransposePattern"; }
 
