@@ -15,10 +15,8 @@ from __future__ import annotations
 
 import collections
 import logging
-import time
 import warnings
 from collections.abc import Sequence
-from contextlib import contextmanager
 from functools import lru_cache
 from typing import Any
 
@@ -116,13 +114,6 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.sigmoid",
     "pd_op.silu",
 ]
-
-
-@contextmanager
-def timer(name: str):
-    start = time.time()
-    yield
-    print(f"{name} cost {time.time() - start:.4f} s")
 
 
 class ValueWrapper:
