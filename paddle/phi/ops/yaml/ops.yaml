@@ -4268,3 +4268,11 @@
     func: MoeInferMeta
   kernel:
     func: moe
+
+- op: transfer_layout
+  args: (Tensor x, int src_layout = -1, int dst_layout=-1)
+  output: Tensor (out)
+  infer_meta:
+    func: TransferLayoutInferMeta
+  kernel:
+    func: transfer_layout
