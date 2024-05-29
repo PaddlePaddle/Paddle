@@ -141,9 +141,11 @@ class RmsNormFusePattern : public paddle::drr::DrrPatternBase {
 class AddRmsNormFusePattern : public paddle::drr::DrrPatternBase {
  private:
   const bool extra_add_;
+  const bool trans_extra_add_;
 
  public:
-  explicit AddRmsNormFusePattern(bool extra_add) : extra_add_(extra_add) {}
+  AddRmsNormFusePattern(bool extra_add, bool trans_extra_add)
+      : extra_add_(extra_add), trans_extra_add_{trans_extra_add} {}
 
   uint32_t benefit() const override { return extra_add_ ? 4 : 3; }
 
@@ -176,7 +178,9 @@ class AddRmsNormFusePattern : public paddle::drr::DrrPatternBase {
     if (extra_add_) {
       const auto &add1 = pat.Op(paddle::dialect::AddOp::name());
       pat.Tensor("add_out1") =
-          add1(pat.Tensor("add_out"), pat.Tensor("any_tensor"));
+          trans_extra_add_
+              ? add1(pat.Tensor("any_tensor"), pat.Tensor("add_out"))
+              : add1(pat.Tensor("add_out"), pat.Tensor("any_tensor"));
     }
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &res_rms_norm =
@@ -207,9 +211,11 @@ class AddRmsNormFusePattern : public paddle::drr::DrrPatternBase {
 class AddLayerNormFusePattern : public paddle::drr::DrrPatternBase {
  private:
   const bool extra_add_;
+  const bool trans_extra_add_;
 
  public:
-  explicit AddLayerNormFusePattern(bool extra_add) : extra_add_(extra_add) {}
+  AddLayerNormFusePattern(bool extra_add, bool trans_extra_add)
+      : extra_add_(extra_add), trans_extra_add_{trans_extra_add} {}
 
   uint32_t benefit() const override { return extra_add_ ? 4 : 3; }
   std::string name() const override { return "AddLayerNormFusePattern"; }
@@ -231,16 +237,20 @@ class AddLayerNormFusePattern : public paddle::drr::DrrPatternBase {
     if (extra_add_) {
       const auto &add1 = pat.Op(paddle::dialect::AddOp::name());
       pat.Tensor("add_out1") =
-          add1(pat.Tensor("add_out"), pat.Tensor("any_tensor"));
+          trans_extra_add_
+              ? add1(pat.Tensor("any_tensor"), pat.Tensor("add_out"))
+              : add1(pat.Tensor("add_out"), pat.Tensor("any_tensor"));
     }
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &cast_op_dtype = res.ComputeAttr(
         [](const paddle::drr::MatchContext &match_ctx) -> phi::DataType {
-          auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
-          return paddle::dialect::TransToPhiDataType(x_dtype);
+          return phi::DataType::FLOAT32;
         });
-
+    const auto cast_1_op =
+        res.Op(paddle::dialect::CastOp::name(), {{"dtype", cast_op_dtype}});
+    const auto cast_2_op =
+        res.Op(paddle::dialect::CastOp::name(), {{"dtype", cast_op_dtype}});
     const auto &fuse_layer_norm =
         res.Op(paddle::dialect::FusedBiasResidualLayernormOp::name(),
                {{"epsilon", pat.Attr("epsilon")},
@@ -250,14 +260,15 @@ class AddLayerNormFusePattern : public paddle::drr::DrrPatternBase {
                 {"quant_round_type", res.Int32Attr(0)},
                 {"quant_max_bound", res.Float32Attr(0.0)},
                 {"quant_min_bound", res.Float32Attr(0.0)}});
-
+    res.Tensor("w_cast") = cast_1_op(res.Tensor("w"));
+    res.Tensor("bias_cast") = cast_1_op(res.Tensor("bias"));
     fuse_layer_norm(
         {
             &res.Tensor("x"),
             &res.InputNoneTensor(),
             &res.Tensor("residual"),
-            &res.Tensor("w"),
-            &res.Tensor("bias"),
+            &res.Tensor("w_cast"),
+            &res.Tensor("bias_cast"),
         },
         {&res.Tensor("layer_norm_out"),
          &res.Tensor("add_out"),
@@ -269,9 +280,11 @@ class AddLayerNormFusePattern : public paddle::drr::DrrPatternBase {
 class AddGroupNormFusePattern : public paddle::drr::DrrPatternBase {
  private:
   const bool extra_add_;
+  const bool trans_extra_add_;
 
  public:
-  explicit AddGroupNormFusePattern(bool extra_add) : extra_add_(extra_add) {}
+  AddGroupNormFusePattern(bool extra_add, bool trans_extra_add)
+      : extra_add_(extra_add), trans_extra_add_{trans_extra_add} {}
 
   uint32_t benefit() const override { return extra_add_ ? 4 : 3; }
   std::string name() const override { return "AddGroupNormFusePattern"; }
@@ -294,15 +307,12 @@ class AddGroupNormFusePattern : public paddle::drr::DrrPatternBase {
     if (extra_add_) {
       const auto &add1 = pat.Op(paddle::dialect::AddOp::name());
       pat.Tensor("add_out1") =
-          add1(pat.Tensor("add_out"), pat.Tensor("any_tensor"));
+          trans_extra_add_
+              ? add1(pat.Tensor("any_tensor"), pat.Tensor("add_out"))
+              : add1(pat.Tensor("add_out"), pat.Tensor("any_tensor"));
     }
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
-      auto x_shape = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-      auto r_shape = pir::GetShapeFromValue(match_ctx.Tensor("residual"));
       auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
-      if (x_shape.size() != r_shape.size()) {
-        return false;
-      }
       if (!x_dtype.isa<pir::Float16Type>() &&
           !x_dtype.isa<pir::BFloat16Type>()) {
         return false;
@@ -310,65 +320,26 @@ class AddGroupNormFusePattern : public paddle::drr::DrrPatternBase {
       return true;
     });
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    const auto &perm_shape_attr_1 = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          auto data_format = match_ctx.Attr<std::string>("data_format");
-          if (data_format == "NCHW") {
-            return {0, 2, 3, 1};
-          } else {
-            return {0, 1, 2, 3};
-          }
-        });
-    // TODO(bukejiyu) When the transfer_layout_pass is supported,
-    // transpose_op will be deleted.
-    const auto &transpose_op_0 = res.Op(paddle::dialect::TransposeOp::name(),
-                                        {{"perm", perm_shape_attr_1}});
-    const auto &transpose_op_1 = res.Op(paddle::dialect::TransposeOp::name(),
-                                        {{"perm", perm_shape_attr_1}});
-    res.Tensor("x_transpose") = transpose_op_0(res.Tensor("x"));
-    res.Tensor("r_transpose") = transpose_op_1(res.Tensor("residual"));
     const auto &add_group_norm_silu_op =
         res.Op(paddle::dialect::AddGroupNormSiluOp::name(),
                {{"epsilon", pat.Attr("epsilon")},
                 {"groups", pat.Attr("groups")},
-                {"data_format", res.StrAttr("NHWC")},
+                {"data_format", pat.Attr("data_format")},
                 {"activation", res.StrAttr("")}});
 
-    add_group_norm_silu_op({&res.Tensor("x_transpose"),
-                            &res.Tensor("r_transpose"),
+    add_group_norm_silu_op({&res.Tensor("x"),
+                            &res.Tensor("residual"),
                             &res.Tensor("scale"),
                             &res.Tensor("bias")},
-                           {&res.Tensor("add_group_out"),
-                            &res.Tensor("add_group_r_out"),
+                           {&res.Tensor("group_out"),
+                            &res.Tensor("add_out"),
                             &res.Tensor("mean_out"),
                             &res.Tensor("variance_out")});
-    // TODO(bukejiyu) When the transfer_layout_pass is supported,
-    // transpose_op will be deleted.
-    const auto &perm_shape_attr_2 = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          auto data_format = match_ctx.Attr<std::string>("data_format");
-          if (data_format == "NCHW") {
-            return {0, 3, 1, 2};
-          } else {
-            return {0, 1, 2, 3};
-          }
-        });
-    const auto &transpose_op_3 = res.Op(paddle::dialect::TransposeOp::name(),
-                                        {{"perm", perm_shape_attr_2}});
-    const auto &transpose_op_4 = res.Op(paddle::dialect::TransposeOp::name(),
-                                        {{"perm", perm_shape_attr_2}});
-    res.Tensor("group_out") = transpose_op_3(res.Tensor("add_group_out"));
-    res.Tensor("add_out") = transpose_op_4(res.Tensor("add_group_r_out"));
   }
 };
 
 class AddGroupNormWithActPattern : public paddle::drr::DrrPatternBase {
- private:
-  const bool extra_transpose_;
-
  public:
-  explicit AddGroupNormWithActPattern(bool extra_transpose)
-      : extra_transpose_(extra_transpose) {}
   uint32_t benefit() const override { return 2; }
   std::string name() const override { return "AddGroupNormWithActPattern"; }
 
@@ -389,14 +360,7 @@ class AddGroupNormWithActPattern : public paddle::drr::DrrPatternBase {
                             &pat.Tensor("add_out"),
                             &pat.Tensor("mean_out_0"),
                             &pat.Tensor("variance_out_0")});
-    if (extra_transpose_) {
-      const auto &transpose_op = pat.Op(paddle::dialect::TransposeOp::name(),
-                                        {{"perm", pat.Attr("perm")}});
-      pat.Tensor("transpose_out") = transpose_op(pat.Tensor("group_out"));
-      pat.Tensor("silu_out") = silu(pat.Tensor("transpose_out"));
-    } else {
-      pat.Tensor("silu_out") = silu(pat.Tensor("group_out"));
-    }
+    pat.Tensor("silu_out") = silu(pat.Tensor("group_out"));
     pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
       auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
       if (!x_dtype.isa<pir::Float16Type>() &&
@@ -416,32 +380,14 @@ class AddGroupNormWithActPattern : public paddle::drr::DrrPatternBase {
                 {"groups", pat.Attr("groups")},
                 {"data_format", pat.Attr("data_format")},
                 {"activation", res.StrAttr("silu")}});
-    if (extra_transpose_) {
-      res_add_group_norm_silu_op({&res.Tensor("x"),
-                                  &res.Tensor("residual"),
-                                  &res.Tensor("scale"),
-                                  &res.Tensor("bias")},
-                                 {&res.Tensor("res_group_out"),
-                                  &res.Tensor("add_out"),
-                                  &res.Tensor("mean_out"),
-                                  &res.Tensor("variance_out")});
-      const auto &perm_shape_attr = res.ComputeAttr(
-          [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-            return match_ctx.Attr<std::vector<int>>("perm");
-          });
-      const auto &res_transpose_op = res.Op(
-          paddle::dialect::TransposeOp::name(), {{"perm", perm_shape_attr}});
-      res.Tensor("silu_out") = res_transpose_op(res.Tensor("res_group_out"));
-    } else {
-      res_add_group_norm_silu_op({&res.Tensor("x"),
-                                  &res.Tensor("residual"),
-                                  &res.Tensor("scale"),
-                                  &res.Tensor("bias")},
-                                 {&res.Tensor("silu_out"),
-                                  &res.Tensor("add_out"),
-                                  &res.Tensor("mean_out"),
-                                  &res.Tensor("variance_out")});
-    }
+    res_add_group_norm_silu_op({&res.Tensor("x"),
+                                &res.Tensor("residual"),
+                                &res.Tensor("scale"),
+                                &res.Tensor("bias")},
+                               {&res.Tensor("silu_out"),
+                                &res.Tensor("add_out"),
+                                &res.Tensor("mean_out"),
+                                &res.Tensor("variance_out")});
   }
 };
 
@@ -471,47 +417,20 @@ class GroupNormWithActPattern : public paddle::drr::DrrPatternBase {
       return true;
     });
     paddle::drr::ResultPattern res = pat.ResultPattern();
-    const auto &perm_shape_attr_1 = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          auto data_format = match_ctx.Attr<std::string>("data_format");
-          if (data_format == "NCHW") {
-            return {0, 2, 3, 1};
-          } else {
-            return {0, 1, 2, 3};
-          }
-        });
-    // TODO(bukejiyu) When the transfer_layout_pass is supported,
-    // transpose_op will be deleted.
-    const auto &transpose_op = res.Op(paddle::dialect::TransposeOp::name(),
-                                      {{"perm", perm_shape_attr_1}});
-    res.Tensor("x_transpose") = transpose_op(res.Tensor("x"));
-
     const auto &add_group_norm_silu_op =
         res.Op(paddle::dialect::AddGroupNormSiluOp::name(),
                {{"epsilon", pat.Attr("epsilon")},
                 {"groups", pat.Attr("groups")},
-                {"data_format", res.StrAttr("NHWC")},
+                {"data_format", pat.Attr("data_format")},
                 {"activation", res.StrAttr("silu")}});
-    add_group_norm_silu_op({&res.Tensor("x_transpose"),
+    add_group_norm_silu_op({&res.Tensor("x"),
                             &res.InputNoneTensor(),
                             &res.Tensor("scale"),
                             &res.Tensor("bias")},
-                           {&res.Tensor("add_group_out"),
+                           {&res.Tensor("silu_out"),
                             &res.OutputNoneTensor(),
                             &res.Tensor("mean_out"),
                             &res.Tensor("variance_out")});
-    const auto &perm_shape_attr_2 = res.ComputeAttr(
-        [](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          auto data_format = match_ctx.Attr<std::string>("data_format");
-          if (data_format == "NCHW") {
-            return {0, 3, 1, 2};
-          } else {
-            return {0, 1, 2, 3};
-          }
-        });
-    const auto &transpose_op_1 = res.Op(paddle::dialect::TransposeOp::name(),
-                                        {{"perm", perm_shape_attr_2}});
-    res.Tensor("silu_out") = transpose_op_1(res.Tensor("add_group_out"));
   }
 };
 
@@ -528,31 +447,40 @@ class AddNormFusePass : public pir::PatternRewritePass {
     // w-----------------------------
     bool is_half_weight = true;
     bool extra_add = true;
-    // TODO(bukejiyu) When the transfer_layout_pass is supported,
-    // extra_transpose will be deleted.
-    bool extra_transpose = true;
     ps.Add(paddle::drr::Create<RmsNormFusePattern>(context, !is_half_weight));
     ps.Add(paddle::drr::Create<RmsNormFusePattern>(context, is_half_weight));
     // x--------
     //           add-rms_norm ---> rms_norm
     // residual-
-    ps.Add(paddle::drr::Create<AddRmsNormFusePattern>(context, !extra_add));
-    ps.Add(paddle::drr::Create<AddRmsNormFusePattern>(context, extra_add));
+    ps.Add(
+        paddle::drr::Create<AddRmsNormFusePattern>(context, !extra_add, false));
+    ps.Add(
+        paddle::drr::Create<AddRmsNormFusePattern>(context, extra_add, true));
+    ps.Add(
+        paddle::drr::Create<AddRmsNormFusePattern>(context, extra_add, false));
+
     // x--------
     //           add-layer_norm ----> fused_bias_residual_layernorm
     // residual-
-    ps.Add(paddle::drr::Create<AddLayerNormFusePattern>(context, !extra_add));
-    ps.Add(paddle::drr::Create<AddLayerNormFusePattern>(context, extra_add));
+    ps.Add(paddle::drr::Create<AddLayerNormFusePattern>(
+        context, !extra_add, false));
+    ps.Add(
+        paddle::drr::Create<AddLayerNormFusePattern>(context, extra_add, true));
+    ps.Add(paddle::drr::Create<AddLayerNormFusePattern>(
+        context, extra_add, false));
+
     // x--------
     //           add-group_norm ----> add_group_norm_silu
     // residual-
-    ps.Add(paddle::drr::Create<AddGroupNormFusePattern>(context, !extra_add));
-    ps.Add(paddle::drr::Create<AddGroupNormFusePattern>(context, extra_add));
+    ps.Add(paddle::drr::Create<AddGroupNormFusePattern>(
+        context, !extra_add, true));
+    ps.Add(
+        paddle::drr::Create<AddGroupNormFusePattern>(context, extra_add, true));
+    ps.Add(paddle::drr::Create<AddGroupNormFusePattern>(
+        context, extra_add, false));
+
     // add_group_norm_silu-silu --->add_group_norm_silu
-    ps.Add(paddle::drr::Create<AddGroupNormWithActPattern>(context,
-                                                           !extra_transpose));
-    ps.Add(paddle::drr::Create<AddGroupNormWithActPattern>(context,
-                                                           extra_transpose));
+    ps.Add(paddle::drr::Create<AddGroupNormWithActPattern>(context));
     // group-silu->add_group_norm_silu
     ps.Add(paddle::drr::Create<GroupNormWithActPattern>(context));
     return ps;

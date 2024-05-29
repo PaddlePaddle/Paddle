@@ -696,3 +696,4 @@
     data_type : x
   optional : scale, bias, residual, residual_out
   support_dygraph_mode : true
+  interfaces : paddle::dialect::LayoutTransformationInterface
