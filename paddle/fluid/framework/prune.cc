@@ -572,8 +572,7 @@ void PruneBackwardImpl(proto::BlockDesc* origin, proto::BlockDesc* pruned) {
       *pruned_vars->Add() = var_map[name];
     }
   }
-}  // namespace paddle::framework 
-namespace paddle {
+}
 
 std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
     const framework::ProgramDesc& origin) {
@@ -686,5 +685,6 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
   // Step 4. Return a tuple
   return std::make_tuple(framework::ProgramDesc(pruned_desc),
                          pruned_progin_block_id_map);
+} 
 
-}  // namespace paddle 
+}  // namespace paddle::framework
