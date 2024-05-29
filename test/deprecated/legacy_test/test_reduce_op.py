@@ -545,7 +545,6 @@ def raw_reduce_prod(x, dim=[0], keep_dim=False):
     return paddle.prod(x, dim, keep_dim)
 
 
-# NOTE: there is a bug when use composite of prod in static graph on cpu, it will use inplace mode
 class TestProdOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
@@ -572,51 +571,13 @@ class TestProdOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        if paddle.is_compiled_with_cuda():
-            self.check_grad_with_place(
-                paddle.CUDAPlace(0),
-                ['X'],
-                'Out',
-                check_prim=True,
-                check_pir=True,
-                check_prim_pir=True,
-            )
-        else:
-            self.check_grad(
-                ['X'],
-                'Out',
-                check_pir=True,
-                check_prim_pir=True,
-            )
-
-    def test_only_dygraph_prim(self):
-        def actual(primal):
-            paddle.disable_static()
-            core.set_prim_eager_enabled(True)
-            x = paddle.to_tensor(
-                primal, dtype=self.data_type, stop_gradient=False
-            ).cpu()
-            y = paddle.prod(x, axis=0)
-            x_cotangent = paddle.grad(
-                y, x, create_graph=False, retain_graph=True
-            )
-            return x_cotangent[0]
-
-        def desired(primal):
-            paddle.disable_static()
-            core.set_prim_eager_enabled(False)
-            x = paddle.to_tensor(
-                primal, dtype=self.data_type, stop_gradient=False
-            ).cpu()
-            y = paddle.prod(x, axis=0)
-            x_cotangent = paddle.grad(
-                y, x, create_graph=False, retain_graph=True
-            )
-            return x_cotangent[0]
-
-        x = np.random.random((5, 6, 5, 6, 7)).astype(self.data_type)
-        np.testing.assert_allclose(
-            actual=actual(x), desired=desired(x), atol=1e-8, rtol=1e-8
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0),
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -639,9 +600,6 @@ class TestProdFP16OP(TestProdOp):
             check_pir=True,
             check_prim_pir=True,
         )
-
-    def test_only_dygraph_prim(self):
-        pass
 
 
 @unittest.skipIf(
@@ -676,9 +634,6 @@ class TestProdBFP16OP(TestProdOp):
             check_prim_pir=True,
         )
 
-    def test_only_dygraph_prim(self):
-        pass
-
 
 class TestProdOpFp64(TestProdOp):
     def init_data_type(self):
@@ -704,22 +659,14 @@ class TestProdOp_ZeroDim(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        if paddle.is_compiled_with_cuda():
-            self.check_grad_with_place(
-                paddle.CUDAPlace(0),
-                ['X'],
-                'Out',
-                check_prim=True,
-                check_pir=True,
-                check_prim_pir=True,
-            )
-        else:
-            self.check_grad(
-                ['X'],
-                'Out',
-                check_pir=True,
-                check_prim_pir=True,
-            )
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0),
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestProdOp_ZeroDim1(TestProdOp):
@@ -777,22 +724,14 @@ class TestProd6DOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        if paddle.is_compiled_with_cuda():
-            self.check_grad_with_place(
-                paddle.CUDAPlace(0),
-                ['X'],
-                'Out',
-                check_prim=True,
-                check_pir=True,
-                check_prim_pir=True,
-            )
-        else:
-            self.check_grad(
-                ['X'],
-                'Out',
-                check_pir=True,
-                check_prim_pir=True,
-            )
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0),
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 @unittest.skipIf(
@@ -809,9 +748,6 @@ class TestProd6DFP16OP(TestProd6DOp):
         self.check_grad_with_place(
             paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
         )
-
-    def test_only_dygraph_prim(self):
-        pass
 
 
 @unittest.skipIf(
@@ -841,9 +777,6 @@ class TestProd6DBFP16OP(TestProd6DOp):
         self.check_grad_with_place(
             paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
         )
-
-    def test_only_dygraph_prim(self):
-        pass
 
 
 class TestProd8DOp(OpTest):
@@ -891,9 +824,6 @@ class TestProd8DFP16OP(TestProd8DOp):
         self.check_grad_with_place(
             paddle.CUDAPlace(0), ['X'], 'Out', check_pir=True
         )
-
-    def test_only_dygraph_prim(self):
-        pass
 
 
 @unittest.skipIf(
