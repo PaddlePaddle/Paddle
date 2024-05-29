@@ -388,9 +388,9 @@ void BindProgram(py::module *m) {
           return_value_policy::reference)
       .def(
           "clone",
-          [](std::shared_ptr<Program> self, pir::IrMapping &mapper, Program* dst_program) {
-            return self->Clone(mapper, dst_program);
-          },
+          [](std::shared_ptr<Program> self,
+             pir::IrMapping &mapper,
+             Program *dst_program) { return self->Clone(mapper, dst_program); },
           return_value_policy::reference)
       .def(
           "list_vars",
@@ -617,12 +617,12 @@ void BindIrMapping(py::module *m) {
   ir_mapping.def(py::init<>())
       .def("look_up",
            [](IrMapping &self, Value from) { return self.Lookup(from); })
-      .def("add", [](IrMapping &self, Value from, Value to) {
-        self.Add<Value>(from, to);
-      })
-      .def("size", [](IrMapping &self){
-        return self.GetMutableMap<Value>().size();
-      });
+      .def("add",
+           [](IrMapping &self, Value from, Value to) {
+             self.Add<Value>(from, to);
+           })
+      .def("size",
+           [](IrMapping &self) { return self.GetMutableMap<Value>().size(); });
 }
 
 void BindCloneOptions(py::module *m) {
