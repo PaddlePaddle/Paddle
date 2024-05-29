@@ -929,15 +929,15 @@ def get_defining_op_indices(program, output_values):
     return results
 
 
-def auto_recompute_pir_program(pir_program, pir_grad_var_to_var):
-    # print("Start Recompute Pir Program:")
+def auto_recompute_pir_program(pir_program, outputs=None):
+    print("Start Recompute Pir Program:")
 
-    # print("Before Recompute: ", pir_program)
+    print("Before Recompute: ", pir_program)
 
     # prepare essential inputs for auto_recompute
     inputs = get_inputs_from_data_and_parameter(pir_program)
-    outputs = get_outputs_from_fetch_op(pir_program)
-    grad_outputs = get_grad_var_for_list(outputs, pir_grad_var_to_var)
+    if outputs is None:
+        outputs = get_outputs_from_fetch_op(pir_program)
     fwd_op_end_idx = max(get_defining_op_indices(pir_program, outputs))
     backward_op_start_idx = fwd_op_end_idx + 1
 
@@ -965,7 +965,7 @@ def auto_recompute_pir_program(pir_program, pir_grad_var_to_var):
         pir_program,
         inputs,
         outputs,
-        grad_outputs,
+        [],
         fwd_op_end_idx,
         backward_op_start_idx,
     )

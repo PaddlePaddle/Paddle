@@ -16,6 +16,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/utils/string.h"
 #include "paddle/fluid/pir/transforms/sub_graph_detector.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/pass/pass.h"
@@ -60,7 +61,30 @@ class BuildCinnPass : public pir::Pass {
   }
 };
 
+static void VLOG_LINES(const std::string& str) {
+  const auto& lines = cinn::utils::Split(str, "\n");
+  for (const auto& line : lines) {
+    VLOG(4) << line;
+  }
+}
+
+static std::string OpsDebugStr(std::vector<pir::Operation*> ops) {
+  std::stringstream ss;
+  pir::IrPrinter printer(ss);
+  for (const auto* op : ops) {
+    printer.PrintOperation(const_cast<pir::Operation*>(op));
+    ss << "{" << op->id() << "}\n";
+  }
+  return ss.str();
+}
+
 void VerifyOperationOrder(const pir::Block& block) {
+  std::vector<pir::Operation*> block_ops;
+  for (auto& op : block) {
+    block_ops.push_back(&op);
+  }
+  VLOG(4) << "VerifyOperationOrder: Block ops is: " << block_ops.size();
+  VLOG_LINES(OpsDebugStr(block_ops));
   auto order_info =
       [&]() -> std::unordered_map<const pir::Operation*, int64_t> {
     std::unordered_map<const pir::Operation*, int64_t> map;
@@ -86,6 +110,7 @@ void VerifyOperationOrder(const pir::Block& block) {
           << current_op->id() << " " << order_info.at(current_op) << ")";
     }
   };
+
   const auto& CheckGroupOpOrder = [&](pir::Operation* op) -> void {
     auto group_op = op->dyn_cast<cinn::dialect::GroupOp>();
     for (auto& inner_op : *group_op.block()) {
