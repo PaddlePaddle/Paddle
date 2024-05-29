@@ -3488,7 +3488,6 @@ function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
 }
 
-
 # origin name: example
 function exec_samplecode_test() {
     if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
@@ -3513,11 +3512,11 @@ function exec_samplecode_test() {
     fi
 }
 
-function run_type_checking() {
+function need_type_checking() {
     set +x
 
     # check pr title
-    TITLE_CHECK=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "type checking" || true`
+    TITLE_CHECK=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "typing" || true`
 
     if [[ ${TITLE_CHECK} ]]; then
         set -x
@@ -3541,7 +3540,7 @@ function exec_type_checking() {
     cd ${PADDLE_ROOT}/tools
     
     # check all sample code
-    TITLE_CHECK_ALL=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "type checking all" || true`
+    TITLE_CHECK_ALL=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "typing all" || true`
 
     if [[ ${TITLE_CHECK_ALL} ]]; then
         python type_checking.py --full-test; type_checking_error=$?
@@ -3552,6 +3551,33 @@ function exec_type_checking() {
     if [ "$type_checking_error" != "0" ];then
       echo "Example code type checking failed" >&2
       exit 5
+    fi
+}
+
+
+function exec_samplecode_checking() {
+    example_info_gpu=""
+    example_code_gpu=0
+    if [ "${WITH_GPU}" == "ON" ] ; then
+        { example_info_gpu=$(exec_samplecode_test gpu 2>&1 1>&3 3>/dev/null); } 3>&1
+        example_code_gpu=$?
+    fi
+    { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
+    example_code=$?
+
+    # TODO(megemini): type_checkding should be default after type annotation been done.
+    need_type_checking
+    type_checking_status=$?
+
+    if [[ ${type_checking_status} -eq 0 ]]; then
+        { type_checking_info=$(exec_type_checking 2>&1 1>&3 3>/dev/null); } 3>&1
+        type_checking_code=$?
+    fi
+
+    summary_check_example_code_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
+
+    if [[ ${type_checking_status} -eq 0 ]]; then
+        summary_type_checking_problems $type_checking_code "$type_checking_info"
     fi
 }
 
@@ -4332,29 +4358,7 @@ function main() {
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         set +e
-        example_info_gpu=""
-        example_code_gpu=0
-        if [ "${WITH_GPU}" == "ON" ] ; then
-            { example_info_gpu=$(exec_samplecode_test gpu 2>&1 1>&3 3>/dev/null); } 3>&1
-            example_code_gpu=$?
-        fi
-        { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
-        example_code=$?
-
-        run_type_checking
-        run_tc=$?
-
-        if [[ ${run_tc} -eq 0 ]]; then
-            { type_checking_info=$(exec_type_checking 2>&1 1>&3 3>/dev/null); } 3>&1
-            type_checking_code=$?
-        fi
-
-        summary_check_example_code_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
-
-        if [[ ${run_tc} -eq 0 ]]; then            
-            summary_type_checking_problems $type_checking_code "$type_checking_info"
-        fi
-
+        exec_samplecode_checking
         assert_api_spec_approvals
         ;;
       build_and_check_cpu)
@@ -4366,29 +4370,7 @@ function main() {
         ;;
       build_and_check_gpu)
         set +e
-        example_info_gpu=""
-        example_code_gpu=0
-        if [ "${WITH_GPU}" == "ON" ] ; then
-            { example_info_gpu=$(exec_samplecode_test gpu 2>&1 1>&3 3>/dev/null); } 3>&1
-            example_code_gpu=$?
-        fi
-        { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
-        example_code=$?
-
-        run_type_checking
-        run_tc=$?
-
-        if [[ ${run_tc} -eq 0 ]]; then
-            { type_checking_info=$(exec_type_checking 2>&1 1>&3 3>/dev/null); } 3>&1
-            type_checking_code=$?
-        fi
-
-        summary_check_example_code_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
-
-        if [[ ${run_tc} -eq 0 ]]; then
-            summary_type_checking_problems $type_checking_code "$type_checking_info"
-        fi
-
+        exec_samplecode_checking
         assert_api_spec_approvals
         ;;
       check_whl_size)
@@ -4630,24 +4612,6 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         build_document_preview
-        ;;
-      api_example)
-        { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
-        example_code=$?
-
-        run_type_checking
-        run_tc=$?
-
-        if [[ ${run_tc} -eq 0 ]]; then
-            { type_checking_info=$(exec_type_checking 2>&1 1>&3 3>/dev/null); } 3>&1
-            type_checking_code=$?
-        fi
-
-        summary_check_example_code_problems $example_code "$example_info"
-
-        if [[ ${run_tc} -eq 0 ]]; then
-            summary_type_checking_problems $type_checking_code "$type_checking_info"
-        fi
         ;;
       test_op_benchmark)
         test_op_benchmark

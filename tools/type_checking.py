@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import argparse
 import doctest
-import os
+import pathlib
 import re
 from abc import abstractmethod
 from dataclasses import dataclass, field
@@ -253,19 +253,17 @@ def run_type_checker(
 
 
 if __name__ == '__main__':
-    base_path = os.path.abspath(os.path.dirname(__file__))
+    base_path = pathlib.Path(__file__).resolve().parent.parent
 
     args = parse_args()
     mypy_checker = MypyChecker(
         config_file=(
             args.config_file
             if args.config_file
-            else (base_path + '/../pyproject.toml')
+            else (base_path / 'pyproject.toml')
         ),
         cache_dir=(
-            args.cache_dir
-            if args.cache_dir
-            else (base_path + '/../.mypy_cache')
+            args.cache_dir if args.cache_dir else (base_path / '.mypy_cache')
         ),
     )
     run_type_checker(args, mypy_checker)
