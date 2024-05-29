@@ -156,19 +156,34 @@ else()
       COMMAND cp -r ${PADDLE_SOURCE_DIR}/test ${PADDLE_BINARY_DIR}/
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
               pass_desc_py_proto ${PY_FILES})
-
-    add_custom_command(
-      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel
-      COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
-      COMMENT "Packing whl packages------>>>")
+    if(APPLE AND WITH_ARM)
+      add_custom_command(
+        OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel
+        COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
+                --plat-name=macosx_11_0_arm64
+        COMMENT "Packing whl packages------>>>")
+    else()
+      add_custom_command(
+        OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel
+        COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
+        COMMENT "Packing whl packages------>>>")
+    endif()
   endif()
 endif()
 
 add_custom_target(paddle_python ALL
                   DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
 if(BUILD_WHL_PACKAGE AND NOT WITH_SETUP_INSTALL)
-  add_custom_target(paddle_copy ALL
-                    DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel)
+  add_custom_target(
+    paddle_copy ALL
+    # generate tensor.pyi for type hints
+    COMMAND
+      ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
+      ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/gen_tensor_stub.py
+      --input-file
+      ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.prototype.pyi
+      --output-file ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
+    DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel)
   add_dependencies(paddle_copy paddle_python)
 endif()
 

@@ -493,7 +493,7 @@ void TensorToStream(std::ostream& os,
         memory::Copy(cpu,
                      buf.get(),
                      tensor.place(),
-                     reinterpret_cast<const void*>(data),
+                     reinterpret_cast<const void*>(data),  // NOLINT
                      size_to_write,
                      gpu_dev_ctx.stream());
         gpu_dev_ctx.Wait();

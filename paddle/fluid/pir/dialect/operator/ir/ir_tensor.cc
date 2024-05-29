@@ -31,7 +31,7 @@ IrTensor::IrTensor(phi::DataType dtype,
       lod_(std::move(lod)),
       offset_(offset) {}
 
-IrTensor::IrTensor(const IrTensor& other) {
+IrTensor::IrTensor(const IrTensor& other) : TensorBase(other) {
   dims_ = other.dims();
   dtype_ = other.dtype();
   layout_ = other.layout();
@@ -48,7 +48,7 @@ IrTensor& IrTensor::operator=(const IrTensor& other) {
   return *this;
 }
 
-IrTensor& IrTensor::operator=(IrTensor&& other) noexcept {
+IrTensor& IrTensor::operator=(IrTensor&& other) noexcept {  // NOLINT
   dims_ = other.dims();
   dtype_ = other.dtype();
   layout_ = other.layout();

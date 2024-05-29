@@ -35,6 +35,10 @@ namespace pir {
 // block's key:
 // which is json array with value json object
 #define BLOCKARGS "args"
+#define KEYWORDBLOCKARGS "kwargs"
+
+#define KEYWORDNAME "key"
+
 // which is json array with operation json object
 #define BLOCKOPS "ops"
 

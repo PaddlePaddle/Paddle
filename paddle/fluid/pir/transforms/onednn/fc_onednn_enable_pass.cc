@@ -26,7 +26,7 @@ namespace {
 
 class FcOneDNNEnablePattern : public paddle::drr::DrrPatternBase {
  public:
-  FcOneDNNEnablePattern() {}
+  FcOneDNNEnablePattern() = default;
 
   std::string name() const override { return "FcOneDNNEnablePattern"; }
 

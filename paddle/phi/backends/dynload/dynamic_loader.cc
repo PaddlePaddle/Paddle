@@ -186,10 +186,10 @@ static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
 
 static inline std::string FindLibAbsolutePath(const std::string& directory,
                                               const std::string& filename) {
-  DIR* dir;
+  DIR* dir = opendir(directory.c_str());
   struct dirent* ent;
 
-  if ((dir = opendir(directory.c_str())) != nullptr) {
+  if (dir != nullptr) {
     while ((ent = readdir(dir)) != nullptr) {
       if (ent->d_type == DT_REG || ent->d_type == DT_LNK) {
         if (filename == std::string(ent->d_name)) {

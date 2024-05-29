@@ -53,7 +53,7 @@ from ..tracker import (
     GetAttrTracker,
     GetIterTracker,
     GlobalTracker,
-    LocalTracker,
+    SymbolicOperationTracker,
     Tracker,
 )
 from .base import VariableBase, VariableFactory
@@ -180,16 +180,13 @@ class ConstantVariable(VariableBase):
             ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
             and isinstance(self.value, int)
             and self.tracker.need_guard()
-            and isinstance(
-                self.tracker, LocalTracker
-            )  # TODO(zrr1999): now only support local tracker
         ):
             from ..executor_cache import OpcodeExecutorCache
 
             frame_value_tracer = self.tracker.trace_value_from_frame()
             symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
-            symbolic_inputs.setdefault(frame_value_tracer.debug_expr, {})
-            symbolic_input = symbolic_inputs[frame_value_tracer.debug_expr]
+            symbolic_inputs.setdefault(frame_value_tracer.inlined_expr, {})
+            symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
             symbolic_input.setdefault(self.value, 0)
             symbolic_input[self.value] += 1
 
@@ -599,7 +596,7 @@ class TensorVariable(VariableBase):
         return None
 
 
-class SymbolicIntVariable(VariableBase):
+class SymbolicVariable(VariableBase):
     """
     TODO
     """
@@ -622,15 +619,34 @@ class SymbolicIntVariable(VariableBase):
             self.meta = MetaInfo(
                 [], paddle.int64, True, self.var_name, False, None, None
             )
+        self.need_guard_value = False
 
     def get_py_value(self, allow_tensor=False):
+        self.need_guard_value = True
+        if self.value is None:
+            assert isinstance(
+                self.tracker, SymbolicOperationTracker
+            ), f"self.value is None, but tracker is not SymbolicOperationTracker. tracker: {self.tracker}"
+            inputs = self.tracker.inputs
+            assert len(inputs) >= 1
+            other_inputs_value = [x.get_py_value() for x in inputs[1:]]
+            self.value = getattr(
+                inputs[0].get_py_value(), self.tracker.method_name
+            )(*other_inputs_value)
         return self.value
 
     def get_py_type(self):
-        return int
+        # TODO(zrr1999): not need to use value to get type
+        return super().get_py_type()
 
     def get_symbol(self) -> Symbol:
         return Symbol(self.var_name)
+
+    def __bool__(self) -> bool:
+        return bool(self.get_py_value())
+
+    def bool(self):
+        return ConstantVariable(bool(self), self.graph, DummyTracker([self]))
 
     @property
     def out_var_name(self):
@@ -643,22 +659,23 @@ class SymbolicIntVariable(VariableBase):
 
     @check_guard
     def make_stringify_guard(self) -> list[StringifyExpression]:
+        assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
         from ..executor_cache import OpcodeExecutorCache
 
         frame_value_tracer = self.tracker.trace_value_from_frame()
         symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
 
-        assert frame_value_tracer.debug_expr in symbolic_inputs
-        assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+        assert frame_value_tracer.inlined_expr in symbolic_inputs
 
         # TODO(zrr1999): Once dynamic shape is used, there will be no new guards
-        symbolic_input = symbolic_inputs[frame_value_tracer.debug_expr]
+        symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
         symbolic_input.setdefault(self.value, 0)
         symbolic_input[self.value] += 1
-
+        if self.need_guard_value:
+            return super().make_stringify_guard()
         return [
             StringifyExpression(
-                "isinstance({}, int)",
+                f"id(type({{}})) == {id(self.get_py_type())}",
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             )
@@ -672,19 +689,17 @@ class SymbolicIntVariable(VariableBase):
             return
         if not tracker.need_guard():
             return
-        if not isinstance(tracker, LocalTracker):
-            # TODO(zrr1999): now only support local tracker
-            return
 
         from ..executor_cache import OpcodeExecutorCache
 
         symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
+
         for tracker_expr, symbolic_input in symbolic_inputs.items():
             if tracker.match_expr(tracker_expr):
                 symbolic_input.setdefault(value, 0)
                 symbolic_input[value] += 1
                 # TODO(zrr1999): determine frequency
-                return SymbolicIntVariable(value, graph, tracker)
+                return SymbolicVariable(value, graph, tracker)
         return None
 
 

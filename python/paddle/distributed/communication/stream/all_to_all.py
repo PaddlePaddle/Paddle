@@ -97,7 +97,7 @@ def _all_to_all_in_static_mode(
     data_feeder.check_variable_and_dtype(
         in_tensor,
         'in_tensor',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'all_to_all',
     )
     helper.append_op(

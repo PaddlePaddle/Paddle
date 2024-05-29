@@ -41,7 +41,7 @@ void BranchOp::VerifySig() const {
       phi::errors::InvalidArgument("successor[0] can't be nullptr"));
 }
 
-const char *Operation1::attributes_name[2] = {"op1_attr1",
+const char *Operation1::attributes_name[2] = {"op1_attr1",   // NOLINT
                                               "op1_attr2"};  // NOLINT
 
 void Operation1::Build(pir::Builder &builder,               // NOLINT

@@ -42,7 +42,7 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
         self.nranks = 2
         self.ring_id = 0
         self.local_elements = int(self.num_class / self.nranks)
-
+        self.ignore_index = -100
         self.logits_shape = [self.seq_len, self.local_elements]
         self.label_shape = [self.seq_len, 1]
 
@@ -86,6 +86,7 @@ class TestCollectiveSoftmaxWithCE(TestCollectiveRunnerBase):
                         'ring_id': self.ring_id,
                         'rank': rank,
                         'nranks': self.nranks,
+                        'ignore_index': self.ignore_index,
                     },
                 )
                 # generate backward op_desc
