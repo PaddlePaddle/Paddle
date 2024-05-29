@@ -428,7 +428,7 @@ class FuseSingleElementShapeOpsIntoGenerateShapeOpPattern
     };
     std::optional<pir::Value> opt_generated_shape =
         GetOutOfRewrittenGenerateShapeOp(
-            op->result(0), rewriter, ShapeOrDataDimExprs4Value);
+            op->result(0), &rewriter, ShapeOrDataDimExprs4Value);
     if (!opt_generated_shape.has_value()) {
       LOG(WARNING) << "Create GenerateShapeOp Failed.";
       return;
