@@ -23,7 +23,6 @@ namespace ir {
 class FileTileConfigDatabase : TileConfigDatabase {
  public:
   void AddConfig(const common::Target& target,
-                 const IterSpaceType& iter_space_type,
                  const BucketInfo& bucket_info,
                  const ScheduleConfig::TileConfig& config,
                  int priority) override;
@@ -32,9 +31,7 @@ class FileTileConfigDatabase : TileConfigDatabase {
 
  private:
   TileConfigMap target_config_data_;
-  bool Tofile(const common::Target& target,
-              const IterSpaceType& iter_space_type,
-              int priority);
+  bool Tofile(const common::Target& target, int priority);
 };
 
 }  // namespace ir
