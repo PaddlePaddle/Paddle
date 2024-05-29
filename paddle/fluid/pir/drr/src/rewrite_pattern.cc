@@ -546,7 +546,6 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
         }
       }
       // 2. insert new op at point max(max_input_op_index+1, min_src_idx)
-      // NOTE(liym27):
       if (min_src_idx > max_input_op_index) {
         rewriter.set_insertion_point(min_src_idx_op);
         max_input_op_index = op_2_temp_program_index[min_src_idx_op];

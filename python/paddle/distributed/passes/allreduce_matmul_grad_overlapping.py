@@ -139,7 +139,7 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
             }
 
             allreduce_op = block._insert_op_without_sync(
-                index=allreduce_id + 1,
+                index=allreduce_id - 1,
                 type=allreduce_op.type,
                 inputs=allreduce_op_inputs,
                 outputs=allreduce_op_outputs,
