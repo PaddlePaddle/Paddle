@@ -571,8 +571,7 @@ class TestProdOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.CUDAPlace(0),
+        self.check_grad(
             ['X'],
             'Out',
             check_prim=True,
@@ -659,8 +658,7 @@ class TestProdOp_ZeroDim(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.CUDAPlace(0),
+        self.check_grad(
             ['X'],
             'Out',
             check_prim=True,
@@ -724,8 +722,7 @@ class TestProd6DOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.CUDAPlace(0),
+        self.check_grad(
             ['X'],
             'Out',
             check_prim=True,
@@ -850,9 +847,6 @@ class TestProd8DBFP16OP(TestProd8DOp):
         self.check_grad_with_place(
             paddle.CUDAPlace(0), ['X'], 'Out', check_pir=True
         )
-
-    def test_only_dygraph_prim(self):
-        pass
 
 
 def reduce_all_wrapper(x, axis=None, keepdim=False, reduce_all=True, name=None):
