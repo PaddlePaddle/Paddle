@@ -453,6 +453,7 @@
     data_type : dtype
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : pir::SideEffectTrait
 
 - op : get_tensor_from_selected_rows
   args : (Tensor x)
@@ -960,6 +961,7 @@
     param: [seed]
   kernel:
     func: seed
+  traits : pir::SideEffectTrait
 
 - op : send_and_recv
   args : (Tensor[] x, str message_name, str[] send_var_name, str[] recv_var_name, int trainer_id = 0, str mode="forward", str[] endpoints={"127.0.0.1:6164"}, str[] next_endpoints={"127.0.0.1:6164"}, str[] previous_endpoints={"127.0.0.1:6164"})
@@ -1034,6 +1036,7 @@
      func: shuffle_batch
      data_type: x
   backward : shuffle_batch_grad
+  traits : pir::SideEffectTrait
 
 - op : shuffle_channel
   args : (Tensor x, int group = 1)
