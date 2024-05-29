@@ -908,7 +908,7 @@ class PipelineParallel(MetaParallelBase):
                         losses.append(paddle.sum(self.total_loss[idx]).detach())
                     else:
                         losses.append(
-                            paddle.sum(self.total_loss[idx]).detach()
+                            paddle.sum(self.total_loss[idx])
                             / self.accumulate_steps
                         )
                 else:
