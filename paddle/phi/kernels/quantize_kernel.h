@@ -23,8 +23,9 @@ namespace phi {
 template <typename T, typename Context>
 void QuantOpKernel(const Context& dev_ctx,
                    const DenseTensor& input,
-                   float scale,
-                   float shift,
+                   bool is_negative_input,
+                   const float scale,
+                   const float shift,
                    const std::string& output_format,
                    bool bfloat16,
                    DenseTensor* output);
