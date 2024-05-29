@@ -54,7 +54,7 @@ void CpuUtilization::RecordBeginTimeInfo() {
 #elif defined(__linux__)
   start_ = times(&process_tms_start_);
 #define proc_path_size 1024
-  static char proc_stat_path[proc_path_size] = "/proc/stat";  // NOLINTf
+  static char proc_stat_path[proc_path_size] = "/proc/stat";  // NOLINT
   FILE *stat_file = fopen(proc_stat_path, "r");
   if (stat_file != nullptr) {
     std::array<char, 200> temp_str = {};

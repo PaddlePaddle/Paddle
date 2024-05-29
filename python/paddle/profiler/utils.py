@@ -248,3 +248,12 @@ def job_schedule_profiler_range(iter_id, start, end, exit_after_prof=True):
         if iter_id == end - 1:
             if exit_after_prof:
                 sys.exit()
+
+
+def switch_job_schedule_profiler(
+    model, iter_id, start, end, exit_after_prof=True
+):
+    with job_schedule_profiler_range(
+        iter_id, start, end, exit_after_prof
+    ) as status:
+        model._engine.enable_job_schedule_profiler = status
