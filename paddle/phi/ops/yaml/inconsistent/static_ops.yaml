@@ -213,20 +213,6 @@
   kernel :
     func : c_split
 
-- op : cast
-  args : (Tensor x, DataType dtype)
-  output : Tensor(out)
-  infer_meta :
-    func : CastInferMeta
-    spmd_rule : CastInferSpmd
-  kernel :
-    func : cast
-    param : [x, dtype]
-    data_type : x
-  inplace: (x -> out)
-  backward : cast_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : coalesce_tensor_
   args : (Tensor[] input, DataType dtype, bool copy_data = false, bool set_constant = false, bool persist_output = false, float constant = 0.0, bool use_align = true, int align_size = -1, int size_of_dtype = -1, int64_t[] concated_shapes = {}, int64_t[] concated_ranks = {})
   output : Tensor[](output){input.size()}, Tensor(fused_output)
