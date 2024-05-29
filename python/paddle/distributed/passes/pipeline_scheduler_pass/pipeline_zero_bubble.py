@@ -281,10 +281,10 @@ class PipelineZeroBubbleVirtualPipelinePass(PipelineZeroBubblePipelinePass):
         self.program_mem_usages = [{} for _ in range(len(pp_group))]
         self.program_max_mem_usages = [{} for _ in range(len(pp_group))]
 
-        for id in pp_group:
-            for i, type in enumerate(types):
-                self.program_mem_usages[id][type] = all_mem_usages[id][i]
-                self.program_max_mem_usages[id][type] = all_max_usages[id][i]
+        for i, id in enumerate(pp_group):
+            for j, type in enumerate(types):
+                self.program_mem_usages[i][type] = all_mem_usages[id][j]
+                self.program_max_mem_usages[i][type] = all_max_usages[id][j]
 
     def _get_all_device_base_memory(self, pp_group):
         with paddle.base.dygraph.guard():
