@@ -175,7 +175,7 @@ class RunnableProgram:
             return []
         if isinstance(values[0], str):
             return values
-        return [self.get_value_name_map[v] for v in values]
+        return [self.get_value_name_map.get(v, "FakeVar") for v in values]
 
     @cached_property
     def x_values(self):
@@ -426,7 +426,7 @@ class RunnableProgram:
 
 class PartialProgramLayerHook:
     def before_append_backward(self, forward_program, src_vars):
-        ...
+        return forward_program, src_vars
 
     def after_append_backward(
         self,
@@ -437,10 +437,140 @@ class PartialProgramLayerHook:
         forward_end_idx,
         backward_start_idx,
     ):
-        ...
+        return whole_program, forward_end_idx, src_vars
 
     def after_infer(self, infer_program):
-        ...
+        return infer_program
+
+
+class OperatorIndexPreservePass:
+    OP_NAME_PREFIX = "preserved_index_"
+    counter = 0
+
+    def __init__(self, index, pass_fn):
+        self.name = f"{OperatorIndexPreservePass.OP_NAME_PREFIX}{OperatorIndexPreservePass.counter}"
+        OperatorIndexPreservePass.counter += 1
+        self.pass_fn = pass_fn
+        self.index = index
+
+    def __call__(self, program):
+        if len(program.global_block().ops) == 0:
+            assert self.index == 0
+            return self.pass_fn(program)
+        paddle.base.libpaddle.pir.append_shadow_output(
+            program,
+            program.global_block().ops[0].result(0),
+            self.name,
+            self.index,
+        )
+        program = self.pass_fn(program)
+        new_index = 0
+        for op in program.global_block().ops:
+            if (
+                op.name() == "builtin.shadow_output"
+                and self.name in op.attrs()["output_name"]
+            ):
+                break
+            new_index += 1
+        # remove forward_backward_seperator
+        if new_index >= len(program.global_block().ops):
+            raise RuntimeError(
+                f"Can't find index preserve label {self.name}, don't remove it in pass."
+            )
+        program.global_block().remove_op(program.global_block().ops[new_index])
+        self.index = new_index
+        return program
+
+
+class IndicesPreservePass:
+    def __init__(self, indices, pass_fn):
+        self.pass_fn = pass_fn
+        self.indices = indices
+        self.new_indices = None
+
+    def __call__(self, program):
+        passes = [self.pass_fn]
+        for idx, index in enumerate(self.indices):
+            passes.append(OperatorIndexPreservePass(index, passes[idx]))
+        new_program = passes[-1](program)
+
+        self.new_indices = [p.index for p in passes[1:]]
+        return new_program
+
+
+class ValuePreservePass:
+    OP_NAME_PREFIX = "preserved_value_"
+
+    def __init__(self, values):
+        self.values = values
+
+    def apply(self, program):
+        raise RuntimeError("Not implemented.")
+
+    def __call__(self, program):
+        # create fake values for args
+        all_values = list(
+            filter(
+                lambda x: isinstance(x, Value) and not is_fake_value(x),
+                paddle.utils.flatten(self.values),
+            )
+        )
+
+        value2name = ValueDict()
+        for idx, v in enumerate(all_values):
+            name = f"{ValuePreservePass.OP_NAME_PREFIX}{idx}"
+            if v in value2name:
+                continue
+            value2name[v] = name
+            paddle.base.libpaddle.pir.append_shadow_output(
+                program,
+                v,
+                name,
+                len(program.global_block().ops),
+            )
+
+        # apply program pass
+        program = self.apply(program)
+
+        # collect new value
+        name2new_value = {}
+        to_remove_op = []
+        for op in program.global_block().ops:
+            if op.name() == "builtin.shadow_output":
+                if op.attrs()["output_name"].startswith(
+                    ValuePreservePass.OP_NAME_PREFIX
+                ):
+                    name2new_value[op.attrs()["output_name"]] = op.operand(
+                        0
+                    ).source()
+                    to_remove_op.append(op)
+
+        # remove old op
+        for op in to_remove_op:
+            program.global_block().remove_op(op)
+
+        # get new values
+        value2new_value = ValueDict(
+            {
+                v: name2new_value.get(name, fake_value())
+                for v, name in value2name.items()
+            }
+        )
+
+        new_args = paddle.utils.map_structure(
+            lambda x: (
+                value2new_value[x] if not is_fake_value(x) else fake_value()
+            ),
+            self.values,
+        )
+        self.values = new_args
+        return program
+
+
+class FusedBnAddActPass(ValuePreservePass):
+    def apply(self, program):
+        program = paddle.base.libpaddle.pir.apply_bn_add_act_pass(program)
+        return program
 
 
 class PartialProgramLayer:
@@ -904,7 +1034,30 @@ class PartialProgramLayer:
         backward_start_op_index = (
             forward_end_idx + op_between_forward_and_backward
         )
+
         # construct a runnable program.
+        fused_bn_add_act_pass = FusedBnAddActPass(
+            [inputs, params, targets, x_grad_value, p_grad_value, o_grad_value]
+        )
+        forward_index_pass = IndicesPreservePass(
+            [forward_end_idx, backward_start_op_index, backward_end_op_index],
+            fused_bn_add_act_pass,
+        )
+        program = forward_index_pass(program)
+        (
+            inputs,
+            params,
+            targets,
+            x_grad_value,
+            p_grad_value,
+            o_grad_value,
+        ) = fused_bn_add_act_pass.values
+        (
+            forward_end_idx,
+            backward_start_op_index,
+            backward_end_op_index,
+        ) = forward_index_pass.new_indices
+
         return RunnableProgram(
             program,
             (inputs, params, targets),

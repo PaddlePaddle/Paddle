@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/frontend/decomposer/test_helper.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::frontend {
 
 void RunDecomposer(Program* prog,
@@ -55,14 +55,20 @@ void CopyFromVector<bool>(const std::vector<bool>& vec,
   auto* data = tensor->mutable_data<bool>(target);
 
   size_t numel = tensor->shape().numel();
-  CHECK_EQ(vec.size(), numel);
+  PADDLE_ENFORCE_EQ(vec.size(),
+                    numel,
+                    phi::errors::InvalidArgument(
+                        "The size of the input vector should be equal to the "
+                        "number of elements in the tensor."));
 
 #ifdef CINN_WITH_CUDA
   // why not use vector<bool> ? Because to optimizes space, each value is stored
   // in a single bit. So that the vector<bool> doesn't has data() function.
-  CHECK_EQ(sizeof(bool), sizeof(char))
-      << "The test need ensure the byte size of bool equal to the byte size of "
-         "char.";
+  PADDLE_ENFORCE_EQ(sizeof(bool) == sizeof(char),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The test need ensure the byte size of bool equal to "
+                        "the byte size of char."));
 
   std::vector<char> vec_char(numel);
   for (int i = 0; i < numel; ++i) vec_char[i] = static_cast<char>(vec[i]);
@@ -84,9 +90,11 @@ void CopyToVector<bool>(const hlir::framework::Tensor tensor,
 #ifdef CINN_WITH_CUDA
   // why not use vector<bool> ? Because to optimizes space, each value is stored
   // in a single bit. So that the vector<bool> doesn't has data() function.
-  CHECK_EQ(sizeof(bool), sizeof(char))
-      << "The test need ensure the byte size of bool equal to the byte size of "
-         "char.";
+  PADDLE_ENFORCE_EQ(
+      sizeof(bool) == sizeof(char),
+      true,
+      phi::errors::InvalidArgument("The test need ensure the byte size of bool "
+                                   "equal to the byte size of char."));
 
   std::vector<char> vec_char(numel);
   cudaMemcpy(

@@ -17,8 +17,8 @@
 namespace paddle {
 namespace framework {
 
-InterpreterCoreNoEventGarbageCollector::
-    InterpreterCoreNoEventGarbageCollector() {
+InterpreterCoreNoEventGarbageCollector::InterpreterCoreNoEventGarbageCollector()
+    : queue_(nullptr), ctxs_() {
   WorkQueueOptions options(/*name*/ "NoEventGarbageCollector",
                            /*num_threads*/ 1,
                            /*allow_spinning*/ true,

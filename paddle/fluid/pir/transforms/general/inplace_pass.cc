@@ -179,8 +179,7 @@ bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
 }
 
 bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
-  if (op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
-      0) {
+  if (op->dialect()->name() != paddle::dialect::KernelDialect::name()) {
     VLOG(8) << op->name()
             << "is not a kernel_dialect op, no need buffer is false";
     return false;
@@ -212,8 +211,7 @@ bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
 std::unordered_set<pir::Value> GetSkipDeletionValues(const pir::Block& block) {
   std::unordered_set<pir::Value> skip_dels;
   for (auto& op : block) {
-    if (op.dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
-        0) {
+    if (op.dialect()->name() != paddle::dialect::KernelDialect::name()) {
       continue;
     }
     PADDLE_ENFORCE_GT(
@@ -248,8 +246,7 @@ void GetEagerDelValueOfOp(
     std::unordered_map<pir::Value, pir::Operation*>* del_value_2_op) {
   for (auto& op : block) {
     std::string upper_op_name = op.name();
-    if (op.dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
-        0) {
+    if (op.dialect()->name() == paddle::dialect::KernelDialect::name()) {
       PADDLE_ENFORCE_GT(
           op.attributes().count("op_name"),
           0UL,
@@ -329,8 +326,7 @@ std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
       use_count_map[op.operand_source(i)]--;
     }
 
-    if (op.dialect()->name().compare(paddle::dialect::KernelDialect::name()) !=
-        0) {
+    if (op.dialect()->name() != paddle::dialect::KernelDialect::name()) {
       VLOG(6) << op.name()
               << "is not a kernel_dialect op, inplace only support "
                  "kernel_dialect operators";

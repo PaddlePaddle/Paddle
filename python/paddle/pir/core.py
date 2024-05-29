@@ -419,9 +419,14 @@ def _convert_into_value(tensor):
     )
 
     if isinstance(tensor, paddle.Tensor):
-        return _global_parameter_recorder.get(
+        value = _global_parameter_recorder.get(
             paddle.pir.core.default_main_program(), tensor
         )
+        NON_PERSISTABLE_VAR_NAME_SUFFIX = "__non_persistable"
+        if tensor.name.endswith(NON_PERSISTABLE_VAR_NAME_SUFFIX):
+            value.persistable = False
+        return value
+
     return tensor
 
 

@@ -56,6 +56,13 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
                      : add(pat.Tensor("matmul_out"), pat.Tensor("y"));
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
+      auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
+      if (!w_dtype.isa<pir::Float16Type>() &&
+          !w_dtype.isa<pir::BFloat16Type>() &&
+          !w_dtype.isa<pir::Float32Type>() &&
+          !w_dtype.isa<pir::Float64Type>()) {
+        return false;
+      }
       auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
       auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
       auto y_dims = pir::GetShapeFromValue(match_ctx.Tensor("y"));
@@ -66,6 +73,14 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
       if (x_dims.at(x_dims.size() - 1) != w_dims.at(0) ||
           match_ctx.Attr<bool>("transpose_x") == true ||
           match_ctx.Attr<bool>("transpose_y") == true) {
+        return false;
+      }
+
+      // gemm_epilogue kernel requires gemm's N and K to be 8 aligned.
+      // K and N correspond to w_dims[0] and w_dims[1] respectively.
+      constexpr int cutlass_align = 8;
+      if (fused_op_name_ == paddle::dialect::GemmEpilogueOp::name() &&
+          (w_dims[0] % cutlass_align != 0 || w_dims[1] % cutlass_align != 0)) {
         return false;
       }
 
@@ -191,14 +206,14 @@ class MatmulAddActFusePass : public pir::PatternRewritePass {
         ps.Add(paddle::drr::Create<MatmulAddActPattern>(
             context, act_op, paddle::dialect::GemmEpilogueOp::name()));
       }
-    } else {
-      /// MatmulAddPattern
-      ps.Add(paddle::drr::Create<MatmulAddPattern>(
-          context, paddle::dialect::FcOp::name(), false));
-      /// MatmulAddActPattern
-      ps.Add(paddle::drr::Create<MatmulAddActPattern>(
-          context, "relu", paddle::dialect::FcOp::name()));
     }
+    /// MatmulAddPatternw
+    ps.Add(paddle::drr::Create<MatmulAddPattern>(
+        context, paddle::dialect::FcOp::name(), false));
+    /// MatmulAddActPattern
+    ps.Add(paddle::drr::Create<MatmulAddActPattern>(
+        context, "relu", paddle::dialect::FcOp::name()));
+
     return ps;
   }
 };

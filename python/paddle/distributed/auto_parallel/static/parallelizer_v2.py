@@ -556,4 +556,5 @@ class Parallelizer:
                 "pp_stage": get_pp_stage(self._dist_context, rank),
                 "vpp_degree": self._strategy.pipeline.vpp_degree,
                 "dist_context": self._dist_context,
+                "split_backward": self._strategy.pipeline.split_backward,
             }

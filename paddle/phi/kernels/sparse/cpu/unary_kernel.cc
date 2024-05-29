@@ -78,6 +78,29 @@ void DivScalarCsrKernel(const Context& dev_ctx,
     kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR); \
   }
 
+#define PD_REGISTER_SPARSE_UNARY_CPU_KERNEL_WITH_COMPLEX(name, prefix) \
+  PD_REGISTER_KERNEL(name##_coo,                                       \
+                     CPU,                                              \
+                     ALL_LAYOUT,                                       \
+                     phi::sparse::prefix##CooKernel,                   \
+                     float,                                            \
+                     double,                                           \
+                     phi::dtype::complex<float>,                       \
+                     phi::dtype::complex<double>) {                    \
+    kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);     \
+  }                                                                    \
+                                                                       \
+  PD_REGISTER_KERNEL(name##_csr,                                       \
+                     CPU,                                              \
+                     ALL_LAYOUT,                                       \
+                     phi::sparse::prefix##CsrKernel,                   \
+                     float,                                            \
+                     double,                                           \
+                     phi::dtype::complex<float>,                       \
+                     phi::dtype::complex<double>) {                    \
+    kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);     \
+  }
+
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(sin, Sin)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(tan, Tan)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(asin, Asin)
@@ -90,12 +113,13 @@ PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(sqrt, Sqrt)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(square, Square)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(log1p, Log1p)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(relu, Relu)
-PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(abs, Abs)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(pow, Pow)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(scale, Scale)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(expm1, Expm1)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(relu6, Relu6)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(leaky_relu, LeakyRelu)
+
+PD_REGISTER_SPARSE_UNARY_CPU_KERNEL_WITH_COMPLEX(abs, Abs)
 
 PD_REGISTER_KERNEL(divide_scalar_coo,
                    CPU,
