@@ -329,7 +329,6 @@ def train(layer, input_size=784, label_size=1):
     for data in train_loader():
         img, label = data
         label.stop_gradient = True
-
         cost = layer(img)
 
         loss = paddle.nn.functional.cross_entropy(
@@ -1790,7 +1789,6 @@ class LayerLoadFinetune(paddle.nn.Layer):
         return y
 
 
-'''
 class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
@@ -1800,7 +1798,10 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_save_load_finetune_load(self):
+        if not paddle.framework.use_pir_api():
+            return
         model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_load_finetune_load/model"
         )
@@ -1831,7 +1832,6 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
 
         self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
         self.assertTrue(float((result_01 - result_11).abs().max()) < 1e-5)
-'''
 
 
 # NOTE(weixin): When there are multiple test functions in an

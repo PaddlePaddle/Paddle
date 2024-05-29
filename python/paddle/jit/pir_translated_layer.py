@@ -377,7 +377,6 @@ def _run_dygraph(instance, input, program_holder):
         parameters,
     )
     instance.layer = layer
-
     if instance._is_test:
         layer.training = False
     else:
@@ -396,14 +395,21 @@ def _run_static_graph(program_holder, src_program):
     value_map = paddle.pir.IrMapping()
     len_dst_op = len(dst_program.global_block().ops)
     for dst_op in dst_program.global_block().ops:
-        for src_op in src_program.global_block().ops[:len_dst_op]:
-            if (
-                src_op.name() == dst_op.name()
-                and src_op.result(0).name == dst_op.result(0).name
-            ):
-                for i in range(src_op.num_results()):
-                    value_map.add(src_op.result(i), dst_op.result(i))
-    src_program.clone(value_map, dst_program)
+        if (
+            dst_op.name() == "builtin.parameter"
+            or dst_op.name() == "pd_op.data"
+        ):
+            for src_op in src_program.global_block().ops[:len_dst_op]:
+                if (
+                    src_op.name() == dst_op.name()
+                    and src_op.result(0).name == dst_op.result(0).name
+                ):
+                    for i in range(src_op.num_results()):
+                        value_map.add(src_op.result(i), dst_op.result(i))
+
+    current_insert_point = paddle.pir.get_current_insertion_point()
+    current_block = current_insert_point.block()
+    src_program.clone(value_map, current_block)
     output = [value_map.look_up(v) for v in program_holder.output_vars]
     return output[0] if len(output) == 1 else output
 

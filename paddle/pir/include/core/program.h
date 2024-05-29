@@ -57,7 +57,7 @@ class IR_API Program {
 
   std::shared_ptr<Program> Clone(IrMapping& ir_mapping) const;  // NOLINT
 
-  void Clone(IrMapping& ir_mapping, Program* dst_program) const;  // NOLINT
+  void Clone(IrMapping& ir_mapping, Block* insert_block) const;  // NOLINT
   Block* block() { return &module_.block(); }
   const Block* block() const { return &module_op().block(); }
 
