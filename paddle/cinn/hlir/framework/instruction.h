@@ -109,21 +109,21 @@ class Instruction {
         auto& pod_args = args_cached_[idx];
         CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first "
                                 "by calling SetLoweredFunc method";
-        if (target_ == cinn::common::DefaultNVGPUTarget()) {
-          ((lower_func_ptr_g)fn_ptrs_[idx])(
-              static_cast<void*>(pod_args.data()), pod_args.size(), stream);
-        } else {
-          ((lower_func_ptr_t)fn_ptrs_[idx])(static_cast<void*>(pod_args.data()),
-                                            pod_args.size());
-        }
-        cinn::common::DefaultDeviceTarget().arch.Match(
-            [&](std::variant<common::UnknownArch,
-                             common::X86Arch,
-                             common::ARMArch>) {},
+        target_.arch.Match(
             [&](common::NVGPUArch) {
+              ((lower_func_ptr_g)fn_ptrs_[idx])(
+                  static_cast<void*>(pod_args.data()), pod_args.size(), stream);
 #ifdef CINN_WITH_CUDA
               CUDA_CALL(cudaDeviceSynchronize());
+#else
+              CINN_NOT_IMPLEMENTED;
 #endif
+            },
+            [&](std::variant<common::UnknownArch,
+                             common::X86Arch,
+                             common::ARMArch>) {
+              ((lower_func_ptr_t)fn_ptrs_[idx])(
+                  static_cast<void*>(pod_args.data()), pod_args.size());
             });
       }
     }
