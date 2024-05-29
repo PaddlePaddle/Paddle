@@ -69,7 +69,7 @@ FunctionInfo::FunctionInfo(const std::string& func_name,
 const std::string& FunctionInfo::FunctionName() const { return func_name_; }
 
 const framework::ProgramDesc& FunctionInfo::ProgramDesc() const {
-  return *program_desc_.get();
+  return *program_desc_.get();  // NOLINT
 }
 
 const std::vector<std::string>& FunctionInfo::ParamNames() const {

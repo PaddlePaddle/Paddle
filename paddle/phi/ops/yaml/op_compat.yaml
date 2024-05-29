@@ -1783,11 +1783,6 @@
   attrs:
     data_format: data_layout
 
-- op : gru
-  backward : gru_grad
-  extra :
-    attrs : [bool is_test = false]
-
 - op : gumbel_softmax
   inputs :
     x : X
@@ -3919,6 +3914,20 @@
   outputs:
     viterbi_path: ViterbiPath
 
+- op: cross_entropy
+  backward: cross_entropy_grad
+  inputs:
+    {x : X, label : Label}
+  outputs:
+    out : Y
+
+- op: cross_entropy2
+  backward: cross_entropy_grad2
+  inputs:
+    {x : X, label : Label}
+  outputs:
+    {out : Y, x_shape : XShape, match_x : MatchX}
+
 - op: ctc_align
   inputs:
     {input : Input, input_length : InputLength}
@@ -4074,6 +4083,23 @@
     x : X
   outputs :
     out : Out
+
+- op: gru
+  backward: gru_grad
+  inputs:
+    {input : Input, h0 : H0, weight : Weight, bias : Bias}
+  outputs:
+    {batch_gate : BatchGate, batch_reset_hidden_prev : BatchResetHiddenPrev, batch_hidden : BatchHidden, hidden : Hidden}
+  extra :
+    attrs : [bool is_test = false]
+    outputs : [batch_gate, batch_reset_hidden_prev, batch_hidden]
+
+- op: gru_unit
+  backward: gru_unit_grad
+  inputs:
+    {input : Input, hidden_prev : HiddenPrev, weight : Weight, bias : Bias}
+  outputs:
+    {gate : Gate, reset_hidden_prev : ResetHiddenPrev, hidden : Hidden}
 
 - op: identity_loss
   inputs :

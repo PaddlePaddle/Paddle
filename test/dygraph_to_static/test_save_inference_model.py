@@ -158,25 +158,26 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
         infer_model_prefix = os.path.join(
             self.temp_dir.name, "test_dy2stat_inference_in_guard/model_pylayer"
         )
-        # TODO(pir-save-load): Fix this after we support save/load in PIR
-        if not use_pir_api():
-            paddle.jit.save(
-                layer=layer,
-                path=infer_model_prefix,
-                input_spec=[x],
-                output_spec=[pred],
-            )
-            # Check the correctness of the inference
-            loss_out, _ = layer(x)
+        paddle.jit.save(
+            layer=layer,
+            path=infer_model_prefix,
+            input_spec=[x],
+            output_spec=[1] if use_pir_api() else [pred],
+        )
+        # Check the correctness of the inference
+        loss_out, _ = layer(x)
 
-            loss_out_numpy = float(loss_out)
-            self.check_save_inference_model(layer, [x_data], loss_out_numpy)
-            self.check_save_inference_model(
-                layer, [x_data], loss_out_numpy, fetch=[loss]
-            )
-            self.check_save_inference_model(
-                layer, [x_data], loss_out_numpy, feed=[x]
-            )
+        loss_out_numpy = float(loss_out)
+        self.check_save_inference_model(layer, [x_data], loss_out_numpy)
+        self.check_save_inference_model(
+            layer,
+            [x_data],
+            loss_out_numpy,
+            fetch=[0] if use_pir_api() else [loss],
+        )
+        self.check_save_inference_model(
+            layer, [x_data], loss_out_numpy, feed=[x]
+        )
 
     def check_save_inference_model(
         self, model, inputs, gt_out, feed=None, fetch=None

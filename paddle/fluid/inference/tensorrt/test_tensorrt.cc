@@ -116,7 +116,7 @@ void Execute(nvinfer1::IExecutionContext* context,
   const int input_index = engine.getBindingIndex(kInputTensor);
   const int output_index = engine.getBindingIndex(kOutputTensor);
   // Create GPU buffers and a stream
-  void* buffers[2];
+  std::vector<void*> buffers(2);
   ASSERT_EQ(0, cudaMalloc(&buffers[input_index], sizeof(float)));
   ASSERT_EQ(0, cudaMalloc(&buffers[output_index], sizeof(float)));
   cudaStream_t stream;
@@ -128,7 +128,7 @@ void Execute(nvinfer1::IExecutionContext* context,
                             sizeof(float),
                             cudaMemcpyHostToDevice,
                             stream));
-  context->enqueue(1, buffers, stream, nullptr);
+  context->enqueue(1, buffers.data(), stream, nullptr);
   ASSERT_EQ(0,
             cudaMemcpyAsync(output,
                             buffers[output_index],
