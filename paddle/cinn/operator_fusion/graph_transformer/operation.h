@@ -20,6 +20,47 @@ namespace cinn::fusion {
 
 // Operation
 
+struct MergeTrivialPatternOperation {
+  void operator()(PatternGraph* graph, PatternNodePtr upstream) {
+    PADDLE_ENFORCE_GE(upstream->downstream().size(),
+                      1,
+                      phi::errors::PreconditionNotMet(
+                          "The trivial pattern wait for sinking should has "
+                          "at least 1 downstream , but got %d.",
+                          upstream->downstream().size()));
+
+    std::vector<PatternNodePtr> fusion_candidate = upstream->downstream();
+    upstream->ClearDownstream();
+
+    for (const auto& downstream : fusion_candidate) {
+      bool can_fuse =
+          std::holds_alternative<ReducePattern>(downstream->stmt_pattern()) ||
+          std::holds_alternative<TrivialPattern>(downstream->stmt_pattern()) ||
+          std::holds_alternative<ReduceTreePattern>(
+              downstream->stmt_pattern()) ||
+          std::holds_alternative<ReduceTreePlusTrivialPattern>(
+              downstream->stmt_pattern()) ||
+          std::holds_alternative<AnchorPattern>(downstream->stmt_pattern());
+
+      if (can_fuse) {
+        auto merged_node = graph->MergeNode(upstream, downstream, MergePattern);
+        graph->RemoveNode(downstream);
+        VLOG(4) << "Spliting trivial pattern: \nupstream "
+                << upstream->DebugStr() << "\ndownstream "
+                << downstream->DebugStr() << "\nmerged "
+                << merged_node->DebugStr();
+        merged_node->UpdateTracker(make_shared<TrivialInlineInstr>(
+            upstream->name(), downstream->name(), merged_node->name()));
+      } else {
+        upstream->AddNodeToDownstream(downstream);
+      }
+    }
+    if (upstream->downstream().empty()) {
+      graph->RemoveNode(upstream);
+    }
+  }
+};
+
 struct MergeReduceTreeOperation {
   PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
     PADDLE_ENFORCE_EQ(
@@ -35,6 +76,8 @@ struct MergeReduceTreeOperation {
     VLOG(4) << "MergeReduceTreeOperation: \nupstream " << node->DebugStr()
             << "\ndownstream " << downstream->DebugStr() << "\nmerged "
             << merged_node->DebugStr();
+    merged_node->UpdateTracker(make_shared<TmpTransformInstr>(
+        upstream->name(), downstream->name(), merged_node->name()));
     return merged_node;
   }
 };
@@ -66,68 +109,43 @@ struct MergeReduceTreeAndTrivialOperation {
     VLOG(4) << "MergeReduceTreeAndTrivialOperation: \nupstream "
             << node->DebugStr() << "\ndownstream " << downstream->DebugStr()
             << "\nmerged " << merged_node->DebugStr();
+    merged_node->UpdateTracker(make_shared<TmpTransformWithFakeReduceIterInstr>(
+                                   upstream->name(),
+                                   downstream->name(),
+                                   merged_node->name(),
+                                   fake_reduce_iter_idx););
     return merged_node;
   }
 };
 
 struct LiftReduceToReduceTreeOperation {
   PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
-    const auto& reduce_pattern = ToReducePattern(node->stmt_pattern());
-    node->set_stmt_pattern(ReduceTreePattern({}, reduce_pattern));
+    auto origin_name = node->name();
+    const auto& reduce_pattern = std::get<ReducePattern>(node->stmt_pattern());
+    node->set_stmt_pattern(
+        ReduceTreePattern({}, reduce_pattern, *(reduce_pattern.tracker())));
+    node->UpdateTracker(
+        make_shared<RenamePatternInstr>(origin_name, node->name()));
     return node;
-  }
-};
-
-struct MergeTrivialPatternOperation {
-  void operator()(PatternGraph* graph, PatternNodePtr upstream) {
-    PADDLE_ENFORCE_GE(upstream->downstream().size(),
-                      1,
-                      phi::errors::PreconditionNotMet(
-                          "The trivial pattern wait for sinking should has "
-                          "at least 1 downstream , but got %d.",
-                          upstream->downstream().size()));
-
-    std::vector<PatternNodePtr> fusion_candidate = upstream->downstream();
-    upstream->ClearDownstream();
-
-    for (const auto& downstream : fusion_candidate) {
-      bool can_fuse =
-          std::holds_alternative<ReducePattern>(downstream->stmt_pattern()) ||
-          std::holds_alternative<TrivialPattern>(downstream->stmt_pattern()) ||
-          std::holds_alternative<ReduceTreePattern>(
-              downstream->stmt_pattern()) ||
-          std::holds_alternative<ReduceTreePlusTrivialPattern>(
-              downstream->stmt_pattern()) ||
-          std::holds_alternative<AnchorPattern>(downstream->stmt_pattern());
-
-      if (can_fuse) {
-        auto merged_node = graph->MergeNode(upstream, downstream, MergePattern);
-        graph->RemoveNode(downstream);
-        VLOG(4) << "Spliting trivial pattern: \nupstream "
-                << upstream->DebugStr() << "\ndownstream "
-                << downstream->DebugStr() << "\nmerged "
-                << merged_node->DebugStr();
-      } else {
-        upstream->AddNodeToDownstream(downstream);
-      }
-    }
-    if (upstream->downstream().empty()) {
-      graph->RemoveNode(upstream);
-    }
   }
 };
 
 struct LiftToHorizontalFusionPatternOperation {
   PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
+    auto origin_name = node->name();
     node->set_stmt_pattern(HorizontalFusionPattern(
         {typename HorizontalFusionPattern::PaddingStmtPattern(
-            node->stmt_pattern(), {})}));
+             node->stmt_pattern(), {}),
+         *(node->tracker())}));
+    node->UpdateTracker(
+        make_shared<RenamePatternInstr>(origin_name, node->name()));
     return node;
   }
 };
 
 struct LiftToAnchorPatternOperation {
   PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
+    auto origin_name = node->name();
     std::vector<pir::Operation*> ops = GetOpsInPattern(node->stmt_pattern());
     // TODO(@wuzhanfei) move sink_op into pattern (currently, part of pattern
     // type has sink and the others not) then, update logic here
@@ -141,6 +159,8 @@ struct LiftToAnchorPatternOperation {
         ops,
         anchor,
         AnchorState({InitExprPromise(node->stmt_pattern(), anchor)})));
+    node->UpdateTracker(
+        make_shared<RenamePatternInstr>(origin_name, node->name()));
     return node;
   }
 };
@@ -184,6 +204,12 @@ struct FuseUpstreamAnchorOperation {
         << std::get<AnchorPattern>(downstream->stmt_pattern()).anchor().impl()
         << ", merged node anchor: "
         << std::get<AnchorPattern>(merged_node->stmt_pattern()).anchor().impl();
+    merged_node->UpdateTracker(
+        make_shared<AnchorTransformInstr>(upstream->name(),
+                                          downstream->name(),
+                                          merged_node->name(),
+                                          transform_route,
+                                          true));
     return merged_node;
   }
 };
@@ -228,15 +254,23 @@ struct FuseDownstreamAnchorOperation {
         << std::get<AnchorPattern>(downstream->stmt_pattern()).anchor().impl()
         << ", merged node anchor: "
         << std::get<AnchorPattern>(merged_node->stmt_pattern()).anchor().impl();
+    merged_node->UpdateTracker(
+        make_shared<AnchorTransformInstr>(upstream->name(),
+                                          downstream->name(),
+                                          merged_node->name(),
+                                          transform_route,
+                                          false));
     return merged_node;
   }
 };
 
 struct SplitRecomputeOperation {
   void operator()(PatternGraph* graph, PatternNodePtr upstream) {
+    auto origin_name = upstream->name();
     upstream->set_stmt_pattern(RecoverAnchorPatternToTrivial(
         std::get<AnchorPattern>(upstream->stmt_pattern())));
-
+    upstream->UpdateTracker(
+        make_shared<RenamePatternInstr>(origin_name, node->name()));
     MergeTrivialPatternOperation()(graph, upstream);
   }
 };
@@ -265,6 +299,8 @@ struct HorizontalFusionOperation {
             << j->DebugStr() << "\nmerged " << merged_node->DebugStr();
     graph->RemoveNode(i);
     graph->RemoveNode(j);
+    merged_node->UpdateTracker(
+        make_shared<CombineInstr>(i->name(), j->name(), merged_node()););
     return merged_node;
   }
 };

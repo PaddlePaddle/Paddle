@@ -14,8 +14,7 @@
 
 #pragma once
 #include "paddle/cinn/ir/ir_base.h"
-#include "paddle/cinn/operator_fusion/pattern.h"
-#include "paddle/cinn/operator_fusion/pattern_fuser.h"
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/anchor_transform.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 
 namespace cinn::fusion {
@@ -35,10 +34,74 @@ struct FusionInstruction {
 
 using FusionInstrPtr = std::shared_ptr<FusionInstruction>;
 
-struct TrivialInlineInstr : public FusionInstruction {};
-struct TmpTransformInstr : public FusionInstruction {};
-struct AnchorMatchInstr : public FusionInstruction {};
-struct InitPatternInstr : public FusionInstruction {};
+struct TrivialInlineInstr : public FusionInstruction {
+  TrivialInlineInstr(const std::string& upstream,
+                     const std::string& downstream const std::string& result)
+      : upstream_(upstream), downstream_(downstream), result_(result) {}
+  std::string upstream_;
+  std::string downstream_;
+  std::string result_;
+};
+struct TmpTransformInstr : public FusionInstruction {
+  TmpTransformInstr(const std::string& upstream,
+                    const std::string& downstream const std::string& result)
+      : upstream_(upstream), downstream_(downstream), result_(result) {}
+  std::string upstream_;
+  std::string downstream_;
+  std::string result_;
+};
+struct TmpTransformWithFakeReduceIterInstr : public FusionInstruction {
+  TmpTransformInstr(const std::string& upstream,
+                    const std::string& downstream,
+                    const std::string& result,
+                    const vector<size_t>& fake_reduce_iter_idx)
+      : upstream_(upstream),
+        downstream_(downstream),
+        result_(result),
+        fake_reduce_iter_idx_(fake_reduce_iter_idx) {}
+  std::string upstream_;
+  std::string downstream_;
+  std::string result_;
+  vector<size_t> fake_reduce_iter_idx_;
+};
+struct AnchorTransformInstr : public FusionInstruction {
+  TmpTransformInstr(const std::string& upstream,
+                    const std::string& downstream,
+                    const std::string& result,
+                    const AnchorTransformRoute& transform_route,
+                    bool is_upstream_anchor)
+      : upstream_(upstream),
+        downstream_(downstream),
+        result_(result),
+        transform_route_(transform_route),
+        is_upstream_anchor_(is_upstream_anchor) {}
+  std::string upstream_;
+  std::string downstream_;
+  std::string result_;
+  AnchorTransformRoute transform_route_;
+  bool is_upstream_anchor_;
+};
+struct CombineInstr : public FusionInstruction {
+  TmpTransformInstr(const std::string& first,
+                    const std::string& second,
+                    const std::string& result)
+      : first_(first), second_(second), result_(result) {}
+  std::string first_;
+  std::string second_;
+  std::string result_;
+};
+struct InitPatternInstr : public FusionInstruction {
+  InitPatternInstr(pir::Operation* op, const std::string& result)
+      : op_(op), result_(result) {}
+  pir::Operation* op_;
+  std::string result_;
+};
+struct RenamePatternInstr : public FusionInstruction {
+  TmpTransformInstr(const std::string& origin_name, const std::string& new_name)
+      : origin_name_(origin_name), new_name_(new_name) {}
+  std::string origin_name_;
+  std::string new_name_;
+};
 struct RemovePatternInstr : public FusionInstruction {};
 
 struct FusionTracker {
@@ -48,7 +111,8 @@ struct FusionTracker {
     ExtendVector(&instructions_, down.instructions_);
   }
   void append(FusionInstrPtr instr) { instructions_.emplace_back(instr); }
-  std::vector<FusionInstrPtr> instructions_;
   std::string DebugStr() const;
+
+  std::vector<FusionInstrPtr> instructions_;
 };
 }  // namespace cinn::fusion

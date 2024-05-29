@@ -36,19 +36,35 @@
 
 namespace cinn::fusion {
 
-ReducePattern ToReducePattern(const StmtPattern& second) {
-  return std::get<ReducePattern>(second);
+std::unordered_set<pir::Value> GetPatternInputValuesIncludeInner(
+    const StmtPattern& A) {
+  std::unordered_set<pir::Value> result;
+  for (const auto& op : GetOpsInPattern(A)) {
+    for (const auto& value : op->operands()) {
+      result.insert(value.source());
+    }
+  }
+  return result;
 }
 
-std::string GetPatternName(const StmtPattern& s) {
-  return std::visit([](const auto& impl) { return impl.name(); }, s.variant());
+std::unordered_set<pir::Value> GetPatternOutputValuesIncludedInner(
+    const StmtPattern& A) {
+  std::unordered_set<pir::Value> result;
+  for (const auto& op : GetOpsInPattern(A)) {
+    for (const auto& value : op->results()) {
+      result.insert(value);
+    }
+  }
+  return result;
 }
 
-StmtPattern ConvertToStmtPattern(const PatternContent& content);
-
-std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern) {
-  return std::visit([](const auto& impl) { return impl.ops(); },
-                    pattern.variant());
+std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A) {
+  auto all_input_values = GetPatternInputValuesIncludeInner(A);
+  for (const auto& value : GetPatternOutputValuesIncludedInner(A)) {
+    all_input_values.erase(value);
+  }
+  VLOG(4) << "GetPatternInputValues: " << all_input_values.size();
+  return all_input_values;
 }
 
 using LoopFramework = std::vector<symbol::DimExpr>;
@@ -78,11 +94,6 @@ bool IsLoopFrameworkEqual(const StmtPattern& lhs, const StmtPattern& rhs) {
   VLOG(4) << "lhs loop range is:" << utils::Join(lhs_loop, ",");
   VLOG(4) << "rhs loop range is:" << utils::Join(rhs_loop, ",");
   return SqueezeLoopFramework(lhs_loop) == SqueezeLoopFramework(rhs_loop);
-}
-
-pir::Operation* GetSinkOpInPattern(const StmtPattern& pattern) {
-  return std::visit([](const auto& impl) { return impl.sink_op(); },
-                    pattern.variant());
 }
 
 struct LoopFrameworkVisitor {
@@ -161,99 +172,6 @@ MaybeLoopFramework GetLoopFramework(const StmtPattern& pattern) {
   return std::visit(LoopFrameworkVisitor(), pattern.variant());
 }
 
-bool IsReducePattern(const StmtPattern& pattern) {
-  return std::holds_alternative<ReducePattern>(pattern);
-}
-
-bool IsReduceTreePattern(const StmtPattern& pattern) {
-  return std::holds_alternative<ReduceTreePattern>(pattern);
-}
-
-bool IsOpsDependents(const StmtPattern& pattern) {
-  return std::holds_alternative<ReduceTreePattern>(pattern);
-}
-
-bool IsUnsupportPattern(const StmtPattern& pattern) {
-  return std::holds_alternative<UnsupportPattern>(pattern);
-}
-
-bool IsReduceTrivialPattern(const StmtPattern& pattern) {
-  return std::holds_alternative<ReduceTreePlusTrivialPattern>(pattern);
-}
-
-std::unordered_set<pir::Value> GetPatternInputValuesIncludeInner(
-    const StmtPattern& A) {
-  std::unordered_set<pir::Value> result;
-  for (const auto& op : GetOpsInPattern(A)) {
-    for (const auto& value : op->operands()) {
-      result.insert(value.source());
-    }
-  }
-  return result;
-}
-
-std::unordered_set<pir::Value> GetPatternOutputValuesIncludedInner(
-    const StmtPattern& A) {
-  std::unordered_set<pir::Value> result;
-  for (const auto& op : GetOpsInPattern(A)) {
-    for (const auto& value : op->results()) {
-      result.insert(value);
-    }
-  }
-  return result;
-}
-
-std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A) {
-  auto all_input_values = GetPatternInputValuesIncludeInner(A);
-  for (const auto& value : GetPatternOutputValuesIncludedInner(A)) {
-    all_input_values.erase(value);
-  }
-  VLOG(4) << "GetPatternInputValues: " << all_input_values.size();
-  return all_input_values;
-}
-
-std::string StmtPatternDebugStr(const StmtPattern& stmt) {
-  std::stringstream ss;
-  auto all_ops = GetOpsInPattern(stmt);
-  ss << "StmtPattern, size " << all_ops.size() << " :\n";
-  ss << OpsDebugStr(all_ops);
-  return ss.str();
-}
-
-static bool IsDirectUpstream(const pir::Operation* upstream,
-                             const pir::Operation* downstream) {
-  for (const auto& value : downstream->results()) {
-    for (const auto& operand : upstream->operands()) {
-      if (value == operand.source()) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-int InsertDownstreamIntoTree(const ReduceTreePattern& upstream,
-                             ReduceTreePattern& downstream) {  // NOLINT
-  if (IsDirectUpstream(upstream.GetRootPattern().GetReduceOp(),
-                       downstream.GetRootPattern().GetReduceOp())) {
-    downstream.InsertChild(upstream);
-    return 1;
-  }
-  int insert_num = 0;
-  for (auto& child : downstream.childs()) {
-    insert_num += InsertDownstreamIntoTree(upstream, child);
-  }
-  return insert_num;
-}
-
-StmtPattern MergePatternImpl(const ReduceTreePattern& upstream,
-                             const ReduceTreePattern& downstream) {
-  ReduceTreePattern result = downstream;  // copy first.
-  int insert_num = InsertDownstreamIntoTree(upstream, result);
-  CHECK(insert_num == 1) << "Must insert only once, but insert " << insert_num;
-  return result;
-}
-
 inline auto GetPaddingVector(const MaybeLoopFramework& first,
                              const MaybeLoopFramework& second) {
   // two pointer to get the padding body.
@@ -302,6 +220,59 @@ StmtPattern MergePatternImpl(const HorizontalFusionPattern& first,
   return HorizontalFusionPattern({pad_first, pad_second});
 }
 
+static bool IsDirectUpstream(const pir::Operation* upstream,
+                             const pir::Operation* downstream) {
+  for (const auto& value : downstream->results()) {
+    for (const auto& operand : upstream->operands()) {
+      if (value == operand.source()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+int InsertDownstreamIntoTree(const ReduceTreePattern& upstream,
+                             ReduceTreePattern& downstream) {  // NOLINT
+  if (IsDirectUpstream(upstream.GetRootPattern().GetReduceOp(),
+                       downstream.GetRootPattern().GetReduceOp())) {
+    downstream.InsertChild(upstream);
+    return 1;
+  }
+  int insert_num = 0;
+  for (auto& child : downstream.childs()) {
+    insert_num += InsertDownstreamIntoTree(upstream, child);
+  }
+  return insert_num;
+}
+
+StmtPattern MergePatternImpl(const ReduceTreePattern& upstream,
+                             const ReduceTreePattern& downstream) {
+  ReduceTreePattern result = downstream;  // copy first.
+  int insert_num = InsertDownstreamIntoTree(upstream, result);
+  CHECK(insert_num == 1) << "Must insert only once, but insert " << insert_num;
+  return result;
+}
+
+StmtPattern MergePatternImpl(const ReduceTreePattern& first,
+                             const TrivialPattern& second) {
+  return ReduceTreePlusTrivialPattern(first, second);
+}
+
+StmtPattern MergePatternImpl(const TrivialPattern& first,
+                             const ReducePattern& second) {
+  const auto& contents =
+      UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second));
+  return ReducePattern(contents);
+}
+
+StmtPattern MergePatternImpl(const TrivialPattern& first,
+                             const TrivialPattern& second) {
+  const auto& contents =
+      UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second));
+  return TrivialPattern(contents, second.sink_op());
+}
+
 template <typename A, typename B>
 B FusePatternIfConnected(A up_pattern,
                          B down_pattern,
@@ -312,15 +283,6 @@ B FusePatternIfConnected(A up_pattern,
     return down_pattern;
   }
 }
-
-StmtPattern MergePatternImpl(const ReduceTreePattern& first,
-                             const TrivialPattern& second);
-
-StmtPattern MergePatternImpl(const TrivialPattern& first,
-                             const ReducePattern& second);
-
-StmtPattern MergePatternImpl(const TrivialPattern& first,
-                             const TrivialPattern& second);
 
 StmtPattern MergePatternImpl(const TrivialPattern& first,
                              const ReduceTreePattern& second) {
@@ -347,10 +309,19 @@ StmtPattern MergePatternImpl(const TrivialPattern& first,
 }
 
 StmtPattern MergePatternImpl(const TrivialPattern& first,
-                             const AnchorPattern& second);
+                             const AnchorPattern& second) {
+  return AnchorPattern(
+      UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second)),
+      second.anchor(),
+      second.anchor_state);
+}
 
 StmtPattern MergePatternImpl(const AnchorPattern& source,
-                             const AnchorPattern& dest);
+                             const AnchorPattern& dest) {
+  const auto& contents =
+      UniqueConcatVector(GetOpsInPattern(source), GetOpsInPattern(dest));
+  return AnchorPattern(contents, source.anchor(), AnchorState({}));
+}
 
 StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
   VLOG(4) << "MergePattern: " << GetPatternName(first) << " x "
@@ -393,10 +364,14 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
 }
 
 ExprPromise InitExprPromiseImpl(const TrivialPattern& pattern,
-                                pir::Value anchor);
+                                pir::Value anchor) {
+  return ExprPromise(anchor);
+}
 
 ExprPromise InitExprPromiseImpl(const ReducePattern& pattern,
-                                pir::Value anchor);
+                                pir::Value anchor) {
+  return ExprPromise(anchor);
+}
 
 ExprPromise InitExprPromiseImpl(const ReduceTreePattern& pattern,
                                 pir::Value anchor) {
@@ -415,7 +390,17 @@ ExprPromise InitExprPromise(const StmtPattern& pattern, pir::Value anchor) {
 }
 
 TrivialPattern RecoverAnchorPatternToTrivial(
-    const AnchorPattern& anchor_pattern);
+    const AnchorPattern& anchor_pattern) {
+  PADDLE_ENFORCE_EQ(anchor_pattern.anchor_state.promise.size(),
+                    1,
+                    phi::errors::PreconditionNotMet(
+                        "Can only recover AnchorPattern whose anchor_state "
+                        "size is 1 (exact %d)",
+                        anchor_pattern.anchor_state.promise.size()));
+
+  return TrivialPattern(anchor_pattern.ops(),
+                        anchor_pattern.anchor().defining_op());
+}
 
 AnchorState GetAnchorState(const AnchorPattern& pattern) {
   return pattern.anchor_state;

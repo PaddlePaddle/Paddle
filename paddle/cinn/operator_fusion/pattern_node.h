@@ -63,6 +63,7 @@ struct PatternNode {
   void set_stmt_pattern(const StmtPattern& pattern) { stmt_pattern_ = pattern; }
   const std::vector<PatternNodePtr>& upstream() const { return upstream_; }
   const std::vector<PatternNodePtr>& downstream() const { return downstream_; }
+  const std::string& name() const { return GetPatternName(stmt_pattern_); }
   void AddNodeToUpstream(PatternNodePtr node) { upstream_.push_back(node); }
   void AddNodeToDownstream(PatternNodePtr node) { downstream_.push_back(node); }
   void RemoveNodeFromUpstream(PatternNodePtr node) {
@@ -75,6 +76,9 @@ struct PatternNode {
   void ClearDownstream() { downstream_.clear(); }
   void UniqueUpstream() { upstream_ = UniqueVectorBySet(upstream_); }
   void UniqueDownstream() { downstream_ = UniqueVectorBySet(downstream_); }
+  void UpdateTracker(FusionInstrPtr instr) {
+    GetPatternTracker(stmt_pattern_)->append(instr);
+  }
 
  private:
   StmtPattern stmt_pattern_;

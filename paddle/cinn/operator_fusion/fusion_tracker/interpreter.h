@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/operator_fusion/fusion_tracker/tracker.h"
+#include "paddle/cinn/operator_fusion/pattern.h"
+#include "paddle/cinn/operator_fusion/pattern_fuser.h"
 
 struct FusionInterpreter {};

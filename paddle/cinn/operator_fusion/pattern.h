@@ -18,6 +18,7 @@
 #include <variant>
 #include <vector>
 #include "glog/logging.h"
+#include "paddle/cinn/operator_fusion/fusion_tracker/tracker.h"
 #include "paddle/cinn/operator_fusion/pir_graph_analyzing/anchor_transform.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 #include "paddle/pir/include/core/operation.h"
@@ -31,7 +32,6 @@ struct PatternContent {
 };
 
 struct StmtPattern;
-struct FusionTracker;
 
 struct TrivialPattern {
   explicit TrivialPattern(const std::vector<pir::Operation*>& ops,
@@ -52,6 +52,7 @@ struct TrivialPattern {
   }
   std::string name() { return name_; }
   std::string name_;
+  FusionTracker* tracker() { return &tracker_; }
   FusionTracker tracker_;
 };
 
@@ -72,6 +73,7 @@ struct ReducePattern {
   }
   std::string name() { return name_; }
   std::string name_;
+  FusionTracker* tracker() { return &tracker_; }
   FusionTracker tracker_;
 };
 
@@ -108,6 +110,7 @@ struct ReduceTreePattern {
   }
   std::string name() { return name_; }
   std::string name_;
+  FusionTracker* tracker() { return &tracker_; }
   FusionTracker tracker_;
 
  private:
@@ -136,6 +139,7 @@ struct ReduceTreePlusTrivialPattern {
   }
   std::string name() { return name_; }
   std::string name_;
+  FusionTracker* tracker() { return &tracker_; }
   FusionTracker tracker_;
 };
 
@@ -182,6 +186,7 @@ struct AnchorPattern {
   }
   std::string name() { return name_; }
   std::string name_;
+  FusionTracker* tracker() { return &tracker_; }
   FusionTracker tracker_;
 
  private:
@@ -220,6 +225,7 @@ struct HorizontalFusionPattern {
   }
   std::string name() { return name_; }
   std::string name_;
+  FusionTracker* tracker() { return &tracker_; }
   FusionTracker tracker_;
 };
 
@@ -238,6 +244,7 @@ struct UnsupportPattern {
   }
   std::string name() { return name_; }
   std::string name_;
+  FusionTracker* tracker() { return &tracker_; }
   FusionTracker tracker_;
 };
 
@@ -255,5 +262,45 @@ struct StmtPattern final : public StmtPatternBase {
     return static_cast<const StmtPatternBase&>(*this);
   }
 };
+
+std::string StmtPatternDebugStr(const StmtPattern& stmt) {
+  std::stringstream ss;
+  auto all_ops = GetOpsInPattern(stmt);
+  ss << "StmtPattern, size " << all_ops.size() << " :\n";
+  ss << OpsDebugStr(all_ops);
+  return ss.str();
+}
+
+StmtPattern ConvertToStmtPattern(const PatternContent& content) {
+  const auto& kind = GetOpPatternKind(content.op);
+  if (kind == hlir::framework::kReduction) {
+    return ReducePattern({content.op});
+  } else if (kind == hlir::framework::kElementWise ||
+             kind == hlir::framework::kBroadcast ||
+             kind == hlir::framework::kInjective) {
+    return TrivialPattern({content.op}, content.op);
+  } else {
+    return UnsupportPattern({content.op});
+  }
+}
+
+std::string GetPatternName(const StmtPattern& s) {
+  return std::visit([](const auto& impl) { return impl.name(); }, s.variant());
+}
+
+FusionTracker* GetPatternTracker(const StmtPattern& s) {
+  return std::visit([](const auto& impl) { return impl.tracker(); },
+                    s.variant());
+}
+
+std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern) {
+  return std::visit([](const auto& impl) { return impl.ops(); },
+                    pattern.variant());
+}
+
+pir::Operation* GetSinkOpInPattern(const StmtPattern& pattern) {
+  return std::visit([](const auto& impl) { return impl.sink_op(); },
+                    pattern.variant());
+}
 
 }  // namespace cinn::fusion
