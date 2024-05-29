@@ -88,6 +88,7 @@ from .variables import (
     NullVariable,
     SequenceIterVariable,
     SliceVariable,
+    SymbolicVariable,
     TensorVariable,
     TupleVariable,
     UserDefinedFunctionVariable,
@@ -204,7 +205,7 @@ def pop_jump_if_op_wrapper(fns: list[Callable[[Any], Any]]):
                     fn, graph=self._graph, tracker=DanglingTracker()
                 )(res)
 
-            assert isinstance(res, ConstantVariable)
+            assert isinstance(res, (ConstantVariable, SymbolicVariable))
             is_jump = res.get_py_value()
             assert isinstance(is_jump, bool)
             if is_jump:
