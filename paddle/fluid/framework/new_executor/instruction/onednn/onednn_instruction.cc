@@ -409,6 +409,7 @@ OneDNNPhiKernelInstruction::~OneDNNPhiKernelInstruction() {
 void OneDNNPhiKernelInstruction::Run() {
   std::vector<std::shared_ptr<phi::DenseTensor>> tmp_holders;
   auto tmp_kernel_context = kernel_context_;
+  auto tmp_infer_meta_context_ = infer_meta_context_;
   // Step1. TransLayout
   auto inputs = tmp_kernel_context.InputsBetween<phi::DenseTensor>(
       size_t(0), tmp_kernel_context.InputsSize());
@@ -470,6 +471,7 @@ void OneDNNPhiKernelInstruction::Run() {
           phi::funcs::make_memory_desc(*transed_tensor, from_layout);
       transed_tensor->set_mem_desc(out_mem_desc);
       tmp_kernel_context.UpdataInput(i, transed_tensor);
+      tmp_infer_meta_context_.UpdataInput(i, phi::MetaTensor(transed_tensor));
     }
   }
 
@@ -489,7 +491,7 @@ void OneDNNPhiKernelInstruction::Run() {
 
   // Step3. InferMeta
   if (infer_meta_interface_) {
-    infer_meta_interface_->infer_meta_(&(infer_meta_context_));
+    infer_meta_interface_->infer_meta_(&(tmp_infer_meta_context_));
   }
 
   // Step4. Run kernel
