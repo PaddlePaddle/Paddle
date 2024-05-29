@@ -11,13 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include "paddle/cinn/hlir/framework/node.h"
-
 #include <algorithm>
 
 #include "paddle/cinn/common/context.h"
 #include "paddle/common/enforce.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
+#include "paddle/cinn/hlir/framework/node.h"
+
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -68,6 +68,8 @@ struct PyBindNodeAttrVisitor {
   VISIT_ELEMENTS(double)
   VISIT_ELEMENTS(bool)
   VISIT_ELEMENTS(std::string)
+  VISIT_ELEMENTS(symbol::DimExpr)
+  VISIT_ELEMENTS(cinn::dialect::SymbolBinding)
 };
 
 }  // namespace

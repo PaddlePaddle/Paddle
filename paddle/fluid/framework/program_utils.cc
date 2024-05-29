@@ -210,9 +210,8 @@ void DumpProgramDescFile(const std::string &name, const ProgramDesc &program) {
       reinterpret_cast<const ::google::protobuf::Message *>(new_prog->Proto());
   printer.PrintToString(*message, &print_str);
 
-  char filename[512] = {0};
-  snprintf(filename, sizeof(filename), "./%s_%lu.proto", name.c_str(), time(0));
-  WriteToFile(filename, print_str);
+  std::string filename = "./" + name + "_" + std::to_string(time(0)) + ".proto";
+  WriteToFile(filename.c_str(), print_str);
 }
 
 }  // namespace framework
