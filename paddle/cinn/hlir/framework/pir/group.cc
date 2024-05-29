@@ -26,7 +26,6 @@ std::shared_ptr<Group> Group::Clone(::pir::Block* target_block,
                     true,
                     phi::errors::InvalidArgument(
                         "OnlyCloneOps is the only supported option."));
-  << "Only Support Clone Group ops information.";
   std::vector<::pir::Operation*> new_ops;
   // Mapper from original to new ops.
   std::unordered_map<::pir::Operation*, ::pir::Operation*> ops_mapper;
