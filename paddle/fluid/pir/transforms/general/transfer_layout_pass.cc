@@ -531,7 +531,7 @@ using Edge = FlowGraph::Edge;
 
 class TransferLayoutPass : public pir::Pass {
  public:
-  TransferLayoutPass() : pir::Pass("transfer_layout_pass", 4) {}
+  TransferLayoutPass() : pir::Pass("transfer_layout_pass", 3) {}
 
   bool CanApplyOn(pir::Operation* op) const override {
     if (!op->isa<pir::ModuleOp>()) {
@@ -636,7 +636,7 @@ class TransferLayoutPass : public pir::Pass {
 
     VLOG(10)
         << "-----------------------[rewrite begin]------------------------";
-
+    int64_t num_of_layout_changed_ops{0};
     while (!q.empty()) {
       auto node = q.front();
       q.pop_front();
@@ -653,6 +653,7 @@ class TransferLayoutPass : public pir::Pass {
           if (layout_transformation_iface) {
             layout_transformation_iface.RewriteByLayout(
                 op, common::DataLayout::NHWC);
+            num_of_layout_changed_ops++;
           } else {
             PADDLE_THROW(common::errors::Unimplemented(
                 "Op %s should have a specialized RewriteByLayout function",
@@ -738,6 +739,7 @@ class TransferLayoutPass : public pir::Pass {
         value.ReplaceUsesWithIf(transpose_op.out(), replace_uses_in_cut_set);
       }
     }
+    AddStatistics(num_of_layout_changed_ops);
   }
 };
 
