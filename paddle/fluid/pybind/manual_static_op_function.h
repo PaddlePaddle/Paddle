@@ -963,16 +963,20 @@ static PyObject *static_api_register_hook(PyObject *self,
     VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
 
     // Get Value from args
-    PyObject *hook_func_obj = PyTuple_GET_ITEM(args, 0);
-    auto hook_func = hook_func_obj;
+    PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
+    auto input = CastPyArg2Value(input_obj, "register_hook", 0);
 
-    PyObject *input_obj = PyTuple_GET_ITEM(args, 1);
-    auto input = CastPyArg2Value(input_obj, "register_hook", 1);
+    PyObject *forward_hook_func_obj = PyTuple_GET_ITEM(args, 1);
+    void *forward_hook_func = forward_hook_func_obj;
+
+    PyObject *backward_hook_func_obj = PyTuple_GET_ITEM(args, 2);
+    void *backward_hook_func = backward_hook_func_obj;
 
     // Call ir static api
     CallStackRecorder callstack_recoder("register_hook");
     callstack_recoder.Record();
-    auto static_api_out = paddle::dialect::register_hook(&hook_func, input);
+    auto static_api_out = paddle::dialect::register_hook(
+        input, forward_hook_func, backward_hook_func);
     callstack_recoder.AttachToOps();
     return ToPyObject(static_api_out);
   } catch (...) {

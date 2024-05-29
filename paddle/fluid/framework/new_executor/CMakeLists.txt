@@ -1,5 +1,10 @@
 file(GLOB_RECURSE standalone_executor_srcs "*.cc")
 
+if(NOT WITH_PYTHON)
+  list(REMOVE_ITEM standalone_executor_srcs
+       ${CMAKE_CURRENT_SOURCE_DIR}/instruction/register_hook_instruction.cc)
+endif()
+
 if(NOT (WITH_CINN))
   list(REMOVE_ITEM standalone_executor_srcs
        ${CMAKE_CURRENT_SOURCE_DIR}/instruction/cinn_jit_instruction.cc)
@@ -26,6 +31,14 @@ set(standalone_executor_deps
     device_event_base
     framework_proto)
 
+if(WITH_PYTHON)
+  set(standalone_executor_deps ${standalone_executor_deps} python pybind)
+  cc_library(
+    register_hook_instruction
+    SRCS ${CMAKE_CURRENT_SOURCE_DIR}/instruction/register_hook_instruction.cc
+    DEPS op_registry python pybind)
+endif()
+
 if(WITH_CINN)
   set(standalone_executor_deps
       ${standalone_executor_deps}
@@ -46,6 +59,9 @@ endif()
 if(WITH_GPU)
   set(standalone_executor_deps ${standalone_executor_deps} device_event_gpu)
 endif()
+
+# message(STATUS "standalone_executor_deps: ${standalone_executor_deps}")
+# message(STATUS "standalone_executor_srcs: ${standalone_executor_srcs}")
 
 cc_library(
   standalone_executor

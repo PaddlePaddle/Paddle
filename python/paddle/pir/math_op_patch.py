@@ -593,8 +593,9 @@ def monkey_patch_value():
 
     def register_hook(self, hook: Callable):
         # paddle.base.append_backward(self)
-        out = paddle._pir_ops.register_hook(hook, self)
-        # out2 = paddle.base.append_backward(out)
+        out = paddle._pir_ops.register_hook(self, None, hook)
+        out.stop_gradient = False
+        out2 = paddle.base.append_backward(out)
         # breakpoint()
         return out
 
