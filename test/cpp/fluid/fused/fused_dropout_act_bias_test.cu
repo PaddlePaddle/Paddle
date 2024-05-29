@@ -17,10 +17,10 @@ limitations under the License. */
 #include <random>
 #include <vector>
 
-#include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/functors.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_dropout_act_bias.h"
 #include "test/cpp/fluid/fused/fused_dropout_test.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -207,10 +207,10 @@ struct TestFusedDropoutActBias {
   void FusedForward() {
     const int VecSize = MAX_CACHE_BYTES / sizeof(T);
     auto config =
-        paddle::operators::Get1DBlocksAnd2DGrids(*ctx,
-                                                 static_cast<uint64_t>(rows),
-                                                 static_cast<uint64_t>(cols),
-                                                 VecSize);
+        phi::fusion::Get1DBlocksAnd2DGrids(*ctx,
+                                           static_cast<uint64_t>(rows),
+                                           static_cast<uint64_t>(cols),
+                                           VecSize);
     const int increment = ((cols - 1) / (config.thread_per_block.x *
                                          config.block_per_grid.x * VecSize) +
                            1) *
@@ -221,20 +221,19 @@ struct TestFusedDropoutActBias {
       bias_ptr = bias.data<T>();
     }
     Functor act;
-    paddle::operators::LaunchDropoutActBias<T, uint8_t, Functor>(
-        act,
-        seed,
-        rows,
-        cols,
-        increment,
-        dropout_prob,
-        is_upscale_in_train,
-        is_test,
-        src.data<T>(),
-        bias_ptr,
-        out.data<T>(),
-        mask.data<uint8_t>(),
-        *ctx);
+    phi::fusion::LaunchDropoutActBias<T, uint8_t, Functor>(act,
+                                                           seed,
+                                                           rows,
+                                                           cols,
+                                                           increment,
+                                                           dropout_prob,
+                                                           is_upscale_in_train,
+                                                           is_test,
+                                                           src.data<T>(),
+                                                           bias_ptr,
+                                                           out.data<T>(),
+                                                           mask.data<uint8_t>(),
+                                                           *ctx);
     ctx->Wait();
   }
 
@@ -248,7 +247,7 @@ struct TestFusedDropoutActBias {
       bias_ptr = bias.data<T>();
     }
     GradFunctor act_grad;
-    paddle::operators::LaunchDropoutActBiasGrad<T, uint8_t, GradFunctor>(
+    phi::fusion::LaunchDropoutActBiasGrad<T, uint8_t, GradFunctor>(
         act_grad,
         out.data<T>(),
         mask.data<uint8_t>(),
@@ -333,16 +332,16 @@ TEST(FusedDropout, GPUFusedDorpoutActBias) {
            phi::funcs::ReluFunctor<float>,
            phi::funcs::ReluGradFunctor<float>>();
   BaseTest<float,
-           paddle::operators::GeluFunctor<float>,
-           paddle::operators::GeluGradFunctor<float>>();
+           phi::fusion::LayerNormParamTypeGeluFunctor<float>,
+           phi::fusion::GeluGradFunctor<float>>();
 }
 TEST(FusedDropout, GPUFusedDropoutActBiasDouble) {
   BaseTest<double,
            phi::funcs::ReluFunctor<double>,
            phi::funcs::ReluGradFunctor<double>>();
   BaseTest<double,
-           paddle::operators::GeluFunctor<double>,
-           paddle::operators::GeluGradFunctor<double>>();
+           phi::fusion::LayerNormParamTypeGeluFunctor<double>,
+           phi::fusion::GeluGradFunctor<double>>();
 }
 
 // test fp16, For inference, check_grad is not required. ref: test_dropout_op.py

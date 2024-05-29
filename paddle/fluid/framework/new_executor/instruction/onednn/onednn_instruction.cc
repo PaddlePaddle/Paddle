@@ -401,9 +401,7 @@ OneDNNPhiKernelInstruction::OneDNNPhiKernelInstruction(
 }
 
 OneDNNPhiKernelInstruction::~OneDNNPhiKernelInstruction() {
-  if (phi_kernel_ != nullptr) {
-    delete phi_kernel_;
-  }
+  delete phi_kernel_;
 }
 
 void OneDNNPhiKernelInstruction::Run() {

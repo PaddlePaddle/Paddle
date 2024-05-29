@@ -26,11 +26,11 @@ namespace {  // NOLINT
 enum class PyLayerBlockIndex { kFORWARD = 0, kBACKWARD = 1, kNONE = 2 };
 }  // namespace
 
-const char PyLayerOp::kInputs[] = "Input";  // NOLINT
-const char PyLayerOp::kOutputs[] = "Out";   // NOLINT
-const char PyLayerOp::kScope[] = "Scope";   // NOLINT
-const char PyLayerOp::kSkipEagerDeletionVars[] =
-    "skip_eager_deletion_vars";              // NOLINT
+const char PyLayerOp::kInputs[] = "Input";        // NOLINT
+const char PyLayerOp::kOutputs[] = "Out";         // NOLINT
+const char PyLayerOp::kScope[] = "Scope";         // NOLINT
+const char PyLayerOp::kSkipEagerDeletionVars[] =  // NOLINT
+    "skip_eager_deletion_vars";
 const char PyLayerOp::kBlocks[] = "blocks";  // NOLINT
 
 void PyLayerOp::CreateInterpreter(
@@ -91,7 +91,7 @@ class PyLayerForwardOp : public PyLayerOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const phi::Place &dev_place) const {
+               const phi::Place &dev_place) const override {
     auto *scope_var = scope.FindVar(Output(kScope));
     PADDLE_ENFORCE_NOT_NULL(
         scope_var,

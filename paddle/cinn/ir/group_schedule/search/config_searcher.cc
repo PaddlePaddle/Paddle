@@ -50,6 +50,31 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
   sampling_times_ =
       std::min(static_cast<int>(weighted_space_size * sampling_prob),
                max_sampling_times);
+
+  // Generate Sampling Inputs
+  const auto Sample = [&]() -> std::vector<int64_t> {
+    std::vector<int64_t> samples;
+    for (IterSpace::Dimension dim : iter_space_.space) {
+      int sampled = utils::SampleDiscreteFromDistribution<double>(dim.weights,
+                                                                  &rand_seed_);
+      samples.push_back(static_cast<int64_t>(sampled) + dim.lower_bound);
+    }
+    return samples;
+  };
+
+  // Currently, only one reduce input is supported
+  const auto GenerateInputs =
+      [&]() -> std::unordered_map<std::string, std::vector<int64_t>> {
+    std::unordered_map<std::string, std::vector<int64_t>> inputs;
+    inputs["x"] = Sample();
+    return inputs;
+  };
+
+  for (int i = 0; i < sampling_times_; ++i) {
+    std::unordered_map<std::string, std::vector<int64_t>>
+        input_name_and_shapes = GenerateInputs();
+    inputs_sampling_.push_back(input_name_and_shapes);
+  }
 }
 
 ScoreType WeightedSamplingTrailObjectiveFunc::operator()(
@@ -74,27 +99,7 @@ ScoreType WeightedSamplingTrailObjectiveFunc::operator()(
   schedule_config_manager.AddConfigDatabase("custom", tile_config_database);
   measurer_.Compile();
 
-  const auto Sample = [&]() -> std::vector<int64_t> {
-    std::vector<int64_t> samples;
-    for (IterSpace::Dimension dim : iter_space_.space) {
-      int sampled = utils::SampleDiscreteFromDistribution<double>(dim.weights,
-                                                                  &rand_seed_);
-      samples.push_back(static_cast<int64_t>(sampled) + dim.lower_bound);
-    }
-    return samples;
-  };
-
-  // Currently, only one reduce input is supported
-  const auto GenerateInputs =
-      [&]() -> std::unordered_map<std::string, std::vector<int64_t>> {
-    std::unordered_map<std::string, std::vector<int64_t>> inputs;
-    inputs["x"] = Sample();
-    return inputs;
-  };
-
-  for (int i = 0; i < sampling_times_; ++i) {
-    std::unordered_map<std::string, std::vector<int64_t>>
-        input_name_and_shapes = GenerateInputs();
+  for (auto& input_name_and_shapes : inputs_sampling_) {
     measurer_.Run(input_name_and_shapes, repeats_);
   }
   ScoreType score = measurer_.Result().avg_kernel_execute_time.count();

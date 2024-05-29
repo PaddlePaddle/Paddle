@@ -134,6 +134,26 @@
     param : [x, filter, bias, strides, paddings, output_padding, output_size, padding_algorithm, groups, dilations, data_format]
     data_type : x
 
+- op : cross_entropy
+  args: (Tensor x, Tensor label, bool soft_label = false, int ignore_index = -100)
+  output: Tensor (out)
+  infer_meta:
+    func: CrossEntropyInferMeta
+  kernel:
+    func: cross_entropy
+    data_type: x
+  backward: cross_entropy_grad
+
+- op : cross_entropy2
+  args: (Tensor x, Tensor label, int ignore_index = -100)
+  output: Tensor (out), Tensor (x_shape), Tensor (match_x)
+  infer_meta:
+    func: CrossEntropy2InferMeta
+  kernel:
+    func: cross_entropy2
+    data_type: x
+  backward: cross_entropy_grad2
+
 - op : decode_jpeg
   args : (Tensor x, str mode = "unchanged")
   output : Tensor(out)
