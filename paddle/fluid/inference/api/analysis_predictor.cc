@@ -466,14 +466,19 @@ bool AnalysisPredictor::Init(
     }
   }
 
-  // Get the feed_target_names and fetch_target_names
-  if (config_.new_ir_enabled() && extension_ == "json") {
-    LOG(INFO) << "调用了PreparePirFeedFetch";
-    PreparePirFeedFetch(pir_program_);
-  } else {
+  if(!config_.new_ir_enabled() && extension_!="json")
+  {
     LOG(INFO) << "调用了PrepareFeedFetch";
     PrepareFeedFetch();
   }
+  // // Get the feed_target_names and fetch_target_names
+  // if (config_.new_ir_enabled() && extension_ == "json") {
+  //   LOG(INFO) << "调用了PreparePirFeedFetch";
+  //   LOG(INFO) << "传递给PreparePirFeedFetch的pir_program" << *pir_program_;
+  //   PreparePirFeedFetch(pir_program_);
+  // } else {
+    
+  // }
 
   // Prepare executor, create local variables.
   if (!PrepareExecutor()) {
@@ -831,12 +836,26 @@ bool AnalysisPredictor::PreparePirProgram() {
 
     // 创建param_name和var配对列表
     std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
+    int feed_idx=0;
     for (auto op : block->ops()) {
       LOG(INFO) << "ops的 " << op->name();
-      // if (op->isa<paddle::dialect::FetchOp>()) {
-      //   auto x = op->operand_source(0);
-      //   LOG(INFO) << "op->operand_source(0).use_count(): " << x.use_count();
-      // }
+      // 将pd_op.data和pd_op.fetch放入idx2fetches和idx2feeds中
+      if (op->isa<paddle::dialect::FetchOp>()) {
+        int idx =op->attribute("col").dyn_cast<pir::Int32Attribute>().data();
+        if(fetches_.size() <=static_cast<size_t>(idx))
+        {
+          fetches_.resize(idx+1);
+          std::string fetch_name = op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+          LOG(INFO) << "fetch_name: " << fetch_name;
+          idx2fetches_[idx] = fetch_name;
+        }
+      }else if(op->isa<paddle::dialect::DataOp>() || op->isa<paddle::dialect::FeedOp>())
+      {
+        std::string data_name =op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+        LOG(INFO) << "data_name: " << data_name;
+        idx2feeds_[feed_idx] = data_name;
+        feed_idx++;
+      }
       for (auto var : op->results()) {
         std::string var_name;
         auto is_persistable =
@@ -845,16 +864,18 @@ bool AnalysisPredictor::PreparePirProgram() {
           LOG(INFO) << "is_persistable" << is_persistable.data();
           if (auto param_op = var.defining_op<::pir::ParameterOp>()) {
             var_name = param_op.param_name();
+            LOG(INFO) << "var_name " << var_name;
             param_name_var_pairs.emplace_back(var_name, var);
           } else if (auto data_op =
                          var.defining_op<paddle::dialect::DataOp>()) {
             var_name = data_op.attribute<pir::StrAttribute>("name").AsString();
+            LOG(INFO)<<"data op的var_name "<<var_name;
             param_name_var_pairs.emplace_back(var_name, var);
           }
         }
       }
     }
-
+  
     // 对param_name_var_pairs进行排序
     std::sort(param_name_var_pairs.begin(),
               param_name_var_pairs.end(),
@@ -916,10 +937,13 @@ bool AnalysisPredictor::PreparePirProgram() {
       }
       auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
       tensor_out.push_back(tensor_temp);
-      LOG(INFO) << "Tensor value for " << param_names[i] << " is "
-                << *tensor_temp;
+      LOG(INFO) << "Tensor value for " << param_names[i] << " is ";
+      // << *tensor_temp;
       LOG(INFO) << "sub_scope_变量的指针 " << sub_scope_;
     }
+
+    CreateFeedFetchVar(sub_scope_);
+    LOG(INFO) << "CreateFeedFetchVar之后打印sub_scope_变量内的值";
 
     LOG(INFO) << "Printing scope variables before LoadCombineFunction";
     PrintScopeVariables(*sub_scope_);
@@ -935,24 +959,14 @@ bool AnalysisPredictor::PreparePirProgram() {
     LOG(INFO) << "sub_scope_变量的指针";
     LOG(INFO) << sub_scope_;
 
-    // std::vector<phi::DenseTensor *> tensor_pointers;
-    // for (const auto &param : param_names) {
-    //   i++;
-    //   auto *raw_scope = scope_.get();
-    //   auto *ptr = const_cast<paddle::framework::Scope
-    //   *>(raw_scope)->Var(param); var = raw_scope->FindVar(param); if(var
-    //   ==nullptr)
-    //   {
-    //     var=raw_scope->Var(param);
-    //     auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
-    //     tensor_temp->Resize(
-    //       common::make_ddim(phi::vectorize(paddle::pybind::GetValueDims(vars[i]))));
-    //   }
-
-    //   LOG(INFO) << "var->Type() " << var->Type();
-    //   LOG(INFO) << raw_scope << " Create variable " << param
-    //             << ", which pointer is " << ptr;
-    // }
+    
+    auto var_input =sub_scope_->FindVar("_jst.0.inputs.0");
+    if(var_input == nullptr)
+    {
+      LOG(INFO) << "var_input is nullptr";
+    }else{
+      LOG(INFO)<<"var_input is not nullptr";
+    }
 
     auto ir_printing_conditions = [this](::pir::Pass *pass,
                                          ::pir::Operation *op) {
@@ -1417,10 +1431,15 @@ bool AnalysisPredictor::PrepareExecutor() {
     }
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
+
     LOG(INFO) << "Inserted output names into execution_config.skip_gc_vars";
+    LOG(INFO) << "PrepareInterpreterCore之前";
+    LOG(INFO) << "sub_scope_指针 " << sub_scope_;
+    LOG(INFO) << "pir_program " << *pir_program_;
     if (config_.new_ir_enabled()) {
       LOG(INFO) << "New IR is enabled,calling PrepareInteroreterCore with "
                    "pir_program_";
+
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
       LOG(INFO) << "Called executor_->PrepareInterpreterCore with pir_program_";
@@ -1433,6 +1452,8 @@ bool AnalysisPredictor::PrepareExecutor() {
           << "Called executor_->PrepareInterpreterCore with inference_program_";
     }
   }
+  LOG(INFO) << "config_.enable_memory_optim_ " << config_.enable_memory_optim_;
+  LOG(INFO) << "config_.use_optimized_model " << config_.use_optimized_model_;
 
   if (config_.enable_memory_optim_ && !config_.use_optimized_model_) {
     LOG(INFO) << "Memory optimization is enabled, preparing reuse table";
@@ -1451,7 +1472,7 @@ bool AnalysisPredictor::PrepareExecutor() {
     executor_->MakeReusePlan(reuse_table);
     LOG(INFO) << "Called executor_->MakeReusePlan";
   }
-
+  LOG(INFO) << "PrepareExecutor执行完毕";
   return true;
 }
 
@@ -2582,37 +2603,41 @@ void AnalysisPredictor::PreparePirFeedFetch(
   LOG(INFO) << "CreateFeedFetchVar之后打印sub_scope_变量内的值";
   PrintScopeVariables(*sub_scope_);
 
-  std::string filename = config_.prog_file();
-
-  LOG(INFO) << "还没读pir::ReadModule之前打印pir_program_变量内的值";
-  LOG(INFO) << "pir_program" << *(pir_program_.get());
-  uint64_t pir_version = 1;
-  pir::ReadModule(filename, pir_program_.get(), pir_version);
   LOG(INFO) << "读了pir::ReadModule之后打印pir_program_变量内的值";
   LOG(INFO) << "pir_program" << *(pir_program_.get());
   pir::Block *block = pir_program_->block();
   LOG(INFO) << "PreparePirFeedFetch之前打印sub_scope_变量内的值";
   PrintScopeVariables(*sub_scope_);
 
-  int feed_idx = 0;
+  // int feed_idx = 0;
   for (auto op : block->ops()) {
     LOG(INFO) << "op:" << op->name();
-    if (op->name() == "pd_op.fetch") {
-      int idx = op->attribute("col").dyn_cast<pir::Int32Attribute>().data();
-      if (fetches_.size() <= static_cast<size_t>(idx)) {
-        fetches_.resize(idx + 1);
-        std::string fetch_name =
-            op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
-        LOG(INFO) << "fetch_name:" << fetch_name;
-        idx2fetches_[idx] = fetch_name;
+    for (auto var : op->results()) {
+      std::string var_name;
+      if (auto data_op = var.defining_op<paddle::dialect::DataOp>()) {
+        var_name = data_op.attribute<pir::StrAttribute>("op_name").AsString();
+        LOG(INFO) << "var_name:" << var_name;
       }
-    } else if (op->name() == "pd_op.feed" || op->name() == "pd_op.data") {
-      std::string feed_name =
-          op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
-      LOG(INFO) << "feed_name:" << feed_name;
-      idx2feeds_[feed_idx] = feed_name;
-      feed_idx++;
     }
+
+    //   if (op->name() == "pd_op.fetch") {
+    //     int idx =
+    //     op->attribute("col").dyn_cast<pir::Int32Attribute>().data(); if
+    //     (fetches_.size() <= static_cast<size_t>(idx)) {
+    //       fetches_.resize(idx + 1);
+    //       std::string fetch_name =
+    //           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+    //       LOG(INFO) << "fetch_name:" << fetch_name;
+    //       idx2fetches_[idx] = fetch_name;
+    //     }
+    //   } else if (op->name() == "pd_op.feed" || op->name() == "pd_op.data") {
+    //     std::string feed_name =
+    //         op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+    //     LOG(INFO) << "feed_name:" << feed_name;
+    //     idx2feeds_[feed_idx] = feed_name;
+    //     feed_idx++;
+    //   }
+    // }
   }
 }
 
@@ -2660,6 +2685,7 @@ void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
 std::vector<std::string> AnalysisPredictor::GetInputNames() {
   std::vector<std::string> input_names;
   for (auto &item : idx2feeds_) {
+    LOG(INFO) << "input_names:" << item.second;
     input_names.push_back(item.second);
   }
   return input_names;
@@ -2719,6 +2745,7 @@ AnalysisPredictor::GetInputTypes() {
 std::vector<std::string> AnalysisPredictor::GetOutputNames() {
   std::vector<std::string> output_names;
   for (auto &item : idx2fetches_) {
+    LOG(INFO) << "output_names:" << item.second;
     output_names.push_back(item.second);
   }
   return output_names;
@@ -2781,8 +2808,23 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     scope = executor_->GetScope();
   }
 #else
+  
   scope = executor_->GetScope();
+  LOG(INFO)<<"GetInputTensor中的scope "<<scope;
 #endif
+  LOG(INFO)<<"GetInputTensor中的name "<<name;
+  if(scope == nullptr)
+  {
+    LOG(ERROR)<<"Scope is null!";
+    return nullptr;
+  }
+  
+  auto var = scope->FindVar(name);
+  if(var ==nullptr)
+  {
+    LOG(ERROR)<<"The variable named "<<name<<" is not found in the scope of the executor.";
+    return nullptr;
+  }
   PADDLE_ENFORCE_NOT_NULL(
       scope->FindVar(name),
       platform::errors::PreconditionNotMet(
@@ -3846,6 +3888,7 @@ std::map<std::string, DataType> Predictor::GetInputTypes() {
 }
 
 std::unique_ptr<Tensor> Predictor::GetInputHandle(const std::string &name) {
+  LOG(INFO) << "GetInputTensor: " << name;
   return predictor_->GetInputTensor(name);
 }
 

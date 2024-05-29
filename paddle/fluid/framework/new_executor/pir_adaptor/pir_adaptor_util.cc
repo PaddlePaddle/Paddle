@@ -589,7 +589,8 @@ void HandleForSpecialOp(pir::Operation* op,
                           .dyn_cast<pir::StrAttribute>()
                           .AsString();
     auto value = op->result(0);
-
+   
+    LOG(INFO)<<"param_name:"<<param_name;
     value_exe_info->Add(value, param_name);
   } else if (op_name == pir::ConstantOp::name()) {
     VLOG(6) << "Handle for builtin.constant:";

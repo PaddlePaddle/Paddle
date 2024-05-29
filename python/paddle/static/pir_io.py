@@ -343,6 +343,7 @@ def save_vars_pir(
 
     if vars is None:
         param, opt = get_pir_parameters(main_program)
+        print("opt",opt)
         vars_list = param + opt
         return save_vars_pir(
             main_program=main_program,
@@ -361,6 +362,7 @@ def save_vars_pir(
 
         save_var_map = {}
         for v in vars:
+            print("v.name",v.name)
             var = global_scope().find_var(v.name)
             # TODO(chenzhiyang): deal with RAW type and sparse
             if filename is None and save_to_memory is False:
@@ -479,6 +481,7 @@ def load_vars_pir(
             vars, global_scope(), executor._default_executor
         )
         for v in vars:
+            print("v.name",v.name)
             var = global_scope().find_var(v.name)
             assert isinstance(var, paddle.base.libpaddle.Variable)
             if filename is None:
