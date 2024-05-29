@@ -156,13 +156,17 @@ void Instruction::Run(
       CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
                               "calling SetLoweredFunc method";
       if (!dryrun) {
-        if (target_ == cinn::common::DefaultNVGPUTarget()) {
-          ((lower_func_ptr_g)fn_ptrs_[idx])(
-              static_cast<void*>(pod_args.data()), pod_args.size(), stream);
-        } else {
-          ((lower_func_ptr_t)fn_ptrs_[idx])(static_cast<void*>(pod_args.data()),
-                                            pod_args.size());
-        }
+        target_.arch.Match(
+            [&](common::NVGPUArch) {
+              ((lower_func_ptr_g)fn_ptrs_[idx])(
+                  static_cast<void*>(pod_args.data()), pod_args.size(), stream);
+            },
+            [&](std::variant<common::UnknownArch,
+                             common::X86Arch,
+                             common::ARMArch>) {
+              ((lower_func_ptr_t)fn_ptrs_[idx])(
+                  static_cast<void*>(pod_args.data()), pod_args.size());
+            });
       }
     }
     VLOG(3) << "Done Running extern function " << function_name_;
@@ -177,13 +181,17 @@ void Instruction::Run(
       CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
                               "calling SetLoweredFunc method";
       if (!dryrun) {
-        if (target_ == cinn::common::DefaultNVGPUTarget()) {
-          ((lower_func_ptr_g)fn_ptrs_[idx])(
-              static_cast<void*>(pod_args.data()), pod_args.size(), stream);
-        } else {
-          ((lower_func_ptr_t)fn_ptrs_[idx])(static_cast<void*>(pod_args.data()),
-                                            pod_args.size());
-        }
+        target_.arch.Match(
+            [&](common::NVGPUArch) {
+              ((lower_func_ptr_g)fn_ptrs_[idx])(
+                  static_cast<void*>(pod_args.data()), pod_args.size(), stream);
+            },
+            [&](std::variant<common::UnknownArch,
+                             common::X86Arch,
+                             common::ARMArch>) {
+              ((lower_func_ptr_t)fn_ptrs_[idx])(
+                  static_cast<void*>(pod_args.data()), pod_args.size());
+            });
       }
     }
     VLOG(3) << "Done Running extern function " << function_name_;
@@ -231,13 +239,19 @@ void Instruction::Run(
             << "The LoweredFunc address should be set first by "
                "calling SetLoweredFunc method";
         if (!dryrun) {
-          if (target_ == cinn::common::DefaultNVGPUTarget()) {
-            ((lower_func_ptr_g)fn_ptrs_[idx])(
-                static_cast<void*>(pod_args.data()), pod_args.size(), stream);
-          } else {
-            ((lower_func_ptr_t)fn_ptrs_[idx])(
-                static_cast<void*>(pod_args.data()), pod_args.size());
-          }
+          target_.arch.Match(
+              [&](common::NVGPUArch) {
+                ((lower_func_ptr_g)fn_ptrs_[idx])(
+                    static_cast<void*>(pod_args.data()),
+                    pod_args.size(),
+                    stream);
+              },
+              [&](std::variant<common::UnknownArch,
+                               common::X86Arch,
+                               common::ARMArch>) {
+                ((lower_func_ptr_t)fn_ptrs_[idx])(
+                    static_cast<void*>(pod_args.data()), pod_args.size());
+              });
         }
       }
       VLOG(3) << "Done Running extern function " << function_name_;
@@ -390,13 +404,17 @@ void Instruction::Run(
       CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
                               "calling SetLoweredFunc method";
       if (!dryrun) {
-        if (target_ == cinn::common::DefaultNVGPUTarget()) {
-          ((lower_func_ptr_g)fn_ptrs_[idx])(
-              static_cast<void*>(pod_args.data()), pod_args.size(), stream);
-        } else {
-          ((lower_func_ptr_t)fn_ptrs_[idx])(static_cast<void*>(pod_args.data()),
-                                            pod_args.size());
-        }
+        target_.arch.Match(
+            [&](common::NVGPUArch) {
+              ((lower_func_ptr_g)fn_ptrs_[idx])(
+                  static_cast<void*>(pod_args.data()), pod_args.size(), stream);
+            },
+            [&](std::variant<common::UnknownArch,
+                             common::X86Arch,
+                             common::ARMArch>) {
+              ((lower_func_ptr_t)fn_ptrs_[idx])(
+                  static_cast<void*>(pod_args.data()), pod_args.size());
+            });
       }
     }
     VLOG(3) << "Done Running extern function " << function_name_;

@@ -42,12 +42,15 @@ class ExprWrapper {
                               const ExprWrapper& b,
                               nvinfer1::DimensionOperation op) {
     ExprWrapper result = {};
+    assert(a.expr);
+    assert(b.expr);
     if (a.expr_builder) {
       result.expr_builder = a.expr_builder;
     }
     if (b.expr_builder) {
       result.expr_builder = b.expr_builder;
     }
+    assert(result.expr_builder);
     assert(result.expr);
     result.expr = result.expr_builder->operation(op, *a.expr, *b.expr);
     return result;

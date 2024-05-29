@@ -366,10 +366,17 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
   for (int i = 0; i < C->size() - 1; i++) {
     ir::Expr temp = C[i];
     // checkout whether the tensor is with buffer.
-    if (!temp.as_tensor_ref()->buffer.defined() ||
-        target != cinn::common::DefaultNVGPUTarget()) {
-      all_arg_tensors.push_back(temp.as_tensor_ref());
-    }
+    target.arch.Match(
+        [&](common::NVGPUArch) {
+          if (!temp.as_tensor_ref()->buffer.defined()) {
+            all_arg_tensors.push_back(temp.as_tensor_ref());
+          }
+        },
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) {
+          all_arg_tensors.push_back(temp.as_tensor_ref());
+        });
   }
 
   poly::StageMap stages = C.back();

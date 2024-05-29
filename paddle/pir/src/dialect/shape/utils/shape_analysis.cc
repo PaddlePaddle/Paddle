@@ -517,12 +517,12 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
 
   symbol::DimExpr lhs_product(1);
   symbol::DimExpr rhs_product(1);
-  if (lhs_shape_data.shape().size() > 0) {
+  if (!lhs_shape_data.shape().empty()) {
     for (int i : lhs_dim_idxs) {
       lhs_product = lhs_product * lhs_shape_data.shape()[i];
     }
   }
-  if (rhs_shape_data.shape().size() > 0) {
+  if (!rhs_shape_data.shape().empty()) {
     for (int i : rhs_dim_idxs) {
       rhs_product = rhs_product * rhs_shape_data.shape()[i];
     }
