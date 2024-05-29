@@ -572,11 +572,7 @@ class TestProdOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'],
-            'Out',
-            check_prim=True,
-            check_pir=True,
-            check_prim_pir=True,
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
         )
 
 
@@ -659,11 +655,7 @@ class TestProdOp_ZeroDim(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'],
-            'Out',
-            check_prim=True,
-            check_pir=True,
-            check_prim_pir=True,
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
         )
 
 
@@ -723,11 +715,7 @@ class TestProd6DOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'],
-            'Out',
-            check_prim=True,
-            check_pir=True,
-            check_prim_pir=True,
+            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
         )
 
 
