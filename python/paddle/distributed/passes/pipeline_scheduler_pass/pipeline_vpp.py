@@ -94,9 +94,24 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
             virtual_pp_rank = _get_virtual_pp_rank(micro_step, forward=True)
             micro_batch_id = self._record_fwd_micro_step(virtual_pp_rank)
             fw_job_name = FORWARD + str(virtual_pp_rank)
-            fw_job = core.Job(fw_job_name)
-            fw_job.set_micro_batch_id(micro_batch_id)
-            job_list.append(fw_job)
+            if (
+                enable_send_recv_overlap
+                and ("recv4_" + fw_job_name) in self._types
+            ):
+                fwd_event = "vpp_warmup_fwd_" + str(micro_step)
+                recv4_fw_job = core.Job("recv4_" + fw_job_name)
+                recv4_fw_job.set_micro_batch_id(micro_batch_id)
+                recv4_fw_job.set_event_to_record(fwd_event)
+                job_list.append(recv4_fw_job)
+
+                fw_job = core.Job("no_recv_" + fw_job_name)
+                fw_job.set_micro_batch_id(micro_batch_id)
+                fw_job.set_event_to_wait(fwd_event)
+                job_list.append(fw_job)
+            else:
+                fw_job = core.Job(fw_job_name)
+                fw_job.set_micro_batch_id(micro_batch_id)
+                job_list.append(fw_job)
 
         for micro_step in range(steady_steps):
             fwd_micro_step = micro_step + warmup_steps
@@ -111,14 +126,16 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                 enable_send_recv_overlap
                 and ("recv4_" + fwd_job_name) in self._types
                 and len(job_list) > 0
-                and micro_step > 0
             ):
                 fwd_event = "vpp_steady_fwd_" + str(fwd_micro_step)
                 recv4_fwd_job = core.Job("recv4_" + fwd_job_name)
                 recv4_fwd_job.set_micro_batch_id(fwd_micro_batch_id)
                 recv4_fwd_job.set_event_to_record(fwd_event)
                 print("add event: ", fwd_event, flush=1)
-                job_list.insert(-1, recv4_fwd_job)
+                if micro_step > 0:
+                    job_list.insert(-1, recv4_fwd_job)
+                else:
+                    job_list.append(recv4_fwd_job)
                 fwd_job = core.Job("no_recv_" + fwd_job_name)
                 fwd_job.set_micro_batch_id(fwd_micro_batch_id)
                 fwd_job.set_event_to_wait(fwd_event)
@@ -167,9 +184,23 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                 bwd_job_name = BACKWARD + "_b" + str(virtual_pp_rank)
             else:
                 bwd_job_name = BACKWARD + str(virtual_pp_rank)
-            bwd_job = core.Job(bwd_job_name)
-            bwd_job.set_micro_batch_id(micro_batch_id)
-            job_list.append(bwd_job)
+            if (
+                enable_send_recv_overlap
+                and ("recv4_" + bwd_job_name) in self._types
+            ):
+                bwd_event = "vpp_cooldowm_bwd_" + str(micro_step)
+                recv4_bwd_job = core.Job("recv4_" + bwd_job_name)
+                recv4_bwd_job.set_micro_batch_id(micro_batch_id)
+                recv4_bwd_job.set_event_to_record(bwd_event)
+                job_list.append(recv4_bwd_job)
+                bwd_job = core.Job("no_recv_" + bwd_job_name)
+                bwd_job.set_micro_batch_id(micro_batch_id)
+                bwd_job.set_event_to_wait(bwd_event)
+                job_list.append(bwd_job)
+            else:
+                bwd_job = core.Job(bwd_job_name)
+                bwd_job.set_micro_batch_id(micro_batch_id)
+                job_list.append(bwd_job)
             # TODO(lizhiyu): Inserting 'backward_b' and 'backward_w' interleavedly can decrease the memory,
             #                but it reduces the speed. We should find the better way to use the code here.
             # next_virtual_pp_rank = _get_virtual_pp_rank(micro_step + 1, forward=False)
@@ -183,9 +214,23 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
             for chunk_id in range(num_model_chunks - 1, -1, -1):
                 for micro_batch_id in range(0, accumulate_steps):
                     w_job_name = BACKWARD + "_w" + str(chunk_id)
-                    w_job = core.Job(w_job_name)
-                    w_job.set_micro_batch_id(micro_batch_id)
-                    job_list.append(w_job)
+                    if (
+                        enable_send_recv_overlap
+                        and ("recv4_" + bwd_job_name) in self._types
+                    ):
+                        bwd_event = "vpp_cooldowm_bwd_w_" + str(micro_batch_id)
+                        recv4_w_job = core.Job("recv4_" + w_job_name)
+                        recv4_w_job.set_micro_batch_id(micro_batch_id)
+                        recv4_w_job.set_event_to_record(bwd_event)
+                        job_list.append(recv4_w_job)
+                        w_job = core.Job("no_recv_" + w_job_name)
+                        w_job.set_micro_batch_id(micro_batch_id)
+                        w_job.set_event_to_wait(bwd_event)
+                        job_list.append(w_job)
+                    else:
+                        w_job = core.Job(w_job_name)
+                        w_job.set_micro_batch_id(micro_batch_id)
+                        job_list.append(w_job)
 
         opt_job = core.Job(OPT)
         job_list.append(opt_job)
