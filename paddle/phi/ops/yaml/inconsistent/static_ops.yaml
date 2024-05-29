@@ -776,15 +776,6 @@
   backward : prod_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : prune_gate_by_capacity
-  args : (Tensor gate_idx, Tensor expert_count, int64_t n_expert, int64_t n_worker)
-  output : Tensor(new_gate_idx)
-  infer_meta :
-    func : PruneGateByCapacityInferMeta
-  kernel :
-    func : prune_gate_by_capacity
-    data_type : gate_idx
-
 - op : pull_box_sparse
   args : (Tensor w, Tensor[] ids, bool is_sparse = false, bool is_distributed = false, int size = 1)
   output : Tensor[](out){ids.size()}
