@@ -1769,9 +1769,7 @@ class LayerLoadFinetune(paddle.nn.Layer):
         self._scale = paddle.to_tensor([9.9])
 
         # Load multiple times
-        print("fist load hhhhh")
         self._load_l1 = paddle.jit.load(load_path)
-        print("second load hhhhh")
         self._load_l2 = paddle.jit.load(load_path)
 
     def forward(self, x):
