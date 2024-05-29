@@ -91,6 +91,22 @@ class TestMeshgridOp2Fp16(TestMeshgridOp):
         self.dtype = np.float16
 
 
+class TestMeshgridOp2Complex64(TestMeshgridOp):
+    def get_x_shape(self):
+        return [100, 300]
+
+    def init_data_type(self):
+        self.dtype = np.complex64
+
+
+class TestMeshgridOp2Complex128(TestMeshgridOp):
+    def get_x_shape(self):
+        return [100, 300]
+
+    def init_data_type(self):
+        self.dtype = np.complex128
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
