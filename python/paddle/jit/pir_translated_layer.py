@@ -217,7 +217,6 @@ def _load_pir_parameter_vars(model_path, program_holder, params_filename):
     # load all vars
     assert params_filename is not None, "params_filename should not be None."
     var_file_path = os.path.join(model_path, params_filename)
-
     if os.path.exists(var_file_path):
         core.load_combine_func(
             var_file_path,
@@ -391,10 +390,19 @@ def _run_dygraph(instance, input, program_holder):
 
     return instance.layer(input_tensors)
 
+def _run_static_graph(program_holder, src_program):
+    dst_program = paddle.static.default_main_program()
+    value_map = paddle.pir.IrMapping()
+    len_dst_op = len(dst_program.global_block().ops)
+    for dst_op in dst_program.global_block().ops:
+        for src_op in src_program.global_block().ops[:len_dst_op]:
+            if src_op.name() == dst_op.name() and src_op.result(0).name == dst_op.result(0).name:
+                for i in range(src_op.num_results()):
+                    value_map.add(src_op.result(i), dst_op.result(i))
 
-def _run_static_graph(program_holder, trace_program):
-    paddle.base.framework.switch_main_program(trace_program)
-    return program_holder.output_vars
+    src_program.clone(value_map, dst_program)
+    output = [value_map.look_up(v) for v in program_holder.output_vars]
+    return output[0] if len(output) == 1 else output
 
 
 def _collect_current_and_parent_var(program, block_idx):

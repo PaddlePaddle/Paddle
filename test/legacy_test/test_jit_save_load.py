@@ -496,6 +496,7 @@ class TestSaveLoadWithNonLexicographicalOrderDict(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_output_same_order(self):
         x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
 
@@ -1712,6 +1713,7 @@ class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_save_load_finetune_load(self):
         model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_load_save_without_running/model"
@@ -1767,7 +1769,9 @@ class LayerLoadFinetune(paddle.nn.Layer):
         self._scale = paddle.to_tensor([9.9])
 
         # Load multiple times
+        print("fist load hhhhh")
         self._load_l1 = paddle.jit.load(load_path)
+        print("second load hhhhh")
         self._load_l2 = paddle.jit.load(load_path)
 
     def forward(self, x):
@@ -1787,7 +1791,6 @@ class LayerLoadFinetune(paddle.nn.Layer):
         y = self._load_l1(y)
         return y
 
-
 '''
 class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
     def setUp(self):
@@ -1798,7 +1801,7 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    #@test_with_dygraph_pir
+    @test_with_dygraph_pir
     def test_save_load_finetune_load(self):
         model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_load_finetune_load/model"
@@ -1831,7 +1834,6 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
         self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
         self.assertTrue(float((result_01 - result_11).abs().max()) < 1e-5)
 '''
-
 
 # NOTE(weixin): When there are multiple test functions in an
 # `unittest.TestCase`, functions will affect each other,
