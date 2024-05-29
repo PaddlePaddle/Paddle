@@ -77,9 +77,10 @@ void OneDNNMixedPhiKernelInstruction::Run() {
   if (use_onednn_kernel_) {
     OneDNNPhiKernelInstruction::Run();
   } else {
+    auto tmp_kernel_context = kernel_context_;
     // TransLayout first
-    auto inputs = kernel_context_.InputsBetween<phi::DenseTensor>(
-        size_t(0), kernel_context_.InputsSize());
+    auto inputs = tmp_kernel_context.InputsBetween<phi::DenseTensor>(
+        size_t(0), tmp_kernel_context.InputsSize());
 
     for (size_t i = 0; i < inputs.size(); ++i) {
       auto input = inputs[i];
@@ -98,7 +99,7 @@ void OneDNNMixedPhiKernelInstruction::Run() {
           dnnl::memory::desc out_mem_desc =
               phi::funcs::make_memory_desc(*transed_tensor, tmp_layout);
           transed_tensor->set_mem_desc(out_mem_desc);
-          kernel_context_.UpdataInput(i, transed_tensor);
+          tmp_kernel_context.UpdataInput(i, transed_tensor);
         } else {
           tmp_holders.emplace_back(std::make_shared<phi::DenseTensor>());
           auto transed_tensor = tmp_holders.back().get();
@@ -108,7 +109,7 @@ void OneDNNMixedPhiKernelInstruction::Run() {
                                                 *input,
                                                 transed_tensor,
                                                 phi::CPUPlace());
-          kernel_context_.UpdataInput(i, transed_tensor);
+          tmp_kernel_context.UpdataInput(i, transed_tensor);
         }
       }
     }
@@ -119,7 +120,7 @@ void OneDNNMixedPhiKernelInstruction::Run() {
     }
     VLOG(6) << "End run op " << phi_op_name_ << " infer meta.";
     VLOG(6) << "Begin run op " << phi_op_name_ << " kernel.";
-    (*(phi_kernel_))(&(kernel_context_));
+    (*(phi_kernel_))(&(tmp_kernel_context));
     VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
   }
 }
