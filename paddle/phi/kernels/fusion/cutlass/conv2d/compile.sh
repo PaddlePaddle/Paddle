@@ -15,7 +15,7 @@ set -e
 
 cutlass_repo_directory="cutlass"
 if [ ! -d "$cutlass_repo_directory" ]; then
-    git clone --branch v2.11.0  https://github.com/NVIDIA/cutlass
+     git clone --branch v3.0.0  https://github.com/NVIDIA/cutlass
 fi
 
 build_directory="build"

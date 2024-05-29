@@ -15,6 +15,7 @@ set(PYBIND_DEPS
     generate_pass
     pass_builder
     parallel_executor
+    compiled_program
     profiler
     layer
     tracer
@@ -53,6 +54,7 @@ set(PYBIND_DEPS
 if(WITH_CINN)
   set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
                   sub_graph_checker add_cinn_pass)
+  list(REMOVE_ITEM PYBIND_DEPS imperative_flag)
 endif()
 
 if(WITH_PSCORE)
@@ -129,6 +131,7 @@ set(PYBIND_SRCS
     exception.cc
     op_function_common.cc
     parallel_executor.cc
+    compiled_program.cc
     tensor.cc
     place.cc
     const_value.cc

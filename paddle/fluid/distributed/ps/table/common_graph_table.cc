@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 
-#include <time.h>
+#include <ctime>
 
 #include <algorithm>
 #include <chrono>
@@ -1818,7 +1818,7 @@ FeatureNode *GraphShard::add_feature_node(uint64_t id,
   if (is_overlap) {
     return reinterpret_cast<FeatureNode *>(bucket[node_location[id]]);
   }
-  return NULL;
+  return nullptr;
 }
 
 void GraphShard::add_neighbor(uint64_t id, uint64_t dst_id, float weight) {
@@ -3111,7 +3111,8 @@ int GraphTable::parse_feature(int idx,
 // thread safe shard vector merge
 class MergeShardVector {
  public:
-  MergeShardVector(std::vector<std::vector<uint64_t>> *output, int slice_num) {
+  MergeShardVector(std::vector<std::vector<uint64_t>> *output, int slice_num)
+      : _shard_keys() {
     _slice_num = slice_num;
     _shard_keys = output;
     _shard_keys->resize(slice_num);

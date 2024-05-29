@@ -61,7 +61,7 @@ std::vector<pir::Value> GetBlockOutsideInput(
 std::unordered_map<OpLoweringGroupPtr,
                    std::unordered_map<std::string, pir::Attribute>>
 CompileGroupAsOpAttribute(const std::vector<OpLoweringGroupPtr>& group_list) {
-  PirCompiler pir_compiler(cinn::common::DefaultNVGPUTarget());
+  PirCompiler pir_compiler(cinn::common::DefaultDeviceTarget());
   auto fn_ptr_res = pir_compiler.Build(group_list);
 
   std::unordered_map<OpLoweringGroupPtr,
@@ -85,7 +85,7 @@ std::unordered_map<std::string, ::pir::Attribute> GetJitKernelAttr(
       hlir::framework::pir::FusionInfo fusion_info(*group);
       return CompilationCache::Instance().GetKernelInfo(fusion_info);
     } else {
-      PirCompiler pir_compiler(cinn::common::DefaultNVGPUTarget());
+      PirCompiler pir_compiler(cinn::common::DefaultDeviceTarget());
       return pir_compiler.Build({group})[0];
     }
   };

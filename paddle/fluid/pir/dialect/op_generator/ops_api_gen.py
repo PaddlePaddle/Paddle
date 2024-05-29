@@ -124,6 +124,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'send_v2',
     'recv_v2',
     'c_allgather',
+    'qkv_unpack_mha',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -188,7 +189,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'sparse_momentum',
     'tdm_sampler',
     'soft_relu',
-    'uniform_random_batch_size_like',
     'match_matrix_tensor',
     'c_reduce_max',
     'c_reduce_max_',
@@ -197,6 +197,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'c_reduce_prod',
     'c_reduce_prod_',
     'c_scatter',
+    "cross_entropy_grad2",
     'prune_gate_by_capacity',
     'push_sparse_v2',
     'push_sparse_v2_',

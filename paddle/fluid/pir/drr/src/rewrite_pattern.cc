@@ -14,6 +14,7 @@
 
 #include <glog/logging.h>
 #include <queue>
+#include <utility>
 
 #include "glog/vlog_is_on.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -33,7 +34,7 @@ DrrRewritePattern::DrrRewritePattern(
     const DrrPatternContext& drr_context,
     pir::IrContext* context,
     pir::PatternBenefit benefit,
-    const std::shared_ptr<const DrrPatternBase>& drr_pattern_owner)
+    std::shared_ptr<const DrrPatternBase> drr_pattern_owner)
     : pir::RewritePattern(
           (*drr_context.source_pattern_graph()->OutputNodes().begin())->name(),
           benefit,
@@ -44,7 +45,7 @@ DrrRewritePattern::DrrRewritePattern(
       constraints_(drr_context.constraints()),
       post_processes_(drr_context.post_processes()),
       result_pattern_graph_(drr_context.result_pattern_graph()),
-      drr_pattern_owner_(drr_pattern_owner) {
+      drr_pattern_owner_(std::move(drr_pattern_owner)) {
   PADDLE_ENFORCE_NE(source_pattern_graph_->owned_op_call().empty(),
                     true,
                     phi::errors::InvalidArgument(
@@ -81,8 +82,7 @@ bool DrrRewritePattern::PatternGraphMatch(
   VLOG(6) << "PatternGraphMatch Start: op(" << op->name() << ")";
   const OpCall* anchor = *source_pattern_graph_->OutputNodes().begin();
   std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
-      bind_map =
-          FindCandidateIrOutputOp(op, anchor, *(source_pattern_graph_.get()));
+      bind_map = FindCandidateIrOutputOp(op, anchor, *source_pattern_graph_);
   if (bind_map.empty()) {
     return false;
   }
@@ -115,7 +115,7 @@ bool DrrRewritePattern::PatternGraphMatch(
                        return std::make_pair(drr_op, ir_op);
                      });
       if (MatchFromOutputToInput(
-              output_op_map, *(source_pattern_graph_.get()), match_ctx)) {
+              output_op_map, *source_pattern_graph_, match_ctx)) {
         *source_pattern_match_ctx = *match_ctx;
         return true;
       }

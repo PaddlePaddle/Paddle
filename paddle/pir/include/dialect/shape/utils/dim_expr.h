@@ -157,6 +157,9 @@ struct Equal final : public BinaryDimExpr<T> {
 template <typename T>
 struct Broadcastable final : public BinaryDimExpr<T> {
   using BinaryDimExpr<T>::BinaryDimExpr;
+  bool operator==(const Broadcastable& other) const {
+    return this->data == other.data;
+  }
 };
 
 class DimExpr;
@@ -251,6 +254,15 @@ struct hash<std::vector<symbol::DimExpr>> {
       hash_value = pir::detail::hash_combine(hash_value, hash_func(dim_expr));
     }
     return hash_value;
+  }
+};
+
+template <>
+struct hash<symbol::Broadcastable<symbol::DimExpr>> {
+  std::size_t operator()(
+      const symbol::Broadcastable<symbol::DimExpr>& broadcastable) const {
+    return pir::detail::hash_combine(GetHashValue(broadcastable.data->lhs),
+                                     GetHashValue(broadcastable.data->rhs));
   }
 };
 
