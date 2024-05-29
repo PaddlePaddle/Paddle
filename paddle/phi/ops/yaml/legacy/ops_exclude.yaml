@@ -34,7 +34,6 @@
 - eye
 - frobenius_norm
 - full_
-- full_batch_size_like
 - full_like
 - fused_batch_norm_act
 - fused_bn_add_activation
