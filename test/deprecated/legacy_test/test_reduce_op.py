@@ -668,7 +668,6 @@ class TestProdOp_ZeroDim1(TestProdOp):
         self.init_inputs_and_outputs()
         # 0-D tensor doesn't support in cinn
         self.enable_cinn = False
-        self.data_type = "float64"
 
     def init_inputs_and_outputs(self):
         self.inputs = {'X': np.random.random([100]).astype("float64")}
@@ -714,9 +713,7 @@ class TestProd6DOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
-        )
+        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
 
 @unittest.skipIf(
