@@ -23,9 +23,7 @@ from paddle import core
 class TestProcessGroup(TestMultipleXpus):
     # TODO(lijin23): fix bugs in KL3 CI
     @unittest.skipIf(
-        not core.is_compiled_with_xpu()
-        or paddle.device.xpu.device_count() < 2
-        or core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+        not core.is_compiled_with_xpu() or paddle.device.xpu.device_count() < 2,
         "run test when having at least 2 XPUs.",
     )
     def test_process_group_bkcl(self):
