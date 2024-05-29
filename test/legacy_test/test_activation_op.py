@@ -1928,22 +1928,34 @@ class TestRsqrt_Complex64(TestRsqrt):
             check_pir_onednn=self.check_pir_onednn,
         )
 
+    def test_api_complex(self):
+        with dynamic_guard():
+            for device in devices:
+                if device == 'cpu' or (
+                    device == 'gpu' and paddle.is_compiled_with_cuda()
+                ):
+                    np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
+                    x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
+                    y = paddle.rsqrt(x)
+                    x_expect = np.rsqrt(np_x)
+                    np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+
     def test_grad_grad(self):
-        paddle.disable_static()
-        x_numpy = (
-            np.random.uniform(0.1, 1, self.shape)
-            + 1j * np.random.uniform(0.1, 1, self.shape)
-        ).astype(self.dtype)
+        with dynamic_guard():
+            x_numpy = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
 
-        expected_ddx = 3.0 / 4 * np.conj(np.power(x_numpy, -2.5))
+            expected_ddx = 3.0 / 4 * np.conj(np.power(x_numpy, -2.5))
 
-        x = paddle.to_tensor(x_numpy, stop_gradient=False)
-        y = paddle.rsqrt(x)
-        dx = paddle.grad(
-            outputs=[y], inputs=[x], create_graph=True, retain_graph=True
-        )[0]
-        ddx = paddle.grad(outputs=[dx], inputs=[x], retain_graph=True)[0]
-        np.testing.assert_allclose(ddx.numpy(), expected_ddx, rtol=1e-3)
+            x = paddle.to_tensor(x_numpy, stop_gradient=False)
+            y = paddle.rsqrt(x)
+            dx = paddle.grad(
+                outputs=[y], inputs=[x], create_graph=True, retain_graph=True
+            )[0]
+            ddx = paddle.grad(outputs=[dx], inputs=[x], retain_graph=True)[0]
+            np.testing.assert_allclose(ddx.numpy(), expected_ddx, rtol=1e-3)
 
 
 class TestRsqrt_Complex128(TestRsqrt_Complex64):
