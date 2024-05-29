@@ -308,6 +308,14 @@
   backward : asinh_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : assign_pos
+  args : (Tensor x, Tensor cum_count, Tensor eff_num_len)
+  output : Tensor(out)
+  infer_meta :
+    func : AssignPosInferMeta
+  kernel :
+    func : assign_pos
+
 - op : atan
   args : (Tensor x)
   output : Tensor(out)
