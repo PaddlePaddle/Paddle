@@ -52,7 +52,7 @@ struct TrivialPattern {
   }
   std::string name() { return name_; }
   std::string name_;
-  FusionTracker* tracker() { return &tracker_; }
+
   FusionTracker tracker_;
 };
 
@@ -73,7 +73,7 @@ struct ReducePattern {
   }
   std::string name() { return name_; }
   std::string name_;
-  FusionTracker* tracker() { return &tracker_; }
+
   FusionTracker tracker_;
 };
 
@@ -110,7 +110,7 @@ struct ReduceTreePattern {
   }
   std::string name() { return name_; }
   std::string name_;
-  FusionTracker* tracker() { return &tracker_; }
+
   FusionTracker tracker_;
 
  private:
@@ -139,7 +139,7 @@ struct ReduceTreePlusTrivialPattern {
   }
   std::string name() { return name_; }
   std::string name_;
-  FusionTracker* tracker() { return &tracker_; }
+
   FusionTracker tracker_;
 };
 
@@ -186,7 +186,7 @@ struct AnchorPattern {
   }
   std::string name() { return name_; }
   std::string name_;
-  FusionTracker* tracker() { return &tracker_; }
+
   FusionTracker tracker_;
 
  private:
@@ -225,7 +225,7 @@ struct HorizontalFusionPattern {
   }
   std::string name() { return name_; }
   std::string name_;
-  FusionTracker* tracker() { return &tracker_; }
+
   FusionTracker tracker_;
 };
 
@@ -244,7 +244,7 @@ struct UnsupportPattern {
   }
   std::string name() { return name_; }
   std::string name_;
-  FusionTracker* tracker() { return &tracker_; }
+
   FusionTracker tracker_;
 };
 
@@ -301,6 +301,37 @@ std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern) {
 pir::Operation* GetSinkOpInPattern(const StmtPattern& pattern) {
   return std::visit([](const auto& impl) { return impl.sink_op(); },
                     pattern.variant());
+}
+
+std::unordered_set<pir::Value> GetPatternInputValuesIncludeInner(
+    const StmtPattern& A) {
+  std::unordered_set<pir::Value> result;
+  for (const auto& op : GetOpsInPattern(A)) {
+    for (const auto& value : op->operands()) {
+      result.insert(value.source());
+    }
+  }
+  return result;
+}
+
+std::unordered_set<pir::Value> GetPatternOutputValuesIncludedInner(
+    const StmtPattern& A) {
+  std::unordered_set<pir::Value> result;
+  for (const auto& op : GetOpsInPattern(A)) {
+    for (const auto& value : op->results()) {
+      result.insert(value);
+    }
+  }
+  return result;
+}
+
+std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A) {
+  auto all_input_values = GetPatternInputValuesIncludeInner(A);
+  for (const auto& value : GetPatternOutputValuesIncludedInner(A)) {
+    all_input_values.erase(value);
+  }
+  VLOG(4) << "GetPatternInputValues: " << all_input_values.size();
+  return all_input_values;
 }
 
 }  // namespace cinn::fusion

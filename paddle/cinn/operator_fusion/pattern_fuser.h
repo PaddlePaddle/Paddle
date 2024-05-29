@@ -36,36 +36,169 @@
 
 namespace cinn::fusion {
 
-std::unordered_set<pir::Value> GetPatternInputValuesIncludeInner(
-    const StmtPattern& A) {
-  std::unordered_set<pir::Value> result;
-  for (const auto& op : GetOpsInPattern(A)) {
-    for (const auto& value : op->operands()) {
-      result.insert(value.source());
-    }
+// Trivial x other
+
+StmtPattern MergePatternImpl(const TrivialPattern& first,
+                             const TrivialPattern& second) {
+  const auto& contents =
+      UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second));
+  return TrivialPattern(contents,
+                        second.sink_op(),
+                        FusionTracker(first.tracker_, second.tracker_));
+}
+
+StmtPattern MergePatternImpl(const TrivialPattern& first,
+                             const ReducePattern& second) {
+  const auto& contents =
+      UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second));
+  return ReducePattern(contents,
+                       FusionTracker(first.tracker_, second.tracker_));
+}
+
+template <typename A, typename B>
+B FusePatternIfConnected(A up_pattern,
+                         B down_pattern,
+                         std::vector<pir::Operation*> connect_ops) {
+  if (AnyTargetInCandidate(connect_ops, down_pattern.ops())) {
+    return std::get<B>(MergePatternImpl(up_pattern, down_pattern));
+  } else {
+    return down_pattern;
+  }
+}
+
+StmtPattern MergePatternImpl(const TrivialPattern& first,
+                             const ReduceTreePattern& second) {
+  auto connect_ops = FindDownstreamOps(first.sink_op());
+
+  auto old_childs = second.childs();
+  std::vector<ReduceTreePattern> new_childs;
+  for (const auto& old_child : old_childs) {
+    new_childs.emplace_back(
+        FusePatternIfConnected(first, old_child, connect_ops));
+  }
+
+  return ReduceTreePattern(
+      new_childs,
+      FusePatternIfConnected(first, second.GetRootPattern(), connect_ops),
+      FusionTracker(first.tracker_, second.tracker_));
+}
+
+StmtPattern MergePatternImpl(const TrivialPattern& first,
+                             const ReduceTreePlusTrivialPattern& second) {
+  auto connect_ops = FindDownstreamOps(first.sink_op());
+  return ReduceTreePlusTrivialPattern(
+      FusePatternIfConnected(first, second.tree, connect_ops),
+      FusePatternIfConnected(first, second.sink_trivial, connect_ops),
+      FusionTracker(first.tracker_, second.tracker_));
+}
+
+StmtPattern MergePatternImpl(const TrivialPattern& first,
+                             const AnchorPattern& second) {
+  return AnchorPattern(
+      UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second)),
+      second.anchor(),
+      second.anchor_state,
+      FusionTracker(first.tracker_, second.tracker_));
+}
+
+// RR & RT
+
+int InsertDownstreamIntoTree(const ReduceTreePattern& upstream,
+                             ReduceTreePattern& downstream) {  // NOLINT
+  if (IsDirectUpstream(upstream.GetRootPattern().GetReduceOp(),
+                       downstream.GetRootPattern().GetReduceOp())) {
+    downstream.InsertChild(upstream);
+    return 1;
+  }
+  int insert_num = 0;
+  for (auto& child : downstream.childs()) {
+    insert_num += InsertDownstreamIntoTree(upstream, child);
+  }
+  return insert_num;
+}
+
+StmtPattern MergePatternImpl(const ReduceTreePattern& upstream,
+                             const ReduceTreePattern& downstream) {
+  ReduceTreePattern result = ReduceTreePattern(
+      dowstream.childs(),
+      downstream.GetRootPattern(),
+      FusionTracker(first.tracker_, second.tracker_));  // copy first.
+  int insert_num = InsertDownstreamIntoTree(upstream, result);
+  CHECK(insert_num == 1) << "Must insert only once, but insert " << insert_num;
+  return result;
+}
+
+StmtPattern MergePatternImpl(const ReduceTreePattern& first,
+                             const TrivialPattern& second) {
+  return ReduceTreePlusTrivialPattern(
+      first, second, FusionTracker(first.tracker_, second.tracker_));
+}
+
+// Anchor Fusion
+ExprPromise InitExprPromiseImpl(const TrivialPattern& pattern,
+                                pir::Value anchor) {
+  return ExprPromise(anchor);
+}
+
+ExprPromise InitExprPromiseImpl(const ReducePattern& pattern,
+                                pir::Value anchor) {
+  return ExprPromise(anchor);
+}
+
+ExprPromise InitExprPromiseImpl(const ReduceTreePattern& pattern,
+                                pir::Value anchor) {
+  return InitExprPromiseImpl(pattern.GetRootPattern(), anchor);
+}
+
+template <typename T, template <typename> typename PATTERN>
+ExprPromise InitExprPromiseImpl(const PATTERN& pattern, pir::Value anchor) {
+  PADDLE_THROW("Can not Init ExprPromise");
+}
+
+ExprPromise InitExprPromise(const StmtPattern& pattern, pir::Value anchor) {
+  return std::visit(
+      [anchor](const auto& arg) { return InitExprPromiseImpl(arg, anchor); },
+      pattern.variant());
+}
+
+StmtPattern MergePatternImpl(const AnchorPattern& source,
+                             const AnchorPattern& dest) {
+  const auto& contents =
+      UniqueConcatVector(GetOpsInPattern(source), GetOpsInPattern(dest));
+  return AnchorPattern(contents,
+                       source.anchor(),
+                       AnchorState({}),
+                       FusionTracker(source.tracker_, dest.tracker_));
+}
+
+TrivialPattern RecoverAnchorPatternToTrivial(
+    const AnchorPattern& anchor_pattern) {
+  PADDLE_ENFORCE_EQ(anchor_pattern.anchor_state.promise.size(),
+                    1,
+                    phi::errors::PreconditionNotMet(
+                        "Can only recover AnchorPattern whose anchor_state "
+                        "size is 1 (exact %d)",
+                        anchor_pattern.anchor_state.promise.size()));
+
+  return TrivialPattern(anchor_pattern.ops(),
+                        anchor_pattern.anchor().defining_op(),
+                        anchor_pattern.tracker_);
+}
+
+AnchorState GetAnchorState(const AnchorPattern& pattern) {
+  return pattern.anchor_state;
+}
+
+AnchorState ApplyAnchorTransformRoute(const AnchorState& anchor_state,
+                                      const AnchorTransformRoute& route) {
+  AnchorState result = anchor_state;
+  for (auto promise : result.promise) {
+    promise.update(route);
   }
   return result;
 }
 
-std::unordered_set<pir::Value> GetPatternOutputValuesIncludedInner(
-    const StmtPattern& A) {
-  std::unordered_set<pir::Value> result;
-  for (const auto& op : GetOpsInPattern(A)) {
-    for (const auto& value : op->results()) {
-      result.insert(value);
-    }
-  }
-  return result;
-}
-
-std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A) {
-  auto all_input_values = GetPatternInputValuesIncludeInner(A);
-  for (const auto& value : GetPatternOutputValuesIncludedInner(A)) {
-    all_input_values.erase(value);
-  }
-  VLOG(4) << "GetPatternInputValues: " << all_input_values.size();
-  return all_input_values;
-}
+// Horizontal
 
 using LoopFramework = std::vector<symbol::DimExpr>;
 
@@ -217,111 +350,11 @@ StmtPattern MergePatternImpl(const HorizontalFusionPattern& first,
                                         GetLoopFramework(StmtPattern(second)));
   typename HorizontalFusionPattern::PaddingStmtPattern pad_first = {first, f};
   typename HorizontalFusionPattern::PaddingStmtPattern pad_second = {second, s};
-  return HorizontalFusionPattern({pad_first, pad_second});
+  return HorizontalFusionPattern(
+      {pad_first, pad_second}, FusionTracker(first.tracker_, second.tracker_));
 }
 
-static bool IsDirectUpstream(const pir::Operation* upstream,
-                             const pir::Operation* downstream) {
-  for (const auto& value : downstream->results()) {
-    for (const auto& operand : upstream->operands()) {
-      if (value == operand.source()) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-int InsertDownstreamIntoTree(const ReduceTreePattern& upstream,
-                             ReduceTreePattern& downstream) {  // NOLINT
-  if (IsDirectUpstream(upstream.GetRootPattern().GetReduceOp(),
-                       downstream.GetRootPattern().GetReduceOp())) {
-    downstream.InsertChild(upstream);
-    return 1;
-  }
-  int insert_num = 0;
-  for (auto& child : downstream.childs()) {
-    insert_num += InsertDownstreamIntoTree(upstream, child);
-  }
-  return insert_num;
-}
-
-StmtPattern MergePatternImpl(const ReduceTreePattern& upstream,
-                             const ReduceTreePattern& downstream) {
-  ReduceTreePattern result = downstream;  // copy first.
-  int insert_num = InsertDownstreamIntoTree(upstream, result);
-  CHECK(insert_num == 1) << "Must insert only once, but insert " << insert_num;
-  return result;
-}
-
-StmtPattern MergePatternImpl(const ReduceTreePattern& first,
-                             const TrivialPattern& second) {
-  return ReduceTreePlusTrivialPattern(first, second);
-}
-
-StmtPattern MergePatternImpl(const TrivialPattern& first,
-                             const ReducePattern& second) {
-  const auto& contents =
-      UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second));
-  return ReducePattern(contents);
-}
-
-StmtPattern MergePatternImpl(const TrivialPattern& first,
-                             const TrivialPattern& second) {
-  const auto& contents =
-      UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second));
-  return TrivialPattern(contents, second.sink_op());
-}
-
-template <typename A, typename B>
-B FusePatternIfConnected(A up_pattern,
-                         B down_pattern,
-                         std::vector<pir::Operation*> connect_ops) {
-  if (AnyTargetInCandidate(connect_ops, down_pattern.ops())) {
-    return std::get<B>(MergePatternImpl(up_pattern, down_pattern));
-  } else {
-    return down_pattern;
-  }
-}
-
-StmtPattern MergePatternImpl(const TrivialPattern& first,
-                             const ReduceTreePattern& second) {
-  auto connect_ops = FindDownstreamOps(first.sink_op());
-
-  auto old_childs = second.childs();
-  std::vector<ReduceTreePattern> new_childs;
-  for (const auto& old_child : old_childs) {
-    new_childs.emplace_back(
-        FusePatternIfConnected(first, old_child, connect_ops));
-  }
-
-  return ReduceTreePattern(
-      new_childs,
-      FusePatternIfConnected(first, second.GetRootPattern(), connect_ops));
-}
-
-StmtPattern MergePatternImpl(const TrivialPattern& first,
-                             const ReduceTreePlusTrivialPattern& second) {
-  auto connect_ops = FindDownstreamOps(first.sink_op());
-  return ReduceTreePlusTrivialPattern(
-      FusePatternIfConnected(first, second.tree, connect_ops),
-      FusePatternIfConnected(first, second.sink_trivial, connect_ops));
-}
-
-StmtPattern MergePatternImpl(const TrivialPattern& first,
-                             const AnchorPattern& second) {
-  return AnchorPattern(
-      UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second)),
-      second.anchor(),
-      second.anchor_state);
-}
-
-StmtPattern MergePatternImpl(const AnchorPattern& source,
-                             const AnchorPattern& dest) {
-  const auto& contents =
-      UniqueConcatVector(GetOpsInPattern(source), GetOpsInPattern(dest));
-  return AnchorPattern(contents, source.anchor(), AnchorState({}));
-}
+//
 
 StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
   VLOG(4) << "MergePattern: " << GetPatternName(first) << " x "
@@ -361,58 +394,6 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
       },
   };
   return std::visit(PatternMatch, first.variant(), second.variant());
-}
-
-ExprPromise InitExprPromiseImpl(const TrivialPattern& pattern,
-                                pir::Value anchor) {
-  return ExprPromise(anchor);
-}
-
-ExprPromise InitExprPromiseImpl(const ReducePattern& pattern,
-                                pir::Value anchor) {
-  return ExprPromise(anchor);
-}
-
-ExprPromise InitExprPromiseImpl(const ReduceTreePattern& pattern,
-                                pir::Value anchor) {
-  return InitExprPromiseImpl(pattern.GetRootPattern(), anchor);
-}
-
-template <typename T, template <typename> typename PATTERN>
-ExprPromise InitExprPromiseImpl(const PATTERN& pattern, pir::Value anchor) {
-  PADDLE_THROW("Can not Init ExprPromise");
-}
-
-ExprPromise InitExprPromise(const StmtPattern& pattern, pir::Value anchor) {
-  return std::visit(
-      [anchor](const auto& arg) { return InitExprPromiseImpl(arg, anchor); },
-      pattern.variant());
-}
-
-TrivialPattern RecoverAnchorPatternToTrivial(
-    const AnchorPattern& anchor_pattern) {
-  PADDLE_ENFORCE_EQ(anchor_pattern.anchor_state.promise.size(),
-                    1,
-                    phi::errors::PreconditionNotMet(
-                        "Can only recover AnchorPattern whose anchor_state "
-                        "size is 1 (exact %d)",
-                        anchor_pattern.anchor_state.promise.size()));
-
-  return TrivialPattern(anchor_pattern.ops(),
-                        anchor_pattern.anchor().defining_op());
-}
-
-AnchorState GetAnchorState(const AnchorPattern& pattern) {
-  return pattern.anchor_state;
-}
-
-AnchorState ApplyAnchorTransformRoute(const AnchorState& anchor_state,
-                                      const AnchorTransformRoute& route) {
-  AnchorState result = anchor_state;
-  for (auto promise : result.promise) {
-    promise.update(route);
-  }
-  return result;
 }
 
 }  // namespace cinn::fusion

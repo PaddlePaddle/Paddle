@@ -445,4 +445,16 @@ static const size_t GetResultIdx(const pir::Value& v, pir::Operation* op) {
       "Can not find the value %s as result of op %s", v.impl(), op->name()));
 }
 
+static bool IsDirectUpstream(const pir::Operation* upstream,
+                             const pir::Operation* downstream) {
+  for (const auto& value : downstream->results()) {
+    for (const auto& operand : upstream->operands()) {
+      if (value == operand.source()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 }  // namespace cinn::fusion
