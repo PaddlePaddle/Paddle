@@ -3828,6 +3828,15 @@
     func : tanh_shrink
   backward : tanh_shrink_grad
 
+- op : tdm_child
+  args: (Tensor x, Tensor tree_info, int child_nums, int dtype = 2)
+  output: Tensor (child), Tensor (leaf_mask)
+  infer_meta:
+    func: TdmChildInferMeta
+  kernel:
+    func: tdm_child
+    data_type: x
+
 - op : temporal_shift
   args : (Tensor x, int seg_num, float shift_ratio = 0.25f, str data_format = "NCHW")
   output : Tensor(out)
