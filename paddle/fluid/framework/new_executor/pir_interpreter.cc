@@ -1409,6 +1409,9 @@ void PirInterpreter::ConstructEventForJitInput() {
 }
 
 void PirInterpreter::ConstructEvent() {
+  if (vec_instruction_base_.size() == 0) {
+    return;
+  }
   InstructionBase* last_inst = vec_instruction_base_.back().get();
   for (size_t i = 0; i < events_to_record_.size(); ++i) {
     VLOG(0) << "Add record event for: " << last_inst->Name();
