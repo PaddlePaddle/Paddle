@@ -193,6 +193,7 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                 recv4_bwd_job.set_micro_batch_id(micro_batch_id)
                 recv4_bwd_job.set_event_to_record(bwd_event)
                 job_list.append(recv4_bwd_job)
+
                 bwd_job = core.Job("no_recv_" + bwd_job_name)
                 bwd_job.set_micro_batch_id(micro_batch_id)
                 bwd_job.set_event_to_wait(bwd_event)
