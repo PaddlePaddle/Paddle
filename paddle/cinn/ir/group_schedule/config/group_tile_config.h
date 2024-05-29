@@ -63,6 +63,11 @@ struct BucketInfo {
     std::string iter_type;
     bool is_dynamic;
     std::vector<double> weights;
+    Dimension()
+        : lower_bound(0),
+          upper_bound(INT_MAX),
+          iter_type("S"),
+          is_dynamic(false) {}
     Dimension(int low, int upper, std::string iter_type, bool is_dynamic)
         : lower_bound(low),
           upper_bound(upper),
@@ -82,13 +87,14 @@ struct BucketInfo {
   std::vector<Dimension> space;
 
   std::string ToString() const;
+  BucketInfo() : space(std::vector<Dimension>(1)) {}
   BucketInfo(int sp_lower_bound,
              int sp_upper_bound,
              int rb_lower_bound,
              int rb_upper_bound,
              bool sp_is_dynamic,
-             bool rb_is_dynamic) BucketInfo(size_t size)
-      : space(std::vector<Dimension>(size)) {}
+             bool rb_is_dynamic);
+  explict BucketInfo(size_t size) : space(std::vector<Dimension>(size)) {}
   bool operator==(const BucketInfo& other) const;
 };
 

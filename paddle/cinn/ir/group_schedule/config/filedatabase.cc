@@ -111,7 +111,8 @@ bool FileTileConfigDatabase::Tofile(const common::Target& target,
   // Step2. ToJson
   IterSpaceType iter_space_type = [&] {
     std::vector<std::pair<std::string, std::string>> res;
-    for (const auto& dim : bucket_info_.space) {
+    auto bucket_info = tile_config_map.begin()->first;
+    for (const auto& dim : bucket_info.space) {
       res.emplace_back(dim.iter_type, (dim.is_dynamic ? "dynamic" : "static"));
     }
     return res;
@@ -197,10 +198,10 @@ TileConfigMap FileTileConfigDatabase::GetConfigs(
     int dims = its.dimension_size();
     BucketInfo bucket_info(static_cast<size_t>(dims));
     for (int i = 0; i < dims; i++) {
-      bucket_info.space.[i].lower_bound = its.dimension(i).lower_bound();
-      bucket_info.space.[i].upper_bound = its.dimension(i).upper_bound();
-      bucket_info.space.[i].iter_type = its.dimension(i).iter_type();
-      bucket_info.space.[i].is_dynamic = its.dimension(i).is_dynamic();
+      bucket_info.space[i].lower_bound = its.dimension(i).lower_bound();
+      bucket_info.space[i].upper_bound = its.dimension(i).upper_bound();
+      bucket_info.space[i].iter_type = its.dimension(i).iter_type();
+      bucket_info.space[i].is_dynamic = its.dimension(i).is_dynamic();
     }
     //  Step 2.2: Convert proto tile_config to source tile_config
     ScheduleConfig::TileConfig tconfig;
