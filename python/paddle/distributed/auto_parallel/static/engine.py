@@ -278,13 +278,15 @@ class Engine:
         inputs_spec = []
         labels_spec = []
         data = next(iter(dataloader))
-        if isinstance(
-            dataloader.batch_sampler, paddle.io.DistributedBatchSampler
-        ):
+        if hasattr(dataloader, "batch_sampler"):
+            batch_sampler = dataloader.batch_sampler
+        else:
+            batch_sampler = dataloader._dataloader.batch_sampler
+        if isinstance(batch_sampler, paddle.io.DistributedBatchSampler):
             # Get data from DataLoader iterator directly may affect data generation randomness
             # of BatchSampler when `Shuffle=True`. It may cause difference of data feeding
             # between dynamic and to_static mode.
-            dataloader.batch_sampler.epoch -= 1
+            batch_sampler.epoch -= 1
         if isinstance(data, dict):
             data = tuple(data.values())
             if len(data) != 2:
