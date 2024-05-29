@@ -93,13 +93,13 @@ std::ostream& operator<<(std::ostream& os, const OperationInfo& op_info) {
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const OpDepsInfo& info) {
+std::ostream& operator<<(std::ostream& os, const OpDepInfo& info) {
   os << "dep_op_index: " << info.upstream_index_
      << ", dep_op_hash: " << info.upstream_hash_;
   return os;
 }
 
-std::size_t OpDepsInfo::hash() const {
+std::size_t OpDepInfo::hash() const {
   std::size_t seed = 1789;
   hash_combine(seed, upstream_index_);
   hash_combine(seed, upstream_hash_);
@@ -135,26 +135,23 @@ void FusionInfo::ParseOpInfos(const OpLoweringGroup& group) {
 
   const auto GetInnerUpstreamOps =
       [&](const ::pir::Operation* op) -> decltype(auto) {
-    std::map<size_t, OpDepsInfo> upstream_ops_index_hash;
+    std::map<size_t, OpDepInfo> upstream_dep_infos;
     for (size_t i = 0; i < op->num_operands(); ++i) {
       const auto value = op->operand_source(i);
       if (!value || !value.defining_op()) continue;
       const auto* defining_op = value.defining_op();
       if (op_mapper.count(defining_op) == 0) continue;
-      PADDLE_ENFORCE_LT(op_mapper[defining_op],
+      const size_t dep_index = op_mapper[defining_op];
+      PADDLE_ENFORCE_LT(dep_index,
                         this->op_infos_.size(),
                         ::common::errors::OutOfRange(
                             "Required op_mapper[defining_op] < "
                             "op_infos_.size(), but received index %d",
-                            op_mapper[defining_op]));
-      upstream_ops_index_hash.emplace(
-          i,
-          OpDepsInfo(op_mapper[defining_op],
-                     this->op_infos_[op_mapper[defining_op]].hash()));
-      VLOG(1) << "--> i " << i << ", " << upstream_ops_index_hash.at(i) << ", "
-              << this->op_infos_[op_mapper[defining_op]];
+                            dep_index));
+      upstream_dep_infos.emplace(
+          i, OpDepInfo(dep_index, this->op_infos_[dep_index].hash()));
     }
-    return upstream_ops_index_hash;
+    return upstream_dep_infos;
   };
 
   const auto sorted_ops = TopologySort(group);

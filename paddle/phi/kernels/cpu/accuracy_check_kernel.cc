@@ -60,7 +60,7 @@ void AccuracyCheckKernel(const Context& ctx,
       VLOG(2) << "Accuracy check failed between" << x_cpu.data<T>()[i]
               << " and " << y_cpu.data<T>()[i] << " at index= " << i;
       res_index = i;
-      // break;
+      break;
     }
   }
 
