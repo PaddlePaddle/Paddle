@@ -95,6 +95,9 @@ void OneDNNMixedPhiKernelInstruction::Run() {
           transed_tensor->set_layout(tmp_layout);
           phi::funcs::MatchShapeToLayout(
               transed_tensor, phi::DataLayout::ONEDNN, tmp_layout);
+          dnnl::memory::desc out_mem_desc =
+              phi::funcs::make_memory_desc(*transed_tensor, tmp_layout);
+          transed_tensor->set_mem_desc(out_mem_desc);
           kernel_context_.UpdataInput(i, transed_tensor);
         } else {
           tmp_holders.emplace_back(std::make_shared<phi::DenseTensor>());
