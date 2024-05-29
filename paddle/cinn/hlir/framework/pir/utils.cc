@@ -497,13 +497,15 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
               item.second);
       PADDLE_ENFORCE(symbol_bindings.has_value(),
                      ::common::errors::PreconditionNotMet(
-                         "Required symbol_bindings.has_value()==true."));
+                         "Required success to execute convert attribute to "
+                         "symbol bindings."));
       dst_attrs[::pir::kSymbolBindings] = symbol_bindings.value();
     } else if (item.first == ::pir::kOutputDimExprs) {
       auto dim_exprs = cinn::dialect::ConvertAttributeToDimExprs(item.second);
-      PADDLE_ENFORCE(dim_exprs.has_value(),
-                     ::common::errors::PreconditionNotMet(
-                         "Required dim_exprs.has_value()==true."));
+      PADDLE_ENFORCE(
+          dim_exprs.has_value(),
+          ::common::errors::PreconditionNotMet(
+              "Required success to execute convert attribute to dim exprs."));
       dst_attrs[::pir::kOutputDimExprs] = dim_exprs.value();
     } else if (item.second.isa<paddle::dialect::PlaceAttribute>()) {
       auto is_cpu =

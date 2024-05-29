@@ -329,12 +329,12 @@ std::optional<pir::Value> GetOutOfRewrittenGenerateShapeOp(
 }
 
 bool ReplaceShapeOpsToGenerateShape(
-    pir::Value shape_operand,
+    pir::OpOperand shape_operand,
     pir::PatternRewriter* rewriter,
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  if (shape_operand.defining_op() == nullptr) return false;
-  if (shape_operand.defining_op()->isa<cinn::dialect::GenerateShapeOp>() ||
-      shape_operand.defining_op()->num_operands() == 0) {
+  auto* shape_def_op = shape_operand.source().defining_op();
+  if (!shape_def_op || shape_def_op->num_operands() == 0) return false;
+  if (shape_def_op->isa<cinn::dialect::GenerateShapeOp>()) {
     return false;
   }
   auto ShapeOrDataDimExprs4Value =
@@ -344,12 +344,11 @@ bool ReplaceShapeOpsToGenerateShape(
   };
   std::optional<pir::Value> opt_generated_shape =
       GetOutOfRewrittenGenerateShapeOp(
-          shape_operand, rewriter, ShapeOrDataDimExprs4Value);
+          shape_operand.source(), rewriter, ShapeOrDataDimExprs4Value);
   if (!opt_generated_shape.has_value()) return false;
-  rewriter->ReplaceAllUsesWith(shape_operand, opt_generated_shape.value());
-  if (shape_operand.defining_op()->use_empty()) {
-    rewriter->EraseOp(shape_operand.defining_op());
-  }
+  // Replace the shape op input only, don't replace other users of the shape
+  // operand.
+  shape_operand.set_source(opt_generated_shape.value());
   return true;
 }
 
@@ -358,7 +357,18 @@ bool ProcessOp(OP_TYPE op,
                pir::PatternRewriter* rewriter,
                pir::ShapeConstraintIRAnalysis* shape_analysis) {
   return ReplaceShapeOpsToGenerateShape(
-      op->operand_source(1), rewriter, shape_analysis);
+      op->operand(1), rewriter, shape_analysis);
+}
+
+template <>
+bool ProcessOp<paddle::dialect::SliceOp>(
+    paddle::dialect::SliceOp op,
+    pir::PatternRewriter* rewriter,
+    pir::ShapeConstraintIRAnalysis* shape_analysis) {
+  return ReplaceShapeOpsToGenerateShape(
+             op->operand(1), rewriter, shape_analysis) &&
+         ReplaceShapeOpsToGenerateShape(
+             op->operand(2), rewriter, shape_analysis);
 }
 
 }  // namespace
@@ -411,7 +421,20 @@ class FuseSingleElementShapeOpsIntoGenerateShapeOpPattern
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
-    ReplaceShapeOpsToGenerateShape(op->result(0), &rewriter, &shape_analysis);
+    auto ShapeOrDataDimExprs4Value =
+        [&shape_analysis](
+            pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+      return shape_analysis.GetShapeOrDataForValue(value);
+    };
+    std::optional<pir::Value> opt_generated_shape =
+        GetOutOfRewrittenGenerateShapeOp(
+            op->result(0), rewriter, ShapeOrDataDimExprs4Value);
+    if (!opt_generated_shape.has_value()) {
+      LOG(WARNING) << "Create GenerateShapeOp Failed.";
+      return;
+    }
+
+    rewriter.ReplaceAllUsesWith(op->result(0), opt_generated_shape.value());
 
     if (op->use_empty()) {
       rewriter.EraseOp(op);
@@ -453,8 +476,9 @@ class FuseShapeOpsIntoGenerateShapeOpPass : public pir::PatternRewritePass {
         context);
     ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::ReshapeOp>>(
         context);
+    ps.Add<FuseShapeOpsIntoGenerateShapeOpPattern<paddle::dialect::SliceOp>>(
+        context);
     ps.Add<FuseSingleElementShapeOpsIntoGenerateShapeOpPattern>(context);
-
     return ps;
   }
 
