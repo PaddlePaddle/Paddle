@@ -390,16 +390,19 @@ def _run_dygraph(instance, input, program_holder):
 
     return instance.layer(input_tensors)
 
+
 def _run_static_graph(program_holder, src_program):
     dst_program = paddle.static.default_main_program()
     value_map = paddle.pir.IrMapping()
     len_dst_op = len(dst_program.global_block().ops)
     for dst_op in dst_program.global_block().ops:
         for src_op in src_program.global_block().ops[:len_dst_op]:
-            if src_op.name() == dst_op.name() and src_op.result(0).name == dst_op.result(0).name:
+            if (
+                src_op.name() == dst_op.name()
+                and src_op.result(0).name == dst_op.result(0).name
+            ):
                 for i in range(src_op.num_results()):
                     value_map.add(src_op.result(i), dst_op.result(i))
-
     src_program.clone(value_map, dst_program)
     output = [value_map.look_up(v) for v in program_holder.output_vars]
     return output[0] if len(output) == 1 else output
