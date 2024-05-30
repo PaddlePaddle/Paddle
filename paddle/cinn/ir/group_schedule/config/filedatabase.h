@@ -16,7 +16,6 @@
 
 #include "paddle/cinn/ir/group_schedule/config/database.h"
 #include "paddle/cinn/ir/group_schedule/config/tileconfig_desc.pb.h"
-#include "paddle/fluid/inference/analysis/helper.h"
 namespace cinn {
 namespace ir {
 
