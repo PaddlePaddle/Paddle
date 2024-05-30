@@ -14,11 +14,18 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/gaussian_inplace_grad_kernel.h"
 
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
-template <typename T, typename Context>
+// If T is not complex
+template <
+    typename T,
+    typename Context,
+    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
+                         !std::is_same<T, phi::dtype::complex<double>>::value,
+                     bool> = true>
 void GaussianInplaceGradKernel(const Context& ctx,
                                const DenseTensor& out_grad UNUSED,
                                float mean UNUSED,
@@ -28,6 +35,27 @@ void GaussianInplaceGradKernel(const Context& ctx,
   if (x_grad) {
     auto* data = ctx.template Alloc<T>(x_grad);
     std::fill(data, data + x_grad->numel(), T(0));
+  }
+}
+
+// If T is complex
+template <
+    typename T,
+    typename Context,
+    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value &&
+                         std::is_same<T, phi::dtype::complex<double>>::value,
+                     bool> = true>
+void GaussianInplaceGradKernel(const Context& ctx,
+                               const DenseTensor& out_grad UNUSED,
+                               float mean UNUSED,
+                               float std UNUSED,
+                               int seed UNUSED,
+                               DenseTensor* x_grad) {
+  if (x_grad) {
+    auto* data = ctx.template Alloc<T>(x_grad);
+    T value = T(static_cast<phi::dtype::Real<T>>(0.0f),
+                static_cast<phi::dtype::Real<T>>(0.0f));
+    std::fill(data, data + x_grad->numel(), value);
   }
 }
 

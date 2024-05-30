@@ -18,9 +18,11 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 
@@ -98,9 +100,26 @@ void GaussianKernel(const Context& dev_ctx,
   out->Resize(common::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
   float std_of_real_or_imag = std::sqrt(std::pow(std, 2) / 2);
-  // use OP seed
-  auto func = GaussianGenerator<T>(mean, std_of_real_or_imag, seed);
-  IndexKernel<T, GaussianGenerator<T>>(dev_ctx, out, func);
+  if (seed == 0) {
+    // use global Generator seed
+    DenseTensor* out_real;
+    DenseTensor* out_imag;
+    out_real->Resize(common::make_ddim(shape.GetData()));
+    out_imag->Resize(common::make_ddim(shape.GetData()));
+    funcs::normal_distribution<phi::dtype::Real<T>> dist;
+    funcs::normal_distribution<phi::dtype::Real<T>> dist_imag;
+    funcs::normal_transform<phi::dtype::Real<T>> trans(mean,
+                                                       std_of_real_or_imag);
+    funcs::distribution_and_transform<phi::dtype::Real<T>>(
+        dev_ctx, out_real, dist, trans);
+    funcs::distribution_and_transform<phi::dtype::Real<T>>(
+        dev_ctx, out_imag, dist_imag, trans);
+    phi::ComplexKernel<phi::dtype::Real<T>>(*out_real, *out_imag, out);
+  } else {
+    // use OP seed
+    auto func = GaussianGenerator<T>(mean, std_of_real_or_imag, seed);
+    IndexKernel<T, GaussianGenerator<T>>(dev_ctx, out, func);
+  }
 }
 
 // If T is not complex
@@ -149,9 +168,26 @@ void GaussianInplaceKernel(const Context& dev_ctx,
                            DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   float std_of_real_or_imag = std::sqrt(std::pow(std, 2) / 2);
-  // use OP seed
-  auto func = GaussianGenerator<T>(mean, std_of_real_or_imag, seed);
-  IndexKernel<T, GaussianGenerator<T>>(dev_ctx, out, func);
+  if (seed == 0) {
+    // use global Generator seed
+    DenseTensor* out_real;
+    DenseTensor* out_imag;
+    out_real->Resize(common::make_ddim(shape.GetData()));
+    out_imag->Resize(common::make_ddim(shape.GetData()));
+    funcs::normal_distribution<phi::dtype::Real<T>> dist;
+    funcs::normal_distribution<phi::dtype::Real<T>> dist_imag;
+    funcs::normal_transform<phi::dtype::Real<T>> trans(mean,
+                                                       std_of_real_or_imag);
+    funcs::distribution_and_transform<phi::dtype::Real<T>>(
+        dev_ctx, out_real, dist, trans);
+    funcs::distribution_and_transform<phi::dtype::Real<T>>(
+        dev_ctx, out_imag, dist_imag, trans);
+    phi::ComplexKernel<phi::dtype::Real<T>>(*out_real, *out_imag, out);
+  } else {
+    // use OP seed
+    auto func = GaussianGenerator<T>(mean, std_of_real_or_imag, seed);
+    IndexKernel<T, GaussianGenerator<T>>(dev_ctx, out, func);
+  }
 }
 
 // If T is not complex

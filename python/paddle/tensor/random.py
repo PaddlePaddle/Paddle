@@ -644,6 +644,16 @@ def gaussian_(x, mean=0.0, std=1.0, seed=0, name=None):
                 [ 1.72819555,  1.87785017,  0.48915744,  0.09235018]])
     """
     if isinstance(mean, complex):
+        if x.dtype not in [
+            core.VarDesc.VarType.COMPLEX64,
+            core.VarDesc.VarType.COMPLEX128,
+            core.DataType.COMPLEX64,
+            core.DataType.COMPLEX128,
+        ]:
+            raise TypeError(
+                "if mean is a complex number, x's dtype should be complex64 or complex128, ",
+                f"but dtype = {x.dtype}",
+            )
         if mean.real != mean.imag:
             raise ValueError(
                 "The mean of complex gaussian distribution should be a complex number with ",
