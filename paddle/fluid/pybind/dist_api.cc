@@ -24,8 +24,6 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace py = pybind11;
-
 namespace pybind11 {
 namespace detail {
 template <typename Key,
