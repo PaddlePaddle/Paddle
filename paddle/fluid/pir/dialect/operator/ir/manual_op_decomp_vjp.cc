@@ -40,7 +40,7 @@ std::vector<std::vector<pir::Value>> StackGradOp::DecompVjp(
 
   FLAGS_tensor_operants_mode = "static";
 
-  VLOG(4) << "Decomp Prepare inputs of stack_grad";
+  VLOG(6) << "Decomp Prepare inputs of stack_grad";
 
   pir::CombineOp combine_op_obj_x =
       op_obj.x().defining_op()->dyn_cast<pir::CombineOp>();
@@ -51,10 +51,10 @@ std::vector<std::vector<pir::Value>> StackGradOp::DecompVjp(
   }
   Tensor out_grad(std::make_shared<primitive::LazyTensor>(op_obj.out_grad()));
 
-  VLOG(4) << "Decomp prepare attributes of stack_grad";
+  VLOG(6) << "Decomp prepare attributes of stack_grad";
   int axis = op->attribute("axis").dyn_cast<pir::Int32Attribute>().data();
 
-  VLOG(4) << "Decomp call stack_grad's backward composite rule prepare";
+  VLOG(6) << "Decomp call stack_grad's backward composite rule prepare";
 
   std::vector<std::vector<bool>> stop_gradients(op->results().size());
   if (combine_op_obj_x->HasAttribute(kAttrStopGradients)) {
@@ -115,7 +115,7 @@ std::vector<std::vector<pir::Value>> ConcatGradOp::DecompVjp(
 
   FLAGS_tensor_operants_mode = "static";
 
-  VLOG(4) << "Decomp Prepare inputs of concat_grad";
+  VLOG(6) << "Decomp Prepare inputs of concat_grad";
 
   pir::CombineOp combine_op_obj_x =
       op_obj.x().defining_op()->dyn_cast<pir::CombineOp>();
@@ -126,7 +126,7 @@ std::vector<std::vector<pir::Value>> ConcatGradOp::DecompVjp(
   }
   Tensor out_grad(std::make_shared<primitive::LazyTensor>(op_obj.out_grad()));
 
-  VLOG(4) << "Decomp prepare attributes of concat_grad";
+  VLOG(6) << "Decomp prepare attributes of concat_grad";
 
   Tensor axis_(std::make_shared<primitive::LazyTensor>(op_obj.axis()));
 
@@ -154,10 +154,10 @@ std::vector<std::vector<pir::Value>> ConcatGradOp::DecompVjp(
         splitop->attribute("current_bwd_op_stop_gradients")
             .dyn_cast<pir::ArrayAttribute>()
             .AsVector();
-    for (int i = 0; i < stop_gradients_attr.size(); ++i) {
+    for (size_t i = 0; i < stop_gradients_attr.size(); ++i) {
       auto stop_gradients_attr_j =
           stop_gradients_attr[i].dyn_cast<pir::ArrayAttribute>().AsVector();
-      for (int j = 0; j < stop_gradients_attr_j.size(); ++j) {
+      for (size_t j = 0; j < stop_gradients_attr_j.size(); ++j) {
         stop_gradients[0].push_back(
             stop_gradients_attr_j[j].dyn_cast<pir::BoolAttribute>().data());
       }
