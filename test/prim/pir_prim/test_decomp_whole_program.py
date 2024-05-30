@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
 
+os.environ["FLAGS_prim_vjp_skip_default_ops"] = "0"
 import paddle
 from paddle.autograd.ir_backward import grad
 from paddle.decomposition import decomp
@@ -40,7 +42,8 @@ class TestPrimMode(unittest.TestCase):
             y.stop_gradient = False
             x1 = paddle.sin(x)
             y1 = paddle.cos(y)
-            tmp1 = paddle.concat((x1, y1))
+            y3 = paddle.matmul(x1, y1)
+            tmp1 = paddle.concat((x1, y1, y3))
             tmp2 = paddle.mean(tmp1)
             sum_out = paddle.sin(tmp2)
             gradients = grad(sum_out, (x, y))
@@ -53,19 +56,19 @@ class TestPrimMode(unittest.TestCase):
             )
 
         whole_ops = [op.name() for op in main_program.global_block().ops]
-        # if flag == "prim":
-        #     assert 'pd_op.matmul_grad' not in whole_ops
-        # else:
-        #     assert 'pd_op.matmul_grad' in whole_ops
+        if flag == "prim":
+            assert 'pd_op.matmul_grad' not in whole_ops
+        else:
+            assert 'pd_op.matmul_grad' in whole_ops
 
         return fwd, dx, dy
 
     def test_prim_all(self):
-        # paddle.base.core._set_prim_backward_blacklist("sin_grad","cos_grad")
+        paddle.base.core._set_prim_backward_blacklist("sin_grad", "cos_grad")
         res_ref = self.base_net()
         res = self.base_net("prim")
         for ref, actual in zip(res_ref, res):
-            np.testing.assert_allclose(ref, actual, rtol=1e-6)
+            np.testing.assert_allclose(ref, actual, rtol=1e-6, atol=1e-6)
 
 
 if __name__ == "__main__":
