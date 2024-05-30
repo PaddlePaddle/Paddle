@@ -23,12 +23,6 @@ if [ -e "$libname" ]; then
     exit 0 
 fi
 
-cutlass_repo_directory="cutlass"
-if [ ! -d "$cutlass_repo_directory" ]; then
-     git clone --branch v3.0.0  https://github.com/NVIDIA/cutlass
-fi
-
-
 default_python_exe_path="/usr/bin/python"
 default_cuda_root_path="/usr/local/cuda"
 default_gpu_cc="80"
@@ -38,6 +32,17 @@ python_exe_path="${1:-$default_python_exe_path}"
 cuda_root_path="${2:-$default_cuda_root_path}"  
 gpu_cc="${3:-$default_gpu_cc}"
 cmake_command="${4:-$default_cmake_command}" 
+
+case "$gpu_cc" in  
+    75|80|86|89)  ;;  
+    *)  exit 0  ;;  
+esac
+
+cutlass_repo_directory="cutlass"
+if [ ! -d "$cutlass_repo_directory" ]; then
+     git clone --branch v3.0.0  https://github.com/NVIDIA/cutlass
+fi
+
 
 cd $build_directory
 $cmake_command .. -DPYTHON_EXECUTABLE=$python_exe_path -DCUDA_TOOLKIT_ROOT_DIR=$cuda_root_path -DCOMPUTE_CAPABILITY=$gpu_cc
