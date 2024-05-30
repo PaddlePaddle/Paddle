@@ -278,7 +278,7 @@ struct FlowGraph {
       }
     }
 
-    std::unordered_set<Node> nhwc_nodes;
+    std::unordered_set<Node> mutable_nodes;
     for (auto& op : *(program.block())) {
       auto layout_transform_iface =
           op.dyn_cast<paddle::dialect::LayoutTransformationInterface>();
@@ -286,10 +286,14 @@ struct FlowGraph {
         continue;
       }
 
+      if (!layout_transform_iface.CanBeModified(&op)) {
+        continue;
+      }
+
       auto prefer_layout = layout_transform_iface.PreferLayout(&op);
       if (prefer_layout == common::DataLayout::NHWC) {
         Node op_node(&op);
-        nhwc_nodes.insert(op_node);
+        mutable_nodes.insert(op_node);
         AddEdge(op_node, dst_node(), INF);
         VLOG(10) << "[PreProcess] node: " << op_node
                  << " should be set to NHWC";
@@ -302,7 +306,7 @@ struct FlowGraph {
     // operation who have a dertermined layout and spread its layout to
     // its output and inputs recursively.
     std::queue<Node> q;
-    for (auto& n : nhwc_nodes) {
+    for (auto& n : mutable_nodes) {
       q.push(n);
     }
     std::unordered_set<Node> is_node_layout_visited;
@@ -362,12 +366,12 @@ struct FlowGraph {
                   // a point of cut edge. So we set its outputs and inputs to
                   // immutable.
                   Node in_node = Node(v.defining_op());
-                  nhwc_nodes.erase(in_node);
+                  mutable_nodes.erase(in_node);
                   VLOG(10) << "erase node: " << in_node << " from nhwc set";
 
                   for (auto it = v.use_begin(); it != v.use_end(); ++it) {
                     Node out_node(it->owner());
-                    nhwc_nodes.erase(out_node);
+                    mutable_nodes.erase(out_node);
                     VLOG(10) << "erase node: " << out_node << " from nhwc set";
                   }
                 }
@@ -381,7 +385,7 @@ struct FlowGraph {
       }
 
       VLOG(10) << "add node to nhwc set: " << node;
-      nhwc_nodes.insert(node);
+      mutable_nodes.insert(node);
 
       VLOG(10) << "processing node successor: " << node;
 
@@ -403,7 +407,7 @@ struct FlowGraph {
         continue;
       }
       is_node_layout_visited.insert(node);
-      if (nhwc_nodes.count(node) == 0) {
+      if (mutable_nodes.count(node) == 0) {
         VLOG(10) << "add node to nchw set: " << node;
         AddEdge(src_node(), node, INF);
       }
@@ -558,6 +562,10 @@ class TransferLayoutPass : public pir::Pass {
 
     auto module_op = op->dyn_cast<pir::ModuleOp>();
     auto* program = module_op.program();
+
+    VLOG(10)
+        << "---------------------[program before pass]---------------------";
+    std::cout << *program << std::endl;
 
     // MinCut
     VLOG(10) << "---------------------MinCut---------------------";
@@ -749,6 +757,10 @@ class TransferLayoutPass : public pir::Pass {
         value.ReplaceUsesWithIf(transpose_op.out(), replace_uses_in_cut_set);
       }
     }
+
+    VLOG(10) << "---------------------[program after "
+                "pass]---------------------";
+    std::cout << *program << std::endl;
   }
 };
 
