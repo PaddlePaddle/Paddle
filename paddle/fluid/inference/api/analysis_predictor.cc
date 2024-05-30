@@ -15,15 +15,23 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 
 #include <glog/logging.h>
+
 #include <algorithm>
 #include <cstdlib>
 #include <fstream>
-#include <iostream>
 #include <memory>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/block_argument.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/program.h"
 
 #include "paddle/fluid//platform/device/gpu/gpu_types.h"
@@ -53,10 +61,6 @@
 #include "paddle/fluid/inference/utils/model_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
-#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -66,16 +70,12 @@
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
-#include "paddle/pir/include/core/attribute.h"
-#include "paddle/pir/include/core/block_argument.h"
-#include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/utils/string/split.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
@@ -123,10 +123,12 @@
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/general/params_sync_among_devices_pass.h"
+#include "paddle/fluid/pir/transforms/general/remove_shadow_feed_pass.h"
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
@@ -369,7 +371,20 @@ bool PaddleTensorToDenseTensor(const PaddleTensor &pt,
 }  // namespace
 
 AnalysisPredictor::AnalysisPredictor(const AnalysisConfig &config)
-    : config_(config) {
+    : config_(config),
+      fusion_statis_(),
+      executor_(nullptr),
+      feeds_(),
+      feed_names_(),
+      idx2feeds_(),
+      fetches_(),
+      idx2fetches_(),
+      feed_tensors_(),
+      output_hookfuncs_(),
+      input_hookfuncs_(),
+      shape_info_(),
+      shape_tensor_value_(),
+      device_contexts_() {
   if (config_.shape_range_info_collected()) {
     config_.SwitchIrOptim(false);
   }
@@ -430,6 +445,7 @@ bool AnalysisPredictor::Init(
         optimized_model_path + "/" + "_optimized.pdiparams";
     if (FileExists(optimized_model) && FileExists(optimized_params)) {
       config_.SetModel(optimized_model, optimized_params);
+      LOG(INFO) << "Load Optimized model from " << optimized_model_path;
     } else {
       LOG(WARNING)
           << "The optimized model is not found, fallback to original model. "
@@ -461,6 +477,7 @@ bool AnalysisPredictor::Init(
     }
   }
 
+  // Get the feed_target_names and fetch_target_names
   if (!config_.new_ir_enabled() && extension_ != "json") {
     PrepareFeedFetch();
   }
@@ -1033,6 +1050,7 @@ bool AnalysisPredictor::PrepareProgram(
     // still need to create other persistable variables.
     // So in both case, create persistable variables at first.
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
+
     // if enable_ir_optim_ is false,
     // the analysis pass(op fuse, graph analysis, trt subgraph, onednn etc) will
     // not be executed.
@@ -1067,14 +1085,14 @@ bool AnalysisPredictor::PrepareProgram(
       OptimizeInferenceProgram();
     }
   }
-  std::string Pdfilename;
+
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
   if (config_.new_ir_enabled()) {
     if (!config_.prog_file().empty()) {
       // All parameters are saved in a single file.
       // The file names should be consistent with that used
       // in Python API `fluid.io.save_inference_model`.
-      Pdfilename = config_.prog_file();
+      std::string Pdfilename = config_.prog_file();
       std::string extension =
           Pdfilename.substr(Pdfilename.find_last_of(".") + 1);
       if (extension == "json") {
@@ -1768,6 +1786,8 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   inference::DisplayMemoryInfo(place_, "before run");
   if (private_context_) {
     paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+    auto &pool = paddle::experimental::DeviceContextPool::Instance();
+    pool.SyncDeviceContext(place_);
   }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
@@ -1796,6 +1816,30 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   if (config_.shape_range_info_collected()) {
     HookCollectShapeRangeInfo();
   }
+#ifdef PADDLE_WITH_XPU
+  InferXPUContext *infer_xpu_ctx = nullptr;
+  if (config_.use_xpu_) {
+    PADDLE_ENFORCE(
+        private_context_,
+        paddle::platform::errors::Fatal(
+            "Must use private context if run predictor on xpu place."));
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place,
+        std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        this->GetDeviceContexts());
+    infer_xpu_ctx =
+        static_cast<InferXPUContext *>(dev_ctxs->at(place_).get().get());
+    auto *x_context = static_cast<xpu::Context *>(config_.xpu_config_.context);
+    if (x_context != nullptr) {
+      infer_xpu_ctx->SetXContext(x_context);
+    }
+    infer_xpu_ctx->SetStream(predictor_stream_);
+    infer_xpu_ctx->SetL3Info(config_.xpu_config_.l3_size,
+                             config_.xpu_config_.l3_ptr,
+                             config_.xpu_config_.l3_autotune_size,
+                             place_);
+  }
+#endif
 
   if (config_.new_executor_enabled()) {  // NOLINT
     executor_->RunInterpreterCore();
@@ -1806,7 +1850,11 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   }
 
   inference::DisplayMemoryInfo(place_, "after run");
-
+#ifdef PADDLE_WITH_XPU
+  if (config_.use_xpu_ && infer_xpu_ctx != nullptr) {
+    infer_xpu_ctx->L3CacheAutotune();
+  }
+#endif
   // get fetch variable
   if (!GetFetch(outputs, scope)) {
     LOG(ERROR) << "fail to get fetches";
@@ -2296,9 +2344,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
       });
   // The config and argument take a lot of storage,
   // when the predictor settings are complete, we release these stores.
-  std::string saved_prog_file = config_.prog_file();  // Save the value
-  // config_.PartiallyRelease();
-
+  config_.PartiallyRelease();
 #if defined(PADDLE_WITH_TESTING)
   fusion_statis_ = *argument_->fusion_statis_ptr();
 #endif
@@ -2465,7 +2511,6 @@ void AnalysisPredictor::PrepareFeedFetch() {
       feeds_[idx] = op;
       feed_names_[op->Output("Out")[0]] = idx;
       idx2feeds_[idx] = op->Output("Out")[0];
-      // 通过op取得var name
     } else if (op->Type() == framework::kFetchOpType) {
       int idx = PADDLE_GET_CONST(int, op->GetAttr("col"));
       if (fetches_.size() <= static_cast<size_t>(idx)) {
@@ -2696,6 +2741,8 @@ bool AnalysisPredictor::ZeroCopyRun(bool switch_stream) {
 #endif
   if (private_context_) {
     paddle::platform::DeviceContextPool::SetDeviceContexts(&device_contexts_);
+    auto &pool = paddle::experimental::DeviceContextPool::Instance();
+    pool.SyncDeviceContext(place_);
   }
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 #ifdef PADDLE_WITH_DNNL
@@ -2817,8 +2864,6 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
           UpdatePrivateDeviceContext(gpu_context, gpu_resource, place_);
           return std::unique_ptr<phi::DeviceContext>(gpu_context);
         }));
-    auto &pool = paddle::experimental::DeviceContextPool::Instance();
-    pool.SyncDeviceContext(place_);
     switch_stream = true;
   }
   return ZeroCopyRun(switch_stream);
@@ -3631,7 +3676,7 @@ USE_TRT_CONVERTER(dequantize_linear)
 
 namespace paddle_infer {
 
-Predictor::Predictor(const Config &config) {
+Predictor::Predictor(const Config &config) : predictor_(nullptr) {
   // The second parameter indicates that the discard log is not printed
   if (config.use_onnxruntime()) {
 #ifdef PADDLE_WITH_ONNXRUNTIME
@@ -3791,7 +3836,7 @@ std::shared_ptr<Predictor> CreatePredictor(const Config &config) {  // NOLINT
 }
 
 namespace services {
-PredictorPool::PredictorPool(const Config &config, size_t size) {
+PredictorPool::PredictorPool(const Config &config, size_t size) : preds_() {
   PADDLE_ENFORCE_GE(
       size,
       1UL,
