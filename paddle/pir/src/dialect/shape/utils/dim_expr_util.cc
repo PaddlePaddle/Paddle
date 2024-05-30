@@ -185,6 +185,10 @@ struct IsListLhsBeforeListRhsStruct {
   static bool Call(const Op<DimExpr>& lhs, const Op<DimExpr>& rhs) {
     const auto& [lhs_operands] = lhs;
     const auto& [rhs_operands] = rhs;
+    if (lhs_operands->empty() || rhs_operands->empty()) {
+      // 处理错误情况或抛出异常
+      throw std::runtime_error("Operands are uninitialized.");
+    }
     if (lhs_operands->size() < rhs_operands->size()) {
       return true;
     }
