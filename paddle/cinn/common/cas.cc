@@ -37,6 +37,7 @@ Expr AutoSimplify(
     Expr u,
     const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
   VLOG(7) << "Begin AutoSimplify: " << u;
+  std::cerr << "type is " << u.type() << std::endl;
   u = detail::ConvertCinnToCAS(u);
   absl::flat_hash_map<std::string, CasInterval> s_var_intervals;
   for (auto& item : var_intervals) {

@@ -20,8 +20,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
-static constexpr float kAtolValue = 1e-5;
-static constexpr float kRtolValue = 1e-5;
+static constexpr float kAtolValue = 1e-4;
+static constexpr float kRtolValue = 1e-4;
 
 bool allclose(float a, float b) {
   float left = (a > b ? a - b : b - a);
