@@ -21,6 +21,7 @@
 #include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/common/dim_expr_converter.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_util.h"
 #include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
@@ -29,7 +30,9 @@
 #include "paddle/cinn/hlir/pe/map_expr_to_ir.h"
 #include "paddle/cinn/ir/dim.h"
 #include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
+#include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
 #include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
+#include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
@@ -38,12 +41,9 @@
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
-
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
-#include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
-#include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
@@ -290,7 +290,11 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
                                                    &group_func_arg_tensors_copy,
                                                    &group_func_args,
                                                    &infer_shape_tensor_args);
-  CHECK_EQ(funcs.size(), cond2func_bodies.size());
+  PADDLE_ENFORCE_EQ(funcs.size(),
+                    cond2func_bodies.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of funcs and cond2func_bodies should be "
+                        "the same."));
   BucketLoweredFuncsWrapper funcs_wrapper;
   for (int i = 0; i < funcs.size(); ++i) {
     funcs_wrapper.predicate2funcs.emplace_back(cond2func_bodies[i].first,
@@ -666,7 +670,11 @@ void OpLowererImpl::BuildBroadcastInfo(const OpLoweringGroupPtr& group,
 std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
     const OpLoweringGroupPtr& group) {
   const auto& ops = group->ops();
-  CHECK_EQ(ops.size(), 1);
+  PADDLE_ENFORCE_EQ(
+      ops.size(),
+      1,
+      phi::errors::InvalidArgument("Custom call group should have only "
+                                   "one op"));
   ::pir::Operation* op = ops[0];
   std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
   std::vector<ir::Tensor> op_func_arg_tensors =
@@ -700,7 +708,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
       cinn::common::CINNValue(external_api)};
   cinn::common::CINNValuePack pack =
       impl->fcompute(cinn::common::CINNValuePack{compute_args});
-  CHECK_EQ(pack.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      pack.size(),
+      1UL,
+      phi::errors::InvalidArgument("The size of pack should be 1."));
   // reset input names as extern api input args can't be remove duplicate.
   // group->input_names.clear();
   // for (auto& inode : node->inlinks_in_order()) {
@@ -916,7 +927,11 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
       std::vector<std::vector<ir::Dim>> out_shapes;
       CollectOutputInfo(op, &out_types, &out_shapes, group);
 
-      CHECK_EQ(out_types.size(), out_shapes.size());
+      PADDLE_ENFORCE_EQ(out_types.size(),
+                        out_shapes.size(),
+                        phi::errors::InvalidArgument(
+                            "The size of out_types and out_shapes should be "
+                            "the same."));
       VLOG(4) << "out_types.size(): " << out_types.size();
       NodeAttr node_attrs = details::CollectAttrs(*op);
       auto& strategy_map =
@@ -1127,10 +1142,15 @@ ir::Tensor OpLowererImpl::GetTensor(const OpLoweringGroupPtr& group,
     }
     auto tensor = lang::CreatePlaceHolder(
         sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
-    const auto& tensor_value = details::GetTensorValueFromShapeOrData(
-        group->GetShapeOrDataExprs(value));
-    if (tensor_value.has_value()) {
-      tensor->set_value(*tensor_value);
+    auto IsIntType = [](const ::pir::Type& t) {
+      return t.isa<::pir::Int32Type>() || t.isa<::pir::Int64Type>();
+    };
+    if (IsIntType(dtype) && group->HasShapeOrDataExprs(value)) {
+      const auto& tensor_value = details::GetTensorValueFromShapeOrData(
+          group->GetShapeOrDataExprs(value));
+      if (tensor_value.has_value()) {
+        tensor->set_value(*tensor_value);
+      }
     }
     return tensor;
   } else {

@@ -1532,9 +1532,14 @@ PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
 PHI_DEFINE_EXPORTED_bool(pir_debug,
                          false,
                          "Whether print more pir debug info.");
-PHI_DEFINE_EXPORTED_bool(prim_skip_dynamic,
-                         true,
-                         "Whether to skip decomposing op with dynamic shape.");
+PHI_DEFINE_EXPORTED_bool(
+    prim_skip_dynamic,
+    true,
+    "Whether to skip decomposing vjp op with dynamic shape.");
+PHI_DEFINE_EXPORTED_bool(
+    prim_enable_dynamic,
+    false,
+    "Whether to enable decomposing composite op with dynamic shape.");
 PHI_DEFINE_EXPORTED_bool(prim_check_ops,
                          false,
                          "Whether to check the decomposed program, to ensure "
@@ -1606,6 +1611,12 @@ PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
                          false,
                          "Whether to apply shape_optimization pass "
                          "to infer symbolic shape");
+
+PHI_DEFINE_EXPORTED_string(
+    nvidia_package_dir,  // NOLINT
+    "",
+    "Specify root dir path for nvidia site-package, such as "
+    "python3.9/site-packages/nvidia");
 
 PHI_DEFINE_EXPORTED_string(
     cudnn_dir,  // NOLINT
