@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/graph_khop_sampler_kernel.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <numeric>
 #include <random>
