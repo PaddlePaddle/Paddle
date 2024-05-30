@@ -42,8 +42,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_factory.h"
 #endif
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 using float16 = phi::dtype::float16;
 
@@ -306,5 +305,4 @@ struct RowwiseAdd<phi::CPUContext, T> {
 template struct RowwiseAdd<phi::CPUContext, float>;
 template struct RowwiseAdd<phi::CPUContext, double>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

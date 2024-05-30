@@ -18,9 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/skip_layernorm_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 TEST(SkipLayerNormFusePass, basic) {
   // inputs                           operator            output
@@ -65,8 +63,6 @@ TEST(SkipLayerNormFusePass, pass_op_version_check) {
           .IsPassCompatible("skip_layernorm_fuse_pass"));
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(skip_layernorm_fuse_pass);

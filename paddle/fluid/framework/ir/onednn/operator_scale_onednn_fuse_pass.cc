@@ -19,9 +19,7 @@
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 using string::PrettyLogDetail;
 
@@ -108,9 +106,7 @@ void FuseOperatorScaleOneDNNPass::FuseScale(Graph *graph,
         "---    fused %d %s with scale", found_operator_scale_count, op_type);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(operator_scale_onednn_fuse_pass,
               paddle::framework::ir::FuseOperatorScaleOneDNNPass);

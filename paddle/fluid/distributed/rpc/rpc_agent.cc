@@ -21,8 +21,7 @@
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 const int kTimeoutMs = 500000;
 const int kConnectTimeoutMs = 10000;
@@ -141,5 +140,4 @@ void RpcAgent::SetAgentInstance(std::shared_ptr<RpcAgent> agent) {
           "RpcAgent has been set, please don't set rpc agent repeatedly."));
   rpc_agent_instance_ = agent;
 }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

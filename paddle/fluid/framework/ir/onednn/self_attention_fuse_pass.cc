@@ -42,9 +42,7 @@
   GET_IR_NODE(transpose2_2_op);  \
   GET_IR_NODE(transpose2_2_out);
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 using string::PrettyLogDetail;
 
@@ -140,9 +138,7 @@ void SelfAttentionFusePass::ApplyImpl(ir::Graph* graph) const {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(self_attention_fuse_pass,
               paddle::framework::ir::SelfAttentionFusePass);

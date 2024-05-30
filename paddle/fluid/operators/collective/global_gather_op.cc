@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/global_gather_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class GlobalGatherOp : public framework::OperatorWithKernel {
  public:
@@ -100,8 +99,7 @@ class GlobalGatherOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

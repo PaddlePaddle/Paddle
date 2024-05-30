@@ -181,8 +181,7 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 using namespace paddle::framework;                // NOLINT
 void BindParallelExecutor(pybind11::module &m) {  // NOLINT
   // -- python binds for parallel executor.
@@ -1174,5 +1173,4 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
            [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

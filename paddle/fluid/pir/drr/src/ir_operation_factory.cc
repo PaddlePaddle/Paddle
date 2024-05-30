@@ -32,8 +32,7 @@
 
 #include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace drr {
+namespace paddle::drr {
 
 void OperationFactory::RegisterManualOpCreator() {
   RegisterOperationCreator(
@@ -413,5 +412,4 @@ pir::Operation* CreateOperation(const OpCall& op_call,
   return op;
 }
 
-}  // namespace drr
-}  // namespace paddle
+}  // namespace paddle::drr

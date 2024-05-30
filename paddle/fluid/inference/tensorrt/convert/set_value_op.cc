@@ -32,9 +32,7 @@ limitations under the License. */
     }                                                                      \
   } while (0)
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 // we use tensorrt ScatterElement to generate set value
 // For example, if indices has dimensions [N,C,H,W] and axis is 2, then the
 // updates happen as: for n in [0,n)
@@ -257,8 +255,6 @@ class SetValueConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(set_value, SetValueConverter);
