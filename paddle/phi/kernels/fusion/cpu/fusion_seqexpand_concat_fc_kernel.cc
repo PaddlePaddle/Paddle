@@ -24,8 +24,7 @@
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 template <typename T, typename Context>
 void FusionSeqExpandConcatFCKernel(const Context& dev_ctx,
                                    const std::vector<const DenseTensor*>& x,
@@ -159,8 +158,7 @@ void FusionSeqExpandConcatFCKernel(const Context& dev_ctx,
   }
   fc_act(total_T * D, out_data, out_data);
 }
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fusion_seqexpand_concat_fc,
                    CPU,

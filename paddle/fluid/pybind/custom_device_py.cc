@@ -24,8 +24,7 @@
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 void BindCustomDevicePy(py::module *m_ptr) {
   auto &m = *m_ptr;
   // Bind Methods
@@ -580,5 +579,4 @@ void BindCustomDevicePy(py::module *m_ptr) {
 #endif
       });
 }
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

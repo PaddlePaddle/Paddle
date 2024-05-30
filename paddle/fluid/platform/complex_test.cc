@@ -23,8 +23,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 TEST(complex, conversion_cpu) {
   // *********** complex<float> *************
@@ -322,5 +321,4 @@ TEST(complex, isnan) {
   EXPECT_EQ(std::isnan(c1), true);
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

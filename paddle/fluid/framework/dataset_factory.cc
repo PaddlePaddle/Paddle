@@ -18,8 +18,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 typedef std::unique_ptr<Dataset> (*CreateDatasetFunction)();
 typedef std::unordered_map<std::string, CreateDatasetFunction> datasetMap;
 datasetMap g_dataset_map;
@@ -62,5 +61,4 @@ std::unique_ptr<Dataset> DatasetFactory::CreateDataset(
 
 REGISTER_DATASET_CLASS(MultiSlotDataset);
 REGISTER_DATASET_CLASS(SlotRecordDataset);
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

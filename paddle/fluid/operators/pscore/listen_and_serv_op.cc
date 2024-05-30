@@ -21,21 +21,18 @@ constexpr char kPrefetchVarNameToBlockId[] =
 constexpr char kOptimizeBlocks[] = "optimize_blocks";          // NOLINT
 constexpr char kSparseGradToParam[] = "sparse_grad_to_param";  // NOLINT
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class InferShapeContext;
 class OpDesc;
 class Scope;
 template <typename T>
 class EmptyGradOpMaker;
-}  // namespace framework
-namespace imperative {
+}  // namespace paddle::framework
+namespace paddle::imperative {
 class OpBase;
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class ListenAndServOp : public framework::OperatorBase {
  public:
@@ -107,8 +104,7 @@ class ListenAndServOpShapeInference : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext* ctx) const override {}
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

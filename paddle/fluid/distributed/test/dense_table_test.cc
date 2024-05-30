@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/table/memory_dense_table.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 // MemoryDenseTable + Adam
 class Table;
@@ -227,5 +226,4 @@ TEST(MemoryDenseTable, SGD) {
   }
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

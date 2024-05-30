@@ -23,8 +23,7 @@
 #include "paddle/fluid/jit/engine/base_engine.h"
 #include "paddle/fluid/jit/function_utils.h"
 
-namespace paddle {
-namespace jit {
+namespace paddle::jit {
 
 Function::Function(BaseEngine* engine) : engine_(engine) {}
 
@@ -47,5 +46,4 @@ std::vector<DenseTensor> Function::operator()(
   return (*engine_)(inputs);
 }
 
-}  // namespace jit
-}  // namespace paddle
+}  // namespace paddle::jit

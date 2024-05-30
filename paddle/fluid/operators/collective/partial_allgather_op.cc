@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/partial_allgather_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class PartialAllGatherOp : public framework::OperatorWithKernel {
  public:
@@ -71,8 +70,7 @@ reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
 
 DECLARE_INPLACE_OP_INFERER(PartialAllGatherOpInplaceInferer, {"X", "Out"});
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

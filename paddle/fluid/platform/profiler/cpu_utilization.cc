@@ -26,8 +26,7 @@
 #include "paddle/fluid/platform/profiler/cpu_utilization.h"
 #include <array>
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 #ifdef _MSC_VER
 static uint64_t FileTimeToUint64(FILETIME time) {
@@ -195,5 +194,4 @@ float CpuUtilization::GetCpuCurProcessUtilization() {
   return cpu_process_utilization;
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform
