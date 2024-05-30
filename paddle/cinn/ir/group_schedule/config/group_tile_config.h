@@ -113,7 +113,7 @@ struct BucketInfoHash {
     if (dims == 1) {
       return hash_past_dims;
     } else {
-      for (int i = 0; i < dims; i++) {
+      for (int i = 1; i < dims; i++) {
         std::size_t hash_temp_dim = adt::hash_combine(
             std::hash<uint64_t>{}(bucket_info.space[i].lower_bound),
             std::hash<uint64_t>{}(bucket_info.space[i].upper_bound));
