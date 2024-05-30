@@ -198,6 +198,127 @@ class LinearDequanter(Layer):
         )
 
 
+class FP8LinearQuanterDequanter(Layer):
+    def __init__(self, quanter, dequanter):
+        super().__init__()
+        self._quanter = quanter
+        self._dequanter = dequanter
+
+    def forward(self, input):
+        out = input
+        if self._quanter is not None:
+            out = self._quanter(out)
+        if self._dequanter is not None:
+            out = self._dequanter(out)
+        return out
+
+    @staticmethod
+    def from_quanter(quanter):
+        assert quanter is not None
+        return FP8LinearQuanterDequanter(
+            FP8Linearquanter.from_quanter(quanter),
+            FP8LinearDequanter.from_quanter(quanter),
+        )
+
+
+class FP8Linearquanter(Layer):
+    def __init__(
+        self, scales, zero_point=None, quant_axis=None, quant_bits=(4, 3)
+    ):
+        super().__init__()
+        scales = paddle.to_tensor(scales, dtype="float32")
+        scale_attr = paddle.framework.ParamAttr(
+            name=paddle.utils.unique_name.generate('quant_dequant.scale'),
+            initializer=paddle.nn.initializer.Constant(1.0),
+            trainable=False,
+        )
+        self._scales = self.create_parameter(
+            shape=scales.shape, attr=scale_attr, dtype="float32"
+        )
+        self._scales.set_value(scales)
+        self._zero_point = (
+            paddle.zeros([1], dtype="float32")
+            if zero_point is None
+            else paddle.to_tensor(zero_point)
+        )
+        self._quant_axis = -1 if quant_axis is None else quant_axis
+        self._quant_bits = quant_bits
+
+    def forward(self, input):
+        dtype = input.dtype
+        input = input * self._scales
+        if (
+            self._quant_bits[0] == 4
+            and self._quant_bits[1] == 3
+            and len(self._quant_bits) == 2
+        ):
+            input = (
+                input.clip(min=-1 * 448.0, max=448.0)
+                .to(paddle.float8_e4m3fn)
+                .cast(dtype)
+            )
+        elif (
+            self._quant_bits[0] == 5
+            and self._quant_bits[1] == 2
+            and len(self._quant_bits) == 2
+        ):
+            input = (
+                input.clip(min=-1 * 57344.0, max=57344.0)
+                .to(paddle.float8_e5m2)
+                .cast(dtype)
+            )
+        else:
+            raise NotImplementedError(
+                "Currently, only float8_e4m3 and float8_e5m2 formats are supported. Please set quant_bits to (4,3) or (5,2) for the corresponding format."
+            )
+        return input
+
+    @staticmethod
+    def from_quanter(quanter):
+        return FP8Linearquanter(
+            quanter.scales(),
+            zero_point=quanter.zero_points(),
+            quant_axis=quanter.quant_axis(),
+            quant_bits=quanter._quant_bits,
+        )
+
+
+class FP8LinearDequanter(Layer):
+    def __init__(
+        self, scales, zero_point=None, quant_axis=None, quant_bits=(4, 3)
+    ):
+        super().__init__()
+        scales = paddle.to_tensor(scales, dtype="float32")
+        scale_attr = paddle.framework.ParamAttr(
+            name=paddle.utils.unique_name.generate('quant_dequant.scale'),
+            initializer=paddle.nn.initializer.Constant(1.0),
+            trainable=False,
+        )
+        self._scales = self.create_parameter(
+            shape=scales.shape, attr=scale_attr, dtype="float32"
+        )
+        self._scales.set_value(scales)
+        self._zero_point = (
+            paddle.zeros([1], dtype="float32")
+            if zero_point is None
+            else paddle.to_tensor(zero_point)
+        )
+        self._quant_axis = -1 if quant_axis is None else quant_axis
+
+    def forward(self, input):
+        tensor = (input / self._scales).cast(input.dtype)
+        return tensor
+
+    @staticmethod
+    def from_quanter(quanter):
+        return FP8LinearDequanter(
+            quanter.scales(),
+            zero_point=quanter.zero_points(),
+            quant_axis=quanter.quant_axis(),
+            quant_bits=quanter._quant_bits,
+        )
+
+
 class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
     r"""Abstract class to help convert quantized layer to inference model.
     It defines some functions to convert quantizers and observers to quantize
@@ -258,7 +379,7 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
         """
         pass
 
-    def _convert_quanter_to_qdq(self, quanter_name) -> LinearQuanterDequanter:
+    def _convert_quanter_to_qdq(self, quanter_name):
         r"""Convert quanter to an instance of LinearQuanterDequanter."""
         assert hasattr(
             self, quanter_name
@@ -266,7 +387,10 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
         quanter = getattr(self, quanter_name)
         if quanter is None:
             return None
-        quanter = LinearQuanterDequanter.from_quanter(quanter)
+        if isinstance(quanter._quant_bits, tuple):
+            quanter = FP8LinearQuanterDequanter.from_quanter(quanter)
+        else:
+            quanter = LinearQuanterDequanter.from_quanter(quanter)
         setattr(self, quanter_name, quanter)
         self._sub_layers[quanter_name] = quanter
         return quanter

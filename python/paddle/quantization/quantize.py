@@ -18,6 +18,7 @@ import copy
 from paddle.nn import Layer
 from paddle.nn.quant.format import (
     ConvertibleQuantedLayer,
+    FP8LinearQuanterDequanter,
     LinearQuanterDequanter,
 )
 
@@ -81,7 +82,10 @@ class Quantization(metaclass=abc.ABCMeta):
                     continue
                 child._convert(remain_weight=remain_weight)
             elif isinstance(child, BaseQuanter):
-                quant_dequant = LinearQuanterDequanter.from_quanter(child)
+                if isinstance(child._quant_bits, tuple):
+                    quanter = FP8LinearQuanterDequanter.from_quanter(child)
+                else:
+                    quanter = LinearQuanterDequanter.from_quanter(child)
             else:
                 self.convert(child, inplace=True, remain_weight=remain_weight)
             if quant_dequant is not None:
