@@ -34,8 +34,7 @@ limitations under the License. */
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 void BindCommContextManager(py::module *m) {
   auto P2POption = py::class_<phi::distributed::P2POption>(*m, "P2POption")
@@ -142,5 +141,4 @@ void BindTCPStore(py::module *m) {
          &phi::distributed::CreateOrGetGlobalTCPStore);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

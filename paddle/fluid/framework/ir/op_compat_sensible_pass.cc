@@ -38,9 +38,7 @@ std::unordered_set<std::string> global_extra_attrs = {
     "with_quant_attr"};
 }  // namespace
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 AttrCompat& AttrCompat::IsStringEQ(const std::string& value) {
   conditions_.emplace_back([value](const Attribute& attr) -> bool {
@@ -325,6 +323,4 @@ bool OpCompatSensiblePass::IsCompat(
   return true;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

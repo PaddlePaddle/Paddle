@@ -16,9 +16,7 @@
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
-namespace paddle {
-namespace operators {
-namespace reader {
+namespace paddle::operators::reader {
 
 class CreatePyReaderOp : public framework::OperatorBase {
  public:
@@ -114,9 +112,7 @@ class CreatePyReaderOpMaker : public FileReaderMakerBase {
   }
 };
 
-}  // namespace reader
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators::reader
 
 namespace reader = ::paddle::operators::reader;
 

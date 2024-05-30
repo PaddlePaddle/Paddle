@@ -16,8 +16,7 @@
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/src/core/value_impl.h"
 
-namespace pir {
-namespace detail {
+namespace pir::detail {
 
 pir::Operation *OpOperandImpl::owner() const { return owner_; }
 
@@ -79,5 +78,4 @@ void OpOperandImpl::RemoveFromUdChain() {
 
 OpOperandImpl::~OpOperandImpl() { RemoveFromUdChain(); }
 
-}  // namespace detail
-}  // namespace pir
+}  // namespace pir::detail

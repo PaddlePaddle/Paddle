@@ -19,9 +19,7 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 AttentionLSTMFusePass::AttentionLSTMFusePass() {
   AddOpCompat(OpCompat("while"))
@@ -377,9 +375,7 @@ void AttentionLSTMFusePass::ApplyImpl(ir::Graph* graph) const {
   FindWhileOp(graph);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(attention_lstm_fuse_pass,
               paddle::framework::ir::AttentionLSTMFusePass);

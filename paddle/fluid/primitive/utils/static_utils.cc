@@ -15,8 +15,7 @@
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
 
-namespace paddle {
-namespace primitive {
+namespace paddle::primitive {
 template <>
 void set_output<LazyTensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
   x->set_impl(x_tmp.impl());
@@ -72,5 +71,4 @@ std::vector<std::vector<Tensor>> ConstructVjpResultByStopGradients(
   return vjp_results;
 }
 
-}  // namespace primitive
-}  // namespace paddle
+}  // namespace paddle::primitive

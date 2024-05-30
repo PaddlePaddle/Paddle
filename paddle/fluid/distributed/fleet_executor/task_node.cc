@@ -18,8 +18,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 namespace {
 using OperatorBase = TaskNode::OperatorBase;
 }
@@ -186,5 +185,4 @@ void TaskNode::SetSendDownPerSteps(int64_t value) {
   send_down_per_steps_ = value;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed
