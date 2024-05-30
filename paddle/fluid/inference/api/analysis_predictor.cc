@@ -767,36 +767,21 @@ bool AnalysisPredictor::PrepareScope(
   return true;
 }
 
-void PrintScopeVariables(const paddle::framework::Scope &scope) {
-  auto vars = scope.LocalVarNames();
-  for (const auto &var_name : vars) {
-    auto *var = scope.FindVar(var_name);
-    if (var) {
-      if (var->IsType<phi::DenseTensor>()) {
-        auto &tensor = var->Get<phi::DenseTensor>();
-        VLOG(3) << "Tensor shape: " << tensor.dims();
-        VLOG(3) << "Tensor dtype: " << tensor.dtype();
-      }
-    }
-  }
-}
-
 bool AnalysisPredictor::PreparePirProgram() {
   if (!config_.prog_file().empty()) {
     uint64_t pir_version = 1;
     pir::IrContext *ctx = pir::IrContext::Instance();
     if (ctx == nullptr) {
-      LOG(ERROR) << "IrContext instance is null.";
+      PADDLE_ENFORCE_NOT_NULL(
+          ctx,
+          platform::errors::PreconditionNotMet("ctx should not be nullptr."));
       return false;
     }
     if (!pir_program_) {
       pir_program_ = std::make_shared<pir::Program>(ctx);
     }
-    PADDLE_ENFORCE_NOT_NULL(pir_program_.get(),
-                            "pir_program_ is not initialized");
 
     pir::ReadModule(pir_filename_, pir_program_.get(), pir_version);
-    std::cout << "pir_program " << *pir_program_ << std::endl;
 
     const std::string params_file = config_.params_file();
     pir::Block *block = pir_program_->block();
@@ -859,15 +844,15 @@ bool AnalysisPredictor::PreparePirProgram() {
       auto *var = sub_scope_->FindVar(param_names[i]);
       pir::Value value = vars[i];
       if (var == nullptr) {
-        VLOG(3) << "Variable not found, creating new variable: "
+        VLOG(1) << "Variable not found, creating new variable: "
                 << param_names[i];
         var = sub_scope_->Var(param_names[i]);
         auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
         tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
-        VLOG(3) << "Resized tensor for variable: " << param_names[i]
+        VLOG(1) << "Resized tensor for variable: " << param_names[i]
                 << " to shape: "
                 << common::make_ddim(pir::GetShapeFromValue(value));
-        VLOG(3) << "Found variable: " << param_names[i]
+        VLOG(1) << "Found variable: " << param_names[i]
                 << " with type: " << var->Type();
         phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
         const phi::DeviceContext *dev_ctx = nullptr;
@@ -876,7 +861,7 @@ bool AnalysisPredictor::PreparePirProgram() {
         phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
         dev_ctx->Alloc(tensor_temp, type_data);
       } else {
-        VLOG(3) << "Variable already exists: " << param_names[i];
+        VLOG(1) << "Variable already exists: " << param_names[i];
       }
       auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
       tensor_out.push_back(tensor_temp);
@@ -1046,7 +1031,6 @@ bool AnalysisPredictor::PrepareProgram(
     // (like RAW type var) are not created in scope.
     // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
     // still need to create other persistable variables.
-    // still need to create other persistable variables.
     // So in both case, create persistable variables at first.
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
     // if enable_ir_optim_ is false,
@@ -1100,7 +1084,7 @@ bool AnalysisPredictor::PrepareProgram(
         pir_program_ =
             paddle::TranslateLegacyProgramToProgram(*inference_program_);
       } else {
-        LOG(ERROR) << "Unknown file suffix";
+        PADDLE_THROW(paddle::platform::errors::Fatal("Unknown file suffix"));
       }
     }
     auto ir_printing_conditions = [this](::pir::Pass *pass,
