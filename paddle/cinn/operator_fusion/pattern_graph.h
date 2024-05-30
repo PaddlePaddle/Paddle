@@ -15,7 +15,6 @@
 
 #include "paddle/cinn/operator_fusion/pattern_node.h"
 #include "paddle/cinn/operator_fusion/policy/policy_manager.h"
-#include "paddle/cinn/operator_fusion/policy/relative_judge_policy.h"
 #include "paddle/cinn/operator_fusion/utils.h"
 #include "paddle/common/enforce.h"
 

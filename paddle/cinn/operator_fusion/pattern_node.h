@@ -88,6 +88,5 @@ struct PatternNode {
   std::vector<PatternNodePtr> downstream_;
 };
 
-template <typename T>
 using PatternNodePtr = std::shared_ptr<PatternNode>;
 }  // namespace cinn::fusion

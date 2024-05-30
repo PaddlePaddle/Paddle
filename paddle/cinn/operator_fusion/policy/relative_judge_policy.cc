@@ -307,7 +307,4 @@ std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
   return result;
 }
 
-template class RelativeJudgePolicy<FrontendStage>;
-template class RelativeJudgePolicy<BackendStage>;
-
 }  // namespace cinn::fusion

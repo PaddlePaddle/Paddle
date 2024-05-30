@@ -43,7 +43,4 @@ bool GeneralTopoPolicy::CanFuse(const PatternNodePtr& first,
            IsIndirectDownstreamNode(second, first));
 }
 
-template class GeneralTopoPolicy<FrontendStage>;
-template class GeneralTopoPolicy<BackendStage>;
-
 }  // namespace cinn::fusion

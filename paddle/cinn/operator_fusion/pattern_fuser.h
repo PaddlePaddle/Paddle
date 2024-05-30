@@ -36,23 +36,47 @@
 
 namespace cinn::fusion {
 
+StmtPattern ConvertToStmtPattern(const PatternContent& content) {
+  const auto& kind = GetOpPatternKind(content.op);
+  if (kind == hlir::framework::kReduction) {
+    auto result =
+        ReducePattern({content.op}, std::make_shared<FusionTracker>());
+    result.tracker_->append(std::make_shared<InitPatternInstr>(content.op));
+    return result;
+  } else if (kind == hlir::framework::kElementWise ||
+             kind == hlir::framework::kBroadcast ||
+             kind == hlir::framework::kInjective) {
+    auto result = TrivialPattern(
+        {content.op}, content.op, std::make_shared<FusionTracker>());
+    result.tracker_->append(std::make_shared<InitPatternInstr>(content.op));
+    return result;
+  } else {
+    auto result =
+        UnsupportPattern({content.op}, std::make_shared<FusionTracker>());
+    result.tracker_->append(std::make_shared<InitPatternInstr>(content.op));
+    return result;
+  }
+}
+
 // Trivial x other
 
 StmtPattern MergePatternImpl(const TrivialPattern& first,
                              const TrivialPattern& second) {
   const auto& contents =
       UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second));
-  return TrivialPattern(contents,
-                        second.sink_op(),
-                        FusionTracker(first.tracker_, second.tracker_));
+  return TrivialPattern(
+      contents,
+      second.sink_op(),
+      std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
 
 StmtPattern MergePatternImpl(const TrivialPattern& first,
                              const ReducePattern& second) {
   const auto& contents =
       UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second));
-  return ReducePattern(contents,
-                       FusionTracker(first.tracker_, second.tracker_));
+  return ReducePattern(
+      contents,
+      std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
 
 template <typename A, typename B>
@@ -80,7 +104,7 @@ StmtPattern MergePatternImpl(const TrivialPattern& first,
   return ReduceTreePattern(
       new_childs,
       FusePatternIfConnected(first, second.GetRootPattern(), connect_ops),
-      FusionTracker(first.tracker_, second.tracker_));
+      std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
 
 StmtPattern MergePatternImpl(const TrivialPattern& first,
@@ -89,7 +113,7 @@ StmtPattern MergePatternImpl(const TrivialPattern& first,
   return ReduceTreePlusTrivialPattern(
       FusePatternIfConnected(first, second.tree, connect_ops),
       FusePatternIfConnected(first, second.sink_trivial, connect_ops),
-      FusionTracker(first.tracker_, second.tracker_));
+      std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
 
 StmtPattern MergePatternImpl(const TrivialPattern& first,
@@ -98,7 +122,7 @@ StmtPattern MergePatternImpl(const TrivialPattern& first,
       UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second)),
       second.anchor(),
       second.anchor_state,
-      FusionTracker(first.tracker_, second.tracker_));
+      std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
 
 // RR & RT
@@ -120,9 +144,10 @@ int InsertDownstreamIntoTree(const ReduceTreePattern& upstream,
 StmtPattern MergePatternImpl(const ReduceTreePattern& upstream,
                              const ReduceTreePattern& downstream) {
   ReduceTreePattern result = ReduceTreePattern(
-      dowstream.childs(),
+      downstream.childs(),
       downstream.GetRootPattern(),
-      FusionTracker(first.tracker_, second.tracker_));  // copy first.
+      std::make_shared<FusionTracker>(upstream.tracker_,
+                                      downstream.tracker_));  // copy first.
   int insert_num = InsertDownstreamIntoTree(upstream, result);
   CHECK(insert_num == 1) << "Must insert only once, but insert " << insert_num;
   return result;
@@ -131,7 +156,9 @@ StmtPattern MergePatternImpl(const ReduceTreePattern& upstream,
 StmtPattern MergePatternImpl(const ReduceTreePattern& first,
                              const TrivialPattern& second) {
   return ReduceTreePlusTrivialPattern(
-      first, second, FusionTracker(first.tracker_, second.tracker_));
+      first,
+      second,
+      std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
 
 // Anchor Fusion
@@ -150,7 +177,7 @@ ExprPromise InitExprPromiseImpl(const ReduceTreePattern& pattern,
   return InitExprPromiseImpl(pattern.GetRootPattern(), anchor);
 }
 
-template <typename T, template <typename> typename PATTERN>
+template <typename PATTERN>
 ExprPromise InitExprPromiseImpl(const PATTERN& pattern, pir::Value anchor) {
   PADDLE_THROW("Can not Init ExprPromise");
 }
@@ -165,10 +192,11 @@ StmtPattern MergePatternImpl(const AnchorPattern& source,
                              const AnchorPattern& dest) {
   const auto& contents =
       UniqueConcatVector(GetOpsInPattern(source), GetOpsInPattern(dest));
-  return AnchorPattern(contents,
-                       source.anchor(),
-                       AnchorState({}),
-                       FusionTracker(source.tracker_, dest.tracker_));
+  return AnchorPattern(
+      contents,
+      source.anchor(),
+      AnchorState({}),
+      std::make_shared<FusionTracker>(source.tracker_, dest.tracker_));
 }
 
 TrivialPattern RecoverAnchorPatternToTrivial(
@@ -351,7 +379,8 @@ StmtPattern MergePatternImpl(const HorizontalFusionPattern& first,
   typename HorizontalFusionPattern::PaddingStmtPattern pad_first = {first, f};
   typename HorizontalFusionPattern::PaddingStmtPattern pad_second = {second, s};
   return HorizontalFusionPattern(
-      {pad_first, pad_second}, FusionTracker(first.tracker_, second.tracker_));
+      {pad_first, pad_second},
+      std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
 
 //

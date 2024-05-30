@@ -36,7 +36,7 @@ struct StmtPattern;
 struct TrivialPattern {
   explicit TrivialPattern(const std::vector<pir::Operation*>& ops,
                           pir::Operation* sink_op,
-                          const FusionTracker& tracker)
+                          const FusionTrackerPtr& tracker)
       : ops_(ops), sink_op_(sink_op), tracker_(tracker) {
     name_ = UniqueName();
   }
@@ -50,15 +50,15 @@ struct TrivialPattern {
     counter += 1;
     return "T_" + std::to_string(counter);
   }
-  std::string name() { return name_; }
+  std::string name() const { return name_; }
   std::string name_;
 
-  FusionTracker tracker_;
+  FusionTrackerPtr tracker_;
 };
 
 struct ReducePattern {
   explicit ReducePattern(const std::vector<pir::Operation*>& ops,
-                         const FusionTracker& tracker)
+                         const FusionTrackerPtr& tracker)
       : ops_(ops), tracker_(tracker) {
     name_ = UniqueName();
   }
@@ -71,16 +71,16 @@ struct ReducePattern {
     counter += 1;
     return "T_" + std::to_string(counter);
   }
-  std::string name() { return name_; }
+  std::string name() const { return name_; }
   std::string name_;
 
-  FusionTracker tracker_;
+  FusionTrackerPtr tracker_;
 };
 
 struct ReduceTreePattern {
   explicit ReduceTreePattern(const std::vector<ReduceTreePattern>& childs,
                              const ReducePattern& root,
-                             const FusionTracker& tracker)
+                             const FusionTrackerPtr& tracker)
       : childs_(childs), root_(root), tracker_(tracker) {
     name_ = UniqueName();
   }
@@ -108,10 +108,10 @@ struct ReduceTreePattern {
     counter += 1;
     return "RTree_" + std::to_string(counter);
   }
-  std::string name() { return name_; }
+  std::string name() const { return name_; }
   std::string name_;
 
-  FusionTracker tracker_;
+  FusionTrackerPtr tracker_;
 
  private:
   std::vector<ReduceTreePattern> childs_;
@@ -121,7 +121,7 @@ struct ReduceTreePattern {
 struct ReduceTreePlusTrivialPattern {
   explicit ReduceTreePlusTrivialPattern(const ReduceTreePattern& tree,
                                         const TrivialPattern& sink_trivial,
-                                        const FusionTracker& tracker)
+                                        const FusionTrackerPtr& tracker)
       : tree(tree), sink_trivial(sink_trivial), tracker_(tracker) {
     name_ = UniqueName();
   }
@@ -137,17 +137,17 @@ struct ReduceTreePlusTrivialPattern {
     counter += 1;
     return "RTreeT_" + std::to_string(counter);
   }
-  std::string name() { return name_; }
+  std::string name() const { return name_; }
   std::string name_;
 
-  FusionTracker tracker_;
+  FusionTrackerPtr tracker_;
 };
 
 struct AnchorPattern {
   explicit AnchorPattern(const std::vector<pir::Operation*>& ops,
                          const pir::Value& anchor,
                          const AnchorState& init_anchor_state,
-                         const FusionTracker& tracker)
+                         const FusionTrackerPtr& tracker)
       : ops_(ops),
         anchor_(anchor),
         anchor_state(init_anchor_state),
@@ -184,10 +184,10 @@ struct AnchorPattern {
     counter += 1;
     return "Anchor_" + std::to_string(counter);
   }
-  std::string name() { return name_; }
+  std::string name() const { return name_; }
   std::string name_;
 
-  FusionTracker tracker_;
+  FusionTrackerPtr tracker_;
 
  private:
   std::vector<pir::Operation*> ops_;
@@ -200,12 +200,12 @@ struct HorizontalFusionPattern {
     std::vector<int> padding_pos;
     PaddingStmtPattern(const StmtPattern& pattern,
                        const std::vector<int>& padding_pos)
-        : pattern(pattern), padding_pos(padding_pos), tracker_(tracker) {}
+        : pattern(pattern), padding_pos(padding_pos) {}
   };
   explicit HorizontalFusionPattern(
       const std::vector<PaddingStmtPattern>& patterns,
-      const FusionTracker& tracker)
-      : padding_patterns_(patterns) {
+      const FusionTrackerPtr& tracker)
+      : padding_patterns_(patterns), tracker_(tracker) {
     name_ = UniqueName();
   }
   std::vector<PaddingStmtPattern> padding_patterns_;
@@ -223,15 +223,15 @@ struct HorizontalFusionPattern {
     counter += 1;
     return "Horizontal_" + std::to_string(counter);
   }
-  std::string name() { return name_; }
+  std::string name() const { return name_; }
   std::string name_;
 
-  FusionTracker tracker_;
+  FusionTrackerPtr tracker_;
 };
 
 struct UnsupportPattern {
   explicit UnsupportPattern(const std::vector<pir::Operation*>& ops,
-                            const FusionTracker& tracker)
+                            const FusionTrackerPtr& tracker)
       : ops_(ops), tracker_(tracker) {
     name_ = UniqueName();
   }
@@ -242,10 +242,10 @@ struct UnsupportPattern {
     counter += 1;
     return "Unsupport_" + std::to_string(counter);
   }
-  std::string name() { return name_; }
+  std::string name() const { return name_; }
   std::string name_;
 
-  FusionTracker tracker_;
+  FusionTrackerPtr tracker_;
 };
 
 using StmtPatternBase = std::variant<TrivialPattern,
@@ -271,35 +271,17 @@ std::string StmtPatternDebugStr(const StmtPattern& stmt) {
   return ss.str();
 }
 
-StmtPattern ConvertToStmtPattern(const PatternContent& content) {
-  const auto& kind = GetOpPatternKind(content.op);
-  if (kind == hlir::framework::kReduction) {
-    return ReducePattern({content.op});
-  } else if (kind == hlir::framework::kElementWise ||
-             kind == hlir::framework::kBroadcast ||
-             kind == hlir::framework::kInjective) {
-    return TrivialPattern({content.op}, content.op);
-  } else {
-    return UnsupportPattern({content.op});
-  }
-}
-
 std::string GetPatternName(const StmtPattern& s) {
   return std::visit([](const auto& impl) { return impl.name(); }, s.variant());
 }
 
-FusionTracker* GetPatternTracker(const StmtPattern& s) {
-  return std::visit([](const auto& impl) { return impl.tracker(); },
+FusionTrackerPtr GetPatternTracker(const StmtPattern& s) {
+  return std::visit([](const auto& impl) { return impl.tracker_; },
                     s.variant());
 }
 
 std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern) {
   return std::visit([](const auto& impl) { return impl.ops(); },
-                    pattern.variant());
-}
-
-pir::Operation* GetSinkOpInPattern(const StmtPattern& pattern) {
-  return std::visit([](const auto& impl) { return impl.sink_op(); },
                     pattern.variant());
 }
 

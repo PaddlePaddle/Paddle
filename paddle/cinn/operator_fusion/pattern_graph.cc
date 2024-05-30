@@ -14,13 +14,11 @@
 
 #include "paddle/cinn/operator_fusion/pattern_graph.h"
 #include <functional>
-#include "paddle/cinn/operator_fusion/backend/pattern.h"
-#include "paddle/cinn/operator_fusion/backend/pattern_fuser.h"
-#include "paddle/cinn/operator_fusion/frontend/pattern.h"
-#include "paddle/cinn/operator_fusion/frontend/pattern_fuser.h"
 #include "paddle/cinn/operator_fusion/graph_transformer/matcher.h"
 #include "paddle/cinn/operator_fusion/graph_transformer/operation.h"
 #include "paddle/cinn/operator_fusion/graph_transformer/search_algorithm.h"
+#include "paddle/cinn/operator_fusion/pattern.h"
+#include "paddle/cinn/operator_fusion/pattern_fuser.h"
 
 namespace cinn::fusion {
 
@@ -314,8 +312,5 @@ PatternNodePtr PatternGraph::MergeNode(const PatternNodePtr& upstream,
   AppendNode(merged_node);
   return merged_node;
 }
-
-template class PatternGraph<FrontendStage>;
-template class PatternGraph<BackendStage>;
 
 }  // namespace cinn::fusion

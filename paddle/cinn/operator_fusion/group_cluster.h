@@ -14,11 +14,10 @@
 
 #pragma once
 
-#include "paddle/cinn/operator_fusion/backend/pattern.h"
-#include "paddle/cinn/operator_fusion/backend/pattern_fuser.h"
-#include "paddle/cinn/operator_fusion/frontend/pattern.h"
-#include "paddle/cinn/operator_fusion/frontend/pattern_fuser.h"
+#include "paddle/cinn/operator_fusion/pattern.h"
+#include "paddle/cinn/operator_fusion/pattern_fuser.h"
 #include "paddle/cinn/operator_fusion/pattern_graph.h"
+#include "paddle/cinn/operator_fusion/pattern_node.h"
 #include "paddle/cinn/operator_fusion/policy/policy_manager.h"
 
 namespace cinn::fusion {

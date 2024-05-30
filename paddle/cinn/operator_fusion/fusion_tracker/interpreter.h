@@ -16,4 +16,11 @@
 #include "paddle/cinn/operator_fusion/pattern.h"
 #include "paddle/cinn/operator_fusion/pattern_fuser.h"
 
+namespace cinn::fusion {
+struct FusionScope {};
 struct FusionInterpreter {};
+
+using TrivialOp = cinn::hlir::framework::pir::trivial_fusion_detail::TrivialOp;
+using ReduceOp = cinn::hlir::framework::pir::trivial_fusion_detail::ReduceOp;
+using FusionOp = std::variant<ReduceOp, TrivialOp>;
+}  // namespace cinn::fusion

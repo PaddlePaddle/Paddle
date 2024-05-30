@@ -16,6 +16,11 @@
 
 namespace cinn {
 namespace dialect {
+
+const cinn::fusion::FusionTrackerPtr &FusionTrackerPtrAttribute::data() const {
+  return storage()->GetAsKey();
+}
+
 const GroupInfo &GroupInfoAttribute::data() const {
   return storage()->GetAsKey();
 }
@@ -29,3 +34,4 @@ CINNKernelInfoAttribute::data() const {
 
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GroupInfoAttribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::CINNKernelInfoAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::FusionTrackerPtrAttribute)
