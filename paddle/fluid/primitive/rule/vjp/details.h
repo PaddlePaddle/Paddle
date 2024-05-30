@@ -156,7 +156,7 @@ void sum_grad(const Tensor& x,
   }
 
   int64_t axis_size = axis.size();
-  int64_t x_dim_size = x_dim.size();
+  int64_t x_dim_size = x.dims().size();
   auto x_grad_tmp = Tensor();
   reduce_all = false;
   if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
@@ -193,7 +193,8 @@ void sum_grad(const Tensor& x,
             result_shape.push_back(ones);
             j++;
           } else {
-            result_shape.push_back(get_slice<T>(out_grad_shape, k));
+            result_shape.push_back(slice<T>(
+                out_grad_shape, {0}, {int64_t(k)}, {int64_t(k) + 1}, {1}, {}));
             k++;
           }
         }
