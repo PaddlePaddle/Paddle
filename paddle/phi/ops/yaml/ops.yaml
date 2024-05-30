@@ -4608,6 +4608,15 @@
     data_type: DataType::FLOAT32
   optional: seq_length
 
+- op: fusion_group
+  args: (Tensor[] inputs, int[] outs_dtype = {}, int[] inputs_dtype = {}, str func_name = "", int type
+    = 0)
+  output: Tensor[] (outs){inputs.size()}
+  infer_meta:
+    func: FusionGroupInferMeta
+  kernel:
+    func: fusion_group
+
 - op: moe
   args: (Tensor x, Tensor gate, Tensor bmm0, Tensor bias0, Tensor bmm1, Tensor bias1,
     str act_type = "gelu")
