@@ -158,6 +158,3 @@ void DecoratedReaderMakerBase::Make() {
 }
 
 }  // namespace paddle::operators::reader
-namespace paddle::operators {
-
-}  // namespace paddle::operators
