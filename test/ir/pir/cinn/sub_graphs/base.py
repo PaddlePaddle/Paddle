@@ -48,6 +48,7 @@ class TestBase(unittest.TestCase):
         pass
 
     def train(self, net, to_static, with_prim=False, with_cinn=False):
+        paddle.seed(123)
         if to_static:
             paddle.set_flags({'FLAGS_prim_all': with_prim})
             if with_cinn:
@@ -63,7 +64,6 @@ class TestBase(unittest.TestCase):
                 net = paddle.jit.to_static(
                     net(), full_graph=True, input_spec=self.input_specs
                 )
-        paddle.seed(123)
         if self.with_train:
             net.train()
         else:
