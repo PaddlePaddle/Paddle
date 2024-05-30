@@ -20,8 +20,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
-static constexpr float kAtolValue = 1e-4;
-static constexpr float kRtolValue = 1e-4;
+static constexpr float kAtolValue = 1e-8;
+static constexpr float kRtolValue = 1e-5;
 
 bool allclose(float a, float b) {
   float left = (a > b ? a - b : b - a);
@@ -58,7 +58,8 @@ void AccuracyCheckKernel(const Context& ctx,
     if (!allclose(x_cpu.data<T>()[i], y_cpu.data<T>()[i])) {
       check_result = false;
       VLOG(2) << "Accuracy check failed between" << x_cpu.data<T>()[i]
-              << " and " << y_cpu.data<T>()[i];
+              << " and " << y_cpu.data<T>()[i] << " at index= " << i;
+      res_index = i;
       break;
     }
   }
