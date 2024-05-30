@@ -38,7 +38,6 @@
 - exponential_
 - eye
 - frobenius_norm
-- full
 - full_
 - full_batch_size_like
 - full_like
