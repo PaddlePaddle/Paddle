@@ -463,6 +463,22 @@ def uniform_random_batch_size_like(
             >>> print(out_2.shape)
             [2, 3]
     """
+    if in_dynamic_or_pir_mode():
+        dtype = convert_np_dtype_to_dtype_(dtype)
+        return _C_ops.uniform_random_batch_size_like(
+            input,
+            shape,
+            input_dim_idx,
+            output_dim_idx,
+            min,
+            max,
+            seed,
+            0,
+            0,
+            1.0,
+            dtype,
+        )
+
     check_variable_and_dtype(
         input,
         'Input',
