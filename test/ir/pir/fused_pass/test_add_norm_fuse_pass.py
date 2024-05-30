@@ -368,16 +368,16 @@ class TestAddGroupNormPattern_FP16(PassTest):
         return True
 
     def sample_program(self):
-        for x_shape in [[2, 4, 2, 6]]:
-            for residual_shape in [[1, 1, 1, 6]]:
+        for x_shape in [[2, 6, 4, 2]]:
+            for residual_shape in [[1, 6, 1, 1]]:
                 for dtype in ['float16']:
                     for epilson in [1e-5]:
                         for groups in [2]:
-                            for data_layout in ['NHWC', 'NCHW']:
+                            for data_layout in ['NCHW']:
                                 rand_value = (
                                     0.001
                                     * paddle.rand(
-                                        shape=[x_shape[-1]], dtype=dtype
+                                        shape=[x_shape[1]], dtype=dtype
                                     ).numpy()
                                 )
                                 with paddle.pir_utils.IrGuard():
@@ -395,26 +395,19 @@ class TestAddGroupNormPattern_FP16(PassTest):
                                             name='x', shape=x_shape, dtype=dtype
                                         )
                                         w = create_parameter(
-                                            shape=[x_shape[-1]],
+                                            shape=[x_shape[1]],
                                             dtype=dtype,
                                             initializer=paddle.nn.initializer.Assign(
                                                 rand_value
                                             ),
                                         )
                                         b = create_parameter(
-                                            shape=[x_shape[-1]],
+                                            shape=[residual_shape[1]],
                                             dtype=dtype,
                                             initializer=paddle.nn.initializer.Assign(
                                                 rand_value
                                             ),
                                         )
-                                        if data_layout == 'NCHW':
-                                            x = paddle.transpose(
-                                                x, [0, 3, 1, 2]
-                                            )
-                                            residual = paddle.transpose(
-                                                residual, [0, 3, 1, 2]
-                                            )
                                         add_out = paddle.add(x, residual)
 
                                         group_norm_out = (
@@ -430,6 +423,7 @@ class TestAddGroupNormPattern_FP16(PassTest):
                                         out = paddle.assign(group_norm_out)
                                         self.pass_attr_list = [
                                             {'add_norm_fuse_pass': {}},
+                                            {'transfer_layout_pass': {}},
                                             {
                                                 'remove_redundant_transpose_pass': {}
                                             },
@@ -471,16 +465,16 @@ class TestAddGroupNormPatternSilu_FP16(PassTest):
         return True
 
     def sample_program(self):
-        for x_shape in [[2, 4, 2, 6]]:
-            for residual_shape in [[1, 1, 1, 6]]:
+        for x_shape in [[2, 6, 4, 2]]:
+            for residual_shape in [[1, 6, 1, 1]]:
                 for dtype in ['float16']:
                     for epilson in [1e-5]:
                         for groups in [2]:
-                            for data_layout in ['NHWC']:
+                            for data_layout in ['NCHW']:
                                 rand_value = (
                                     0.001
                                     * paddle.rand(
-                                        shape=[x_shape[-1]], dtype=dtype
+                                        shape=[x_shape[1]], dtype=dtype
                                     ).numpy()
                                 )
                                 with paddle.pir_utils.IrGuard():
@@ -498,26 +492,19 @@ class TestAddGroupNormPatternSilu_FP16(PassTest):
                                             name='x', shape=x_shape, dtype=dtype
                                         )
                                         w = create_parameter(
-                                            shape=[x_shape[-1]],
+                                            shape=[x_shape[1]],
                                             dtype=dtype,
                                             initializer=paddle.nn.initializer.Assign(
                                                 rand_value
                                             ),
                                         )
                                         b = create_parameter(
-                                            shape=[x_shape[-1]],
+                                            shape=[x_shape[1]],
                                             dtype=dtype,
                                             initializer=paddle.nn.initializer.Assign(
                                                 rand_value
                                             ),
                                         )
-                                        if data_layout == 'NCHW':
-                                            x = paddle.transpose(
-                                                x, [0, 3, 1, 2]
-                                            )
-                                            residual = paddle.transpose(
-                                                residual, [0, 3, 1, 2]
-                                            )
                                         add_out = paddle.add(x, residual)
                                         group_norm_out = (
                                             paddle.nn.functional.group_norm(
@@ -535,6 +522,7 @@ class TestAddGroupNormPatternSilu_FP16(PassTest):
                                         out = paddle.assign(out)
                                         self.pass_attr_list = [
                                             {'add_norm_fuse_pass': {}},
+                                            {'transfer_layout_pass': {}},
                                             {
                                                 'remove_redundant_transpose_pass': {}
                                             },
@@ -575,8 +563,8 @@ class GroupNormSiluPattern_FP16(PassTest):
         return True
 
     def sample_program(self):
-        for x_shape in [[2, 4, 2, 6]]:
-            for residual_shape in [[1, 1, 1, 6]]:
+        for x_shape in [[2, 6, 4, 2]]:
+            for residual_shape in [[1, 6, 1, 1]]:
                 for dtype in ['float16']:
                     for epilson in [1e-5]:
                         for groups in [2]:
@@ -584,7 +572,7 @@ class GroupNormSiluPattern_FP16(PassTest):
                                 rand_value = (
                                     0.001
                                     * paddle.rand(
-                                        shape=[x_shape[-1]], dtype=dtype
+                                        shape=[x_shape[1]], dtype=dtype
                                     ).numpy()
                                 )
                                 with paddle.pir_utils.IrGuard():
@@ -597,23 +585,19 @@ class GroupNormSiluPattern_FP16(PassTest):
                                             name='x', shape=x_shape, dtype=dtype
                                         )
                                         w = create_parameter(
-                                            shape=[x_shape[-1]],
+                                            shape=[x_shape[1]],
                                             dtype=dtype,
                                             initializer=paddle.nn.initializer.Assign(
                                                 rand_value
                                             ),
                                         )
                                         b = create_parameter(
-                                            shape=[x_shape[-1]],
+                                            shape=[x_shape[1]],
                                             dtype=dtype,
                                             initializer=paddle.nn.initializer.Assign(
                                                 rand_value
                                             ),
                                         )
-                                        if data_layout == 'NCHW':
-                                            x = paddle.transpose(
-                                                x, [0, 3, 1, 2]
-                                            )
                                         group_norm_out = (
                                             paddle.nn.functional.group_norm(
                                                 x,
@@ -630,6 +614,7 @@ class GroupNormSiluPattern_FP16(PassTest):
                                         out = paddle.assign(out)
                                         self.pass_attr_list = [
                                             {'add_norm_fuse_pass': {}},
+                                            {'transfer_layout_pass': {}},
                                             {
                                                 'remove_redundant_transpose_pass': {}
                                             },

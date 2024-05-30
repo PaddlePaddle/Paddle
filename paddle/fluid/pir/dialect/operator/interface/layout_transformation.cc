@@ -54,27 +54,8 @@ std::vector<pir::Value> RelevantOutputsImpl<AddGroupNormSiluOp>(
 
 template <>
 common::DataLayout PreferLayoutImpl<AddGroupNormSiluOp>(pir::Operation* op) {
-  auto data_format_attr = op->attribute<pir::StrAttribute>("data_format");
-  if (!data_format_attr) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "op (%s) should have attribute `data_format`, but got %s",
-        op,
-        data_format_attr));
-  }
-
-  auto concrete_op = op->dyn_cast<AddGroupNormSiluOp>();
-  if (auto in = concrete_op.x()) {
-    if (auto in_type = in.type()) {
-      if (in_type.isa<DenseTensorType>()) {
-        if (auto tensor_type = in_type.dyn_cast<DenseTensorType>()) {
-          if (tensor_type.dtype().isa<pir::Float16Type>()) {
-            return common::DataLayout::NHWC;
-          }
-        }
-      }
-    }
-  }
-  return common::StringToDataLayout(data_format_attr.AsString());
+  // Note(bukejiyu): add_group_norm_silu only supports NHWC layout now.
+  return common::DataLayout::NHWC;
 }
 
 template <>
