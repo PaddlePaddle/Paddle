@@ -52,7 +52,6 @@ using pir::Builder;
 using pir::CombineOp;
 using pir::Operation;
 using pir::Program;
-using pir::Region;
 using pir::StackCreateOp;
 using pir::TuplePopOp;
 using pir::TuplePushOp;
