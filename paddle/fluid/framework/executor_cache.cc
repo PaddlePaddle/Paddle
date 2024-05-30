@@ -36,9 +36,6 @@ namespace paddle::framework {
 class ProgramDesc;
 }  // namespace paddle::framework
 
-namespace paddle::framework {
-
-}  // namespace paddle::framework
 namespace paddle::framework::details {
 
 static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {

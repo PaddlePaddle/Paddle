@@ -14,9 +14,6 @@
 
 #include "paddle/fluid/framework/ir/fc_lstm_fuse_pass_tester.h"
 
-namespace paddle::framework::ir {
-
-}  // namespace paddle::framework::ir
 namespace paddle::framework::ir::fc_lstm_test {
 
 TEST(FcLstmFusePass, basic) {
