@@ -403,18 +403,6 @@ def get_full_api_from_pr_spec():
         get_full_api_by_walk()
 
 
-def get_full_api():
-    """
-    get all the apis
-    """
-    global API_DIFF_SPEC_FN  # readonly
-    from print_signatures import get_all_api_from_modulelist
-
-    member_dict = get_all_api_from_modulelist()
-    with open(API_DIFF_SPEC_FN, 'w') as f:
-        f.write("\n".join(member_dict.keys()))
-
-
 def extract_code_blocks_from_docstr(docstr, google_style=True):
     """
     extract code-blocks from the given docstring.
