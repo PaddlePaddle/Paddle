@@ -32,8 +32,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #endif
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 const std::unordered_set<std::string> LegacyOpList = {
     LoadCombineOp::name(),
@@ -560,5 +559,4 @@ StringToDataLayoutMap() {
   return data_layout_map;
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

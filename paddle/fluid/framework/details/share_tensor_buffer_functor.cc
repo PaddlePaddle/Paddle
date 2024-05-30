@@ -19,24 +19,20 @@
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
 class Variable;
 
-namespace ir {
+}  // namespace paddle::framework
+namespace paddle::framework::ir {
 class MemOptVarInfo;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 ShareTensorBufferFunctor::ShareTensorBufferFunctor(
     Scope *scope,
@@ -173,6 +169,4 @@ void ShareTensorBufferFunctor::operator()(Scope *exec_scope) {
   }
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

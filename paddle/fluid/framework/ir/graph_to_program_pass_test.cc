@@ -23,9 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Node;
 
@@ -485,8 +483,6 @@ TEST(GraphToProgramPass, ReplaceScaleLossGrad) {
   EXPECT_EQ(scale_node_num + fill_node_num, fill_op_num);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(graph_to_program_pass);

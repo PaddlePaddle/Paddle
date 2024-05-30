@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/cublas.h"
 
-namespace paddle {
-namespace platform {
-namespace dynload {
+namespace paddle::platform::dynload {
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
@@ -33,6 +31,4 @@ CUBLAS_BLAS_ROUTINE_EACH_R3(DEFINE_WRAP);
 #ifdef CUBLAS_BLAS_ROUTINE_EACH_R4
 CUBLAS_BLAS_ROUTINE_EACH_R4(DEFINE_WRAP);
 #endif
-}  // namespace dynload
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform::dynload
