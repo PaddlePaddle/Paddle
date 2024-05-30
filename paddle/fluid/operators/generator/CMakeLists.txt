@@ -13,6 +13,7 @@ set(sparse_op_yaml_file ${ops_yaml_dir}/sparse_ops.yaml)
 set(sparse_bw_op_yaml_file ${ops_yaml_dir}/sparse_backward.yaml)
 set(static_bw_op_yaml_file ${ops_yaml_dir}/legacy/static_backward.yaml)
 set(fused_bw_op_yaml_file ${ops_yaml_dir}/fused_backward.yaml)
+set(onednn_static_op_yaml_file ${ops_yaml_dir}/inconsistent/onednn_static.yaml)
 
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
@@ -76,6 +77,8 @@ set(generated_fused_op_path
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_fused_op.cc)
 set(generated_sparse_ops_path
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_sparse_op.cc)
+set(generated_onednn_ops_path
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generated_staticonednn_op.cc)
 set(generated_argument_mapping_path
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_signature/generated_sig.cc)
 set(generated_fused_argument_mapping_path
@@ -86,6 +89,9 @@ set(generated_static_argument_mapping_path
 )
 set(generated_sparse_argument_mapping_path
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_signature/generated_sparse_sig.cc
+)
+set(generated_onednn_argument_mapping_path
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_signature/generated_staticonednn_sig.cc
 )
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
@@ -119,6 +125,10 @@ execute_process(
     ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${legacy_bw_op_yaml_file}
     --output_path ${parsed_op_dir}/inconsistent/dygraph_backward.parsed.yaml
     --backward
+  COMMAND
+    ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path
+    ${onednn_static_op_yaml_file} --output_path
+    ${parsed_op_dir}/inconsistent/onednn_static.parsed.yaml
   COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${static_op_yaml_file}
           --output_path ${parsed_op_dir}/legacy/static_ops.parsed.yaml
   COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${fused_op_yaml_file}
@@ -257,6 +267,22 @@ if(${_result})
   message(FATAL_ERROR "sparse operator codegen failed, exiting.")
 endif()
 
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
+  COMMAND
+    ${PYTHON_EXECUTABLE} generate_op.py --ops_yaml_path
+    ${parsed_op_dir}/inconsistent/onednn_static.parsed.yaml
+    --op_version_yaml_path ${ops_yaml_dir}/op_version.yaml --op_compat_yaml_path
+    ${ops_yaml_dir}/op_compat.yaml --output_op_path
+    "${generated_onednn_ops_path}.tmp" --output_arg_map_path
+    "${generated_onednn_argument_mapping_path}.tmp" --ops_exclude_yaml_path
+    ${ops_yaml_dir}/legacy/ops_exclude.yaml --backward_exclude_yaml_path
+    ${ops_yaml_dir}/legacy/backward_exclude.yaml
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(FATAL_ERROR "operator codegen failed, exiting.")
+endif()
+
 set(generated_static_files
     "${generated_op_path_1}"
     "${generated_op_path_2}"
@@ -265,10 +291,12 @@ set(generated_static_files
     "${generated_static_op_path}"
     "${generated_fused_op_path}"
     "${generated_sparse_ops_path}"
+    "${generated_onednn_ops_path}"
     "${generated_argument_mapping_path}"
     "${generated_static_argument_mapping_path}"
     "${generated_sparse_argument_mapping_path}"
-    "${generated_fused_argument_mapping_path}")
+    "${generated_fused_argument_mapping_path}"
+    "${generated_onednn_argument_mapping_path}")
 
 foreach(generated_static_file ${generated_static_files})
   if(EXISTS "${generated_static_file}.tmp" AND EXISTS

@@ -612,9 +612,12 @@ def main(
         ops = yaml.safe_load(f)
         ops = [restruct_io(op) for op in ops]
     forward_op_dict = to_named_dict(ops, True)
-    with open(backward_yaml_path, "rt") as f:
-        backward_ops = yaml.safe_load(f)
-        backward_ops = [restruct_io(op) for op in backward_ops]
+    if backward_yaml_path is None:
+        backward_ops = []
+    else:
+        with open(backward_yaml_path, "rt") as f:
+            backward_ops = yaml.safe_load(f)
+            backward_ops = [restruct_io(op) for op in backward_ops]
     backward_op_dict = to_named_dict(backward_ops, True)
     with open(op_version_yaml_path, "rt") as f:
         op_versions = yaml.safe_load(f)

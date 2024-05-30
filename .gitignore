@@ -86,6 +86,7 @@ paddle/fluid/operators/generated_op*.cc
 paddle/fluid/operators/generated_sparse_op.cc
 paddle/fluid/operators/generated_static_op.cc
 paddle/fluid/operators/generated_fused_op.cc
+paddle/fluid/operators/generated_staticonednn_op.cc
 paddle/fluid/operators/ops_signature/generated_*.cc
 paddle/fluid/pybind/tmp_eager_op_function_impl.h
 paddle/fluid/pybind/eager_op_function_impl.h
