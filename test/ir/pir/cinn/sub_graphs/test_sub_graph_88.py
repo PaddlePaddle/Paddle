@@ -78,7 +78,7 @@ class TestLayer(TestBase):
             paddle.randint(low=0, high=10, shape=[1, 500], dtype=paddle.int64),
             paddle.randint(low=0, high=10, shape=[1, 500], dtype=paddle.int32),
         )
-        self.net = LayerCase()
+        self.net = LayerCase
 
 
 if __name__ == '__main__':

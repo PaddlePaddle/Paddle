@@ -73,7 +73,7 @@ class TestLayer(TestBase):
         self.inputs = (
             paddle.rand(shape=[43, 256, 56, 56], dtype=paddle.float32),
         )
-        self.net = LayerCase()
+        self.net = LayerCase
         self.with_train = True
 
     def set_flags(self):
