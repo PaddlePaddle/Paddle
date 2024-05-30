@@ -320,10 +320,12 @@ std::optional<pir::Value> GetOutOfRewrittenGenerateShapeOp(
 }
 
 bool ReplaceShapeOpsToGenerateShape(
-    pir::Value shape_operand,
+    pir::OpOperand shape_operand,
     pir::PatternRewriter* rewriter,
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
-  if (shape_operand.defining_op()->isa<cinn::dialect::GenerateShapeOp>()) {
+  if (shape_operand.source()
+          .defining_op()
+          ->isa<cinn::dialect::GenerateShapeOp>()) {
     return false;
   }
   auto ShapeOrDataDimExprs4Value =
@@ -333,9 +335,11 @@ bool ReplaceShapeOpsToGenerateShape(
   };
   std::optional<pir::Value> opt_generated_shape =
       GetOutOfRewrittenGenerateShapeOp(
-          shape_operand, rewriter, ShapeOrDataDimExprs4Value);
+          shape_operand.source(), rewriter, ShapeOrDataDimExprs4Value);
   if (!opt_generated_shape.has_value()) return false;
-  rewriter->ReplaceAllUsesWith(shape_operand, opt_generated_shape.value());
+  // Replace the shape op input only, don't replace other users of the shape
+  // operand.
+  shape_operand.set_source(opt_generated_shape.value());
   return true;
 }
 
@@ -344,7 +348,7 @@ bool ProcessOp(OP_TYPE op,
                pir::PatternRewriter* rewriter,
                pir::ShapeConstraintIRAnalysis* shape_analysis) {
   return ReplaceShapeOpsToGenerateShape(
-      op->operand_source(1), rewriter, shape_analysis);
+      op->operand(1), rewriter, shape_analysis);
 }
 
 template <>
@@ -353,9 +357,9 @@ bool ProcessOp<paddle::dialect::SliceOp>(
     pir::PatternRewriter* rewriter,
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   return ReplaceShapeOpsToGenerateShape(
-             op->operand_source(1), rewriter, shape_analysis) &&
+             op->operand(1), rewriter, shape_analysis) &&
          ReplaceShapeOpsToGenerateShape(
-             op->operand_source(2), rewriter, shape_analysis);
+             op->operand(2), rewriter, shape_analysis);
 }
 
 }  // namespace

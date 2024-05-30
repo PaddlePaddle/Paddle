@@ -103,7 +103,7 @@ void FleetWrapper::InitGFlag(const std::string& gflags) {
   }
   auto it = flags.begin();
   flags.insert(it, "exe default");
-  char* flags_ptr[flags.size()];
+  std::vector<char*> flags_ptr(flags.size());
   for (size_t i = 0; i < flags.size(); ++i) {
     flags_ptr[i] = (char*)(flags[i].c_str());  // NOLINT
   }

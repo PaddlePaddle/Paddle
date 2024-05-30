@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/beam_search_decode_op_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_info.h"
 
 #include "gtest/gtest.h"
 
@@ -53,11 +54,7 @@ void GenerateXPUExample(const std::vector<size_t>& level_0,
                         data.size()));
 
   CPUPlace place;
-  int XPU_PlaceNo = 0;
-  if (std::getenv("FLAGS_selected_xpus") != nullptr)
-    XPU_PlaceNo = atoi(std::getenv("FLAGS_selected_xpus"));
-  else if (std::getenv("XPU_VISIBLE_DEVICES") != nullptr)
-    XPU_PlaceNo = atoi(std::getenv("XPU_VISIBLE_DEVICES"));
+  int XPU_PlaceNo = phi::backends::xpu::GetXPUCurrentDeviceId();
 
   XPUPlace xpu_place(XPU_PlaceNo);
 

@@ -1813,18 +1813,6 @@ std::unordered_map<::pir::Value, std::string> GetNameMap(
   return value2name;
 }
 
-std::shared_ptr<Program> ApplyFusedBnAddActPass(
-    std::shared_ptr<Program> program) {
-  pir::PassManager pm(pir::IrContext::Instance(), 3);
-  pm.AddPass(pir::CreateFusedBnAddActPass());
-  pm.Run(program.get());
-  if (FLAGS_print_ir) {
-    std::cout << "IR After FusedBnAddActPass -------------------" << std::endl;
-    std::cout << *program << std::endl;
-  }
-  return program;
-}
-
 SplitedResult SplitForwardBackward(
     const Program &program,
     const std::vector<pir::Value> &forward_inputs,
@@ -2160,7 +2148,6 @@ void BindUtils(pybind11::module *m) {
   m->def("get_op_inplace_info", GetOpInplaceInfo);
   m->def("reset_shadow_output_name", ResetShadowOutputName);
   m->def("split_program", SplitForwardBackward);
-  m->def("apply_bn_add_act_pass", ApplyFusedBnAddActPass);
   m->def("append_shadow_outputs", AppendShadowOutputs);
   m->def("append_shadow_output", AppendShadowOutput);
   m->def("fake_value", FakeValue);
@@ -2391,18 +2378,38 @@ void InferSymbolicShapePass(
   }
 }
 
-void CommonSubexpressionEliminationPass(
-    std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
-    pir::Program &program) {                          // NOLINT
-  pass_manager->AddPass(pir::CreateCommonSubexpressionEliminationPass());
+std::shared_ptr<Program> ApplyCommonSubexpressionEliminationPass(
+    std::shared_ptr<Program> program) {
+  pir::PassManager pm(pir::IrContext::Instance(), 2);
+  pm.AddPass(pir::CreateCommonSubexpressionEliminationPass());
+  pm.Run(program.get());
+  if (FLAGS_print_ir) {
+    std::cout
+        << "IR After CommonSubexpressionEliminationPass -------------------"
+        << std::endl;
+    std::cout << *program << std::endl;
+  }
+  return program;
+}
+
+std::shared_ptr<Program> ApplyFusedBnAddActPass(
+    std::shared_ptr<Program> program) {
+  pir::PassManager pm(pir::IrContext::Instance(), 3);
+  pm.AddPass(pir::CreateFusedBnAddActPass());
+  pm.Run(program.get());
+  if (FLAGS_print_ir) {
+    std::cout << "IR After FusedBnAddActPass -------------------" << std::endl;
+    std::cout << *program << std::endl;
+  }
+  return program;
 }
 
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
-  m->def("common_subexpression_elimination_pass",
-         CommonSubexpressionEliminationPass);
+  m->def("apply_cse_pass", ApplyCommonSubexpressionEliminationPass);
+  m->def("apply_bn_add_act_pass", ApplyFusedBnAddActPass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",
