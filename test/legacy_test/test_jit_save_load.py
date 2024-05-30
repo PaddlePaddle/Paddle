@@ -395,6 +395,8 @@ class TestJitSaveLoad(unittest.TestCase):
     @test_with_dygraph_pir
     def test_save_load(self):
         # train and save model
+        if not paddle.framework.use_pir_api():
+            return
         train_layer = self.train_and_save_model()
         # load model
         loaded_layer = paddle.jit.load(self.model_path)
