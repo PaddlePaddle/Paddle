@@ -166,8 +166,8 @@ Tensor p_norm_decomp(const Tensor& x,
     res = min<T>(x_tmp, {axis}, keepdim);
   } else {
     // vanilla p-norm
-    auto porder_tensor = full_scalar<T>(, porder, x_tmp.dtype());
-    auto inv_porder_tensor = full_scalar<T>(, 1 / porder, x_tmp.dtype());
+    auto porder_tensor = full_scalar<T>(porder, x_tmp.dtype());
+    auto inv_porder_tensor = full_scalar<T>(1 / porder, x_tmp.dtype());
     res = elementwise_pow<T>(x_tmp, porder_tensor);
     res = sum<T>(res, {axis}, x_tmp.dtype(), keepdim);
     res = elementwise_pow<T>(res, inv_porder_tensor);
@@ -191,7 +191,7 @@ Tensor pow_decomp(const Tensor& x, const paddle::Scalar& y) {
   }
 
   check_valid_type(y.dtype());
-  Tensor y_full = full_scalar<T>(empty_shape, y, x_cast.dtype());
+  Tensor y_full = full_scalar<T>(y, x_cast.dtype());
   auto ans = elementwise_pow<T>(x_cast, y_full);
   if (need_cast) {
     return cast<T>(ans, org_dtype);
