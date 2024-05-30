@@ -1899,6 +1899,15 @@ TEST(Flatten, Ctor) {
   check_dim_mapping(spmd3.second[0], {0, -1, 1});
   check_dim_mapping(spmd3.second[1], {-1, 0, -1, 1, -1});  // x_shape
 
+  // [b, c, d, h, w]; dp, mp
+  auto input4 = build_input({4, 16, 16, 4, 16}, {-1, -1, 0, 1, -1});
+  auto spmd4 = FlattenInferSpmd(input4, 1, 4);
+  EXPECT_EQ(spmd4.first.size(), static_cast<size_t>(1));
+  EXPECT_EQ(spmd4.second.size(), static_cast<size_t>(2));
+  check_dim_mapping(spmd4.first[0], {-1, -1, -1, -1, -1});
+  check_dim_mapping(spmd4.second[0], {-1, -1});
+  check_dim_mapping(spmd4.second[1], {-1, -1, -1, -1, -1, -1});  // x_shape
+
   auto out_grad = build_input({2, 1024, 1024}, {-1, -1, -1});
   auto xshape = build_input({0, 2, 1024, 4, 1024 / 4}, {-1, 0, 1, -1, -1});
   auto spmd_grad = FlattenGradInferSpmd(xshape, out_grad);
