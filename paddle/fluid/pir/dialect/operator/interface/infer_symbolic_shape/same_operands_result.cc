@@ -178,7 +178,6 @@ bool ScaleOpInferSymbolicShape(pir::Operation *op,
 
 }  // namespace paddle::dialect
 
-namespace cinn::dialect {
-}  // namespace cinn::dialect
+namespace cinn::dialect {}  // namespace cinn::dialect
 
 #undef OP_SAME_OPERANDS_AND_RESULT
