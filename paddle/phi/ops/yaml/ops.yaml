@@ -3829,7 +3829,7 @@
   backward : tanh_shrink_grad
 
 - op : tdm_child
-  args: (Tensor x, Tensor tree_info, int child_nums, int dtype = 2)
+  args: (Tensor x, Tensor tree_info, int child_nums, DataType dtype = DataType::INT32)
   output: Tensor (child), Tensor (leaf_mask)
   infer_meta:
     func: TdmChildInferMeta

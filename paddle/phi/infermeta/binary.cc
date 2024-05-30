@@ -3576,7 +3576,7 @@ void TakeAlongAxisInferMeta(const MetaTensor& x,
 void TdmChildInferMeta(const MetaTensor& x,
                        const MetaTensor& tree_info,
                        int child_nums,
-                       int dtype,
+                       DataType dtype,
                        MetaTensor* child,
                        MetaTensor* leaf_mask) {
   PADDLE_ENFORCE_GT(
