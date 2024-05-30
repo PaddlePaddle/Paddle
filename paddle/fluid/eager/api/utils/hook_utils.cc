@@ -19,8 +19,7 @@
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace egr {
-namespace egr_utils_api {
+namespace egr::egr_utils_api {
 
 int64_t RegisterGradientHookForTensor(
     const paddle::Tensor& tensor,
@@ -96,5 +95,4 @@ void RetainGradForTensor(const paddle::Tensor& tensor) {
 void RegisterBackwardFinalHook(const std::function<void()>& hook) {
   Controller::Instance().RegisterBackwardFinalHook(hook);
 }
-}  // namespace egr_utils_api
-}  // namespace egr
+}  // namespace egr::egr_utils_api

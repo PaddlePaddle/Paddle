@@ -18,9 +18,7 @@
 #include "paddle/fluid/operators/controlflow/op_variant.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 using OpVariant = operators::OpVariant;
 
 class WhileOpEagerDeletionPass : public ir::Pass {
@@ -105,9 +103,7 @@ class WhileOpEagerDeletionPass : public ir::Pass {
   }
 };
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(while_op_eager_deletion_pass,
               paddle::framework::ir::WhileOpEagerDeletionPass);

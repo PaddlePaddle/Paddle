@@ -25,9 +25,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 namespace {
 
 void InsertLayoutTransOp(ir::Graph *graph,
@@ -317,8 +315,6 @@ void TransferLayoutPass::ApplyImpl(ir::Graph *graph) const {
   AddStatis(static_cast<int>(valid_ops.size()));
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(transfer_layout_pass, paddle::framework::ir::TransferLayoutPass);

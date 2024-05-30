@@ -19,8 +19,7 @@
 
 COMMON_DECLARE_bool(use_autotune);
 
-namespace phi {
-namespace autotune {
+namespace phi::autotune {
 
 void AutoTuneStatus::EnableAutoTune() {
   FLAGS_use_autotune = true;
@@ -71,5 +70,4 @@ void AutoTuneStatus::Update() {
   }
 }
 
-}  // namespace autotune
-}  // namespace phi
+}  // namespace phi::autotune

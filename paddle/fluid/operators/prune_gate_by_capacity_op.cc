@@ -15,8 +15,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class PruneGateByCapacityOp : public framework::OperatorWithKernel {
  public:
@@ -118,8 +117,7 @@ This operator is used to prune gate by capacity(CUDA).
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

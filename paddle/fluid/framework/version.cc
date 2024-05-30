@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include <sstream>
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 bool IsProgramVersionSupported(int64_t version) {
   /* So far, all old versions of phi::DenseTensor are supported in the
@@ -48,5 +47,4 @@ std::string DumpVersion(const int64_t version) {
   return buffer.str();
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -15,8 +15,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class DistributedFusedLambOp : public framework::OperatorWithKernel {
  public:
@@ -162,16 +161,14 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(distributed_fused_lamb,
                              ops::DistributedFusedLambOp,
                              ops::DistributedFusedLambOpMaker);
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 template <typename T, typename Context>
 void DistributedFusedLambKernel(const Context &dev_ctx,
@@ -222,8 +219,7 @@ void DistributedFusedLambKernel(const Context &dev_ctx,
       "The distributed_fused_lamb operator does not support CPU yet."));
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(distributed_fused_lamb,
                    CPU,

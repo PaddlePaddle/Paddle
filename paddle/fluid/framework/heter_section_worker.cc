@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void SetMicroId(paddle::framework::Scope* scope,
                 platform::DeviceContext* dev_ctx,
@@ -554,6 +553,5 @@ void HeterSectionWorker::TrainFilesWithProfiler() {
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 #endif

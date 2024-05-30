@@ -18,8 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 using bfloat16 = paddle::platform::bfloat16;
 
@@ -163,5 +162,4 @@ TEST(bfloat16, isnan) {
   EXPECT_EQ(std::isnan(c), true);
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform
