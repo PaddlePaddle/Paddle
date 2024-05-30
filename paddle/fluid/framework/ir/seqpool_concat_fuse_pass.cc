@@ -16,19 +16,13 @@
 
 #include <string>
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class Node;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 #define MAX_CONCAT_INPUTS 200
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
                                   const std::string& name_scope,
@@ -217,9 +211,7 @@ void SeqPoolConcatFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(fusion_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(seqpool_concat_fuse_pass,
               paddle::framework::ir::SeqPoolConcatFusePass);

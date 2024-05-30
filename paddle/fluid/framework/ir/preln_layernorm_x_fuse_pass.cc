@@ -19,18 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class Node;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 struct PrelnLayerNormX : public PatternBase {
   PrelnLayerNormX(PDPattern *pattern, const std::string &name_scope)
@@ -86,7 +79,8 @@ void PrelnLayerNormX::operator()(PDNode *x,
       .LinksTo({layer_norm_out_var});
 }
 
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 int PrelnLayerNormXFusePass::ApplyLayerNormShiftPattern(
     ir::Graph *graph) const {
@@ -253,9 +247,7 @@ void PrelnLayerNormXFusePass::ApplyImpl(ir::Graph *graph) const {
   AddStatis(found_subgraph_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(preln_layernorm_x_fuse_pass,
               paddle::framework::ir::PrelnLayerNormXFusePass);

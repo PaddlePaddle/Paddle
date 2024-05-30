@@ -29,8 +29,7 @@
 
 COMMON_DECLARE_string(jit_engine_type);
 
-namespace paddle {
-namespace jit {
+namespace paddle::jit {
 
 using FunctionInfoMap =
     std::unordered_map<std::string, std::shared_ptr<FunctionInfo>>;
@@ -138,5 +137,4 @@ Layer Load(const std::string& file_path, const phi::Place& place) {
   return deserializer(file_path, place);
 }
 
-}  // namespace jit
-}  // namespace paddle
+}  // namespace paddle::jit

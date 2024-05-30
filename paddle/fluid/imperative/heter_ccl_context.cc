@@ -27,14 +27,11 @@
 #include "paddle/utils/string/split.h"
 #include "paddle/utils/string/string_helper.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
                                            const int &device_id)
@@ -196,5 +193,4 @@ void HeterParallelContext::SynchronizeCompute() {
   node_parallel_ctx_->SynchronizeCompute();
 }
 
-}  //  namespace imperative
-}  //  namespace paddle
+}  // namespace paddle::imperative

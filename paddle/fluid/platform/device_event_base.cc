@@ -17,8 +17,7 @@
 #include "paddle/fluid/platform/device_event_cpu.h"
 #include "paddle/fluid/platform/event.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 EventCreateFunction DeviceEvent::event_creator_[MaxDeviceTypes];   // NOLINT
 EventRecordFunction DeviceEvent::event_recorder_[MaxDeviceTypes];  // NOLINT
@@ -130,8 +129,7 @@ void EventResetCPU(const DeviceEvent* event) {
   wrapper->status_ = EventStatus::INITIALIZED;
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform
 
 using ::paddle::platform::kCPU;
 REGISTER_EVENT_CREATE_FUNCTION(kCPU, paddle::platform::DeviceEventCreateCPU)

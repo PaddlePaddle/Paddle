@@ -21,8 +21,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 
 #if defined(PADDLE_WITH_PSLIB) || defined(PADDLE_WITH_PSCORE)
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::shared_ptr<Metric> Metric::s_instance_ = nullptr;
 
@@ -393,6 +392,5 @@ BasicAucCalculator::WuaucRocData BasicAucCalculator::computeSingleUserAuc(
   return {tp, fp, auc};
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 #endif

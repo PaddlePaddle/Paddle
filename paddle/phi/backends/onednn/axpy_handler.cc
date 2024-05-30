@@ -21,8 +21,7 @@
 
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 template <typename T>
 class AXPYHandler {
@@ -146,5 +145,4 @@ void OneDNNAXPYHandler<T>::operator()(const T *x, T *y) {
 template class OneDNNAXPYHandler<float>;
 template class OneDNNAXPYHandler<dtype::bfloat16>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

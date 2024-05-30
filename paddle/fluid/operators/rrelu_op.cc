@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/infermeta/unary.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class RReluOp : public framework::OperatorWithKernel {
  public:
@@ -110,8 +109,7 @@ class RReluGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(rrelu,

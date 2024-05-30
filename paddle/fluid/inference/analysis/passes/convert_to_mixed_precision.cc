@@ -22,9 +22,7 @@
 #include "paddle/fluid/inference/io.h"
 #include "paddle/phi/common/backend.h"
 
-namespace paddle {
-namespace inference {
-namespace analysis {
+namespace paddle::inference::analysis {
 
 ConvertToMixedPrecisionPass::ConvertToMixedPrecisionPass(
     const std::string& model_file,
@@ -242,6 +240,4 @@ void ConvertToMixedPrecision(
   pass.Run();
 }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

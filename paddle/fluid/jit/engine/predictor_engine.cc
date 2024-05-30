@@ -19,8 +19,7 @@
 #include "paddle/fluid/jit/function_utils.h"
 #include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace jit {
+namespace paddle::jit {
 
 PredictorEngine::PredictorEngine(
     const std::shared_ptr<FunctionInfo> &info,
@@ -84,5 +83,4 @@ std::vector<DenseTensor> PredictorEngine::operator()(
   return utils::ToDenseTensors(this->operator()(utils::ToTensors(inputs)));
 }
 
-}  // namespace jit
-}  // namespace paddle
+}  // namespace paddle::jit

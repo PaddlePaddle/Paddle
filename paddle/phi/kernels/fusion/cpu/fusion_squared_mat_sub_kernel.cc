@@ -19,8 +19,7 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 template <typename T, typename Context>
 void FusionSquaredMatSubKernel(const Context& dev_ctx,
@@ -78,8 +77,7 @@ void FusionSquaredMatSubKernel(const Context& dev_ctx,
   vscal(&scalar_t, o_data, o_data, o_numel);
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fusion_squared_mat_sub,
                    CPU,

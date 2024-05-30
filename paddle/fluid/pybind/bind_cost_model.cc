@@ -24,8 +24,7 @@ using paddle::framework::CostData;
 using paddle::framework::CostModel;
 using paddle::framework::ProgramDesc;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 void BindCostModel(py::module* m) {
   py::class_<CostData>(*m, "CostData")
@@ -56,5 +55,4 @@ void BindCostModel(py::module* m) {
            });
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

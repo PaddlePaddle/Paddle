@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/multihead_matmul_roformer_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class MultiheadMatMulRoformerOpConverter : public OpConverter {
  public:
@@ -245,9 +243,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(multihead_matmul_roformer,
                           MultiheadMatMulRoformerOpConverter);

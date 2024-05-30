@@ -18,8 +18,7 @@
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 void MessageServiceImpl::ReceiveInterceptorMessage(
     google::protobuf::RpcController* control_base,
@@ -46,6 +45,5 @@ void MessageServiceImpl::IncreaseBarrierCount(
   response->set_rst(true);
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed
 #endif

@@ -17,8 +17,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     const std::string& type,
@@ -140,5 +139,4 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
   return op;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

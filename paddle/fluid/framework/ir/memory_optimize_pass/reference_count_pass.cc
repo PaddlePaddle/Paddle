@@ -23,9 +23,7 @@
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Graph;
 
@@ -362,9 +360,7 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(reference_count_pass, paddle::framework::ir::ReferenceCountPass)
     .RequirePassAttr(paddle::framework::ir::kMemOptVarInfoMapList)

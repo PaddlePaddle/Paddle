@@ -16,8 +16,7 @@
 
 #include "paddle/fluid/platform/device/device_wrapper.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 #ifdef PADDLE_WITH_HIP
 static void StreamCallbackFunc(gpuStream_t stream,
@@ -88,5 +87,4 @@ template class StreamCallbackManager<gpuStream_t>;
 #ifdef PADDLE_WITH_HIP
 template struct StreamCallbackManager<hipStream_t>;
 #endif
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform
