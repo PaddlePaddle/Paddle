@@ -27,9 +27,6 @@ namespace paddle::framework {
 class Scope;
 }  // namespace paddle::framework
 
-namespace paddle::framework::ir {
-
-}  // namespace paddle::framework::ir
 namespace paddle::framework::ir::patterns {
 
 struct ContinuousSameOpsPattern : public PatternBase {
