@@ -71,7 +71,6 @@ std::shared_ptr<Program> Program::Clone(IrMapping& ir_mapping) const {
     auto* new_op = op.Clone(ir_mapping, clone_options);
     new_program->block()->push_back(new_op);
   }
-  new_program->id_ = this->id();
   return new_program;
 }
 
