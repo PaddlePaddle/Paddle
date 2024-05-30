@@ -61,6 +61,7 @@ class TestPrimMode(unittest.TestCase):
         return fwd, dx, dy
 
     def test_prim_all(self):
+        # paddle.base.core._set_prim_backward_blacklist("sin_grad","cos_grad")
         res_ref = self.base_net()
         res = self.base_net("prim")
         for ref, actual in zip(res_ref, res):

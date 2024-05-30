@@ -850,16 +850,16 @@ def decompose_dist_program(pir_program):
     decompose(pir_program, [])
 
     # decomp backward ops
+    blacklist = core.prim_config["backward_blacklist"]
+
     block = pir_program.global_block()
-    temp_op = None
+    pre_combine_op = None
     with paddle.pir.core.program_guard(pir_program):
         ops = pir_program.global_block().ops
         for op in ops:
             bwd_op_name = op.name()
-            if op.name() == "builtin.combine":
-                temp_op = op
             # todo(CZ): to be removed
-            if bwd_op_name in ["pd_op.cos_grad", "pd_op.sin_grad"]:
+            if bwd_op_name.split(".")[-1] in blacklist:
                 continue
             if has_decomp_vjp(op):
                 pir.set_insertion_point(op)
@@ -889,15 +889,18 @@ def decompose_dist_program(pir_program):
 
                 block.remove_op(op)
 
-                if temp_op is not None:
+                if op.name() == "builtin.combine":
+                    pre_combine_op = op
+
+                if pre_combine_op is not None:
                     remove_op = True
-                    for item in temp_op.results():
+                    for item in pre_combine_op.results():
                         if item.has_one_use():
                             remove_op = False
                             break
                     if remove_op:
-                        block.remove_op(temp_op)
-                    temp_op = None
+                        block.remove_op(pre_combine_op)
+                    pre_combine_op = None
     paddle.pir.set_insertion_point_to_block_end(block)
 
 
