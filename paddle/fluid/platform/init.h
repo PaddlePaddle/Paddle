@@ -31,6 +31,8 @@ TEST_API void InitDevices();
 
 void InitDevices(const std::vector<int> devices);
 
+TEST_API void InitPir();
+
 TEST_API void InitMemoryMethod();
 
 #ifndef _WIN32
