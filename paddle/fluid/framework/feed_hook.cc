@@ -67,7 +67,7 @@ void VisitFeedName(const pir::Program& program,
   }
 }
 
-std::string GetLoggingShapeOrDataForName(int64_t random_logging_id,
+std::string GetLoggingShapeOrDataForName(int64_t program_id,
                                          const std::string& name,
                                          const phi::DenseTensor& tensor) {
   int64_t random_record_id = [] {
@@ -78,9 +78,8 @@ std::string GetLoggingShapeOrDataForName(int64_t random_logging_id,
     return dis(gen);
   }();
   std::ostringstream ss;
-  ss << "class PirProgram_example_input_tensor_meta_" << random_record_id
-     << ":";
-  ss << "\n\trandom_logging_id = " << random_logging_id;
+  ss << "class PirProgram_example_input_tensor_meta_" << program_id << ":";
+  ss << "\n\program_id = " << program_id;
   ss << "\n\tinput_name = " << std::quoted(name);
   ss << "\n\tshape = [";
   int i = 0;
@@ -125,7 +124,7 @@ void SaveLoggingShapeOrData(const pir::Program& program, const Scope& scope) {
     if (variable == nullptr) return;
     if (!variable->IsType<phi::DenseTensor>()) return;
     const phi::DenseTensor& tensor = variable->Get<phi::DenseTensor>();
-    AppendLoggingShapeOrDataForName(program.random_logging_id(), name, tensor);
+    AppendLoggingShapeOrDataForName(program.id(), name, tensor);
   });
 }
 

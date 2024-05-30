@@ -1201,7 +1201,7 @@ struct PirToPyCodeConverterHelper {
 
   std::string GetPyClassName() {
     std::ostringstream ss;
-    ss << "PirProgram_" << program_->random_logging_id();
+    ss << "PirProgram_" << program_->id();
     return ss.str();
   }
 

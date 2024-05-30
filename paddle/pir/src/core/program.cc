@@ -14,21 +14,47 @@
 
 #include "paddle/pir/include/core/program.h"
 #include <limits>
+#include <mutex>
 #include <random>
+#include <unordered_set>
 #include "glog/logging.h"
 #include "paddle/pir/include/core/ir_context.h"
 
 namespace pir {
 
+namespace {
+
+int64_t GetRandomId() {
+  std::random_device rd{};
+  std::mt19937_64 gen(rd());
+  std::uniform_int_distribution<int64_t> dis(
+      0, std::numeric_limits<int64_t>::max());
+  return dis(gen);
+}
+
+bool InsertGlobalStorageSuccess(int64_t random_id) {
+  static std::unordered_set<int64_t> storage;
+  static std::mutex mutex;
+  std::unique_lock<std::mutex> lock(mutex);
+  return storage.emplace(random_id).second;
+}
+
+int64_t GetUniqueRandomId() {
+  int kLimit = 100;
+  for (int i = 0; i < kLimit; ++i) {
+    int64_t random_id = GetRandomId();
+    if (InsertGlobalStorageSuccess(random_id)) {
+      return random_id;
+    }
+  }
+  LOG(FATAL) << "Fatal bug occured in GetUniqueRandomId().";
+}
+
+}  // namespace
+
 Program::Program(IrContext* context) {
   module_ = ModuleOp::Create(context, this);
-  random_logging_id_ = [] {
-    std::random_device rd{};
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<int64_t> dis(
-        0, std::numeric_limits<int64_t>::max());
-    return dis(gen);
-  }();
+  id_ = GetUniqueRandomId();
 }
 
 Program::~Program() {
@@ -45,7 +71,7 @@ std::shared_ptr<Program> Program::Clone(IrMapping& ir_mapping) const {
     auto* new_op = op.Clone(ir_mapping, clone_options);
     new_program->block()->push_back(new_op);
   }
-  new_program->random_logging_id_ = this->random_logging_id();
+  new_program->id_ = this->id();
   return new_program;
 }
 

@@ -70,13 +70,13 @@ class IR_API Program {
     parameters_ = parameters;
   }
 
-  int64_t random_logging_id() const { return random_logging_id_; }
+  uint64_t id() const { return id_; }
 
  private:
   // computation graph
   ModuleOp module_;
-  // random logging id
-  int64_t random_logging_id_;
+  // unique in current process, "almost" unique between processes.
+  uint64_t id_;
   // weight
   ParameterMap parameters_;
 };
