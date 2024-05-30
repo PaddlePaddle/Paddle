@@ -1608,6 +1608,12 @@ PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
                          "to infer symbolic shape");
 
 PHI_DEFINE_EXPORTED_string(
+    nvidia_package_dir,  // NOLINT
+    "",
+    "Specify root dir path for nvidia site-package, such as "
+    "python3.9/site-packages/nvidia");
+
+PHI_DEFINE_EXPORTED_string(
     cudnn_dir,  // NOLINT
     "",
     "Specify path for loading libcudnn.so. For instance, "
