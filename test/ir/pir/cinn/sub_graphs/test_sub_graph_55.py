@@ -77,7 +77,7 @@ class TestLayer(TestBase):
         self.inputs = (
             paddle.rand(shape=[1, 192, 32, 32], dtype=paddle.float32),
         )
-        self.net = LayerCase()
+        self.net = LayerCase
 
     # NOTE prim + cinn lead to error
 

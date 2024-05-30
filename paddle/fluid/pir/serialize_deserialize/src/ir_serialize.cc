@@ -17,6 +17,8 @@
 #include "paddle/fluid/pir/serialize_deserialize/include/serialize_utils.h"
 #include "paddle/pir/include/core/dialect.h"
 #include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 namespace pir {
 
@@ -55,11 +57,11 @@ Json ProgramWriter::WriteRegion(const pir::Region* region,
   return region_json;
 }
 
-Json ProgramWriter::WriteBlock(const pir::Block* block,
+Json ProgramWriter::WriteBlock(pir::Block* block,
                                const std::string& block_name) {
   Json block_json;
   block_json[ID] = block_name;
-
+  VLOG(4) << "Begin write " << block_name << ".";
   Json args_json = Json::array();
   for (auto arg : block->args()) {
     auto arg_json = WriteBlockArg(arg);
@@ -81,13 +83,38 @@ Json ProgramWriter::WriteBlock(const pir::Block* block,
   }
 
   Json ops_json = Json::array();
+
+  /* delete cf.stack_create / cf.tuple_push */
+  std::vector<pir::Operation*> delete_ops;
+  for (auto op : block->ops()) {
+    if (op->isa<pir::StackCreateOp>()) {
+      delete_ops.push_back(op);
+    }
+  }
+  VLOG(6) << "program before delete stack op :" << *(block->parent_program());
+  for (auto op : delete_ops) {
+    VLOG(0) << "Delete cf.stack_create / cf.tuple_push.";
+    auto stack_op = op->dyn_cast<pir::StackCreateOp>();
+    if (stack_op.inlet().HasOneUse()) {
+      auto tuple_push_op = stack_op.tuple_push_op();
+      auto block_in = tuple_push_op->GetParent();
+      block_in->erase(*tuple_push_op);
+    }
+    if (stack_op.outlet().HasOneUse()) {
+      auto tuple_pop_op = stack_op.tuple_pop_op();
+      auto block_in = tuple_pop_op->GetParent();
+      block_in->erase(*tuple_pop_op);
+    }
+    block->erase(*op);
+  }
+  VLOG(6) << "program after delete stack op :" << *(block->parent_program());
   for (auto op : block->ops()) {
     auto op_json = WriteOp(*op);
     ops_json.emplace_back(op_json);
   }
   block_json[BLOCKOPS] = ops_json;
 
-  VLOG(6) << "Finish write " << block_name << ".";
+  VLOG(4) << "Finish write " << block_name << ".";
   return block_json;
 }
 
@@ -126,6 +153,7 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
   Json op_json = Json::object();
   op_json[ID] = op.name();
   // serialize opoperands
+  VLOG(4) << "Begin write Operation " << op.name() << ".";
   Json operands_json = Json::array();
   for (auto operand : op.operands()) {
     auto operand_json = WriteOpOperand(operand);
@@ -159,7 +187,7 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
     op_json[OPRESULTS_ATTRS] = WriteAttributesMapOther(op.attributes());
   }
 
-  VLOG(6) << "Finish write Operation " << op.name() << ".";
+  VLOG(4) << "Finish write Operation " << op.name() << ".";
   return op_json;
 }
 
@@ -185,7 +213,7 @@ Json ProgramWriter::WriteAttributesMapOpinfo(pir::Operation* op,
       op->dyn_cast<paddle::dialect::OpYamlInfoInterface>()) {
     auto [_1, attr_info, _3, _4, _5] =
         op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
-    if (attr_info.size() != 0) {
+    if (!attr_info.empty()) {
       for (auto it = attr_info.begin(); it != attr_info.end(); it++) {
         if (attr_map.find(it->name) != attr_map.end()) {
           attrs_json.emplace_back(

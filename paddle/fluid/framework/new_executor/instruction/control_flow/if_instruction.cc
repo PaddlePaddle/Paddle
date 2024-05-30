@@ -187,12 +187,8 @@ IfInstruction::IfInstruction(size_t id,
 }
 
 IfInstruction::~IfInstruction() {
-  if (true_branch_inter_ != nullptr) {
-    delete true_branch_inter_;
-  }
-  if (false_branch_inter_ != nullptr) {
-    delete false_branch_inter_;
-  }
+  delete true_branch_inter_;
+  delete false_branch_inter_;
 }
 
 void IfInstruction::SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) {
