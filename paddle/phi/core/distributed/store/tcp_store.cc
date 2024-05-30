@@ -23,9 +23,6 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
 
-namespace phi::distributed {
-
-}  // namespace phi::distributed
 namespace phi::distributed::detail {
 
 constexpr int INFTIME = 10000;  // 10 seconds

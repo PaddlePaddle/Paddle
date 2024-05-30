@@ -3722,6 +3722,3 @@ void GraphTable::build_node_iter_type_keys() {
 }
 
 }  // namespace paddle::distributed
-namespace paddle {
-};  // namespace paddle
-}  // namespace paddle
