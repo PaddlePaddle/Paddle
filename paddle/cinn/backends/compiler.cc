@@ -230,13 +230,32 @@ void SourceCodePrint::write(const std::string& source_code) {
   }
 }
 
-void Compiler::Build(const Module& module, const std::string& code) {
+void Compiler::Build(const Module& module,
+                     const std::string& code,
+                     const bool end) {
   auto PatternMatch =
       adt::match{[&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                 [&](common::X86Arch) { CompileX86Module(module); },
+                 [&](common::X86Arch) {
+                   CompileX86Module(module);
+                   if (end) {
+                     engine_->AddSelfModule();
+                   }
+                 },
                  [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                 [&](common::NVGPUArch) { CompileCudaModule(module, code); }};
+                 [&](common::NVGPUArch) {
+                   CompileCudaModule(module, code);
+                   if (end) {
+                     engine_->AddSelfModule();
+                   }
+                 }};
   return std::visit(PatternMatch, target_.arch.variant());
+}
+
+void Compiler::AppendCX86(const Module& module) {
+  VLOG(3) << "Start Compiler::BuildCX86" << module;
+  CompileX86Module(module);
+  engine_->AddSelfModule();
+  VLOG(3) << "Over Compiler::BuildCX86";
 }
 
 std::string Compiler::GetSourceCode(const ir::Module& module) {
