@@ -15,8 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 static constexpr char kParallelScopes[] = "parallel_scopes";  // NOLINT
 
@@ -230,8 +229,7 @@ Bcast the tensors.
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

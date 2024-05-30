@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/cusparse.h"
 
-namespace paddle {
-namespace platform {
-namespace dynload {
+namespace paddle::platform::dynload {
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
@@ -32,6 +30,4 @@ CUSPARSE_ROUTINE_EACH_R2(DEFINE_WRAP);
 CUSPARSE_ROUTINE_EACH_R3(DEFINE_WRAP);
 #endif
 
-}  // namespace dynload
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform::dynload

@@ -16,8 +16,7 @@
 
 #include <deque>
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void ReaderBase::ReadNext(paddle::framework::LoDTensorArray *out) {
   std::lock_guard<std::mutex> lock(mu_);
@@ -78,5 +77,4 @@ DecoratedReader::~DecoratedReader() {
   VLOG(1) << "~DecoratedReader";
   reader_->Shutdown();
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

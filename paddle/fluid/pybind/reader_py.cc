@@ -39,8 +39,7 @@ COMMON_DECLARE_bool(reader_queue_speed_test_mode);
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 namespace py = pybind11;
 namespace reader = operators::reader;
@@ -540,5 +539,4 @@ void BindReader(py::module *module) {
       py::return_value_policy::take_ownership);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::has_duplicates;
 using phi::distributed::auto_parallel::ProcessMeshProto;
@@ -130,5 +129,4 @@ bool operator==(const ProcessMesh &lhs, const ProcessMesh &rhs) {
   return true;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

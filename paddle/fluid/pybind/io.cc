@@ -24,8 +24,7 @@ limitations under the License. */
 #include "paddle/utils/pybind.h"
 
 namespace py = pybind11;
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 template <typename PlaceType>
 void LoadCombine(const std::string &file_path,
                  const std::vector<std::string> &names,
@@ -171,5 +170,4 @@ void BindIO(pybind11::module *m) {
          py::arg("trainable") = true);
   m->def("deserialize_pir_program", &pir::ReadModule);
 }
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

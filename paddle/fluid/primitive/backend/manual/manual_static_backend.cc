@@ -19,9 +19,7 @@
 #include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 
-namespace paddle {
-namespace primitive {
-namespace backend {
+namespace paddle::primitive::backend {
 
 using LazyTensor = paddle::primitive::LazyTensor;
 template <>
@@ -60,6 +58,4 @@ Tensor embedding_grad<LazyTensor>(const Tensor& x,
   return out;
 }
 
-}  // namespace backend
-}  // namespace primitive
-}  // namespace paddle
+}  // namespace paddle::primitive::backend

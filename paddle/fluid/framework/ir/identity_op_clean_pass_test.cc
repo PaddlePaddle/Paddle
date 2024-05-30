@@ -16,9 +16,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 TEST(identity_op_clean_pass, assign) {
   ProgramDesc program;
@@ -113,8 +111,6 @@ TEST(identity_op_clean_pass, concat) {
           concat_num));
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(identity_op_clean_pass);

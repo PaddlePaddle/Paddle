@@ -15,9 +15,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class SSAGraphBuilderWithPrinterPass : public ir::Pass {
  protected:
@@ -97,9 +95,7 @@ void GraphvizSSAGraphPrinter::Print(const ir::Graph &graph,
 
   sout << "}\n";
 }
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(multi_devices_print_pass,
               paddle::framework::ir::SSAGraphBuilderWithPrinterPass)
