@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import typing
 
 try:
@@ -677,6 +676,8 @@ if is_compiled_with_cuda():
                 ctypes.CDLL('msvcp140.dll')
                 ctypes.CDLL('vcruntime140_1.dll')
             except OSError:
+                import logging
+
                 logging.error(
                     '''Microsoft Visual C++ Redistributable is not installed, this may lead to the DLL load failure.
                         It can be downloaded at https://aka.ms/vs/16/release/vc_redist.x64.exe'''
