@@ -190,9 +190,7 @@ void ConvertProgram(ProgramDesc* program) {
   }
 }
 }  // namespace paddle::framework::no_scalar
-namespace paddle::framework {
 
-}  // namespace paddle::framework
 namespace paddle::framework::scalar {
 void ConvertSetValueOp(OpDesc* op) {
   std::vector<paddle::experimental::Scalar> values;

@@ -622,9 +622,7 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 #endif
 }
 }  // namespace paddle::memory::legacy
-namespace paddle::memory {
 
-}  // namespace paddle::memory
 namespace paddle::memory::allocation {
 
 phi::Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
