@@ -31,7 +31,7 @@ class GroupNorm(nn.Layer):
     def __init__(self):
         super().__init__()
         self.hidden_size = 768
-        self.dtype = "bfloat16"
+        self.dtype = "float32"
         self.weight = paddle.randn([128], dtype=self.dtype)
         self.weight.stop_gradient = False
         self.bias = paddle.randn([128], dtype=self.dtype)
@@ -52,9 +52,9 @@ class GroupNorm(nn.Layer):
 
 class TestGroupNorm(unittest.TestCase):
     def setUp(self):
-        paddle.seed(2022)
-        self.shape = [80, 128, 256, 128]
-        self.dtype = "bfloat16"
+        paddle.seed(2024)
+        self.shape = [1, 128, 256, 128]
+        self.dtype = "float32"
         self.data_format = "NHWC"
         self.prepare_data()
 
@@ -62,15 +62,21 @@ class TestGroupNorm(unittest.TestCase):
         self.x = paddle.randn(self.shape, dtype=self.dtype)
         self.x.stop_gradient = False
 
+    def check_jit_kernel_info(self, static_fn):
+        utils.check_jit_kernel_number(static_fn, 2)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 2})
+
     def eval(self, use_cinn):
+        paddle.seed(2024)
         net = GroupNorm()
         input_spec = [
-            InputSpec(shape=[None, None, None, 128], dtype='bfloat16'),
+            InputSpec(shape=[None, None, None, 128], dtype='float32'),
         ]
         net = utils.apply_to_static(net, use_cinn, input_spec)
         net.eval()
         out = net(self.x)
-
+        if use_cinn:
+            self.check_jit_kernel_info(net.forward)
         return out
 
     def test_eval(self):
