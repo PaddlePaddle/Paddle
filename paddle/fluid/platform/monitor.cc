@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/platform/monitor.h"
 
-namespace paddle::platform {
-
 DEFINE_INT_STATUS(STAT_total_feasign_num_in_mem)
 DEFINE_INT_STATUS(STAT_epoch_finish)
 DEFINE_INT_STATUS(STAT_gpu0_mem_size)
@@ -34,4 +32,3 @@ DEFINE_INT_STATUS(STAT_gpu12_mem_size)
 DEFINE_INT_STATUS(STAT_gpu13_mem_size)
 DEFINE_INT_STATUS(STAT_gpu14_mem_size)
 DEFINE_INT_STATUS(STAT_gpu15_mem_size)
-}  // namespace paddle::platform
