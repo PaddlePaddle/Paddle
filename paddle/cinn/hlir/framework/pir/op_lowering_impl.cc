@@ -885,7 +885,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     func = optim::Optimize(Expr(func), target_, false).as_lowered_func_ref();
     if (i != func_bodies.size() - 1) {
       func = optim::Optimize(Expr(func), target_, false).as_lowered_func_ref();
-    optim::RearrangeLoadInstruction(&(func->body));
+      optim::RearrangeLoadInstruction(&(func->body));
     } else {
       func = optim::Optimize(Expr(func), common::DefaultHostTarget(), false)
                  .as_lowered_func_ref();
@@ -1359,6 +1359,9 @@ ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
     for (const auto& op : ops) {
       for (size_t i = 0; i < op->num_operands(); ++i) {
         auto in = op->operand_source(i);
+        if (!in || !in.type()) {
+          continue;
+        }
         auto type_info = in.type().dyn_cast<paddle::dialect::DenseTensorType>();
         auto dtype = type_info.dtype();
         const auto& dims = type_info.dims();
@@ -1387,6 +1390,7 @@ ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
         }
       }
     }
+    return true;
   };
   if (!need_lower_x86()) {
     return ir::Expr(-1);
