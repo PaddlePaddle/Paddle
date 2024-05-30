@@ -466,8 +466,7 @@ bool AnalysisPredictor::Init(
     }
   }
 
-  if(!config_.new_ir_enabled() && extension_!="json")
-  {
+  if (!config_.new_ir_enabled() && extension_ != "json") {
     LOG(INFO) << "调用了PrepareFeedFetch";
     PrepareFeedFetch();
   }
@@ -477,7 +476,7 @@ bool AnalysisPredictor::Init(
   //   LOG(INFO) << "传递给PreparePirFeedFetch的pir_program" << *pir_program_;
   //   PreparePirFeedFetch(pir_program_);
   // } else {
-    
+
   // }
 
   // Prepare executor, create local variables.
@@ -836,22 +835,23 @@ bool AnalysisPredictor::PreparePirProgram() {
 
     // 创建param_name和var配对列表
     std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
-    int feed_idx=0;
+    int feed_idx = 0;
     for (auto op : block->ops()) {
       LOG(INFO) << "ops的 " << op->name();
       // 将pd_op.data和pd_op.fetch放入idx2fetches和idx2feeds中
       if (op->isa<paddle::dialect::FetchOp>()) {
-        int idx =op->attribute("col").dyn_cast<pir::Int32Attribute>().data();
-        if(fetches_.size() <=static_cast<size_t>(idx))
-        {
-          fetches_.resize(idx+1);
-          std::string fetch_name = op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+        int idx = op->attribute("col").dyn_cast<pir::Int32Attribute>().data();
+        if (fetches_.size() <= static_cast<size_t>(idx)) {
+          fetches_.resize(idx + 1);
+          std::string fetch_name =
+              op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
           LOG(INFO) << "fetch_name: " << fetch_name;
           idx2fetches_[idx] = fetch_name;
         }
-      }else if(op->isa<paddle::dialect::DataOp>() || op->isa<paddle::dialect::FeedOp>())
-      {
-        std::string data_name =op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+      } else if (op->isa<paddle::dialect::DataOp>() ||
+                 op->isa<paddle::dialect::FeedOp>()) {
+        std::string data_name =
+            op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
         LOG(INFO) << "data_name: " << data_name;
         idx2feeds_[feed_idx] = data_name;
         feed_idx++;
@@ -869,13 +869,13 @@ bool AnalysisPredictor::PreparePirProgram() {
           } else if (auto data_op =
                          var.defining_op<paddle::dialect::DataOp>()) {
             var_name = data_op.attribute<pir::StrAttribute>("name").AsString();
-            LOG(INFO)<<"data op的var_name "<<var_name;
+            LOG(INFO) << "data op的var_name " << var_name;
             param_name_var_pairs.emplace_back(var_name, var);
           }
         }
       }
     }
-  
+
     // 对param_name_var_pairs进行排序
     std::sort(param_name_var_pairs.begin(),
               param_name_var_pairs.end(),
@@ -959,13 +959,11 @@ bool AnalysisPredictor::PreparePirProgram() {
     LOG(INFO) << "sub_scope_变量的指针";
     LOG(INFO) << sub_scope_;
 
-    
-    auto var_input =sub_scope_->FindVar("_jst.0.inputs.0");
-    if(var_input == nullptr)
-    {
+    auto var_input = sub_scope_->FindVar("_jst.0.inputs.0");
+    if (var_input == nullptr) {
       LOG(INFO) << "var_input is nullptr";
-    }else{
-      LOG(INFO)<<"var_input is not nullptr";
+    } else {
+      LOG(INFO) << "var_input is not nullptr";
     }
 
     auto ir_printing_conditions = [this](::pir::Pass *pass,
@@ -1404,7 +1402,9 @@ bool AnalysisPredictor::PrepareExecutor() {
   }
   std::string filename = config_.prog_file();
   std::string extension_ = filename.substr(filename.find_last_of(".") + 1);
-  if (extension_ != "json") {
+  if (config_.new_ir_enabled() && extension_ == "json") {
+    executor_->PreparePir(sub_scope_);
+  } else {
     DisablePrepareDataOpt(inference_program_, 0, false);
     executor_->Prepare(sub_scope_, *inference_program_, 0);
   }
@@ -2801,6 +2801,7 @@ AnalysisPredictor::GetOutputTypes() {
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
   framework::Scope *scope = nullptr;
+
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {  // NOLINT
     scope = scope_.get();
@@ -2808,21 +2809,20 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     scope = executor_->GetScope();
   }
 #else
-  
+
   scope = executor_->GetScope();
-  LOG(INFO)<<"GetInputTensor中的scope "<<scope;
+  LOG(INFO) << "GetInputTensor中的scope " << scope;
 #endif
-  LOG(INFO)<<"GetInputTensor中的name "<<name;
-  if(scope == nullptr)
-  {
-    LOG(ERROR)<<"Scope is null!";
+  LOG(INFO) << "GetInputTensor中的name " << name;
+  if (scope == nullptr) {
+    LOG(ERROR) << "Scope is null!";
     return nullptr;
   }
-  
+
   auto var = scope->FindVar(name);
-  if(var ==nullptr)
-  {
-    LOG(ERROR)<<"The variable named "<<name<<" is not found in the scope of the executor.";
+  if (var == nullptr) {
+    LOG(ERROR) << "The variable named " << name
+               << " is not found in the scope of the executor.";
     return nullptr;
   }
   PADDLE_ENFORCE_NOT_NULL(
