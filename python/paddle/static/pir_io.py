@@ -251,7 +251,13 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     if not all(isinstance(v, pir.Value) for v in fetch_vars):
         raise TypeError("fetch_vars type must be a Value or a list of Value.")
 
-    # TODO(Ruting) remind users to set auc_states to 0 if auc op were found.
+    # remind users to set auc_states to 0 if auc op were found.
+    for op in program.global_block().ops:
+        if op.name() == 'pd_op.auc':
+            warnings.warn(
+                "Be sure that you have set auc states to 0 before saving inference model."
+            )
+            break
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
