@@ -22,6 +22,7 @@ from test_eager_deletion_padding_rnn import PaddingRNNTestBase, RNNConfig
 
 import paddle
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestExecutor(unittest.TestCase):
@@ -99,6 +100,7 @@ class ExecutorPaddingRNNTest(PaddingRNNTestBase):
                 program=self.main_program,
             )
 
+    @test_with_pir_api
     def test_inference_output(self):
         for rnn_model in ["static"]:
             # Set parallel to False to use the default executor.

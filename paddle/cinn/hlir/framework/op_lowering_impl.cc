@@ -408,11 +408,19 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     }
 
     // Insert output tensors into function arg
-    if (!expr.as_tensor_ref()->buffer.defined() ||
-        this->target_ != cinn::common::DefaultNVGPUTarget()) {
-      op_func_arg_tensors->push_back(expr.as_tensor_ref());
-      expr.as_tensor_ref()->WithBuffer();
-    }
+    target_.arch.Match(
+        [&](common::NVGPUArch) {
+          if (!expr.as_tensor_ref()->buffer.defined()) {
+            op_func_arg_tensors->push_back(expr.as_tensor_ref());
+            expr.as_tensor_ref()->WithBuffer();
+          }
+        },
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) {
+          op_func_arg_tensors->push_back(expr.as_tensor_ref());
+          expr.as_tensor_ref()->WithBuffer();
+        });
   }
 
   // 2.Do lower

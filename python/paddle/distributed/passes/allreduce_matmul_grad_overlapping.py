@@ -117,16 +117,15 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 block, matmul_grad_id, self.dist_context, self.op_namescope
             )
 
-            allreduce_op.dist_attr.execution_stream = (
-                AutoParallelStreamType.MP_STREAM.value
-            )
-
             # NOTE(Ruibiao): Required OP scheduling order: matmul(dOut, Y^T) -> c_allreduce_sum(dX) -> matmul(X^T, dOut).
             # c_allreduce_sum(dX) and matmul(X^T, dOut) cannot be swapped. Otherwise, after buffer_shared_inplace_pass
             # adding share_buffer OP before c_allreduce_sum, c_allreduce_sum will synchronous with comp-stream, and then
             # the matmul op before it cannot be overlapped.
             allreduce_op_dist_attr = (
                 self.dist_context.get_op_dist_attr_for_program(allreduce_op)
+            )
+            allreduce_op_dist_attr.execution_stream = (
+                AutoParallelStreamType.MP_STREAM.value
             )
 
             allreduce_op_inputs = allreduce_op.desc.input_names()
