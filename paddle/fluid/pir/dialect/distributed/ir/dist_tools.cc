@@ -17,8 +17,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/operation.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 bool AllInputAreDist(const std::vector<pir::Value>& inputs) {
   for (auto value : inputs) {
@@ -225,5 +224,4 @@ void CopyLeafOpToMesh(pir::Value value, ProcessMeshAttribute mesh_attr) {
     }
   }
 }
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
