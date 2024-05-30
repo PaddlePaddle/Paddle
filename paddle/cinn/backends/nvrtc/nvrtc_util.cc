@@ -29,7 +29,7 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 PD_DECLARE_string(cinn_nvcc_cmd_path);
 PD_DECLARE_bool(nvrtc_compile_to_cubin);
 PD_DECLARE_bool(cinn_nvrtc_cubin_with_fmad);
@@ -151,7 +151,9 @@ std::string Compiler::CompileCudaSource(const std::string& code,
     std::string log;
     log.resize(log_size);
     NVRTC_CALL(nvrtcGetProgramLog(prog, &log[0]));
-    CHECK_EQ(compile_res, NVRTC_SUCCESS) << log << "\nThe code is:\n" << code;
+    PADDLE_ENFORCE_EQ(compile_res,
+                      NVRTC_SUCCESS,
+                      phi::errors::Fatal("NVRTC compilation failed"));
   }
 
   size_t size;
