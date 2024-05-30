@@ -18,6 +18,28 @@ COMMON_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace primitive {
+
+namespace {
+  void SetCurrentStopGradientsAttr(const Tensor& res, const std::vector<std::vector<bool>>& stop_gradients) {
+    auto* current_op = std::static_pointer_cast<primitive::LazyTensor>(res.impl())->value().defining_op();
+    VLOG(0) << "op name is ************************* "<<current_op->name();
+
+    std::vector<pir::Attribute> current_bwd_op_stop_gradients;
+    for (int i=0; i<stop_gradients.size(); ++i) {
+        std::vector<pir::Attribute> tmp;
+      for (int j=0; j<stop_gradients[i].size(); ++j) {
+        tmp.push_back(pir::BoolAttribute::get(pir::IrContext::Instance(), stop_gradients[i][j]));
+      }
+      current_bwd_op_stop_gradients.push_back(pir::ArrayAttribute::get(pir::IrContext::Instance(), tmp));
+    }
+
+    current_op->set_attribute(
+        "current_bwd_op_stop_gradients",
+        pir::ArrayAttribute::get(pir::IrContext::Instance(), current_bwd_op_stop_gradients));
+    return;
+  }
+}
+
 {% macro sig(fwd_name, name, inputs, attrs, outputs) -%}
 std::vector<std::vector<paddle::Tensor>> {{fwd_name}}_vjp({{common.params(inputs, attrs, attrs is exist_mutable_attribute)}}, const std::vector<std::vector<bool>>& stop_gradients)
 {%- endmacro -%}
@@ -108,6 +130,7 @@ vjp_res[0] = op_res;
     {% endif %}
   {% else %} {#- render nothing -#}
   {% endif %}
+SetCurrentStopGradientsAttr(vjp_res[0][0], stop_gradients);
 vjp_res = ConstructVjpResultByStopGradients(vjp_res, stop_gradients);
 {% endmacro %}
 
