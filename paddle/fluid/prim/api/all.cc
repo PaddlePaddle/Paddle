@@ -13,4 +13,3 @@
 // limitations under the License.
 
 #include "paddle/fluid/prim/api/all.h"
-
