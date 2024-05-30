@@ -723,7 +723,6 @@ class TestElementwises
 TEST_P(TestElementwises, elementwise_basic) {  // NOLIN
   TestElementwise(GetParam());
 }
-T
 
 TEST_P(TestElementwises, elementwise_output_scale_missing) {  // NOLINT
   TestElementwiseOutputScaleMissing(GetParam());
