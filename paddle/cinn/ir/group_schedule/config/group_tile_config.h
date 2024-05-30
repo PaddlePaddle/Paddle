@@ -29,7 +29,9 @@ namespace ir {
 struct ScheduleConfig {
   struct BaseInfo {
     std::vector<int64_t> reduce_axis;
+    std::vector<int64_t> raw_reduce_axis;
     int64_t data_rank;
+    int64_t raw_data_rank;
     int64_t reduce_numel;
     int64_t spatial_numel;
     bool has_dynamic_spatial{false};
