@@ -216,7 +216,6 @@ __global__ void DequantKernel(T* output,
   for (; idx < numel; idx += stride) {
     phi::Load<int32_t, VecSize>(input + idx, &in_vec);
     phi::Load<float, VecSize>(dequant_out_scale_data + col_id, &out_scale_vec);
-
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
       out_vec[i] =

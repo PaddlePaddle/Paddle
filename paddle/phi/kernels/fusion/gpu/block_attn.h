@@ -138,7 +138,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   const int hi = blockIdx.x;
   const int kv_hi = blockIdx.x / head_group_size;
   const int bhi = bi * params.q_num_head + hi;
-  const int kv_bhi = bi * params.kv_num_head + kv_hi;
 
   float k_quant_scale;
   float v_quant_scale;
@@ -146,16 +145,20 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   float v_dequant_scale;
 
   if (USE_CACHE_INT8 == 1) {  // static
-    k_quant_scale = params.cache_k_quant_scales[kv_hi];
-    v_quant_scale = params.cache_v_quant_scales[kv_hi];
-    k_dequant_scale = params.cache_k_dequant_scales[kv_hi];
-    v_dequant_scale = params.cache_v_dequant_scales[kv_hi];
+    k_quant_scale = params.cache_k_quant_scales[hi % params.kv_num_head];
+    v_quant_scale = params.cache_v_quant_scales[hi % params.kv_num_head];
+    k_dequant_scale = params.cache_k_dequant_scales[hi % params.kv_num_head];
+    v_dequant_scale = params.cache_v_dequant_scales[hi % params.kv_num_head];
   } else if (USE_CACHE_INT8 == 2) {  // dynamic
-    k_quant_scale = params.cache_k_quant_scales[kv_bhi];
-    v_quant_scale = params.cache_v_quant_scales[kv_bhi];
-    k_dequant_scale = params.cache_k_dequant_scales[kv_bhi];
+    k_quant_scale = params.cache_k_quant_scales[bi * params.kv_num_head +
+                                                hi % params.kv_num_head];
+    v_quant_scale = params.cache_v_quant_scales[bi * params.kv_num_head +
+                                                hi % params.kv_num_head];
+    k_dequant_scale = params.cache_k_dequant_scales[bi * params.kv_num_head +
+                                                    hi % params.kv_num_head];
 
-    v_dequant_scale = params.cache_v_dequant_scales[kv_bhi];
+    v_dequant_scale = params.cache_v_dequant_scales[bi * params.kv_num_head +
+                                                    hi % params.kv_num_head];
   }
 
   const int ti =
@@ -505,7 +508,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
     if (params.add_qkv_bias) {
       v_bias = *reinterpret_cast<const V_vec *>(
           &params.qkv_bias[(params.kv_num_head + params.q_num_head) * Dh +
-                           hi * Dh + vi]);
+                           hi / head_group_size * Dh + vi]);
       v = add(v, v_bias);
     }
 
@@ -2590,7 +2593,6 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
     const int32_t qkv_id = bias_idx / kv_hidden_size;
     const int32_t head_id = (linear_index % kv_hidden_size) / size_per_head;
     const int32_t size_id = linear_index % size_per_head;
-    const int32_t head_dim = kv_hidden_size / size_per_head;
 
     // mark qkvid problem
     const int tmp_max_len_this_time =
@@ -2599,7 +2601,8 @@ __global__ void fusedQKV_transpose_split_kernel(T *q_buf,
         qkv_id < head_group_size ? seq_id : seq_id + pre_cache_length;
     const int q_write_idx =
         target_batch_id * q_head_num * tmp_max_len_this_time * size_per_head +
-        (head_id + qkv_id * head_dim) * tmp_max_len_this_time * size_per_head +
+        (head_id + qkv_id * kv_head_num) * tmp_max_len_this_time *
+            size_per_head +
         tmp_seq_id * size_per_head + size_id;
     const int kv_write_idx =
         target_batch_id * kv_head_num * tmp_max_len_this_time * size_per_head +
