@@ -17,9 +17,6 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/place.h"
 
-namespace paddle::framework {
-
-}  // namespace paddle::framework
 namespace paddle::framework::internal {
 template <typename T>
 static ::DLDataType GetDLDataTypeCode() {
