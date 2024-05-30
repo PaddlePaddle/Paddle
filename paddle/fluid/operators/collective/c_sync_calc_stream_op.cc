@@ -13,8 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/collective/c_sync_calc_stream_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CSyncCalcStreamOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -28,8 +27,7 @@ Call calculation stream synchronization.
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

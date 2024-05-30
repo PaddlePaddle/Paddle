@@ -35,8 +35,7 @@ limitations under the License. */
 
 PHI_DECLARE_bool(use_stride_kernel);
 
-namespace paddle {
-namespace experimental {
+namespace paddle::experimental {
 
 inline bool NeedTransformDataType(const DataType& input,
                                   const DataType& target,
@@ -1043,5 +1042,4 @@ PrepareDataForDistTensor(
   return paddle::none;
 }
 
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace paddle::experimental
