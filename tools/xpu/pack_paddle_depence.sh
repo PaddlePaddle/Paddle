@@ -59,13 +59,14 @@ function xhpc_prepare() {
       tar xvf xhpc.tar.gz
 
       cp -r ${XHPC_DIR_NAME}/xblas/include/* xpu/include/xhpc/xblas
-      cp -r ${XHPC_DIR_NAME}/xblas/so/* xpu/lib/
+      cp -r ${XHPC_DIR_NAME}/xblas/so/libxpu_blas.so xpu/lib/
 
       cp -r ${XHPC_DIR_NAME}/xdnn/include/* xpu/include/
-      cp -r ${XHPC_DIR_NAME}/xdnn/so/* xpu/lib
+      patchelf --replace-needed libxpurt.so.1 libxpurt.so.2 ${XHPC_DIR_NAME}/xdnn/so/libxpuapi.so
+      cp -r ${XHPC_DIR_NAME}/xdnn/so/libxpuapi.so xpu/lib
 
       cp -r ${XHPC_DIR_NAME}/xfa/include/* xpu/include/xhpc/xfa
-      cp -r ${XHPC_DIR_NAME}/xfa/so/* xpu/lib/
+      cp -r ${XHPC_DIR_NAME}/xfa/so/libxpu_flash_attention.so xpu/lib/
     else
       cp -r ${XDNN_DIR_NAME}/include/xpu/* xpu/include/xpu/
       cp -r ${XDNN_DIR_NAME}/so/* xpu/lib/
