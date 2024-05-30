@@ -17,9 +17,6 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle::framework::ir {
-
-}  // namespace paddle::framework::ir
 namespace paddle::framework::ir::patterns {
 
 // pre_op -> useless_op_in -> useless_op -> useless_op_out
