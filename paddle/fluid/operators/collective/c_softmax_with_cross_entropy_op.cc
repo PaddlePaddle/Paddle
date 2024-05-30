@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_softmax_with_cross_entropy_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CSoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
  public:
@@ -185,8 +184,7 @@ DECLARE_INPLACE_OP_INFERER(CSoftmaxWithCrossEntropyInplaceInferer,
 DECLARE_INPLACE_OP_INFERER(CSoftmaxWithCrossEntropyGradInplaceInferer,
                            {"Softmax", framework::GradVarName("Logits")});
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

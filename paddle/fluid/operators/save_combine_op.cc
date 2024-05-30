@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class SaveCombineOp : public framework::OperatorWithKernel {
  public:
@@ -94,8 +93,7 @@ class SaveCombineOpInferVarType : public framework::VarTypeInference {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

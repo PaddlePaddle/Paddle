@@ -13,8 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/collective/c_sync_comm_stream_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CSyncCommStreamOp : public framework::OperatorWithKernel {
  public:
@@ -44,8 +43,7 @@ Call communication stream synchronization.
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

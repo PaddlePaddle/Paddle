@@ -19,8 +19,7 @@
 #include "paddle/fluid/pir/drr/src/match_context_impl.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace paddle {
-namespace drr {
+namespace paddle::drr {
 
 MatchContext::MatchContext(std::shared_ptr<const MatchContextImpl> impl)
     : impl_(std::move(impl)) {}
@@ -47,5 +46,4 @@ template phi::DataType MatchContext::Attr<phi::DataType>(
     const std::string&) const;
 template phi::Place MatchContext::Attr<phi::Place>(const std::string&) const;
 
-}  // namespace drr
-}  // namespace paddle
+}  // namespace paddle::drr

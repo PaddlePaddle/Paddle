@@ -22,16 +22,11 @@
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #endif
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 //     input_q input_kv
 //       |q     |k      v
@@ -207,7 +202,8 @@ PDNode* TrtCrossMultiHeadMatmulPattern::operator()() {
   return reshape2_qkv_out_var;
 }
 
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 TrtCrossMultiHeadMatmulFusePass::TrtCrossMultiHeadMatmulFusePass() {
   AddOpCompat(OpCompat("reshape2"))
@@ -521,9 +517,7 @@ void TrtCrossMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
   AddStatis(fusion_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(trt_cross_multihead_matmul_fuse_pass,
               paddle::framework::ir::TrtCrossMultiHeadMatmulFusePass);

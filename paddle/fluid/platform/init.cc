@@ -68,8 +68,7 @@ limitations under the License. */
 COMMON_DECLARE_int32(paddle_num_threads);
 COMMON_DECLARE_int32(multiple_of_cupti_buffer_size);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 #ifdef _WIN32
 #define strdup _strdup
@@ -515,5 +514,4 @@ void InitMemoryMethod() {
   });
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

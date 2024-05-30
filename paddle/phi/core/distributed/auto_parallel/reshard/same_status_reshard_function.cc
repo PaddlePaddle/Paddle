@@ -24,8 +24,7 @@
 #include "paddle/phi/kernels/p_recv_kernel.h"
 #include "paddle/phi/kernels/p_send_kernel.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 bool SameStatusReshardFunction::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
@@ -113,5 +112,4 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   SetDistProps(out, in.dims(), out_dist_attr);
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

@@ -16,8 +16,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/ir_context.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 ApiBuilder::ApiBuilder()
     : ctx_(pir::IrContext::Instance()),
@@ -64,5 +63,4 @@ void ApiBuilder::LoadInsertionPoint() {
   insertion_point_stack_.pop();
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

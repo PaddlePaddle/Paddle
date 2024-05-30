@@ -16,19 +16,15 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
 
-namespace proto {
+}  // namespace paddle::framework
+namespace paddle::framework::proto {
 class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::proto
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 template <typename RegistFunc, typename SetDilationFunc>
 void ConvertConv2d(TensorRTEngine* engine,
@@ -260,9 +256,7 @@ class Deconv2dOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(conv2d, Conv2dOpConverter);
 REGISTER_TRT_OP_CONVERTER(fused_conv2d_add_act, Conv2dOpConverter);
