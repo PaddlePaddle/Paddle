@@ -79,13 +79,13 @@ void InferShape(Node* node,
   PADDLE_ENFORCE_GE(
       node->outlinks_in_order().size(),
       out_shape.size(),
-      platform::errors::InvalidArgument("The output number of node is smaller "
-                                        "than the output shape size"));
+      phi::errors::InvalidArgument("The output number of node is smaller "
+                                   "than the output shape size"));
   PADDLE_ENFORCE_GE(
       node->outlinks_in_order().size(),
       out_dtype.size(),
-      platform::errors::InvalidArgument("The output number of node is smaller "
-                                        "than the output dtype size"));
+      phi::errors::InvalidArgument("The output number of node is smaller "
+                                   "than the output dtype size"));
 
   int counter = 0;
   for (auto& out_edge : node->outlinks_in_order()) {
