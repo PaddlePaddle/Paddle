@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import nn
 
 
 class TestBase(unittest.TestCase):
@@ -49,22 +48,22 @@ class TestBase(unittest.TestCase):
         pass
 
     def train(self, net, to_static, with_prim=False, with_cinn=False):
+        paddle.seed(123)
         if to_static:
             paddle.set_flags({'FLAGS_prim_all': with_prim})
             if with_cinn:
                 build_strategy = paddle.static.BuildStrategy()
                 build_strategy.build_cinn_pass = True
                 net = paddle.jit.to_static(
-                    net,
+                    net(),
                     build_strategy=build_strategy,
                     full_graph=True,
                     input_spec=self.input_specs,
                 )
             else:
                 net = paddle.jit.to_static(
-                    net, full_graph=True, input_spec=self.input_specs
+                    net(), full_graph=True, input_spec=self.input_specs
                 )
-        paddle.seed(123)
         if self.with_train:
             net.train()
         else:
@@ -91,15 +90,13 @@ class TestBase(unittest.TestCase):
                     st.numpy(), cinn.numpy(), atol=self.atol
                 )
         if self.with_train:
-            criterion = nn.MSELoss()
-            target = paddle.rand(shape=st_out.shape, dtype=st_out.dtype)
-            st_loss = criterion(st_out, target)
+            st_loss = st_out.mean()
             st_loss.backward()
             st_grad = []
             for i in range(len(self.inputs)):
                 if self.inputs[i].dtype != paddle.int64:
                     st_grad.append(self.inputs[i].grad.numpy().copy())
-            cinn_loss = criterion(cinn_out, target)
+            cinn_loss = cinn_out.mean()
             cinn_loss.backward()
             cinn_grad = []
             for i in range(len(self.inputs)):

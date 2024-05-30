@@ -4048,6 +4048,137 @@ void PsroiPoolInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void PyramidHashInferMeta(const MetaTensor& x,
+                          const MetaTensor& w,
+                          const MetaTensor& white_list,
+                          const MetaTensor& black_list,
+                          int num_emb,
+                          int space_len,
+                          int pyramid_layer,
+                          int rand_len,
+                          float drop_out_percent,
+                          int is_training,
+                          bool use_filter,
+                          int white_list_len,
+                          int black_list_len,
+                          int seed,
+                          float lr,
+                          const std::string& distribute_update_vars,
+                          MetaTensor* out,
+                          MetaTensor* drop_pos,
+                          MetaTensor* x_temp_out,
+                          MetaConfig config) {
+  const auto& x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input(X) of PyramidHashOP is invalid. "
+                        "It should be 2, but got %d",
+                        x_dims.size()));
+
+  const auto& w_dims = w.dims();
+  PADDLE_ENFORCE_EQ(w_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input(W) of PyramidHashOP is invalid. "
+                        "It should be 2, but got %d",
+                        w_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      w_dims[0],
+      space_len + rand_len,
+      phi::errors::InvalidArgument(
+          "The first dimension of Input(W) of PyramidHashOP is invalid. "
+          "It should be space_len + rand_len, but now %d != %d + %d",
+          w_dims[0],
+          space_len,
+          rand_len));
+  PADDLE_ENFORCE_EQ(
+      w_dims[1],
+      1,
+      phi::errors::InvalidArgument(
+          "The second dimension of Input(W) of PyramidHashOP is invalid."
+          " It should be 1, but got %d",
+          w_dims[1]));
+
+  PADDLE_ENFORCE_EQ(
+      num_emb % rand_len,
+      0,
+      phi::errors::InvalidArgument(
+          "The PyramidHashOP's Attr(num_emb) should mod Attr(rand_len), "
+          "but num_emb is %d, rand_len is %d",
+          num_emb,
+          rand_len));
+
+  if (white_list_len > 0) {
+    PADDLE_ENFORCE_EQ(
+        white_list.initialized(),
+        true,
+        phi::errors::NotFound("Input(WhiteList) of PyramidHashOP is not "
+                              "found but white_list_len > 0."));
+    const auto& wl_dims = white_list.dims();
+    PADDLE_ENFORCE_EQ(
+        wl_dims.size(),
+        2,
+        phi::errors::InvalidArgument(
+            "The rank of Input(WhiteList) of PyramidHashOP is invalid."
+            " It should be 2, but got %d",
+            wl_dims.size()));
+    PADDLE_ENFORCE_EQ(wl_dims[0],
+                      white_list_len,
+                      phi::errors::InvalidArgument(
+                          "The first dimension of Input(WhiteList) of "
+                          "PyramidHashOP is invalid."
+                          " It should be equal to Attr(white_list_len) "
+                          ", but first dimension is %d, white_list_len is %d",
+                          wl_dims[0],
+                          white_list_len));
+    PADDLE_ENFORCE_EQ(wl_dims[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The second dimension of Input(WhiteList) of "
+                          "PyramidHashOP is invalid."
+                          " It should be 1, but got %d",
+                          wl_dims[1]));
+  }
+
+  if (black_list_len > 0) {
+    const auto& bl_dims = black_list.dims();
+    PADDLE_ENFORCE_EQ(
+        bl_dims.size(),
+        2,
+        phi::errors::InvalidArgument(
+            "The rank of Input(BlackList) of PyramidHashOP is invalid."
+            " It should be 2, but got %d",
+            bl_dims.size()));
+    PADDLE_ENFORCE_EQ(bl_dims[0],
+                      black_list_len,
+                      phi::errors::InvalidArgument(
+                          "The first dimension of Input(BlackList) of "
+                          "PyramidHashOP is invalid."
+                          " It should be equal to Attr(black_list_len)"
+                          ", but first dimension is %d, black_list_len is %d",
+                          bl_dims[0],
+                          black_list_len));
+    PADDLE_ENFORCE_EQ(bl_dims[1],
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The second dimension of Input(BlackList) of "
+                          "PyramidHashOP is invalid."
+                          " It should be 1, but got %d",
+                          bl_dims[1]));
+  }
+
+  if (config.is_runtime) {
+    // something to do in runtime.
+  } else {
+    // compile time
+    out->set_dims(common::make_ddim({-1, num_emb}));
+    x_temp_out->set_dims(x_dims);
+    out->share_lod(x);
+  }
+}
+
 void QuantizeLinearInferMeta(const MetaTensor& x,
                              const MetaTensor& scale,
                              const MetaTensor& zero_point,

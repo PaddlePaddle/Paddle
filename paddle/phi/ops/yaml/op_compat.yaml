@@ -4197,6 +4197,13 @@
   outputs:
     new_gate_idx: NewGateIdx
 
+- op: pyramid_hash
+  backward: pyramid_hash_grad
+  inputs:
+    {x : X, w : W, white_list : WhiteList, black_list : BlackList}
+  outputs:
+    {out : Out, drop_pos : DropPos, x_temp_out : X_Temp_Out}
+
 - op: random_routing
   inputs:
     {prob : Prob, topk_value : TopK_Value, topk_idx : TopK_Idx}
