@@ -17,7 +17,6 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <nvrtc.h>
-#include <pybind11/pybind11.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -32,6 +31,7 @@
 #include "paddle/cinn/utils/string.h"
 
 PD_DECLARE_string(cinn_nvcc_cmd_path);
+PD_DECLARE_string(nvidia_package_dir);
 PD_DECLARE_bool(nvrtc_compile_to_cubin);
 PD_DECLARE_bool(cinn_nvrtc_cubin_with_fmad);
 
@@ -39,15 +39,30 @@ namespace cinn {
 namespace backends {
 namespace nvrtc {
 
-static std::string GetPythonSitePackagePath() {
-  pybind11::module site = pybind11::module::import("site");
-  pybind11::object path_obj = site.attr("getsitepackages")();
-  auto path_list = pybind11::cast<pybind11::list>(path_obj);
-  PADDLE_ENFORCE_GT(
-      path_list.size(),
-      0,
-      ::common::errors::NotFound("site.getsitepackages() returns empty."));
-  return pybind11::cast<std::string>(path_list[0]);
+static bool TryLocatePath(const std::string& path) {
+  struct stat st;
+  return stat(path.c_str(), &st) == 0;
+}
+
+static std::vector<std::string> GetNvidiaAllIncludePath(
+    const std::string& nvidia_package_dir) {
+  std::vector<std::string> include_paths;
+  const std::string delimiter = "/";
+  // Expand this list if necessary.
+  const std::vector<std::string> sub_modules = {"cublas",
+                                                "cudnn",
+                                                "cufft",
+                                                "cusparse",
+                                                "cusolver",
+                                                "cuda_nvrtc",
+                                                "curand",
+                                                "cuda_runtime"};
+  for (auto& sub_module : sub_modules) {
+    std::string path =
+        nvidia_package_dir + delimiter + sub_module + delimiter + "include";
+    include_paths.push_back(path);
+  }
+  return include_paths;
 }
 
 std::string Compiler::operator()(const std::string& code,
@@ -77,22 +92,21 @@ std::vector<std::string> Compiler::FindCUDAIncludePaths() {
   if (cuda_path_env != nullptr) {
     cuda_include_path += cuda_path_env;
     cuda_include_path += delimiter + "include";
+    VLOG(4) << "FindCUDAIncludePaths from CUDA_PATH: " << cuda_include_path;
     return {cuda_include_path};
   }
-  const auto& TryLocateCudaIncludePath = [](const std::string& path) -> bool {
-    struct stat st;
-    return stat(path.c_str(), &st) == 0;
-  };
 
 #if defined(__linux__)
-  cuda_include_path =
-      GetPythonSitePackagePath() + delimiter + "nvidia/cuda_runtime/include";
-  if (TryLocateCudaIncludePath(cuda_include_path)) {
-    return {cuda_include_path};
+  if (!FLAGS_nvidia_package_dir.empty() &&
+      TryLocatePath(FLAGS_nvidia_package_dir)) {
+    VLOG(4) << "FindCUDAIncludePaths from nvidia_package_dir: "
+            << FLAGS_nvidia_package_dir;
+    return GetNvidiaAllIncludePath(FLAGS_nvidia_package_dir);
   }
 
   cuda_include_path = "/usr/local/cuda/include";
-  if (TryLocateCudaIncludePath(cuda_include_path)) {
+  if (TryLocatePath(cuda_include_path)) {
+    VLOG(4) << "FindCUDAIncludePaths from " << cuda_include_path;
     return {cuda_include_path};
   }
 #endif
