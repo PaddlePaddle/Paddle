@@ -4389,6 +4389,7 @@
            uniform_random_batch_size_like_sr {selected_rows -> selected_rows}
     data_type: dtype
   no_need_buffer: input
+  traits : pir::SideEffectTrait
 
 - op : unique_consecutive
   args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, DataType dtype = DataType::FLOAT32)
