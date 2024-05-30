@@ -469,7 +469,22 @@ void OneDNNPhiKernelInstruction::Run() {
           phi::funcs::make_memory_desc(*transed_tensor, from_layout);
       transed_tensor->set_mem_desc(out_mem_desc);
       tmp_kernel_context.UpdataInput(i, transed_tensor);
-      tmp_infer_meta_context_.UpdataInput(i, phi::MetaTensor(transed_tensor));
+      auto meta_tensor = phi::MetaTensor(transed_tensor);
+      auto input_meta_tensor = phi::MetaTensor(input);
+      if (tmp_infer_meta_context_.InputAt(i).is_same_tensor(
+              input_meta_tensor)) {
+        tmp_infer_meta_context_.UpdataInput(i, meta_tensor);
+      } else {
+        size_t j = 0;
+        while (1) {
+          if (tmp_infer_meta_context_.InputAt(j).is_same_tensor(
+                  input_meta_tensor)) {
+            tmp_infer_meta_context_.UpdataInput(j, meta_tensor);
+            break;
+          }
+          j++;
+        }
+      }
     }
   }
 
