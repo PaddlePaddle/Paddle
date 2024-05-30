@@ -96,7 +96,9 @@ void CumprodKernel(const Context& dev_ctx,
       }
     }
   }
-  memcpy(out_ptr, out_data, out->numel() * sizeof(T));
+  if (x_data == out_ptr) {
+    memcpy(out_ptr, out_data, out->numel() * sizeof(T));
+  }
 }
 
 }  // namespace phi
