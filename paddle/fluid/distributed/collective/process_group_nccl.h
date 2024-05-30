@@ -188,7 +188,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   static void GroupEnd();
 
-  static void LogOneStep();
+  static void LogSingleStep();
 
   ncclComm_t NCCLComm(const Place& place) const;
 

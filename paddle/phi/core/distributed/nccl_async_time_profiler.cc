@@ -31,15 +31,27 @@ NCCLAsyncTimeProfiler::NCCLAsyncTimeProfiler() : terminated_(false), pool_(10) {
 
 NCCLAsyncTimeProfiler::~NCCLAsyncTimeProfiler() { Stop(); }
 
-void NCCLAsyncTimeProfiler::LogOneStep() {
+void NCCLAsyncTimeProfiler::LogSingleStep() {
   if (!terminated_.load()) {
-    std::unique_lock<std::mutex> lk(clear_list_mutex_);
+#ifdef PADDLE_WITH_CUDA
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#else  // PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+#endif
+    std::unique_lock<std::mutex> lk(recoders_list_mutex_);
+    log_cv_.wait_for(lk, std::chrono::seconds(100), [&]() -> bool {
+      return recorders_list_.empty();
+    });
+    if (!recorders_list_.empty()) {
+      LOG(WARNING)
+          << "The communication has not completed after more than 100 seconds";
+    }
     for (auto& p : time_infos_) {
-      LOG(WARNING) << "gid:" << p.first
-                   << "   comm_group:" << p.second.recorder_name
-                   << "   comm_count:" << p.second.comm_count
-                   << "   time:" << p.second.time_sum
-                   << "   rank:" << p.second.rank;
+      LOG(INFO) << "gid:" << p.first
+                << "   comm_group:" << p.second.recorder_name
+                << "   comm_count:" << p.second.comm_count
+                << "   time:" << p.second.time_sum
+                << "   rank:" << p.second.rank;
       p.second.time_sum = 0.f;
       p.second.comm_count = 0;
     }
@@ -99,14 +111,12 @@ void NCCLAsyncTimeProfiler::RecordTimeLoop() {
         time_infos_[recorder->GetGid()].time_sum += recorder_time;
         time_infos_[recorder->GetGid()].comm_count++;
         AddClearRecorder(recorder);
+        log_cv_.notify_one();
         iter = recorders_list_.erase(iter);
       } else {
         ++iter;
       }
     }
-    lk.unlock();
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    lk.lock();
   }
 }
 

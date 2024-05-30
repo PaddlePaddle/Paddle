@@ -178,10 +178,10 @@ void ProcessGroupNCCL::GroupEnd() {
   }
 }
 
-void ProcessGroupNCCL::LogOneStep() {
+void ProcessGroupNCCL::LogSingleStep() {
   if (FLAGS_enable_async_time_profiler) {
-    LOG(WARNING) << "[LogOneStep]";
-    phi::distributed::NCCLAsyncTimeProfiler::GetInstance().LogOneStep();
+    LOG(WARNING) << "[LogSingleStep]";
+    phi::distributed::NCCLAsyncTimeProfiler::GetInstance().LogSingleStep();
   }
 }
 

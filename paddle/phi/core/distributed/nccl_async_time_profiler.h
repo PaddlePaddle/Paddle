@@ -46,7 +46,7 @@ class NCCLAsyncTimeProfiler {
     time_infos_[gid].recorder_name = recorder_name;
   }
   void Stop();
-  void LogOneStep();
+  void LogSingleStep();
 
   void AddRecorder(std::shared_ptr<NCCLAsyncRecorder> recorder);
 
@@ -66,6 +66,7 @@ class NCCLAsyncTimeProfiler {
 
   std::condition_variable recorders_cv_;
   std::condition_variable clear_cv_;
+  std::condition_variable log_cv_;
 
   std::thread loop_thread_;
   std::thread clear_thread_;
