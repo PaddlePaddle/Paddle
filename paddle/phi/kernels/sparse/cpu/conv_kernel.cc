@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/sparse/cpu/conv.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 /**
  * x: (N, D, H, W, C)
@@ -206,8 +205,7 @@ void Conv3dCooKernel(const Context& dev_ctx,
                                                                counter);
                                }));
 }
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(
     conv3d_coo, CPU, ALL_LAYOUT, phi::sparse::Conv3dCooKernel, float, double) {

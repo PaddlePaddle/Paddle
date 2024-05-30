@@ -26,8 +26,7 @@ limitations under the License. */
 #include <Accelerate/Accelerate.h>
 #endif
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 void SetNumThreads(int num_threads) {
 #ifdef PADDLE_USE_OPENBLAS
@@ -57,5 +56,4 @@ void SetNumThreads(int num_threads) {
 #endif
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

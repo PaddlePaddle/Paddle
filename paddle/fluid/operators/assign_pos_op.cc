@@ -16,8 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class AssignPosOp : public framework::OperatorWithKernel {
  public:
@@ -71,8 +70,7 @@ specially counter orderingly.
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

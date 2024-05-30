@@ -17,9 +17,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/operators/controlflow/op_variant.h"
 #include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 using OpVariant = operators::OpVariant;
 class PyLayerOpEagerDeletionPass : public Pass {
  protected:
@@ -94,9 +92,7 @@ class PyLayerOpEagerDeletionPass : public Pass {
   }
 };
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(pylayer_op_eager_deletion_pass,
               paddle::framework::ir::PyLayerOpEagerDeletionPass);

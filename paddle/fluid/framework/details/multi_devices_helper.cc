@@ -18,9 +18,7 @@
 #include "paddle/fluid/framework/details/share_tensor_buffer_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 static constexpr size_t kUndefinedDevIdx = -1UL;
 
@@ -300,6 +298,4 @@ bool HasKeepLastReadOp(const ir::Graph &graph) {
   return HasDropLastReadOpImpl(graph, false);
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

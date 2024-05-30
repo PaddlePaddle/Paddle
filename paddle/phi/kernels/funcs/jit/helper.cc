@@ -18,8 +18,7 @@
 
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace jit {
+namespace phi::jit {
 
 std::map<size_t, std::shared_ptr<void>>& GetFuncCacheMap() {
   static thread_local std::map<size_t, std::shared_ptr<void>> g_func_cache_map;
@@ -149,5 +148,4 @@ typename std::enable_if<!std::is_same<T, float>::value>::type pack_weights(
       "Only supports pack weights with float type."));
 }
 
-}  // namespace jit
-}  // namespace phi
+}  // namespace phi::jit

@@ -23,8 +23,7 @@
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 CustomTracer::CustomTracer(const std::string& dev_type)
     : dev_type_(dev_type), context_(nullptr) {
@@ -116,8 +115,7 @@ void CustomTracer::CollectTraceData(TraceEventCollector* collector) {
   collector_.ClearAll();
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 void profiler_add_runtime_trace_event(C_Profiler prof, void* event) {

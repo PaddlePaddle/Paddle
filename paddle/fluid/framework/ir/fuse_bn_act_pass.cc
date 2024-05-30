@@ -19,19 +19,13 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class Node;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void FuseBatchNormActPass::ApplyImpl(ir::Graph *graph) const {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -351,8 +345,6 @@ std::vector<Node *> FuseBatchNormActPass::ReplaceNode(
   return new_list;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(fuse_bn_act_pass, paddle::framework::ir::FuseBatchNormActPass);

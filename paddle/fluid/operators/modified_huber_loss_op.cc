@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class ModifiedHuberLossOp : public framework::OperatorWithKernel {
  public:
@@ -164,8 +163,7 @@ class ModifiedHuberLossGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

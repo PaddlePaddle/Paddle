@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace compatible {
+namespace paddle::framework::compatible {
 
 OpVersionDesc&& OpVersionDesc::NewInput(const std::string& name,
                                         const std::string& remark) {
@@ -102,6 +100,4 @@ PassVersionCheckerRegistrar& PassVersionCheckerRegistrar::GetInstance() {
 // Provide a fake registration item for pybind testing.
 #include "paddle/fluid/framework/op_version_registry.inl"
 
-}  // namespace compatible
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::compatible

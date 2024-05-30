@@ -19,9 +19,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES                    \
@@ -171,9 +169,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_conv_eltwise_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(conv_elementwise_add_fuse_pass,
               paddle::framework::ir::ConvElementwiseAddFusePass);
