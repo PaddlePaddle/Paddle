@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import argparse
 import inspect
 import logging
@@ -72,7 +74,7 @@ class Result:
     order: int = 0
 
     @classmethod
-    def msg(cls, count: int, env: typing.Set) -> str:
+    def msg(cls, count: int, env: set) -> str:
         """Message for logging with api `count` and running `env`."""
         raise NotImplementedError
 
@@ -91,8 +93,8 @@ class MetaResult(type):
     def __new__(
         mcs,
         name: str,
-        bases: typing.Tuple[type, ...],
-        namespace: typing.Dict[str, typing.Any],
+        bases: tuple[type, ...],
+        namespace: dict[str, typing.Any],
     ) -> type:
         cls = super().__new__(mcs, name, bases, namespace)
         if issubclass(cls, Result):
@@ -110,7 +112,7 @@ class MetaResult(type):
         return mcs.__cls_map.get(name)
 
     @classmethod
-    def cls_map(mcs) -> typing.Dict[str, Result]:
+    def cls_map(mcs) -> dict[str, Result]:
         return mcs.__cls_map
 
 
@@ -296,7 +298,7 @@ class DocTester:
         """
         pass
 
-    def run(self, api_name: str, docstring: str) -> typing.List[TestResult]:
+    def run(self, api_name: str, docstring: str) -> list[TestResult]:
         """Extract codeblocks from docstring, and run the test.
         Run only one docstring at a time.
 
@@ -310,7 +312,7 @@ class DocTester:
         raise NotImplementedError
 
     def print_summary(
-        self, test_results: typing.List[TestResult], whl_error: typing.List[str]
+        self, test_results: list[TestResult], whl_error: list[str]
     ) -> None:
         """Post process test results and print test summary.
 
@@ -593,9 +595,16 @@ def get_test_capacity(run_on_device="cpu"):
     return sample_code_test_capacity
 
 
-def get_docstring(full_test=False):
+def get_docstring(
+    full_test: bool = False,
+    filter_api: typing.Callable[[str], bool] | None = None,
+):
     '''
     this function will get the docstring for test.
+
+    Args:
+        full_test, get all api
+        filter_api, a function that filter api, if `True` then skip add to `docstrings_to_test`.
     '''
     import paddle
     import paddle.static.quantization  # noqa: F401
@@ -610,6 +619,9 @@ def get_docstring(full_test=False):
     with open(API_DIFF_SPEC_FN) as f:
         for line in f.readlines():
             api = line.replace('\n', '')
+            if filter_api is not None and filter_api(api.strip()):
+                continue
+
             try:
                 api_obj = eval(api)
             except AttributeError:
@@ -631,7 +643,7 @@ def get_docstring(full_test=False):
     return docstrings_to_test, whl_error
 
 
-def check_old_style(docstrings_to_test: typing.Dict[str, str]):
+def check_old_style(docstrings_to_test: dict[str, str]):
     old_style_apis = []
     for api_name, raw_docstring in docstrings_to_test.items():
         for codeblock in extract_code_blocks_from_docstr(
@@ -709,8 +721,8 @@ def exec_gen_doc():
 
 
 def get_test_results(
-    doctester: DocTester, docstrings_to_test: typing.Dict[str, str]
-) -> typing.List[TestResult]:
+    doctester: DocTester, docstrings_to_test: dict[str, str]
+) -> list[TestResult]:
     """Get test results from doctester with docstrings to test."""
     _test_style = (
         doctester.style

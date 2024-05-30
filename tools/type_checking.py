@@ -21,6 +21,7 @@ import doctest
 import pathlib
 import re
 from abc import abstractmethod
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -213,12 +214,9 @@ def get_test_results(
     )
     google_style = _test_style == 'google'
 
-    test_results = []
+    api_names = []
+    codeblocks = []
     for api_name, raw_docstring in docstrings_to_test.items():
-        # filter libpaddle
-        if 'libpaddle' in api_name:
-            continue
-
         # we may extract more than one codeblocks from docsting.
         for codeblock in extract_code_blocks_from_docstr(
             raw_docstring, google_style=google_style
@@ -226,14 +224,16 @@ def get_test_results(
             codeblock_name = codeblock['name']
             codeblock_id = codeblock['id']
 
-            test_results.append(
-                type_checker.run(
-                    api_name=f'{api_name}:{codeblock_name or codeblock_id}',
-                    codeblock=codeblock['codes'],
-                )
-            )
+            api_names.append(f'{api_name}:{codeblock_name or codeblock_id}')
+            codeblocks.append(codeblock['codes'])
 
-    return test_results
+    test_results = []
+    with ProcessPoolExecutor() as exe:
+        test_results = exe.map(
+            type_checker.run, api_names, codeblocks, timeout=600
+        )
+
+    return list(test_results)
 
 
 def run_type_checker(
@@ -247,7 +247,10 @@ def run_type_checker(
     )
 
     logger.info(">>> Get docstring from api ...")
-    docstrings_to_test, whl_error = get_docstring(full_test=args.full_test)
+    filter_api = lambda api_name: 'libpaddle' in api_name
+    docstrings_to_test, whl_error = get_docstring(
+        full_test=args.full_test, filter_api=filter_api
+    )
 
     logger.info(">>> Running type checker ...")
     test_results = get_test_results(type_checker, docstrings_to_test)

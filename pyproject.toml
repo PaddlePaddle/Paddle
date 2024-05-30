@@ -151,3 +151,12 @@ warn_unused_ignores = true
 warn_no_return = true
 # Configuring error messages
 show_column_numbers = true
+
+[[tool.mypy.overrides]]
+module = [
+    "astor",
+    "cv2",
+    "scipy",
+    "xlsxwriter"
+]
+ignore_missing_imports = true
