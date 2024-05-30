@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 
-os.environ["FLAGS_prim_vjp_skip_default_ops"] = "0"
 import paddle
 from paddle.autograd.ir_backward import grad
 from paddle.decomposition import decomp
