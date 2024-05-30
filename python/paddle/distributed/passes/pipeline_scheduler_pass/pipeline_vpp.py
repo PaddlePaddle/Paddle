@@ -291,7 +291,7 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
 
         if enable_send_recv_overlap:
             types, sub_program_list = _split_and_replace_recv(
-                types, sub_program_list
+                types, sub_program_list, self.get_attr("vpp_degree")
             )
         self._types = types
         return types, sub_program_list

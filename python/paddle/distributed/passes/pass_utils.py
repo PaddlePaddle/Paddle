@@ -1284,7 +1284,7 @@ def split_matmul_grad_to_matmul(
     block._remove_op(matmul_grad_id, sync=False)
 
 
-def _split_and_replace_recv(types, sub_program_list):
+def _split_and_replace_recv(types, sub_program_list, num_model_chunks):
     rtn_types = []
     rtn_sub_program_list = []
     assert len(types) == len(
@@ -1319,7 +1319,7 @@ def _split_and_replace_recv(types, sub_program_list):
                     attrs={"name": recv_arg_name},
                 )
 
-                if types[i] == "backward0":
+                if types[i] == "backward" + str(num_model_chunks - 1):
                     _create_program(
                         no_recv_program.global_block(),
                         recv4_program_with_sync.global_block(),
@@ -1367,7 +1367,7 @@ def _split_and_replace_recv(types, sub_program_list):
             rtn_types.append("no_recv_" + types[i])
             rtn_sub_program_list.append(no_recv_program)
 
-            if types[i] == "backward0":
+            if types[i] == "backward" + str(num_model_chunks - 1):
                 recv4_program_with_sync._sync_with_cpp()
                 rtn_types.append("recv4_" + types[i] + "_with_sync")
                 rtn_sub_program_list.append(recv4_program_with_sync)
