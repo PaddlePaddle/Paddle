@@ -106,6 +106,11 @@ class ExecutionEngine {
   std::unique_ptr<llvm::orc::LLJIT> jit_;
   std::unique_ptr<NaiveObjectCache> cache_;
   RuntimeSymbols module_symbols_;
+
+ public:
+  std::unique_ptr<llvm::LLVMContext> ctx;
+  std::unique_ptr<llvm::Module> m;
+  std::unique_ptr<llvm::IRBuilder<>> b;
 };
 
 }  // namespace cinn::backends

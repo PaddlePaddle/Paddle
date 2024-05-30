@@ -255,6 +255,7 @@ Expr For::Make(Var loop_var,
                Expr body,
                VectorizeInfo vector_info,
                BindInfo bind_info) {
+  ir::TryElevateInt32ToInt64({loop_var, min, extent});
   auto node = make_shared<For>();
   CHECK(loop_var.defined());
   CHECK(min.defined());
@@ -883,10 +884,6 @@ void For::Verify() const {
   CHECK(min.defined());
   CHECK(extent.defined());
   CHECK(body.defined());
-
-  CHECK_EQ(loop_var->type(), type_of<int32_t>());
-  CHECK_EQ(min->type(), type_of<int32_t>());
-  CHECK_EQ(extent->type(), type_of<int32_t>());
 }
 
 void PolyFor::Verify() const {

@@ -67,7 +67,7 @@ class CinnJitInstruction::FnPtrImpl {
     }
 
     // 3. Launch host kernel
-    ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
+    ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
         static_cast<void*>(func_args_.data()), func_args_.size(), stream);
     VLOG(6) << "End Run: " << cinn_kernel_info_.fn_name;
   }
@@ -135,6 +135,7 @@ CinnJitInstruction::CinnJitInstruction(
     const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place) {
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();
+  // VLOG(-1) << jit_kernel_op.cinn_kernel_info().fn_name;
   fn_ptr_impl_ = std::make_shared<FnPtrImpl>(jit_kernel_op.cinn_kernel_info());
   op_ = op;
   input_tensor_size = op->num_operands();
@@ -182,16 +183,20 @@ CinnJitInstruction::CinnJitInstruction(
 
 void CinnJitInstruction::Run() {
 #if defined(PADDLE_WITH_CUDA)
-  auto gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx_);
+  // auto gpu_ctx = static_cast<phi::GPUContext*>(dev_ctx_);
+  paddle::platform::DeviceContext* cpu_ctx =
+      paddle::platform::DeviceContextPool::Instance().Get(
+          paddle::platform::CPUPlace());
 
-  auto stream = gpu_ctx->stream();
+  // auto stream = gpu_ctx->stream();
+  auto stream = nullptr;
 
   if (FLAGS_cinn_bucket_compile && need_update_shape) {
     fn_ptr_impl_->InferShape(
         tensor_args_, input_tensor_size, output_tensor_size);
   }
   for (size_t i = 0; i < tensor_args_.size(); ++i) {
-    gpu_ctx->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
+    cpu_ctx->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
   }
 
   // 2. exexute kernel
