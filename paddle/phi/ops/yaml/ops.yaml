@@ -4268,3 +4268,12 @@
     func: MoeInferMeta
   kernel:
     func: moe
+
+- op: number_count
+  args: (Tensor numbers, int upper_range)
+  output: Tensor(out)
+  infer_meta:
+     func: NumberCountInferMeta
+  kernel:
+     func: number_count
+     data_type: numbers
