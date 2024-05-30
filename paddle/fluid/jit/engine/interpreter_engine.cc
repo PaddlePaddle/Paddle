@@ -24,8 +24,7 @@
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/core/value.h"
 
-namespace paddle {
-namespace jit {
+namespace paddle::jit {
 
 InterpreterEngine::InterpreterEngine(
     const std::shared_ptr<FunctionInfo> &info,
@@ -104,5 +103,4 @@ std::unique_ptr<BaseEngine> InterpreterEngine::Clone(void *stream) {
   return std::unique_ptr<BaseEngine>(x);
 }
 
-}  // namespace jit
-}  // namespace paddle
+}  // namespace paddle::jit

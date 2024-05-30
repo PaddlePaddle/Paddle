@@ -17,8 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/onednn/fusion_rnn_onednn.h"
 #include "paddle/phi/core/expect.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 using phi::OneDNNContext;
 using phi::funcs::OneDNNGetDataType;
@@ -462,8 +461,7 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

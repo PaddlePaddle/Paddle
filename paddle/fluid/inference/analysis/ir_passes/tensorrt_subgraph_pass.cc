@@ -38,9 +38,7 @@
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace paddle {
-namespace inference {
-namespace analysis {
+namespace paddle::inference::analysis {
 namespace {
 
 // if in mixed model precision, we should make all tensorrt_engine's output
@@ -934,9 +932,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   return engine_key + std::to_string(predictor_id);
 }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis
 
 REGISTER_PASS(tensorrt_subgraph_pass,
               paddle::inference::analysis::TensorRtSubgraphPass)

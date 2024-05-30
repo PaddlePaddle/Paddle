@@ -24,8 +24,7 @@ enum class ReshapeKernelOpName {
 };
 }  // anonymous namespace
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 phi::DDim GetOutputShape(const std::vector<int> squeeze_dims,
                          const phi::DDim& in_dims,
@@ -396,8 +395,7 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
     dx_dims = ctx.Input<phi::DenseTensor>("X")->dims();
   }
 };
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OP_KERNEL(

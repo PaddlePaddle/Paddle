@@ -19,9 +19,7 @@
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Graph;
 
@@ -120,9 +118,7 @@ void InplaceOpVarPass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_subgraph_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(inplace_op_var_pass, paddle::framework::ir::InplaceOpVarPass);
 REGISTER_PASS_CAPABILITY(inplace_op_var_pass)

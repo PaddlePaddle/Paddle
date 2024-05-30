@@ -40,8 +40,7 @@
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 PyLayerInstruction::PyLayerInstruction(
     size_t id,
@@ -159,5 +158,4 @@ void PyLayerInstruction::Run() {
   fwd_inter_->Run({}, false);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

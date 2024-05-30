@@ -16,8 +16,7 @@
 #include "paddle/common/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 template <typename T, typename Context>
 void FusedSoftmaxMaskFuseUpperTriangleKernel(const Context& dev_ctx,
@@ -30,8 +29,7 @@ void FusedSoftmaxMaskFuseUpperTriangleKernel(const Context& dev_ctx,
                         "Softmax mask fuse op only supports GPU now."));
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fused_softmax_mask_upper_triangle,
                    CPU,

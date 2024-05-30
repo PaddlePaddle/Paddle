@@ -21,8 +21,7 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 using phi::OneDNNContext;
 using phi::funcs::CreateKey;
@@ -642,8 +641,7 @@ void FusionGRUKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(fusion_gru,
                    OneDNN,

@@ -17,9 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/ir/simplify_with_basic_ops_pass.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 TEST(SimplifyWithBasicOpsPass, dropout) {
   for (std::string dropout_implementation :
@@ -87,8 +85,6 @@ TEST(SimplifyWithBasicOpsPass, dropout) {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(simplify_with_basic_ops_pass);

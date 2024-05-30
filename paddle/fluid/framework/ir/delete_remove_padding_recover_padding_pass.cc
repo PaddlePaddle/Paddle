@@ -18,10 +18,7 @@
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 void RecoverPadding::operator()() {
   // Create nodes for recover_padding.
@@ -38,7 +35,8 @@ void RecoverPadding::operator()() {
   recover_padding_op->LinksFrom({recover_padding_input})
       .LinksTo({recover_padding_out});
 }
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 void DeleteRemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -94,9 +92,7 @@ void DeleteRemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph *graph) const {
   AddStatis(found_subgraph_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(delete_remove_padding_recover_padding_pass,
               paddle::framework::ir::DeleteRemovePaddingRecoverPaddingPass);

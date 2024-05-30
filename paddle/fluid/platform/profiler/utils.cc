@@ -20,8 +20,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 template <>
 std::string json_vector<std::string>(
@@ -175,5 +174,4 @@ const char* StringTracerEventType(TracerEventType type) {
   return category_name_[static_cast<int>(type)];
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

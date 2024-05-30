@@ -54,8 +54,7 @@ limitations under the License. */
 COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(enable_pir_in_executor);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 // custom op kernel call function define
 static void RunKernelFunc(
@@ -1318,8 +1317,7 @@ LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
   return op_meta_info_map.GetMap();
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 void PD_RegisterOperator(const char* kernel_name_cstr,
