@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 void InferSpmdContext::EmplaceBackInput(DistMetaTensor input) {
   int index = static_cast<int>(inputs_.size());
@@ -159,5 +158,4 @@ const SpmdRule& SpmdRuleFactory::GetSpmdRule(
   return it->second;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

@@ -26,8 +26,7 @@
 
 PD_DECLARE_int32(inner_op_parallelism);
 
-namespace phi {
-namespace sr {
+namespace phi::sr {
 
 template <typename T, typename Context>
 void AdamDenseParamSparseGradKernel(
@@ -237,8 +236,7 @@ void AdamDenseParamSparseGradKernel(
   }
 }
 
-}  // namespace sr
-}  // namespace phi
+}  // namespace phi::sr
 
 PD_REGISTER_KERNEL(adam_dense_param_sparse_grad,
                    CPU,

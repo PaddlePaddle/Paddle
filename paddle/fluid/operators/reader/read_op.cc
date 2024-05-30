@@ -17,8 +17,7 @@
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 // Returns true if the two dimensions are compatible.
 // A dimension is compatible with the other if:
@@ -193,8 +192,7 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

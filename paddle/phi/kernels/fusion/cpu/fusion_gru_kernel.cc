@@ -26,8 +26,7 @@
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
 #define INIT_BASE_DEFINES                                  \
   auto x_lod = x.lod();                                    \
@@ -392,8 +391,7 @@ void FusionGRUKernel(const Context& dev_ctx,
   }
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace phi::fusion
 
 PD_REGISTER_KERNEL(
     fusion_gru, CPU, ALL_LAYOUT, phi::fusion::FusionGRUKernel, float, double) {}

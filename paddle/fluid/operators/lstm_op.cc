@@ -17,8 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class LSTMOp : public framework::OperatorWithKernel {
  public:
@@ -348,8 +347,7 @@ class LSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lstm,

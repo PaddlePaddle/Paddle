@@ -20,8 +20,7 @@
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::string CipherUtils::GenKey(int length) {
   CryptoPP::AutoSeededRandomPool prng;
@@ -115,5 +114,4 @@ bool CipherUtils::GetValue<bool>(
 
 const int CipherUtils::AES_DEFAULT_IV_SIZE = 128;
 const int CipherUtils::AES_DEFAULT_TAG_SIZE = 128;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/kernels/strings/unicode_flag.h"
 
-namespace phi {
-namespace strings {
+namespace phi::strings {
 
 static const void* utils_map[4] = {nullptr};  // NOLINT
 static uint16_t CHAR_CASES_MAP[65536] = {0};  // NOLINT
@@ -87,5 +86,4 @@ const uint16_t* GetGPUCharCasesMap() {
 }
 #endif
 
-}  // namespace strings
-}  // namespace phi
+}  // namespace phi::strings

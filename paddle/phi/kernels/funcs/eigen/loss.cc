@@ -13,8 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 template <typename T>
 struct EigenRankLoss<Eigen::DefaultDevice, T> {
@@ -137,5 +136,4 @@ struct EigenHingeLossGrad<Eigen::DefaultDevice, T> {
 template struct EigenHingeLoss<Eigen::DefaultDevice, float>;
 template struct EigenHingeLossGrad<Eigen::DefaultDevice, float>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

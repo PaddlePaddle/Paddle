@@ -22,8 +22,7 @@ PADDLE_DEFINE_EXPORTED_bool(
     "Default cuda is asynchronous device, set to True will"
     "force op run in synchronous mode.");
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 TEST_API bool is_gpu_place(const Place &p) {
   return p.GetType() == phi::AllocationType::GPU;
@@ -104,5 +103,4 @@ Place PlaceHelper::CreatePlace(const std::string &dev_type, size_t dev_id) {
 }
 #endif
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform
