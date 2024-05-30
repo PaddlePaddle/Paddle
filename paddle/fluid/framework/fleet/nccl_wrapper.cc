@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/framework/fleet/nccl_wrapper.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::shared_ptr<NCCLWrapper> NCCLWrapper::s_instance_ = NULL;
 bool NCCLWrapper::is_initialized_ = false;
@@ -88,5 +87,4 @@ void NCCLWrapper::SyncVar(const int root_rank,
   return;
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework

@@ -31,8 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/device_worker.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::shared_ptr<HeterWrapper> HeterWrapper::s_instance_ = NULL;
 bool HeterWrapper::is_initialized_ = false;
@@ -358,6 +357,5 @@ void HeterWrapper::CallRemoteXpuSync(
   }
 }
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace paddle::framework
 #endif

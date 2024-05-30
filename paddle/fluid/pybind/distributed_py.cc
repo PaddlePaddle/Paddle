@@ -54,8 +54,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 using Tensor = paddle::Tensor;
 
@@ -1360,5 +1359,4 @@ void BindDistributed(py::module *m) {
                   py::call_guard<py::gil_scoped_release>());
 }
 
-}  // end namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

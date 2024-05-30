@@ -37,8 +37,7 @@ limitations under the License. */
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 void BindNCCLWrapper(py::module* m) {
   py::class_<framework::NCCLWrapper>(*m, "Nccl")
       .def(py::init())
@@ -47,5 +46,4 @@ void BindNCCLWrapper(py::module* m) {
       .def("set_rank_info", &framework::NCCLWrapper::SetRankInfo)
       .def("sync_var", &framework::NCCLWrapper::SyncVar);
 }  // end NCCLWrapper
-}  // end namespace pybind
-}  // end namespace paddle
+}  // namespace paddle::pybind

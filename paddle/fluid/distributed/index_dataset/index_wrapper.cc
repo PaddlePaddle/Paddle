@@ -20,8 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/io/fs.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 std::shared_ptr<IndexWrapper> IndexWrapper::s_instance_(nullptr);
 
@@ -198,5 +197,4 @@ std::vector<IndexNode> TreeIndex::GetAllLeafs() {
   return res;
 }
 
-}  // end namespace distributed
-}  // end namespace paddle
+}  // namespace paddle::distributed

@@ -167,6 +167,6 @@ class HeterPsResource {
   std::vector<std::shared_ptr<HashTable<uint64_t, uint32_t>>> keys2rank_vec_;
 };
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif

@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 using framework::ProgramDesc;
 using framework::VarDesc;
@@ -968,5 +967,4 @@ void FleetWrapper::SetDate(const uint64_t table_id, const std::string& date) {
 #endif
 }
 
-}  // end namespace distributed
-}  // end namespace paddle
+}  // namespace paddle::distributed

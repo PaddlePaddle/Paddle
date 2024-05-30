@@ -1047,6 +1047,6 @@ class PSGPUWrapper {
   static bool is_initialized_;
 };
 
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle
 #endif
