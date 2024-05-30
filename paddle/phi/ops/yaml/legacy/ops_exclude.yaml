@@ -39,8 +39,6 @@
 - fused_batch_norm_act
 - fused_bn_add_activation
 - fused_multi_transformer
-- fused_softmax_mask
-- fused_softmax_mask_upper_triangle
 - hsigmoid_loss
 - matrix_rank
 - matrix_rank_tol
