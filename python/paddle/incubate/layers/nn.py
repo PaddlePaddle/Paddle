@@ -43,6 +43,8 @@ def inference(
     switch_ir_debug=False,
     collect_shape=False,
     delete_pass_lists=[],
+    enable_new_ir = False,
+    exp_enable_use_cutlass = False;
 ):
     def decorator(func=None):
         import inspect
@@ -218,6 +220,8 @@ def inference(
             config.enable_memory_optim()
             config.switch_ir_debug(switch_ir_debug)
             config.switch_ir_optim(switch_ir_optim)
+            config.exp_enable_use_cutlass(exp_enable_use_cutlass)
+            config.enable_new_ir(enable_new_ir)
 
             def get_infer_precision():
                 if precision_mode == "float32":
