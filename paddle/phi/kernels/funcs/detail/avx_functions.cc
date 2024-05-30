@@ -68,9 +68,7 @@ __m256 TanhV2(const __m256 a) {
 __m256 Identity(const __m256 a) { return a; }
 
 }  // namespace phi::funcs::detail::forward::avx
-namespace phi::funcs::detail {
 
-}  // namespace phi::funcs::detail
 namespace phi::funcs::detail::backward::avx {
 __m256 Relu(const __m256 a, const __m256 b) {
   return _mm256_mul_ps(
@@ -91,8 +89,5 @@ __m256 Tanh(const __m256 a, const __m256 b) {
 
 __m256 Identity(const __m256 a, const __m256 b) { return a; }
 }  // namespace phi::funcs::detail::backward::avx
-namespace phi::funcs::detail {
-
-}  // namespace phi::funcs::detail
 
 #endif
