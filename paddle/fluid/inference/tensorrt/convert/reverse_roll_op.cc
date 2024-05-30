@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/reverse_roll_op_plugin.h"
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 class ReverseRollOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
@@ -73,8 +71,6 @@ class ReverseRollOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(reverse_roll, ReverseRollOpConverter);

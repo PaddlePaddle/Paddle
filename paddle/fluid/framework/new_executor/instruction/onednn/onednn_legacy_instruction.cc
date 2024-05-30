@@ -37,8 +37,7 @@
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 static paddle::framework::Attribute ConvertPirAttribute2FrameworkAttribute(
     pir::Attribute attr,
@@ -313,5 +312,4 @@ void OneDNNLegacyKernelInstruction::Run() {
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
   (*(phi_kernel_))((kernel_context_));
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

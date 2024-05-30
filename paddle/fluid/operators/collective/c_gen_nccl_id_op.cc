@@ -24,8 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 static void GenNCCLID(std::vector<ncclUniqueId>* nccl_ids) {
@@ -129,8 +128,7 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

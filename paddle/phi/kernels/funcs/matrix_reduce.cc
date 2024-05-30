@@ -17,8 +17,7 @@
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 template <typename T>
 class MatrixReduceSumFunctor<T, CPUContext> {
@@ -58,5 +57,4 @@ template class MatrixReduceSumFunctor<double, CPUContext>;
 template class MatrixReduceSumFunctor<phi::dtype::complex<float>, CPUContext>;
 template class MatrixReduceSumFunctor<phi::dtype::complex<double>, CPUContext>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

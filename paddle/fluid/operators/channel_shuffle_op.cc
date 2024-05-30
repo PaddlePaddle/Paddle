@@ -19,8 +19,7 @@
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/unary.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class ChannelShuffleOp : public framework::OperatorWithKernel {
  public:
@@ -79,8 +78,7 @@ class ChannelShuffleGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(channel_shuffle,

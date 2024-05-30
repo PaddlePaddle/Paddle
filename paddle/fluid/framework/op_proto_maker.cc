@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void OpProtoAndCheckerMaker::Validate() {
   validated_ = true;
@@ -118,5 +117,4 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   Validate();
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

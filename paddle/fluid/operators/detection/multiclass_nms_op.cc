@@ -18,8 +18,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/ternary.h"
 #include "paddle/phi/kernels/funcs/detection/nms_util.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 inline std::vector<size_t> GetNmsLodFromRoisNum(
     const phi::DenseTensor* rois_num) {
@@ -603,8 +602,7 @@ class MultiClassNMS2OpMaker : public MultiClassNMSOpMaker {
 template <typename T, typename DeviceContext>
 class MultiClassNMS2Kernel : public MultiClassNMSKernel<T, DeviceContext> {};
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

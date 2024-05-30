@@ -18,8 +18,7 @@
 #include "paddle/phi/core/enforce.h"
 
 COMMON_DECLARE_string(tensor_operants_mode);
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 PyTypeObject* p_tensor_type = nullptr;
 PyTypeObject* p_string_tensor_type = nullptr;
@@ -83,5 +82,4 @@ PyObject* ToPyObject(const paddle::Tensor& value,
 
 void EnableTensorOperantsToPhiMode() { FLAGS_tensor_operants_mode = "phi"; }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind
