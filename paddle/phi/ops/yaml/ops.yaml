@@ -731,6 +731,7 @@
     func : clip
     data_type : x
   backward : clip_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : clip_by_norm
   args : (Tensor x, float max_norm)
@@ -926,6 +927,7 @@
     func : cross_entropy_with_softmax
     data_type : input
   backward : cross_entropy_with_softmax_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : ctc_align
   args: (Tensor input, Tensor input_length, int blank = 0, bool merge_repeated = true,
@@ -1947,6 +1949,32 @@
   backward : group_norm_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : gru
+  args: (Tensor input, Tensor h0, Tensor weight, Tensor bias, str activation = "tanh",
+    str gate_activation = "sigmoid", bool is_reverse = false, bool origin_mode = false, bool is_test=false)
+  output: Tensor (batch_gate), Tensor (batch_reset_hidden_prev), Tensor (batch_hidden),
+    Tensor (hidden)
+  infer_meta:
+    func: GruInferMeta
+  kernel:
+    func: gru
+    data_type: input
+  optional: h0, bias
+  intermediate: batch_gate, batch_reset_hidden_prev, batch_hidden
+  backward: gru_grad
+
+- op : gru_unit
+  args: (Tensor input, Tensor hidden_prev, Tensor weight, Tensor bias, int activation
+    = 2, int gate_activation = 1, bool origin_mode = false)
+  output: Tensor (gate), Tensor (reset_hidden_prev), Tensor (hidden)
+  infer_meta:
+    func: GruUnitInferMeta
+  kernel:
+    func: gru_unit
+  optional: bias
+  intermediate: gate, reset_hidden_prev
+  backward: gru_unit_grad
+
 - op : gumbel_softmax
   args : (Tensor x, float temperature = 1.0, bool hard = false, int axis = -1)
   output : Tensor
@@ -2319,6 +2347,15 @@
   inplace: (x -> out)
   backward : lgamma_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : limit_by_capacity
+  args : (Tensor expert_count, Tensor capacity, int n_worker)
+  output : Tensor(out)
+  infer_meta :
+    func : LimitByCapacityInferMeta
+  kernel :
+    func : limit_by_capacity
+    data_type : expert_count
 
 - op : linear_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
@@ -3508,6 +3545,15 @@
     func : ShardIndexInferMeta
   kernel :
     func : shard_index
+
+- op : shuffle_channel
+  args : (Tensor x, int group = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : ShuffleChannelInferMeta
+  kernel :
+    func : shuffle_channel
+  backward : shuffle_channel_grad
 
 - op : sigmoid
   args : (Tensor x)
