@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detection/anchor_generator_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class AnchorGeneratorOp : public framework::OperatorWithKernel {
  public:
@@ -164,8 +163,7 @@ https://arxiv.org/abs/1506.01497.
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

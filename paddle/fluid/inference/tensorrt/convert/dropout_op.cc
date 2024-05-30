@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 /*
  * DropoutOp. This Layer doesn't has weights.
@@ -79,9 +77,7 @@ class DropoutOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 USE_OP_ITSELF(dropout);
 REGISTER_TRT_OP_CONVERTER(dropout, DropoutOpConverter);

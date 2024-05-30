@@ -16,9 +16,7 @@
 
 #include <string>
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 struct VarHandleBase;
 
 FetchBarrierOpHandle::FetchBarrierOpHandle(
@@ -62,6 +60,4 @@ bool FetchBarrierOpHandle::NeedWait(VarHandleBase *in_var) {
 }
 
 std::string FetchBarrierOpHandle::Name() const { return op_->Type(); }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

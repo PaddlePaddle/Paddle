@@ -18,9 +18,7 @@
 #include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 namespace {
 
@@ -175,9 +173,7 @@ void ParamsQuantizationMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   QuantizeConv(graph, "fused_conv2d", false /*with_residual_data*/);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(params_quantization_onednn_pass,
               paddle::framework::ir::ParamsQuantizationMkldnnPass);

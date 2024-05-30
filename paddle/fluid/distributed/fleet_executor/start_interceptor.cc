@@ -18,8 +18,7 @@
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
 #include "paddle/fluid/framework/operator.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 StartInterceptor::StartInterceptor(int64_t interceptor_id, TaskNode* node)
     : ComputeInterceptor(interceptor_id, node) {
@@ -123,5 +122,4 @@ void StartInterceptor::Compute(const InterceptorMessage& msg) {
 
 REGISTER_INTERCEPTOR(Start, StartInterceptor);
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

@@ -20,8 +20,7 @@
 
 REGISTER_FILE_SYMBOLS(op_compatible_info);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 inline std::vector<int> ConvertStr2Int(const std::string& str_text) {
   auto vec_text = string::split_string<std::string>(str_text, ".");
@@ -184,5 +183,4 @@ OpCompatibleType OpCompatibleMap::IsRequireMiniVersion(
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

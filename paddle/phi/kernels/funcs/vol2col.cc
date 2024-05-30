@@ -17,8 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 /*
  * vol = [input_channels, input_depth, input_height, input_width]
@@ -278,5 +277,4 @@ template class Vol2ColFunctor<phi::CPUContext, double>;
 template class Col2VolFunctor<phi::CPUContext, float>;
 template class Col2VolFunctor<phi::CPUContext, double>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

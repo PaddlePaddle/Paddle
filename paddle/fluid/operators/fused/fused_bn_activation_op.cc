@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 void FusedBatchNormActOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
@@ -313,8 +312,7 @@ phi::KernelKey FusedBatchNormActGradOp::GetExpectedKernelType(
                         ctx.GetPlace());
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

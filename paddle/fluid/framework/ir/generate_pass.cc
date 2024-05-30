@@ -19,9 +19,7 @@
 #include "paddle/pir/include/core/value.h"
 #include "paddle/utils/blank.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class element_visitor {
  public:
@@ -507,7 +505,8 @@ bool GeneratePass::VerifyGraph(const Graph& graph) {
   return true;
 }
 
-namespace generate_pass {
+}  // namespace paddle::framework::ir
+namespace paddle::framework::ir::generate_pass {
 
 VarHelper::VarHelper(const char* name) : name_(name), type_(Type::kInput) {}
 VarHelper::VarHelper(const std::string& name, Type type)
@@ -581,7 +580,8 @@ void SubgraphHelper::AddOutputVars(const VarHelper& var_helper) {
   output_vars_.push_back(var_helper.name_);
 }
 
-}  // namespace generate_pass
+}  // namespace paddle::framework::ir::generate_pass
+namespace paddle::framework::ir {
 
 PassPairs::PassPairs(const SubgraphType& pattern, const SubgraphType& replace) {
   AddPassDesc(pattern, replace);
@@ -618,6 +618,4 @@ const proto::MultiPassDesc& PassPairs::MultiPassDesc() const {
   return multi_pass_desc_;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

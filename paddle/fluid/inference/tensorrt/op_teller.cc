@@ -24,15 +24,11 @@
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class OpDesc;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 // Check if it is a dynamic shape. If it is a dynamic shape, return true;
 // otherwise, return false
@@ -3445,6 +3441,4 @@ OpTeller::OpTeller() {  // NOLINT
   tellers_.emplace_back(new tensorrt::CustomGenericPluginTeller);
 }
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt

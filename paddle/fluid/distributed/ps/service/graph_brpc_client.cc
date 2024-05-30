@@ -26,8 +26,7 @@
 #include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/utils/string/string_helper.h"
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 void GraphPsService_Stub::service(
     ::google::protobuf::RpcController *controller,
@@ -718,5 +717,4 @@ int32_t GraphBrpcClient::Initialize() {
   local_channel = nullptr;
   return 0;
 }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

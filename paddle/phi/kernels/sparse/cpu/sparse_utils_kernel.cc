@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/sparse/common_shape.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T>
 inline bool IsZero(const T* data, const size_t n) {
@@ -314,8 +313,7 @@ void CooToDenseKernel(const Context& dev_ctx,
       }));
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(dense_to_coo,
                    CPU,

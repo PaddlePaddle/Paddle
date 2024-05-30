@@ -16,9 +16,7 @@
 
 #include "paddle/fluid/framework/details/fetch_async_op_handle.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 SSAGraphExecutor::~SSAGraphExecutor() = default;
 
 void ClearFetchOp(ir::Graph* graph, std::vector<OpHandleBase*>* fetch_ops) {
@@ -42,6 +40,4 @@ void ClearFetchOp(ir::Graph* graph, std::vector<OpHandleBase*>* fetch_ops) {
   fetch_ops->clear();
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details
