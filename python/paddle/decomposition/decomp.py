@@ -855,6 +855,9 @@ def decompose_dist_program(pir_program):
         ops = pir_program.global_block().ops
         for op in ops:
             bwd_op_name = op.name()
+            # todo(CZ): to be removed
+            if bwd_op_name in ["pd_op.mean_grad", "pd_op.concat_grad"]:
+                continue
             if has_decomp_vjp(op):
                 pir.set_insertion_point(op)
                 orig_outs = op.results()

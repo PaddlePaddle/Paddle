@@ -4085,6 +4085,16 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument("group_size must be -1, 64 or 128."));
 
   auto dim_scale = scale.dims();
+  int64_t real_channel_shape = -1;
+  if (algo == "weight_only_int8") {
+    real_channel_shape = x.dims()[0];
+  } else if (algo == "weight_only_int4") {
+    real_channel_shape = x.dims()[0] * 2;
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we only support weight_only_int8"
+        " and weight_only_int4 algo."));
+  }
 
   // per-channel dequantization
   if (group_size == -1) {
@@ -4095,7 +4105,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                      "be 1D in per-channel mode, but got[%d]",
                                      scale.dims().size()));
     PADDLE_ENFORCE_EQ(dim_scale[0],
-                      x.dims()[0],
+                      real_channel_shape,
                       phi::errors::InvalidArgument(
                           "The scale tensor's shape must be equal to the x "
                           "tensor's shape, but got [%d] not equal to [%d]",
@@ -4117,9 +4127,16 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                 "But receive %d and %d",
                                 dim_scale[0],
                                 (x.dims()[1] + (group_size - 1)) / group_size));
+    PADDLE_ENFORCE_EQ(dim_scale[1],
+                      real_channel_shape,
+                      phi::errors::InvalidArgument(
+                          "The scale tensor's shape must be equal to the real "
+                          "channel size, but got [%d] not equal to [%d]",
+                          scale.dims()[0],
+                          real_channel_shape));
   }
   int n = static_cast<int>(x.dims()[1]);
-  int k = static_cast<int>(x.dims()[0]);
+  int k = static_cast<int>(real_channel_shape);
   out->set_dims(common::make_ddim({n, k}));
   out->set_dtype(out_dtype);
 }
