@@ -33,9 +33,6 @@
     }                                                                        \
   } while (0)
 
-namespace paddle::platform {
-
-}  // namespace paddle::platform
 namespace paddle::platform::details {
 std::unordered_map<uint32_t, uint64_t> CreateThreadIdMapping() {
   std::unordered_map<uint32_t, uint64_t> mapping;

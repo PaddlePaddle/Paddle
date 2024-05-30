@@ -23,9 +23,6 @@ class EmptyGradOpMaker;
 namespace paddle::imperative {
 class OpBase;
 }  // namespace paddle::imperative
-namespace paddle {
-
-}  // namespace paddle
 
 namespace paddle::operators {
 
