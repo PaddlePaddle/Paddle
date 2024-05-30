@@ -15,4 +15,3 @@
 #include "paddle/utils/string/pretty_log.h"
 
 #include "paddle/common/flags.h"
-

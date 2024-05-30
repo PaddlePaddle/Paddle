@@ -23,9 +23,7 @@ uint64_t GenerateId() {
   return ++uid;
 }
 }  // namespace
-namespace pir {
 
-}  // namespace pir
 namespace pir::detail {
 void ValueImpl::set_first_use(OpOperandImpl *first_use) {
   uint32_t offset = kind();
