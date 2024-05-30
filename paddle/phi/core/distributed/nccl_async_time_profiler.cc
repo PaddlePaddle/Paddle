@@ -21,7 +21,7 @@
 namespace phi {
 namespace distributed {
 
-NCCLAsyncTimeProfiler::NCCLAsyncTimeProfiler() : terminated_(false), pool_(10) {
+NCCLAsyncTimeProfiler::NCCLAsyncTimeProfiler() : terminated_(false), pool_(1) {
   loop_thread_ = std::thread(
       &phi::distributed::NCCLAsyncTimeProfiler::RecordTimeLoop, this);
 
@@ -33,11 +33,11 @@ NCCLAsyncTimeProfiler::~NCCLAsyncTimeProfiler() { Stop(); }
 
 void NCCLAsyncTimeProfiler::LogSingleStep() {
   if (!terminated_.load()) {
-#ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-#else  // PADDLE_WITH_HIP
-    PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
-#endif
+    // // #ifdef PADDLE_WITH_CUDA
+    // //     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+    // // #else  // PADDLE_WITH_HIP
+    // //     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+    // // #endif
     std::unique_lock<std::mutex> lk(recoders_list_mutex_);
     log_cv_.wait_for(lk, std::chrono::seconds(100), [&]() -> bool {
       return recorders_list_.empty();
@@ -60,15 +60,18 @@ void NCCLAsyncTimeProfiler::LogSingleStep() {
 
 void NCCLAsyncTimeProfiler::InnerAddRecorder(
     std::shared_ptr<NCCLAsyncRecorder> recorder) {
-  std::unique_lock<std::mutex> lk(recoders_list_mutex_);
-  recorders_list_.push_back(std::move(recorder));
+  std::unique_lock<std::mutex> lk(buffer_list_mutex_);
+  buffer_list_.push_back(std::move(recorder));
   recorders_cv_.notify_one();
 }
 
 void NCCLAsyncTimeProfiler::AddRecorder(
     std::shared_ptr<NCCLAsyncRecorder> recorder) {
   if (!terminated_.load()) {
-    pool_.enqueue(
+    if (add_record_task_.valid()) {
+      add_record_task_.wait();
+    }
+    add_record_task_ = pool_.enqueue(
         &NCCLAsyncTimeProfiler::InnerAddRecorder, this, std::move(recorder));
   }
 }
@@ -93,14 +96,25 @@ void NCCLAsyncTimeProfiler::Stop() {
     recorders_cv_.notify_one();
     loop_thread_.join();
   }
+  if (add_record_task_.valid()) {
+    add_record_task_.wait();
+  }
 }
 
 void NCCLAsyncTimeProfiler::RecordTimeLoop() {
   while (!terminated_.load()) {
-    std::unique_lock<std::mutex> lk(recoders_list_mutex_);
-    recorders_cv_.wait_for(lk, std::chrono::milliseconds(1000), [&]() -> bool {
-      return !recorders_list_.empty();
-    });
+    std::unique_lock<std::mutex> recorders_lk(recoders_list_mutex_);
+    recorders_cv_.wait_for(
+        recorders_lk, std::chrono::milliseconds(1000), [&]() -> bool {
+          return !recorders_list_.empty() || !buffer_list_.empty();
+        });
+
+    {
+      std::unique_lock<std::mutex> buffer_lk(buffer_list_mutex_);
+      recorders_list_.splice(recorders_list_.end(), buffer_list_);
+    }
+
+    recorders_lk.unlock();
     for (auto iter = recorders_list_.begin(); iter != recorders_list_.end();) {
       auto recorder = *iter;
       if (!recorder->IsStart() && recorder->QueryStart()) {
@@ -111,8 +125,10 @@ void NCCLAsyncTimeProfiler::RecordTimeLoop() {
         time_infos_[recorder->GetGid()].time_sum += recorder_time;
         time_infos_[recorder->GetGid()].comm_count++;
         AddClearRecorder(recorder);
-        log_cv_.notify_one();
+        recorders_lk.lock();
         iter = recorders_list_.erase(iter);
+        recorders_lk.unlock();
+        log_cv_.notify_one();
       } else {
         ++iter;
       }

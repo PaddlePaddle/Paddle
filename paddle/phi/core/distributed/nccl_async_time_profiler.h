@@ -60,7 +60,9 @@ class NCCLAsyncTimeProfiler {
  private:
   std::atomic<bool> terminated_;
   ::ThreadPool pool_;
+  std::future<void> add_record_task_;
 
+  std::mutex buffer_list_mutex_;
   std::mutex recoders_list_mutex_;
   std::mutex clear_list_mutex_;
 
@@ -71,6 +73,7 @@ class NCCLAsyncTimeProfiler {
   std::thread loop_thread_;
   std::thread clear_thread_;
 
+  std::list<std::shared_ptr<NCCLAsyncRecorder>> buffer_list_;
   std::list<std::shared_ptr<NCCLAsyncRecorder>> recorders_list_;
   std::list<std::shared_ptr<NCCLAsyncRecorder>> clear_list_;
 
