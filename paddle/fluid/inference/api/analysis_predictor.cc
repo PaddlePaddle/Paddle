@@ -788,12 +788,7 @@ bool AnalysisPredictor::PreparePirProgram() {
   if (!config_.prog_file().empty()) {
     uint64_t pir_version = 1;
     pir::IrContext *ctx = pir::IrContext::Instance();
-    if (ctx == nullptr) {
-      PADDLE_ENFORCE_NOT_NULL(
-          ctx,
-          platform::errors::PreconditionNotMet("ctx should not be nullptr."));
-      return false;
-    }
+
     if (!pir_program_) {
       pir_program_ = std::make_shared<pir::Program>(ctx);
     }
