@@ -70,6 +70,10 @@ class InferMetaContext {
   const std::pair<int, int>& InputRangeAt(size_t idx) const;
   TEST_API const std::pair<int, int>& OutputRangeAt(size_t idx) const;
 
+  size_t InputsSize() const { return inputs_.size(); }
+  size_t OutputsSize() const { return outputs_.size(); }
+  size_t AttrsSize() const { return attrs_.size(); }
+
   virtual ~InferMetaContext() = default;
 
  protected:
