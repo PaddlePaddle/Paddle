@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace nvinfer1 {
-class IScaleLayer;
+class IScaleLayer;  // NOLINT
 }  // namespace nvinfer1
 
 namespace paddle {

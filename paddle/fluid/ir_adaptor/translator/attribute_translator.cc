@@ -34,7 +34,7 @@ class AttributeVisitor {
  public:
   pir::IrContext* ctx;
   AttributeVisitor() { ctx = pir::IrContext::Instance(); }
-  ~AttributeVisitor() = default;
+  virtual ~AttributeVisitor() = default;
 
  public:
   virtual pir::Attribute operator()(int i) {
