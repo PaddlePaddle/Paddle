@@ -38,8 +38,7 @@ limitations under the License. */
 
 COMMON_DECLARE_int32(low_precision_op_list);
 
-namespace paddle {
-namespace experimental {
+namespace paddle::experimental {
 
 ////////////////// Forward api impls //////////////////////
 
@@ -560,5 +559,4 @@ void embedding_grad_impl(const Tensor& x,
   }
 }
 
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace paddle::experimental

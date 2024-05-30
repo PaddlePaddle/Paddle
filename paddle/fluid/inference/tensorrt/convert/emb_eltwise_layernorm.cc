@@ -17,9 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/many_emb_layernorm_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/many_emb_layernorm_varseqlen_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class EmbEltwiseLayerNormOpConverter : public OpConverter {
  public:
@@ -249,9 +247,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(fused_embedding_eltwise_layernorm,
                           EmbEltwiseLayerNormOpConverter);

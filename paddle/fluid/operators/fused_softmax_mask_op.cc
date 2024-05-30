@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/binary.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class SoftmaxMaskFuseOp : public framework::OperatorWithKernel {
  public:
@@ -74,8 +73,7 @@ class SoftmaxMaskFuseGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(fused_softmax_mask,

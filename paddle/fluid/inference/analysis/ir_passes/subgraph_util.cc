@@ -20,17 +20,11 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class Node;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
-namespace paddle {
-namespace inference {
-namespace analysis {
+namespace paddle::inference::analysis {
 using framework::ir::Node;
 
 std::vector<std::string> ExtractParameters(
@@ -238,6 +232,4 @@ std::string RenameVarBeUnique(std::string original_var_name,
   return original_var_name + "_subgraph_" + var_id;
 }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

@@ -18,9 +18,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Graph;
 
@@ -193,9 +191,7 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       graph, "has_quant_info", "var_quant_scales", var_quant_scales);
   graph->Set("enable_int8", new bool(is_int8));
 }
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(delete_weight_dequant_linear_op_pass,
               paddle::framework::ir::DeleteWeightDequantLinearOpPass);

@@ -20,8 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/profiler/utils.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 HostTraceEventNode::~HostTraceEventNode() {
   // delete all runtime nodes and recursive delete children
@@ -446,5 +445,4 @@ void NodeTrees::HandleTrees(
     }
   }
 }
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

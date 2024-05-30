@@ -18,19 +18,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class Node;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 #define MAX_NUM_FC 10
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 RepeatedFCReluFusePass::RepeatedFCReluFusePass() {
   AddOpCompat(OpCompat("fc"))
@@ -444,9 +438,7 @@ void RepeatedFCReluFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(fusion_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(repeated_fc_relu_fuse_pass,
               paddle::framework::ir::RepeatedFCReluFusePass);

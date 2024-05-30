@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include <string>
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class RunProgramOp : public framework::OperatorWithKernel {
  public:
@@ -253,8 +252,7 @@ class RunProgramGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(run_program,

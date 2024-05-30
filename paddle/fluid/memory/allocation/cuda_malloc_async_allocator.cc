@@ -33,9 +33,7 @@
 #include "paddle/phi/backends/gpu/rocm/hip_graph.h"
 #endif
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 thread_local std::once_flag CUDAMallocAsyncAllocation::once_flag_;
 
@@ -261,6 +259,4 @@ void CUDAMallocAsyncAllocator::SetDefaultStream(gpuStream_t stream) {
   default_stream_ = stream;
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

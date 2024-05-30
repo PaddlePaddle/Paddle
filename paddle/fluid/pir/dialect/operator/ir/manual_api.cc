@@ -20,8 +20,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/parameter.h"
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 pir::Value builtin_combine(const std::vector<pir::Value>& x) {
   auto combine_op =
@@ -292,5 +291,4 @@ pir::Value array_pop(pir::Value input, int index) {
   }
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

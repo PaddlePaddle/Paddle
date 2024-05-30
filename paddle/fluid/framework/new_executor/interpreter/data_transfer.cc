@@ -26,9 +26,7 @@
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #endif
 
-namespace paddle {
-namespace framework {
-namespace interpreter {
+namespace paddle::framework::interpreter {
 
 bool DataTransferHelper::apply(const phi::KernelKey& kernel_type_for_var,
                                const phi::KernelKey& expected_kernel_key,
@@ -833,6 +831,4 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
   }
 }
 
-}  // namespace interpreter
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::interpreter

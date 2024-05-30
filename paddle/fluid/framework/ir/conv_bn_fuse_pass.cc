@@ -30,11 +30,9 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 namespace {
 template <typename T1, typename T2>
@@ -53,9 +51,7 @@ void ConvertTensorType(phi::DenseTensor* tensor) {
 }
 }  // namespace
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 #define GET_CONV_BN_NODES(pattern_name)                                      \
   /* OPERATORS */                                                            \
@@ -983,9 +979,7 @@ DepthwiseConvBNFusePass::DepthwiseConvBNFusePass() {  // NOLINT
       .End();
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(conv_bn_fuse_pass, paddle::framework::ir::ConvBNFusePass);
 REGISTER_PASS(conv_eltwiseadd_bn_fuse_pass,

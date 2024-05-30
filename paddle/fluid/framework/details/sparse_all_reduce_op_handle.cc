@@ -30,9 +30,7 @@
 
 COMMON_DECLARE_bool(sync_nccl_allreduce);
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 SparseAllReduceOpHandle::SparseAllReduceOpHandle(
     ir::Node *node,
@@ -324,6 +322,4 @@ void SparseAllReduceOpHandle::RunImpl() {
 std::string SparseAllReduceOpHandle::Name() const {
   return "sparse_all_reduce";
 }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

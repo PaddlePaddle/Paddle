@@ -16,9 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/cufft.h"
 
-namespace paddle {
-namespace platform {
-namespace dynload {
+namespace paddle::platform::dynload {
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
@@ -26,6 +24,4 @@ CUFFT_FFT_ROUTINE_EACH(DEFINE_WRAP);
 
 bool HasCUFFT() { return phi::dynload::HasCUFFT(); }
 
-}  // namespace dynload
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform::dynload
