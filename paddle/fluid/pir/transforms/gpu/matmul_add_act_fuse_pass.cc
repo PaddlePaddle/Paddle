@@ -42,6 +42,9 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
                             const bool reverse_add)
       : fused_op_name_(fused_op_name), reverse_add_(reverse_add) {}
 
+  uint32_t benefit() const override {
+    return fused_op_name_ == paddle::dialect::GemmEpilogueOp::name() ? 2 : 1;
+  }
   std::string name() const override { return "MatmulAddPattern"; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
@@ -137,6 +140,7 @@ class MatmulAddActPattern : public paddle::drr::DrrPatternBase {
   explicit MatmulAddActPattern(const std::string &act_type,
                                const std::string &fused_op_name)
       : act_type_(act_type), fused_op_name_(fused_op_name) {}
+  uint32_t benefit() const override { return 3; }
 
   std::string name() const override { return "MatmulAddActPattern"; }
 
