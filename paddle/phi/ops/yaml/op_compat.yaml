@@ -4129,6 +4129,13 @@
   outputs:
     {out: Out}
 
+- op: lstm
+  backward: lstm_grad
+  inputs:
+    {input : Input, h0 : H0, c0 : C0, weight : Weight, bias : Bias}
+  outputs:
+    {hidden : Hidden, cell : Cell, batch_gate : BatchGate, batch_cell_pre_act : BatchCellPreAct}
+
 - op: lu
   backward: lu_grad
   inputs:
