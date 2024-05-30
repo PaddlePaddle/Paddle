@@ -925,8 +925,9 @@ void BroadcastKernelForDifferentVecSize(
       }
     }
   }
+  int vec_size = loader_classifier.vec_size;
 #endif
-  switch (loader_classifier.vec_size) {
+  switch (vec_size) {
     case VecSizeL: {
       LaunchBroadcastKernel<OutT, Functor, kArity, NumOuts, VecSizeL>(
           ctx, ins, outs, func, configs, loader_classifier);

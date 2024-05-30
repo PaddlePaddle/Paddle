@@ -88,7 +88,7 @@ class XPUContext : public DeviceContext,
 
   static const char* name() { return "XPUContext"; }
 
- private:
+ protected:
   struct Impl;
   std::unique_ptr<Impl> impl_;
 };
@@ -98,7 +98,14 @@ class XPUContext : public DeviceContext,
 // on GPU and XPU at the same time, so we need KPSContext when registering
 // KPS Kernel. Note: XPU and GPU cannot be compiled at the same time!
 #if PADDLE_WITH_XPU_KP
-using KPSContext = XPUContext;
+class KPSContext : public XPUContext {
+ public:
+  KPSContext() : XPUContext() {}
+
+  explicit KPSContext(const XPUPlace& place) : XPUContext(place) {}
+
+  static const char* name() { return "KPSContext"; }
+};
 #endif
 
 }  // namespace phi
