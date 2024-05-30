@@ -479,9 +479,14 @@ void concat_grad(const std::vector<Tensor>& x,
   }
   std::vector<Tensor> x_grad_tmp =
       split<T>(out_grad, IntArray(sections), axis_value);
+  VLOG(0) << "x_num " << x_num << " call concat grad 3 ************** ";
+  VLOG(0) << "x_grad.size()======== " << x_grad.size();
   for (int i = 0; i < x_num; ++i) {
+    VLOG(0) << "idx " << i << " call concat grad  ************** ";
     if (x_grad[i]) {
+      VLOG(0) << "idx " << i << " in call concat grad  ************** ";
       set_output<T>(x_grad_tmp.at(i), x_grad.at(i));
+      VLOG(0) << "idx " << i << " in call concat grad  ************** end";
     }
   }
 }
