@@ -391,8 +391,14 @@ def _run_dygraph(instance, input, program_holder):
 
 
 def _run_static_graph(inputs, program_holder, src_program):
+    '''
+    This function is used when the pirTranslatedLayer is
+    applied for dy_to_static conversion.
+    '''
     dst_program = paddle.static.default_main_program()
     value_map = paddle.pir.IrMapping()
+    # Establish a mapping relationship between existing parameters
+    # and corresponding parameters in the program to be copied
     len_dst_op = len(dst_program.global_block().ops)
     for dst_op in dst_program.global_block().ops:
         if dst_op.name() == "builtin.parameter":
@@ -403,7 +409,8 @@ def _run_static_graph(inputs, program_holder, src_program):
                 ):
                     for i in range(src_op.num_results()):
                         value_map.add(src_op.result(i), dst_op.result(i))
-
+    # Establish a mapping relationship between truly inputs
+    # and corresponding inputs in the program to be copied
     src_inputs = program_holder.input_vars
     if len(src_inputs) != len(inputs):
         raise ValueError(
@@ -412,9 +419,10 @@ def _run_static_graph(inputs, program_holder, src_program):
     for src_input, input_ in zip(src_inputs, inputs):
         value_map.add(src_input, input_)
 
+    # find the insert point for copy
     current_insert_point = paddle.pir.get_current_insertion_point()
     current_block = current_insert_point.block()
-    src_program.clone(value_map, current_block)
+    src_program.copy_to_block(value_map, current_block)
 
     output = [value_map.look_up(v) for v in program_holder.output_vars]
     return output[0] if len(output) == 1 else output

@@ -387,10 +387,10 @@ void BindProgram(py::module *m) {
           },
           return_value_policy::reference)
       .def(
-          "clone",
+          "copy_to_block",
           [](std::shared_ptr<Program> self,
              pir::IrMapping &mapper,
-             Block *block) { return self->Clone(mapper, block); },
+             Block *block) { return self->CopyToBlock(mapper, block); },
           return_value_policy::reference)
       .def(
           "list_vars",

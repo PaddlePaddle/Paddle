@@ -39,11 +39,17 @@ std::shared_ptr<Program> Program::Clone(IrMapping& ir_mapping) const {
   return new_program;
 }
 
-void Program::Clone(IrMapping& ir_mapping, Block* insert_block) const {
+void Program::CopyToBlock(IrMapping& ir_mapping, Block* insert_block) const {
   auto clone_options = CloneOptions::All();
   for (const auto& op : *block()) {
-    if (op.num_results() > 0 &&
-        ir_mapping.GetMutableMap<pir::Value>().count(op.result(0))) {
+    bool skip_op = false;
+    for (uint32_t i = 0; i < op.num_results(); i++) {
+      if (ir_mapping.GetMutableMap<pir::Value>().count(op.result(i))) {
+        skip_op = true;
+        break;
+      }
+    }
+    if (skip_op) {
       continue;
     }
 
