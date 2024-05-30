@@ -125,38 +125,9 @@ SpmdInfo FlattenInferSpmd(const DistMetaTensor& x,
   VLOG(4) << "FlattenInferSpmd: X shape: [" << str_join(src_shape) << "]";
   VLOG(4) << "Start_axis: " << start_axis;
   VLOG(4) << "Stop_axis: " << stop_axis;
+  VLOG(4) << "FlattenInferSpmd: output shape: [" << str_join(dst_shape) << "]";
   VLOG(4) << "use ReshapeInferSpmdDynamic to infer distributed attribute";
   return ReshapeInferSpmdDynamic(x, dst_shape);
-
-  // std::vector<std::shared_ptr<DimTrans>> trans =
-  //     MakeFlattenDimTrans(src_shape, start_axis, stop_axis);
-
-  // // Step2: Infer the dims mapping of input (if reshard is
-  // // needed) and output from the dimension transformation.
-  // std::vector<std::vector<int64_t>> dims_mapping_vec =
-  //     InferFromDimTrans(x, trans);
-
-  // Step3: Update the dist attributes of input
-  // and output with the inferred dims mapping.
-  // TensorDistAttr x_dist_attr_dst =
-  // CopyTensorDistAttrForOutput(x_dist_attr_src);
-  // x_dist_attr_dst.set_dims_mapping(spmd.first[0]);
-  // TensorDistAttr out_dist_attr =
-  // CopyTensorDistAttrForOutput(x_dist_attr_src);
-  // out_dist_attr.set_dims_mapping(spmd.second[0]);
-
-  // VLOG(4) << "FlattenInferSpmd: X shape: [" << str_join(src_shape) << "]";
-  // VLOG(4) << "Start_axis: " << start_axis;
-  // VLOG(4) << "Stop_axis: " << stop_axis;
-  // VLOG(4) << "Transformation from input to output:";
-  // for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
-  //   std::shared_ptr<DimTrans> t = trans[i];
-  //   VLOG(4) << "\tOut axis[" << i << "]: " << t->to_string();
-  // }
-  // VLOG(4) << "X dims_mapping_src: [" << str_join(x_dims_mapping)
-  //         << "] dims_mapping_dst: [" << str_join(dims_mapping_vec[0]) << "]";
-  // VLOG(4) << "Out dims_mapping: [" << str_join(dims_mapping_vec[1]) <<
-  // "]\n\n";
 }
 
 // TODO(jeff41404): consider xshape and use ReshapeInferSpmdReverse in future
