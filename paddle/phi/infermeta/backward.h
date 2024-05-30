@@ -120,6 +120,22 @@ void CropGradInferMeta(const MetaTensor& out_grad,
                        const IntArray& offsets,
                        MetaTensor* x_grad);
 
+void CrossEntropyGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& label,
+                               const MetaTensor& out_grad,
+                               bool soft_label,
+                               int ignore_index,
+                               MetaTensor* x_grad,
+                               MetaConfig config = MetaConfig());
+
+void CrossEntropyGrad2InferMeta(const MetaTensor& x_shape,
+                                const MetaTensor& label,
+                                const MetaTensor& match_x,
+                                const MetaTensor& out_grad,
+                                int ignore_index,
+                                MetaTensor* x_grad,
+                                MetaConfig config = MetaConfig());
+
 void CrossEntropyWithSoftmaxGradInferMeta(const MetaTensor& label,
                                           const MetaTensor& softmax,
                                           const MetaTensor& loss_grad,
@@ -271,6 +287,26 @@ void GeneralQuinaryGradInferMeta(const MetaTensor& x,
                                  MetaTensor* dz,
                                  MetaTensor* dk,
                                  MetaTensor* dl);
+
+void GruGradInferMeta(const MetaTensor& input,
+                      const MetaTensor& h0,
+                      const MetaTensor& weight,
+                      const MetaTensor& bias,
+                      MetaTensor* input_grad,
+                      MetaTensor* h0_grad,
+                      MetaTensor* weight_grad,
+                      MetaTensor* bias_grad,
+                      MetaConfig config = MetaConfig());
+
+void GruUnitGradInferMeta(const MetaTensor& input,
+                          const MetaTensor& hidden_prev,
+                          const MetaTensor& weight,
+                          const MetaTensor& bias,
+                          MetaTensor* input_grad,
+                          MetaTensor* hidden_prev_grad,
+                          MetaTensor* weight_grad,
+                          MetaTensor* bias_grad,
+                          MetaConfig config = MetaConfig());
 
 void GumbelSoftmaxGradInferMeta(const MetaTensor& out,
                                 const MetaTensor& dout,

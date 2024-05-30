@@ -34,6 +34,9 @@ if(WITH_TESTING AND WITH_CINN)
   paddle_test(test_tile_config_searcher SRCS tile_config_searcher_test.cc DEPS
               schedule_config_search)
 
+  paddle_test(test_file_tile_config SRCS file_tile_config_test.cc DEPS
+              file_tile_database)
+
   # DO NOT forget add test name here, otherwise it will not be executed in
   # CINN CI.
   set(cinn_unit_tests
@@ -48,7 +51,8 @@ if(WITH_TESTING AND WITH_CINN)
       test_compilation_task
       test_generate_shape_util_test
       merge_parallel_matmul_pass_test
-      test_tile_config_searcher)
+      test_tile_config_searcher
+      test_file_tile_config)
 
   foreach(test_name ${cinn_unit_tests})
     get_property(

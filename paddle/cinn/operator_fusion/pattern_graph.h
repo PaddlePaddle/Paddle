@@ -329,6 +329,21 @@ struct CanFuseReduceTreeAndTrivialMatcher {
 };
 
 template <typename T>
+struct HorizontalCheckMiddleOutputVar {
+  bool operator()(const PatternGraph<T>& graph,
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    for (const auto& i : lhs->downstream()) {
+      if (i == rhs) return false;
+    }
+    for (const auto& i : lhs->upstream()) {
+      if (i == rhs) return false;
+    }
+    return true;
+  }
+};
+
+template <typename T>
 struct HorizontalFusionConstrain {
   bool operator()(const PatternGraph<T>& graph,
                   const PatternNodePtr<T>& lhs,
@@ -381,11 +396,34 @@ struct DownstreamSmallerThan {
   }
 };
 
-template <typename A, typename B>
-struct And {
+template <typename... Args>
+struct And {};
+
+template <typename A>
+struct And<A> {
   template <typename T>
   bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    return A()(graph, node) && B()(graph, node);
+    return A()(graph, node);
+  }
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph,
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    return A()(graph, lhs, rhs);
+  }
+};
+
+template <typename A, typename... Args>
+struct And<A, Args...> {
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+    return A()(graph, node) && And<Args...>()(graph, node);
+  }
+  template <typename T>
+  bool operator()(const PatternGraph<T>& graph,
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    return A()(graph, lhs, rhs) && And<Args...>()(graph, lhs, rhs);
   }
 };
 
