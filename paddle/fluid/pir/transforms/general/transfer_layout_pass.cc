@@ -542,7 +542,7 @@ using Edge = FlowGraph::Edge;
 
 class TransferLayoutPass : public pir::Pass {
  public:
-  TransferLayoutPass() : pir::Pass("transfer_layout_pass", 4) {}
+  TransferLayoutPass() : pir::Pass("transfer_layout_pass", 3) {}
 
   bool CanApplyOn(pir::Operation* op) const override {
     if (!op->isa<pir::ModuleOp>()) {
@@ -647,7 +647,8 @@ class TransferLayoutPass : public pir::Pass {
 
     VLOG(10)
         << "-----------------------[rewrite begin]------------------------";
-
+    int64_t num_of_layout_changed_ops{0};
+    int64_t num_of_transpose_ops{0};
     while (!q.empty()) {
       auto node = q.front();
       q.pop_front();
@@ -664,6 +665,7 @@ class TransferLayoutPass : public pir::Pass {
           if (layout_transformation_iface) {
             layout_transformation_iface.RewriteByLayout(
                 op, common::DataLayout::NHWC);
+            num_of_layout_changed_ops++;
           } else {
             PADDLE_THROW(common::errors::Unimplemented(
                 "Op %s should have a specialized RewriteByLayout function",
@@ -695,6 +697,7 @@ class TransferLayoutPass : public pir::Pass {
             ((src_set.count(node) > 0) ? common::DataLayout::NHWC
                                        : common::DataLayout::NCHW);
         builder.SetInsertionPointAfter(dst_value.defining_op());
+        num_of_transpose_ops++;
         auto transpose_op =
             builder.Build<paddle::dialect::TransposeOp>(dst_value, perm);
         transpose_op->set_attribute(
@@ -735,6 +738,7 @@ class TransferLayoutPass : public pir::Pass {
             ((src_set.count(node) > 0) ? common::DataLayout::NHWC
                                        : common::DataLayout::NCHW);
         builder.SetInsertionPointAfter(value.defining_op());
+        num_of_transpose_ops++;
         auto transpose_op =
             builder.Build<paddle::dialect::TransposeOp>(value, perm);
         transpose_op->set_attribute(
@@ -749,6 +753,7 @@ class TransferLayoutPass : public pir::Pass {
         value.ReplaceUsesWithIf(transpose_op.out(), replace_uses_in_cut_set);
       }
     }
+    AddStatistics(num_of_transpose_ops, num_of_layout_changed_ops);
   }
 };
 
