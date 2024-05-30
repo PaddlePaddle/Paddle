@@ -16,9 +16,6 @@
 
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
 
-namespace paddle {
-
-}  // namespace paddle
 namespace paddle::operators {
 
 class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {

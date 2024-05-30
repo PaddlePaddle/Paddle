@@ -14,9 +14,6 @@
 
 #include "paddle/fluid/framework/ir/fc_gru_fuse_pass_tester.h"
 
-namespace paddle::framework::ir {
-
-}  // namespace paddle::framework::ir
 namespace paddle::framework::ir::fc_gru_test {
 TEST(FcGruFusePass, basic) {
   std::unique_ptr<ir::Graph> graph = PrepareGraph();
