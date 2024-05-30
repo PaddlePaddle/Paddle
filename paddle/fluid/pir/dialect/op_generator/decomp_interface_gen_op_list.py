@@ -134,6 +134,17 @@ BINARY_PRIM_VJP_OPS = [
     'reduce_as_grad',
 ]
 
+OTHER_PRIM_VJP_OPS = [
+    'sum_grad',
+    'reshape_grad',
+    'roll_grad',
+    'transpose_grad',
+    'max_grad',
+    'squeeze_grad',
+    'unsqueeze_grad',
+]
+
+
 CUSTOM_VJP = [
     'gelu_grad',
     'hardswish_grad',
@@ -152,9 +163,11 @@ CUSTOM_VJP = [
 ]  # custom vjp list of composite op
 
 # declare belongs to codegen, but implementation not
-OTHER_VJP = ["stack_grad"]
+OTHER_VJP = ["concat_grad", "stack_grad"]
 
-vjp_list = UNARY_PRIM_VJP_OPS + BINARY_PRIM_VJP_OPS + CUSTOM_VJP
+vjp_list = (
+    UNARY_PRIM_VJP_OPS + BINARY_PRIM_VJP_OPS + CUSTOM_VJP + OTHER_PRIM_VJP_OPS
+)
 
 decomp_vjp_interface_declare_gen_op_list = vjp_list + OTHER_VJP
 

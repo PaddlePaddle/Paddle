@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/gru_unit_kernel_impl.h"
 
-namespace phi {
-
-KernelSignature LimitByCapacityOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature(
-      "limit_by_capacity", {"expert_count", "capacity"}, {"n_worker"}, {"Out"});
-}
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(limit_by_capacity,
-                           phi::LimitByCapacityOpArgumentMapping);
+PD_REGISTER_KERNEL(
+    gru_unit, CPU, ALL_LAYOUT, phi::GRUUnitKernel, float, double) {}

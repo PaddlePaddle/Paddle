@@ -152,7 +152,7 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
     }
 
     if (dist_tensor->dist_attr() != dist_attr) {
-      auto tensor_name = (input.name() == "" ? "None" : input.name());
+      auto tensor_name = (input.name().empty() ? "None" : input.name());
       VLOG(4) << "Reshard func: tensor(" << tensor_name << ") "
               << paddle::experimental::ReshardDebugInfo(*dist_tensor,
                                                         dist_attr);

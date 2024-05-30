@@ -1735,6 +1735,7 @@ def set_program_state(program, state_dict):
     if in_pir_mode():
         params, opts = get_pir_parameters(program)
         parameter_list = params + opts
+        parameter_list = [var for var in parameter_list if var.persistable]
     else:
         parameter_list = list(filter(is_persistable, program.list_vars()))
 

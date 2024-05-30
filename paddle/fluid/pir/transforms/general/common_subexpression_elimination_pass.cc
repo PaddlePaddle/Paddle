@@ -367,6 +367,21 @@ struct Expression {
         return false;
       }
     }
+
+    if (lhs->num_results() != rhs->num_results()) {
+      VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+              << " vs rhs [" << rhs << "] " << rhs->name()
+              << " num_results not equal";
+      return false;
+    }
+    for (size_t i = 0; i < lhs->num_results(); ++i) {
+      if (lhs->result_type(i) != rhs->result_type(i)) {
+        VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
+                << " vs rhs [" << rhs << "] " << rhs->name() << " result type "
+                << i << " not equal";
+        return false;
+      }
+    }
     VLOG(7) << "[CheckOperationEqual] lhs [" << lhs << "] " << lhs->name()
             << " vs rhs [" << rhs << "] " << rhs->name() << " equal";
     return true;
