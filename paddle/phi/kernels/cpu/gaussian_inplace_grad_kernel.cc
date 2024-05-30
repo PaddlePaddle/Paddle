@@ -38,4 +38,6 @@ PD_REGISTER_KERNEL(gaussian_inplace_grad,
                    ALL_LAYOUT,
                    phi::GaussianInplaceGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
