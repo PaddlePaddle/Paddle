@@ -116,6 +116,7 @@ using pir::Program;
 using pir::StrAttribute;
 using pir::Type;
 using pir::Value;
+using pir::VectorType;
 using pybind11::return_value_policy;
 
 COMMON_DECLARE_bool(print_ir);
@@ -1330,6 +1331,13 @@ void BindType(py::module *m) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set _local_shape when building static graph"));
           })
+      .def("as_vec_type",
+           [](Type self) -> py::object {
+             if (auto vec_type = self.dyn_cast<VectorType>()) {
+               return py::cast(vec_type);
+             }
+             return py::cast<py::none>(Py_None);
+           })
       .def("__str__", [](Type &self) {
         std::ostringstream print_stream;
         print_stream << self;
@@ -1364,7 +1372,13 @@ void BindType(py::module *m) {
            }
          });
 }
-
+void BindVectorType(py::module *m) {
+  py::class_<VectorType, Type> vec_type(*m, "VectorType");
+  vec_type.def("as_list", &VectorType::data);
+  m->def("create_vec_type", [](std::vector<Type> &types) {
+    return VectorType::get(pir::IrContext::Instance(), types);
+  });
+}
 void BindAttribute(py::module *m) {
   py::class_<Attribute> ir_attr(*m, "Attribute", py::module_local());
   ir_attr.def("__eq__", &Attribute::operator==)
@@ -2496,6 +2510,7 @@ void BindPir(pybind11::module *module) {
   BindOperation(&ir_module);
   BindOpOperand(&ir_module);
   BindType(&ir_module);
+  BindVectorType(&ir_module);
   BindAttribute(&ir_module);
   BindInsertionPoint(&ir_module);
   BindUtils(&ir_module);
