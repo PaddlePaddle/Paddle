@@ -315,17 +315,13 @@ class TestNormalAPIComplex(unittest.TestCase):
             return ret_all
         else:
             with paddle.static.program_guard(main_program):
-                mean = paddle.static.data('Mean', self.std.shape, 'complex128')
+                mean = paddle.static.data('Mean', (), 'complex128')
                 out = paddle.normal(mean, self.std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
                 for i in range(self.repeat_num):
                     ret = exe.run(
-                        feed={
-                            'Mean': np.broadcast_to(
-                                np.array(self.mean), self.std.shape
-                            )
-                        },
+                        feed={'Mean': np.array(self.mean)},
                         fetch_list=[out],
                     )
                     ret_all[i] = ret[0]

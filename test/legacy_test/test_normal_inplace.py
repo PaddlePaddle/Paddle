@@ -224,8 +224,8 @@ class TestNormalRandomComplexInplaceGrad(unittest.TestCase):
             loss = tensor_b.sum()
             loss.backward()
             normal_grad = tensor_b.grad.numpy()
-            self.assertTrue((normal_grad.real() == 0).all())
-            self.assertTrue((normal_grad.imag() == 0).all())
+            self.assertTrue((normal_grad.real == 0).all())
+            self.assertTrue((normal_grad.imag == 0).all())
 
         places = ['cpu']
         if base.core.is_compiled_with_cuda():
