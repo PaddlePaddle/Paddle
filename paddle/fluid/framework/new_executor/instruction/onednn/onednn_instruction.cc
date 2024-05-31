@@ -476,14 +476,12 @@ void OneDNNPhiKernelInstruction::Run() {
               input_meta_tensor)) {
         tmp_infer_meta_context_.UpdataInput(i, meta_tensor);
       } else {
-        size_t j = 0;
-        while (1) {
+        for (size_t j = 0; j < tmp_infer_meta_context_.InputsSize(); ++j) {
           if (tmp_infer_meta_context_.InputAt(j).is_same_tensor(
                   input_meta_tensor)) {
             tmp_infer_meta_context_.UpdataInput(j, meta_tensor);
             break;
           }
-          j++;
         }
       }
     }
