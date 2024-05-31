@@ -44,7 +44,6 @@
 - full_like
 - full_with_tensor
 - fused_batch_norm_act
-- fused_bn_add_activation
 - fused_multi_transformer
 - fused_softmax_mask
 - fused_softmax_mask_upper_triangle

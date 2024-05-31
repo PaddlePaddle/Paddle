@@ -15,7 +15,6 @@
 - enable_check_model_nan_inf_grad
 - frobenius_norm_grad
 - fused_batch_norm_act_grad
-- fused_bn_add_activation_grad
 - fused_softmax_mask_grad
 - fused_softmax_mask_upper_triangle_grad
 - hsigmoid_loss_grad
