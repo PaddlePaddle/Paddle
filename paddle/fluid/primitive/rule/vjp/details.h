@@ -1548,7 +1548,8 @@ void leaky_relu_grad(const Tensor& out,
 template <typename T>
 void sigmoid_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    set_output<T>(out_grad * (out * (1 - out)), x_grad);
+    auto one_tensor = full_scalar<T>(1.0, out.dtype());
+    set_output<T>(out_grad * (out * (one_tensor - out)), x_grad);
   }
 }
 
