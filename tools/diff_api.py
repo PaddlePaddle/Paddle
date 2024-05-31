@@ -16,7 +16,9 @@ import argparse
 import difflib
 import re
 from dataclasses import dataclass
-from typing import Callable, Generic, TypeAlias, TypeVar, Union
+from typing import Callable, Generic, TypeVar, Union
+
+from typing_extensions import TypeAlias
 
 T = TypeVar("T")
 E = TypeVar("E", bound=Exception)
