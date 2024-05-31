@@ -21,7 +21,7 @@ if [[ $# -ne 2 ]]; then
     exit 1
 fi
 
-xpu_base_url=$1
+xre_base_url=$1
 xccl_base_url=$2
 BOS_PATTERN="https://baidu-kunlun-product.su.bcebos.com"
 

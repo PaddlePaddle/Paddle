@@ -379,10 +379,10 @@ def get_cudnn_version():
         return 'False'
 
 
-def get_xpu_version():
+def get_xpu_xre_version():
     with_xpu = env_dict.get("WITH_XPU")
     if with_xpu == 'ON':
-        return env_dict.get("XPU_BASE_DATE")
+        return env_dict.get("XPU_XRE_BASE_VERSION")
     else:
         return 'False'
 
@@ -688,7 +688,7 @@ def cinn():
                 'version': env_dict.get("PADDLE_VERSION"),
                 'cuda': get_cuda_version(),
                 'cudnn': get_cudnn_version(),
-                'xpu': get_xpu_version(),
+                'xre': get_xpu_xre_version(),
                 'xpu_xccl': get_xpu_xccl_version(),
                 'xpu_xhpc': get_xpu_xhpc_version(),
                 'commit': commit,

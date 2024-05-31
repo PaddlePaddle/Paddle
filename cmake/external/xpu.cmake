@@ -26,17 +26,14 @@ set(XPU_XPTI_LIB_NAME "libxpti.so")
 set(XPU_XBLAS_LIB_NAME "libxpu_blas.so")
 set(XPU_XFA_LIB_NAME "libxpu_flash_attention.so")
 
-if(NOT DEFINED XPU_BASE_DATE)
-  set(XPU_BASE_DATE "20240104")
-endif()
 if(NOT DEFINED XPU_XRE_BASE_VERSION)
-  set(XPU_XRE_BASE_VERSION "5.0.3.1")
+  set(XPU_XRE_BASE_VERSION "4.32.0.1")
 endif()
 if(NOT DEFINED XPU_XDNN_BASE_DATE)
   set(XPU_XDNN_BASE_DATE "20240327")
 endif()
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
-  set(XPU_XHPC_BASE_DATE "20240520")
+  set(XPU_XHPC_BASE_DATE "20240515")
 endif()
 set(XPU_XCCL_BASE_VERSION "1.2.0.5")
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
@@ -44,20 +41,8 @@ if(NOT DEFINED XPU_XFT_BASE_VERSION)
 endif()
 set(XPU_XPTI_BASE_VERSION "0.0.1")
 
-if(NOT DEFINED XPU_BASE_URL)
-  set(XPU_BASE_URL_WITHOUT_DATE
-      "https://baidu-kunlun-product.su.bcebos.com/KL-SDK/klsdk-dev")
-  set(XPU_BASE_URL "${XPU_BASE_URL_WITHOUT_DATE}/${XPU_BASE_DATE}")
-else()
-  set(XPU_BASE_URL "${XPU_BASE_URL}")
-endif()
-
 set(XPU_XRE_BASE_URL
-    "https://klx-sdk-release-public.su.bcebos.com/xre/kl3-release/${XPU_XRE_BASE_VERSION}"
-)
-
-set(XPU_XDNN_BASE_URL
-    "https://klx-sdk-release-public.su.bcebos.com/xdnn/stable/${XPU_XDNN_BASE_DATE}"
+    "https://klx-sdk-release-public.su.bcebos.com/xre/release/${XPU_XRE_BASE_VERSION}"
 )
 
 set(XPU_XCCL_BASE_URL
@@ -74,6 +59,20 @@ set(XPU_XPTI_BASE_URL
     "https://klx-sdk-release-public.su.bcebos.com/xpti/dev/${XPU_XPTI_BASE_VERSION}"
 )
 
+if(WITH_XPU3)
+  set(XPU_XRE_BASE_VERSION "5.0.3.1")
+  set(XPU_XHPC_BASE_DATE "20240520")
+  set(XPU_XRE_BASE_URL
+      "https://klx-sdk-release-public.su.bcebos.com/xre/kl3-release/${XPU_XRE_BASE_VERSION}"
+  )
+endif()
+
+if(NOT DEFINED XPU_BASE_URL)
+  set(XPU_BASE_URL "")
+else()
+  set(XPU_BASE_URL "${XPU_BASE_URL}")
+endif()
+
 if(WITH_XCCL_RDMA)
   set(XPU_XCCL_PREFIX "xccl_rdma")
 else()
@@ -82,34 +81,28 @@ endif()
 
 if(WITH_AARCH64)
   set(XPU_XRE_DIR_NAME "xre-kylin_aarch64")
-  set(XPU_XDNN_DIR_NAME "xdnn-kylin_aarch64")
   set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-kylin_aarch64")
   set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
 elseif(WITH_SUNWAY)
   set(XPU_XRE_DIR_NAME "xre-deepin_sw6_64")
-  set(XPU_XDNN_DIR_NAME "xdnn-deepin_sw6_64")
   set(XPU_XCCL_DIR_NAME "") # TODO: xccl has no deepin output at now.
   set(XPU_XFT_DIR_NAME "") # TODO: xft has no deepin output at now.
 elseif(WITH_BDCENTOS)
   set(XPU_XRE_DIR_NAME "xre-bdcentos_x86_64")
-  set(XPU_XDNN_DIR_NAME "xdnn-bdcentos_x86_64")
   set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-bdcentos_x86_64")
   set(XPU_XFT_DIR_NAME "xft_bdcentos6u3_x86_64_gcc82")
   set(XPU_XHPC_DIR_NAME "xhpc-bdcentos_x86_64")
 elseif(WITH_UBUNTU)
-  set(XPU_XRE_DIR_NAME "xre-ubuntu-x86_64")
-  set(XPU_XDNN_DIR_NAME "xdnn-ubuntu_x86_64")
+  set(XPU_XRE_DIR_NAME "xre-ubuntu_x86_64")
   set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-ubuntu_x86_64")
   set(XPU_XFT_DIR_NAME "xft_ubuntu1604_x86_64")
   set(XPU_XHPC_DIR_NAME "xhpc-ubuntu_x86_64")
 elseif(WITH_CENTOS)
   set(XPU_XRE_DIR_NAME "xre-centos7_x86_64")
-  set(XPU_XDNN_DIR_NAME "xdnn-centos7_x86_64")
   set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-bdcentos_x86_64")
   set(XPU_XFT_DIR_NAME "xft_bdcentos6u3_x86_64_gcc82")
 else()
   set(XPU_XRE_DIR_NAME "xre-Linux-x86_64-${XPU_XRE_BASE_VERSION}")
-  set(XPU_XDNN_DIR_NAME "xdnn-ubuntu_x86_64")
   set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-ubuntu_x86_64")
   set(XPU_XFT_DIR_NAME "xft_ubuntu1604_x86_64")
   set(XPU_XHPC_DIR_NAME "xhpc-ubuntu_x86_64")
@@ -118,9 +111,6 @@ set(XPU_XPTI_DIR_NAME "xpti")
 
 set(XPU_XRE_URL
     "${XPU_XRE_BASE_URL}/${XPU_XRE_DIR_NAME}.tar.gz"
-    CACHE STRING "" FORCE)
-set(XPU_XDNN_URL
-    "${XPU_XDNN_BASE_URL}/${XPU_XDNN_DIR_NAME}.tar.gz"
     CACHE STRING "" FORCE)
 set(XPU_XCCL_URL
     "${XPU_XCCL_BASE_URL}/${XPU_XCCL_DIR_NAME}.tar.gz"
@@ -133,11 +123,9 @@ set(XPU_XFT_GET_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/get_xft_dependence.sh"
     CACHE STRING "" FORCE)
 
-if(WITH_XPU_XHPC)
-  set(XPU_XHPC_URL
-      "https://klx-sdk-release-public.su.bcebos.com/xhpc/dev/${XPU_XHPC_BASE_DATE}/${XPU_XHPC_DIR_NAME}.tar.gz"
-      CACHE STRING "" FORCE)
-endif()
+set(XPU_XHPC_URL
+    "https://klx-sdk-release-public.su.bcebos.com/xhpc/dev/${XPU_XHPC_BASE_DATE}/${XPU_XHPC_DIR_NAME}.tar.gz"
+    CACHE STRING "" FORCE)
 
 set(SNAPPY_PREFIX_DIR "${THIRD_PARTY_PATH}/xpu")
 set(XPU_DOWNLOAD_DIR "${SNAPPY_PREFIX_DIR}/src/${XPU_PROJECT}")
@@ -176,7 +164,7 @@ ExternalProject_Add(
   DOWNLOAD_DIR ${XPU_DOWNLOAD_DIR}
   DOWNLOAD_COMMAND
     bash ${CMAKE_SOURCE_DIR}/tools/xpu/check_xpu_dependence.sh ${XPU_BASE_URL}
-    ${XPU_XCCL_BASE_URL} && WITH_XPU_XHPC=${WITH_XPU_XHPC} bash
+    ${XPU_XCCL_BASE_URL} && bash
     ${CMAKE_SOURCE_DIR}/tools/xpu/pack_paddle_depence.sh ${XPU_XRE_URL}
     ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL} ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL}
     ${XPU_XCCL_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME} && wget
