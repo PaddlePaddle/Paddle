@@ -22,12 +22,7 @@ limitations under the License. */
 namespace phi {
 
 // If T is not complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
-                         !std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T, typename Context>
 void GaussianInplaceGradKernel(const Context& ctx,
                                const DenseTensor& out_grad,
                                float mean,
@@ -35,26 +30,12 @@ void GaussianInplaceGradKernel(const Context& ctx,
                                int seed,
                                DenseTensor* x_grad) {
   auto dims = common::vectorize(x_grad->dims());
-  float value = static_cast<float>(0.0f);
-  phi::FullKernel<T>(ctx, dims, value, phi::DataType::UNDEFINED, x_grad);
-}
-
-// If T is complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value &&
-                         std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
-void GaussianInplaceGradKernel(const Context& ctx,
-                               const DenseTensor& out_grad,
-                               float mean,
-                               float std,
-                               int seed,
-                               DenseTensor* x_grad) {
-  auto dims = common::vectorize(x_grad->dims());
-  T value = T(static_cast<phi::dtype::Real<T>>(0.0f),
-              static_cast<phi::dtype::Real<T>>(0.0f));
+  if (IsComplexType(x_grad->dtype())) {
+    T value = T(static_cast<phi::dtype::Real<T>>(0.0f),
+                static_cast<phi::dtype::Real<T>>(0.0f));
+  } else {
+    float value = static_cast<float>(0.0f);
+  }
   phi::FullKernel<T>(ctx, dims, value, phi::DataType::UNDEFINED, x_grad);
 }
 
