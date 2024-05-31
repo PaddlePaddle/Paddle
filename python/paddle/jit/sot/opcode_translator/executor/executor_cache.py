@@ -73,6 +73,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
         """
         self.cache.clear()
         self.translate_count = 0
+        self.code_symbolic_inputs.clear()
 
     def __call__(self, frame: types.FrameType, **kwargs) -> CustomCode:
         code: types.CodeType = frame.f_code
