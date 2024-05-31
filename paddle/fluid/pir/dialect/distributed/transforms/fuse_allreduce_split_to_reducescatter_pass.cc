@@ -61,9 +61,10 @@ class FusedAllReduceSplitPattern : public paddle::drr::DrrPatternBase {
 
     const auto &c_reducescatter =
         res.Op(paddle::dialect::CReducescatterOp::name(),
-               {{"ring_id", pat.Attr("ring_id")}, {"nranks", pat.Attr("num")}},
-               {{"use_calc_stream", pat.Attr("use_calc_stream")},
-                {"execution_stream", pat.Attr("execution_stream")},
+               {{"ring_id", pat.Attr("ring_id")},
+                {"nranks", pat.Attr("num")},
+                {"use_calc_stream", pat.Attr("use_calc_stream")}},
+               {{"execution_stream", pat.Attr("execution_stream")},
                 {"force_record_event", pat.Attr("force_record_event")},
                 {"event_to_record", pat.Attr("event_to_record")},
                 {"events_to_wait", pat.Attr("events_to_wait")}});
