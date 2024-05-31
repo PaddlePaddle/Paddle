@@ -31,7 +31,6 @@
 - pool2d_grad
 - pool3d_grad
 - prod_grad
-- repeat_interleave_grad
 - repeat_interleave_with_tensor_index_grad
 - rnn_grad
 - rrelu_grad

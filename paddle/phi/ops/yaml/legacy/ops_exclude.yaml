@@ -72,7 +72,6 @@
 - randint
 - randperm
 - read_file
-- repeat_interleave
 - repeat_interleave_with_tensor_index
 - rnn
 - rrelu
