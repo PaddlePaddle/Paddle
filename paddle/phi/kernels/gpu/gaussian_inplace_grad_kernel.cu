@@ -30,12 +30,7 @@ void GaussianInplaceGradKernel(const Context& ctx,
                                int seed,
                                DenseTensor* x_grad) {
   auto dims = common::vectorize(x_grad->dims());
-  if (IsComplexType(x_grad->dtype())) {
-    T value = T(static_cast<phi::dtype::Real<T>>(0.0f),
-                static_cast<phi::dtype::Real<T>>(0.0f));
-  } else {
-    float value = static_cast<float>(0.0f);
-  }
+  float value = static_cast<float>(0.0f);
   phi::FullKernel<T>(ctx, dims, value, phi::DataType::UNDEFINED, x_grad);
 }
 
