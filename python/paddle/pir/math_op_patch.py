@@ -67,7 +67,7 @@ def create_tensor_with_batchsize(ref_var, value, dtype):
     from paddle.framework import core
 
     out = _C_ops.full_batch_size_like(
-        ref_var, out_shape, dtype, value, batch_dim, batch_dim, core.Place()
+        ref_var, out_shape, value, batch_dim, batch_dim, dtype, core.Place()
     )
     out.stop_gradient = True
 
