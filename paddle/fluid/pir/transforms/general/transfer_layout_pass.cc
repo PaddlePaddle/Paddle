@@ -546,7 +546,7 @@ using Edge = FlowGraph::Edge;
 
 class TransferLayoutPass : public pir::Pass {
  public:
-  TransferLayoutPass() : pir::Pass("transfer_layout_pass", 3) {}
+  TransferLayoutPass() : pir::Pass("transfer_layout_pass", 2) {}
 
   bool CanApplyOn(pir::Operation* op) const override {
     if (!op->isa<pir::ModuleOp>()) {
