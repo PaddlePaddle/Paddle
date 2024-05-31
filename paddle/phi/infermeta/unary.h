@@ -646,6 +646,8 @@ void ShardIndexInferMeta(const MetaTensor& in,
                          MetaTensor* out,
                          MetaConfig config = MetaConfig());
 
+void NopInferMeta(const MetaTensor& x, MetaTensor* out);
+
 void NumelInferMeta(const MetaTensor& input, MetaTensor* out);
 
 void ShuffleChannelInferMeta(const MetaTensor& x, int group, MetaTensor* out);

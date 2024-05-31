@@ -3995,6 +3995,8 @@ void ShardIndexInferMeta(const MetaTensor& in,
   out->set_dtype(in.dtype());
 }
 
+void NopInferMeta(const MetaTensor& x, MetaTensor* out) {}
+
 void NumelInferMeta(const MetaTensor& input, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
   out->set_dims(common::make_ddim({}));
