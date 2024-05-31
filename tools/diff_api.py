@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -190,7 +188,6 @@ def try_result(res: Result[T, E]) -> T:
 
 def parse_signature(sig: str):
     sig = sig.strip()
-    print("parsing", sig)
     api_name, remaining = try_result(parse_api_name(sig))
     _, remaining = try_result(eat_whitespace(remaining))
     _, remaining = try_result(eat_string(remaining, "("))
