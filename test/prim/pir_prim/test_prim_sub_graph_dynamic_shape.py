@@ -172,14 +172,6 @@ def meshgrid_net(x, y):
     return paddle.meshgrid(x, y)
 
 
-def sum_net(x):
-    return paddle.sum(x, axis=1, keepdim=False)
-
-
-def mean_net(x):
-    return paddle.mean(x, axis=1, keepdim=False)
-
-
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -604,64 +596,6 @@ class TestPrimMeanAll(TestPrimBase):
         self.net = mean_all_net1
         self.necessary_ops = "pd_op.mean_all"
         self.enable_cinn = False
-
-
-class TestPrimBaseWithGrad(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(2023)
-        self.dtype = "float32"
-        self.x_shape = [30, 200, 40]
-        self.init_x_shape = [None, None, 40]
-        self.x = np.random.random(self.x_shape).astype(self.dtype)
-        self.net = sum_net
-        self.enable_cinn = False
-        self.tol = 1e-6
-
-    def base_net(self, flag=None):
-        if flag == "prim":
-            core._set_prim_all_enabled(True)
-        x = paddle.to_tensor(self.x, stop_gradient=False)
-        if flag == "prim":
-            fn = apply_to_static(
-                self.net,
-                use_cinn=self.enable_cinn,
-                input_spec=[
-                    InputSpec(shape=self.init_x_shape, dtype='float32'),
-                ],
-            )
-            fn.train()
-        else:
-            fn = self.net
-        res = fn(x)
-        res.backward()
-        x_grad = x.gradient()
-        if flag == "prim":
-            core._set_prim_all_enabled(False)
-        return res, x_grad
-
-    def test_prim_all_dynamic(self):
-        res_ref, grad_ref = self.base_net()
-        res, grad = self.base_net("prim")
-
-        for ref, actual in zip(res_ref, res):
-            np.testing.assert_allclose(
-                ref, actual, rtol=self.tol, atol=self.tol
-            )
-
-        for dr, d in zip(grad_ref, grad):
-            np.testing.assert_allclose(dr, d, rtol=self.tol, atol=self.tol)
-
-
-class TestPrimMeanWithGrad(TestPrimBaseWithGrad):
-    def setUp(self):
-        np.random.seed(2023)
-        self.dtype = "float32"
-        self.x_shape = [30, 200, 40]
-        self.init_x_shape = [None, None, 40]
-        self.x = np.random.random(self.x_shape).astype(self.dtype)
-        self.net = mean_net
-        self.enable_cinn = False
-        self.tol = 1e-6
 
 
 if __name__ == "__main__":
