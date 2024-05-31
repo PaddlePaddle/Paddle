@@ -413,6 +413,12 @@ void BindProgram(py::module *m) {
              return Clone(self, &ir_mapper);
            })
       .def(
+          "copy_to_block",
+          [](std::shared_ptr<Program> self,
+             pir::IrMapping &mapper,
+             Block *block) { return self->CopyToBlock(mapper, block); },
+          return_value_policy::reference)
+      .def(
           "list_vars",
           [](std::shared_ptr<Program> self) {
             std::vector<pir::Value> vars;
@@ -654,9 +660,12 @@ void BindIrMapping(py::module *m) {
   ir_mapping.def(py::init<>())
       .def("look_up",
            [](IrMapping &self, Value from) { return self.Lookup(from); })
-      .def("add", [](IrMapping &self, Value from, Value to) {
-        self.Add<Value>(from, to);
-      });
+      .def("add",
+           [](IrMapping &self, Value from, Value to) {
+             self.Add<Value>(from, to);
+           })
+      .def("size",
+           [](IrMapping &self) { return self.GetMutableMap<Value>().size(); });
 }
 
 void BindCloneOptions(py::module *m) {
