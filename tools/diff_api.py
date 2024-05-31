@@ -33,6 +33,10 @@ REGEX_WHITESPACE = re.compile(r"\s+")
 REGEX_DOCUMENT = re.compile(r"\('document', '([0-9a-z]{32})'\)")
 
 
+# FOR DEBUG
+current_api = ""
+
+
 class Ok(Generic[T]):
     def __init__(self, value: T):
         self._value = value
@@ -137,7 +141,9 @@ def eat_string(
 ) -> Result[WithRemaining[str], ParseError]:
     if input.startswith(to_eat):
         return Ok((to_eat, input[len(to_eat) :]))
-    return Err(ParseError(f"Expected {to_eat} but got {input}"))
+    return Err(
+        ParseError(f"Expected {to_eat} but got {input}, api is {current_api}")
+    )
 
 
 def eat_whitespace(input: str) -> Result[WithRemaining[str], ParseError]:
@@ -184,7 +190,7 @@ def parse_document(
     return Ok((Document(match.group(1)), document[match.end() :]))
 
 
-def try_result(res: Result[T, E]) -> T:
+def unwrap(res: Result[T, E]) -> T:
     if isinstance(res, Err):
         raise res.err()
     return res.ok()
@@ -192,14 +198,14 @@ def try_result(res: Result[T, E]) -> T:
 
 def parse_signature(sig: str):
     sig = sig.strip()
-    api_name, remaining = try_result(parse_api_name(sig))
-    _, remaining = try_result(eat_whitespace(remaining))
-    _, remaining = try_result(eat_string(remaining, "("))
-    arg_spec, remaining = try_result(parse_arg_spec(remaining))
-    _, remaining = try_result(eat_string(remaining, ","))
-    _, remaining = try_result(eat_whitespace(remaining))
-    document, remaining = try_result(parse_document(remaining))
-    _, remaining = try_result(eat_string(remaining, ")"))
+    api_name, remaining = unwrap(parse_api_name(sig))
+    _, remaining = unwrap(eat_whitespace(remaining))
+    _, remaining = unwrap(eat_string(remaining, "("))
+    arg_spec, remaining = unwrap(parse_arg_spec(remaining))
+    _, remaining = unwrap(eat_string(remaining, ","))
+    _, remaining = unwrap(eat_whitespace(remaining))
+    document, remaining = unwrap(parse_document(remaining))
+    _, remaining = unwrap(eat_string(remaining, ")"))
     api_spec = ApiSpec(api_name, arg_spec, document)
     return api_spec
 
@@ -228,7 +234,9 @@ def create_preprocessor(
     skip_fields: list[str],
 ) -> Callable[[list[str]], list[str]]:
     def line_preprocessor(spec: str) -> str:
+        global current_api
         print(f"parsing {spec}")
+        current_api = spec
         sig = parse_signature(spec)
         print(f"parsed {sig}")
         return sig.format(skip_fields)
