@@ -564,6 +564,7 @@ def partial_concat(input, start_index=0, length=-1):
                 'float16',
                 'float32',
                 'float64',
+                'uint16',
                 'int32',
                 'int64',
                 'complex64',
@@ -1080,55 +1081,6 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
         outputs={"Out": pre_act},
     )
     return helper.append_activation(pre_act)
-
-
-def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
-    r"""
-    **Pull Box Extended Sparse Layer**
-    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
-    BoxPS lookup table. The result of this lookup is the embedding of each ID in the
-    :attr:`input`.
-
-    Args:
-        input (Tensor): Input is a Tensor<int64>, which contains the IDs information.
-        size (int): The embedding size parameter, which indicates the size of
-            each embedding vector respectively.
-        extend_size (int, optional): The embedding size parameter in extended dim,
-            which indicates the size of each embedding vector respectively. Default is 64.
-        dtype (str, optional): The dtype refers to the data type of output tensor. Only supports float32 now. Default is float32.
-
-    Returns:
-        Tensor: The tensor storing the embeddings of the supplied inputs.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> paddle.enable_static()
-
-            >>> data = paddle.static.data(name='sequence', shape=[-1, 1], dtype='int64', lod_level=1)
-            >>> emb, emb_ex = paddle.incubate.layers._pull_box_extended_sparse(input=data, size=8, extend_size=128)
-    """
-    helper = LayerHelper('pull_box_extended_sparse', **locals())
-    helper.input_dtype()
-    inputs = helper.multiple_input()
-    outs = [
-        helper.create_variable_for_type_inference(dtype)
-        for i in range(len(inputs))
-    ]
-    outs_extend = [
-        helper.create_variable_for_type_inference(dtype)
-        for i in range(len(inputs))
-    ]
-    helper.append_op(
-        type='pull_box_extended_sparse',
-        inputs={'Ids': inputs},
-        outputs={'Out': outs, 'OutExtend': outs_extend},
-        attrs={'emb_size': size, 'emb_extended_size': extend_size},
-    )
-    if len(outs) == 1:
-        return outs[0], outs_extend[0]
-    return outs, outs_extend
 
 
 def bilateral_slice(x, guide, grid, has_offset, name=None):

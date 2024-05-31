@@ -114,22 +114,37 @@ void StaticShapeGroupScheduler::Schedule() {
       &StaticShapeGroupScheduler::IsKeepGraphDependency);
   DoLoopAlignment();
   DoComputeInline();
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  OptimizeReduction();
+        OptimizeReduction();
 #endif
+      });
   DoHorizontalLoopFusion();
   DoVerticalLoopFusion();
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  BindCudaAxis();
-  AllocateStorage();
+        BindCudaAxis();
+        AllocateStorage();
 #endif
+      });
 }
 
 void StaticShapeGroupScheduler::MapExprSchedule() {
   DoComputeInline();
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  AllocateStorage();
+        AllocateStorage();
 #endif
+      });
 }
 
 std::vector<std::pair<SymbolicPredicate, ir::Expr>>
@@ -555,7 +570,7 @@ void StaticShapeGroupScheduler::DoVerticalLoopFusion() {
 }
 
 void StaticShapeGroupScheduler::BindCudaAxis() {
-  if (target_.arch != Target::Arch::NVGPU) return;
+  if (!std::holds_alternative<common::NVGPUArch>(target_.arch)) return;
   VLOG(5) << "[Start BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
@@ -594,7 +609,7 @@ std::ostream& operator<<(std::ostream& os, const Range& x) {
 // and MultiDimIntegerSet, re implement this function to simplify these ugly
 // codes.
 void StaticShapeGroupScheduler::AllocateStorage() {
-  if (target_.arch != Target::Arch::NVGPU) return;
+  if (!std::holds_alternative<common::NVGPUArch>(target_.arch)) return;
   VLOG(5) << "[Start AllocateStorage] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 

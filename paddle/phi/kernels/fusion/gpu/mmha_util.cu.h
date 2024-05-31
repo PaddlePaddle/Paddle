@@ -629,12 +629,26 @@ template <typename T, typename IntT>
 inline __device__ void mul_pointer_v2(T* c, float a, IntT* b);
 
 template <>
+inline __device__ void mul_pointer_v2(float4* c, float a, uint8_t* b) {
+  c->x = a * (static_cast<float>(b[0]) - 128.0);
+  c->y = a * (static_cast<float>(b[1]) - 128.0);
+  c->z = a * (static_cast<float>(b[2]) - 128.0);
+  c->w = a * (static_cast<float>(b[3]) - 128.0);
+}
+
+template <>
 inline __device__ void mul_pointer_v2(float4* c, float a, uint32_t* b) {
   uint8_t* b_tmp = reinterpret_cast<uint8_t*>(b);
   c->x = a * (static_cast<float>(b_tmp[0]) - 128.0);
   c->y = a * (static_cast<float>(b_tmp[1]) - 128.0);
   c->z = a * (static_cast<float>(b_tmp[2]) - 128.0);
   c->w = a * (static_cast<float>(b_tmp[3]) - 128.0);
+}
+
+template <>
+inline __device__ void mul_pointer_v2(float2* c, float a, uint8_t* b) {
+  c->x = a * (static_cast<float>(b[0]) - 128.0);
+  c->y = a * (static_cast<float>(b[1]) - 128.0);
 }
 
 template <>
@@ -667,6 +681,17 @@ inline __device__ void convert_(float16* result, uint32_t const& source) {
 #endif
 }
 
+template <>
+inline __device__ void mul_pointer_v2(uint32_t* c, float a, uint8_t* b) {
+  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
+  float16 a_prime = static_cast<float16>(a);
+  float16 offset = static_cast<float16>(128.0);
+#pragma unroll
+  for (int i = 0; i < 2; ++i) {
+    tmp_fp16[i] = a_prime * (static_cast<float16>(b[i]) - offset);
+  }
+}
+
 // float16 * 2 <- uint8_t * 2
 template <>
 inline __device__ void mul_pointer_v2(uint32_t* c, float a, uint16_t* b) {
@@ -696,6 +721,17 @@ inline __device__ void mul_pointer_v2(uint32_t* c, float a, uint16_t* b) {
 #endif
 }
 
+template <>
+inline __device__ void mul_pointer_v2(uint2* c, float a, uint8_t* b) {
+  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
+  float16 a_prime = static_cast<float16>(a);
+  float16 offset = static_cast<float16>(128.0);
+#pragma unroll
+  for (int i = 0; i < 4; ++i) {
+    tmp_fp16[i] = a_prime * (static_cast<float16>(b[i]) - offset);
+  }
+}
+
 // float16 * 4 <- uint8_t * 4
 template <>
 inline __device__ void mul_pointer_v2(uint2* c, float a, uint32_t* b) {
@@ -707,6 +743,18 @@ inline __device__ void mul_pointer_v2(uint2* c, float a, uint32_t* b) {
     c_prime[i] *= a_prime;
   }
 }
+
+template <>
+inline __device__ void mul_pointer_v2(uint4* c, float a, uint8_t* b) {
+  float16* tmp_fp16 = reinterpret_cast<float16*>(c);
+  float16 a_prime = static_cast<float16>(a);
+  float16 offset = static_cast<float16>(128.0);
+#pragma unroll
+  for (int i = 0; i < 8; ++i) {
+    tmp_fp16[i] = a_prime * (static_cast<float16>(b[i]) - offset);
+  }
+}
+
 // float16 * 8 <- uint8_t * 8
 template <>
 inline __device__ void mul_pointer_v2(uint4* c, float a, uint64_t* b) {
@@ -751,6 +799,19 @@ inline __device__ static void convert_(__nv_bfloat16* result,
 }
 
 template <>
+inline __device__ void mul_pointer_v2(__nv_bfloat162* c, float a, uint8_t* b) {
+#if __CUDA_ARCH__ >= 800
+  __nv_bfloat16 a_prime = static_cast<__nv_bfloat16>(a);
+  __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
+  convert_(c_prime, static_cast<uint32_t>(*reinterpret_cast<uint16_t*>(b)));
+#pragma unroll
+  for (int i = 0; i < 2; ++i) {
+    c_prime[i] *= a_prime;
+  }
+#endif
+}
+
+template <>
 inline __device__ void mul_pointer_v2(__nv_bfloat162* c, float a, uint16_t* b) {
   using Packed_Int8_t = typename packed_type<uint8_t, 2>::type;
   Packed_Int8_t int8_vec_4_val = *reinterpret_cast<Packed_Int8_t*>(b);
@@ -780,6 +841,19 @@ inline __device__ void mul_pointer_v2(__nv_bfloat162* c, float a, uint16_t* b) {
 }
 
 template <>
+inline __device__ void mul_pointer_v2(bf16_4_t* c, float a, uint8_t* b) {
+#if __CUDA_ARCH__ >= 800
+  __nv_bfloat16 a_prime = static_cast<__nv_bfloat16>(a);
+  __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
+  convert_(c_prime, *reinterpret_cast<uint32_t*>(b));
+#pragma unroll
+  for (int i = 0; i < 4; ++i) {
+    c_prime[i] *= a_prime;
+  }
+#endif
+}
+
+template <>
 inline __device__ void mul_pointer_v2(bf16_4_t* c, float a, uint32_t* b) {
   __nv_bfloat16 a_prime = static_cast<__nv_bfloat16>(a);
   __nv_bfloat16* c_prime = reinterpret_cast<__nv_bfloat16*>(c);
@@ -787,6 +861,15 @@ inline __device__ void mul_pointer_v2(bf16_4_t* c, float a, uint32_t* b) {
 #pragma unroll
   for (int i = 0; i < 4; ++i) {
     c_prime[i] = c_prime[i] * a_prime;
+  }
+}
+
+template <>
+inline __device__ void mul_pointer_v2(bf16_8_t* c, float a, uint8_t* b) {
+  bf16_4_t* tmp_c = reinterpret_cast<bf16_4_t*>(c);
+#pragma unroll
+  for (int i = 0; i < 2; ++i) {
+    mul_pointer_v2<bf16_4_t>(tmp_c + i, a, b + 4 * i);
   }
 }
 
@@ -2420,13 +2503,13 @@ inline __device__ void zero(T& dst) {  // NOLINT
   dst = tmp.raw;
 }
 
-template <int WARPS_PER_BLOCK, int WARP_SIZE = 32>
+template <int WARPS_PER_BLOCK, int WARP_SIZE_T = 32>
 inline __device__ float block_sum(float* red_smem, float sum) {
-  int warp = threadIdx.x / WARP_SIZE;
-  int lane = threadIdx.x % WARP_SIZE;
+  int warp = threadIdx.x / WARP_SIZE_T;
+  int lane = threadIdx.x % WARP_SIZE_T;
 
 #pragma unroll
-  for (int mask = WARP_SIZE / 2; mask >= 1; mask /= 2) {
+  for (int mask = WARP_SIZE_T / 2; mask >= 1; mask /= 2) {
     sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
   }
 
@@ -2747,7 +2830,7 @@ struct Qk_dot<float16, 4> {
   }
 };
 
-constexpr int32_t WARP_SIZE = 32;
+constexpr int32_t WARP_SIZE_TMP = 32;
 constexpr int32_t HALF_WARP = 16;
 constexpr float QUANT_MAX_BOUND = 127.0;
 constexpr float QUANT_MIN_BOUND = -127.0;
@@ -2837,16 +2920,17 @@ template <typename T>
 __inline__ __device__ T WarpReduceAbsMax(T val, unsigned lane_mask) {
 #pragma unroll
   for (int mask = HALF_WARP; mask > 0; mask >>= 1) {
-    val = MaxFunc<T>()(val, __shfl_xor_sync(lane_mask, val, mask, WARP_SIZE));
+    val =
+        MaxFunc<T>()(val, __shfl_xor_sync(lane_mask, val, mask, WARP_SIZE_TMP));
   }
   return val;
 }
 
 template <typename T>
 __inline__ __device__ T BlockReduceAbsMax(T val, unsigned mask) {
-  static __shared__ T smem[WARP_SIZE];
-  int32_t lane_id = threadIdx.x % WARP_SIZE;
-  int32_t warp_id = threadIdx.x / WARP_SIZE;
+  static __shared__ T smem[WARP_SIZE_TMP];
+  int32_t lane_id = threadIdx.x % WARP_SIZE_TMP;
+  int32_t warp_id = threadIdx.x / WARP_SIZE_TMP;
 
   val = WarpReduceAbsMax(val, mask);
 
@@ -2856,7 +2940,7 @@ __inline__ __device__ T BlockReduceAbsMax(T val, unsigned mask) {
 
   __syncthreads();
 
-  T abs_max_val = (threadIdx.x < (blockDim.x / WARP_SIZE))
+  T abs_max_val = (threadIdx.x < (blockDim.x / WARP_SIZE_TMP))
                       ? smem[threadIdx.x]
                       : static_cast<T>(0.0f);
   abs_max_val = WarpReduceAbsMax(abs_max_val, mask);

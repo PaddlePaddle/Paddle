@@ -86,7 +86,7 @@ void ConvGradKernel(const Context& dev_ctx,
                                                          input_grad,
                                                          unique_name);
 
-        // create mkldnn memory from input tensors (data/weights)
+        // create onednn memory from input tensors (data/weights)
         auto& astream = OneDNNContext::tls().get_stream();
 
         if (filter_grad) {

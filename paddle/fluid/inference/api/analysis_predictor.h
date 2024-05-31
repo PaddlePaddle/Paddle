@@ -29,6 +29,8 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/utils/string/printf.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
@@ -45,6 +47,8 @@
 #include "paddle/pir/include/core/program.h"
 
 namespace paddle_infer {
+using float16 = paddle::platform::float16;
+using bfloat16 = phi::dtype::bfloat16;
 namespace experimental {
 class InternalUtils;
 };
@@ -321,7 +325,7 @@ class AnalysisPredictor : public PaddlePredictor {
   void RegisterInputHook(const InputTensorHookFunc &hookfunc) override;
 
   ///
-  /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
+  /// \brief Initialize onednn quantizer and execute onednn quantization pass
   ///
   /// \return Whether the function executed successfully
   ///
@@ -548,7 +552,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
  private:
   AnalysisConfig config_;
-  std::unique_ptr<Argument> argument_;
+  std::unique_ptr<Argument> argument_ = nullptr;
   Argument::fusion_statis_t fusion_statis_;
   std::unique_ptr<NaiveExecutor> executor_;
   platform::Place place_;

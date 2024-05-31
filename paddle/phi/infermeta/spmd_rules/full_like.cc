@@ -20,7 +20,9 @@ namespace distributed {
 SpmdInfo FullLikeInferSpmd(const DistMetaTensor& x,
                            const Scalar& y,
                            phi::DataType dtype) {
-  return ElementwiseUnaryInferSpmd(x);
+  TensorDistAttr out_dist_attr = x.dist_attr();
+  out_dist_attr.clean_partial_status();
+  return {{x.dist_attr()}, {out_dist_attr}};
 }
 }  // namespace distributed
 }  // namespace phi

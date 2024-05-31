@@ -121,12 +121,12 @@ class OperationDistAttrStorage : public pir::AttributeStorage {
   /// \brief Declare ParamKey according to parameter type.
   ///
   using ParamKey = std::tuple<ProcessMeshAttribute,
-                              std::vector<TensorDistAttribute>,
-                              std::vector<TensorDistAttribute>>;
+                              std::vector<pir::Attribute>,
+                              std::vector<pir::Attribute>>;
   OperationDistAttrStorage(ParamKey&& param)  // NOLINT
       : mesh_attr(std::get<0>(param)),
-        operand_dist_attrs(std::get<1>(param)),
-        result_dist_attrs(std::get<2>(param)) {}
+        operands(std::get<1>(param)),
+        results(std::get<2>(param)) {}
 
   ///
   /// \brief Each derived TypeStorage must define a Construct method, which
@@ -156,14 +156,13 @@ class OperationDistAttrStorage : public pir::AttributeStorage {
   /// \brief Each derived TypeStorage needs to overload operator==.
   ///
   bool operator==(const ParamKey& key) const {
-    return mesh_attr == std::get<0>(key) &&
-           operand_dist_attrs == std::get<1>(key) &&
-           result_dist_attrs == std::get<2>(key);
+    return mesh_attr == std::get<0>(key) && operands == std::get<1>(key) &&
+           results == std::get<2>(key);
   }
 
   ProcessMeshAttribute mesh_attr;
-  std::vector<TensorDistAttribute> operand_dist_attrs;
-  std::vector<TensorDistAttribute> result_dist_attrs;
+  std::vector<pir::Attribute> operands;
+  std::vector<pir::Attribute> results;
 };
 
 }  // namespace dialect

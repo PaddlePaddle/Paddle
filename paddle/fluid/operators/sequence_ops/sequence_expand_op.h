@@ -96,7 +96,7 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         y_lod.empty(),
         false,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(Y) phi::DenseTensor of SequenceExpandOp does not contain "
             "LoD information."));
 

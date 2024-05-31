@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../deprecated/legacy_test")
 from test_pool2d_op import (
     avg_pool2D_forward_naive,
     max_pool2D_forward_naive,

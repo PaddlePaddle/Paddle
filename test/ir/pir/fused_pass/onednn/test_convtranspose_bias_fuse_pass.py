@@ -22,10 +22,6 @@ import paddle
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv2dTransposeAddFusePass(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -64,7 +60,7 @@ class TestConv2dTransposeAddFusePass(PassTest):
 
                 out = paddle.add(conv2d(x), bias)
                 out = paddle.assign(out)
-                self.pass_list = ['conv2d_transpose_bias_fuse_pass']
+                self.pass_attr_list = [{'conv2d_transpose_bias_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "bias": np.random.random(1).astype("float32"),
@@ -87,10 +83,6 @@ class TestConv2dTransposeAddFusePass(PassTest):
         self.check_pass_correct()
 
 
-@unittest.skipIf(
-    not paddle.base.core.is_compiled_with_mkldnn(),
-    "Test case only for OneDNN pass.",
-)
 class TestConv2dTransposeAddFusePassWithAddParam(PassTest):
     def is_program_valid(self, program=None):
         return True
@@ -136,7 +128,7 @@ class TestConv2dTransposeAddFusePassWithAddParam(PassTest):
                 )
                 out = paddle.add(add_out, other_param)
                 out = paddle.assign(out)
-                self.pass_list = ['conv2d_transpose_bias_fuse_pass']
+                self.pass_attr_list = [{'conv2d_transpose_bias_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "bias": np.random.random(1).astype("float32"),

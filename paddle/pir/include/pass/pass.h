@@ -167,20 +167,20 @@ class IR_API Pass {
     Set<int64_t>("__match_count__", new int64_t{match_count});
   }
 
-  void AddStatistics(int64_t match_count, int64_t all_count) {
-    Set<int64_t>("__match_count__", new int64_t{match_count});
-    Set<int64_t>("__all_count__", new int64_t{all_count});
+  void AddStatistics(int64_t match_count_1, int64_t match_count_2) {
+    Set<int64_t>("__match_count_1__", new int64_t{match_count_1});
+    Set<int64_t>("__match_count_2__", new int64_t{match_count_2});
   }
 
   void AddStatistics(const std::string& custom_log) {
     Set<std::string>("__custom_log__", new std::string{custom_log});
   }
 
-  AnalysisManager analysis_manager() { return pass_state().am; }
+  AnalysisManager analysis_manager();
 
-  detail::PassExecutionState& pass_state();
+  std::optional<detail::PassExecutionState>& pass_state();
 
-  void SignalPassFailure() { pass_state().pass_failed = true; }
+  void SignalPassFailure();
 
  private:
   detail::PassInfo pass_info_;

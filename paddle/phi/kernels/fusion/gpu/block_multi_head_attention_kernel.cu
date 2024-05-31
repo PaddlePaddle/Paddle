@@ -22,8 +22,30 @@
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/utils/none.h"
 
+#if defined(__CUDACC__) && CUDA_VERSION >= 11000
+#define CUDA_BFLOAT16_AVALIABLE
+#include <cuda_bf16.h>
+#endif
+
 namespace phi {
 namespace fusion {
+
+int GetMaxLen(const phi::GPUContext& dev_ctx,
+              const phi::DenseTensor& seq_lens_tensor,
+              phi::DenseTensor* max_len_tensor,
+              const int batch_size) {
+  constexpr int blockSize = 128;
+  int max_len_cpu = 0;
+  GetMaxLenKernel<blockSize><<<1, blockSize, 0, dev_ctx.stream()>>>(
+      seq_lens_tensor.data<int>(), max_len_tensor->data<int>(), batch_size);
+  memory_utils::Copy(phi::CPUPlace(),
+                     &max_len_cpu,
+                     dev_ctx.GetPlace(),
+                     max_len_tensor->data<int>(),
+                     sizeof(int),
+                     dev_ctx.stream());
+  return max_len_cpu;
+}
 
 template <typename data_t>
 inline HOSTDEVICE data_t RoundWithTiesToEven(data_t x) {
@@ -49,11 +71,13 @@ __forceinline__ __device__ half add_mul<half>(half a, half b, half c) {
   return __hmul(__hadd(a, b), c);
 }
 
-#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
+#ifdef CUDA_BFLOAT16_AVALIABLE
 template <>
 __forceinline__ __device__ __nv_bfloat16
 add_mul<__nv_bfloat16>(__nv_bfloat16 a, __nv_bfloat16 b, __nv_bfloat16 c) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800)
   return __hmul(__hadd(a, b), c);
+#endif
 }
 #endif
 
@@ -230,6 +254,8 @@ void DispatchWithDtype(
     const paddle::optional<DenseTensor>& qkv_bias,
     const paddle::optional<DenseTensor>& out_shift,
     const paddle::optional<DenseTensor>& out_smooth,
+    const paddle::optional<DenseTensor>& max_enc_len_this_time,
+    const paddle::optional<DenseTensor>& max_dec_len_this_time,
     int max_seq_len,
     int block_size,
     bool use_neox_style,
@@ -283,22 +309,44 @@ void DispatchWithDtype(
   VLOG(3) << "token_num: " << token_num
           << " pre_cache_length: " << pre_cache_length;
 
-  phi::DenseTensor max_dec_len_tensor;
-  max_dec_len_tensor.Resize({{1}});
-  auto* max_dec_len_data = dev_ctx.template Alloc<int>(
-      &max_dec_len_tensor, max_dec_len_tensor.numel() * sizeof(int));
-  int max_dec_len_this_time =
-      GetMaxLen(dev_ctx, seq_lens_decoder, &max_dec_len_tensor, bsz);
+  int max_dec_len_this_time_data(0);
+  if (!max_dec_len_this_time) {
+    phi::DenseTensor max_dec_len_tensor;
+    max_dec_len_tensor.Resize({{1}});
+    auto* max_dec_len_data = dev_ctx.template Alloc<int>(
+        &max_dec_len_tensor, max_dec_len_tensor.numel() * sizeof(int));
+    max_dec_len_this_time_data =
+        GetMaxLen(dev_ctx, seq_lens_decoder, &max_dec_len_tensor, bsz);
+  } else {
+    PADDLE_ENFORCE_EQ(
+        max_dec_len_this_time.get().place().GetType(),
+        phi::AllocationType::CPU,
+        errors::InvalidArgument(
+            "The place of input max_dec_len_this_time must be CPU, but got %s.",
+            max_dec_len_this_time.get().place()));
+    max_dec_len_this_time_data = *max_dec_len_this_time.get().data<int>();
+  }
 
-  phi::DenseTensor max_enc_len_tensor;
-  max_enc_len_tensor.Resize({{1}});
-  auto* max_enc_len_data = dev_ctx.template Alloc<int>(
-      &max_enc_len_tensor, max_enc_len_tensor.numel() * sizeof(int));
-  int max_enc_len_this_time =
-      GetMaxLen(dev_ctx, seq_lens_encoder, &max_enc_len_tensor, bsz);
+  int max_enc_len_this_time_data(0);
+  if (!max_enc_len_this_time) {
+    phi::DenseTensor max_enc_len_tensor;
+    max_enc_len_tensor.Resize({{1}});
+    auto* max_enc_len_data = dev_ctx.template Alloc<int>(
+        &max_enc_len_tensor, max_enc_len_tensor.numel() * sizeof(int));
+    max_enc_len_this_time_data =
+        GetMaxLen(dev_ctx, seq_lens_encoder, &max_enc_len_tensor, bsz);
+  } else {
+    PADDLE_ENFORCE_EQ(
+        max_enc_len_this_time.get().place().GetType(),
+        phi::AllocationType::CPU,
+        errors::InvalidArgument(
+            "The place of input max_enc_len_this_time must be CPU, but got %s.",
+            max_enc_len_this_time.get().place()));
+    max_enc_len_this_time_data = *max_enc_len_this_time.get().data<int>();
+  }
 
   phi::DenseTensor qkv_out_decoder;
-  if (max_dec_len_this_time > 0) {
+  if (max_dec_len_this_time_data > 0) {
     qkv_out_decoder.Resize({{bsz, 3, num_head, dim_head}});
     auto* qkv_out_decoder_data = dev_ctx.template Alloc<T>(
         &qkv_out_decoder, qkv_out_decoder.numel() * sizeof(T));
@@ -307,7 +355,7 @@ void DispatchWithDtype(
   phi::DenseTensor unpadding_q, unpadding_k, unpadding_v;
   phi::DenseTensor softmax_out, softmax_lse, seed_offset;
   phi::DenseTensor q_trans, k_trans, v_trans, qktv_out;
-  if (max_enc_len_this_time > 0) {
+  if (max_enc_len_this_time_data > 0) {
     if (!use_pre_cache) {
       unpadding_q.Resize({{token_num, num_head, dim_head}});
       unpadding_k.Resize({{token_num, num_head, dim_head}});
@@ -317,16 +365,16 @@ void DispatchWithDtype(
       dev_ctx.template Alloc<T>(&unpadding_k, unpadding_k.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&unpadding_v, unpadding_v.numel() * sizeof(T));
     } else {
-      q_trans.Resize({{bsz, num_head, max_enc_len_this_time, dim_head}});
+      q_trans.Resize({{bsz, num_head, max_enc_len_this_time_data, dim_head}});
       k_trans.Resize({{bsz,
                        num_head,
-                       max_enc_len_this_time + pre_cache_length,
+                       max_enc_len_this_time_data + pre_cache_length,
                        dim_head}});
       v_trans.Resize({{bsz,
                        num_head,
-                       max_enc_len_this_time + pre_cache_length,
+                       max_enc_len_this_time_data + pre_cache_length,
                        dim_head}});
-      qktv_out.Resize({{bsz, num_head, max_enc_len_this_time, dim_head}});
+      qktv_out.Resize({{bsz, num_head, max_enc_len_this_time_data, dim_head}});
 
       dev_ctx.template Alloc<T>(&q_trans, q_trans.numel() * sizeof(T));
       dev_ctx.template Alloc<T>(&k_trans, k_trans.numel() * sizeof(T));
@@ -335,7 +383,7 @@ void DispatchWithDtype(
     }
   }
   VLOG(3) << "encoder";
-  VLOG(3) << "max_enc_len_this_time: " << max_enc_len_this_time;
+  VLOG(3) << "max_enc_len_this_time: " << max_enc_len_this_time_data;
 
   if (qkv_out_scale) {
     VLOG(1) << "qkv_out_scale: " << qkv_out_scale.get_ptr()->dims();
@@ -368,7 +416,7 @@ void DispatchWithDtype(
         dev_ctx, ins, &outs, phi::funcs::AddFunctor<T>());
   }
 
-  if (max_enc_len_this_time > 0) {
+  if (max_enc_len_this_time_data > 0) {
     const int* sequence_lengths_data = seq_lens_encoder.data<int>();
     if (rope_emb) {
       rotary_qk_variable(dev_ctx,
@@ -400,6 +448,10 @@ void DispatchWithDtype(
                              max_seq_len,
                              dim_head);
       VLOG(3) << "qkv split end";
+      // Reshape fmha_buf to 3-D because FlashAttnUnpaddedKernel requries
+      // q,k,v,out all in 3-D [token_num, num_head, dim_head].
+      auto fmha_shape = fmha_buf.dims();
+      fmha_buf.Resize({token_num, num_head, dim_head});
       phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
                                       unpadding_q,
                                       unpadding_k,
@@ -408,8 +460,8 @@ void DispatchWithDtype(
                                       cu_seqlens_k,
                                       paddle::none /*fixed_seed_offset*/,
                                       causual ? paddle::none : mask,
-                                      max_enc_len_this_time,
-                                      max_enc_len_this_time,
+                                      max_enc_len_this_time_data,
+                                      max_enc_len_this_time_data,
                                       1.0f / sqrt(static_cast<float>(dim_head)),
                                       0.0,
                                       causual,
@@ -420,6 +472,8 @@ void DispatchWithDtype(
                                       &softmax_out,
                                       &softmax_lse,
                                       &seed_offset);
+      // Reshape fmha_buf back (to 2-D), to not affect following codes.
+      fmha_buf.Resize(fmha_shape);
     } else {
       qkv_transpose_split<T>(
           dev_ctx,
@@ -434,7 +488,7 @@ void DispatchWithDtype(
           token_num,
           bsz,
           num_head,
-          max_enc_len_this_time,
+          max_enc_len_this_time_data,
           max_seq_len,
           pre_cache_length,
           dim_head);
@@ -461,7 +515,7 @@ void DispatchWithDtype(
                                       fmha_buf.data<T>(),
                                       bsz,
                                       num_head,
-                                      max_enc_len_this_time,
+                                      max_enc_len_this_time_data,
                                       max_seq_len,
                                       dim_head,
                                       token_num,
@@ -513,8 +567,8 @@ void DispatchWithDtype(
     VLOG(3) << "cache end";
   }
   VLOG(3) << "encoder done";
-  VLOG(3) << "max_dec_len_this_time: " << max_dec_len_this_time;
-  if (max_dec_len_this_time > 0) {
+  VLOG(3) << "max_dec_len_this_time: " << max_dec_len_this_time_data;
+  if (max_dec_len_this_time_data > 0) {
     GetDecoderTensor<T>(dev_ctx,
                         qkv_buf,
                         nullptr,
@@ -554,7 +608,7 @@ void DispatchWithDtype(
             pre_cache_length,
             num_head,
             dim_head,
-            max_dec_len_this_time,
+            max_dec_len_this_time_data,
             rope_emb ? 1 : 0,
             1. / sqrt(dim_head),
             /*compute_bias*/ false,
@@ -632,6 +686,8 @@ void BlockMultiheadAttentionKernel(
     const paddle::optional<DenseTensor>& qkv_bias,
     const paddle::optional<DenseTensor>& out_shift,
     const paddle::optional<DenseTensor>& out_smooth,
+    const paddle::optional<DenseTensor>& max_enc_len_this_time,
+    const paddle::optional<DenseTensor>& max_dec_len_this_time,
     int max_seq_len,
     int block_size,
     bool use_neox_style,
@@ -674,6 +730,8 @@ void BlockMultiheadAttentionKernel(
                                                       qkv_bias,
                                                       out_shift,
                                                       out_smooth,
+                                                      max_enc_len_this_time,
+                                                      max_dec_len_this_time,
                                                       max_seq_len,
                                                       block_size,
                                                       use_neox_style,
@@ -688,7 +746,7 @@ void BlockMultiheadAttentionKernel(
                                                       key_cache_out,
                                                       value_cache_out);
     } else if (compute_dtype == "bf16") {
-#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
+#ifdef CUDA_BFLOAT16_AVALIABLE
       DispatchWithDtype<phi::dtype::bfloat16, Context>(dev_ctx,
                                                        qkv,
                                                        key_cache,
@@ -714,6 +772,8 @@ void BlockMultiheadAttentionKernel(
                                                        qkv_bias,
                                                        out_shift,
                                                        out_smooth,
+                                                       max_enc_len_this_time,
+                                                       max_dec_len_this_time,
                                                        max_seq_len,
                                                        block_size,
                                                        use_neox_style,
@@ -757,6 +817,8 @@ void BlockMultiheadAttentionKernel(
                                                       qkv_bias,
                                                       out_shift,
                                                       out_smooth,
+                                                      max_enc_len_this_time,
+                                                      max_dec_len_this_time,
                                                       max_seq_len,
                                                       block_size,
                                                       use_neox_style,
@@ -771,7 +833,7 @@ void BlockMultiheadAttentionKernel(
                                                       key_cache_out,
                                                       value_cache_out);
     } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
-#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
+#ifdef CUDA_BFLOAT16_AVALIABLE
       DispatchWithDtype<phi::dtype::bfloat16, Context>(dev_ctx,
                                                        qkv,
                                                        key_cache,
@@ -797,6 +859,8 @@ void BlockMultiheadAttentionKernel(
                                                        qkv_bias,
                                                        out_shift,
                                                        out_smooth,
+                                                       max_enc_len_this_time,
+                                                       max_dec_len_this_time,
                                                        max_seq_len,
                                                        block_size,
                                                        use_neox_style,
@@ -818,19 +882,25 @@ void BlockMultiheadAttentionKernel(
 }  // namespace fusion
 }  // namespace phi
 
-#if CUDA_VERSION >= 11000 && defined(CUDA_BFLOAT16_AVALIABLE)
+#ifdef CUDA_BFLOAT16_AVALIABLE
 PD_REGISTER_KERNEL(block_multihead_attention,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::BlockMultiheadAttentionKernel,
                    phi::dtype::bfloat16,
                    phi::dtype::float16,
-                   int32_t) {}
+                   int32_t) {
+  kernel->InputAt(24).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(25).SetBackend(phi::Backend::CPU);
+}
 #else
 PD_REGISTER_KERNEL(block_multihead_attention,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::BlockMultiheadAttentionKernel,
                    phi::dtype::float16,
-                   int32_t) {}
+                   int32_t) {
+  kernel->InputAt(24).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(25).SetBackend(phi::Backend::CPU);
+}
 #endif

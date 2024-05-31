@@ -30,7 +30,7 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
     '''
 
     def test(self):
-        self.run_and_statis(quant=False, passes=["depthwise_conv_mkldnn_pass"])
+        self.run_and_statis(quant=False, passes=["depthwise_conv_onednn_pass"])
 
     def sample_program_config(self, draw):
         # generate random number
@@ -121,7 +121,7 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        # for mkldnn
+        # for onednn
         config = self.create_inference_config(use_mkldnn=True)
         yield config, ['conv2d'], (1e-5, 1e-5)
 

@@ -101,7 +101,11 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
     if (with_dynamic_shape()) {
       // need new profile if it's not the first
       if (cur_profile_num_ > 0) {
+#if IS_TRT_VERSION_GE(8600)
+        infer_context->setOptimizationProfileAsync(cur_profile_num_, nullptr);
+#else
         infer_context->setOptimizationProfile(cur_profile_num_);
+#endif
       }
       profile_index_[predictor_id_per_thread] = cur_profile_num_;
       ++cur_profile_num_;
@@ -174,9 +178,10 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
 
 #if IS_TRT_VERSION_GE(8500)
   for (size_t j = 0; j < buffers->size(); ++j) {
-    auto name = context->getEngine().getBindingName(j);
-    if (context->getEngine().isShapeBinding(j) &&
-        context->getEngine().bindingIsInput(j)) {
+    auto name = context->getEngine().getIOTensorName(j);
+    if (context->getEngine().isShapeInferenceIO(name) &&
+        context->getEngine().getTensorIOMode(name) ==
+            nvinfer1::TensorIOMode::kINPUT) {
       continue;
     } else {
       context->setTensorAddress(name, (*buffers)[j]);
@@ -425,7 +430,11 @@ void TensorRTEngine::FreezeNetwork() {
           "Build TensorRT cuda engine failed! Please recheck "
           "you configurations related to paddle-TensorRT."));
 
+#if IS_TRT_VERSION_GE(10000)
+  binding_num_ = infer_engine_->getNbIOTensors();
+#else
   binding_num_ = infer_engine_->getNbBindings();
+#endif
   // reset status for dynamic shape clone
   if (max_profile_num_ > 1) {
     infer_context_.clear();
@@ -647,7 +656,11 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
           "generating serialization file and doing inference are "
           "consistent."));
 
+#if IS_TRT_VERSION_GE(10000)
+  binding_num_ = infer_engine_->getNbIOTensors();
+#else
   binding_num_ = infer_engine_->getNbBindings();
+#endif
   // for engine context memory sharing
   if (params_.context_memory_sharing) {
     inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()

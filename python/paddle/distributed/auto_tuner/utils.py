@@ -20,6 +20,8 @@ import os
 import re
 from typing import Tuple
 
+import paddle
+
 from .prune import _PRUNE_FUNC
 
 __SUPPORTED_RECOMPUTE_GRANULARITY__ = ["full", "full_attn", "core_attn"]
@@ -979,6 +981,54 @@ def gen_sharding_overlap_args(res_args, cfg, tuner_cfg):
 
 def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
     """Generate new script args."""
+    cfg = copy.deepcopy(cfg)
+
+    def _get_new_cfg(arg, cmg, cfg, tuner_cfg):
+        if arg == "local_batch_size" and arg in cmd:
+            global_batch_size = (
+                cfg["global_batch_size"]
+                if "global_batch_size" in cfg
+                else tuner_cfg["model_cfg"]["global_batch_size"]
+            )
+            local_batch_size = (
+                global_batch_size // cfg["sharding_degree"] // cfg["dp_degree"]
+            )
+            cfg["local_batch_size"] = local_batch_size
+
+        if arg == "gradient_accumulation_steps" and arg in cmd:
+            try:
+                global_batch_size = (
+                    cfg["global_batch_size"]
+                    if "global_batch_size" in cfg
+                    else tuner_cfg["model_cfg"]["global_batch_size"]
+                )
+                gradient_accumulation_steps = (
+                    global_batch_size
+                    // cfg["sharding_degree"]
+                    // cfg["dp_degree"]
+                    // cfg["micro_batch_size"]
+                )
+                cfg["gradient_accumulation_steps"] = gradient_accumulation_steps
+            except:
+                return
+
+        if arg == "sequence_parallel" and arg in cmd:
+            try:
+                sequence_parallel = 1 if cfg["mp_degree"] > 1 else 0
+                cfg["sequence_parallel"] = sequence_parallel
+            except:
+                return
+
+        if arg == "global_batch_size" and arg in cmd:
+            try:
+                global_batch_size = (
+                    cfg["global_batch_size"]
+                    if "global_batch_size" in cfg
+                    else tuner_cfg["model_cfg"]["global_batch_size"]
+                )
+                cfg["global_batch_size"] = global_batch_size
+            except:
+                return
 
     def _gen_new_arg(arg, cmd, cfg, res_args, tuner_cfg):
         if arg in cmd and arg in cfg:
@@ -1018,6 +1068,18 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                         prefix + str(cfg[arg]) if prefix else cfg[arg]
                     )
                 json.dump(cmd_cfg, open(cmd[arg][0], "w"))
+                if (
+                    tuner_cfg["run_cmd"].get("generate_launch_cfg", True)
+                    and not run_best
+                ):
+                    new_cmd_apth = (
+                        os.path.splitext(cmd[arg][0])[0]
+                        + "_"
+                        + cfg["log_dir_name"]
+                        + ".json"
+                    )
+                    json.dump(cmd_cfg, open(new_cmd_apth, "w"))
+
             elif ".yaml" in cmd[arg][0]:
                 import yaml
 
@@ -1048,364 +1110,16 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                         prefix + str(cfg[arg]) if prefix else cfg[arg]
                     )
                 yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
-        elif arg == "local_batch_size" and arg in cmd:
-            global_batch_size = (
-                cfg["global_batch_size"]
-                if "global_batch_size" in cfg
-                else tuner_cfg["model_cfg"]["global_batch_size"]
-            )
-            local_batch_size = (
-                global_batch_size // cfg["sharding_degree"] // cfg["dp_degree"]
-            )
-            if "--" in cmd["local_batch_size"][0]:
-                cmd["local_batch_size"][1] = cmd["local_batch_size"][1] + str(
-                    local_batch_size
-                )
-                res_args.extend(cmd["local_batch_size"])
-            elif "-o" in cmd["local_batch_size"][0]:
-                cmd["local_batch_size"][1] = (
-                    cmd["local_batch_size"][1] + "=" + str(local_batch_size)
-                )
-                res_args.extend(cmd["local_batch_size"])
-            elif ".json" in cmd[arg][0]:
-                import json
-
-                file_path = cmd[arg][0]
-                prefix = ""
-                if len(cmd[arg]) >= 3:
-                    prefix = cmd[arg][2]
-                try:
-                    with open(file_path, "r") as f:
-                        cmd_cfg = json.load(f)
-                except:
-                    raise ValueError(
-                        "Please check your auto tuner json whether valid."
+                if (
+                    tuner_cfg["run_cmd"].get("generate_launch_cfg", True)
+                    and not run_best
+                ):
+                    new_cmd_apth = (
+                        os.path.splitext(cmd[arg][0])[0]
+                        + cfg["log_dir_name"]
+                        + ".yaml"
                     )
-                keys = cmd[arg][1].split(".")
-                value = None
-                for key in keys[: len(keys) - 1]:
-                    if not value:
-                        value = cmd_cfg[key]
-                    else:
-                        value = value[key]
-                if value:
-                    value[keys[-1]] = (
-                        prefix + str(local_batch_size)
-                        if prefix
-                        else local_batch_size
-                    )
-                else:
-                    cmd_cfg[keys[-1]] = (
-                        prefix + str(local_batch_size)
-                        if prefix
-                        else local_batch_size
-                    )
-                json.dump(cmd_cfg, open(cmd[arg][0], "w"))
-            elif ".yaml" in cmd[arg][0]:
-                import yaml
-
-                file_path = cmd[arg][0]
-                prefix = ""
-                if len(cmd[arg]) >= 3:
-                    prefix = cmd[arg][2]
-                try:
-                    with open(file_path, "r") as f:
-                        cmd_cfg = yaml.safe_load(f)
-                except:
-                    raise ValueError(
-                        "Please check your auto tuner json whether valid."
-                    )
-                keys = cmd[arg][1].split(".")
-                value = None
-                for key in keys[: len(keys) - 1]:
-                    if not value:
-                        value = cmd_cfg[key]
-                    else:
-                        value = value[key]
-                if value:
-                    value[keys[-1]] = (
-                        prefix + str(local_batch_size)
-                        if prefix
-                        else local_batch_size
-                    )
-                else:
-                    cmd_cfg[keys[-1]] = (
-                        prefix + str(local_batch_size)
-                        if prefix
-                        else local_batch_size
-                    )
-                yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
-
-        elif arg == "gradient_accumulation_steps" and arg in cmd:
-            try:
-                global_batch_size = (
-                    cfg["global_batch_size"]
-                    if "global_batch_size" in cfg
-                    else tuner_cfg["model_cfg"]["global_batch_size"]
-                )
-                gradient_accumulation_steps = (
-                    global_batch_size
-                    // cfg["sharding_degree"]
-                    // cfg["dp_degree"]
-                    // cfg["micro_batch_size"]
-                )
-            except:
-                return
-            if "--" in cmd["gradient_accumulation_steps"][0]:
-                cmd["gradient_accumulation_steps"][1] = cmd[
-                    "gradient_accumulation_steps"
-                ][1] + str(gradient_accumulation_steps)
-                res_args.extend(cmd["gradient_accumulation_steps"])
-
-            elif "-o" in cmd["gradient_accumulation_steps"][0]:
-                cmd["gradient_accumulation_steps"][1] = (
-                    cmd["gradient_accumulation_steps"][1]
-                    + "="
-                    + str(gradient_accumulation_steps)
-                )
-                res_args.extend(cmd["gradient_accumulation_steps"])
-            elif ".json" in cmd[arg][0]:
-                import json
-
-                file_path = cmd[arg][0]
-                prefix = ""
-                if len(cmd[arg]) >= 3:
-                    prefix = cmd[arg][2]
-                try:
-                    with open(file_path, "r") as f:
-                        cmd_cfg = json.load(f)
-                except:
-                    raise ValueError(
-                        "Please check your auto tuner json whether valid."
-                    )
-                keys = cmd[arg][1].split(".")
-                value = None
-                for key in keys[: len(keys) - 1]:
-                    if not value:
-                        value = cmd_cfg[key]
-                    else:
-                        value = value[key]
-                if value:
-                    value[keys[-1]] = (
-                        prefix + str(gradient_accumulation_steps)
-                        if prefix
-                        else gradient_accumulation_steps
-                    )
-                else:
-                    cmd_cfg[keys[-1]] = (
-                        prefix + str(gradient_accumulation_steps)
-                        if prefix
-                        else gradient_accumulation_steps
-                    )
-                json.dump(cmd_cfg, open(cmd[arg][0], "w"))
-            elif ".yaml" in cmd[arg][0]:
-                import yaml
-
-                file_path = cmd[arg][0]
-                prefix = ""
-                if len(cmd[arg]) >= 3:
-                    prefix = cmd[arg][2]
-                try:
-                    with open(file_path, "r") as f:
-                        cmd_cfg = yaml.safe_load(f)
-                except:
-                    raise ValueError(
-                        "Please check your auto tuner json whether valid."
-                    )
-                keys = cmd[arg][1].split(".")
-                value = None
-                for key in keys[: len(keys) - 1]:
-                    if not value:
-                        value = cmd_cfg[key]
-                    else:
-                        value = value[key]
-                if value:
-                    value[keys[-1]] = (
-                        prefix + str(gradient_accumulation_steps)
-                        if prefix
-                        else gradient_accumulation_steps
-                    )
-                else:
-                    cmd_cfg[keys[-1]] = (
-                        prefix + str(gradient_accumulation_steps)
-                        if prefix
-                        else gradient_accumulation_steps
-                    )
-                yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
-
-        elif arg == "sequence_parallel" and arg in cmd:
-            try:
-                sequence_parallel = 1 if cfg["mp_degree"] > 1 else 0
-            except:
-                return
-            if "--" in cmd["sequence_parallel"][0]:
-                cmd["sequence_parallel"][1] = cmd["sequence_parallel"][1] + str(
-                    sequence_parallel
-                )
-                res_args.extend(cmd["sequence_parallel"])
-
-            elif "-o" in cmd["sequence_parallel"][0]:
-                cmd["sequence_parallel"][1] = (
-                    cmd["sequence_parallel"][1] + "=" + str(sequence_parallel)
-                )
-                res_args.extend(cmd["sequence_parallel"])
-            elif ".json" in cmd[arg][0]:
-                import json
-
-                file_path = cmd[arg][0]
-                prefix = ""
-                if len(cmd[arg]) >= 3:
-                    prefix = cmd[arg][2]
-                try:
-                    with open(file_path, "r") as f:
-                        cmd_cfg = json.load(f)
-                except:
-                    raise ValueError(
-                        "Please check your auto tuner json whether valid."
-                    )
-                keys = cmd[arg][1].split(".")
-                value = None
-                for key in keys[: len(keys) - 1]:
-                    if not value:
-                        value = cmd_cfg[key]
-                    else:
-                        value = value[key]
-                if value:
-                    value[keys[-1]] = (
-                        prefix + str(sequence_parallel)
-                        if prefix
-                        else sequence_parallel
-                    )
-                else:
-                    cmd_cfg[keys[-1]] = (
-                        prefix + str(sequence_parallel)
-                        if prefix
-                        else sequence_parallel
-                    )
-                json.dump(cmd_cfg, open(cmd[arg][0], "w"))
-            elif ".yaml" in cmd[arg][0]:
-                import yaml
-
-                file_path = cmd[arg][0]
-                prefix = ""
-                if len(cmd[arg]) >= 3:
-                    prefix = cmd[arg][2]
-                try:
-                    with open(file_path, "r") as f:
-                        cmd_cfg = yaml.safe_load(f)
-                except:
-                    raise ValueError(
-                        "Please check your auto tuner json whether valid."
-                    )
-                keys = cmd[arg][1].split(".")
-                value = None
-                for key in keys[: len(keys) - 1]:
-                    if not value:
-                        value = cmd_cfg[key]
-                    else:
-                        value = value[key]
-                if value:
-                    value[keys[-1]] = (
-                        prefix + str(sequence_parallel)
-                        if prefix
-                        else sequence_parallel
-                    )
-                else:
-                    cmd_cfg[keys[-1]] = (
-                        prefix + str(sequence_parallel)
-                        if prefix
-                        else sequence_parallel
-                    )
-                yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
-
-        elif arg == "global_batch_size" and arg in cmd:
-            try:
-                global_batch_size = (
-                    cfg["global_batch_size"]
-                    if "global_batch_size" in cfg
-                    else tuner_cfg["model_cfg"]["global_batch_size"]
-                )
-            except:
-                return
-            if "--" in cmd["global_batch_size"][0]:
-                cmd["global_batch_size"][1] = cmd["global_batch_size"][1] + str(
-                    global_batch_size
-                )
-                res_args.extend(cmd["global_batch_size"])
-
-            elif "-o" in cmd["global_batch_size"][0]:
-                cmd["global_batch_size"][1] = (
-                    cmd["global_batch_size"][1] + "=" + str(global_batch_size)
-                )
-                res_args.extend(cmd["global_batch_size"])
-            elif ".json" in cmd[arg][0]:
-                import json
-
-                file_path = cmd[arg][0]
-                prefix = ""
-                if len(cmd[arg]) >= 3:
-                    prefix = cmd[arg][2]
-                try:
-                    with open(file_path, "r") as f:
-                        cmd_cfg = json.load(f)
-                except:
-                    raise ValueError(
-                        "Please check your auto tuner json whether valid."
-                    )
-                keys = cmd[arg][1].split(".")
-                value = None
-                for key in keys[: len(keys) - 1]:
-                    if not value:
-                        value = cmd_cfg[key]
-                    else:
-                        value = value[key]
-                if value:
-                    value[keys[-1]] = (
-                        prefix + str(global_batch_size)
-                        if prefix
-                        else global_batch_size
-                    )
-                else:
-                    cmd_cfg[keys[-1]] = (
-                        prefix + str(global_batch_size)
-                        if prefix
-                        else global_batch_size
-                    )
-                json.dump(cmd_cfg, open(cmd[arg][0], "w"))
-            elif ".yaml" in cmd[arg][0]:
-                import yaml
-
-                file_path = cmd[arg][0]
-                prefix = ""
-                if len(cmd[arg]) >= 3:
-                    prefix = cmd[arg][2]
-                try:
-                    with open(file_path, "r") as f:
-                        cmd_cfg = yaml.safe_load(f)
-                except:
-                    raise ValueError(
-                        "Please check your auto tuner json whether valid."
-                    )
-                keys = cmd[arg][1].split(".")
-                value = None
-                for key in keys[: len(keys) - 1]:
-                    if not value:
-                        value = cmd_cfg[key]
-                    else:
-                        value = value[key]
-                if value:
-                    value[keys[-1]] = (
-                        prefix + str(global_batch_size)
-                        if prefix
-                        else global_batch_size
-                    )
-                else:
-                    cmd_cfg[keys[-1]] = (
-                        prefix + str(global_batch_size)
-                        if prefix
-                        else global_batch_size
-                    )
-                yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
+                    yaml.dump(cmd_cfg, open(new_cmd_apth, "w"))
 
         elif arg == "refined_recompute" and arg in cmd:
             if "--" in cmd["refined_recompute"][0]:
@@ -1449,6 +1163,17 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 else:
                     cmd_cfg[keys[-1]] = rr_values
                 json.dump(cmd_cfg, open(cmd[arg][0], "w"))
+                if (
+                    tuner_cfg["run_cmd"].get("generate_launch_cfg", True)
+                    and not run_best
+                ):
+                    new_cmd_apth = (
+                        os.path.splitext(cmd[arg][0])[0]
+                        + cfg["log_dir_name"]
+                        + ".json"
+                    )
+                    json.dump(cmd_cfg, open(new_cmd_apth, "w"))
+
             elif ".yaml" in cmd[arg][0]:
                 import yaml
 
@@ -1482,6 +1207,16 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
                 else:
                     cmd_cfg[keys[-1]] = rr_values
                 yaml.dump(cmd_cfg, open(cmd[arg][0], "w"))
+                if (
+                    tuner_cfg["run_cmd"].get("generate_launch_cfg", True)
+                    and not run_best
+                ):
+                    new_cmd_apth = (
+                        os.path.splitext(cmd[arg][0])[0]
+                        + cfg["log_dir_name"]
+                        + ".yaml"
+                    )
+                    yaml.dump(cmd_cfg, open(new_cmd_apth, "w"))
 
     assert "run_cmd" in tuner_cfg
     cmd = copy.deepcopy(tuner_cfg["run_cmd"])
@@ -1509,6 +1244,7 @@ def gen_new_args(raw_args, cfg, tuner_cfg, run_best=False):
             new_args.append(key)
 
     for arg in new_args:
+        _get_new_cfg(arg, cmd, cfg, tuner_cfg)
         _gen_new_arg(arg, cmd, cfg, res_args, tuner_cfg)
 
     if tuner_cfg["run_cmd"].get("search_stage", None) and not run_best:
@@ -1688,15 +1424,17 @@ def read_metric_log(
         re_metric_pattern = (
             target_metric + r":* *(\d+(\.\d*)?)|(\d+(\.\d*)?) *" + target_metric
         )
-        re_out_of_memory_pattern = r"Out of memory"
+        re_out_of_memory_pattern = (
+            r"Out of memory error on"
+            if paddle.device.is_compiled_with_cuda()
+            else r"out of memory"
+        )
         out_of_memory_flag = 0
         metric_list = []
         lines = f.readlines()
         for line in lines:
             metric = re.findall(re_metric_pattern, line)
-            out_of_memory = re.findall(
-                re_out_of_memory_pattern, line, re.IGNORECASE
-            )
+            out_of_memory = re.findall(re_out_of_memory_pattern, line)
             if metric:
                 value = None
                 for item in metric[0]:
@@ -1827,6 +1565,33 @@ def read_memory_log(path, file) -> Tuple[float, bool]:
                 memory_used.append(int(mem_used))
                 utilization_gpu.append(int(util_gpu))
     return max(memory_used), False
+
+
+def read_completed(path):
+    """
+    check if training is completed
+    return:
+        True: completed
+        False: not completed
+    """
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            if not file.startswith("workerlog"):
+                continue
+            target_file = path + "/" + file
+            if not os.path.exists(target_file):
+                return False
+            with open(target_file, "r") as f:
+                # read file
+                re_completed_pattern = r"Training completed."
+                lines = f.readlines()
+                for line in lines:
+                    completed = re.findall(
+                        re_completed_pattern, line, re.IGNORECASE
+                    )
+                    if completed:
+                        return True
+    return False
 
 
 def read_log(

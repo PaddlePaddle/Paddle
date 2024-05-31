@@ -13,6 +13,7 @@
 // limitations under the License.
 #pragma once
 
+#include <unordered_map>
 #include <variant>
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
@@ -28,6 +29,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/operator_fusion/pattern_graph.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/common/ddim.h"
@@ -92,6 +94,8 @@ ir::Expr* _GetFuncBodyPointer(FusibleOp op);
 
 ir::Expr CopyReduceBody(const FusibleOp& downstream, const ReduceOp& upstream);
 
+int GetTensorCounter();
+
 ir::Expr CreateReduceExpr(
     const std::vector<ir::Var>& output_iters,
     const std::vector<ir::Var>& reduce_iters,
@@ -103,23 +107,11 @@ ir::Expr CreateReduceExpr(
 ir::Expr CreateTrivialExpr(const std::vector<ir::Var>& output_iters,
                            const ir::Expr& function_body,
                            const ir::Tensor& new_write_tensor);
+
 ir::Expr CreateExprWithNewComputeBody(const FusibleOp& fusible_op,
                                       const ir::Expr& new_compute_body);
-struct FusionNode {
-  FusibleOp fusible_op;
-  ::pir::Operation* expr_related_op;
 
-  std::unordered_map<FusionNode*, ::pir::Value> upstream;
-  std::unordered_map<FusionNode*, ::pir::Value> downstream;
-
-  explicit FusionNode(FusibleOp fusible_op);
-
-  static std::string GetTensorCounter();
-  void replace_topo_structure_of_fused_nodes(FusionNode* fused_up_node,
-                                             FusionNode* fused_down_node);
-
-  bool IsTrivial() const;
-};
+FusibleOp CreateFusibleOp(ir::Expr compute_body, OpPatternKind op_pattern);
 
 template <class DownStreamOp>
 DownStreamOp TrivalxOther_Fusion(TrivialOp upstream, DownStreamOp downstream) {
@@ -142,54 +134,34 @@ DownStreamOp TrivalxOther_Fusion(TrivialOp upstream, DownStreamOp downstream) {
   return DownStreamOp(modified_body);
 }
 
-bool CheckAllLoopRangeEq(ReduceOp reduce_upper, TrivialOp trivial_down);
+std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op);
 
-std::vector<FusibleOp> TransformReduceLoopRange(const ReduceOp& upstream,
-                                                FusibleOp* downstream);
+std::vector<FusibleOp> TransformReduceLoopRange(
+    const ReduceOp& upstream,
+    FusibleOp* downstream,
+    std::vector<size_t> fake_reduce_iter_idx);
 
-FusibleOp TrivialFusion(FusionNode* upstream, FusionNode* downstream);
+template <typename T>
+std::vector<T> FilterWithFakeReduceIter(
+    const std::vector<T>& input, std::vector<size_t> fake_reduce_iter_idx) {
+  std::vector<T> result;
+  for (size_t i = 0; i < input.size(); i++) {
+    if (std::find(fake_reduce_iter_idx.begin(),
+                  fake_reduce_iter_idx.end(),
+                  i) == fake_reduce_iter_idx.end()) {
+      result.emplace_back(input.at(i));
+    }
+  }
+  return result;
+}
 
-FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op, ReduceOp reduce_op);
+FusibleOp SinkTrivialLoopAlign(TrivialOp trivial_op,
+                               ReduceOp reduce_op,
+                               std::vector<size_t> fake_reduce_iter_idx);
 
-std::vector<FusibleOp> ReduceTransformRecursive(FusibleOp root_op,
-                                                FusionNode* fusion_tree);
-std::vector<FusibleOp> ReduceTransform(FusionNode* downstream);
+std::vector<ir::Var> GetAllIterVars(const ir::Expr& expr);
 
-FusibleOp CreateFusibleOp(ir::Expr compute_body, OpPatternKind op_pattern);
-
-struct FusionGraph {
-  explicit FusionGraph(const std::vector<::pir::Operation*>& ops,
-                       const std::vector<ir::Expr>& op_compute_bodies);
-
-  ~FusionGraph();
-
-  std::vector<ir::Expr> DoFusion();
-
- private:
-  FusionNode* FindTrivialFusibleNode();
-
-  void DoTrivialFusion();
-
-  void ReduceLoopTranform();
-
-  void SplitReduceTransform();
-
-  std::vector<ir::Expr> GetExprResults();
-
-  void RemoveNode(FusionNode* node);
-
-  void AppendNode(FusionNode* node);
-
-  FusionNode* FindReduceUpstream(FusionNode* node);
-
- private:
-  std::unordered_set<FusionNode*> all_fusion_nodes_;
-  std::vector<FusibleOp> fusion_results_;
-  std::unordered_set<FusionNode*> entrance_nodes_;
-  std::unordered_set<FusionNode*> exit_nodes_;
-
-  // std::unordered_map<::pir::Value, ShardableAxes> shardable_axes_;
-};
+std::vector<ir::Var> GetAllForIters(const ir::Expr& expr);
 
 }  // namespace trivial_fusion_detail
 
@@ -210,7 +182,8 @@ FusionGroupInfo GetFusionGroupInfo(
 
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& ops,
-    const std::vector<ir::Expr>& op_compute_bodies);
+    const std::vector<ir::Expr>& op_compute_bodies,
+    const std::vector<::pir::Value>& outputs);
 
 }  // namespace pir
 }  // namespace framework

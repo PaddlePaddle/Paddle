@@ -49,10 +49,24 @@ PD_DEFINE_string(cinn_nvcc_cmd_path,
                                "/usr/local/cuda/bin"),
                  "Setting nvcc default path!");
 
+PD_DEFINE_string(cinn_kernel_execution_label,
+                 StringFromEnv("FLAGS_cinn_kernel_execution_label",
+                               "CINN KERNEL EXECUTE"),
+                 "Label used to measure kernel execution time");
+
+PD_DEFINE_string(cinn_tile_config_filename_label,
+                 StringFromEnv("FLAGS_cinn_tile_config_filename_label",
+                               "./config/"),
+                 "Label used to name file of tile config database");
+
 PD_DEFINE_int32(cinn_parallel_compile_thread,
                 Int32FromEnv("FLAGS_cinn_parallel_compile_thread",
                              (std::thread::hardware_concurrency() >> 1)),
                 "How much thread the parallel compile used.");
+
+PD_DEFINE_bool(cinn_enable_config_search,
+               BoolFromEnv("FLAGS_cinn_enable_config_search", false),
+               "Whether to enable schedule config search mode.");
 
 PD_DEFINE_bool(cinn_use_op_fusion,
                BoolFromEnv("FLAGS_cinn_use_op_fusion", true),
@@ -74,14 +88,13 @@ PD_DEFINE_bool(group_schedule_tiling_first,
                BoolFromEnv("FLAGS_group_schedule_tiling_first", false),
                "Whether to enable new group scheduler tiling first strategy.");
 
-PD_DEFINE_bool(cinn_new_cluster_op_method,
-               BoolFromEnv("FLAGS_cinn_new_cluster_op_method", false),
-               "Whether to enable newly developed clustering method of group "
-               "op for cinn.");
-
 PD_DEFINE_bool(support_reduce_stride_read,
                BoolFromEnv("FLAGS_support_reduce_stride_read", false),
-               "Whether to enable new group scheduler tiling first strategy.");
+               "Whether to enable stride read in reduced dim.");
+
+PD_DEFINE_bool(support_trivial_stride_read,
+               BoolFromEnv("FLAGS_support_trivial_stride_read", false),
+               "Whether to enable stride read in trivial dim.");
 
 PD_DEFINE_bool(cinn_use_common_subexpression_elimination,
                BoolFromEnv("FLAGS_cinn_use_common_subexpression_elimination",
@@ -207,6 +220,11 @@ PD_DEFINE_string(
     cinn_dump_group_instruction,
     StringFromEnv("FLAGS_cinn_dump_group_instruction", ""),
     "Specify the path for dump instruction by group, which is used for debug.");
+
+// Todo(CZ): support kernel name check for multiple kernel code gen.
+PD_DEFINE_string(cinn_debug_custom_code_path,
+                 StringFromEnv("FLAGS_cinn_debug_custom_code_path", ""),
+                 "Specify custom code path for cinn.");
 
 PD_DEFINE_string(cinn_pass_visualize_dir,
                  StringFromEnv("FLAGS_cinn_pass_visualize_dir", ""),
@@ -343,17 +361,38 @@ bool IsCompiledWithCUDNN() {
 #endif
 }
 
+void CheckCompileOptionImpl(cinn::common::UnknownArch) {
+  PADDLE_THROW(phi::errors::Fatal("unknown architecture"));
+}
+
+void CheckCompileOptionImpl(cinn::common::X86Arch) {
+  // Do nothing.
+}
+
+void CheckCompileOptionImpl(cinn::common::ARMArch) {
+  // Do nothing.
+}
+
+void CheckCompileOptionImpl(cinn::common::NVGPUArch) {
+#if defined(CINN_WITH_CUDNN)
+  // Do nothing;
+#else
+  PADDLE_THROW(phi::errors::Fatal(
+      "Current CINN version does not support NVGPU, please try to "
+      "recompile with -DWITH_CUDA."));
+#endif
+}
+
+void CheckCompileOption(cinn::common::Arch arch) {
+  return std::visit([](const auto& impl) { CheckCompileOptionImpl(impl); },
+                    arch.variant());
+}
+
 cinn::common::Target CurrentTarget::target_ = cinn::common::DefaultTarget();
 
 void CurrentTarget::SetCurrentTarget(const cinn::common::Target& target) {
-  if (!IsCompiledWithCUDA() &&
-      target.arch == cinn::common::Target::Arch::NVGPU) {
-    PADDLE_THROW(phi::errors::Fatal(
-        "Current CINN version does not support NVGPU, please try to "
-        "recompile with -DWITH_CUDA."));
-  } else {
-    target_ = target;
-  }
+  CheckCompileOption(target.arch);
+  target_ = target;
 }
 
 cinn::common::Target& CurrentTarget::GetCurrentTarget() { return target_; }

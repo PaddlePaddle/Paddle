@@ -18,13 +18,13 @@
 
 #include "paddle/cinn/backends/codegen_c_x86.h"
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/backends/llvm/execution_engine.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/frontend/decomposer/test_helper.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -75,7 +75,10 @@ void Compile(NetBuilder& net_builder) {  // NOLINT
   auto op_lowerer = CreateOpLowerer(dtype_dict, shape_dict, target);
   for (auto& fusion_op : graph->fusion_groups) {
     auto lowered_func = op_lowerer.Lower(fusion_op);
-    CHECK_EQ(lowered_func.size(), 1);
+    PADDLE_ENFORCE_EQ(
+        lowered_func.size(),
+        1,
+        phi::errors::InvalidArgument("The size of lowered_func should be 1."));
     CodeGen(lowered_func[0]);
   }
 }

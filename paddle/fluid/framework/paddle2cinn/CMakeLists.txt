@@ -14,11 +14,11 @@ set(paddle2cinn_deps
     auto_parallel_proto
     cinn_framework_proto
     schedule_desc_proto
+    tile_config_proto
     auto_schedule_proto
-    parallel_executor
     common)
-if(WITH_MKLDNN)
-  set(paddle2cinn ${paddle2cinn} mkldnn)
+if(WITH_ONEDNN)
+  set(paddle2cinn ${paddle2cinn} onednn)
 endif()
 
 if(WITH_TESTING)

@@ -7,17 +7,14 @@ if(WITH_CINN)
   add_subdirectory(cinn)
 endif()
 add_subdirectory(controlflow)
-add_subdirectory(detection)
+
 if(WITH_DLNNE)
   add_subdirectory(dlnne)
 endif()
 add_subdirectory(elementwise)
 add_subdirectory(fused)
-if(WITH_LITE)
-  add_subdirectory(lite)
-endif()
 add_subdirectory(math)
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   add_subdirectory(mkldnn)
 endif()
 add_subdirectory(nccl)
@@ -31,12 +28,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
 endif()
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} executor)
-
-if(WITH_XPU)
-  paddle_test(beam_search_decode_op_xpu_test SRCS
-              beam_search_decode_op_xpu_test.cc)
-  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xpulib)
-endif()
 
 nv_test(
   test_common_infer_shape_functions
@@ -62,22 +53,12 @@ if(WITH_GPU)
   nv_test(
     dropout_op_test
     SRCS dropout_op_test.cc
-    DEPS dropout_op tensor phi common)
+    DEPS dropout_op tensor phi common global_utils)
   nv_test(
     test_leaky_relu_grad_grad_functor
     SRCS test_leaky_relu_grad_grad_functor.cc
          test_leaky_relu_grad_grad_functor.cu
     DEPS tensor device_context eigen3)
-  nv_test(
-    feed_forward_test
-    SRCS feed_forward_test.cu
-    DEPS fleet_executor
-         elementwise_add_op
-         matmul_op
-         tensor
-         phi
-         common
-         ${CINN_DEPS})
 elseif(WITH_ROCM)
   hip_test(
     dropout_op_test
@@ -98,10 +79,6 @@ if(WITH_CINN)
   paddle_test(op_debug_string_test SRCS op_debug_string_test.cc)
 else()
   paddle_test(op_debug_string_test SRCS op_debug_string_test.cc)
-endif()
-
-if(WITH_GPU)
-  paddle_test(copy_cross_scope_test SRCS copy_cross_scope_test.cc)
 endif()
 
 if(WITH_ONNXRUNTIME AND WIN32)

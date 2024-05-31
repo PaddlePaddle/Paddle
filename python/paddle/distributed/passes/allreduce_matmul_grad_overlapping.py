@@ -19,7 +19,7 @@ from ..auto_parallel.static.utils import (
     get_logger,
 )
 from .pass_base import PassBase, register_pass
-from .pass_utils import split_matmul_grad_to_matmul
+from .pass_utils import AutoParallelStreamType, split_matmul_grad_to_matmul
 
 logger = get_logger(logging.INFO)
 
@@ -124,6 +124,9 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
             allreduce_op_dist_attr = (
                 self.dist_context.get_op_dist_attr_for_program(allreduce_op)
             )
+            allreduce_op_dist_attr.execution_stream = (
+                AutoParallelStreamType.MP_STREAM.value
+            )
 
             allreduce_op_inputs = allreduce_op.desc.input_names()
             allreduce_op_outputs = allreduce_op.desc.output_names()
@@ -135,8 +138,14 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 name: allreduce_op.output(name) for name in allreduce_op_outputs
             }
 
+            # matmul_v2 + reshape + reshape + matmul_v2 + reshape + ... + original c_allreduce_sum
+            # =>
+            # matmul_v2 + new c_allreduce_sum + reshape + reshape + matmul_v2 + reshape + ... + original c_allreduce_sum
+            #
+            # NOTE(liym27): new c_allreduce_sum must be inserted to "the next of the first matmul_v2", otherwise another
+            # pass fused_linear_param_grad_add will not work.
             allreduce_op = block._insert_op_without_sync(
-                index=allreduce_id + 1,
+                index=matmul_grad_id + 1,
                 type=allreduce_op.type,
                 inputs=allreduce_op_inputs,
                 outputs=allreduce_op_outputs,

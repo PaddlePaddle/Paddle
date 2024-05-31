@@ -45,8 +45,8 @@ class DistDenseTensorType
   const LoD& lod() const { return dense_tensor_type().lod(); }
   size_t offset() const { return dense_tensor_type().offset(); }
 
-  Type prim_type() { return dense_tensor_type(); }
-  Type local_type() const;
+  pir::DenseTensorType prim_type() { return dense_tensor_type(); }
+  pir::DenseTensorType local_type() const;
 
   ProcessMeshAttribute process_mesh_attr() const {
     return tensor_dist_attr().process_mesh_attr();
@@ -59,6 +59,16 @@ class DistDenseTensorType
   }
   const flat_hash_map<int64_t, phi::ReduceType>& partial_status() const {
     return tensor_dist_attr().partial_status();
+  }
+
+  DistDenseTensorType CopyWithNewMesh(ProcessMeshAttribute mesh) {
+    return get(ir_context(),
+               dense_tensor_type(),
+               tensor_dist_attr().CopyWithNewMesh(mesh));
+  }
+
+  DistDenseTensorType CopyWithNewDistAttr(TensorDistAttribute dist_attr) {
+    return get(ir_context(), dense_tensor_type(), dist_attr);
   }
 
   static DistDenseTensorType get(pir::IrContext* ctx,

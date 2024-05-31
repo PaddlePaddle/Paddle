@@ -18,7 +18,9 @@ import struct
 import unittest
 
 import numpy as np
-from cinn.common import (
+
+import paddle
+from paddle.cinn.common import (
     BFloat16,
     Bool,
     DefaultHostTarget,
@@ -29,9 +31,7 @@ from cinn.common import (
     UInt,
     is_compiled_with_cuda,
 )
-from cinn.runtime import seed as cinn_seed
-
-import paddle
+from paddle.cinn.runtime import seed as cinn_seed
 
 logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
 logger = logging.getLogger(name="op_test")

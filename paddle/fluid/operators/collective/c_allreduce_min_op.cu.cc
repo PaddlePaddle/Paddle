@@ -21,7 +21,6 @@ DEFINE_C_ALLREDUCE_CUDA_KERNEL(CAllReduceMin, kRedMin)
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_allreduce_min,
                           GPU,
@@ -31,4 +30,4 @@ PD_REGISTER_STRUCT_KERNEL(c_allreduce_min,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

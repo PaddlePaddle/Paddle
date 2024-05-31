@@ -652,7 +652,7 @@ std::vector<ir::Tensor> Conv2d_NCHWc(const ir::Tensor &input,
 }
 
 #ifdef CINN_WITH_DNNL
-std::vector<ir::Tensor> Conv2d_NCHW_MKLDNN(const ir::Tensor &input,
+std::vector<ir::Tensor> Conv2d_NCHW_ONEDNN(const ir::Tensor &input,
                                            const ir::Tensor &weights,
                                            int pad_h,
                                            int pad_w,
@@ -674,7 +674,7 @@ std::vector<ir::Tensor> Conv2d_NCHW_MKLDNN(const ir::Tensor &input,
   auto call = Compute(
       {Expr(1)},
       [=]() -> Expr {
-        return lang::CallExtern("cinn_cpu_mkldnn_conv2d_nchw_fp32",
+        return lang::CallExtern("cinn_cpu_onednn_conv2d_nchw_fp32",
                                 {
                                     Expr(input->shape[0]),    // batch_size
                                     Expr(input->shape[1]),    // c_in
@@ -694,7 +694,7 @@ std::vector<ir::Tensor> Conv2d_NCHW_MKLDNN(const ir::Tensor &input,
                                     weights                   // weights
                                 });
       },
-      UniqName("conv2d_nchw_mkldnn_out"));
+      UniqName("conv2d_nchw_onednn_out"));
   auto out = call->TupleGet(0);
   out->WithBuffer(input->type());
   return {out, call};
@@ -1020,11 +1020,11 @@ std::vector<ir::Tensor> Softmax(const ir::Tensor &A,
 }
 
 #ifdef CINN_WITH_DNNL
-std::vector<ir::Tensor> SoftmaxMKLDNN(const ir::Tensor &A,
+std::vector<ir::Tensor> SoftmaxONEDNN(const ir::Tensor &A,
                                       int axis,
                                       const std::string &output_name) {
   CHECK_LE(A->shape.size(), 4U)
-      << "Input's dimension of mkldnn softmax op is less than 4! Please check.";
+      << "Input's dimension of onednn softmax op is less than 4! Please check.";
   if (axis == -1) {
     axis = A->shape.size() - 1;
   }
@@ -1036,7 +1036,7 @@ std::vector<ir::Tensor> SoftmaxMKLDNN(const ir::Tensor &A,
   auto call = Compute(
       {Expr(1)},
       [=]() -> Expr {
-        return lang::CallExtern("cinn_cpu_mkldnn_softmax_fp32",
+        return lang::CallExtern("cinn_cpu_onednn_softmax_fp32",
                                 {
                                     shape[0],    // batch_size
                                     shape[1],    // c_in

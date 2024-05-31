@@ -28,7 +28,7 @@ from paddle.base.executor import _to_name_str
 from paddle.distributed import fleet
 from paddle.framework import (
     IrGraph,
-    _current_expected_place as _get_device,
+    _current_expected_place_ as _get_device,
     core,
     in_dynamic_mode,
 )
@@ -53,8 +53,14 @@ from .dist_loader import (
 from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .helper import ProgramHelper
+from .mix_to_dist_pass import apply_mix2dist_pass
 from .parallelizer_v2 import Parallelizer
-from .pir_pass import apply_partition_pass, apply_reshard_pass
+from .pir_pass import (
+    apply_partition_pass,
+    apply_reshard_pass,
+    remove_other_rank_op_pass,
+    remove_unuseful_comm_op_pass,
+)
 from .planner_v2 import Planner
 from .process_group import get_all_process_groups, new_process_group
 
@@ -209,7 +215,11 @@ class Engine:
         # TODO: remove _fwd_main_progs and _orig_optimizer and _pir_main_progs
         self._fwd_dist_contexts = {}
         self._fwd_main_progs = {}
-        self._pir_main_progs = {}
+        self._startup_progs = {}
+        self._pir_dist_main_progs = {}
+        self._pir_dense_main_progs = {}
+        self._pir_fetch_values = []
+        self._pir_user_defined_fetch_names = []
         self._orig_optimizer = copy.deepcopy(self._optimizer)
 
         self._executor = None
@@ -274,6 +284,15 @@ class Engine:
         inputs_spec = []
         labels_spec = []
         data = next(iter(dataloader))
+        if hasattr(dataloader, "batch_sampler"):
+            batch_sampler = dataloader.batch_sampler
+        else:
+            batch_sampler = dataloader._dataloader.batch_sampler
+        if isinstance(batch_sampler, paddle.io.DistributedBatchSampler):
+            # Get data from DataLoader iterator directly may affect data generation randomness
+            # of BatchSampler when `Shuffle=True`. It may cause difference of data feeding
+            # between dynamic and to_static mode.
+            batch_sampler.epoch -= 1
         if isinstance(data, dict):
             data = tuple(data.values())
             if len(data) != 2:
@@ -523,6 +542,10 @@ class Engine:
         fetch_names = []
         fetch_indices = []
 
+        # TODO(2024-Q2)
+        if self._in_pir_mode:
+            return fetch_names, fetch_indices
+
         def _process_fetch_group(group_name, var_list):
             group_indices = []
             for var in var_list:
@@ -623,24 +646,23 @@ class Engine:
         It is experimental and subject to change.
         """
         mix_fw_program = self._fwd_main_progs[mode]
+        startup_program = self._startup_progs[mode]
 
         # Part 1: Complete program
         # Step 1.1: Mix2Dense Pass
         # TODO(JZ-LIANG) regulization pass with pass management.
-
-        dist_program = paddle.base.libpaddle.pir.apply_mix2dist_pass(
-            mix_fw_program
-        )
+        dist_program = mix_fw_program.clone()
+        apply_mix2dist_pass(dist_program)
         # Step 1.2: pir backward
         if mode == "train" and self._loss and self._optimizer:
             loss = dist_program.get_output_value_by_name(self._loss_names[0])
             if loss.initialized():
-                with static.program_guard(dist_program):
+                with static.program_guard(dist_program, startup_program):
                     params_grads = paddle.autograd.ir_backward.append_backward(
                         loss
                     )
                     self._optimizer._apply_optimize(
-                        loss, startup_program=None, params_grads=params_grads
+                        loss, startup_program, params_grads=params_grads
                     )
             else:
                 self._logger.info(
@@ -668,12 +690,14 @@ class Engine:
         # TODO(JZ-LIANG) Step 3.1: Partition Pass
         #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
         #   Partition the computation graph into different pipeline stage if need.
-        dist_program = apply_partition_pass(dist_program)
+        apply_partition_pass(dist_program)
 
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
-        dist_program = apply_reshard_pass(dist_program)
+        apply_reshard_pass(dist_program)
+
+        remove_other_rank_op_pass(dist_program)
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
@@ -695,8 +719,12 @@ class Engine:
 
         # TODO(JZ-LIANG) Step 4.4 Dist2Dense Pass
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
-        #   dense_program = apply_dist2dense_pass_optimization_pass(dist_program)
-        self._pir_main_progs[mode] = dist_program
+        dense_program = dist_program.clone()
+        paddle.base.libpaddle.pir.apply_dist2dense_pass(dense_program)
+        remove_unuseful_comm_op_pass(dense_program)
+
+        self._pir_dense_main_progs[mode] = dense_program
+        self._pir_dist_main_progs[mode] = dist_program
 
     def _prepare_program(self, mode, init_parameters=True):
         # Do the build process
@@ -704,6 +732,11 @@ class Engine:
         # TODO(zhiqiu): fit the processes below for pir
         if self._in_pir_mode:
             self._parallel_pir(mode)
+            # Init comm
+            self._init_comm()
+            # startup program
+            self._initialize(mode, init_parameters)
+            self._has_prepared[mode] = True
             return
         # Do the planning process
         self._plan(mode)
@@ -829,7 +862,10 @@ class Engine:
             #     )
             # else:
 
+            # concrete_program: <class 'paddle.jit.dy2static.program_translator.ConcreteProgram'>
+            # serial_main_prog:  <class 'paddle.base.libpaddle.pir.Program'>
             self._fwd_main_progs[mode] = serial_main_prog
+            self._startup_progs[mode] = serial_startup_prog
             return
 
         default_ctx = get_default_distributed_context()
@@ -993,6 +1029,9 @@ class Engine:
             if self._in_pir_mode:
                 # TODO(hitywt) Initialize the communicator collected in Reshard Pass.
                 # pir_init_comms()
+                all_process_groups = get_all_process_groups()
+                for process_group in all_process_groups:
+                    process_group.instantiate()
                 pass
                 return
 
@@ -1008,18 +1047,69 @@ class Engine:
                 for process_group in all_process_groups:
                     process_group.instantiate()
 
-    def _initialize(self, mode, init_parameters=True):
-        if self._in_pir_mode:
-            # TODO(xxxxx) Share the parameter tensor data from dygraph tensor to pir value.
-            # _pir_initialize()
-            pass
-            return
+    def _init_lr(self, main_program):
+        # hack to find learning_rate op
+        lr_name = None
+        for op in main_program.global_block().ops:
+            if (
+                op.name() == "pd_op.data"
+                and 'learning_rate' in op.attrs()["name"]
+            ):
+                lr_name = op.attrs()["name"]
+                break
+        if lr_name is not None:
+            buffer_tensor = global_scope().var(lr_name).get_tensor()
+            if isinstance(self._optimizer._learning_rate, float):
+                buffer_tensor.set(
+                    np.float32(self._optimizer._learning_rate), self._place
+                )
 
+    def _initialize(self, mode, init_parameters=True):
         self._place = _get_device()
         if isinstance(self._place, paddle.framework.CUDAPlace):
             self._place = paddle.framework.CUDAPlace(
                 paddle.distributed.ParallelEnv().dev_id
             )
+
+        if self._in_pir_mode:
+            # TODO(2024-Q2)
+            # 1. unify random control
+            # 2. initilization of non-parameter buffer
+            # 3. run startup program for pir
+            # 4. lazy init adaption
+            # 5. amp init adaption
+            # 6. vpp init adaption
+
+            # self._init_lr(self._pir_dense_main_progs[mode])
+            if self._executor is None:
+                self._executor = paddle.static.Executor(self._place)
+                startup_prog = self._startup_progs[mode].clone()
+                del_ops = []
+                block = startup_prog.global_block()
+                for op in block.ops:
+                    if op.name() == "builtin.set_parameter":
+                        para_name = op.str_attr("parameter_name")
+                        scope_var = global_scope().find_var(para_name)
+                        if (
+                            scope_var
+                            and scope_var.get_tensor()._is_initialized()
+                        ):
+                            param = op.operand_source(0)
+                            initial_op = param.get_defining_op()
+                            new_param = block.add_kwarg(para_name, param.type())
+                            new_param.persistable = True
+                            param.replace_all_uses_with(new_param)
+                            del_ops.append(op)
+                            del_ops.append(initial_op)
+                            continue
+                for del_op in del_ops:
+                    del_op.erase()
+                self._executor.run(startup_prog)
+            self.program_helper.init_pir(
+                self._pir_dist_main_progs[mode], self._place
+            )
+
+            return
 
         if self._strategy.seed:
             paddle.seed(self._strategy.seed + self._dp_ranks[0])
@@ -1755,13 +1845,40 @@ class Engine:
             self.enable_job_schedule_profiler
         )
 
+        # TODO(2024-Q2)
+        use_cache = self._strategy.use_cache
+        if self._in_pir_mode:
+            use_cache = False
+            no_fetch = False  # not last rank should not fetch loss in pipeline parallel
+            loss_value = self.main_program.get_output_value_by_name(
+                self._loss_names[0]
+            )
+            if paddle.pir.is_fake_value(loss_value):
+                no_fetch = True
+                fetch_names = []
+            else:
+                fetch_names = [loss_value]
+            fetch_names += self._pir_fetch_values
+
         outs = self._executor.run(
             self.main_program,
             feed=feed_dict,
             fetch_list=fetch_names,
-            use_program_cache=self._strategy.use_cache,
+            use_program_cache=use_cache,
             return_numpy=self._strategy.return_numpy,
         )
+
+        if self._in_pir_mode:
+            if no_fetch:
+                logs = {"outputs": None, "loss": None}
+                start_idx = 0
+            else:
+                logs = {"outputs": outs[0], "loss": outs[0]}
+                start_idx = 1
+            for i, name in enumerate(self._pir_user_defined_fetch_names):
+                logs[name] = outs[start_idx + i]
+            return logs
+
         logs = self._prepare_logger(
             outs, None, None, None, fetch_names, fetch_indices, self._mode
         )
@@ -2248,6 +2365,8 @@ class Engine:
 
     @property
     def main_program(self):
+        if self._in_pir_mode:
+            return self._pir_dense_main_progs[self._mode]
         dist_context = self._dist_contexts[self._mode]
         return dist_context.dist_main_programs[self._cur_rank]
 

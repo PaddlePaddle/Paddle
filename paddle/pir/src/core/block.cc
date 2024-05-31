@@ -22,7 +22,7 @@
 #include "paddle/pir/include/core/region.h"
 
 namespace pir {
-Block::~Block() {
+Block::~Block() {  // NOLINT
   if (!use_empty()) {
     auto parent_op = GetParentOp();
     PADDLE_FATAL(
@@ -38,7 +38,10 @@ void Block::push_back(Operation *op) { insert(ops_.end(), op); }
 void Block::push_front(Operation *op) { insert(ops_.begin(), op); }
 
 void Block::pop_back() {
-  IR_ENFORCE(!ops_.empty(), "can't pop back from empty block.");
+  PADDLE_ENFORCE_EQ(
+      !ops_.empty(),
+      true,
+      phi::errors::InvalidArgument("can't pop back from empty block."));
   ops_.back()->Destroy();
   ops_.pop_back();
 }
@@ -54,7 +57,10 @@ Block::Iterator Block::insert(ConstIterator iterator, Operation *op) {
 }
 
 Block::Iterator Block::erase(ConstIterator position) {
-  IR_ENFORCE(position->GetParent() == this, "iterator not own this block.");
+  PADDLE_ENFORCE_EQ(
+      position->GetParent(),
+      this,
+      phi::errors::InvalidArgument("iterator not own this block."));
   position->Destroy();
   return ops_.erase(position);
 }
@@ -66,14 +72,20 @@ void Block::ClearOps() {
 }
 
 void Block::Assign(Iterator position, Operation *op) {
-  IR_ENFORCE(position->GetParent() == this, "position not own this block.");
+  PADDLE_ENFORCE_EQ(
+      position->GetParent(),
+      this,
+      phi::errors::InvalidArgument("position not own this block."));
   position->Destroy();
   position.set_underlying_pointer(op);
   op->SetParent(this, position);
 }
 
 Operation *Block::Take(Operation *op) {
-  IR_ENFORCE(op && op->GetParent() == this, "iterator not own this block.");
+  PADDLE_ENFORCE_EQ(
+      op && op->GetParent() == this,
+      true,
+      phi::errors::InvalidArgument("iterator not own this block."));
   ops_.erase(Iterator(*op));
   return op;
 }
@@ -87,10 +99,14 @@ Block::UseIterator Block::use_end() const { return Block::UseIterator(); }
 bool Block::HasOneUse() const { return first_use_ && !first_use_.next_use(); }
 
 void Block::ResetOpListOrder(const OpListType &new_op_list) {
-  IR_ENFORCE(new_op_list.size() == ops_.size(),
-             "The size of new_op_list not same with ops_.");
-  IR_ENFORCE(TopoOrderCheck(new_op_list),
-             "The new_op_list is not in topological order.");
+  PADDLE_ENFORCE_EQ(new_op_list.size(),
+                    ops_.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of new_op_list not same with ops_."));
+  PADDLE_ENFORCE_EQ(TopoOrderCheck(new_op_list),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The new_op_list is not in topological order."));
 
   ops_.clear();
   for (Operation *op : new_op_list) {
@@ -113,8 +129,10 @@ Value Block::AddArg(Type type) {
 
 void Block::EraseArg(uint32_t index) {
   auto argument = arg(index);
-  IR_ENFORCE(argument.use_empty(),
-             "Erase a block argument that is still in use.");
+  PADDLE_ENFORCE_EQ(argument.use_empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Erase a block argument that is still in use."));
   argument.dyn_cast<BlockArgument>().Destroy();
   args_.erase(args_.begin() + index);
 }
@@ -127,21 +145,28 @@ void Block::ClearKwargs() {
 }
 
 Value Block::AddKwarg(const std::string &keyword, Type type) {
-  IR_ENFORCE(kwargs_.find(keyword) == kwargs_.end(),
-             "Add keyword (%s) argument which has been existed.",
-             keyword.c_str());
+  PADDLE_ENFORCE_EQ(kwargs_.find(keyword),
+                    kwargs_.end(),
+                    phi::errors::InvalidArgument(
+                        "Add keyword (%s) argument which has been existed.",
+                        keyword.c_str()));
   auto arg = BlockArgument::Create(type, this, keyword);
   kwargs_[keyword] = arg;
   return arg;
 }
 
 void Block::EraseKwarg(const std::string &keyword) {
-  IR_ENFORCE(kwargs_.find(keyword) != kwargs_.end(),
-             "Erase keyword (%s) argument which doesn't existed.",
-             keyword.c_str());
+  PADDLE_ENFORCE_NE(kwargs_.find(keyword),
+                    kwargs_.end(),
+                    phi::errors::InvalidArgument(
+                        "Erase keyword (%s) argument which doesn't existed.",
+                        keyword.c_str()));
   auto kwarg = kwargs_[keyword];
-  IR_ENFORCE(kwarg.use_empty(),
-             "Erase a block keyword argument that is still in use.");
+  PADDLE_ENFORCE_EQ(
+      kwarg.use_empty(),
+      true,
+      phi::errors::InvalidArgument(
+          "Erase a block keyword argument that is still in use."));
   kwarg.dyn_cast<BlockArgument>().Destroy();
   kwargs_.erase(keyword);
 }

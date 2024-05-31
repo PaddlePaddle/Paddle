@@ -723,8 +723,8 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
         static_cast<phi::distributed::DistTensor*>(tensor_in.get());
     if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(),
                                    tensor_dist_attr)) {
-      auto argument_name = (arg_name == "" ? "tensor" : arg_name);
-      auto tensor_name = (tensor.name() == "" ? "None" : tensor.name());
+      auto argument_name = (arg_name.empty() ? "tensor" : arg_name);
+      auto tensor_name = (tensor.name().empty() ? "None" : tensor.name());
       VLOG(4) << "Reshard input: " << argument_name << "(" << tensor_name
               << ") " << ReshardDebugInfo(*dist_tensor, tensor_dist_attr);
       auto* func = phi::distributed::ChooseProperReshardFunction(
@@ -764,9 +764,9 @@ ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
           static_cast<phi::distributed::DistTensor*>(tensor_in.get());
       if (ReshardIsNeededWithPartial(dist_tensor->dist_attr(), dist_attr)) {
         auto argument_name =
-            (arg_name == "" ? "tensor" : arg_name) + "_" + std::to_string(i);
+            (arg_name.empty() ? "tensor" : arg_name) + "_" + std::to_string(i);
         auto tensor_name =
-            (tensors[i].name() == "" ? "None" : tensors[i].name());
+            (tensors[i].name().empty() ? "None" : tensors[i].name());
         VLOG(4) << "Reshard input: " << argument_name << "(" << tensor_name
                 << ") " << ReshardDebugInfo(*dist_tensor, dist_attr);
         auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
@@ -928,9 +928,9 @@ void ReshardKernelOutputToApiOutput(
         static_cast<phi::distributed::DistTensor*>(tensor_out.get());
     dist_tensor->unsafe_set_dims(src_tensor->dims());
     if (ReshardIsNeeded(src_tensor->dist_attr(), dist_tensor->dist_attr())) {
-      auto argument_name = (arg_name == "" ? "tensor" : arg_name);
+      auto argument_name = (arg_name.empty() ? "tensor" : arg_name);
       auto tensor_name =
-          (dst_tensor->name() == "" ? "None" : src_tensor->name());
+          (dst_tensor->name().empty() ? "None" : src_tensor->name());
       VLOG(4) << "Reshard output(bwd): " << argument_name << "(" << tensor_name
               << ") "
               << ReshardDebugInfo(*src_tensor, dist_tensor->dist_attr());
@@ -1012,7 +1012,7 @@ PrepareDataForDistTensor(
     const TransformFlag& transform_flag,
     bool is_stride_kernel) {
   std::vector<std::shared_ptr<phi::distributed::DistTensor>> out;
-  for (auto tensor_in : input) {
+  for (const auto& tensor_in : input) {
     if (tensor_in) {
       phi::distributed::DistTensor* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(tensor_in.get());
