@@ -867,7 +867,6 @@ bool AnalysisPredictor::PreparePirProgram() {
         dev_ctx->Alloc(tensor_temp, type_data);
       } else {
         VLOG(1) << "Variable already exists: " << param_names[i];
-        VLOG(1) << "Variable already exists: " << param_names[i];
       }
       auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
       tensor_out.push_back(tensor_temp);
