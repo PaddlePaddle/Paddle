@@ -55,7 +55,7 @@ def inference(
         signature = inspect.signature(func)
         arg_names = [v.name for v in signature.parameters.values()]
         assert arg_names[0] == "self"
-        save_path = save_model_dir + func.__name__ + "/infer"
+        save_path = save_model_dir + "/" + func.__name__ + "/infer"
         d2s_input_info_path = save_path + "_d2s_input_info.txt"
         d2s_input_shapes = []
         d2s_input_names = []
@@ -185,6 +185,8 @@ def inference(
                         input_specs[i].shape = d2s_input_shapes[d2s_shapes_id]
                         d2s_input_names.append(input_specs[i].name)
                         d2s_shapes_id += 1
+                
+                os.environ["TRITON_KERNEL_CACHE_DIR"] = save_model_dir
 
                 print("we are doing d2s!!")
                 sys.stdout.flush()
@@ -209,6 +211,14 @@ def inference(
                         f.write(line)
                 print("d2s are done!!")
                 sys.stdout.flush()
+            else:
+                # we need register some triton ops.
+                for root, dirs, files in os.walk(save_model_dir):
+                    for file in files:
+                        if file.endswith(".so"):
+                            so_full_path = os.path.join(root, file)
+                            paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_full_path)
+
 
             # create predictor
             model_dir = save_model_dir + func.__name__ + "/"
