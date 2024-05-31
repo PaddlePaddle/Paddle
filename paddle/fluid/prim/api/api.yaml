@@ -29,6 +29,7 @@
 - maximum
 - minimum
 - prod
+- cumprod
 - roll
 - scatter
 - scatter_nd_add
@@ -46,3 +47,4 @@
 - erf
 - tanh
 - sign
+- sigmoid

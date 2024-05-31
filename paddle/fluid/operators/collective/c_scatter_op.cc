@@ -45,7 +45,7 @@ class CScatterOp : public framework::OperatorWithKernel {
         phi::errors::InvalidArgument(
             "The ring_id (%d) for c_scatter_op must be non-negative.",
             root_id));
-    framework::DDim dim = ctx->GetInputDim("X");
+    phi::DDim dim = ctx->GetInputDim("X");
     dim[0] = dim[0] / nranks;
     if (dim[0] < 0) dim[0] = -1;
     ctx->SetOutputDim("Out", dim);

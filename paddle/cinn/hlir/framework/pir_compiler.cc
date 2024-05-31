@@ -20,6 +20,7 @@
 #include "paddle/common/flags.h"
 
 PD_DECLARE_bool(enable_cinn_compile_cache);
+PD_DECLARE_int64(cinn_compile_thread_num);
 
 namespace cinn::hlir::framework {
 
@@ -52,6 +53,16 @@ class CompilationContextMapper {
   bool is_finalized_{false};
 };
 
+static size_t GetThreadNum(size_t task_size) {
+  size_t thread_size = task_size;
+  if (!FLAGS_enable_cinn_compile_cache) {
+    thread_size = 1;
+  } else if (FLAGS_cinn_compile_thread_num > 0) {
+    thread_size = FLAGS_cinn_compile_thread_num;
+  }
+  return thread_size;
+}
+
 std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     const std::vector<pir::OpLoweringGroupPtr>& groups) {
   CompilationContextMapper ctx_mapper(target_, groups);
@@ -59,9 +70,9 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
   auto& compilation_results = ctx_mapper.MutableCompilationResult();
 
   const size_t task_size = group_compilation_contexts.size();
-  const size_t thread_size = FLAGS_enable_cinn_compile_cache ? task_size : 1;
+  const size_t thread_size = GetThreadNum(task_size);
   VLOG(5) << "Found " << task_size << " new groups parsed from "
-          << groups.size();
+          << groups.size() << " and compiles with " << thread_size;
   if (task_size > 0) {
     auto worker_fn = [&](int index) {
       CompilationTask task(&group_compilation_contexts[index]);
@@ -89,6 +100,8 @@ void CompilationContextMapper::Construct(
 
   for (size_t i = 0; i < groups.size(); ++i) {
     fusion_infos_.emplace_back(*groups[i]);
+    VLOG(5) << "Construct FusionInfo: " << fusion_infos_[i]
+            << " for group: " << *groups[i];
     // If FLAGS_enable_cinn_compile_cache=False, Cache strategy will not take
     // effects.
     if (IsNewAndUnique(fusion_infos_[i]) || !FLAGS_enable_cinn_compile_cache) {

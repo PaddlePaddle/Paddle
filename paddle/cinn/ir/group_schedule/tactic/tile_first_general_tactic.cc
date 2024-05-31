@@ -21,6 +21,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 
 PD_DECLARE_bool(support_reduce_stride_read);
+PD_DECLARE_bool(support_trivial_stride_read);
 
 namespace cinn {
 namespace ir {
@@ -79,7 +80,7 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
   reduce_current_axis_ =
       IsInnerThreadSpatialLoopGT(context_->config, 1) ? 2 : 1;
   if (context_->config.base_info->is_reduce_all) {
-    reduce_current_axis_ = 1;
+    reduce_current_axis_ = 0;
   }
   // reduce axis have be re-order to last
   vec_flatten_axis_.clear();
@@ -144,7 +145,21 @@ void TileFirstGeneralTactic::MergeFlattenAxis(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
                                              const std::string& block_id) {
-  if (vec_reduce_axis_.size() >= 2 && !ir::IsReduceInitTensorName(block_id)) {
+  std::vector<ir::Expr> loops = sch->GetLoops(block_id);
+  int32_t max_loop_idx = 0;
+  for (int32_t idx : vec_reduce_axis_) {
+    max_loop_idx = std::max(max_loop_idx, idx);
+    PADDLE_ENFORCE_EQ(idx < loops.size() || loops.size() == 1,
+                      true,
+                      ::common::errors::InvalidArgument(
+                          "The reduce axis should meet: axis's idx < "
+                          "loops.size() or loops.size() == 1, but received "
+                          "idx= %d ,loops.size() = %d",
+                          idx,
+                          loops.size()));
+  }
+  if (max_loop_idx < loops.size() && vec_reduce_axis_.size() >= 2 &&
+      !ir::IsReduceInitTensorName(block_id)) {
     sch->Fuse(block_id, vec_reduce_axis_);
   }
 }
@@ -152,13 +167,22 @@ void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
 void TileFirstGeneralTactic::SplitSptialInner(ir::IRSchedule* sch,
                                               const std::string& block_id) {
   if (IsInnerThreadSpatialLoopGT(context_->config, 1)) {
-    auto loops = sch->GetLoops(block_id);
-    auto split_loops =
-        sch->Split(loops[0],
-                   std::vector<int>(
-                       {-1,
-                        static_cast<int>(
-                            context_->config.tile_config.spatial_inner_num)}));
+    if (FLAGS_support_trivial_stride_read) {
+      auto loops = sch->GetLoops(block_id);
+      std::vector<int> split_factors{
+          static_cast<int>(context_->config.tile_config.spatial_inner_num), -1};
+      sch->Split(loops[0], split_factors);
+      loops = sch->GetLoops(block_id);
+      sch->Reorder({loops[1], loops[0]});
+    } else {
+      auto loops = sch->GetLoops(block_id);
+      auto split_loops = sch->Split(
+          loops[0],
+          std::vector<int>(
+              {-1,
+               static_cast<int>(
+                   context_->config.tile_config.spatial_inner_num)}));
+    }
   }
 }
 

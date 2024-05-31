@@ -107,10 +107,16 @@ static __global__ void SumStridedKV(const T* src,
 
 template <typename T>
 static auto selectSumkernel(int64_t headdim) {
-  PADDLE_ENFORCE_LE(headdim, 256, "FlashAttention only support headdim <= 256");
-  PADDLE_ENFORCE_EQ(
-      headdim % 32, 0, "FlashAttention only support headdim %% 32 == 0");
-  PADDLE_ENFORCE_NE(headdim, 0, "Headdim can't be zero");
+  PADDLE_ENFORCE_LE(headdim,
+                    256,
+                    phi::errors::InvalidArgument(
+                        "FlashAttention only support headdim <= 256"));
+  PADDLE_ENFORCE_EQ(headdim % 32,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "FlashAttention only support headdim %% 32 == 0"));
+  PADDLE_ENFORCE_NE(
+      headdim, 0, phi::errors::InvalidArgument("Headdim can't be zero"));
 #define CASEN(n) \
   case n:        \
     return SumStridedKV<T, n>;
@@ -133,9 +139,13 @@ static void kvReduceForGQA(const Context& ctx,
                            const DenseTensor& dk_tmp,
                            DenseTensor* dk) {
   PADDLE_ENFORCE_EQ(
-      dk->strides()[2], 1, "headdim dimention must be contiguous");
+      dk->strides()[2],
+      1,
+      phi::errors::InvalidArgument("headdim dimention must be contiguous"));
   PADDLE_ENFORCE_EQ(
-      dk_tmp.strides()[3], 1, "headdim dimention must be contiguous");
+      dk_tmp.strides()[3],
+      1,
+      phi::errors::InvalidArgument("headdim dimention must be contiguous"));
   const int64_t reduceDimSize = dk_tmp.dims()[2];
   const size_t blockNum =
       std::min((static_cast<int64_t>(dk_tmp.dims()[0] + 31) / 32),
@@ -163,15 +173,21 @@ static void kvReduceBatchedForGQA(const Context& ctx,
                                   const DenseTensor& dk_tmp,
                                   DenseTensor* dk) {
   PADDLE_ENFORCE_EQ(
-      dk->strides()[3], 1, "headdim dimention must be contiguous");
+      dk->strides()[3],
+      1,
+      phi::errors::InvalidArgument("headdim dimention must be contiguous"));
   PADDLE_ENFORCE_EQ(
-      dk_tmp.strides()[4], 1, "headdim dimention must be contiguous");
-  PADDLE_ENFORCE_EQ(dk->strides()[0],
-                    dk->strides()[1] * dk->dims()[1],
-                    "batchsize dimention must be contiguous");
-  PADDLE_ENFORCE_EQ(dk_tmp.strides()[0],
-                    dk_tmp.strides()[1] * dk_tmp.dims()[1],
-                    "batchsize dimention must be contiguous");
+      dk_tmp.strides()[4],
+      1,
+      phi::errors::InvalidArgument("headdim dimention must be contiguous"));
+  PADDLE_ENFORCE_EQ(
+      dk->strides()[0],
+      dk->strides()[1] * dk->dims()[1],
+      phi::errors::InvalidArgument("batchsize dimention must be contiguous"));
+  PADDLE_ENFORCE_EQ(
+      dk_tmp.strides()[0],
+      dk_tmp.strides()[1] * dk_tmp.dims()[1],
+      phi::errors::InvalidArgument("batchsize dimention must be contiguous"));
   const int64_t reduceDimSize = dk_tmp.dims()[3];
   const size_t blockNum = std::min(
       (static_cast<int64_t>(dk_tmp.dims()[0] * dk_tmp.dims()[1] + 31) / 32),

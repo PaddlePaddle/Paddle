@@ -137,14 +137,15 @@ class TestPass : public pir::Pass {
   TestPass() : pir::Pass("TestPass", 1) {}
   void Run(pir::Operation *op) override {
     auto count_op_analysis = analysis_manager().GetAnalysis<CountOpAnalysis>();
-    pass_state().preserved_analyses.Preserve<CountOpAnalysis>();
-    CHECK_EQ(pass_state().preserved_analyses.IsPreserved<CountOpAnalysis>(),
+    pass_state()->preserved_analyses.Preserve<CountOpAnalysis>();
+    CHECK_EQ(pass_state()->preserved_analyses.IsPreserved<CountOpAnalysis>(),
              true);
     auto no_operation_analysis =
         analysis_manager().GetAnalysis<NoOperationAnalysis>();
-    pass_state().preserved_analyses.Preserve<NoOperationAnalysis>();
-    CHECK_EQ(pass_state().preserved_analyses.IsPreserved<NoOperationAnalysis>(),
-             true);
+    pass_state()->preserved_analyses.Preserve<NoOperationAnalysis>();
+    CHECK_EQ(
+        pass_state()->preserved_analyses.IsPreserved<NoOperationAnalysis>(),
+        true);
     CHECK_EQ(count_op_analysis.count, 11);
     no_operation_analysis.scale = 8;
     CHECK_EQ(no_operation_analysis.scale, 8);
@@ -155,12 +156,13 @@ class TestPass : public pir::Pass {
     LOG(INFO) << "In " << pass_info().name << ": " << module_op->name()
               << std::endl;
 
-    pass_state().preserved_analyses.Unpreserve<CountOpAnalysis>();
-    CHECK_EQ(pass_state().preserved_analyses.IsPreserved<CountOpAnalysis>(),
+    pass_state()->preserved_analyses.Unpreserve<CountOpAnalysis>();
+    CHECK_EQ(pass_state()->preserved_analyses.IsPreserved<CountOpAnalysis>(),
              false);
-    pass_state().preserved_analyses.Unpreserve<NoOperationAnalysis>();
-    CHECK_EQ(pass_state().preserved_analyses.IsPreserved<NoOperationAnalysis>(),
-             false);
+    pass_state()->preserved_analyses.Unpreserve<NoOperationAnalysis>();
+    CHECK_EQ(
+        pass_state()->preserved_analyses.IsPreserved<NoOperationAnalysis>(),
+        false);
   }
 
   bool CanApplyOn(pir::Operation *op) const override {

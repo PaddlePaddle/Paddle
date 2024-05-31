@@ -19,6 +19,7 @@
 #include "absl/types/optional.h"
 #include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/common/type.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -358,6 +359,14 @@ Expr GetScalarExpr(const framework::NodeAttr::attr_t &attr) {
     void operator()(const std::vector<std::string> &) {
       PADDLE_THROW(
           phi::errors::InvalidArgument("wrong type std::vector<std::string>"));
+    }
+    void operator()(const std::vector<symbol::DimExpr> &) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "wrong type std::vector<symbol::DimExpr>"));
+    }
+    void operator()(const std::vector<cinn::dialect::SymbolBinding> &) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "wrong type std::vector<cinn::dialect::SymbolBinding>"));
     }
   };
   absl::visit(Visitor{scalar}, attr);
@@ -1271,6 +1280,19 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
+  PADDLE_ENFORCE(
+      attrs.attr_store.count("output_dim_exprs"),
+      ::common::errors::InvalidArgument("Expected attribute output_dim_exprs "
+                                        "in strategy for generate shape op"));
+  PADDLE_ENFORCE(
+      attrs.attr_store.count("symbol_bindings"),
+      ::common::errors::InvalidArgument("Expected attribute symbol_bindings "
+                                        "in strategy for generate shape op"));
+  auto output_dim_exprs = absl::get<std::vector<symbol::DimExpr>>(
+      attrs.attr_store.at("output_dim_exprs"));
+  auto symbol_bindings = absl::get<cinn::dialect::SymbolBindings>(
+      attrs.attr_store.at("symbol_bindings"));
+
   framework::CINNCompute generate_shape_compute(
       [=](lang::Args args, lang::RetValue *ret) {
         PADDLE_ENFORCE(!args.empty(),
@@ -1287,16 +1309,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForGenerateShapeSymbolic(
         auto stages = CreateStages({});
 
         std::string tensor_name = pack_args.back().operator std::string();
-        ir::Tensor out(ir::_Tensor_::Make(/*name=*/tensor_name,
-                                          /*dtype=*/common::type_of<int64_t>(),
-                                          /*shape=*/
-                                          {
-                                              Expr(1),
-                                          },
-                                          /*domain=*/
-                                          {
-                                              Expr(1),
-                                          }));
+        ir::Tensor out = pe::GenerateShape(
+            inputs, symbol_bindings, output_dim_exprs, tensor_name);
         std::vector<CINNValue> res;
         stages->InsertLazily(out);
         res.push_back(CINNValue(out));
@@ -1361,6 +1375,66 @@ std::shared_ptr<framework::OpStrategy> StrategyForArange(
                     GetElementwiseScheduleFunc(output_shapes, target),
                     "strategy.reshape.x86",
                     1);
+  return strategy;
+}
+
+std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  auto attr_store = attrs.attr_store;
+  PADDLE_ENFORCE_GT(attr_store.count("start"),
+                    0U,
+                    ::common::errors::InvalidArgument(
+                        "No start attribute in arange Op! Please check."));
+  PADDLE_ENFORCE_GT(attr_store.count("stop"),
+                    0U,
+                    ::common::errors::InvalidArgument(
+                        "No stop attribute in arange Op! Please check."));
+  PADDLE_ENFORCE_GT(attr_store.count("step"),
+                    0U,
+                    ::common::errors::InvalidArgument(
+                        "No step attribute in arange Op! Please check."));
+  PADDLE_ENFORCE_GT(attr_store.count("dtype"),
+                    0U,
+                    ::common::errors::InvalidArgument(
+                        "No dtype attribute in arange Op! Please check."));
+
+  auto start = absl::get<float>(attr_store.at("start"));
+  auto stop = absl::get<float>(attr_store.at("stop"));
+  auto step = absl::get<float>(attr_store.at("step"));
+  auto dtype =
+      cinn::common::Str2Type(absl::get<std::string>(attr_store.at("dtype")));
+
+  framework::CINNCompute arange_compute([=](lang::Args args,
+                                            lang::RetValue *ret) {
+    PADDLE_ENFORCE_EQ(
+        !args.empty(),
+        true,
+        ::common::errors::InvalidArgument(
+            "The input argument of arange compute is empty! Please check."));
+    CINNValuePack pack_args = args[0];
+
+    PADDLE_ENFORCE_EQ(pack_args.size(),
+                      1U,
+                      ::common::errors::InvalidArgument(
+                          "The number of input argument of arange should be at "
+                          "last 1. Please check."));
+    std::string tensor_name = pack_args[0].operator std::string();
+
+    auto out = pe::Arange(start, stop, step, dtype, tensor_name);
+    std::vector<cinn::common::CINNValue> res;
+    auto stages = CreateStages({out});
+    res.push_back(cinn::common::CINNValue(out));
+    res.push_back(cinn::common::CINNValue(stages));
+    *ret = CINNValuePack{res};
+  });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(
+      arange_compute, lang::PackedFunc(), "strategy.reshape.x86", 1);
   return strategy;
 }
 
@@ -1496,6 +1570,159 @@ std::shared_ptr<framework::OpStrategy> StrategyForAssignOutSymbolic(
   strategy->AddImpl(
       assign_out_compute, lang::PackedFunc(), "strategy.default", 1);
   return strategy;
+}
+
+std::shared_ptr<OpStrategy> StrategyForIsClose(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<shape_t> &output_shapes,
+    const Target &target) {
+  float rtol = 1e-05f, atol = 1e-08f;
+  bool equal_nan = false;
+  int axis = -1;
+
+  if (attrs.attr_store.count("axis")) {
+    axis = absl::get<int>(attrs.attr_store.at("axis"));
+  }
+  if (attrs.attr_store.count("rtol")) {
+    rtol = absl::get<float>(attrs.attr_store.at("rtol"));
+  }
+  if (attrs.attr_store.count("atol")) {
+    atol = absl::get<float>(attrs.attr_store.at("atol"));
+  }
+  if (attrs.attr_store.count("equal_nan")) {
+    equal_nan = absl::get<bool>(attrs.attr_store.at("equal_nan"));
+  }
+
+  framework::CINNCompute isclose_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty())
+            << "The input argument of isclose compute is empty! Please check.";
+        CINNValuePack pack_args = args[0];
+        int input_size = pack_args.size();
+
+        // the last pack argument is the output tensor name
+        std::string tensor_name = pack_args.back().operator std::string();
+        --input_size;
+        CHECK_EQ(input_size, 2)
+            << "The input number of isclose should be 2, but here "
+            << input_size << "! Please check.";
+
+        // the input tensor are in front
+        Expr x_expr = pack_args[0];
+        CHECK(x_expr.as_tensor());
+        auto x_tensor = x_expr.as_tensor_ref();
+
+        Expr y_expr = pack_args[1];
+        CHECK(y_expr.as_tensor());
+        auto y_tensor = y_expr.as_tensor_ref();
+
+        auto out = pe::IsClose(
+            x_tensor, y_tensor, axis, rtol, atol, equal_nan, tensor_name);
+
+        auto stages = CreateStages({out});
+        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+      });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(isclose_compute,
+                    GetInjectiveScheduleFunc(output_shapes, target),
+                    "strategy.assertisclose",
+                    1);
+
+  return strategy;
+}
+
+std::shared_ptr<OpStrategy> StrategyForIsCloseSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  float rtol = 1e-05f, atol = 1e-08f;
+  bool equal_nan = false;
+  int axis = -1;
+
+  if (attrs.attr_store.count("axis")) {
+    axis = absl::get<int>(attrs.attr_store.at("axis"));
+  }
+  if (attrs.attr_store.count("rtol")) {
+    rtol = absl::get<float>(attrs.attr_store.at("rtol"));
+  }
+  if (attrs.attr_store.count("atol")) {
+    atol = absl::get<float>(attrs.attr_store.at("atol"));
+  }
+  if (attrs.attr_store.count("equal_nan")) {
+    equal_nan = absl::get<bool>(attrs.attr_store.at("equal_nan"));
+  }
+
+  framework::CINNCompute isclose_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty())
+            << "The input argument of isclose compute is empty! Please check.";
+        CINNValuePack pack_args = args[0];
+        int input_size = pack_args.size();
+
+        // the last pack argument is the output tensor name
+        std::string tensor_name = pack_args.back().operator std::string();
+        --input_size;
+        CHECK_EQ(input_size, 2)
+            << "The input number of isclose should be 2, but here "
+            << input_size << "! Please check.";
+
+        // the input tensor are in front
+        Expr x_expr = pack_args[0];
+        CHECK(x_expr.as_tensor());
+        auto x_tensor = x_expr.as_tensor_ref();
+
+        Expr y_expr = pack_args[1];
+        CHECK(y_expr.as_tensor());
+        auto y_tensor = y_expr.as_tensor_ref();
+
+        auto out = pe::IsClose(
+            x_tensor, y_tensor, axis, rtol, atol, equal_nan, tensor_name);
+
+        auto stages = CreateStages({out});
+        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+      });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(
+      isclose_compute, lang::PackedFunc(), "strategy.assertisclose", 1);
+  return strategy;
+}
+
+std::vector<Type> InferDtypeForIsClose(const std::vector<Type> &inputs_type,
+                                       const framework::AttrMapType &attrs) {
+  int input_size = inputs_type.size();
+  CHECK_EQ(input_size, 2UL)
+      << "The input number of isclose should be a multiple of 2, but here "
+      << input_size << "! Please check.";
+  CHECK(inputs_type[0].is_float())
+      << "The op \"isclose\" only support float point dtype now, but here "
+      << inputs_type[0];
+  CHECK(inputs_type[0] == inputs_type[1])
+      << "The two inputs dtype sof isclose should be equal, but here x:"
+      << inputs_type[0] << " != y:" << inputs_type[1] << "! Please check.";
+
+  return {Bool()};
+}
+
+std::vector<shape_t> InferShapeForIsclose(
+    const std::vector<shape_t> &inputs_shape,
+    const framework::AttrMapType &attrs) {
+  CHECK(inputs_shape.size() == 2UL) << "Need 2 input tensors for isclose op.";
+  auto shape1 = inputs_shape[0];
+  auto shape2 = inputs_shape[1];
+  CHECK(shape1 == shape2) << "The input shapes must be the same. But received: "
+                          << "The first input shape is "
+                          << utils::Join(shape1, ",")
+                          << " and the second input shape is "
+                          << utils::Join(shape2, ",");
+  std::vector<shape_t> out_shape{shape1};
+
+  return out_shape;
 }
 
 }  // namespace op
@@ -1786,6 +2013,8 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForArange)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForArangeSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForArange))
       .set_attr("inferdtype",
@@ -1842,6 +2071,26 @@ CINN_REGISTER_HELPER(elementwise_ops) {
           "CINNStrategySymbolic", cinn::hlir::op::StrategyForAssignOutSymbolic)
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise);
+
+  CINN_REGISTER_OP(isclose)
+      .describe(
+          "This operator checks if all x and y satisfy the condition: |x - y| "
+          "<= atol + rtol * |y|")
+      .set_num_inputs(2)
+      .set_num_outputs(1)
+      .set_attr<cinn::hlir::framework::StrategyFunction>(
+          "CINNStrategy", cinn::hlir::op::StrategyForIsClose)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForIsCloseSymbolic)
+      .set_attr("infershape",
+                MakeOpFunction(cinn::hlir::op::InferShapeForIsclose))
+      .set_attr("inferdtype",
+                MakeOpFunction(cinn::hlir::op::InferDtypeForIsClose))
+      .set_attr("inferlayout",
+                MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
+      .set_attr<cinn::hlir::framework::OpPatternKind>(
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise)
+      .set_support_level(4);
 
   return true;
 }

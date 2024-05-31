@@ -12,122 +12,120 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .pass_base import new_pass, PassManager, PassContext
-
-from .auto_parallel_gradient_merge import (  # noqa: F401
-    parse_program,
-    GradientMergePass,
-)
-from .auto_parallel_sharding import (  # noqa: F401
-    ShardingPass,
-    is_sharding_param_broadcast_op,
-    partition_by_use_order,
-    partition_by_greedy_even,
-    partition_parameters,
-    re_order_program,
-    group_param,
-    ShardingInfo,
-    VarGroup,
+from .allreduce_matmul_grad_overlapping import (  # noqa: F401
+    AllreduceMatmulGradOverlappingPass,
 )
 from .auto_parallel_amp import (  # noqa: F401
     AMPLists,
-    AMPState,
     AMPPass,
+    AMPState,
 )
-from .auto_parallel_master_grad import (  # noqa: F401
-    get_output_in_varlist,
-    MasterGradPass,
-)
-from .auto_parallel_fp16 import (  # noqa: F401
-    set_op_dtype_to_fp16,
-    set_auto_cast_attr,
-    FP16State,
-    cast_startup_program,
-    FP16Pass,
-)
-from .auto_parallel_recompute import (  # noqa: F401
-    RecomputeState,
-    RecomputePass,
-)
-from .auto_parallel_quantization import QuantizationPass  # noqa: F401
 from .auto_parallel_data_parallel_optimization import (  # noqa: F401
     DataParallelOptimizationPass,
     GradientsGroup,
 )
-from .auto_parallel_grad_clip import (  # noqa: F401
-    ClipHelper,
-    ClipGradByGlobalNormPass,
+from .auto_parallel_fp16 import (  # noqa: F401
+    FP16Pass,
+    FP16State,
+    cast_startup_program,
+    set_auto_cast_attr,
+    set_op_dtype_to_fp16,
 )
 from .auto_parallel_fused_linear_promotion import (  # noqa: F401
     FusedLinearPromotionPass,
 )
-from .auto_parallel_supplement_explicit_dependencies import (  # noqa: F401
-    AutoParalSupplementDepPass,
+from .auto_parallel_grad_clip import (  # noqa: F401
+    ClipGradByGlobalNormPass,
+    ClipHelper,
 )
-from .auto_parallel_pipeline import is_reshard_op, PipelinePass  # noqa: F401
+from .auto_parallel_gradient_merge import (  # noqa: F401
+    GradientMergePass,
+    parse_program,
+)
+from .auto_parallel_master_grad import (  # noqa: F401
+    MasterGradPass,
+    get_output_in_varlist,
+)
+from .auto_parallel_pipeline import PipelinePass, is_reshard_op  # noqa: F401
+from .auto_parallel_quantization import QuantizationPass  # noqa: F401
+from .auto_parallel_recompute import (  # noqa: F401
+    RecomputePass,
+    RecomputeState,
+)
 from .auto_parallel_sequence_parallel_optimization import (  # noqa: F401
     SequenceParallelOptimizationPass,
 )
-from .allreduce_matmul_grad_overlapping import (  # noqa: F401
-    AllreduceMatmulGradOverlappingPass,
+from .auto_parallel_sharding import (  # noqa: F401
+    ShardingInfo,
+    ShardingPass,
+    VarGroup,
+    group_param,
+    is_sharding_param_broadcast_op,
+    partition_by_greedy_even,
+    partition_by_use_order,
+    partition_parameters,
+    re_order_program,
+)
+from .auto_parallel_supplement_explicit_dependencies import (  # noqa: F401
+    AutoParalSupplementDepPass,
 )
 from .cpp_pass import (  # noqa: F401
-    FuseElementwiseAddActPass,
+    BuildCINNPass,
+    FuseAdamWPass,
     FuseBatchNormActPass,
     FuseBatchNormAddActPass,
-    FuseReluDepthwiseConvPass,
     FusedAttentionPass,
     FusedFeedforwardPass,
-    FuseGemmEpiloguePass,
-    FuseAdamWPass,
     FuseDotProductAttentionPass,
+    FuseElementwiseAddActPass,
+    FuseGemmEpiloguePass,
     FuseOptimizerPass,
-    InplaceAddtoOpPass,
+    FuseReluDepthwiseConvPass,
     FuseResUnitPass,
-    BuildCINNPass,
+    InplaceAddtoOpPass,
 )
 from .fuse_all_reduce import (  # noqa: F401
-    find_adjacent_match_sequences,
-    insert_fuse_all_reduce_ops,
-    has_same_attrs,
+    FuseAllReducePass,
     filter_all_collective_op_indices,
+    find_adjacent_match_sequences,
     find_all_fuse_all_reduce_groups,
-    split_fuse_all_reduce_groups_by_deps,
+    has_same_attrs,
     insert_coalesce_tensor_ops,
     insert_fuse_all_reduce_by_memory_size,
-    FuseAllReducePass,
+    insert_fuse_all_reduce_ops,
+    split_fuse_all_reduce_groups_by_deps,
 )
+from .pass_base import PassContext, PassManager, new_pass
 from .pipeline_scheduler_pass import (  # noqa: F401
-    PipelineFThenBPass,
     Pipeline1F1BPass,
     PipelineEager1F1BPass,
+    PipelineFThenBPass,
     PipelineVirtualPipelinePass,
     PipelineZeroBubblePipelinePass,
     apply_pass,
 )
-from .ps_trainer_pass import (  # noqa: F401
-    AppendSendOpsPass,
-    DistributedOpsPass,
-    DeleteOptimizesPass,
-    DeleteExtraOptimizerPass,
-    FakeInitOpsPass,
-    PsGpuPass,
-    PsTranspilePass,
-    SplitHeterWorkerOpsPass,
-    SplitTrainerOpsPass,
-    SetHeterPipelineOptPass,
-    SplitFlOpsPass,
-)
 from .ps_server_pass import (  # noqa: F401
-    AddLrDecayTablePass,
-    AddListenAndServPass,
-    AddRpcGlobalFlagsPass,
-    AddOptimizerPass,
     AddGeoOptimizerPass,
+    AddListenAndServPass,
+    AddLrDecayTablePass,
+    AddOptimizerPass,
+    AddRpcGlobalFlagsPass,
     BuildPserverStartupProgramPass,
     DeleteUnusedInStartupPass,
 )
-
+from .ps_trainer_pass import (  # noqa: F401
+    AppendSendOpsPass,
+    DeleteExtraOptimizerPass,
+    DeleteOptimizesPass,
+    DistributedOpsPass,
+    FakeInitOpsPass,
+    PsGpuPass,
+    PsTranspilePass,
+    SetHeterPipelineOptPass,
+    SplitFlOpsPass,
+    SplitHeterWorkerOpsPass,
+    SplitTrainerOpsPass,
+)
 
 __all__ = [
     'new_pass',

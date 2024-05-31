@@ -16,8 +16,6 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
-#include "paddle/phi/kernels/funcs/common_shape.h"
-#include "paddle/phi/kernels/funcs/reduce_functor.h"
 
 namespace phi {
 

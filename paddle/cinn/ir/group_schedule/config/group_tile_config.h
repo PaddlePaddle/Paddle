@@ -29,7 +29,9 @@ namespace ir {
 struct ScheduleConfig {
   struct BaseInfo {
     std::vector<int64_t> reduce_axis;
+    std::vector<int64_t> raw_reduce_axis;
     int64_t data_rank;
+    int64_t raw_data_rank;
     int64_t reduce_numel;
     int64_t spatial_numel;
     bool has_dynamic_spatial{false};
@@ -80,6 +82,16 @@ struct BucketInfoHash {
                              adt::hash_combine(hash_rbl, hash_rbu));
   }
 };
+
+std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
+    const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info);
+
+std::unordered_map<BucketInfo, ScheduleConfig, BucketInfoHash>
+CombineBaseInfoAndConfig(
+    const std::unordered_map<BucketInfo,
+                             ScheduleConfig::TileConfig,
+                             BucketInfoHash>& config_map,
+    const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info);
 
 std::unordered_map<BucketInfo, ScheduleConfig, BucketInfoHash>
 BuildScheduleConfig(

@@ -20,6 +20,7 @@
 
 #include "paddle/common/exception.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/os_info.h"
 #include "xpu/runtime.h"
@@ -130,6 +131,39 @@ struct XPUContext::Impl {
     }
   }
 
+  class XHPCBufferManager {
+   public:
+    void* Alloc(const Place& place, size_t size, XPUStream xpu_stream) {
+      VLOG(3) << "Alloc " << size << " bytes from XHPC on stream "
+              << xpu_stream;
+      phi::Stream stream(reinterpret_cast<StreamId>(xpu_stream));
+      auto allocation = memory_utils::Alloc(place, size, stream);
+      void* ret = allocation.get()->ptr();
+      allocations_to_free_.back().push_back(std::move(allocation));
+      return ret;
+    }
+
+    void Save() {
+      allocations_to_free_.emplace_back();
+      VLOG(3) << "XHPC ctx_guard created, " << GetStackLevel()
+              << " are in use now.";
+    }
+
+    void Free() {
+      PADDLE_ENFORCE_GT(GetStackLevel(),
+                        0,
+                        errors::PreconditionNotMet(
+                            "No ctx_guard when overload_free is called"));
+      allocations_to_free_.pop_back();
+      VLOG(3) << "XHPC ctx_guard destropyed, " << GetStackLevel()
+              << " are in use now.";
+    }
+
+   private:
+    size_t GetStackLevel() const { return allocations_to_free_.size(); }
+    std::vector<std::vector<Allocator::AllocationPtr>> allocations_to_free_;
+  };
+
   void Init(int64_t gm_default_size = 1024, int64_t l3_default_size = 1024) {
     owned_ = true;
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
@@ -137,17 +171,41 @@ struct XPUContext::Impl {
         << "Please NOTE: xpu device: " << static_cast<int>(place_.device);
 
     context_ = xpu::create_context();
-    context_->set_option("XPUAPI_DEFAULT_SIZE",
-                         std::to_string(gm_default_size).c_str());
-    VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
-            << "context " << context_ << " set xpuapi_default_size "
-            << gm_default_size;
 
     if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
       XPUStream s;
       xpu_stream_create(&s);
       context_->set_stream(s);
     }
+
+    if (std::getenv("XPU_PADDLE_DISABLE_ALLOC_OVERLOAD") == nullptr) {
+      // overload ctx alloc/free to avoid xpu_malloc/xpu_wait
+      auto overload_alloc_fn =
+          [&xhpc_buf_mgr = xhpc_buf_mgr_,
+           &place = place_,
+           s = context_->get_stream()](size_t size) -> void* {
+        return xhpc_buf_mgr.Alloc(place, size, s);
+      };
+      auto overload_save_fn = [&xhpc_buf_mgr = xhpc_buf_mgr_]() {
+        xhpc_buf_mgr.Save();
+      };
+      auto overload_free_fn = [&xhpc_buf_mgr = xhpc_buf_mgr_]() {
+        xhpc_buf_mgr.Free();
+      };
+      context_->set_overload_alloc(
+          overload_alloc_fn, overload_free_fn, overload_save_fn);
+      gm_default_size = 1;
+      VLOG(1) << "XPUAPI_DEFUAULT_SIZE is disabled because you overload the "
+                 "alloc of xhpc. If you want to use XPUAPI_DEFAULT_SIZE, "
+                 "please set XPU_PADDLE_DISABLE_ALLOC_OVERLOAD=1";
+    }
+
+    context_->set_option("XPUAPI_DEFAULT_SIZE",
+                         std::to_string(gm_default_size).c_str());
+    VLOG(3) << "xpu place " << static_cast<int>(place_.GetDeviceId())
+            << "context " << context_ << " set xpuapi_default_size "
+            << gm_default_size;
+
     xpu_version_ = backends::xpu::get_xpu_version(place_.device);
     SetL3Cache(l3_default_size);
   }
@@ -220,6 +278,7 @@ struct XPUContext::Impl {
   // NOTE: Distributed communicator, distributed framework manages its
   // resources, XPUContext only holds references.
   xpu::BKCLContext_t bkcl_context_{nullptr};
+  XHPCBufferManager xhpc_buf_mgr_;
 };
 
 static int64_t get_gm_size(int i) {
@@ -263,8 +322,13 @@ XPUContext::XPUContext() : DeviceContext() {
   }
 }
 
-XPUContext::XPUContext(const XPUPlace& place) : DeviceContext() {
-  if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
+XPUContext::XPUContext(const XPUPlace& place, bool is_comm_context)
+    : DeviceContext() {
+  if (is_comm_context) {
+    // for communication context init, with gm_size=1 and l3_size=1
+    impls_.push_back(std::make_unique<Impl>(place));
+    impls_[0]->Init(0, 0);
+  } else if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
     int default_num_stream = 4;
     if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL_STREAM_NUMBER") != nullptr) {
       default_num_stream =

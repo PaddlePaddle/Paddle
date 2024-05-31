@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -39,6 +40,17 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 
     int root = ctx.Attr<int>("root");
 
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(rid)) {
+      distributed::ProcessGroup* pg = map->get(rid);
+      auto b_opts = distributed::BroadcastOptions();
+      b_opts.source_rank = rid;
+      b_opts.source_root = root;
+      auto task = pg->Broadcast(out, *x, b_opts, false);
+      task->Wait();
+      return;
+    }
+
     gpuStream_t stream = ctx.cuda_device_context().stream();
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
@@ -54,7 +66,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
           platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
       auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
       if (root == comm->rank()) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBcast(
             reinterpret_cast<void*>(const_cast<T*>(x->data<T>())),
             numel,
             dtype,
@@ -64,14 +76,13 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
         VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
                 << x->numel();
         if (out != x) {
-          framework::TensorCopy(
-              *static_cast<const phi::DenseTensor*>(x),
-              place,
-              *platform::DeviceContextPool::Instance().Get(place),
-              static_cast<phi::DenseTensor*>(out));
+          framework::TensorCopy(*static_cast<const phi::DenseTensor*>(x),
+                                place,
+                                *phi::DeviceContextPool::Instance().Get(place),
+                                static_cast<phi::DenseTensor*>(out));
         }
       } else {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclBcast(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclBcast(
             out->data<T>(), numel, dtype, root, comm->comm(), stream));
         VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
                 << common::product(out->dims());

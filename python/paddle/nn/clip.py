@@ -30,28 +30,36 @@ from paddle.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
-from paddle.tensor.layer_function_generator import templatedoc
 
 __all__ = []
 
 
-@templatedoc()
 def clip_by_norm(x, max_norm, name=None):
-    """
-    ${comment}
+    r"""
+
+    Limits the L2 norm of the input :math:`x` within :math:`max\_norm`.
+    If the L2 norm of :math:`x` is less than or equal to :math:`max\_norm`, :math:`out` will be
+    the same as :math:`x`. If the L2 norm of :math:`x` is greater than :math:`max\_norm`, :math:`x` will
+    be linearly scaled to make the L2 norm of :math:`out` equal to :math:`max\_norm`, as
+    shown in the following formula:
+
+    .. math::
+
+        out = \frac{max\_norm * x}{norm(x)}
+
+    where :math:`norm(x)` represents the L2 norm of :math:`x`.
 
     Args:
-        x(${x_type}): ${x_comment}
-        max_norm(${max_norm_type}): ${max_norm_comment}
+        x(Tensor): The input of clip_by_norm and data type is float32.
+            The number of dimensions must be between [1, 9].
+        max_norm(float): The maximum norm value.
         name(str, optional): For detailed information, please refer
             to :ref:`api_guide_Name`. Usually name is no need to set and
             None by default.
 
     Returns:
-        Tensor:
-
-        out(${out_type}): ${out_comment}
-
+        Tensor: The output of clip_by_norm with shape as input.
+            The data type is float32.
 
     Examples:
 
@@ -96,17 +104,16 @@ def clip_by_norm(x, max_norm, name=None):
     return out
 
 
-@templatedoc()
 def merge_selected_rows(x, name=None):
     """
-    ${comment}
+    Merge by adding duplicated rows in the input SelectedRows object.
 
     Args:
-        x(${x_type}): ${x_comment}
+        x(Tensor): The input selected rows to be merge.
         name(basestring|None): Name of the output.
 
     Returns:
-        out(${out_type}): ${out_comment}
+        Tensor, merged output.
 
     Examples:
 
@@ -135,7 +142,6 @@ def merge_selected_rows(x, name=None):
     return out
 
 
-@templatedoc()
 def get_tensor_from_selected_rows(x, name=None):
     """
     Get tensor data from input with SelectedRows type, and outputs a Tensor.
@@ -776,9 +782,28 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     else clip_var
                 )
                 if clip_input.process_mesh != g.process_mesh:
-                    clip_input = paddle.distributed.reshard(
-                        clip_input, g.process_mesh, clip_input.placements
-                    )
+                    # TODO(pkuzyc): refine the reshard function between local
+                    # and global mesh to avoid the following "_local_tensor()"
+                    # operation.
+                    if set(g.process_mesh.process_ids) < set(
+                        clip_input.process_mesh.process_ids
+                    ):
+                        placements = clip_input.placements
+                        is_replicate = True
+                        for placement in placements:
+                            if not placement.is_replicated():
+                                is_replicate = False
+                                break
+                        if is_replicate:
+                            clip_input = clip_input._local_value()
+                        else:
+                            raise NotImplementedError(
+                                "Reshard a sharded tensor from a local mesh to a global mesh is not supported"
+                            )
+                    else:
+                        clip_input = paddle.distributed.reshard(
+                            clip_input, g.process_mesh, clip_input.placements
+                        )
                 new_grad = paddle.multiply(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:

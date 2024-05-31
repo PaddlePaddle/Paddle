@@ -15,7 +15,6 @@
 
 STATIC_MODE_TESTING_LIST = [
     'test_affine_channel_op',
-    'test_block_rename_var',
     'test_transfer_dtype_op',
     'test_transfer_layout_op',
     'test_concat_op',
@@ -145,7 +144,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_distributed_strategy',
     'test_distributions',
     'test_dot_op',
-    'test_downpoursgd',
+    'test_downpoursgd_deprecated',
     'test_dpsgd_op',
     'test_dropout_op',
     'test_dygraph_multi_forward',
@@ -232,7 +231,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_generate_mask_labels_op',
     'test_generate_proposal_labels_op',
     'test_generate_proposals_op',
-    'test_generator_dataloader',
+    'test_generator_dataloader_deprecated',
     'test_get_places_op',
     'test_get_tensor_from_selected_rows_op',
     'test_gradient_clip',

@@ -18,7 +18,6 @@ import paddle
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
-from .layer_function_generator import templatedoc
 
 Tensor = paddle.base.framework.core.eager.Tensor
 
@@ -86,11 +85,6 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
             check_type(out, "out", Variable, op_name)
 
         helper = LayerHelper(op_name, **locals())
-
-        if binary_op and x.dtype != y.dtype:
-            raise ValueError(
-                f"(InvalidArgument) The DataType of {op_name} Op's Variable must be consistent, but received {x.dtype} and {y.dtype}."
-            )
 
         if out is None:
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -427,7 +421,6 @@ def equal_all(x, y, name=None):
         return out
 
 
-@templatedoc()
 def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     r"""
     Check if all :math:`x` and :math:`y` satisfy the condition:
@@ -443,7 +436,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
         y (Tensor): The input tensor, it's data type should be float16, float32, float64.
         rtol (rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
         atol (atoltype, optional): The absolute tolerance. Default: :math:`1e-8` .
-        equal_nan (equalnantype, optional): ${equal_nan_comment}. Default: False.
+        equal_nan (bool, optional): Whether to compare nan as equal. Default: False.
         name (str, optional): Name for the operation. For more information, please
             refer to :ref:`api_guide_Name`. Default: None.
 
@@ -503,7 +496,6 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
         return out
 
 
-@templatedoc()
 def equal(x, y, name=None):
     """
 
@@ -605,7 +597,6 @@ def equal_(x, y, name=None):
         return _C_ops.equal_(x, y)
 
 
-@templatedoc()
 def greater_equal(x, y, name=None):
     """
     Returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
@@ -697,7 +688,6 @@ def greater_equal_(x, y, name=None):
         return _C_ops.greater_equal_(x, y)
 
 
-@templatedoc()
 def greater_than(x, y, name=None):
     """
     Returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
@@ -789,7 +779,6 @@ def greater_than_(x, y, name=None):
         return _C_ops.greater_than_(x, y)
 
 
-@templatedoc()
 def less_equal(x, y, name=None):
     """
     Returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
@@ -882,7 +871,6 @@ def less_equal_(x, y, name=None):
         return _C_ops.less_equal_(x, y)
 
 
-@templatedoc()
 def less_than(x, y, name=None):
     """
     Returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
@@ -975,7 +963,6 @@ def less_than_(x, y, name=None):
         return _C_ops.less_than_(x, y)
 
 
-@templatedoc()
 def not_equal(x, y, name=None):
     """
     Returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
@@ -1365,7 +1352,6 @@ def bitwise_not_(x, name=None):
         return _C_ops.bitwise_not_(x)
 
 
-@templatedoc()
 def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     r"""
     Check if all :math:`x` and :math:`y` satisfy the condition:

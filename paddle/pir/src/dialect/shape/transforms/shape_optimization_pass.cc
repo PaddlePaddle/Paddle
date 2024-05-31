@@ -21,6 +21,7 @@
 #include "paddle/pir/include/dialect/shape/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
@@ -120,17 +121,16 @@ void PrintOpInfo(pir::Operation* op) {
   }
 }
 
-void DebugPrintOpInfo(
-    pir::Operation* op,
-    pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
+void DebugPrintOpInfo(pir::Operation* op,
+                      pir::InferSymbolicShapeContext* infer_context = nullptr) {
   std::ostringstream print_stream;
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     const auto& res = op->result(i);
     print_stream << "\tresult(" << res.dyn_cast<pir::OpResult>().index() << ") "
                  << "ShapeOrData: {";
 
-    if (shape_analysis != nullptr) {
-      auto shape_data = shape_analysis->GetShapeOrDataForValue(res);
+    if (infer_context != nullptr) {
+      auto shape_data = infer_context->GetShapeOrDataForValue(res);
       if (shape_data.isa<symbol::TensorListShapeOrDataDimExprs>()) continue;
       print_stream << "shape: [";
 
@@ -167,7 +167,7 @@ void DebugPrintOpInfo(
 
 void CheckInferSymWithInferMeta(
     pir::Operation* op,
-    pir::ShapeConstraintIRAnalysis* shape_analysis = nullptr) {
+    pir::InferSymbolicShapeContext* infer_context = nullptr) {
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     const auto& res = op->result(i);
     std::ostringstream print_stream;
@@ -179,18 +179,18 @@ void CheckInferSymWithInferMeta(
       const std::vector<int64_t>& infer_meta_shape =
           common::vectorize(res.type().dyn_cast<pir::DenseTensorType>().dims());
       const std::vector<symbol::DimExpr>& infer_sym_shape =
-          shape_analysis->GetShapeOrDataForValue(res).shape();
+          infer_context->GetShapeOrDataForValue(res).shape();
 
       // Check rank.
       if (infer_meta_shape.size() != infer_sym_shape.size()) {
         std::ostringstream print_stream;
         print_stream << "Warning : Check InferSymbolicShape for " << op->name()
-                     << " (op_" << op->id() << ") "
+                     << " [id:" << op->id() << "] "
                      << " carefully! rank of infer_meta_shape is ["
                      << infer_meta_shape.size()
                      << "], but rank of infer_sym_shape is ["
                      << infer_sym_shape.size() << "].";
-        VLOG(vlog_level) << print_stream.str();
+        LOG(ERROR) << print_stream.str();
         continue;
       }
 
@@ -202,11 +202,11 @@ void CheckInferSymWithInferMeta(
             std::ostringstream print_stream;
             print_stream
                 << "Warning : Check InferSymbolicShape for " << op->name()
-                << " (op_" << op->id() << ") "
+                << " [id:" << op->id() << "] "
                 << " carefully! "
                 << "shape[" << i
                 << "] of infer_sym_shape shoule be int64_t NOT a symbol!";
-            VLOG(vlog_level) << print_stream.str();
+            LOG(ERROR) << print_stream.str();
             continue;
           }
 
@@ -214,26 +214,15 @@ void CheckInferSymWithInferMeta(
           if (infer_meta_shape[i] != infer_sym_shape[i].dyn_cast<int64_t>()) {
             std::ostringstream print_stream;
             print_stream << "Warning : Check InferSymbolicShape for "
-                         << op->name() << " (op_" << op->id() << ") "
+                         << op->name() << " [id:" << op->id() << "] "
                          << " carefully! "
                          << "infer_sym_shape is [" << infer_meta_shape[i]
                          << "], but infer_meta_shape is ["
                          << infer_sym_shape[i].dyn_cast<int64_t>() << "].";
-            VLOG(vlog_level) << print_stream.str();
+            LOG(ERROR) << print_stream.str();
           }
         }
       }
-    }
-  }
-}
-
-void InferSymExprForAllValues(ModuleOp module_op) {
-  ShapeConstraintIRAnalysis& shape_analysis =
-      ShapeAnalysisManager::Instance().Get(module_op.program());
-  shape_analysis.Init();
-  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
-    for (auto& block : module_op->region(i)) {
-      InferSymExprForBlock(block, &shape_analysis);
     }
   }
 }
@@ -253,7 +242,7 @@ class ShapeOptimizationPass : public pir::Pass {
             "ShapeOptimizationPass should run on module op."));
     PrintProgram(module_op, "Origin Program");
 
-    InferSymExprForAllValues(module_op);
+    ::pir::InferSymExprForAllValues(module_op);
     // Runner is for Canonicalizer.
     PassPipelineRunner runner = [](pir::PassManager& pm, pir::ModuleOp m) {
       pm.EnableIRPrinting();
@@ -272,32 +261,15 @@ class ShapeOptimizationPass : public pir::Pass {
 
 }  // namespace
 
-static inline bool IsStaticShape(const Value& value) {
-  const auto& value_type = value.type();
-  if (!value || !value_type || !value_type.isa<pir::DenseTensorType>()) {
-    return false;
-  }
-  return !::common::contain_unknown_dim(
-      value_type.dyn_cast<pir::DenseTensorType>().dims());
-}
-
-symbol::ShapeOrDataDimExprs CreateShapeOrDataByDDim(const pir::DDim& dims) {
-  std::vector<symbol::DimExpr> dim_exprs;
-  for (int i = 0; i < dims.size(); ++i) {
-    dim_exprs.emplace_back(symbol::DimExpr{dims.at(i)});
-  }
-  return symbol::TensorShapeOrDataDimExprs{dim_exprs};
-}
-
 void InferSymExprForBlock(const Block& block,
-                          ShapeConstraintIRAnalysis* shape_analysis) {
+                          InferSymbolicShapeContext* infer_context) {
   for (auto& op : block) {
     auto infer_symbolic_shape_interface =
         op.dyn_cast<pir::InferSymbolicShapeInterface>();
     if (infer_symbolic_shape_interface) {
       PrintOpInfo(&op);
       PADDLE_ENFORCE_EQ(
-          infer_symbolic_shape_interface.InferSymbolicShape(shape_analysis),
+          infer_symbolic_shape_interface.InferSymbolicShape(infer_context),
           true,
           "InferSymbolicShape for %s failed.",
           op.name());
@@ -306,7 +278,7 @@ void InferSymExprForBlock(const Block& block,
         // TODO(lanxianghit): deal with the ops which have more than 1
         // ACTUAL results
         pir::shape::SetShapeAttrForOp(
-            &op, shape_analysis->GetShapeOrDataForValue(op.result(0)));
+            &op, infer_context->GetShapeOrDataForValue(op.result(0)));
       }
     } else {
       const bool all_outs_static_dims = [&] {
@@ -322,20 +294,28 @@ void InferSymExprForBlock(const Block& block,
         return all_static_dims;
       }();
 
-      if (all_outs_static_dims) {
-        for (uint32_t i = 0; i < op.num_results(); ++i) {
-          shape_analysis->SetShapeOrDataForValue(
-              op.result(i),
-              CreateShapeOrDataByDDim(
-                  op.result(i).type().dyn_cast<pir::DenseTensorType>().dims()));
-        }
-      } else {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            op.name() + " DOES NOT have InferSymbolicShapeInterface!"));
+      if (!all_outs_static_dims) {
+        LOG(ERROR) << op.name()
+                   << " DOES NOT have InferSymbolicShapeInterface!";
+      }
+      for (uint32_t i = 0; i < op.num_results(); ++i) {
+        infer_context->SetStaticShapeForValue(op.result(i));
       }
     }
-    DebugPrintOpInfo(&op, shape_analysis);
-    CheckInferSymWithInferMeta(&op, shape_analysis);
+    DebugPrintOpInfo(&op, infer_context);
+    CheckInferSymWithInferMeta(&op, infer_context);
+  }
+}
+
+void InferSymExprForAllValues(ModuleOp module_op) {
+  ShapeConstraintIRAnalysis& shape_analysis =
+      ShapeAnalysisManager::Instance().Get(module_op.program());
+  shape_analysis.Init();
+  auto infer_context = shape_analysis.MutInferSymbolicShapeContext();
+  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
+    for (auto& block : module_op->region(i)) {
+      InferSymExprForBlock(block, infer_context);
+    }
   }
 }
 
@@ -379,4 +359,4 @@ void AddShapeOptimizationPass(
 
 }  // namespace pir::shape
 
-REGISTER_IR_PASS(shape_optimization_pass, pir::ShapeOptimizationPass);
+// REGISTER_IR_PASS(shape_optimization_pass, pir::ShapeOptimizationPass);

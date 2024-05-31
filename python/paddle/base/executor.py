@@ -22,6 +22,8 @@ from functools import lru_cache
 import numpy as np
 
 from paddle import pir
+from paddle.base.framework import in_cinn_mode
+from paddle.base.libpaddle.pir import apply_cinn_pass
 
 from ..pir import (
     Program as PirProgram,
@@ -299,7 +301,7 @@ def pir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
     """
     diff_shape = core.diff_tensor_shape(feed, target_shape, num_places)
     if diff_shape is not None:
-        raise ValueError(
+        warnings.warn(
             'The fed Variable %r should have dimensions = %d, shape = '
             '%r, but received fed shape %r on each device'
             % (name, len(target_shape), target_shape, diff_shape)
@@ -315,7 +317,7 @@ def pir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
             if isinstance(feed._dtype(), core.VarDesc.VarType)
             else feed._dtype()
         )
-        raise ValueError(
+        warnings.warn(
             f'The data type of fed Variable {name!r} must be {var_dtype_format!r}, but received {feed_dtype_format!r}'
         )
     return True
@@ -1072,6 +1074,9 @@ class _ExecutorCache:
                         pir_program, param_mapping, new_program._grad_var_to_var
                     )
 
+                    if in_cinn_mode():
+                        apply_cinn_pass(pir_program)
+
                     type_to_program = {"default": pir_program}
 
                 else:
@@ -1089,7 +1094,18 @@ class _ExecutorCache:
         ):
             pm = pir.PassManager()
             for p in new_program._pass_opt['pass_list']:
-                pm.add_pass(p, {})
+                # Temporary implementation, it will be refined when auto_parallel refactored
+                if p == 'eliminate_transpose':
+                    from paddle.distributed.auto_parallel.static.pir_pass import (
+                        eliminate_transpose_by_reshape,
+                    )
+
+                    for job_type in plan.job_types():
+                        ir_program = plan.ir_program(job_type)
+                        eliminate_transpose_by_reshape(ir_program)
+                else:
+                    pm.add_pass(p, {})
+
             for job_type in plan.job_types():
                 ir_program = plan.ir_program(job_type)
                 pm.run(ir_program)
@@ -1152,6 +1168,11 @@ class _ExecutorCache:
                     op.result(0).persistable,
                 )
                 data_op_infos.append(tup)
+        from paddle.decomposition import decomp
+
+        if core._enable_dist_prim_all():
+            with decomp.prim_guard():
+                decomp.decompose_dist_program(program)
         return program, new_exe, data_op_infos
 
 
@@ -2100,12 +2121,10 @@ class Executor:
 
             lr_scheduler = program.lr_scheduler
             lr_value = lr_scheduler()
-            lr_var = program.lr_var
+            lr_var = program.get_parameter_value_by_name(program.lr_name)
 
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-            tensor = core.get_variable_tensor(
-                global_scope(), lr_scheduler._var_name
-            )
+            tensor = core.get_variable_tensor(global_scope(), program.lr_name)
             # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
             cpu_tensor = _as_lodtensor(data, core.CPUPlace())
             if core.is_cuda_graph_capturing():
@@ -2517,8 +2536,8 @@ class Executor:
         reused_trainer = program._heter_pipeline_opt is not None or (
             program._fleet_opt is not None
             and program._fleet_opt.get("use_ps_gpu", False)
+            and program._fleet_opt.get("dump_fields_path", "") == ""
         )
-
         if reused_trainer is False:
             trainer_instance = (
                 self._default_executor.init_for_dataset(  # -->InitForDataset

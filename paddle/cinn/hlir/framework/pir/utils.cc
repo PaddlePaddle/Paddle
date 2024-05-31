@@ -18,7 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include "glog/logging.h"
-
+#include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/framework/op.h"
@@ -63,6 +63,7 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.unsqueeze", "reshape"},
     {"pd_op.split_with_num", "split"},
     {"pd_op.expand", "broadcast_to"},
+    {"pd_op.where", "select"},
     {"cinn_op.generate_shape", "generate_shape"},
     {"cinn_op.broadcast", "broadcast_to"}};
 
@@ -287,51 +288,6 @@ bool IsSmallNumelOp(const ::pir::Operation& op) {
   return (0 <= max_value_numel && max_value_numel < 32);
 }
 
-bool IsShapeComputeOp(const ::pir::Operation& op) {
-  auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
-      op.GetParent()->parent_program());
-  if (op.num_operands() == 0) {
-    return false;
-  }
-  bool all_input_has_shape_data = true;
-  for (uint32_t i = 0; i < op.num_operands(); ++i) {
-    if (shape_analysis.HasShapeOrDataForValue(op.operand_source(i))) {
-      const auto& shape_expr =
-          shape_analysis.GetShapeOrDataForValue(op.operand_source(i));
-      if (shape_expr.isa<symbol::TensorShapeOrDataDimExprs>() &&
-          shape_expr.data()) {  // has shape data
-        continue;
-      }
-    }
-    all_input_has_shape_data = false;
-    break;
-  }
-
-  for (uint32_t i = 0; i < op.num_results(); ++i) {
-    if (shape_analysis.HasShapeOrDataForValue(op.result(i))) {
-      const auto& shape_expr =
-          shape_analysis.GetShapeOrDataForValue(op.result(i));
-      if (shape_expr.isa<symbol::TensorShapeOrDataDimExprs>() &&
-          shape_expr.data()) {  // has shape data
-        continue;
-      }
-    }
-    all_input_has_shape_data = false;
-    break;
-  }
-
-  return all_input_has_shape_data;
-}
-
-// TODO(zyfncg): This function is a temporary solution, we need to remove it in
-// the future.
-bool IsTempDenySpecialOp(const ::pir::Operation& op) {
-  if (op.name() == "cinn_op.generate_shape") {
-    return false;
-  }
-  return IsShapeComputeOp(op);
-}
-
 // Mainly used for pd_to_cinn_pass and reused in IsSupportInCinn function.
 bool IsDeniedInCinn(const ::pir::Operation& op) {
   if (FLAGS_disable_dyshape_in_train && HaveUnkDim(op)) {
@@ -367,7 +323,7 @@ const std::unordered_set<std::string> TOCINN_OPS = {
     PD_OP_NAME(ScaleOp),
     PD_OP_NAME(Pool2dOp),
     PD_OP_NAME(IscloseOp),
-    PD_OP_NAME(SliceOp),
+    // PD_OP_NAME(SliceOp),
     PD_OP_NAME(ConcatOp),
     PD_OP_NAME(SplitOp),
     PD_OP_NAME(SplitWithNumOp),
@@ -495,6 +451,7 @@ static utils::Attribute ConvertArrayAttribute(
             "ArrayAttribute"));
       }
     }
+    // TODO(xiazichao): ADD branch logic for 0-size ArrayAttribute.
   } else if (src_attr.isa<::pir::shape::SymbolAttribute>()) {
     // do nothing for now
   } else {
@@ -532,10 +489,24 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
   utils::AttributeMap dst_attrs;
   for (auto& item : src_attrs) {
     VLOG(4) << "deal with " << item.first;
-    if (item.first == ::pir::kStopGradientAttrName ||
-        item.first == ::pir::kOutputDimExprs ||
-        item.first == ::pir::kSymbolBindings) {
+    if (item.first == ::pir::kStopGradientAttrName) {
       continue;
+    } else if (item.first == ::pir::kSymbolBindings) {
+      auto symbol_bindings =
+          cinn::dialect::GenerateShapeOp::ConvertAttributeToSymbolBindings(
+              item.second);
+      PADDLE_ENFORCE(symbol_bindings.has_value(),
+                     ::common::errors::PreconditionNotMet(
+                         "Required success to execute convert attribute to "
+                         "symbol bindings."));
+      dst_attrs[::pir::kSymbolBindings] = symbol_bindings.value();
+    } else if (item.first == ::pir::kOutputDimExprs) {
+      auto dim_exprs = cinn::dialect::ConvertAttributeToDimExprs(item.second);
+      PADDLE_ENFORCE(
+          dim_exprs.has_value(),
+          ::common::errors::PreconditionNotMet(
+              "Required success to execute convert attribute to dim exprs."));
+      dst_attrs[::pir::kOutputDimExprs] = dim_exprs.value();
     } else if (item.second.isa<paddle::dialect::PlaceAttribute>()) {
       auto is_cpu =
           item.second.dyn_cast<paddle::dialect::PlaceAttribute>().data() ==

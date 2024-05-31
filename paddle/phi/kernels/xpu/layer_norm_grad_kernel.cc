@@ -32,6 +32,27 @@ void LayerNormGradKernel(const Context& ctx,
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad) {
+  auto x_dtype = x.dtype();
+  const auto* scale_ptr = scale.get_ptr();
+  const auto* bias_ptr = bias.get_ptr();
+  phi::DataType scale_bias_dtype;
+  if (scale_ptr != nullptr) {
+    scale_bias_dtype = scale_ptr->dtype();
+  } else {
+    if (bias_ptr != nullptr) {
+      scale_bias_dtype = bias_ptr->dtype();
+    } else {
+      scale_bias_dtype = x_dtype;
+    }
+  }
+
+  bool is_scale_bias_same_dtype_with_x = x_dtype == scale_bias_dtype;
+  if (!is_scale_bias_same_dtype_with_x) {
+    PADDLE_ENFORCE_EQ(scale_bias_dtype,
+                      phi::CppTypeToDataType<float>::Type(),
+                      phi::errors::InvalidArgument(
+                          "Unsupported data type of Scale and Bias"));
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto& x_dims = x.dims();
   auto matrix_dim = common::flatten_to_2d(x_dims, begin_norm_axis);
@@ -47,7 +68,8 @@ void LayerNormGradKernel(const Context& ctx,
   // scale
   const float* scale_data_fp32 = nullptr;
   float* scale_grad_data_fp32 = nullptr;
-  const auto* scale_ptr = scale.get_ptr();
+  const T* scale_data_T = nullptr;
+  T* scale_grad_data_T = nullptr;
   bool need_cast_scale = false;
   if (scale_ptr == nullptr) {
     // no scale, do nothing
@@ -69,14 +91,21 @@ void LayerNormGradKernel(const Context& ctx,
             : RAII_GUARD.alloc_l3_or_gm<float>(scale_ptr->numel());
   } else {
     // no need to cast
-    scale_data_fp32 = scale_ptr->data<float>();
-    scale_grad_data_fp32 =
-        scale_grad == nullptr ? nullptr : ctx.template Alloc<float>(scale_grad);
+    if (is_scale_bias_same_dtype_with_x) {
+      scale_data_T = scale_ptr->data<T>();
+      scale_grad_data_T =
+          scale_grad == nullptr ? nullptr : ctx.template Alloc<T>(scale_grad);
+    } else {
+      scale_data_fp32 = scale_ptr->data<float>();
+      scale_grad_data_fp32 = scale_grad == nullptr
+                                 ? nullptr
+                                 : ctx.template Alloc<float>(scale_grad);
+    }
   }
 
   // bias
   float* bias_grad_data_fp32 = nullptr;
-  const auto* bias_ptr = bias.get_ptr();
+  T* bias_grad_data_T = nullptr;
   bool need_cast_bias = false;
   if (bias_ptr == nullptr) {
     // no bias, do nothing
@@ -89,29 +118,49 @@ void LayerNormGradKernel(const Context& ctx,
             : RAII_GUARD.alloc_l3_or_gm<float>(bias_ptr->numel());
   } else {
     // no need to cast
-    bias_grad_data_fp32 =
-        bias_grad == nullptr ? nullptr : ctx.template Alloc<float>(bias_grad);
+    if (is_scale_bias_same_dtype_with_x) {
+      bias_grad_data_T =
+          bias_grad == nullptr ? nullptr : ctx.template Alloc<T>(bias_grad);
+    } else {
+      bias_grad_data_fp32 =
+          bias_grad == nullptr ? nullptr : ctx.template Alloc<float>(bias_grad);
+    }
   }
 
   auto* x_grad_data =
       (x_grad == nullptr ? nullptr : ctx.template Alloc<T>(x_grad));
 
-  // int layer_norm_grad(Context* ctx, const T* x, const T* dy, T* dx, int64_t
-  // m, int64_t n, float eps, const float* scale, const float* mean, const
-  // float* var, float* dscale, float* dbias, bool is_rstd = false);
-  int r = xpu::layer_norm_grad(ctx.x_context(),
-                               reinterpret_cast<const XPUType*>(x_data),
-                               reinterpret_cast<const XPUType*>(out_grad_data),
-                               reinterpret_cast<XPUType*>(x_grad_data),
-                               left,
-                               right,
-                               epsilon,
-                               scale_data_fp32,
-                               mean_data,
-                               variance_data,
-                               scale_grad_data_fp32,
-                               bias_grad_data_fp32);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "layer_norm_grad");
+  if (!is_scale_bias_same_dtype_with_x) {
+    int r =
+        xpu::layer_norm_grad(ctx.x_context(),
+                             reinterpret_cast<const XPUType*>(x_data),
+                             reinterpret_cast<const XPUType*>(out_grad_data),
+                             reinterpret_cast<XPUType*>(x_grad_data),
+                             left,
+                             right,
+                             epsilon,
+                             scale_data_fp32,
+                             mean_data,
+                             variance_data,
+                             scale_grad_data_fp32,
+                             bias_grad_data_fp32);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "layer_norm_grad");
+  } else {
+    int r =
+        xpu::layer_norm_grad(ctx.x_context(),
+                             reinterpret_cast<const XPUType*>(x_data),
+                             reinterpret_cast<const XPUType*>(out_grad_data),
+                             reinterpret_cast<XPUType*>(x_grad_data),
+                             left,
+                             right,
+                             epsilon,
+                             reinterpret_cast<const XPUType*>(scale_data_T),
+                             mean_data,
+                             variance_data,
+                             reinterpret_cast<XPUType*>(scale_grad_data_T),
+                             reinterpret_cast<XPUType*>(bias_grad_data_T));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "layer_norm_grad");
+  }
 
   if (need_cast_scale) {
     int r = xpu::cast<float, XPUType>(
@@ -137,7 +186,8 @@ PD_REGISTER_KERNEL(layer_norm_grad,
                    ALL_LAYOUT,
                    phi::LayerNormGradKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
