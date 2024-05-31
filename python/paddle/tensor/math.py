@@ -15,8 +15,6 @@
 math functions
 """
 
-from __future__ import annotations
-
 import math
 import warnings
 
@@ -214,10 +212,7 @@ def log_(x, name=None):
         return _C_ops.log_(x)
 
 
-# TODO(megemini): type checking
-def scale(
-    x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None
-) -> int:
+def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
     Scale operator.
 
@@ -327,7 +322,7 @@ def scale(
         return helper.append_activation(out)
 
 
-def stanh(x, scale_a: int = 1, scale_b=1.7159, name=None):
+def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
     r"""
 
     stanh activation.
@@ -2367,7 +2362,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             f"The dimension of input should be 2 or 1 but receive input's shape: {input_shape}"
         )
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.addmm(input, x, y, beta, alpha)
     else:
         inputs = {'Input': input, "X": x, "Y": y}
