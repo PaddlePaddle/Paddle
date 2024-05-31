@@ -332,9 +332,13 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
 
     python_package_name = f"{op_name}_package"
 
-    generated_dir = (
-        f"/zhoukangkang/2023-06-06minigpt/PaddleNLP/llm/inference/{op_name}"
-    )
+    generated_dir = os.getenv("TRITON_KERNEL_CACHE_DIR", None)
+    print("the kernel cache dir is:", generated_dir)
+    assert (
+        generated_dir is not None
+    ), "TRITON_KERNEL_CACHE_DIR is None, please set it such as export TRITON_KERNEL_CACHE_DIR=/tmp/haha "
+    generated_dir = f"{generated_dir}/{op_name}"
+
     os.makedirs(generated_dir, exist_ok=True)
 
     py_script_file = f"{generated_dir}/triton_kernels.py"
@@ -630,7 +634,9 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
     python_package_name = f"{op_name}_package"
     generated_dir = os.getenv("TRITON_KERNEL_CACHE_DIR", None)
     print("the kernel cache dir is:", generated_dir)
-    assert generated_dir is not None, "TRITON_KERNEL_CACHE_DIR is None, please set it."
+    assert (
+        generated_dir is not None
+    ), "TRITON_KERNEL_CACHE_DIR is None, please set it such as export TRITON_KERNEL_CACHE_DIR=/tmp/haha "
     generated_dir = f"{generated_dir}/{op_name}"
     os.makedirs(generated_dir, exist_ok=True)
 
@@ -688,7 +694,7 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
         )
         return outs[0]
     else:
-        print(f"== we are in static mode, op_name: {op_name}")
+        print(f"== we are in dynamic to static mode, op_name: {op_name}")
         helper = LayerHelper(op_name, **locals())
         inputs = {
             'x': x,
