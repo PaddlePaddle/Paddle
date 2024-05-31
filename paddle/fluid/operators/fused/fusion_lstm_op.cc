@@ -571,7 +571,6 @@ class FusionLSTMKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fusion_lstm, ops::FusionLSTMOp, ops::FusionLSTMOpMaker);
 
 PD_REGISTER_STRUCT_KERNEL(
     fusion_lstm, CPU, ALL_LAYOUT, ops::FusionLSTMKernel, float, double) {}
