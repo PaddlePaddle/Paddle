@@ -221,7 +221,7 @@ def inference(
 
 
             # create predictor
-            model_dir = save_model_dir + func.__name__ + "/"
+            model_dir = save_model_dir + "/" + func.__name__ + "/"
             model_file = model_dir + "infer.pdmodel"
             params_file = model_dir + "infer.pdiparams"
             from paddle.inference import Config, PrecisionType, create_predictor

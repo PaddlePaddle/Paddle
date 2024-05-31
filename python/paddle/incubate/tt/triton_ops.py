@@ -582,22 +582,22 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
     seq_size = x.shape[1]
     BLOCK_SIZE = min(1024, triton.next_power_of_2(N))
 
-    if in_dynamic_or_pir_mode():
-        y = paddle.empty_like(x)
-        adaptive_layer_norm_kernel[(M,)](
-            x,
-            y,
-            weight,
-            bias,
-            scale,
-            shift,
-            M,
-            N,
-            seq_size,
-            epsilon,
-            BLOCK_SIZE=BLOCK_SIZE,
-        )
-        return y
+    # if in_dynamic_or_pir_mode():
+    #     y = paddle.empty_like(x)
+    #     adaptive_layer_norm_kernel[(M,)](
+    #         x,
+    #         y,
+    #         weight,
+    #         bias,
+    #         scale,
+    #         shift,
+    #         M,
+    #         N,
+    #         seq_size,
+    #         epsilon,
+    #         BLOCK_SIZE=BLOCK_SIZE,
+    #     )
+    #     return y
 
     op_name = "triton_adaptive_layer_norm"
     if x.dtype == paddle.float16:
@@ -610,6 +610,7 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
         raise NotImplementedError(
             "triton_adaptive_layer_norm now supports only fp16 and fp32 dtype."
         )
+    op_name += f"_{BLOCK_SIZE}"
 
     # if in_dynamic_or_pir_mode && op is already registered, call it directly.
     if (
