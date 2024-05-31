@@ -30,7 +30,8 @@ IrSelectedRows::IrSelectedRows(phi::DataType dtype,
       lod_(std::move(lod)),
       offset_(offset) {}
 
-IrSelectedRows::IrSelectedRows(const IrSelectedRows& other) {
+IrSelectedRows::IrSelectedRows(const IrSelectedRows& other)
+    : TensorBase(other) {
   dims_ = other.dims();
   dtype_ = other.dtype();
   layout_ = other.layout();
@@ -47,7 +48,8 @@ IrSelectedRows& IrSelectedRows::operator=(const IrSelectedRows& other) {
   return *this;
 }
 
-IrSelectedRows& IrSelectedRows::operator=(IrSelectedRows&& other) noexcept {
+IrSelectedRows& IrSelectedRows::operator=(
+    IrSelectedRows&& other) noexcept {  // NOLINT
   dims_ = std::move(other.dims());
   dtype_ = other.dtype();
   layout_ = other.layout();

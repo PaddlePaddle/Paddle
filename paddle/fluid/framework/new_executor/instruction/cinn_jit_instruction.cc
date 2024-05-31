@@ -19,12 +19,15 @@
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/common/errors.h"
+#include "paddle/common/performance_statistician.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #endif
 PD_DECLARE_bool(cinn_bucket_compile);
+PD_DECLARE_bool(cinn_enable_config_search);
+PD_DECLARE_string(cinn_kernel_execution_label);
 
 namespace paddle {
 namespace framework {
@@ -192,7 +195,16 @@ void CinnJitInstruction::Run() {
   }
 
   // 2. exexute kernel
-  fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
+  if (FLAGS_cinn_enable_config_search) {
+    ::common::PerformanceStatistician& ps =
+        ::common::PerformanceStatistician::Instance();
+    ps.Start(FLAGS_cinn_kernel_execution_label);
+    fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
+    cudaDeviceSynchronize();
+    ps.End(FLAGS_cinn_kernel_execution_label);
+  } else {
+    fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
+  }
 #else
   VLOG(0) << "Not Supported: cinn jit instruction currently does not "
              "support non-CUDA kernel";
