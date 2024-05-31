@@ -610,6 +610,7 @@ const std::vector<std::string> kPirGpuPasses{
     "embedding_eltwise_layernorm_fuse_pass",
     "fused_flash_attn_pass",
     "multihead_matmul_fuse_pass",
+    "fused_weight_only_linear_pass",
     "matmul_add_act_fuse_pass",
     "fc_elementwise_layernorm_fuse_pass",
     "matmul_scale_fuse_pass",

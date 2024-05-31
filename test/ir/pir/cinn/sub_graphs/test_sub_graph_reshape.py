@@ -43,7 +43,7 @@ class TestReshape(TestBase):
             )
         ]
         self.inputs = (paddle.rand(shape=[4312, 640], dtype=paddle.float32),)
-        self.net = ReshapeCase()
+        self.net = ReshapeCase
 
 
 if __name__ == '__main__':

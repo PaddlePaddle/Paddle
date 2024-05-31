@@ -54,6 +54,11 @@ PD_DEFINE_string(cinn_kernel_execution_label,
                                "CINN KERNEL EXECUTE"),
                  "Label used to measure kernel execution time");
 
+PD_DEFINE_string(cinn_tile_config_filename_label,
+                 StringFromEnv("FLAGS_cinn_tile_config_filename_label",
+                               "./config/"),
+                 "Label used to name file of tile config database");
+
 PD_DEFINE_int32(cinn_parallel_compile_thread,
                 Int32FromEnv("FLAGS_cinn_parallel_compile_thread",
                              (std::thread::hardware_concurrency() >> 1)),

@@ -18,7 +18,6 @@
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/common/enforce.h"
-
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -61,7 +60,11 @@ void CompilationTask::Lowering() {
 std::shared_ptr<pir::CompilationResult> CompilationTask::CodegenAndJit() {
   ir::Module::Builder builder(cinn::common::UniqName("module"),
                               context_->target_);
-  CHECK_EQ(context_->predicates_.size(), context_->lowered_funcs_.size());
+  PADDLE_ENFORCE_EQ(context_->predicates_.size(),
+                    context_->lowered_funcs_.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of predicates and lowered_funcs should be "
+                        "the same."));
   for (const ir::Expr& predicate : context_->predicates_) {
     builder.AddPredicate(predicate);
   }

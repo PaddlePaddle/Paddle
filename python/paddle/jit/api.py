@@ -554,7 +554,7 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
             output_size = len(result_list)
             if len(output_spec) == output_size:
                 for var in output_spec:
-                    if not isinstance(var, paddle.pir.Value, int):
+                    if not isinstance(var, (paddle.pir.Value, int)):
                         warnings.warn(output_spec_is_not_value_error % var.name)
                     else:
                         if var not in ValueSet(result_list):

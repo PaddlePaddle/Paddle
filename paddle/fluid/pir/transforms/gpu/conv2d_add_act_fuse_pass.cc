@@ -35,12 +35,13 @@ class Conv2dAddActFusePassDrrPattern : public paddle::drr::DrrPatternBase {
  private:
   std::string act_name_;
   bool cutlass_pattern_;
-  const std::unordered_set<std::string> conv2d_depthwise_act_set_ = {
-      "relu", "swish", "sigmoid"};
+  const std::unordered_set<std::string> conv2d_depthwise_act_set_ = {"relu",
+                                                                     "swish"};
 
  public:
   static const int CUTLASS_NHWC_ALIGNMENT = 8;
-  Conv2dAddActFusePassDrrPattern(std::string act_name, bool cutlass_pattern)
+  Conv2dAddActFusePassDrrPattern(const std::string &act_name,
+                                 bool cutlass_pattern)
       : act_name_(act_name), cutlass_pattern_(cutlass_pattern) {}
   std::string name() const override { return "Conv2dAddActFusePassDrrPattern"; }
   uint32_t benefit() const override { return cutlass_pattern_ ? 3 : 2; }
@@ -277,11 +278,9 @@ class Conv2dAdd2ActFusePattern
     if (next_op->isa<paddle::dialect::ReluOp>()) {
       act_name = "relu";
     }
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 8000 && CUDNN_VERSION < 8700
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8700
     if (next_op->isa<paddle::dialect::TanhOp>()) {
       act_name = "tanh";
-    } else if (next_op->isa<paddle::dialect::SigmoidOp>()) {
-      act_name = "sigmoid";
     }
 #endif
     if (act_name == "") {
@@ -345,11 +344,10 @@ class Conv2dAddActFusePass : public pir::PatternRewritePass {
                 paddle::dialect::FusedConv2dAddActOp::name()});
 
 // NOTE(liuyuanle): cudnn [8.7, 8.9 now) version has bug when act is
-// sigmoid/tanh. Ref to issue
+// tanh. Ref to issue
 // https://github.com/PaddlePaddle/Paddle/issues/50853
 #if CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8700
-    const std::unordered_set<std::string> cudnn_act_set(
-        {"relu", "sigmoid", "tanh"});
+    const std::unordered_set<std::string> cudnn_act_set({"relu", "tanh"});
 #else
     const std::unordered_set<std::string> cudnn_act_set({"relu"});
 #endif

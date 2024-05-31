@@ -118,7 +118,8 @@ class CCommInitOp : public framework::OperatorBase {
       int nranks = Attr<int>("nranks");
       int rid = Attr<int>("ring_id");
 
-      int device_id = place.device;
+      int device_id =
+          static_cast<int>(static_cast<unsigned char>(place.device));
       if (Attr<int>("device_id") >= 0) {
         device_id = Attr<int>("device_id");
       }

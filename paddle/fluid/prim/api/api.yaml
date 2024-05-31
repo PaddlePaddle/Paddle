@@ -38,6 +38,7 @@
 - pad
 - sqrt
 - cumsum
+- cumprod
 - put_along_axis
 - sin
 - cos
