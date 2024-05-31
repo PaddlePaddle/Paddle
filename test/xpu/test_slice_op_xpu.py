@@ -90,6 +90,24 @@ class XPUTestSliceOp(XPUOpTestWrapper):
             self.infer_flags = [1, 1, 1]
             self.out = self.input[-3:3, 0:100, :, 2:-1]
 
+    class TestCaseLargeShape1(TestSliceOp):
+        def config(self):
+            self.input = np.random.random([8192, 5120])
+            self.starts = [0, 5119]
+            self.ends = [8192, 5120]
+            self.axes = [0, 1]
+            self.infer_flags = [1, 1]
+            self.out = self.input[:, -1:]
+
+    class TestCaseLargeShape2(TestSliceOp):
+        def config(self):
+            self.input = np.random.random([2, 1, 8192, 1, 128])
+            self.starts = [0, 0, 0, 0, 0]
+            self.ends = [2, 1, 1, 1, 128]
+            self.axes = [0, 1, 2, 3, 4]
+            self.infer_flags = [1, 1, 1, 1, 1]
+            self.out = self.input[:, :, -1:, :, :]
+
 
 # 1.2 with attr(decrease)
 class XPUTestSliceOp_decs_dim(XPUOpTestWrapper):

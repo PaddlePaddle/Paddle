@@ -135,6 +135,41 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
             self.reduce_all = True
             self.keep_dim = False
 
+    class XPUTestReduceSumLargeShape1(XPUTestReduceSumBase):
+        def init_case(self):
+            self.shape = (8192,)
+            self.axis = (0,)
+            self.reduce_all = False
+            self.keep_dim = False
+
+    class XPUTestReduceSumLargeShape2(XPUTestReduceSumBase):
+        def init_case(self):
+            self.shape = (1, 8192)
+            self.axis = (1,)
+            self.reduce_all = False
+            self.keep_dim = False
+
+    class XPUTestReduceSumLargeShape3(XPUTestReduceSumBase):
+        def init_case(self):
+            self.shape = (224, 1)
+            self.axis = (0,)
+            self.reduce_all = False
+            self.keep_dim = False
+
+    class XPUTestReduceSumLargeShape4(XPUTestReduceSumBase):
+        def init_case(self):
+            self.shape = (334, 1)
+            self.axis = (0,)
+            self.reduce_all = False
+            self.keep_dim = False
+
+    class XPUTestReduceSumLargeShape5(XPUTestReduceSumBase):
+        def init_case(self):
+            self.shape = (338, 1)
+            self.axis = (0,)
+            self.reduce_all = False
+            self.keep_dim = False
+
 
 support_types = get_xpu_op_support_types('reduce_sum')
 for stype in support_types:
