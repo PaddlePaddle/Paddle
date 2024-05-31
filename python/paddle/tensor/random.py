@@ -333,11 +333,11 @@ def log_normal(mean=1.0, std=2.0, shape=None, name=None):
         mean (float|Tensor, optional): The mean of the output Tensor's underlying normal distribution.
             If ``mean`` is float, all elements of the output Tensor share the same mean.
             If ``mean`` is a Tensor(data type supports float32, float64), it has per-element means.
-            Default is 0.0
+            Default is 1.0
         std (float|Tensor, optional): The standard deviation of the output Tensor's underlying normal distribution.
             If ``std`` is float, all elements of the output Tensor share the same standard deviation.
             If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
-            Defaule is 1.0
+            Defaule is 2.0
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. If ``mean`` or ``std``
@@ -385,14 +385,9 @@ def log_normal_(x, mean=1.0, std=2.0, name=None):
 
     Args:
         x (Tensor): The input tensor to be filled with random values.
-        mean (float|Tensor, optional): The mean of the output Tensor's underlying normal distribution.
-            If ``mean`` is float, all elements of the output Tensor shared the same mean.
-            If ``mean`` is a Tensor(data type supports float32, float64), it has per-element means.
-            Default is 0.0
-        std (float|Tensor, optional): The standard deviation of the output Tensor's underlying normal distribution.
-            If ``std`` is float, all elements of the output Tensor shared the same standard deviation.
-            If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
-            Defaule is 1.0
+        mean (float|int, optional): Mean of the output tensor, default is 1.0.
+        std (float|int, optional): Standard deviation of the output tensor, default
+            is 2.0.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
