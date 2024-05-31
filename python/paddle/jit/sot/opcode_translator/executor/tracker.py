@@ -384,38 +384,6 @@ class GetAttrTracker(Tracker):
         return self.is_traceable() and self.obj.tracker.need_guard()
 
 
-class GetShapeTracker(Tracker):
-    """
-    GetShapeTracker is a subclass of Tracker that specifically tracks the shape access of a tensor variable.
-
-    Args:
-        obj (VariableBase): The object whose attribute is to be tracked.
-    """
-
-    def __init__(self, obj: VariableBase, changed: bool = False):
-        # TODO(zrr1999): obj maybe a TensorVariable
-        super().__init__([obj], changed)
-        self.obj = obj
-
-    def gen_instructions(self, codegen: PyCodeGen):
-        self.obj.tracker.gen_instructions(codegen)
-        codegen.gen_load_attr("shape")
-
-    def trace_value_from_frame(self):
-        obj_tracer = self.obj.tracker.trace_value_from_frame()
-        return StringifyExpression(
-            "{}.shape",
-            [obj_tracer],
-            union_free_vars(obj_tracer.free_vars),
-        )
-
-    def __repr__(self) -> str:
-        return "GetShapeTracker()"
-
-    def need_guard(self) -> bool:
-        return self.is_traceable() and self.obj.tracker.need_guard()
-
-
 class GetItemTracker(Tracker):
     """
     GetItemTracker is a subclass of Tracker that specifically tracks item access of a container variable.

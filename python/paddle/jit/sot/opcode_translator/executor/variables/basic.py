@@ -52,7 +52,6 @@ from ..tracker import (
     DummyTracker,
     GetAttrTracker,
     GetIterTracker,
-    GetShapeTracker,
     GlobalTracker,
     SymbolicOperationTracker,
     Tracker,
@@ -354,7 +353,7 @@ class TensorVariable(VariableBase):
             shape_var = ListVariable(
                 shape,  # type: ignore
                 self.graph,
-                tracker=GetShapeTracker(self),
+                tracker=GetAttrTracker(self, "shape"),
             )
             for i in range(len(shape)):
                 dim_i = shape_var[i]
@@ -537,10 +536,7 @@ class TensorVariable(VariableBase):
             )
         from .container import ListVariable
 
-        if ENV_SOT_ALLOW_DYNAMIC_SHAPE:
-            tracker = GetShapeTracker(self)
-        else:
-            tracker = GetAttrTracker(self, "shape")
+        tracker = GetAttrTracker(self, "shape")
         return ListVariable(self.meta.shape, self.graph, tracker=tracker)
 
     def numel(self):
