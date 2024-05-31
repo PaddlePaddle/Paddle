@@ -878,6 +878,8 @@ void BroadcastKernelForDifferentVecSize(
 #endif
 
   phi::Array<kps::details::BroadcastConfig, kArity> configs;
+  auto loader_classifier = LoaderTypeClassifier<OutT, kArity, Functor>(ins, outs);
+
 #ifdef PADDLE_WITH_XPU_KP
   PADDLE_ENFORCE_EQ(
       ins.size(),
@@ -885,7 +887,6 @@ void BroadcastKernelForDifferentVecSize(
       phi::errors::InvalidArgument(
           "XPU only support inputs is 2, but received %d", ins.size()));
 
-  auto loader_classifier = LoaderTypeClassifier<OutT, kArity, Functor>();
   const auto dims_simplifier =
       BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
   if (VLOG_IS_ON(6)) {
@@ -904,8 +905,6 @@ void BroadcastKernelForDifferentVecSize(
   bool is_optimize = configs[0].cmp_type != type;
   int vec_size = is_optimize ? VecSizeL : VecSizeM;
 #else
-  auto loader_classifier =
-      LoaderTypeClassifier<OutT, kArity, Functor>(ins, outs);
   if (!loader_classifier.all_elementwise) {
     const auto dims_simplifier =
         BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
