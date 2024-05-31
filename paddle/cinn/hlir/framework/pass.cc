@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -32,9 +32,12 @@ void ApplyPasses(Graph* g, const std::vector<std::string>& passes) {
   for (auto* r : fpass) {
     cinn::hlir::framework::PassPrinter::GetInstance()->PassBegin(r->name, g);
     for (auto& dep : r->graph_attr_dependency) {
-      CHECK_NE(g->attrs.count(dep), 0)
-          << "To apply pass [" << r->name << "], Graph's attribute [" << dep
-          << "] is required, but it is not available.";
+      PADDLE_ENFORCE_NE(
+          g->attrs.count(dep),
+          0,
+          phi::errors::InvalidArgument("To apply pass, Graph's attribute is "
+                                       "required, but it is not available."));
+
       if (g->attrs.count(dep) == 0) {
         auto* pass_dep = FindPassDep(dep);
         CHECK(!pass_dep) << "And the attribute is provided by pass ["

@@ -14,8 +14,10 @@
 from __future__ import annotations
 
 import collections
+import logging
 import warnings
 from collections.abc import Sequence
+from functools import lru_cache
 from typing import Any
 
 from paddle import pir
@@ -92,6 +94,7 @@ ALLOW_NO_GRAD_OPS = [
     "pd_op.all",
     "pd_op.any",
     "pd_op.prior_box",
+    "pd_op.shape",
     "pd_op.share_data_",
     "pd_op.floor_divide",
 ]
@@ -660,3 +663,8 @@ def get_split_op(value):
         if op.name() == "builtin.split":
             return op
     return None
+
+
+@lru_cache
+def warning_once(message: str):
+    logging.warning(message)

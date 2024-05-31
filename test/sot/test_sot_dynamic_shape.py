@@ -39,6 +39,13 @@ def dynamic_int_input_func2(x, n):
     return x + n[1]
 
 
+def dynamic_int_input_func3(x, n):
+    if n < 4:
+        return 1
+    x = paddle.reshape(x, [n, -1])
+    return (x + n) * 2 - 1, (-n + 1) * 2 - 1
+
+
 class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
     def test_dynamic_int_input_cache_hit_case1(self):
         with with_allow_dynamic_shape_guard(
@@ -67,6 +74,16 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                     dynamic_int_input_func2, paddle.randn([3, 4, 5]), {1: i}
                 )
                 self.assertEqual(ctx.translate_count, 2)
+
+    def test_dynamic_int_input_cache_hit_case3(self):
+        with with_allow_dynamic_shape_guard(
+            True
+        ), test_instruction_translator_cache_context() as ctx:
+            for i in range(0, 6):
+                self.assert_results(
+                    dynamic_int_input_func3, paddle.randn([3, 4, 5]), i
+                )
+                self.assertEqual(ctx.translate_count, i + 1)
 
 
 if __name__ == '__main__':

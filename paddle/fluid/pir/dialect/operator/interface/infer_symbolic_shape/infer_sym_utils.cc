@@ -70,7 +70,7 @@ bool ReduceInferDim(pir::Operation *op,
       infer_context->GetShapeOrDataForValue(x);
   std::vector<symbol::DimExpr> input_shapes;
   if (x_shape_or_data.data() == std::nullopt ||
-      x_shape_or_data.data()->size() == 0) {
+      x_shape_or_data.data()->empty()) {
     input_shapes = x_shape_or_data.shape();
   } else {
     input_shapes = *x_shape_or_data.data();

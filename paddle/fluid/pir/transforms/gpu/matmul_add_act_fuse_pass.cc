@@ -42,6 +42,9 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
                             const bool reverse_add)
       : fused_op_name_(fused_op_name), reverse_add_(reverse_add) {}
 
+  uint32_t benefit() const override {
+    return fused_op_name_ == paddle::dialect::GemmEpilogueOp::name() ? 2 : 1;
+  }
   std::string name() const override { return "MatmulAddPattern"; }
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
@@ -58,6 +61,7 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
       if (!w_dtype.isa<pir::Float16Type>() &&
+          !w_dtype.isa<pir::BFloat16Type>() &&
           !w_dtype.isa<pir::Float32Type>() &&
           !w_dtype.isa<pir::Float64Type>()) {
         return false;
@@ -72,6 +76,14 @@ class MatmulAddPattern : public paddle::drr::DrrPatternBase {
       if (x_dims.at(x_dims.size() - 1) != w_dims.at(0) ||
           match_ctx.Attr<bool>("transpose_x") == true ||
           match_ctx.Attr<bool>("transpose_y") == true) {
+        return false;
+      }
+
+      // gemm_epilogue kernel requires gemm's N and K to be 8 aligned.
+      // K and N correspond to w_dims[0] and w_dims[1] respectively.
+      constexpr int cutlass_align = 8;
+      if (fused_op_name_ == paddle::dialect::GemmEpilogueOp::name() &&
+          (w_dims[0] % cutlass_align != 0 || w_dims[1] % cutlass_align != 0)) {
         return false;
       }
 
@@ -128,6 +140,7 @@ class MatmulAddActPattern : public paddle::drr::DrrPatternBase {
   explicit MatmulAddActPattern(const std::string &act_type,
                                const std::string &fused_op_name)
       : act_type_(act_type), fused_op_name_(fused_op_name) {}
+  uint32_t benefit() const override { return 3; }
 
   std::string name() const override { return "MatmulAddActPattern"; }
 
