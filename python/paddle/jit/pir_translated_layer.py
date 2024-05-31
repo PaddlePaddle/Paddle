@@ -217,7 +217,6 @@ def _load_pir_parameter_vars(model_path, program_holder, params_filename):
     # load all vars
     assert params_filename is not None, "params_filename should not be None."
     var_file_path = os.path.join(model_path, params_filename)
-
     if os.path.exists(var_file_path):
         core.load_combine_func(
             var_file_path,
@@ -378,7 +377,6 @@ def _run_dygraph(instance, input, program_holder):
         parameters,
     )
     instance.layer = layer
-
     if instance._is_test:
         layer.training = False
     else:
@@ -392,9 +390,42 @@ def _run_dygraph(instance, input, program_holder):
     return instance.layer(input_tensors)
 
 
-def _run_static_graph(program_holder, trace_program):
-    paddle.base.framework.switch_main_program(trace_program)
-    return program_holder.output_vars
+def _run_static_graph(inputs, program_holder, src_program):
+    '''
+    This function is used when the pirTranslatedLayer is
+    applied for dy_to_static conversion.
+    '''
+    dst_program = paddle.static.default_main_program()
+    value_map = paddle.pir.IrMapping()
+    # Establish a mapping relationship between existing parameters
+    # and corresponding parameters in the program to be copied
+    len_dst_op = len(dst_program.global_block().ops)
+    for dst_op in dst_program.global_block().ops:
+        if dst_op.name() == "builtin.parameter":
+            for src_op in src_program.global_block().ops[:len_dst_op]:
+                if (
+                    src_op.name() == dst_op.name()
+                    and src_op.result(0).name == dst_op.result(0).name
+                ):
+                    for i in range(src_op.num_results()):
+                        value_map.add(src_op.result(i), dst_op.result(i))
+    # Establish a mapping relationship between truly inputs
+    # and corresponding inputs in the program to be copied
+    src_inputs = program_holder.input_vars
+    if len(src_inputs) != len(inputs):
+        raise ValueError(
+            f"The number of input is invalid, expected {len(src_inputs)}, but received {len(inputs)}."
+        )
+    for src_input, input_ in zip(src_inputs, inputs):
+        value_map.add(src_input, input_)
+
+    # find the insert point for copy
+    current_insert_point = paddle.pir.get_current_insertion_point()
+    current_block = current_insert_point.block()
+    src_program.copy_to_block(value_map, current_block)
+
+    output = [value_map.look_up(v) for v in program_holder.output_vars]
+    return output[0] if len(output) == 1 else output
 
 
 def _collect_current_and_parent_var(program, block_idx):
@@ -608,7 +639,7 @@ class PirTranslatedLayer(layers.Layer):
                 return _run_dygraph(self, input, program_holder)
             else:
                 return _run_static_graph(
-                    program_holder, program_holder.infer_program
+                    input, program_holder, program_holder.infer_program
                 )
 
         __i_m_p_l__.__name__ = method_name
