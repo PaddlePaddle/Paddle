@@ -47,6 +47,8 @@ class ProgramReader {
                                       Json* operesult_attrs_json);
   pir::Attribute ReadAttribute(Json* attr_json);
   pir::Type ReadType(Json* type_json);
+
+  pir::Operation* ReadParameterOp(Json* op_json);
 };
 
 }  // namespace pir

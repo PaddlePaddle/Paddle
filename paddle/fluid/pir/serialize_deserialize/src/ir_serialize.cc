@@ -149,7 +149,38 @@ Json ProgramWriter::WriteValue(const pir::Value& value) {
   return var_json;
 }
 
+Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
+  // attr is_distributed; is_parameter; need_clip; parameter_name; persistable;
+  // stop_gradient; trainable;
+  Json op_json = Json::object();
+  op_json[ID] = PARAMETEROP;
+  // serialize opoperands
+  VLOG(4) << "Begin write Operation " << op.name() << ".";
+  op_json[OPRESULTS] = WriteValue(op.result(0));
+  Json attrs_json = Json::array();
+  attrs_json.emplace_back(WriteAttribute(PARAMETEROP_ISDISTRUBUTE,
+                                         op.attributes().at("is_distributed")));
+  attrs_json.emplace_back(WriteAttribute(PARAMETEROP_ISPARAMETER,
+                                         op.attributes().at("is_parameter")));
+  attrs_json.emplace_back(
+      WriteAttribute(PARAMETEROP_NEEDCLIP, op.attributes().at("need_clip")));
+  attrs_json.emplace_back(
+      WriteAttribute(PARAMETEROP_NAME, op.attributes().at("parameter_name")));
+  op_json[ATTRS] = attrs_json;
+  Json other_attrs_json = Json::array();
+  other_attrs_json.emplace_back(WriteAttribute(
+      PARAMETEROP_PERSISTABLE, op.attributes().at("persistable")));
+  other_attrs_json.emplace_back(WriteAttribute(
+      PARAMETEROP_STOPGRADIENT, op.attributes().at("stop_gradient")));
+  if (trainable_) {
+    op_json[OPRESULTS_ATTRS] = other_attrs_json;
+  }
+  return op_json;
+}
 Json ProgramWriter::WriteOp(const pir::Operation& op) {
+  if (op.isa<pir::ParameterOp>()) {
+    return WriteParameterOP(op);
+  }
   Json op_json = Json::object();
   op_json[ID] = op.name();
   // serialize opoperands
