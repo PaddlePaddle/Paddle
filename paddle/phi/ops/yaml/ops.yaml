@@ -4180,6 +4180,17 @@
   inplace: (x -> out)
   backward : thresholded_relu_grad
 
+- op : tile
+  args : (Tensor x, IntArray repeat_times = {})
+  output : Tensor(out)
+  infer_meta :
+    func : TileInferMeta
+    spmd_rule : TileInferSpmdDynamic
+  kernel :
+    func : tile
+  backward : tile_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : top_p_sampling
   args : (Tensor x, Tensor ps, Tensor threshold, int seed=-1)
   output : Tensor (out), Tensor(ids)

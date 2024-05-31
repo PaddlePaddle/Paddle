@@ -331,16 +331,6 @@
   inplace : (x -> out)
   backward : subtract_grad
 
-- op : tile
-  args : (Tensor x, IntArray repeat_times = {})
-  output : Tensor(out)
-  infer_meta :
-    func : TileInferMeta
-    spmd_rule : TileInferSpmdDynamic
-  kernel :
-    func : tile
-  backward : tile_grad
-
 # The `axis` argument of Python API paddle.unique is not vector
 - op : unique
   args : (Tensor x, bool return_index, bool return_inverse, bool return_counts, int[] axis, DataType dtype=DataType::INT64)

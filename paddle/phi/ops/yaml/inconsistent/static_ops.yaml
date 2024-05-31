@@ -869,17 +869,6 @@
     data_type : x
   optional : labels
 
-- op : tile
-  args : (Tensor x, IntArray repeat_times = {})
-  output : Tensor(out)
-  infer_meta :
-    func : TileInferMeta
-    spmd_rule : TileInferSpmdDynamic
-  kernel :
-    func : tile
-  backward : tile_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : unique
   args : (Tensor x, bool return_index=false, bool return_inverse=false, bool return_counts=false, int[] axis={}, DataType dtype=DataType::INT64, bool is_sorted=false)
   output : Tensor(out), Tensor(indices), Tensor(inverse), Tensor(counts)
