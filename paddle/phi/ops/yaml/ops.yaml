@@ -4616,6 +4616,7 @@
     func: FusionGroupInferMeta
   kernel:
     func: fusion_group
+    data_type : DataType::FLOAT32
 
 - op: moe
   args: (Tensor x, Tensor gate, Tensor bmm0, Tensor bias0, Tensor bmm1, Tensor bias1,
