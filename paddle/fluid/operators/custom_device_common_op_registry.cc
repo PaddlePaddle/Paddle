@@ -1381,7 +1381,10 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           int>,
       paddle::operators::CSplitOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          phi::dtype::float16>);
+          phi::dtype::float16>,
+      paddle::operators::CSplitOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          phi::dtype::bfloat16>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_embedding,
       device_type,
