@@ -49,7 +49,6 @@
 - fused_softmax_mask
 - fused_softmax_mask_upper_triangle
 - gaussian
-- hsigmoid_loss
 - increment
 - linspace
 - logspace
