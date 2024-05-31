@@ -226,7 +226,9 @@ def create_preprocessor(
     skip_fields: list[str],
 ) -> Callable[[list[str]], list[str]]:
     def line_preprocessor(spec: str) -> str:
+        print(f"parsing {spec}")
         sig = parse_signature(spec)
+        print(f"parsed {sig}")
         return sig.format(skip_fields)
 
     def api_preprocessor(spec: list[str]) -> list[str]:
