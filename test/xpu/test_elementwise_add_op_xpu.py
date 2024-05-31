@@ -317,7 +317,10 @@ class TestTensorFloat32Bfloat16OrFloat16Add(unittest.TestCase):
         val_range = 10000
         shapes = []
         for i in range(test_num):
-            shape = [np.random.randint(val_range), np.random.randint(val_range)]
+            shape = [
+                np.random.randint(1, val_range),
+                np.random.randint(1, val_range),
+            ]
             shapes.append(shape)
 
         for i, shape in enumerate(shapes):

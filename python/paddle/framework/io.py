@@ -173,7 +173,7 @@ def _load_state_dict_from_save_inference_model(model_path, config):
     # 2. load layer parameters & buffers
     with base.dygraph.guard():
         persistable_var_dict = _construct_params_and_buffers(
-            model_path, programs, config.params_filename, append_suffix=False
+            model_path, programs, config.params_filename
         )
 
         # 3. construct state_dict

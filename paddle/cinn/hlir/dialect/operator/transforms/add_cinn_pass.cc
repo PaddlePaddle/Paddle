@@ -30,6 +30,8 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/conv2d_transpose_filter_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/convert_memory_effec_attn_to_flash_attn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/dynamic_reshape_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fold_manipulation_ops_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_parallel_matmul_pass.h"
@@ -44,6 +46,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/remove_assign_out_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/replace_dynamic_expand_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/shape_ops_fallback_to_phi_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
@@ -89,8 +92,13 @@ void ApplyPdToCinnPass(
   if (FLAGS_enable_fuse_parallel_matmul_pass) {
     pass_manager->AddPass(cinn::dialect::ir::CreateFuseParallelMatmulPass());
   }
+  pass_manager->AddPass(cinn::dialect::ir::CreateRemoveAssignOutPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateConv2dTransposeFilterPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateConvertMEA2FAPass());
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
+
   pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
+
   pass_manager->Run(program);
 }
 
@@ -152,7 +160,7 @@ void ApplyDivideGroupOpToFusionOpPass(
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   if (FLAGS_group_schedule_tiling_first) {
     pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
+    // pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
   } else {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
@@ -219,13 +227,21 @@ int64_t GetOpCount(const ::pir::Operation* op) {
 void ApplyCinnPass(::pir::Program* program,
                    const std::function<std::shared_ptr<pir::PassManager>()>&
                        CreatePassManager) {
+  PirToPyCodeConverter(program)
+      .file_name("original_programs.py")
+      .dump_symbolic_shape(false)
+      .SaveIfFlagEnabled();
   ApplyPdToCinnPass(program, CreatePassManager);
   ApplyCinnPreprocessPass(program, CreatePassManager);
   ApplyBuildGroupOpPass(program, CreatePassManager);
-  PirToPyCodeConverter().SaveIfFlagEnabled("group_op_programs", *program);
+  PirToPyCodeConverter(program)
+      .file_name("group_op_programs.py")
+      .SaveIfFlagEnabled();
   ApplyGroupOpPass(program, CreatePassManager);
   ApplyDivideGroupOpToFusionOpPass(program, CreatePassManager);
-  PirToPyCodeConverter().SaveIfFlagEnabled("fusion_op_programs", *program);
+  PirToPyCodeConverter(program)
+      .file_name("fusion_op_programs.py")
+      .SaveIfFlagEnabled();
   LOG(INFO) << "FusionOp count before lowering : *****[ "
             << GetOpCount<cinn::dialect::FusionOp>(program->module_op())
             << " ]*****";

@@ -24,7 +24,7 @@
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/codegen_cuda_host.h"
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
@@ -37,6 +37,7 @@ PD_DECLARE_string(cinn_dump_group_lowered_func);
 PD_DECLARE_string(cinn_dump_group_source_code);
 PD_DECLARE_string(cinn_dump_group_ptx);
 PD_DECLARE_string(cinn_dump_group_instruction);
+PD_DECLARE_string(cinn_debug_custom_code_path);
 
 namespace cinn {
 namespace backends {
@@ -246,7 +247,7 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
       [&](common::NVGPUArch) -> std::string {
 #ifdef CINN_WITH_CUDA
         auto _host_module_device_module_ =
-            SplitCudaAndHostModule(module);  // NOLINT
+            SplitDeviceAndHostModule(module);  // NOLINT
         auto& host_module = std::get<0>(_host_module_device_module_);
         auto& device_module = std::get<1>(_host_module_device_module_);
         CodeGenCUDA_Dev codegen(target_);
@@ -267,22 +268,46 @@ void Compiler::BuildDefault(const Module& module) {
   });
 }
 
+namespace {
+std::string GetFileContent(const std::string& path) {
+  std::ifstream file(path);
+
+  if (!file.is_open()) {
+    std::cerr << "Unable to open file: " << path << std::endl;
+    return "";
+  }
+
+  std::ostringstream ss;
+  ss << file.rdbuf();
+  std::string content = ss.str();
+
+  file.close();
+  return content;
+}
+}  // namespace
+
 void Compiler::CompileCudaModule(const Module& module,
                                  const std::string& code) {
 #ifdef CINN_WITH_CUDA
-  auto _host_module_device_module_ = SplitCudaAndHostModule(module);  // NOLINT
+  auto _host_module_device_module_ =
+      SplitDeviceAndHostModule(module);  // NOLINT
   auto& host_module = std::get<0>(_host_module_device_module_);
   auto& device_module = std::get<1>(_host_module_device_module_);
   VLOG(3) << "[CUDA] host module:\n" << host_module;
 
   VLOG(3) << "[CUDA] device module:\n" << device_module;
   std::string source_code;
-  if (code.empty()) {
+
+  if (!FLAGS_cinn_debug_custom_code_path.empty()) {
+    std::string file_path = FLAGS_cinn_debug_custom_code_path;
+    source_code = GetFileContent(file_path);
+  } else if (code.empty()) {
     CodeGenCUDA_Dev codegen(target_);
     source_code = codegen.Compile(device_module);
   } else {
     source_code = code;
   }
+
   CHECK(!source_code.empty())
       << "Compile CUDA C code failed from device module:\n"
       << device_module;

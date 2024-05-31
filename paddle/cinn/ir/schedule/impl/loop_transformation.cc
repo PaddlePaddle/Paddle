@@ -117,17 +117,30 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   int num_minus1 = 0;
   std::vector<Expr> process_factors;
   Expr prod_size(-1);
+  int idx_neg1 = 1;
   for (auto factor : factors) prod_size = prod_size * Expr(factor);
   std::for_each(factors.begin(), factors.end(), [&](int factor) {
     if (factor == -1) {
       process_factors.push_back(
-          cinn::common::AutoSimplify(tot_extent / prod_size + Expr(1)));
+          cinn::common::AutoSimplify(tot_extent / prod_size));
+      idx_neg1 = -idx_neg1;
     } else {
       process_factors.push_back(Expr(factor));
+      if (idx_neg1 > 0) idx_neg1++;
     }
     if (factor < 1 && factor != -1) is_positive = false;
     if (factor == -1) ++num_minus1;
   });
+
+  idx_neg1 = (-idx_neg1) - 1;
+
+  bool exact_split =
+      (tot_extent ==
+       cinn::common::AutoSimplify(process_factors[0] * process_factors[1]));
+  if (!exact_split) {
+    process_factors[idx_neg1] =
+        cinn::common::AutoSimplify(process_factors[idx_neg1] + Expr(1));
+  }
 
   if (num_minus1 > 1 || (!is_positive)) {
     os << "The params in factors of Split on dynamic shape should contains at "
@@ -148,7 +161,10 @@ std::vector<Expr> DyScheduleImpl::Split(const Expr& loop,
   std::vector<Expr> splited_loops;
   splited_loops.resize(process_factors.size());
 
-  new_node = IfThenElse::Make(LT::Make(substitute_value, tot_extent), new_node);
+  if (!exact_split) {
+    new_node =
+        IfThenElse::Make(LT::Make(substitute_value, tot_extent), new_node);
+  }
 
   for (int i = process_factors.size() - 1; i >= 0; i--) {
     if (!new_node.As<ir::Block>()) new_node = Block::Make({new_node});

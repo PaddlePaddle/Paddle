@@ -82,7 +82,7 @@ void InferSymbolicShapeContext::SetStaticShapeForValue(Value val) {
     for (int i = 0; i < type_info.dims().size(); ++i) {
       int dim = type_info.dims()[i];
       if (dim > 0) {
-        static_shape.emplace_back(symbol::DimExpr{dim});
+        static_shape.emplace_back(dim);
       } else {
         static_shape.emplace_back(GetNextSymName());
       }
@@ -228,7 +228,7 @@ InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
       },
       [&](const symbol::TensorListShapeOrDataDimExprs& tensor_list) {
         symbol::TensorListShapeOrDataDimExprs simplified_tensor_list;
-        for (symbol::TensorShapeOrDataDimExprs tensor_shape_or_data :
+        for (const symbol::TensorShapeOrDataDimExprs& tensor_shape_or_data :
              tensor_list) {
           simplified_tensor_list.push_back(
               TensorShapeOrDataVisitor(tensor_shape_or_data));
@@ -517,12 +517,12 @@ bool ShapeConstraintIRAnalysis::IsProductEqual(
 
   symbol::DimExpr lhs_product(1);
   symbol::DimExpr rhs_product(1);
-  if (lhs_shape_data.shape().size() > 0) {
+  if (!lhs_shape_data.shape().empty()) {
     for (int i : lhs_dim_idxs) {
       lhs_product = lhs_product * lhs_shape_data.shape()[i];
     }
   }
-  if (rhs_shape_data.shape().size() > 0) {
+  if (!rhs_shape_data.shape().empty()) {
     for (int i : rhs_dim_idxs) {
       rhs_product = rhs_product * rhs_shape_data.shape()[i];
     }

@@ -248,8 +248,8 @@ int32_t MemoryDenseTable::Load(const std::string &path,
     is_read_failed = false;
     try {
       int dim_idx = 0;
-      float data_buffer[5];
-      float *data_buff_ptr = data_buffer;
+      std::vector<float> data_buffer(5);
+      float *data_buff_ptr = data_buffer.data();
       std::string line_data;
       auto common = _config.common();
 

@@ -37,7 +37,14 @@ namespace framework {
 StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                        const interpreter::Plan& plan,
                                        Scope* scope)
-    : place_(place), plan_(plan), scope_(scope) {
+    : place_(place),
+      plan_(plan),
+      interpretercores_(),
+      scope_(scope),
+      micro_batch_scopes_(),
+      fetch_var_names_(),
+      fetch_list_(),
+      vec_force_events_to_wait_() {
   int64_t micro_batch_num = plan_.MicroBatchNum();
   vec_force_events_to_wait_.resize(micro_batch_num);
   for (int64_t i = 0; i < micro_batch_num; ++i) {

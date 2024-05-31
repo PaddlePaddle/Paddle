@@ -191,7 +191,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
                           inp_var_names.size()));
 
     // get device context from pool
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto& dev_ctx = *pool.Get(place);
 
     if (inp_vars.size() > 0 && inp_vars[0]->IsType<phi::DenseTensor>()) {

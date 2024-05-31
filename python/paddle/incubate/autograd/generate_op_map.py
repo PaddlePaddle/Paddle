@@ -28,7 +28,7 @@ def ParseArguments():
     )
     parser.add_argument('--ops_yaml_path', type=str, help="path to ops.yaml")
     parser.add_argument(
-        '--ops_legacy_yaml_path', type=str, help="path to legacy_ops.yaml"
+        '--ops_legacy_yaml_path', type=str, help="path to dygraph_ops.yaml"
     )
     parser.add_argument(
         '--ops_compat_yaml_path', type=str, help="path to op_compat.yaml"
