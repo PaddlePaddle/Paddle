@@ -364,6 +364,70 @@ class TestMeshgridOp8(unittest.TestCase):
             np.testing.assert_array_equal(res_4.shape, [100, 200])
 
 
+class TestMeshgridOpComplexStatic(unittest.TestCase):
+    @test_with_pir_api
+    def test_tuple_input(self):
+        input_1 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('complex64')
+        input_2 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('complex64')
+
+        out_1 = np.reshape(input_1, [100, 1])
+        out_1 = np.broadcast_to(out_1, [100, 200])
+        out_2 = np.reshape(input_2, [1, 200])
+        out_2 = np.broadcast_to(out_2, [100, 200])
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[100], dtype='complex64', name='x')
+            y = paddle.static.data(shape=[200], dtype='complex64', name='y')
+
+            exe = base.Executor(place=base.CPUPlace())
+            grid_x, grid_y = paddle.tensor.meshgrid((x, y))
+            res_1, res_2 = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': input_1, 'y': input_2},
+                fetch_list=[grid_x, grid_y],
+            )
+        np.testing.assert_array_equal(res_1, out_1)
+        np.testing.assert_array_equal(res_2, out_2)
+
+
+class TestMeshgridOpComplexDygraph(unittest.TestCase):
+    def test_api_with_dygraph_tuple_input(self):
+        input_3 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('complex64')
+        input_4 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('complex64')
+
+        with base.dygraph.guard():
+            tensor_3 = paddle.to_tensor(input_3)
+            tensor_4 = paddle.to_tensor(input_4)
+            res_3, res_4 = paddle.tensor.meshgrid((tensor_3, tensor_4))
+
+            np.testing.assert_array_equal(res_3.shape, [100, 200])
+            np.testing.assert_array_equal(res_4.shape, [100, 200])
+
+
 class TestMeshGrid_ZeroDim(TestMeshgridOp):
     def init_inputs_and_outputs(self):
         self.shape = self.get_x_shape()
