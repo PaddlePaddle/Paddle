@@ -77,11 +77,147 @@ struct GaussianGenerator<ComplexType<T>> {
     unsigned int new_n = n + offset_;
     rng_real.discard(new_n);
     rng_img.discard(new_n);
-    MT real = dist(rng_real);
-    MT imag = dist(rng_img);
+    T real = dist(rng_real);
+    T imag = dist(rng_img);
     return ComplexType<T>(real, imag);
   }
 };
+
+// If T is not complex
+template <
+    typename T,
+    typename Context,
+    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
+                         !std::is_same<T, phi::dtype::complex<double>>::value,
+                     bool> = true>
+void GaussianRandom(const Context& dev_ctx,
+                    const IntArray& shape,
+                    float mean,
+                    float std,
+                    int seed,
+                    DataType dtype,
+                    DenseTensor* out) {
+  out->Resize(common::make_ddim(shape.GetData()));
+  dev_ctx.template Alloc<T>(out);
+  if (seed == 0) {
+    // use global Generator seed
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    funcs::normal_distribution<MT> dist;
+    funcs::normal_transform<MT> trans(static_cast<MT>(mean),
+                                      static_cast<MT>(std));
+    funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
+  } else {
+    // use OP seed
+    auto func =
+        GaussianGenerator<T>(static_cast<T>(mean), static_cast<T>(std), seed);
+    IndexKernel<T, GaussianGenerator<T>>(dev_ctx, out, func);
+  }
+}
+
+// If T is complex
+template <
+    typename T,
+    typename Context,
+    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
+                         std::is_same<T, phi::dtype::complex<double>>::value,
+                     bool> = true>
+void GaussianRandom(const Context& dev_ctx,
+                    const IntArray& shape,
+                    float mean,
+                    float std,
+                    int seed,
+                    DataType dtype,
+                    DenseTensor* out) {
+  out->Resize(common::make_ddim(shape.GetData()));
+  dev_ctx.template Alloc<T>(out);
+  float std_of_real_or_imag = std::sqrt(std::pow(std, 2) / 2);
+  if (seed == 0) {
+    // use global Generator seed
+    DenseTensor* out_real;
+    DenseTensor* out_imag;
+    out_real->Resize(common::make_ddim(shape.GetData()));
+    out_imag->Resize(common::make_ddim(shape.GetData()));
+    funcs::normal_distribution<phi::dtype::Real<T>> dist;
+    funcs::normal_distribution<phi::dtype::Real<T>> dist_imag;
+    funcs::normal_transform<phi::dtype::Real<T>> trans(mean,
+                                                       std_of_real_or_imag);
+    funcs::distribution_and_transform<phi::dtype::Real<T>>(
+        dev_ctx, out_real, dist, trans);
+    funcs::distribution_and_transform<phi::dtype::Real<T>>(
+        dev_ctx, out_imag, dist_imag, trans);
+    phi::ComplexKernel<phi::dtype::Real<T>>(dev_ctx, *out_real, *out_imag, out);
+  } else {
+    // use OP seed
+    auto func = GaussianGenerator<T>(mean, std_of_real_or_imag, seed);
+    IndexKernel<T, GaussianGenerator<T>>(dev_ctx, out, func);
+  }
+}
+
+// If T is not complex
+template <
+    typename T,
+    typename Context,
+    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
+                         !std::is_same<T, phi::dtype::complex<double>>::value,
+                     bool> = true>
+void GaussianRandomInplace(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           float mean,
+                           float std,
+                           int seed,
+                           DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  if (seed == 0) {
+    // use global Generator seed
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    funcs::normal_distribution<MT> dist;
+    funcs::normal_transform<MT> trans(static_cast<MT>(mean),
+                                      static_cast<MT>(std));
+    funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
+  } else {
+    // use OP seed
+    auto func =
+        GaussianGenerator<T>(static_cast<T>(mean), static_cast<T>(std), seed);
+    IndexKernel<T, GaussianGenerator<T>>(dev_ctx, out, func);
+  }
+}
+
+// If T is complex
+template <
+    typename T,
+    typename Context,
+    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
+                         std::is_same<T, phi::dtype::complex<double>>::value,
+                     bool> = true>
+void GaussianRandomInplace(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           float mean,
+                           float std,
+                           int seed,
+                           DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  float std_of_real_or_imag = std::sqrt(std::pow(std, 2) / 2);
+  if (seed == 0) {
+    // use global Generator seed
+    DenseTensor* out_real;
+    DenseTensor* out_imag;
+    out_real->Resize(x.dims());
+    out_imag->Resize(x.dims());
+    funcs::normal_distribution<phi::dtype::Real<T>> dist;
+    funcs::normal_distribution<phi::dtype::Real<T>> dist_imag;
+    funcs::normal_transform<phi::dtype::Real<T>> trans(mean,
+                                                       std_of_real_or_imag);
+    funcs::distribution_and_transform<phi::dtype::Real<T>>(
+        dev_ctx, out_real, dist, trans);
+    funcs::distribution_and_transform<phi::dtype::Real<T>>(
+        dev_ctx, out_imag, dist_imag, trans);
+    phi::ComplexKernel<phi::dtype::Real<T>>(dev_ctx, *out_real, *out_imag, out);
+  } else {
+    // use OP seed
+    auto func = GaussianGenerator<T>(mean, std_of_real_or_imag, seed);
+    IndexKernel<T, GaussianGenerator<T>>(dev_ctx, out, func);
+  }
+}
 
 template <typename T, typename Context>
 void GaussianKernel(const Context& dev_ctx,
@@ -91,45 +227,7 @@ void GaussianKernel(const Context& dev_ctx,
                     int seed,
                     DataType dtype,
                     DenseTensor* out) {
-  out->Resize(common::make_ddim(shape.GetData()));
-  dev_ctx.template Alloc<T>(out);
-  if (IsComplexType(out->dtype())) {
-    float std_of_real_or_imag = std::sqrt(std::pow(std, 2) / 2);
-    if (seed == 0) {
-      // use global Generator seed
-      DenseTensor* out_real;
-      DenseTensor* out_imag;
-      out_real->Resize(common::make_ddim(shape.GetData()));
-      out_imag->Resize(common::make_ddim(shape.GetData()));
-      funcs::normal_distribution<phi::dtype::Real<T>> dist;
-      funcs::normal_distribution<phi::dtype::Real<T>> dist_imag;
-      funcs::normal_transform<phi::dtype::Real<T>> trans(mean,
-                                                         std_of_real_or_imag);
-      funcs::distribution_and_transform<phi::dtype::Real<T>>(
-          dev_ctx, out_real, dist, trans);
-      funcs::distribution_and_transform<phi::dtype::Real<T>>(
-          dev_ctx, out_imag, dist_imag, trans);
-      phi::ComplexKernel<phi::dtype::Real<T>>(*out_real, *out_imag, out);
-    } else {
-      // use OP seed
-      auto func = GaussianGenerator<T>(mean, std_of_real_or_imag, seed);
-      IndexKernel<T, GaussianGenerator<T>>(dev_ctx, out, func);
-    }
-  } else {
-    if (seed == 0) {
-      // use global Generator seed
-      using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-      funcs::normal_distribution<MT> dist;
-      funcs::normal_transform<MT> trans(static_cast<MT>(mean),
-                                        static_cast<MT>(std));
-      funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
-    } else {
-      // use OP seed
-      auto func =
-          GaussianGenerator<T>(static_cast<T>(mean), static_cast<T>(std), seed);
-      IndexKernel<T, GaussianGenerator<T>>(dev_ctx, out, func);
-    }
-  }
+  GaussianRandom<T>(dev_ctx, shape, mean, std, seed, dtype, out);
 }
 
 template <typename T, typename Context>
@@ -139,44 +237,7 @@ void GaussianInplaceKernel(const Context& dev_ctx,
                            float std,
                            int seed,
                            DenseTensor* out) {
-  dev_ctx.template Alloc<T>(out);
-  if (IsComplexType(out->dtype())) {
-    float std_of_real_or_imag = std::sqrt(std::pow(std, 2) / 2);
-    if (seed == 0) {
-      // use global Generator seed
-      DenseTensor* out_real;
-      DenseTensor* out_imag;
-      out_real->Resize(common::make_ddim(shape.GetData()));
-      out_imag->Resize(common::make_ddim(shape.GetData()));
-      funcs::normal_distribution<phi::dtype::Real<T>> dist;
-      funcs::normal_distribution<phi::dtype::Real<T>> dist_imag;
-      funcs::normal_transform<phi::dtype::Real<T>> trans(mean,
-                                                         std_of_real_or_imag);
-      funcs::distribution_and_transform<phi::dtype::Real<T>>(
-          dev_ctx, out_real, dist, trans);
-      funcs::distribution_and_transform<phi::dtype::Real<T>>(
-          dev_ctx, out_imag, dist_imag, trans);
-      phi::ComplexKernel<phi::dtype::Real<T>>(*out_real, *out_imag, out);
-    } else {
-      // use OP seed
-      auto func = GaussianGenerator<T>(mean, std_of_real_or_imag, seed);
-      IndexKernel<T, GaussianGenerator<T>>(dev_ctx, out, func);
-    }
-  } else {
-    if (seed == 0) {
-      // use global Generator seed
-      using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-      funcs::normal_distribution<MT> dist;
-      funcs::normal_transform<MT> trans(static_cast<MT>(mean),
-                                        static_cast<MT>(std));
-      funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
-    } else {
-      // use OP seed
-      auto func =
-          GaussianGenerator<T>(static_cast<T>(mean), static_cast<T>(std), seed);
-      IndexKernel<T, GaussianGenerator<T>>(dev_ctx, out, func);
-    }
-  }
+  GaussianRandomInplace<T>(dev_ctx, x, mean, std, seed, out);
 }
 
 }  // namespace phi

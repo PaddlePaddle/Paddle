@@ -48,7 +48,6 @@ void GaussianInplaceKernel(const Context& dev_ctx,
                            int seed,
                            DenseTensor* out) {
   T* data = dev_ctx.template Alloc<T>(out);
-  std::normal_distribution<T> dist(mean, std);
 
   int64_t size = out->numel();
   std::shared_ptr<std::mt19937_64> engine;

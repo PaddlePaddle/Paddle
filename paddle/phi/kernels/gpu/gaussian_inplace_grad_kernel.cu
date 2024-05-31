@@ -15,13 +15,11 @@ limitations under the License. */
 #include "paddle/phi/kernels/gaussian_inplace_grad_kernel.h"
 
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
-// If T is not complex
 template <typename T, typename Context>
 void GaussianInplaceGradKernel(const Context& ctx,
                                const DenseTensor& out_grad,
