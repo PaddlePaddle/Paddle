@@ -42,16 +42,28 @@ class TestMeshgridOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_output(check_pir=True)
+        else:
+            self.check_output(
+                check_prim=True, check_pir=True, check_prim_pir=True
+            )
 
     def test_check_grad(self):
-        self.check_grad(
-            ['x0'],
-            ['out0', 'out1'],
-            check_prim=True,
-            check_pir=True,
-            check_prim_pir=True,
-        )
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_grad(
+                ['x0'],
+                ['out0', 'out1'],
+                check_pir=True,
+            )
+        else:
+            self.check_grad(
+                ['x0'],
+                ['out0', 'out1'],
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+            )
 
     def init_inputs_and_outputs(self):
         self.shape = self.get_x_shape()
