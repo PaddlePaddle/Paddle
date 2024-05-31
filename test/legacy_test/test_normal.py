@@ -296,27 +296,37 @@ class TestNormalAPIComplex(unittest.TestCase):
             return ret_all
         elif isinstance(self.std, np.ndarray):
             with paddle.static.program_guard(main_program):
-                mean = paddle.static.data('Mean', (), 'complex128')
+                mean = paddle.static.data('Mean', self.std.shape, 'complex128')
                 std = paddle.static.data('Std', self.std.shape, self.std.dtype)
                 out = paddle.normal(mean, std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
                 for i in range(self.repeat_num):
                     ret = exe.run(
-                        feed={'Std': self.std, 'Mean': np.array(self.mean)},
+                        feed={
+                            'Std': self.std,
+                            'Mean': np.broadcast_to(
+                                np.array(self.mean), self.std.shape
+                            ),
+                        },
                         fetch_list=[out],
                     )
                     ret_all[i] = ret[0]
             return ret_all
         else:
             with paddle.static.program_guard(main_program):
-                mean = paddle.static.data('Mean', (), 'complex128')
+                mean = paddle.static.data('Mean', self.std.shape, 'complex128')
                 out = paddle.normal(mean, self.std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
                 for i in range(self.repeat_num):
                     ret = exe.run(
-                        feed={'Mean': np.array(self.mean)}, fetch_list=[out]
+                        feed={
+                            'Mean': np.broadcast_to(
+                                np.array(self.mean), self.std.shape
+                            )
+                        },
+                        fetch_list=[out],
                     )
                     ret_all[i] = ret[0]
             return ret_all
@@ -393,7 +403,7 @@ class TestNormalAPIComplex_mean_std_are_tensor_with_different_dtype(
 ):
     def set_attrs(self):
         self.mean = np.vectorize(complex)(
-            np.random.uniform(1, 2, [100]), np.random.uniform(1, 2, [1, 100])
+            np.random.uniform(1, 2, [100]), np.random.uniform(1, 2, [100])
         ).astype('complex64')
         self.std = np.random.uniform(1, 2, [100]).astype('float32')
 
