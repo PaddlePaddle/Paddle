@@ -110,7 +110,7 @@ if(WITH_GPU AND NOT APPLE)
         CACHE BOOL "" FORCE)
     set(CMAKE_CUDA_FLAGS "--cudart shared")
     if(WITH_PIP_CUDA_LIBRARIES)
-      #(Note risemeup1): Flag 'WITH_PIP_CUDA_LIBRARIES' will be used in dynamic_loader.cc to search for CUDA-related .so files through the Python libraries provided by NVIDIA.
+      #(Note risemeup1): Flag 'PADDLE_WITH_PIP_CUDA_LIBRARIES' will be used in dynamic_loader.cc to search for CUDA-related .so files through the Python libraries provided by NVIDIA.
       add_definitions(-DPADDLE_WITH_PIP_CUDA_LIBRARIES)
     endif()
   endif()
