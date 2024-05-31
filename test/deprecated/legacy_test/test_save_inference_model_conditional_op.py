@@ -16,8 +16,6 @@ import os
 import tempfile
 import unittest
 
-import numpy as np
-
 import paddle
 import paddle.nn.functional as F
 from paddle.pir_utils import test_with_dygraph_pir
@@ -102,7 +100,6 @@ class TestConditionalOp(unittest.TestCase):
         )
         root_path = tempfile.TemporaryDirectory()
         model_file = os.path.join(root_path.name, "while_net")
-        x = paddle.to_tensor(np.random.random((1, 3, 8, 8)).astype('float32'))
         paddle.jit.save(net, model_file)
 
         paddle.enable_static()
