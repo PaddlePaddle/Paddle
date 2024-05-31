@@ -719,7 +719,7 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
     return output
 
 
-def to_tensor(data, dtype=None, place=None, stop_gradient=True):
+def to_tensor(data: int, dtype=None, place=None, stop_gradient=True):
     r"""
     Constructs a ``paddle.Tensor`` from ``data`` ,
     which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor.
@@ -885,9 +885,7 @@ def full_like(x, fill_value, dtype=None, name=None):
         return out
 
 
-def fill_constant(
-    shape: int, dtype, value, force_cpu=False, out=None, name=None
-):
+def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     if in_dynamic_or_pir_mode():
         place = _current_expected_place()
         if force_cpu:
