@@ -1617,6 +1617,9 @@ class Variable(metaclass=VariableMetaClass):
         if name is None:
             name = self.block.program._name_generator("_generated_var")
 
+            while self.block._find_var_recursive(name) is not None:
+                name = self.block.program._name_generator("_generated_var")
+
         if dtype is not None:
             dtype = convert_to_proto_type(dtype)
 

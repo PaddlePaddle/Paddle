@@ -159,10 +159,10 @@ pir::Attribute CreateReplicatedDistAttr(pir::Type prim_type,
   }
   return nullptr;
 }
-pir::Type CvtToPirDistType(pir::Type prim_type, pir::Attribute dist_attr) {
-  if (!prim_type) return nullptr;
+pir::Type CvtToPirDistType(pir::Type global_type, pir::Attribute dist_attr) {
+  if (!global_type) return nullptr;
   auto ctx = pir::IrContext::Instance();
-  if (auto dense_tensor_type = prim_type.dyn_cast<pir::DenseTensorType>()) {
+  if (auto dense_tensor_type = global_type.dyn_cast<pir::DenseTensorType>()) {
     auto tensor_dist_attr = dist_attr.dyn_cast<TensorDistAttribute>();
     if (!tensor_dist_attr) {
       VLOG(0) << "Convert dense tensor type to dist type with attribute {"
@@ -172,7 +172,7 @@ pir::Type CvtToPirDistType(pir::Type prim_type, pir::Attribute dist_attr) {
           "with non-empty TensorDistAttr"));
     }
     return DistDenseTensorType::get(ctx, dense_tensor_type, tensor_dist_attr);
-  } else if (auto vec_type = prim_type.dyn_cast<pir::VectorType>()) {
+  } else if (auto vec_type = global_type.dyn_cast<pir::VectorType>()) {
     auto array_attr = dist_attr.dyn_cast<pir::ArrayAttribute>();
     if (!array_attr) {
       VLOG(0) << "Convert vector type to dist type with attribute {"
@@ -192,8 +192,8 @@ pir::Type CvtToPirDistType(pir::Type prim_type, pir::Attribute dist_attr) {
     }
     return pir::VectorType::get(ctx, dist_vec_type);
   } else {
-    VLOG(0) << "Convert type{" << prim_type << "} to dist type with attribute {"
-            << dist_attr << "}.";
+    VLOG(0) << "Convert type{" << global_type
+            << "} to dist type with attribute {" << dist_attr << "}.";
     PADDLE_THROW(common::errors::InvalidArgument(
         "Currently only support convert dense_tensor_type r vector type to "
         "dist."));
