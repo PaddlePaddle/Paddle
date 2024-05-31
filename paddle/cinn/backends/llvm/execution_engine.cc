@@ -176,7 +176,7 @@ std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
 }
 
 template <typename CodeGenT>
-void ExecutionEngine::Link(const ir::Module &module) {
+void ExecutionEngine::Link(const ir::Module &module, bool add_module) {
   utils::RecordEvent("ExecutionEngine Link", utils::EventType::kOrdinary);
   llvm::SMDiagnostic error;
 
@@ -202,6 +202,10 @@ void ExecutionEngine::Link(const ir::Module &module) {
   machine->addPassesToEmitFile(
       pass_manager, rawstream, nullptr, llvm::CGFT_ObjectFile);
   pass_manager.run(*m);
+
+  if (add_module) {
+    AddSelfModule();
+  }
 
   if (VLOG_IS_ON(5)) {
     VLOG(5) << "======= dump jit execution session ======";
@@ -272,8 +276,11 @@ void ExecutionEngine::RegisterRuntimeSymbols() {
   }
 }
 
-template void ExecutionEngine::Link<CodeGenLLVM>(const ir::Module &module);
-template void ExecutionEngine::Link<CodeGenX86>(const ir::Module &module);
-template void ExecutionEngine::Link<CodeGenCUDA_Host>(const ir::Module &module);
+template void ExecutionEngine::Link<CodeGenLLVM>(const ir::Module &module,
+                                                 bool add_module);
+template void ExecutionEngine::Link<CodeGenX86>(const ir::Module &module,
+                                                bool add_module);
+template void ExecutionEngine::Link<CodeGenCUDA_Host>(const ir::Module &module,
+                                                      bool add_module);
 
 }  // namespace cinn::backends

@@ -79,7 +79,7 @@ class ExecutionEngine {
   void *Lookup(absl::string_view name);
 
   template <typename CodeGenT = CodeGenLLVM>
-  void Link(const ir::Module &module);
+  void Link(const ir::Module &module, bool add_module = true);
 
   void ExportObject(const std::string &path);
 

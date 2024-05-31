@@ -128,9 +128,10 @@ class Compiler final {
 
  private:
   void CompileCudaModule(const ir::Module& module,
-                         const std::string& code = "");
+                         const std::string& code = "",
+                         bool add_module = true);
 
-  void CompileX86Module(const ir::Module& module);
+  void CompileX86Module(const ir::Module& module, bool add_module = true);
 
   explicit Compiler(const Target& target)
       : target_(target), engine_(ExecutionEngine::Create(ExecutionOptions())) {}
