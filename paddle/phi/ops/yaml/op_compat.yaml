@@ -4135,6 +4135,8 @@
     {input : Input, h0 : H0, c0 : C0, weight : Weight, bias : Bias}
   outputs:
     {hidden : Hidden, cell : Cell, batch_gate : BatchGate, batch_cell_pre_act : BatchCellPreAct}
+  extra:
+    outputs: [batch_gate, batch_cell_pre_act]
 
 - op: lu
   backward: lu_grad
