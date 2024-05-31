@@ -93,8 +93,7 @@ void GaussianKernel(const Context& dev_ctx,
                     DenseTensor* out) {
   out->Resize(common::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
-  if (std::is_same<T, phi::dtype::complex<float>>::value ||
-      std::is_same<T, phi::dtype::complex<double>>::value) {
+  if (IsComplexType(out->dtype())) {
     float std_of_real_or_imag = std::sqrt(std::pow(std, 2) / 2);
     if (seed == 0) {
       // use global Generator seed
@@ -141,8 +140,7 @@ void GaussianInplaceKernel(const Context& dev_ctx,
                            int seed,
                            DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  if (std::is_same<T, phi::dtype::complex<float>>::value ||
-      std::is_same<T, phi::dtype::complex<double>>::value) {
+  if (IsComplexType(out->dtype())) {
     float std_of_real_or_imag = std::sqrt(std::pow(std, 2) / 2);
     if (seed == 0) {
       // use global Generator seed
