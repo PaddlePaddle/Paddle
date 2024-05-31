@@ -885,7 +885,9 @@ def full_like(x, fill_value, dtype=None, name=None):
         return out
 
 
-def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
+def fill_constant(
+    shape: int, dtype, value, force_cpu=False, out=None, name=None
+):
     if in_dynamic_or_pir_mode():
         place = _current_expected_place()
         if force_cpu:
