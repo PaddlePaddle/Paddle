@@ -57,28 +57,12 @@ class FusedAllReduceSplitPattern : public paddle::drr::DrrPatternBase {
         split_with_num(pat.Tensor("input_grad_tmp"), pat.Tensor("split_num"));
     pat.Tensor("out") = builtin_slice(pat.Tensor("input_grad_group"));
 
-    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      const auto &x_trans = match_ctx.Attr<bool>("trans_x");
-      const auto &y_trans = match_ctx.Attr<bool>("trans_y");
-      auto input_grad_partial_count =
-          match_ctx.Tensor("input_grad_partial").use_count();
-      auto input_grad_count = match_ctx.Tensor("input_grad").use_count();
-      auto input_grad_tmp_count =
-          match_ctx.Tensor("input_grad_tmp").use_count();
-      auto input_grad_group_count =
-          match_ctx.Tensor("input_grad_group").use_count();
-      return (x_trans == false && y_trans == true &&
-              input_grad_partial_count == 1 && input_grad_count == 1 &&
-              input_grad_tmp_count == 1 && input_grad_group_count == 1);
-    });
-
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
     const auto &c_reducescatter =
         res.Op(paddle::dialect::CReducescatterOp::name(),
-               {{"ring_id", pat.Attr("ring_id")},
-                {"nranks", pat.Attr("num")},
-                {"use_calc_stream", pat.Attr("use_calc_stream")},
+               {{"ring_id", pat.Attr("ring_id")}, {"nranks", pat.Attr("num")}},
+               {{"use_calc_stream", pat.Attr("use_calc_stream")},
                 {"execution_stream", pat.Attr("execution_stream")},
                 {"force_record_event", pat.Attr("force_record_event")},
                 {"event_to_record", pat.Attr("event_to_record")},
