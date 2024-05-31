@@ -33,7 +33,7 @@ class IrTensor : public phi::TensorBase,
   IrTensor(phi::DataType dtype,
            const phi::DDim& dims,
            phi::DataLayout layout,
-           const LoD& lod,
+           LoD lod,
            size_t offset = 0);
 
   IrTensor(IrTensor&& other) = default;

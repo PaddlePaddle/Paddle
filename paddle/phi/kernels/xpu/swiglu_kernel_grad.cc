@@ -64,7 +64,7 @@ void SwiGluGradKernel(const Context& ctx,
                              reinterpret_cast<XPUType*>(dx_data),
                              dims_vec,
                              axis,
-                             false,
+                             true,
                              y_ptr,
                              dy_ptr);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "swiglu_grad");

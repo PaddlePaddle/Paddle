@@ -202,14 +202,11 @@ void ReplaceExpandWithBroadcast(pir::IrContext* ir_context,
 
 std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
     const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
-    pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
+    const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
     const std::vector<pir::Value>& group_inputs,
     pir::Builder& builder) {  // NOLINT
   const auto& lhs_expr = broadcastable_condition->lhs;
   const auto& rhs_expr = broadcastable_condition->rhs;
-  auto ShapeOrDataDimExprs4Value = [&shape_analysis](pir::Value value) {
-    return shape_analysis.GetShapeOrDataForValue(value);
-  };
 
   std::vector<pir::Value> lhs_minimal_inputs;
   std::vector<pir::Attribute> lhs_output_dim_expr_attrs;
@@ -322,7 +319,7 @@ void InsertYieldOpForCondBlock(pir::Operation* cond_op,
 pir::Operation* CreateConditionBlock(
     const cinn::common::BroadcastTree& broadcast_tree,
     const OpLoweringGroupPtr& origin_group,
-    pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
+    const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
     const std::vector<pir::Value>& group_inputs,
     const std::vector<pir::Type>& output_types,
@@ -345,7 +342,7 @@ pir::Operation* CreateConditionBlock(
             .Get<cinn::common::BroadcastBranch<cinn::common::BroadcastTree>>();
     const auto& [lhs_eq_rhs_cond, lhs_eq_one_cond, rhs_eq_one_cond] =
         BroadcastableToCondValue(
-            branch.Get<0>(), shape_analysis, group_inputs, builder);
+            branch.Get<0>(), ShapeOrDataDimExprs4Value, group_inputs, builder);
 
     // lhs == rhs
     auto lhs_eq_rhs_cond_op = builder.Build<paddle::dialect::IfOp>(
@@ -354,7 +351,7 @@ pir::Operation* CreateConditionBlock(
     builder.SetInsertionPointToBlockEnd(&lhs_eq_rhs_block);
     auto* lhs_eq_rhs_block_op = CreateConditionBlock(branch.Get<1>(),
                                                      origin_group,
-                                                     shape_analysis,
+                                                     ShapeOrDataDimExprs4Value,
                                                      value_to_dim_expr_idx,
                                                      group_inputs,
                                                      output_types,
@@ -373,7 +370,7 @@ pir::Operation* CreateConditionBlock(
     builder.SetInsertionPointToBlockEnd(&lhs_eq_one_block);
     auto* lhs_eq_one_block_op = CreateConditionBlock(branch.Get<2>(),
                                                      origin_group,
-                                                     shape_analysis,
+                                                     ShapeOrDataDimExprs4Value,
                                                      value_to_dim_expr_idx,
                                                      group_inputs,
                                                      output_types,
@@ -387,7 +384,7 @@ pir::Operation* CreateConditionBlock(
     builder.SetInsertionPointToBlockEnd(&rhs_eq_one_block);
     auto* rhs_eq_one_block_op = CreateConditionBlock(branch.Get<3>(),
                                                      origin_group,
-                                                     shape_analysis,
+                                                     ShapeOrDataDimExprs4Value,
                                                      value_to_dim_expr_idx,
                                                      group_inputs,
                                                      output_types,
@@ -487,17 +484,20 @@ bool NeedBroadcastWithCF(const cinn::common::BroadcastLeaf& leaves) {
 pir::Operation* CompileBroadcastTreeToConditionBlock(
     const OpLoweringGroupPtr& group,
     const BroadcastTree& broadcast_tree,
-    pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
     const std::vector<pir::Value>& group_inputs,
     const std::vector<pir::Type>& output_types,
     pir::PatternRewriter& rewriter) {  // NOLINT
+  auto ShapeOrDataDimExprs4Value =
+      [&group](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+    return group->GetShapeOrDataExprs(value);
+  };
   // 1. broadcast tree to condition op
   VLOG(4) << "broadcast tree to condition op";
   std::unordered_map<pir::Block*, OpLoweringGroupPtr> group_map;
   pir::Operation* cond_op = CreateConditionBlock(broadcast_tree,
                                                  group,
-                                                 shape_analysis,
+                                                 ShapeOrDataDimExprs4Value,
                                                  value_to_dim_expr_idx,
                                                  group_inputs,
                                                  output_types,

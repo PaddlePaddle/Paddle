@@ -31,7 +31,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -2018,6 +2017,9 @@ paddle::Tensor CreateTensorFromValue(const pir::Value& value) {
 
   auto dims = phi::vectorize(GetValueDims(value));
   auto ddims = phi::make_ddim(dims);
+  if (HasValueName(value)) {
+    tensor.set_name(GetValueName(value));
+  }
   auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
   autograd_meta->SetPersistable(false);
   autograd_meta->SetStopGradient(GetValueBoolAttr(value, kAttrStopGradients));
@@ -2676,7 +2678,7 @@ static Py_tss_t static_op_arg_pre_cast_hook_key = {0, 0};
 
 inline static PyObject* static_op_arg_pre_cast_hook_get() {
   void* result = PyThread_tss_get(&static_op_arg_pre_cast_hook_key);
-  if (result == NULL) {
+  if (result == nullptr) {
     return Py_None;
   } else {
     return reinterpret_cast<PyObject*>(result);
@@ -2711,7 +2713,7 @@ PyMODINIT_FUNC PyInit__static_op_arg_pre_cast_hook() {
 
   Py_INCREF(Py_None);
   static_op_arg_pre_cast_hook_set(Py_None);
-  return NULL;
+  return nullptr;
 }
 
 /* ------------------ for auto parallel ----------------------- */
@@ -2798,13 +2800,13 @@ void DistTensorConverter::operator()(paddle::optional<std::vector<Tensor>>* x) {
   }
 }
 
-static PyMethodDef EagerUtilMethods[] = {
+static PyMethodDef EagerUtilMethods[] = {  // NOLINT
     {"create_empty_tensors_with_var_descs",
-     (PyCFunction)(void (*)(void))GetEmptyTensorsWithVarDesc,
+     (PyCFunction)(void (*)())GetEmptyTensorsWithVarDesc,
      METH_VARARGS,
      "GetEmptyTensorsWithVarDesc"},
     {"create_empty_tensors_with_values",
-     (PyCFunction)(void (*)(void))GetEmptyTensorsWithValue,
+     (PyCFunction)(void (*)())GetEmptyTensorsWithValue,
      METH_VARARGS,
      "GetEmptyTensorsWithValue."},
     {"set_static_op_arg_pre_cast_hook",

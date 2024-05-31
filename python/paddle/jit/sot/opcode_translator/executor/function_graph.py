@@ -24,6 +24,9 @@ from copy import deepcopy
 from functools import cached_property
 from typing import Any, Callable
 
+from typing_extensions import TypeGuard
+
+import paddle
 from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten
 
@@ -37,7 +40,6 @@ from ...profiler import EventGuard, event_register
 from ...symbolic.statement_ir import Reference, Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
-    ENV_SHOW_TRACKERS,
     NameGenerator,
     SotUndefinedVar,
     inner_error_default_handler,
@@ -62,7 +64,7 @@ from .side_effects import (
     SideEffectRestorer,
     SideEffects,
 )
-from .tracker import BuiltinTracker, DummyTracker
+from .tracker import BuiltinTracker, DummyTracker, SymbolicOperationTracker
 from .variables import (
     ConstantVariable,
     DictVariable,
@@ -71,6 +73,7 @@ from .variables import (
     NullVariable,
     PaddleLayerVariable,
     ParameterVariable,
+    SymbolicVariable,
     TensorVariable,
     VariableBase,
     VariableFactory,
@@ -85,7 +88,7 @@ def convert_to_meta(inputs: Any):
     """
 
     def func(x):
-        if isinstance(x, TensorVariable):
+        if isinstance(x, (TensorVariable, SymbolicVariable)):
             return x.meta
         if isinstance(x, VariableBase):
             return x.get_py_value()
@@ -100,7 +103,7 @@ def convert_to_symbol(inputs: Any):
     """
 
     def func(x):
-        if isinstance(x, (TensorVariable, PaddleLayerVariable)):
+        if isinstance(x, (TensorVariable, SymbolicVariable)):
             return x.get_symbol()
         if isinstance(x, VariableBase):
             return x.get_py_value()
@@ -115,7 +118,7 @@ def record_symbols(SIR, *args, **kwargs):
     non_params = set()
 
     def fn(value):
-        if isinstance(value, TensorVariable):
+        if isinstance(value, (TensorVariable, SymbolicVariable)):
             symbol_meta_map[value.get_symbol()] = value.meta
             if isinstance(value, ParameterVariable):
                 params.add(value.get_symbol())
@@ -123,7 +126,7 @@ def record_symbols(SIR, *args, **kwargs):
                 non_params.add(value.get_symbol())
         return value
 
-    map_variables(fn, [args, kwargs])
+    map_variables(fn, [args, kwargs])  # type: ignore
     SIR.set_symbol_meta_map(symbol_meta_map)
     SIR.set_parameter_info(params, non_params)
 
@@ -279,14 +282,14 @@ class FunctionGraph:
     @event_register("guard_fn")
     def guard_fn(self) -> Guard:
         with tmp_name_guard():
-            guards = []
+            guards: list[StringifyExpression] = []
             with EventGuard("guard_fn: find vars and make stringify guard"):
                 for variable in find_traceable_vars(
                     self.input_variables + list(self._global_guarded_variables)
                 ):
                     guards.extend(variable.make_stringify_guard())
 
-            guards = OrderedSet(guards)
+            guards = OrderedSet(guards)  # type: ignore
 
             for guard in guards:
                 assert isinstance(
@@ -368,7 +371,6 @@ class FunctionGraph:
         ]
 
         tensor_items = self._find_tensor_outputs(ret_items)
-
         compiled_fn, _ = self.sir_ctx.compile_fn(
             [Symbol(tensor_var.var_name) for tensor_var in tensor_items],
             **self._kwargs,
@@ -412,11 +414,17 @@ class FunctionGraph:
             found = False
             for variable in self.input_variables:
                 if (
-                    isinstance(variable, TensorVariable)
+                    isinstance(variable, (TensorVariable, SymbolicVariable))
                     and variable.get_symbol().name == name
                 ):
+                    if isinstance(variable, SymbolicVariable):
+                        self.pycode_gen.gen_load_object(
+                            paddle.to_tensor, "___paddle_to_tensor"
+                        )
                     variable.tracker.gen_instructions(self.pycode_gen)
                     found = True
+                    if isinstance(variable, SymbolicVariable):
+                        self.pycode_gen.gen_call_function(1)
                     break
             assert found, f"can't find input {name} in SIR."
         # Pack all args into a tuple, because we don't support *args now.
@@ -437,12 +445,6 @@ class FunctionGraph:
         self.restore_print_stmts(self._print_variables)
         self.restore_side_effects(self.side_effects.proxy_variables)
         self.pycode_gen.gen_enable_eval_frame()
-
-        tracker_output_path = ENV_SHOW_TRACKERS.get()
-        if tracker_output_path:
-            from .tracker_viewer import view_tracker
-
-            view_tracker(list(ret_vars), tracker_output_path, format="png")
 
     def call_paddle_api(
         self,
@@ -466,7 +468,12 @@ class FunctionGraph:
             return f"Call paddle_api error: {func.__name__}, may be not a operator api ?"
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
-            InferMetaCache(), self.sir_ctx.call_API, func, *args, **kwargs
+            InferMetaCache(),
+            self.sir_ctx.call_API,
+            func,
+            False,
+            *args,
+            **kwargs,
         )
 
     def call_tensor_method(
@@ -486,6 +493,29 @@ class FunctionGraph:
             InferMetaCache(),
             self.sir_ctx.call_METHOD,
             method_name,
+            False,
+            *args,
+            **kwargs,
+        )
+
+    def call_symbolic_method(
+        self, method_name: str, *args: VariableBase, **kwargs
+    ):
+        """
+        call symbolic method, start symbolic trace.
+
+        Args:
+            method_name: symbolic method name
+        """
+
+        def message_handler(*args, **kwargs):
+            return f"Call symbolic_method error: Symbolic.{method_name}, may be not a valid operator api ?"
+
+        return inner_error_default_handler(self.symbolic_call, message_handler)(
+            InferMetaCache(),
+            self.sir_ctx.call_METHOD,
+            method_name,
+            True,
             *args,
             **kwargs,
         )
@@ -520,7 +550,7 @@ class FunctionGraph:
             return f"Call paddle layer error: {layer}, may be not a valid paddle layer ?"
 
         return inner_error_default_handler(self.symbolic_call, message_handler)(
-            infer_meta_fn, compute_fn, layer, *args, **kwargs
+            infer_meta_fn, compute_fn, layer, False, *args, **kwargs
         )
 
     def call_ast(
@@ -550,12 +580,21 @@ class FunctionGraph:
         try:
             return inner_error_default_handler(
                 self.symbolic_call, message_handler
-            )(ast_infer_meta, compute_fn, static_function, *args, **kwargs)
+            )(
+                ast_infer_meta,
+                compute_fn,
+                static_function,
+                False,
+                *args,
+                **kwargs,
+            )
         except Exception as e:
             log(3, f"[call AST] {e}")
             return None
 
-    def symbolic_call(self, infer_meta_fn, compute_fn, func, *args, **kwargs):
+    def symbolic_call(
+        self, infer_meta_fn, compute_fn, func, is_symbolic_var, *args, **kwargs
+    ):
         """
         Using infer_meta_fn and compute_fn convert func to symbolic function.
 
@@ -566,6 +605,7 @@ class FunctionGraph:
         """
         self.collect_input_variables(list(args))
         self.collect_input_variables(list(kwargs.values()))
+
         metas = convert_to_meta(args)
         kwmetas = convert_to_meta(kwargs)
 
@@ -579,13 +619,21 @@ class FunctionGraph:
 
         log(3, f"         inputs : {inputs_symbols}", "\n")
 
+        if is_symbolic_var:
+            var_cls = SymbolicVariable
+            tracker = SymbolicOperationTracker(
+                list(args) + list(kwargs.values()), func
+            )
+        else:
+            var_cls = TensorVariable
+            tracker = DummyTracker(list(args) + list(kwargs.values()))
         outputs = map_if(
             out_metas,
             pred=lambda x: isinstance(x, MetaInfo),
-            true_fn=lambda x: TensorVariable(
+            true_fn=lambda x: var_cls(
                 x,
                 self,
-                tracker=DummyTracker(list(args) + list(kwargs.values())),
+                tracker=tracker,
             ),
             false_fn=lambda x: x,
         )
@@ -615,9 +663,15 @@ class FunctionGraph:
                     stmt_stacks,
                 )  # symbolic only contain symbols.
                 self._put_inner(outputs)
-            return VariableFactory.from_value(
-                outputs, self, DummyTracker(list(args) + list(kwargs.values()))
-            )
+            if is_symbolic_var:
+                # compute_fn should be call_method
+                tracker = SymbolicOperationTracker(
+                    list(args) + list(kwargs.values()), func
+                )
+            else:
+                tracker = DummyTracker(list(args) + list(kwargs.values()))
+
+            return VariableFactory.from_value(outputs, self, tracker)
         else:
             return ConstantVariable.wrap_literal(None, self)
 
@@ -673,7 +727,7 @@ class FunctionGraph:
 
     def _find_tensor_outputs(
         self, outputs: list[VariableBase]
-    ) -> OrderedSet[TensorVariable]:
+    ) -> OrderedSet[TensorVariable | SymbolicVariable]:
         """
         Return all TensorVariable. find TensorVariables participating in networking from the output Variables
 
@@ -681,9 +735,16 @@ class FunctionGraph:
             outputs: output variables
         """
 
+        def is_graph_output(
+            var,
+        ) -> TypeGuard[TensorVariable | SymbolicVariable]:
+            return isinstance(var.tracker, DummyTracker) and isinstance(
+                var, (TensorVariable, SymbolicVariable)
+            )
+
         def collect_related_dummy_tensor(var):
             if isinstance(var.tracker, DummyTracker):
-                if isinstance(var, TensorVariable):
+                if is_graph_output(var):
                     return [var]
                 else:
                     retval = []
@@ -692,11 +753,13 @@ class FunctionGraph:
                     return retval
             return []
 
-        output_tensors: OrderedSet[TensorVariable] = OrderedSet()
+        output_tensors: OrderedSet[
+            TensorVariable | SymbolicVariable
+        ] = OrderedSet()
         # Find Tensor Variables from outputs.
         for output in outputs:
             if isinstance(output.tracker, DummyTracker):
-                if isinstance(output, TensorVariable):
+                if is_graph_output(output):
                     output_tensors.add(output)
                 else:
                     for inp in output.tracker.inputs:
@@ -709,8 +772,7 @@ class FunctionGraph:
             if isinstance(side_effect_var, (ListVariable, DictVariable)):
                 for var in side_effect_var.flatten_items():
                     if (
-                        isinstance(var.tracker, DummyTracker)
-                        and isinstance(var, TensorVariable)
+                        is_graph_output(var)
                         and side_effect_var.tracker.is_traceable()
                     ):
                         output_tensors.add(var)
@@ -725,16 +787,12 @@ class FunctionGraph:
                 for record in proxy_records:
                     if isinstance(record, (MutationSet, MutationNew)):
                         for var in record.value.flatten_items():
-                            if isinstance(
-                                var.tracker, DummyTracker
-                            ) and isinstance(var, TensorVariable):
+                            if is_graph_output(var):
                                 output_tensors.add(var)
         # Find Tensor in print_stmts
         for print_stmt in self._print_variables:
             for var in print_stmt.flatten_items():
-                if isinstance(var.tracker, DummyTracker) and isinstance(
-                    var, TensorVariable
-                ):
+                if is_graph_output(var):
                     output_tensors.add(var)
 
         # add inplace tensors into output tensors.

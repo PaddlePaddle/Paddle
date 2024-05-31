@@ -53,7 +53,11 @@ class IterableDatasetWrapper {
         slots_(slots),
         places_(places),
         batch_size_(batch_size),
-        drop_last_(drop_last) {
+        drop_last_(drop_last),
+        data_feeds_(),
+        is_exhaustive_(),
+        scopes_(),
+        tensors_() {
 #if defined _WIN32
     PADDLE_THROW(
         platform::errors::Unimplemented("Dataset is not supported on Windows"));

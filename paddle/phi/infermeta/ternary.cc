@@ -1658,6 +1658,87 @@ void SendURecvInferMeta(const MetaTensor& x,
   }
 }
 
+void SequenceConvInferMeta(const MetaTensor& x,
+                           const MetaTensor& padding_data,
+                           const MetaTensor& filter,
+                           int context_length,
+                           bool padding_trainable,
+                           int context_start,
+                           int context_stride,
+                           MetaTensor* out) {
+  auto in_dims = x.dims();
+  auto filter_dims = filter.dims();
+  PADDLE_ENFORCE_EQ(
+      context_stride,
+      1,
+      phi::errors::InvalidArgument(
+          "Currently, SequenceConvOp only supports contextStride=1. But "
+          "received contextStride = %u.",
+          context_stride));
+  PADDLE_ENFORCE_EQ(
+      in_dims.size() == 2 && filter_dims.size() == 2,
+      true,
+      phi::errors::InvalidArgument(
+          "Input(X, Filter) should be 2-D tensor. But received Input(X): "
+          "input rank %u, input shape [%s]; received Input(Filter): "
+          "input rank %u, input shape [%s].",
+          in_dims.size(),
+          in_dims,
+          filter_dims.size(),
+          filter_dims));
+  PADDLE_ENFORCE_EQ(
+      filter_dims[0],
+      context_length * in_dims[1],
+      phi::errors::InvalidArgument(
+          "Filter's height should be context_length * "
+          "input_hidden_size. But received: filter's height = %d, "
+          "context_length * input_hidden_size = %d.",
+          filter_dims[0],
+          context_length * in_dims[1]));
+
+  if (padding_trainable) {
+    const phi::DDim& padding_dim = padding_data.dims();
+    int up_pad = std::max(0, -context_start);
+    int down_pad = std::max(0, context_start + context_length - 1);
+    int total_pad = up_pad + down_pad;
+    int input_width = static_cast<int>(in_dims[1]);
+    bool start_equals_zero = context_start == 0;
+    bool length_equals_one = context_length == 1;
+    bool start_length = start_equals_zero && length_equals_one;
+
+    PADDLE_ENFORCE_EQ(
+        start_length,
+        false,
+        phi::errors::InvalidArgument(
+            "If context_start is 0 and context_length is 1, paddingTrainable "
+            "should be false."));
+    PADDLE_ENFORCE_EQ(
+        padding_dim.size(),
+        2,
+        phi::errors::InvalidArgument(
+            "Input(PaddingData) should be 2-D tensor. But received: "
+            "input rank %u, input shape [%s].",
+            padding_dim.size(),
+            padding_dim));
+    PADDLE_ENFORCE_EQ(
+        padding_dim[0] == total_pad && padding_dim[1] == input_width,
+        true,
+        phi::errors::InvalidArgument("Input(PaddingData)'s shape is not "
+                                     "consistent with 'context_start' "
+                                     "and 'context_length'. Received "
+                                     "Input(PaddingData): input rank "
+                                     "%u, "
+                                     "input shape [%s].",
+                                     padding_dim.size(),
+                                     padding_dim));
+  }
+
+  in_dims[1] = filter_dims[1];
+  out->set_dims(in_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
 void SparseMomentumInferMeta(const MetaTensor& param,
                              const MetaTensor& learning_rate,
                              const MetaTensor& velocity,

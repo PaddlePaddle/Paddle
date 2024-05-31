@@ -37,14 +37,22 @@ std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
   base_info->broadcast_info = group_info->broadcast_info;
   base_info->broadcast_to_elementwise = group_info->broadcast_to_elementwise;
   base_info->data_rank = group_info->data_space.size();
+  base_info->raw_data_rank = group_info->raw_data_rank;
 
   std::set<int64_t> reduce_dim_loc;
-  for (auto dim : group_info->reduce_axis) {
+  for (int64_t dim : group_info->reduce_axis) {
     if (dim < 0) {
       dim += base_info->data_rank;
     }
     base_info->reduce_axis.push_back(dim);
     reduce_dim_loc.insert(dim);
+  }
+
+  for (int64_t dim : group_info->raw_reduce_axis) {
+    if (dim < 0) {
+      dim += base_info->data_rank;
+    }
+    base_info->raw_reduce_axis.push_back(dim);
   }
 
   base_info->spatial_numel = 1;
@@ -81,7 +89,7 @@ BuildPureStaticShapeConfig(
           /* spatial_inner_num = */ 1,
           /* reduce_method = */ BlockReduceMethod()};
       return {{bucket_info, tile_config}};
-    } else {
+    } else if (base_info->reduce_numel <= 2048) {
       BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                              /* sp_upper_bound = */ 1,
                              /* rb_lower_bound = */ 257,
@@ -89,6 +97,17 @@ BuildPureStaticShapeConfig(
       ScheduleConfig::TileConfig tile_config{
           /* warp_num = */ 8,
           /* tree_reduce_num = */ 256,
+          /* spatial_inner_num = */ 1,
+          /* reduce_method = */ BlockReduceMethod()};
+      return {{bucket_info, tile_config}};
+    } else {
+      BucketInfo bucket_info{/* sp_lower_bound = */ 1,
+                             /* sp_upper_bound = */ 1,
+                             /* rb_lower_bound = */ 2049,
+                             /* rb_upper_bound = */ kMaxNumel};
+      ScheduleConfig::TileConfig tile_config{
+          /* warp_num = */ 32,
+          /* tree_reduce_num = */ 1024,
           /* spatial_inner_num = */ 1,
           /* reduce_method = */ BlockReduceMethod()};
       return {{bucket_info, tile_config}};
@@ -147,7 +166,7 @@ BuildPureStaticShapeConfig(
         /* reduce_method = */ BlockReduceMethod()};
     return {{bucket_info, tile_config}};
   } else {
-    int64_t warp_num = 8;
+    int64_t warp_num = 32;
     int64_t spatial_inner_num = 1;
     int64_t tree_reduce_num = warp_num * 32;
     BucketInfo bucket_info{/* sp_lower_bound = */ 1,
@@ -279,7 +298,7 @@ BuildStaticReduceConfig(
         /* reduce_method = */ BlockReduceMethod()};
     return {{bucket_info, tile_config}};
   } else {
-    int64_t warp_num = 8;
+    int64_t warp_num = 32;
     int64_t spatial_inner_num = 1;
     int64_t tree_reduce_num = warp_num * 32;
     BucketInfo bucket_info{/* sp_lower_bound = */ 1,
