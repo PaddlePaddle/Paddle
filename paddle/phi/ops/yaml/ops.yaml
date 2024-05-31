@@ -760,6 +760,7 @@
   kernel :
     func : class_center_sample
     data_type : label
+  traits : pir::SideEffectTrait
 
 - op : clip
   args : (Tensor x, Scalar(float) min, Scalar(float) max)
@@ -1262,6 +1263,7 @@
   optional : seed_tensor
   intermediate : mask
   backward : dropout_grad
+  traits : pir::SideEffectTrait
 
 - op : edit_distance
   args : (Tensor hyps, Tensor refs, Tensor hypslength, Tensor refslength, bool normalized = false)
@@ -4375,6 +4377,7 @@
     data_type: x
   inplace: (x -> out)
   backward: uniform_inplace_grad
+  traits : pir::SideEffectTrait
 
 - op : uniform_random_batch_size_like
   args: (Tensor input, int[] shape, int input_dim_idx = 0, int output_dim_idx = 0,
@@ -4387,6 +4390,7 @@
            uniform_random_batch_size_like_sr {selected_rows -> selected_rows}
     data_type: dtype
   no_need_buffer: input
+  traits : pir::SideEffectTrait
 
 - op : unique_consecutive
   args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, DataType dtype = DataType::FLOAT32)
