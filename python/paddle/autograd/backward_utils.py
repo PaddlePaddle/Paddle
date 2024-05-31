@@ -43,7 +43,7 @@ ALLOW_NO_GRAD_OPS = [
     "pd_op.less_equal",
     "pd_op.less_equal_",
     "pd_op.not_equal",
-    "pd_op.not_equal_"
+    "pd_op.not_equal_",
     # Logical ops
     "pd_op.logical_and",
     "pd_op.logical_and_",
