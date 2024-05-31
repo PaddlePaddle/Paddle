@@ -55,9 +55,9 @@ class TestPrimMode(unittest.TestCase):
 
         whole_ops = [op.name() for op in main_program.global_block().ops]
         if flag == "prim":
-            assert 'pd_op.matmul_grad' not in whole_ops
+            assert 'pd_op.concat_grad' not in whole_ops
         else:
-            assert 'pd_op.matmul_grad' in whole_ops
+            assert 'pd_op.concat_grad' in whole_ops
 
         return fwd, dx, dy
 
