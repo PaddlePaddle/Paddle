@@ -400,6 +400,38 @@ Expr Store::index() const {
   return res;
 }
 
+void Store::replace(Expr old_op, Expr new_op) {
+  if (value == old_op) {
+    value = new_op;
+  }
+  if (tensor == old_op) {
+    tensor = new_op;
+  }
+  for (int i = 0; i < indices.size(); i++) {
+    if (indices[i] == old_op) {
+      indices[i] = new_op;
+    }
+  }
+}
+
+void Select::replace(Expr old_op, Expr new_op) {
+  if (condition == old_op) {
+    condition = new_op;
+  }
+  if (true_value == old_op) {
+    true_value = new_op;
+  }
+  if (false_value == old_op) {
+    false_value = new_op;
+  }
+}
+
+void Cast::replace(Expr old_op, Expr new_op) {
+  if (v() == old_op) {
+    v() = new_op;
+  }
+}
+
 const std::string &Store::name() const {
   auto *t = tensor.As<ir::_Tensor_>();
   CHECK(t);
@@ -495,6 +527,20 @@ Expr Call::Make(Type type,
   node->attrs = attrs;
   return Expr(node);
 }
+
+void Call::replace(Expr old_op, Expr new_op) {
+  for (int i = 0; i < read_args.size(); i++) {
+    if (read_args[i] == old_op) {
+      read_args[i] = new_op;
+    }
+  }
+  for (int i = 0; i < write_args.size(); i++) {
+    if (read_args[i] == old_op) {
+      read_args[i] = new_op;
+    }
+  }
+}
+
 std::vector<Expr *> Call::expr_fields() {
   std::vector<Expr *> res;
   for (auto &x : read_args) res.push_back(&x);
@@ -603,6 +649,12 @@ Expr Load::Make(Expr tensor, const std::vector<Expr> &origin_indices) {
   node->set_type(node->type());
   return Expr(node);
 }
+
+void Load::convert_int32_to_int64() {
+  IrNode::convert_int32_to_int64();
+  tensor->convert_int32_to_int64();
+}
+
 Type Load::type() const {
   CHECK(tensor.defined());
   CHECK(tensor.type().valid());
@@ -809,7 +861,7 @@ void Reduce::Verify() const {
 Type Select::type() const {
   PADDLE_ENFORCE_EQ(
       true_value.type(), false_value.type(), "Type of Select must be same");
-  return true_value.type();
+  return type_;
 }
 
 void Select::Verify() const {

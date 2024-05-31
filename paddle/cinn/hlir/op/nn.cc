@@ -394,7 +394,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
           // gen, this code is to be removed.
           if (conv_type != "forward") {
             CHECK_EQ(vec_ast.size(), 1);
-            pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
+            pe::IRGpuScheduleInjective(ir_sch, output_shapes.front(), target);
             std::vector<CINNValue> res{
                 CINNValue(ir_sch.GetModule().GetExprs().at(0))};
             *ret = CINNValuePack{res};

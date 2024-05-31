@@ -1448,6 +1448,11 @@ PHI_DEFINE_EXPORTED_string(logging_pir_py_code_dir,
                            "",
                            "the logging directory to save pir py code");
 
+PHI_DEFINE_EXPORTED_bool(logging_trunc_pir_py_code,
+                         true,
+                         "whether truncate the logging files under directory "
+                         "FLAGS_logging_pir_py_code_dir");
+
 /**
  * Using PIR API in Python
  * Name: enable_pir_api
@@ -1527,9 +1532,14 @@ PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
 PHI_DEFINE_EXPORTED_bool(pir_debug,
                          false,
                          "Whether print more pir debug info.");
-PHI_DEFINE_EXPORTED_bool(prim_skip_dynamic,
-                         true,
-                         "Whether to skip decomposing op with dynamic shape.");
+PHI_DEFINE_EXPORTED_bool(
+    prim_skip_dynamic,
+    true,
+    "Whether to skip decomposing vjp op with dynamic shape.");
+PHI_DEFINE_EXPORTED_bool(
+    prim_enable_dynamic,
+    false,
+    "Whether to enable decomposing composite op with dynamic shape.");
 PHI_DEFINE_EXPORTED_bool(prim_check_ops,
                          false,
                          "Whether to check the decomposed program, to ensure "
@@ -1603,6 +1613,12 @@ PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
                          "to infer symbolic shape");
 
 PHI_DEFINE_EXPORTED_string(
+    nvidia_package_dir,  // NOLINT
+    "",
+    "Specify root dir path for nvidia site-package, such as "
+    "python3.9/site-packages/nvidia");
+
+PHI_DEFINE_EXPORTED_string(
     cudnn_dir,  // NOLINT
     "",
     "Specify path for loading libcudnn.so. For instance, "
@@ -1659,6 +1675,42 @@ PHI_DEFINE_EXPORTED_bool(
     "the symbolic inference accuracy by comparing the the value "
     "shape between dynamic shape and static shape.");
 
+/**
+ * Name: manually_trans_conv_filter
+ * Since Version: 3.0.0 Beta
+ * Value Range: bool, default=false
+ */
+PHI_DEFINE_EXPORTED_bool(
+    manually_trans_conv_filter,
+    false,
+    "Whether to manually transpose the filter of conv2d. This pass can "
+    "accelerate the performance of conv2d since it transpose filter ahead");
+
+/**
+ * Apply CSE optimize pass in Dy2St
+ * Name: enable_cse_in_dy2st
+ * Since Version: 3.0.0
+ * Value Range: bool, default=true
+ * Example:
+ * Note: If True, will apply CSE optimize pass in Dy2St.
+ */
+PHI_DEFINE_EXPORTED_bool(enable_cse_in_dy2st,
+                         true,
+                         "Apply CSE optimize pass in Dy2St");
+
+/**
+ * Max count of eliminate redundant computation in CSE, for debug usage
+ * Name: cse_max_count
+ * Since Version: 3.0.0
+ * Value Range: int32, default=-1
+ * Example:
+ * Note: If -1, will not limit the max count of eliminate redundant computation.
+ */
+PHI_DEFINE_EXPORTED_int32(
+    cse_max_count,
+    -1,
+    "Max count of eliminate redundant computation in CSE, for debug usage");
+
 PHI_DEFINE_EXPORTED_string(
     mkl_dir,  // NOLINT
     "",
@@ -1683,3 +1735,7 @@ PHI_DEFINE_EXPORTED_string(cusolver_dir,  // NOLINT
 PHI_DEFINE_EXPORTED_string(cusparse_dir,  // NOLINT
                            "",
                            "Specify path for loading libcusparse.so.*.");
+PHI_DEFINE_EXPORTED_string(
+    win_cuda_bin_dir,  // NOLINT
+    "",
+    "Specify path for loading *.dll about cuda on windows");

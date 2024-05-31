@@ -52,18 +52,49 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
                                        const BlockDesc& block,
                                        framework::Scope* scope,
                                        const ExecutionConfig& execution_config)
-    : place_(place),
+    : is_build_(false),
+      static_build_(false),
+      is_shared_results_build_(false),
+      is_in_op_profiling_mode_(false),
+      place_(place),
       block_(block),
+      dependency_builder_(),
       stream_analyzer_(place),
+      copy_program_(nullptr),
+      var_list_(),
+      name2id_(),
+      vec_meta_info_(),
+      vec_instruction_(),
+      unfinished_op_number_(0),
       execution_config_(execution_config),
+      force_events_to_wait_(nullptr),
       var_scope_(scope),
+      local_scope_(nullptr),
+      main_thread_blocker_(),
+      async_work_queue_(nullptr),
+      exception_holder_(),
+      exception_notifier_(nullptr),
+      completion_notifier_(nullptr),
+      gc_(nullptr),
+      last_live_ops_(),
+      dependency_count_(std::make_shared<std::vector<size_t>>()),
+      deps_(),
+      refs_(),
+      sync_op_num_(-1),
+      trace_execute_order_(),
+      instruction_scheduling_priority_less(),
+      output_hookfuncs_(),
+      input_hookfuncs_(),
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      calculate_stream_timer_(
+          std::make_unique<phi::CalculateStreamTimer>(place)),
+#endif
+      last_calculate_instr_id_(0),
       enable_job_schedule_profiler_(false) {
   VLOG(4) << "ProgramInterpreter(): " << this << " on " << place_;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
   completion_notifier_ = main_thread_blocker_.RegisterEvent(kTaskCompletion);
-
-  dependency_count_ = std::make_shared<std::vector<size_t>>();
 
   if (!FLAGS_new_executor_use_local_scope) {
     execution_config_.create_local_scope = false;
@@ -93,10 +124,6 @@ ProgramInterpreter::ProgramInterpreter(const platform::Place& place,
   };
 
   PrepareForCUDAGraphCapture();
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  calculate_stream_timer_ = std::make_unique<phi::CalculateStreamTimer>(place);
-#endif
 }
 
 ProgramInterpreter::~ProgramInterpreter() {
@@ -152,7 +179,7 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   std::vector<paddle::framework::OpFuncNode> op_func_nodes;
   Build(feed_names, &op_func_nodes, switch_stream);
 
-  if (!is_build_) {
+  if (!is_build_ || switch_stream) {
     SetFeedVarsInplaceSkip(feed_names);
     // convert vec func_list to graph
     Convert(&op_func_nodes);
@@ -164,11 +191,6 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (switch_stream) {
-      Convert(&op_func_nodes);
-    }
-#endif
     RunImpl();
   }
 
@@ -254,7 +276,7 @@ FetchList ProgramInterpreter::Run(
   bool is_build = is_build_;
   Prepare(feed_names, feed_tensors, is_build, switch_stream);
 
-  if (is_build) {
+  if (is_build && !switch_stream) {
     RunImpl();
   }
 

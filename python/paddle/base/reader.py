@@ -23,6 +23,7 @@ import numpy as np
 
 import paddle
 from paddle.base.framework import _set_expected_place
+from paddle.pir.core import datatype_to_vartype
 
 from . import core
 from .data_feeder import BatchedTensorProvider, DataFeeder
@@ -35,6 +36,7 @@ from .framework import (
     default_main_program,
     default_startup_program,
     in_dygraph_mode,
+    in_pir_mode,
     program_guard,
 )
 from .layers.io import (
@@ -840,10 +842,16 @@ class GeneratorLoader(DataLoaderBase):
         self._wait_thread_ends()
         self._var_names = [v.name for v in self._feed_list]
         self._shapes = [v.shape for v in self._feed_list]
-        self._dtypes = [v.dtype for v in self._feed_list]
-        self._need_check_feed = [
-            v.desc.need_check_feed() for v in self._feed_list
-        ]
+        if in_pir_mode():
+            self._dtypes = [
+                datatype_to_vartype[v.dtype] for v in self._feed_list
+            ]
+            self._need_check_feed = [False for v in self._feed_list]
+        else:
+            self._dtypes = [v.dtype for v in self._feed_list]
+            self._need_check_feed = [
+                v.desc.need_check_feed() for v in self._feed_list
+            ]
         self._queue = core.init_lod_tensor_blocking_queue(
             core.Variable(), self._capacity, self._keep_order
         )
@@ -874,7 +882,10 @@ class GeneratorLoader(DataLoaderBase):
             ranks.append(len(feed_data.shape))
             shapes.append(feed_data.shape)
             lod_levels.append(feed_data.lod_level)
-            need_check_feed.append(int(feed_data.desc.need_check_feed()))
+            if in_pir_mode():
+                need_check_feed.append(0)
+            else:
+                need_check_feed.append(int(feed_data.desc.need_check_feed()))
 
         queue_name = data_loader_unique_name_generator(
             'lod_tensor_blocking_queue'

@@ -32,7 +32,7 @@ std::shared_ptr<RpcAgent> RpcAgent::rpc_agent_instance_ = nullptr;
 
 RpcAgent::RpcAgent(std::string name, std::vector<WorkerInfo> infos) {
   name_ = std::move(name);
-  for (auto info : infos) {
+  for (const auto &info : infos) {
     name_to_infos_.insert({info.name_, info});
     id_to_infos_.insert({info.id_, info});
   }

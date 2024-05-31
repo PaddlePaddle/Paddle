@@ -46,13 +46,20 @@ void TileTactic::Init(ScheduleContext* context) {
   };
   auto GetTreeReduceSize = [&](const ir::Expr& total_rb_extent) -> int64_t {
     const int64_t max_num_threads =
-        common::DefaultNVGPUTarget().max_num_threads();
+        cinn::common::DefaultDeviceTarget().max_num_threads();
     int64_t nums_thread_per_block = max_num_threads;
     if (total_rb_extent.is_constant()) {
       int64_t extent = static_cast<int64_t>(total_rb_extent.get_constant());
       nums_thread_per_block = GetFirstFactor(extent);
     } else {
-      nums_thread_per_block = context_->bucket_info.rb_lower_bound;
+      if (context->bucket_info.space.size() == 2 &&
+          context->bucket_info.space[1].iter_type == "R") {
+        nums_thread_per_block = context_->bucket_info.space[1].lower_bound;
+      } else {
+        PADDLE_THROW(::common::errors::Unimplemented(
+            "Now, the function GetTreeReduceSize doesn't support the cases "
+            "except SR"));
+      }
     }
     return nums_thread_per_block > max_num_threads ? max_num_threads
                                                    : nums_thread_per_block;
@@ -95,9 +102,17 @@ void TileTactic::Init(ScheduleContext* context) {
     // other bound to cuda thread.
     context_->iter_space_info.sp_space.emplace_back(
         ir::Expr(-1), IterativeSpaceInfo::AxisType::kCudaBlockX);
-    context_->iter_space_info.sp_space.emplace_back(
-        ir::Expr(GetNumThreadPerBlock(context_->bucket_info.rb_upper_bound)),
-        IterativeSpaceInfo::AxisType::kCudaThreadX);
+    if (context->bucket_info.space.size() == 2 &&
+        context->bucket_info.space[1].iter_type == "R") {
+      context_->iter_space_info.sp_space.emplace_back(
+          ir::Expr(
+              GetNumThreadPerBlock(context_->bucket_info.space[1].upper_bound)),
+          IterativeSpaceInfo::AxisType::kCudaThreadX);
+    } else {
+      PADDLE_THROW(::common::errors::Unimplemented(
+          "Now, the function GetTreeReduceSize doesn't support the cases "
+          "except SR"));
+    }
   }
   VLOG(6) << context_->iter_space_info.PrintIterSpace();
 }

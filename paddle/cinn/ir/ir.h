@@ -66,6 +66,8 @@ struct Cast : public ExprNode<Cast> {
   Expr& v() { return operand(0); }
   const Expr& v() const { return operand(0); }
 
+  void replace(Expr old_op, Expr new_op);
+
   void Verify() const override;
 
   static const IrNodeTy _node_type_ = IrNodeTy::Cast;
@@ -123,6 +125,7 @@ struct Div : public BinaryOpNode<Div> {
 
   static Expr Make(Expr a, Expr b);
   void Verify() const override;
+
   static const IrNodeTy _node_type_ = IrNodeTy::Div;
 };
 
@@ -357,6 +360,8 @@ struct Call : public ExprNode<Call> {
 
   void Verify() const override;
 
+  void replace(Expr old_op, Expr new_op);
+
   inline size_t total_args_count() const {
     return read_args.size() + write_args.size();
   }
@@ -502,6 +507,7 @@ struct Select : public ExprNode<Select> {
         false_value(false_value) {
     CHECK_EQ(true_value.type(), false_value.type());
     CHECK(condition.type().is_bool());
+    type_ = true_value.type();
   }
 
   static Expr Make(Expr condition, Expr true_value, Expr false_value) {
@@ -520,6 +526,7 @@ struct Select : public ExprNode<Select> {
     return {&condition, &true_value, &false_value};
   }
 
+  void replace(Expr old_op, Expr new_op);
   static const IrNodeTy _node_type_ = IrNodeTy::Select;
 };
 
@@ -550,6 +557,8 @@ struct Load : public ExprNode<Load>, public LoadStoreAddrMnger {
 
   Type type() const override;
 
+  void convert_int32_to_int64() override;
+
   static const IrNodeTy _node_type_ = IrNodeTy::Load;
 };
 
@@ -568,6 +577,8 @@ struct Store : public ExprNode<Store>, public LoadStoreAddrMnger {
   void Verify() const override;
 
   const std::string& name() const;
+
+  void replace(Expr old_op, Expr new_op);
 
   Type type() const override;
 

@@ -75,6 +75,11 @@ void BinomialInferMeta(const MetaTensor& count,
 
 void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
+void BoxClipInferMeta(const MetaTensor& input,
+                      const MetaTensor& im_info,
+                      MetaTensor* output,
+                      MetaConfig config = MetaConfig());
+
 void CholeskySolveInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             bool upper,
@@ -159,6 +164,21 @@ void CrossInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
                     int axis,
                     MetaTensor* out);
+
+void CrossEntropyInferMeta(const MetaTensor& x,
+                           const MetaTensor& label,
+                           bool soft_label,
+                           int ignore_index,
+                           MetaTensor* out,
+                           MetaConfig config = MetaConfig());
+
+void CrossEntropy2InferMeta(const MetaTensor& x,
+                            const MetaTensor& label,
+                            int ignore_index,
+                            MetaTensor* out,
+                            MetaTensor* x_shape,
+                            MetaTensor* match_x,
+                            MetaConfig config = MetaConfig());
 
 void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
                                       const MetaTensor& label,
@@ -318,6 +338,11 @@ void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
                        const std::vector<int>& target_shape,
                        MetaTensor* out);
+
+void FakeDequantizeMaxAbsInferMeta(const MetaTensor& x,
+                                   const MetaTensor& scale,
+                                   float max_range,
+                                   MetaTensor* out);
 
 void FillDiagonalTensorInferMeta(const MetaTensor& x,
                                  const MetaTensor& y,
