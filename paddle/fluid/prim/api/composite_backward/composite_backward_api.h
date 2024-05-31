@@ -1127,11 +1127,13 @@ void prod_grad(const Tensor& x,
     } else {
       reduce_all = false;
     }
-    auto x_grad_tmp = Tensor();
-    auto out_tmp = Tensor();
+    auto out_grad_tmp = Tensor();
+    auto x_reshape = Tensor();
+    std::vector<int64_t> unchange_axis, change_axis, transpose_shape,
+        cumprod_shape;
+    std::vector<int> transpose_dim, origin_position;
     if (x_dim_size == 1) {
-      x_grad_tmp = out_grad.expand(IntArray(x_dim));
-      out_tmp = out.expand(IntArray(x_dim));
+      out_grad_tmp = out_grad.expand(IntArray(x_dim));
     } else {
       if (!keep_dim) {
         auto axis_ = std::vector<int64_t>();
@@ -1149,16 +1151,69 @@ void prod_grad(const Tensor& x,
         }
         auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
         auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
-        x_grad_tmp = out_grad_.expand(IntArray(x_dim));
-        auto out_ = reshape<T>(out, out_grad_shape);
-        out_tmp = out_.expand(IntArray(x_dim));
+        out_grad_tmp = out_grad_.expand(IntArray(x_dim));
       } else {
-        x_grad_tmp = out_grad.expand(IntArray(x_dim));
-        out_tmp = out.expand(IntArray(x_dim));
+        out_grad_tmp = out_grad.expand(IntArray(x_dim));
       }
     }
-    auto x_grad_res = x_grad_tmp * out_tmp * (1 / x);
-    set_output<T>(x_grad_res, x_grad);
+    auto axis_ = std::vector<int64_t>();
+    if (reduce_all) {
+      int64_t numel = 1;
+      for (int64_t i = 0; i < x_dim_size; i++) {
+        axis_.push_back(i);
+        numel *= x_dim[i];
+      }
+      cumprod_shape.push_back(numel);
+      x_reshape = reshape<T>(x, cumprod_shape);
+      auto left_cumprod = cumprod<T>(x_reshape, -1, true, false);
+      auto right_cumprod = cumprod<T>(x_reshape, -1, true, true);
+      auto x_grad_tmp = left_cumprod * right_cumprod;
+      auto x_grad_tmp2 = reshape<T>(x_grad_tmp, x.shape());
+      auto x_grad_res = x_grad_tmp2 * out_grad_tmp;
+      set_output<T>(x_grad_res, x_grad);
+    } else {
+      int64_t unchange_size = x_dim_size - axis_size;
+      int64_t unchange_index = 0;
+      for (int64_t i = 0; i < axis_size; i++) {
+        if (axis[i] < 0) {
+          axis_.push_back(axis[i] + x_dim_size);
+        } else {
+          axis_.push_back(axis[i]);
+        }
+      }
+      for (int64_t i = 0; i < x_dim_size; i++) {
+        auto it = find(axis_.begin(), axis_.end(), i);
+        if (it != axis_.end()) {
+          int64_t index = it - axis_.begin();
+          origin_position.push_back(static_cast<int>(unchange_size + index));
+        } else {
+          unchange_axis.push_back(i);
+          origin_position.push_back(static_cast<int>(unchange_index));
+          unchange_index += 1;
+        }
+      }
+      int64_t numel = 1;
+      for (int64_t i = 0; i < unchange_size; i++) {
+        transpose_shape.push_back(x_dim[unchange_axis[i]]);
+        cumprod_shape.push_back(x_dim[unchange_axis[i]]);
+        transpose_dim.push_back(static_cast<int>(unchange_axis[i]));
+      }
+      for (int64_t i = 0; i < axis_size; i++) {
+        transpose_shape.push_back(x_dim[axis_[i]]);
+        transpose_dim.push_back(static_cast<int>(axis_[i]));
+        numel *= x_dim[axis_[i]];
+      }
+      cumprod_shape.push_back(numel);
+      auto x_transpose = transpose<T>(x, transpose_dim);
+      x_reshape = reshape<T>(x_transpose, cumprod_shape);
+      auto left_cumprod = cumprod<T>(x_reshape, -1, true, false);
+      auto right_cumprod = cumprod<T>(x_reshape, -1, true, true);
+      auto x_grad_tmp = left_cumprod * right_cumprod;
+      auto x_grad_reshape = reshape<T>(x_grad_tmp, transpose_shape);
+      auto x_grad_tmp2 = transpose<T>(x_grad_reshape, origin_position);
+      auto x_grad_res = x_grad_tmp2 * out_grad_tmp;
+      set_output<T>(x_grad_res, x_grad);
+    }
   }
 }
 
