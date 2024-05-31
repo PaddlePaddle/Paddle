@@ -59,7 +59,7 @@ class MetaInfo:
         self.shape = shape
         self.dtype = dtype
         self.stop_gradient = stop_gradient
-        self.dynamic_axes = dynamic_axes
+        self.dynamic_axes = dynamic_axes or []
 
     @staticmethod
     def from_tensor(tensor, *, dynamic_axes: list[int] | None = None):
@@ -110,12 +110,9 @@ class MetaInfo:
         )
 
     def guard_str(self):
-        if self.dynamic_axes is not None:
-            shape: list[int | SymbolicInt] = [*self.shape]
-            for axis in self.dynamic_axes:
-                shape[axis] = SymbolicInt()
-        else:
-            shape = list(self.shape)
+        shape: list[int | SymbolicInt] = [*self.shape]
+        for axis in self.dynamic_axes:
+            shape[axis] = SymbolicInt()
         return f"({shape}, {self.dtype}, {self.stop_gradient})"
 
     def __repr__(self):
