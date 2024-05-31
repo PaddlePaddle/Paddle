@@ -57,8 +57,7 @@ void LSTMKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(cell);
 
   phi::funcs::LoDTensor2BatchFunctor<Context, T> to_batch;
-  auto& device_ctx = dev_ctx;
-  to_batch(device_ctx, input, batch_gate_new, true, is_reverse);
+  to_batch(dev_ctx, input, batch_gate_new, true, is_reverse);
 
   auto in_dims = input.dims();
   int frame_size = static_cast<int>(in_dims[1] / 4);
@@ -69,7 +68,7 @@ void LSTMKernel(const Context& dev_ctx,
     b.Resize({bias.numel(), 1});
     phi::DenseTensor gate_bias = b.Slice(0, 4 * frame_size);
     phi::funcs::RowwiseAdd<Context, T> add_bias;
-    add_bias(device_ctx, *batch_gate_new, gate_bias, batch_gate_new);
+    add_bias(dev_ctx, *batch_gate_new, gate_bias, batch_gate_new);
   }
 
   phi::funcs::LstmMetaValue<T> lstm_value;
@@ -94,8 +93,7 @@ void LSTMKernel(const Context& dev_ctx,
     // Since the batch computing for LSTM reorders the input sequence
     // according to their length. The initialized cell state also needs
     // to reorder.
-    ReorderInitState<Context, T>(
-        device_ctx, *cell_t0, order, &ordered_c0, true);
+    ReorderInitState<Context, T>(dev_ctx, *cell_t0, order, &ordered_c0, true);
     lstm_value.prev_state_value = ordered_c0.data<T>();
   }
 
@@ -234,11 +232,10 @@ void LSTMGradKernel(const Context& dev_ctx,
   auto* h0_g = h0_grad;
   auto* c0_g = c0_grad;
 
-  auto& device_ctx = dev_ctx;
   phi::funcs::SetConstant<Context, T> zero;
   if (weight_g) {
-    weight_g->mutable_data<T>(dev_ctx.GetPlace());
-    zero(device_ctx, weight_g, static_cast<T>(0.0));
+    dev_ctx.template Alloc<T>(weight_g);
+    zero(dev_ctx, weight_g, static_cast<T>(0.0));
   }
 
   // ordered_h0/c0 is the reordered hidden/cell initialization.
@@ -248,10 +245,11 @@ void LSTMGradKernel(const Context& dev_ctx,
   phi::Vector<size_t> order(batch_gate->lod()[2]);
 
   if (c0) {
-    ReorderInitState<Context, T>(device_ctx, *c0, order, &ordered_c0, true);
+    ReorderInitState<Context, T>(dev_ctx, *c0, order, &ordered_c0, true);
   }
   if (c0 && c0_g) {
-    ordered_c0_g.mutable_data<T>(c0_g->dims(), dev_ctx.GetPlace());
+    ordered_c0_g.Resize(c0_g->dims());
+    dev_ctx.template Alloc<T>(&ordered_c0_g);
   }
 
   auto in_dims = input->dims();
@@ -280,8 +278,8 @@ void LSTMGradKernel(const Context& dev_ctx,
   phi::funcs::LstmMetaGrad<T> lstm_grad;
 
   if (bias && bias_g) {
-    bias_g->mutable_data<T>(dev_ctx.GetPlace());
-    zero(device_ctx, bias_g, static_cast<T>(0.0));
+    dev_ctx.template Alloc<T>(bias_g);
+    zero(dev_ctx, bias_g, static_cast<T>(0.0));
   }
   if (bias && bias_g && use_peepholes) {
     T* bias_g_data = bias_g->data<T>();
@@ -300,22 +298,25 @@ void LSTMGradKernel(const Context& dev_ctx,
                                           const phi::DenseTensor& src,
                                           const phi::DDim& dims,
                                           phi::DenseTensor& dst) {
-    dst.mutable_data<T>(dims, ctx.GetPlace());
+    dst.Resize(dims);
+    ctx.template Alloc<T>(&dst);
     dst.set_lod(batch_gate->lod());
     to_batch(ctx, src, &dst, false);
   };
 
   phi::DenseTensor batch_hidden, batch_hidden_g, batch_cell;
-  ToBatch(device_ctx, *hidden_out, out_dims, batch_hidden);
-  ToBatch(device_ctx, *hidden_g, out_dims, batch_hidden_g);
-  ToBatch(device_ctx, *cell_out, out_dims, batch_cell);
+  ToBatch(dev_ctx, *hidden_out, out_dims, batch_hidden);
+  ToBatch(dev_ctx, *hidden_g, out_dims, batch_hidden_g);
+  ToBatch(dev_ctx, *cell_out, out_dims, batch_cell);
 
   phi::DenseTensor batch_cell_g, batch_gate_g;
-  batch_cell_g.mutable_data<T>(out_dims, dev_ctx.GetPlace());
+  batch_cell_g.Resize(out_dims);
+  dev_ctx.template Alloc<T>(&batch_cell_g);
   // TODO(qingqing) support the case output cell has gradient.
-  // to_batch(device_ctx, *cell_g, batch_cell_g, false);
-  zero(device_ctx, &batch_cell_g, static_cast<T>(0.0));
-  batch_gate_g.mutable_data<T>(batch_gate->dims(), dev_ctx.GetPlace());
+  // to_batch(dev_ctx, *cell_g, batch_cell_g, false);
+  zero(dev_ctx, &batch_cell_g, static_cast<T>(0.0));
+  batch_gate_g.Resize(batch_gate->dims());
+  dev_ctx.template Alloc<T>(&batch_gate_g);
   batch_gate_g.set_lod(batch_gate->lod());
 
   auto gate_act = phi::funcs::detail::GetActivationType(gate_activation);
@@ -324,7 +325,7 @@ void LSTMGradKernel(const Context& dev_ctx,
 
   auto batch_starts = batch_gate->lod()[0];
   size_t num_batch = batch_starts.size() - 1;
-  auto blas = phi::funcs::GetBlas<Context, T>(device_ctx);
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
   for (int n = static_cast<int>(num_batch) - 1; n >= 0; n--) {
     int bstart = static_cast<int>(batch_starts[n]);
     int bend = static_cast<int>(batch_starts[n + 1]);
@@ -360,7 +361,7 @@ void LSTMGradKernel(const Context& dev_ctx,
     lstm_grad.state_active_grad = nullptr;
     int cur_batch_size = bend - bstart;
     T cell_clip = 0.0;
-    phi::funcs::LstmUnitGradFunctor<Context, T>::compute(device_ctx,
+    phi::funcs::LstmUnitGradFunctor<Context, T>::compute(dev_ctx,
                                                          lstm_value,
                                                          lstm_grad,
                                                          frame_size,
@@ -394,7 +395,7 @@ void LSTMGradKernel(const Context& dev_ctx,
       }
     } else {
       if (h0 && weight_g) {
-        ReorderInitState<Context, T>(device_ctx, *h0, order, &ordered_h0, true);
+        ReorderInitState<Context, T>(dev_ctx, *h0, order, &ordered_h0, true);
         blas.MatMul(ordered_h0,
                     true,
                     gate_g,
@@ -404,7 +405,8 @@ void LSTMGradKernel(const Context& dev_ctx,
                     static_cast<T>(1.0));
       }
       if (h0 && h0_g) {
-        ordered_h0_g.mutable_data<T>(h0_g->dims(), dev_ctx.GetPlace());
+        ordered_h0_g.Resize(h0_g->dims());
+        dev_ctx.template Alloc<T>(&ordered_h0_g);
         blas.MatMul(gate_g,
                     false,
                     *weight,
@@ -419,8 +421,8 @@ void LSTMGradKernel(const Context& dev_ctx,
   phi::funcs::Batch2LoDTensorFunctor<Context, T> to_seq;
   if (in_g) {
     /* backward data */
-    in_g->mutable_data<T>(dev_ctx.GetPlace());
-    to_seq(device_ctx, batch_gate_g, in_g);
+    dev_ctx.template Alloc<T>(in_g);
+    to_seq(dev_ctx, batch_gate_g, in_g);
   }
   if (bias && bias_g) {
     /* backward bias */
@@ -428,14 +430,14 @@ void LSTMGradKernel(const Context& dev_ctx,
     b_g.Resize({bias_g->numel(), 1});
     phi::DenseTensor gate_bias_g = b_g.Slice(0, 4 * frame_size);
     phi::funcs::ColwiseSum<Context, T> col_sum;
-    col_sum(device_ctx, batch_gate_g, &gate_bias_g);
+    col_sum(dev_ctx, batch_gate_g, &gate_bias_g);
   }
 
   if (h0 && h0_g) {
-    ReorderInitState<Context, T>(device_ctx, ordered_h0_g, order, h0_g, false);
+    ReorderInitState<Context, T>(dev_ctx, ordered_h0_g, order, h0_g, false);
   }
   if (c0 && c0_g) {
-    ReorderInitState<Context, T>(device_ctx, ordered_c0_g, order, c0_g, false);
+    ReorderInitState<Context, T>(dev_ctx, ordered_c0_g, order, c0_g, false);
   }
 }
 }  // namespace phi
