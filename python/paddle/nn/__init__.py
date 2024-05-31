@@ -135,6 +135,7 @@ from .layer.pooling import (
     AvgPool3D,
     FractionalMaxPool2D,
     FractionalMaxPool3D,
+    LPPool2D,
     MaxPool1D,
     MaxPool2D,
     MaxPool3D,
@@ -300,4 +301,5 @@ __all__ = [
     'Unflatten',
     'FractionalMaxPool2D',
     'FractionalMaxPool3D',
+    'LPPool2D',
 ]

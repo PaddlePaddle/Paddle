@@ -154,7 +154,11 @@ def pool2D_forward_naive(
     data_format='NCHW',
     pool_type="max",
     padding_algorithm="EXPLICIT",
+    norm_type=0,
 ):
+    if norm_type == float("inf"):
+        pool_type = 'max'
+
     # update paddings
     def _get_padding_with_SAME(input_shape, pool_size, pool_stride):
         padding = []
@@ -273,6 +277,14 @@ def pool2D_forward_naive(
                     out[:, :, i, j] = np.sum(x_masked, axis=(2, 3)) / field_size
                 elif pool_type == 'max':
                     out[:, :, i, j] = np.max(x_masked, axis=(2, 3))
+                else:  # lp_pool2d
+                    if norm_type == 0:
+                        out[:, :, i, j] = 1
+                    else:
+                        out[:, :, i, j] = np.power(
+                            np.sum(np.power(x_masked, norm_type), axis=(2, 3)),
+                            1.0 / norm_type,
+                        )
             elif data_format == 'NHWC':
                 x_masked = x[:, in_h_start:in_h_end, in_w_start:in_w_end, :]
                 if pool_type == 'avg':
@@ -283,6 +295,14 @@ def pool2D_forward_naive(
                     out[:, i, j, :] = np.sum(x_masked, axis=(1, 2)) / field_size
                 elif pool_type == 'max':
                     out[:, i, j, :] = np.max(x_masked, axis=(1, 2))
+                else:  # lp_pool2d
+                    if norm_type == 0:
+                        out[:, i, j, :] = 1
+                    else:
+                        out[:, i, j, :] = np.power(
+                            np.sum(np.power(x_masked, norm_type), axis=(2, 3)),
+                            1.0 / norm_type,
+                        )
     return out
 
 

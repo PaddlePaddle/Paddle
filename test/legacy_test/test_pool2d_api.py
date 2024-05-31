@@ -27,7 +27,7 @@ from test_pool2d_op import (
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.nn.functional import avg_pool2d, max_pool2d
+from paddle.nn.functional import avg_pool2d, lp_pool2d, max_pool2d
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -371,6 +371,13 @@ class TestPool2D_API(unittest.TestCase):
             self.check_max_dygraph_padding_results(place)
             self.check_max_dygraph_ceilmode_results(place)
             self.check_max_dygraph_nhwc_results(place)
+            self.check_lp_dygraph_results(place)
+            self.check_lp_dygraph_stride_is_none(place)
+            self.check_lp_dygraph_ceilmode_results(place)
+            self.check_lp_dygraph_nhwc_results(place)
+            self.check_lp_dygraph_results_norm_type_is_zero(place)
+            self.check_lp_dygraph_results_norm_type_is_inf(place)
+            self.check_lp_dygraph_results_norm_type_is_negative_inf(place)
 
     @test_with_pir_api
     def test_pool2d_static(self):
@@ -379,6 +386,280 @@ class TestPool2D_API(unittest.TestCase):
             self.check_max_static_results(place)
             self.check_avg_static_results(place)
         paddle.disable_static()
+
+    def check_lp_static_results(self, place):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 32, 32], dtype="float32"
+            )
+            norm_type = 2
+            result = lp_pool2d(
+                input,
+                norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=True,
+            )
+
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            result_np = pool2D_forward_naive(
+                input_np,
+                ksize=[2, 2],
+                paddings=[0, 0],
+                strides=[2, 2],
+                ceil_mode=True,
+                norm_type=norm_type,
+                pool_type='lp',
+            )
+
+            exe = base.Executor(place)
+            fetches = exe.run(
+                feed={"input": input_np},
+                fetch_list=[result],
+            )
+            np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
+
+    def check_lp_dygraph_results(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = paddle.to_tensor(input_np)
+            norm_type = 2
+            result = lp_pool2d(
+                input,
+                norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=False,
+            )
+
+            result_np = pool2D_forward_naive(
+                input_np,
+                ksize=[2, 2],
+                paddings=[0, 0],
+                strides=[2, 2],
+                ceil_mode=False,
+                norm_type=norm_type,
+                pool_type='lp',
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            lp_pool2d_dg = paddle.nn.layer.LPPool2D(
+                norm_type=norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=False,
+            )
+            result = lp_pool2d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+    def check_lp_dygraph_results_norm_type_is_zero(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = paddle.to_tensor(input_np)
+            norm_type = 0
+            result = lp_pool2d(
+                input,
+                norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=False,
+            )
+
+            result_np = pool2D_forward_naive(
+                input_np,
+                ksize=[2, 2],
+                paddings=[0, 0],
+                strides=[2, 2],
+                ceil_mode=False,
+                norm_type=norm_type,
+                pool_type='lp',
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            lp_pool2d_dg = paddle.nn.layer.LPPool2D(
+                norm_type=norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=False,
+            )
+            result = lp_pool2d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+    def check_lp_dygraph_results_norm_type_is_inf(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = paddle.to_tensor(input_np)
+            norm_type = np.inf
+            result = lp_pool2d(
+                input,
+                norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=False,
+            )
+
+            result_np = pool2D_forward_naive(
+                input_np,
+                ksize=[2, 2],
+                paddings=[0, 0],
+                strides=[2, 2],
+                ceil_mode=False,
+                norm_type=norm_type,
+                pool_type='lp',
+            )
+
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            lp_pool2d_dg = paddle.nn.layer.LPPool2D(
+                norm_type=norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=False,
+            )
+            result = lp_pool2d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+    def check_lp_dygraph_results_norm_type_is_negative_inf(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = paddle.to_tensor(input_np)
+            norm_type = -np.inf
+            result = lp_pool2d(
+                input,
+                norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=False,
+            )
+
+            result_np = pool2D_forward_naive(
+                input_np,
+                ksize=[2, 2],
+                paddings=[0, 0],
+                strides=[2, 2],
+                ceil_mode=False,
+                norm_type=norm_type,
+                pool_type='lp',
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            lp_pool2d_dg = paddle.nn.layer.LPPool2D(
+                norm_type=norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=False,
+            )
+            result = lp_pool2d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+    def check_lp_dygraph_ceilmode_results(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = paddle.to_tensor(input_np)
+            norm_type = 2
+            result = lp_pool2d(
+                input,
+                norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=True,
+            )
+
+            result_np = pool2D_forward_naive(
+                input_np,
+                ksize=[2, 2],
+                paddings=[0, 0],
+                strides=[2, 2],
+                ceil_mode=True,
+                norm_type=norm_type,
+                pool_type='lp',
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            lp_pool2d_dg = paddle.nn.layer.LPPool2D(
+                norm_type=norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=True,
+            )
+            result = lp_pool2d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+    def check_lp_dygraph_nhwc_results(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = paddle.to_tensor(np.transpose(input_np, [0, 2, 3, 1]))
+            norm_type = 2
+            result = lp_pool2d(
+                input,
+                norm_type,
+                kernel_size=2,
+                stride=2,
+                ceil_mode=False,
+                data_format="NHWC",
+            )
+            result_np = pool2D_forward_naive(
+                input_np,
+                ksize=[2, 2],
+                paddings=[0, 0],
+                strides=[2, 2],
+                ceil_mode=False,
+                norm_type=norm_type,
+                pool_type='lp',
+            )
+            np.testing.assert_allclose(
+                np.transpose(result.numpy(), [0, 3, 1, 2]),
+                result_np,
+                rtol=1e-05,
+            )
+            lp_pool2d_dg = paddle.nn.layer.LPPool2D(
+                norm_type=norm_type,
+                kernel_size=2,
+                stride=[2, 2],
+                ceil_mode=False,
+                data_format="NHWC",
+            )
+            result = lp_pool2d_dg(input)
+            np.testing.assert_allclose(
+                np.transpose(result.numpy(), [0, 3, 1, 2]),
+                result_np,
+                rtol=1e-05,
+            )
+
+    def check_lp_dygraph_stride_is_none(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = paddle.to_tensor(input_np)
+            norm_type = 2
+            result = lp_pool2d(
+                input,
+                norm_type,
+                kernel_size=2,
+                stride=None,
+                ceil_mode=False,
+            )
+
+            result_np = pool2D_forward_naive(
+                input_np,
+                paddings=[0, 0],
+                ksize=[2, 2],
+                strides=[2, 2],
+                ceil_mode=False,
+                norm_type=norm_type,
+                pool_type='lp',
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            lp_pool2d_dg = paddle.nn.layer.LPPool2D(
+                norm_type=norm_type,
+                kernel_size=2,
+                stride=None,
+                ceil_mode=False,
+            )
+            result = lp_pool2d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
 
 class TestPool2DError_API(unittest.TestCase):
