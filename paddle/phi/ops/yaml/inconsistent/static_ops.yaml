@@ -508,16 +508,6 @@
   backward : maximum_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : memcpy
-  args : (Tensor x, int dst_place_type)
-  output : Tensor(out)
-  infer_meta:
-    func: UnchangedInferMeta
-    param: [x]
-  kernel:
-    func : memcpy
-    param: [x, dst_place_type]
-
 - op : min
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)
