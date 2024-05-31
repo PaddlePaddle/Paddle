@@ -66,9 +66,7 @@ register_unity_group(
   deformable_conv_op.cc
   deformable_conv_v1_op.cc
   deformable_psroi_pooling_op.cc
-  delete_var_op.cc
-  dequantize_op.cc
-  onednn/dequantize_onednn_op.cc)
+  delete_var_op.cc)
 register_unity_group(
   cc
   dequeue_op.cc
@@ -202,7 +200,6 @@ register_unity_group(
   cc
   push_dense_op.cc
   quantize_op.cc
-  onednn/quantize_onednn_op.cc
   queue_generator_op.cc
   range_op.cc
   rank_attention_op.cc
@@ -210,7 +207,6 @@ register_unity_group(
   recurrent_op.cc
   reorder_lod_tensor_by_rank_op.cc
   requantize_op.cc
-  onednn/requantize_onednn_op.cc
   reshape_op.cc
   reverse_op.cc)
 register_unity_group(
