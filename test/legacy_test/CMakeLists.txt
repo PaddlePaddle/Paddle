@@ -977,6 +977,7 @@ set(TEST_CINN_OPS
     test_full_like_op
     test_top_k_op
     test_top_k_v2_op
+    test_reshape_op
     test_triangular_solve_op
     test_split_op
     test_scatter_op

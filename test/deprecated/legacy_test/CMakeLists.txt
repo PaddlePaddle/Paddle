@@ -712,7 +712,6 @@ set(TEST_CINN_OPS
     test_reduce_op
     test_slice_op
     test_gather_nd_op
-    test_reshape_op
     test_scale_op
     test_layer_norm_op
     test_where_op
