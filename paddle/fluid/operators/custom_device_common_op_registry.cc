@@ -1366,7 +1366,10 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           float>,
       paddle::operators::CConcatOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          phi::dtype::float16>);
+          phi::dtype::float16>,
+      paddle::operators::CConcatOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          phi::dtype::bfloat16>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_split,
       device_type,
