@@ -70,8 +70,13 @@ void MultiStreamCompute(const AllocationPtr &first_data,
   EXPECT_GE(first_data->size(), N * sizeof(float));
 
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL(
-      (kernel), dim3(1), dim3(64), 0, ctx->stream(), (first_data->ptr()), N);
+  hipLaunchKernelGGL((kernel),
+                     dim3(1),
+                     dim3(64),
+                     0,
+                     ctx->stream(),
+                     reinterpret_cast<float *>(first_data->ptr()),
+                     N);
 #else
   kernel<<<1, 64, 0, ctx->stream()>>>(
       reinterpret_cast<float *>(first_data->ptr()), N);
@@ -81,8 +86,13 @@ void MultiStreamCompute(const AllocationPtr &first_data,
   // allocate and compute on same stream again
 
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL(
-      (kernel), dim3(1), dim3(64), 0, ctx->stream(), (second_data->ptr()), N);
+  hipLaunchKernelGGL((kernel),
+                     dim3(1),
+                     dim3(64),
+                     0,
+                     ctx->stream(),
+                     reinterpret_cast<float *>(second_data->ptr()),
+                     N);
 #else
   kernel<<<1, 64, 0, ctx->stream()>>>(
       reinterpret_cast<float *>(second_data->ptr()), N);
@@ -101,8 +111,13 @@ TEST(Malloc, GPUContextMultiStream) {
 
 // default stream
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL(
-      (kernel), dim3(1), dim3(64), 0, 0, (main_stream_alloc_ptr->ptr()), N);
+  hipLaunchKernelGGL((kernel),
+                     dim3(1),
+                     dim3(64),
+                     0,
+                     0,
+                     reinterpret_cast<float *>(main_stream_alloc_ptr->ptr()),
+                     N);
 #else
   kernel<<<1, 64>>>(reinterpret_cast<float *>(main_stream_alloc_ptr->ptr()), N);
 #endif
@@ -172,8 +187,13 @@ TEST(Malloc, GPUContextMultiThreadMultiStream) {
 
 // default stream
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL(
-      (kernel), dim3(1), dim3(64), 0, 0, (main_stream_alloc_ptr->ptr()), N);
+  hipLaunchKernelGGL((kernel),
+                     dim3(1),
+                     dim3(64),
+                     0,
+                     0,
+                     reinterpret_cast<float *>(main_stream_alloc_ptr->ptr()),
+                     N);
 #else
   kernel<<<1, 64>>>(reinterpret_cast<float *>(main_stream_alloc_ptr->ptr()), N);
 #endif
