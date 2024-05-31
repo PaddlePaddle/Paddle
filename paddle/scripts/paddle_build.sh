@@ -2839,7 +2839,7 @@ set +x
         rerun_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s"
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
-        if [ "$WITH_ROCM" == "OFF" ];then
+        if [ "$WITH_ROCM" != "ON" ];then
             cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt ${cfs_dir}/coverage/${AGILE_PULL_ID}/${AGILE_REVISION}/
         fi
         if [[ "$EXIT_CODE" != "0" ]]; then
