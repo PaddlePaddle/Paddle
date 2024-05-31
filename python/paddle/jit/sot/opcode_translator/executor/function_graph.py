@@ -410,23 +410,8 @@ class FunctionGraph:
         compiled_fn_name = f"__compiled_fn_{statement_ir.name}"
         # prepare function and inputs
         self.pycode_gen.gen_load_object(compiled_fn, compiled_fn_name)
-        for name in input_names:
-            found = False
-            for variable in self.input_variables:
-                if (
-                    isinstance(variable, (TensorVariable, SymbolicVariable))
-                    and variable.get_symbol().name == name
-                ):
-                    if isinstance(variable, SymbolicVariable):
-                        self.pycode_gen.gen_load_object(
-                            paddle.to_tensor, "___paddle_to_tensor"
-                        )
-                    variable.tracker.gen_instructions(self.pycode_gen)
-                    found = True
-                    if isinstance(variable, SymbolicVariable):
-                        self.pycode_gen.gen_call_function(1)
-                    break
-            assert found, f"can't find input {name} in SIR."
+        # TODO(SigureMo): set input_specs back
+        input_specs = self.prepare_inputs(input_names)
         # Pack all args into a tuple, because we don't support *args now.
         self.pycode_gen.gen_build_tuple(count=len(input_names))
         # call the compiled_fn
@@ -725,6 +710,30 @@ class FunctionGraph:
         if variable in self._global_guarded_variables:
             self._global_guarded_variables.remove(variable)
 
+    def prepare_inputs(
+        self, input_names: list[str]
+    ) -> list[paddle.static.InputSpec]:
+        input_specs: list[paddle.static.InputSpec] = []
+        for name in input_names:
+            found = False
+            for variable in self.input_variables:
+                if (
+                    isinstance(variable, (TensorVariable, SymbolicVariable))
+                    and variable.get_symbol().name == name
+                ):
+                    input_specs.append(variable.meta.to_input_spec())
+                    if isinstance(variable, SymbolicVariable):
+                        self.pycode_gen.gen_load_object(
+                            paddle.to_tensor, "___paddle_to_tensor"
+                        )
+                    variable.tracker.gen_instructions(self.pycode_gen)
+                    found = True
+                    if isinstance(variable, SymbolicVariable):
+                        self.pycode_gen.gen_call_function(1)
+                    break
+            assert found, f"can't find input {name} in SIR."
+        return input_specs
+
     def _find_tensor_outputs(
         self, outputs: list[VariableBase]
     ) -> OrderedSet[TensorVariable | SymbolicVariable]:
@@ -813,7 +822,7 @@ class FunctionGraph:
                 add_to_global_guarded_vars=False,
             )
 
-    def restore_inplace_tensor(self, variables: list[VariableBase]):
+    def restore_inplace_tensor(self, variables: OrderedSet[VariableBase]):
         for var in variables:
             if not var.tracker.is_traceable():
                 continue

@@ -76,6 +76,7 @@ class MetaInfo:
         )
         assert isinstance(dtype, expected_dtype_class)
 
+        # TODO(@xiongkun) remove after pir become default state.
         # We always use float32 in simulation if AMP is enabled.
         current_amp_state = amp_state()
         if (
@@ -85,7 +86,12 @@ class MetaInfo:
             and current_amp_state["dtype"] == "float16"
         ):
             dtype = paddle.float32
-        # TODO(@xiongkun) remove after pir become default state.
+        dynamic_axes = dynamic_axes or []
+        dynamic_axes = [
+            i
+            for i in range(len(tensor.shape))
+            if tensor.shape[i] == -1 or i in dynamic_axes
+        ]
         return MetaInfo(
             list(tensor.shape),
             dtype,
@@ -105,8 +111,12 @@ class MetaInfo:
         return -1 in self.shape
 
     def to_input_spec(self):
+        shape = [
+            dim if i not in self.dynamic_axes else None
+            for i, dim in enumerate(self.shape)
+        ]
         return paddle.static.InputSpec(
-            self.shape, dtype=self.dtype, stop_gradient=self.stop_gradient
+            shape, dtype=self.dtype, stop_gradient=self.stop_gradient
         )
 
     def guard_str(self):
@@ -187,20 +197,25 @@ class VariableCreator(metaclass=Singleton):
         else:
             return self.legacy_programs[1]
 
-    def create_var(self, meta):
+    def create_var(self, meta: MetaInfo):
+        shape = [
+            dim if i not in meta.dynamic_axes else -1
+            for i, dim in enumerate(meta.shape)
+        ]
+
         if paddle.framework.use_pir_api():
             with paddle.static.program_guard(
                 self.main_program, self.startup_program
             ):
                 var = paddle.static.input.data(
                     name=self.gen_name(meta),
-                    shape=meta.shape,
+                    shape=shape,
                     dtype=convert_dtype(meta.dtype),
                 )
                 var.stop_gradient = meta.stop_gradient
         else:
             var = self.main_program.global_block().create_var(
-                shape=meta.shape,
+                shape=shape,
                 dtype=meta.dtype,
                 stop_gradient=meta.stop_gradient,
             )
@@ -252,9 +267,11 @@ def convert_meta_to_input_spec(args):
         pred=lambda x: isinstance(x, MetaInfo),
         true_fn=lambda x: x.to_input_spec(),
         # TODO(xiongkun): can x be tensor ?
-        false_fn=lambda x: paddle.static.InputSpec.from_tensor(x)
-        if isinstance(x, paddle.Tensor)
-        else x,
+        false_fn=lambda x: (
+            paddle.static.InputSpec.from_tensor(x)
+            if isinstance(x, paddle.Tensor)
+            else x
+        ),
     )
 
 
