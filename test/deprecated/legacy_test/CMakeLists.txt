@@ -794,11 +794,7 @@ set_tests_properties(
     ENVIRONMENT
     "FLAGS_cudnn_deterministic=1;FLAGS_cudnn_batchnorm_spatial_persistent=1;FLAGS_conv_workspace_size_limit=1000"
 )
-set_tests_properties(test_matmul_op_static_build PROPERTIES TIMEOUT 120)
-set_tests_properties(test_matmul_v2_op_static_build PROPERTIES TIMEOUT 120)
 set_tests_properties(test_layer_norm_op_static_build PROPERTIES TIMEOUT 1500)
-set_tests_properties(test_paddle_save_load_binary_static_build
-                     PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
 py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
