@@ -319,7 +319,7 @@ def standard_gamma(x, name=None):
         return out
 
 
-def log_normal(mean=0.0, std=1.0, shape=None, name=None):
+def log_normal(mean=1.0, std=2.0, shape=None, name=None):
     r"""
     Returns a Tensor filled with random values sampled from a Log Normal
     Distribution, with ``mean``, ``std``.
@@ -357,14 +357,14 @@ def log_normal(mean=0.0, std=1.0, shape=None, name=None):
             >>> out1 = paddle.log_normal(shape=[2, 3])
             >>> print(out1)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1.21473932, 1.14089751, 3.08024359],
-             [0.55368012, 0.38605762, 0.87845188]])
+            [[4.01107359 , 3.53824377 , 25.79078865],
+             [0.83332109 , 0.40513405 , 2.09763741 ]])
 
             >>> mean_tensor = paddle.to_tensor([1.0, 2.0, 3.0])
             >>> out2 = paddle.log_normal(mean=mean_tensor)
             >>> print(out2)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [3.47927284 , 2.06846571 , 25.28232765])
+            [4.45330524 , 0.57903880 , 31.82369995])
 
             >>> std_tensor = paddle.to_tensor([1.0, 2.0, 3.0])
             >>> out3 = paddle.log_normal(mean=mean_tensor, std=std_tensor)
@@ -377,7 +377,7 @@ def log_normal(mean=0.0, std=1.0, shape=None, name=None):
 
 
 @dygraph_only
-def log_normal_(x, mean=0.0, std=1.0, name=None):
+def log_normal_(x, mean=1.0, std=2.0, name=None):
     r"""
     This inplace version of api ``log_normal``, which returns a Tensor filled
     with random values sampled from a log normal distribution. The output Tensor will
@@ -408,10 +408,10 @@ def log_normal_(x, mean=0.0, std=1.0, name=None):
             >>> x = paddle.randn([3, 4])
             >>> x.log_normal_()
             >>> print(x)
-            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[1.21209085, 0.20787357, 2.11401296, 1.32104528],
-             [0.36690104, 0.18622048, 3.42114997, 0.47696608],
-             [0.70031291, 2.12887430, 3.66162086, 0.78982347]])
+            Tensor(shape=[3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[2.53081441  , 0.07765250  , 3.24374723  , 0.94220436  ],
+             [0.54021752  , 0.16748440  , 150.20184326, 26.98592186 ],
+             [50.28606033 , 2.45613456  , 1.24211478  , 0.86626947  ]])
     """
     return normal_(x, mean=mean, std=std).exp_()
 
