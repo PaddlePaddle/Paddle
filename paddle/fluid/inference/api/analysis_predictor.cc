@@ -808,14 +808,12 @@ bool AnalysisPredictor::PreparePirProgram() {
           fetches_.resize(idx + 1);
           std::string fetch_name =
               op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
-          VLOG(3) << "fetch_name: " << fetch_name;
           idx2fetches_[idx] = fetch_name;
         }
       } else if (op->isa<paddle::dialect::DataOp>() ||
                  op->isa<paddle::dialect::FeedOp>()) {
         std::string data_name =
             op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
-        VLOG(3) << "data_name: " << data_name;
         idx2feeds_[feed_idx] = data_name;
         feed_idx++;
       }
@@ -861,11 +859,6 @@ bool AnalysisPredictor::PreparePirProgram() {
         var = sub_scope_->Var(param_names[i]);
         auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
         tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
-        VLOG(1) << "Resized tensor for variable: " << param_names[i]
-                << " to shape: "
-                << common::make_ddim(pir::GetShapeFromValue(value));
-        VLOG(1) << "Found variable: " << param_names[i]
-                << " with type: " << var->Type();
         phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
         const phi::DeviceContext *dev_ctx = nullptr;
         dev_ctx = pool.Get(place_);
@@ -873,6 +866,7 @@ bool AnalysisPredictor::PreparePirProgram() {
         phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
         dev_ctx->Alloc(tensor_temp, type_data);
       } else {
+        VLOG(1) << "Variable already exists: " << param_names[i];
         VLOG(1) << "Variable already exists: " << param_names[i];
       }
       auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
