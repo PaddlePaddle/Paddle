@@ -173,7 +173,8 @@ endif()
 set(PHI_DUMMY_FILE ${CMAKE_CURRENT_BINARY_DIR}/phi_dummy.cpp)
 if(MSVC)
   set(PHI_DUMMY_FILE_CONTENT
-      "__declspec(dllexport) int phi_dummy_placeholder_function(){ return 0; }")
+      "__declspec(dllexport) int phi_dummy_placeholder_function(){ return 0\\; }"
+  )
 else()
   set(PHI_DUMMY_FILE_CONTENT "")
 endif()
