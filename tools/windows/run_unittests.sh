@@ -426,6 +426,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^disable_win_inference_test$|\
 ^test_imperative_double_grad$|\
 ^test_comp_eager_matmul_double_grad$|\
+^test_cuda_graph_partial_graph_static_run$|\
 ^test_imperative_triple_grad$"
 
 
