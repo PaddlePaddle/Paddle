@@ -3636,7 +3636,10 @@ function build_pr_and_develop() {
     fi
     mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    # Temporarily save some scripts from PR branch
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
+    cp ${PADDLE_ROOT}/tools/print_signatures.py /tmp
+
     generate_api_spec "$1" "PR"
     mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
