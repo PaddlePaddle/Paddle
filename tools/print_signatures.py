@@ -254,7 +254,7 @@ class ApiSpecFormatter:
             return "ArgSpec()"
         inner_str = ", ".join(
             f"{field}={getattr(spec, field)!r}"
-            for field in inspect.getfullargspec.__annotations__
+            for field in spec._fields
             if field in self.show_fields
         )
         return f"ArgSpec({inner_str})"
