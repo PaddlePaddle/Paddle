@@ -832,7 +832,6 @@ tensor_method_func = [
     'masked_scatter_',
     "combinations",
     'signbit',
-    'log_normal',
     'log_normal_',
 ]
 

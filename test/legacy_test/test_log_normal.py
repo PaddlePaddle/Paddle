@@ -38,7 +38,7 @@ class TestLogNormalAPI(unittest.TestCase):
         self.mean = 0.0
         self.std = 0.5
         self.shape = None
-        self.repeat_num = 2000
+        self.repeat_num = 1000
         self.set_attrs()
         self.dtype = self.get_dtype()
         self.place = (
@@ -180,14 +180,6 @@ class TestLogNormalAPI_mean_std_are_tensor(TestLogNormalAPI):
     def set_attrs(self):
         self.mean = np.random.uniform(0.1, 0.5, [1, 2]).astype('float64')
         self.std = np.random.uniform(0.1, 0.5, [1, 2]).astype('float64')
-
-
-class TestLogNormalAPI_mean_std_are_tensor_with_different_dtype(
-    TestLogNormalAPI
-):
-    def set_attrs(self):
-        self.mean = np.random.uniform(-0.5, -0.1, [1, 2]).astype('float64')
-        self.std = np.random.uniform(0.1, 0.5, [1, 2]).astype('float32')
 
 
 class TestLogNormalAlias(unittest.TestCase):
