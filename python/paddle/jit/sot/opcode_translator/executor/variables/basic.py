@@ -53,6 +53,7 @@ from ..tracker import (
     GetAttrTracker,
     GetIterTracker,
     GlobalTracker,
+    SymbolicOperationTracker,
     Tracker,
 )
 from .base import VariableBase, VariableFactory
@@ -618,15 +619,34 @@ class SymbolicVariable(VariableBase):
             self.meta = MetaInfo(
                 [], paddle.int64, True, self.var_name, False, None, None
             )
+        self.need_guard_value = False
 
     def get_py_value(self, allow_tensor=False):
+        self.need_guard_value = True
+        if self.value is None:
+            assert isinstance(
+                self.tracker, SymbolicOperationTracker
+            ), f"self.value is None, but tracker is not SymbolicOperationTracker. tracker: {self.tracker}"
+            inputs = self.tracker.inputs
+            assert len(inputs) >= 1
+            other_inputs_value = [x.get_py_value() for x in inputs[1:]]
+            self.value = getattr(
+                inputs[0].get_py_value(), self.tracker.method_name
+            )(*other_inputs_value)
         return self.value
 
     def get_py_type(self):
-        return int
+        # TODO(zrr1999): not need to use value to get type
+        return super().get_py_type()
 
     def get_symbol(self) -> Symbol:
         return Symbol(self.var_name)
+
+    def __bool__(self) -> bool:
+        return bool(self.get_py_value())
+
+    def bool(self):
+        return ConstantVariable(bool(self), self.graph, DummyTracker([self]))
 
     @property
     def out_var_name(self):
@@ -651,10 +671,11 @@ class SymbolicVariable(VariableBase):
         symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
         symbolic_input.setdefault(self.value, 0)
         symbolic_input[self.value] += 1
-
+        if self.need_guard_value:
+            return super().make_stringify_guard()
         return [
             StringifyExpression(
-                "isinstance({}, int)",
+                f"id(type({{}})) == {id(self.get_py_type())}",
                 [frame_value_tracer],
                 union_free_vars(frame_value_tracer.free_vars),
             )

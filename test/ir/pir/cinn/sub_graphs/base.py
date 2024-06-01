@@ -28,9 +28,18 @@ class TestBase(unittest.TestCase):
         self.with_prim = True
         self.with_cinn = True
         self.atol = 1e-6
+        self.train_atol = 1e-6
         self.with_precision_compare = True
+        self.with_train = False  # 本个pr中默认为false，下个增量pr中改为默认true
         # override customized settting
         self.init()
+        if self.inputs:
+            self.set_input_grad()
+
+    def set_input_grad(self):
+        if self.with_train:
+            for i in range(len(self.inputs)):
+                self.inputs[i].stop_gradient = False
 
     def init(self):
         pass
@@ -39,23 +48,26 @@ class TestBase(unittest.TestCase):
         pass
 
     def train(self, net, to_static, with_prim=False, with_cinn=False):
+        paddle.seed(123)
         if to_static:
             paddle.set_flags({'FLAGS_prim_all': with_prim})
             if with_cinn:
                 build_strategy = paddle.static.BuildStrategy()
                 build_strategy.build_cinn_pass = True
                 net = paddle.jit.to_static(
-                    net,
+                    net(),
                     build_strategy=build_strategy,
                     full_graph=True,
                     input_spec=self.input_specs,
                 )
             else:
                 net = paddle.jit.to_static(
-                    net, full_graph=True, input_spec=self.input_specs
+                    net(), full_graph=True, input_spec=self.input_specs
                 )
-        paddle.seed(123)
-        net.eval()
+        if self.with_train:
+            net.train()
+        else:
+            net.eval()
         outs = net(*self.inputs)
         return outs
 
@@ -76,4 +88,21 @@ class TestBase(unittest.TestCase):
             ):
                 np.testing.assert_allclose(
                     st.numpy(), cinn.numpy(), atol=self.atol
+                )
+        if self.with_train:
+            st_loss = st_out.mean()
+            st_loss.backward()
+            st_grad = []
+            for i in range(len(self.inputs)):
+                if self.inputs[i].dtype != paddle.int64:
+                    st_grad.append(self.inputs[i].grad.numpy().copy())
+            cinn_loss = cinn_out.mean()
+            cinn_loss.backward()
+            cinn_grad = []
+            for i in range(len(self.inputs)):
+                if self.inputs[i].dtype != paddle.int64:
+                    cinn_grad.append(self.inputs[i].grad.numpy().copy())
+            for i in range(len(cinn_grad)):
+                np.testing.assert_allclose(
+                    st_grad[i], cinn_grad[i], atol=self.train_atol
                 )

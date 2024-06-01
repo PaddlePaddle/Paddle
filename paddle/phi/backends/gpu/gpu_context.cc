@@ -753,12 +753,12 @@ struct GPUContext::Impl {
   bool owned_{false};
   bool stream_owned_{false};
   Place place_;
-  int compute_capability_;
-  int runtime_version_;
-  int driver_version_;
-  int multi_process_;
-  int max_threads_per_mp_;
-  int max_threads_per_block_;
+  int compute_capability_ = 0;
+  int runtime_version_ = 0;
+  int driver_version_ = 0;
+  int multi_process_ = 0;
+  int max_threads_per_mp_ = 0;
+  int max_threads_per_block_ = 0;
   std::array<unsigned int, 3> max_grid_dim_size_;
 
   CUDAStream* stream_{nullptr};

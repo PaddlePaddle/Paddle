@@ -14,6 +14,7 @@
 
 import paddle
 
+from .process_group import get_process_group
 from .reshard_funcs.base_reshard_func import (
     choose_reshard_func,
 )
@@ -88,38 +89,6 @@ def apply_partition_pass(program):
                 var.replace_all_uses_with(reshard_var)
                 reshard_var.get_defining_op().operand(0).set_source(var)
 
-    # pruning op and value not belong to cur rank
-    cur_rank = paddle.distributed.get_rank()
-    for op in program.global_block().ops[::-1]:
-        if op.name() in partition_skip_op_list:
-            continue
-        if cur_rank not in op.dist_attr.process_mesh.process_ids:
-            op.erase()
-        else:
-            # set the operand as null when it is not belong to cur rank
-            if (
-                op.name() == 'dist_op.reshard'
-                and cur_rank
-                not in op.operand(0)
-                .source()
-                .dist_attr()
-                .process_mesh.process_ids
-            ):
-                op.operand(0).set_source(None)
-
-    # merge pd.data ops for
-    lr_ops = []
-    for op in program.global_block().ops[::-1]:
-        if op.name() == 'pd_op.data' and "learning_rate" in op.attrs()["name"]:
-            lr_ops.append(op)
-
-    if len(lr_ops) > 1:
-        lr_value = lr_ops[0].result(0)
-        for op in lr_ops[1:]:
-            lr = op.result(0)
-            lr.replace_all_uses_with(lr_value)
-            op.erase()
-
 
 def apply_reshard_pass(program):
     for op in program.global_block().ops:
@@ -150,6 +119,54 @@ def apply_reshard_pass(program):
             if out_value is not None:
                 op.result(0).replace_all_uses_with(out_value)
             if op.result(0).use_empty():
+                op.erase()
+
+
+# pruning op and value not belong to cur rank
+def remove_other_rank_op_pass(dist_program):
+    cur_rank = paddle.distributed.get_rank()
+    for op in dist_program.global_block().ops[::-1]:
+        if op.name() in partition_skip_op_list:
+            can_delete = True
+            for val in op.results():
+                if not val.use_empty():
+                    can_delete = False
+            if can_delete:
+                op.erase()
+            continue
+        if cur_rank not in op.dist_attr.process_mesh.process_ids:
+            op.erase()
+        elif op.name() == "dist_op.reshard":
+            assert op.result(
+                0
+            ).use_empty(), f'There should not have useful dist.reshard op in remove_other_rank_op_pass. but find : {op}'
+            op.erase()
+
+    # merge pd.data ops for
+    lr_ops = []
+    for op in dist_program.global_block().ops[::-1]:
+        if op.name() == 'pd_op.data' and "learning_rate" in op.attrs()["name"]:
+            lr_ops.append(op)
+
+    if len(lr_ops) > 1:
+        lr_value = lr_ops[0].result(0)
+        for op in lr_ops[1:]:
+            lr = op.result(0)
+            lr.replace_all_uses_with(lr_value)
+            op.erase()
+
+
+# Note: this is the pass in the dense program
+comm_ops = ["pd_op.c_allreduce_sum_", "pd_op.c_allgather"]
+
+
+def remove_unuseful_comm_op_pass(program):
+    for op in program.global_block().ops:
+        if op.name() in comm_ops:
+            ring_id = op.int_attr("ring_id")
+            process_group = get_process_group(ring_id)
+            if process_group.nranks == 1:
+                op.result(0).replace_all_uses_with(op.operand_source(0))
                 op.erase()
 
 
