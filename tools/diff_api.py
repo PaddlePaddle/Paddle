@@ -126,7 +126,7 @@ class ApiSpec:
     document: Document
 
     def format(self, skip_fields: list[str]):
-        return f"{self.name} ({self.signature.format(skip_fields)}) ({self.document.format(skip_fields)})"
+        return f"{self.name} ({self.signature.format(skip_fields)}, {self.document.format(skip_fields)})"
 
     def __repr__(self):
         return self.format([])
