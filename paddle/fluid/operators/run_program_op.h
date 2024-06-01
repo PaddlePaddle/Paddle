@@ -219,7 +219,9 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto &capture_mode = ctx.Attr<std::string>("cuda_graph_capture_mode");
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto is_test = ctx.Attr<bool>("is_test");
+#endif
     if (capture_mode.empty()) {
       // ComputeImpl(ctx, is_test, false);
       return;
