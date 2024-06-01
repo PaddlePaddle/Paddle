@@ -1197,7 +1197,7 @@ function generate_api_spec() {
     fi
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
-    python ${PADDLE_ROOT}/tools/print_signatures.py --show-fields="args,varargs,varkw,defaults,kwonlyargs,kwonlydefaults,document" paddle > ${spec_path}.api
+    python ${PADDLE_ROOT}/tools/print_signatures.py --show-fields="args,varargs,varkw,defaults,kwonlyargs,kwonlydefaults" paddle > ${spec_path}.api
     python ${PADDLE_ROOT}/tools/print_signatures.py --show-fields="annotations" paddle > ${spec_path}.annotations
     python ${PADDLE_ROOT}/tools/print_signatures.py --show-fields="document" paddle > ${spec_path}.doc
 
