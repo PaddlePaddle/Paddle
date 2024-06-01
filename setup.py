@@ -1323,7 +1323,7 @@ def get_package_data_and_package_dir():
                         raise Exception(
                             'patch '
                             + env_dict.get("FLUID_CORE_NAME")
-                            + '.%s failed' % ext_suffix,
+                            + '%s failed' % ext_suffix,
                             'command: %s' % command,
                         )
     # A list of extensions that specify c++ -written modules that compile source code into dynamically linked libraries
