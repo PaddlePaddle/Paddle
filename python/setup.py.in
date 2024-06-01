@@ -689,10 +689,10 @@ if('${WITH_SHARED_PHI}' == 'ON'):
     package_data['paddle.libs'] += [('libphi' if os.name != 'nt' else 'phi') + ext_name]
     shutil.copy('${PHI_LIB}', libs_path)
     package_data['paddle.libs'] += [('libphi_main' if os.name != 'nt' else 'phi_main') + ext_name]
-    shutil.copy('${PHI_MAIN_LIB}', libs_path)
+    shutil.copy('${PHI_CORE_LIB}', libs_path)
     if('${WTIH_GPU}' == 'ON' or '${WTIH_ROCM}' == 'ON'):
         package_data['paddle.libs'] += [('libphi_kernel_gpu' if os.name != 'nt' else 'phi_kernel_gpu') + ext_name]
-        shutil.copy('${PHI_KERNEL_GPU_LIB}', libs_path)
+        shutil.copy('${PHI_GPU_LIB}', libs_path)
 
 if('${WITH_SHARED_IR}' == 'ON'):
     package_data['paddle.libs'] += [('libpir' if os.name != 'nt' else 'pir') + ext_name]
@@ -845,9 +845,9 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
-                commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_MAIN_NAME}")
+                commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
                 if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
-                    commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_KERNEL_GPU_NAME}")
+                    commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_GPU_NAME}")
             if('${WITH_SHARED_IR}' == 'ON'):
                 # change rpath of pir.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
@@ -856,9 +856,9 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
-                commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_MAIN_NAME}")
+                commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
                 if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
-                    commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_KERNEL_GPU_NAME}")
+                    commands.append("patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_GPU_NAME}")
 
             if('${WITH_SHARED_IR}' == 'ON'):
                 # change rpath of pir.ext for loading 3rd party lib
