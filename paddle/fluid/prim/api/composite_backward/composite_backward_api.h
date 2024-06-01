@@ -744,11 +744,9 @@ void slice_grad(const Tensor& input,
       paddings.push_back(offsets[i]);
       paddings.push_back((in_dims[i] - out_dims[i]) - offsets[i]);
     }
-
     Tensor reshape_out_grad;
     if (out_grad.shape().size() == 0) {
-      reshape_out_grad =
-          full<T>(common::vectorize(input.dims()), 0, input.dtype());
+      reshape_out_grad = full<T>({1}, 1, input.dtype());
     } else {
       reshape_out_grad = out_grad;
     }
