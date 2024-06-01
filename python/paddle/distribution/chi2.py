@@ -55,10 +55,9 @@ class Chi2(Gamma):
             [self.df] = self._to_tensor(df)
             self.dtype = paddle.get_default_dtype()
 
-        self.df = self.df * 0.5
         self.rate = paddle.full_like(self.df, 0.5)
 
         if not paddle.all(self.df > 0):
             raise ValueError("The arg of `df` must be positive.")
 
-        super().__init__(self.df, self.rate)
+        super().__init__(self.df * 0.5, self.rate)
