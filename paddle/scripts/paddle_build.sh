@@ -1181,19 +1181,20 @@ function generate_api_spec() {
         echo "Not supported $2"
         exit 1
     fi
+    if [ "$spec_kind" == "DEV" ]; then
+        REQUIREMENTS_PATH=/tmp/requirements.txt
+        PRINT_SIGNATURES_SCRIPT_PATH=/tmp/print_signatures.py
+    else
+        REQUIREMENTS_PATH=${PADDLE_ROOT}/python/requirements.txt
+        PRINT_SIGNATURES_SCRIPT_PATH=${PADDLE_ROOT}/tools/print_signatures.py
+    fi
 
     mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
     cd ${PADDLE_ROOT}/build/.check_api_workspace
     virtualenv -p `which python` .${spec_kind}_env
     source .${spec_kind}_env/bin/activate
+    pip install -r $REQUIREMENTS_PATH
 
-    if [ "$spec_kind" == "DEV" ]; then
-        pip install -r /tmp/requirements.txt
-        PRINT_SIGNATURES_SCRIPT_PATH=/tmp/print_signatures.py
-    else
-        pip install -r ${PADDLE_ROOT}/python/requirements.txt
-        PRINT_SIGNATURES_SCRIPT_PATH=${PADDLE_ROOT}/tools/print_signatures.py
-    fi
     if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
         pip install ${PADDLE_ROOT}/build/python/dist/*whl
     elif [ -d "${PADDLE_ROOT}/dist/" ];then

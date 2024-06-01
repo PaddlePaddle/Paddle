@@ -25,7 +25,7 @@ API_FILES=(
     "tools/print_signatures.py"
     "tools/sampcd_processor.py"
     "tools/check_pr_approval.py"
-	"tools/checkout_api_compatible.py"
+    "tools/checkout_api_compatible.py"
 )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
