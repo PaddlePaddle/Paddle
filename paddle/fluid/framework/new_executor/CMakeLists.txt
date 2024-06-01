@@ -33,10 +33,6 @@ set(standalone_executor_deps
 
 if(WITH_PYTHON)
   set(standalone_executor_deps ${standalone_executor_deps} python pybind)
-  cc_library(
-    register_hook_instruction
-    SRCS ${CMAKE_CURRENT_SOURCE_DIR}/instruction/register_hook_instruction.cc
-    DEPS op_registry python pybind)
 endif()
 
 if(WITH_CINN)

@@ -12,6 +12,10 @@ set(EAGER_GENERATOR_DEPS
     imperative_profiler
     imperative_flag)
 
+if(WITH_PYTHON)
+  list(APPEND EAGER_GENERATOR_DEPS python)
+endif()
+
 if(WITH_CINN)
   list(REMOVE_ITEM EAGER_GENERATOR_DEPS imperative_flag)
 endif()

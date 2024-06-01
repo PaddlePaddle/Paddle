@@ -44,3 +44,7 @@ endif()
 if(WIN32)
   target_link_libraries(paddle_inference_c_shared shlwapi.lib)
 endif()
+
+if(WITH_PYTHON)
+  target_link_libraries(paddle_inference_c_shared python pybind)
+endif()
