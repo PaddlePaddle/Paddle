@@ -215,7 +215,7 @@ def inference(
                 # we need register some triton ops.
                 for root, dirs, files in os.walk(save_model_dir):
                     for file in files:
-                        if file.endswith(".so"):
+                        if file.endswith("_package.so"):
                             so_full_path = os.path.join(root, file)
                             paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_full_path)
 
