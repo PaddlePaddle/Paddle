@@ -1130,7 +1130,10 @@ function check_whl_size() {
 
 function generate_upstream_develop_api_spec() {
     set -x
+    # Temporarily save some scripts from PR branch
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
+    cp ${PADDLE_ROOT}/tools/print_signatures.py /tmp
+
     mkdir -p ${PADDLE_ROOT}/build/pr_whl && mv ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl/
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
@@ -1186,8 +1189,10 @@ function generate_api_spec() {
 
     if [ "$spec_kind" == "DEV" ]; then
         pip install -r /tmp/requirements.txt
+        PRINT_SIGNATURES_SCRIPT_PATH=/tmp/print_signatures.py
     else
         pip install -r ${PADDLE_ROOT}/python/requirements.txt
+        PRINT_SIGNATURES_SCRIPT_PATH=${PADDLE_ROOT}/tools/print_signatures.py
     fi
     if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
         pip install ${PADDLE_ROOT}/build/python/dist/*whl
@@ -1196,10 +1201,10 @@ function generate_api_spec() {
         mkdir ${PADDLE_ROOT}/build/python/dist/ && mv  ${PADDLE_ROOT}/dist/*whl  ${PADDLE_ROOT}/build/python/dist/
     fi
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
-    python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
-    python ${PADDLE_ROOT}/tools/print_signatures.py --show-fields="args,varargs,varkw,defaults,kwonlyargs,kwonlydefaults" paddle > ${spec_path}.api
-    python ${PADDLE_ROOT}/tools/print_signatures.py --show-fields="annotations" paddle > ${spec_path}.annotations
-    python ${PADDLE_ROOT}/tools/print_signatures.py --show-fields="document" paddle > ${spec_path}.doc
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} paddle > $spec_path
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} --show-fields="args,varargs,varkw,defaults,kwonlyargs,kwonlydefaults" paddle > ${spec_path}.api
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} --show-fields="annotations" paddle > ${spec_path}.annotations
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} --show-fields="document" paddle > ${spec_path}.doc
 
     # used to log op_register data_type
     op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_TYPE_${spec_kind}.spec
@@ -4416,10 +4421,6 @@ function main() {
         build ${parallel_number}
         run_brpc_test
         ;;
-      assert_api)
-        generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
-        assert_api_spec_approvals
-        ;;
       test_inference)
         PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
         if [ "${WITH_PYTHON}" == "OFF" ] ; then
@@ -4448,9 +4449,6 @@ function main() {
       test_train)
         gen_fluid_lib ${parallel_number}
         test_fluid_lib_train
-        ;;
-      assert_api_approvals)
-        assert_api_spec_approvals
         ;;
       assert_file_approvals)
         assert_file_diff_approvals
