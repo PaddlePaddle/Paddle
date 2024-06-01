@@ -1197,6 +1197,9 @@ function generate_api_spec() {
     fi
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
+    python ${PADDLE_ROOT}/tools/print_signatures.py --show-fields="args,varargs,varkw,defaults,kwonlyargs,kwonlydefaults,document" paddle > ${spec_path}.api
+    python ${PADDLE_ROOT}/tools/print_signatures.py --show-fields="annotations" paddle > ${spec_path}.annotations
+    python ${PADDLE_ROOT}/tools/print_signatures.py --show-fields="document" paddle > ${spec_path}.doc
 
     # used to log op_register data_type
     op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_TYPE_${spec_kind}.spec
@@ -1213,9 +1216,6 @@ function generate_api_spec() {
     # print api and the md5 of source code of the api.
     api_source_md5_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.source.md5
     python ${PADDLE_ROOT}/tools/count_api_without_core_ops.py -p paddle > $api_source_md5_path
-
-    awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
-    awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
 
     python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
         ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
