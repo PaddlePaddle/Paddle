@@ -39,17 +39,11 @@ function add_failed(){
 
 
 api_params_diff=`python ${PADDLE_ROOT}/tools/check_api_compatible.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec`
-api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py --skip-fields="annotations" ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api`
-api_annotation_diff=`python ${PADDLE_ROOT}/tools/diff_api.py --skip-fields="args,varargs,varkw,defaults,kwonlyargs,kwonlydefaults,document" ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api`
+api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api`
 if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
     echo_line="You must have one RD (XiaoguangHu01, jeff41404, lanxianghit or qingqing01) approval for API change.\n"
 
     check_approval 1 XiaoguangHu01 jeff41404 lanxianghit qingqing01
-fi
-
-if [ "$api_annotation_diff" != "" ]; then
-    echo_line="You must have one member of Typing group (SigureMo, megemini, zrr1999, luotao1) approval for API annotation change.\n"
-    check_approval 1 SigureMo, megemini, zrr1999, luotao1
 fi
 
 api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec ${BRANCH} ${PADDLE_ROOT}`
