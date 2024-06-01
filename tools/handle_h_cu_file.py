@@ -83,7 +83,7 @@ def add_simple_cxx_test(rootPath):
         os.system(
             f'echo "TEST(interface_test, type) {{ }}\n" >> {simple_test_path}'
         )
-        os.system(f'echo "cc_test(" >> {variant_test_cmakeflie_path}')
+        os.system('echo "cc_test(" >> %s' % variant_test_cmakeflie_path)
         os.system(
             f'echo "  simple_precision_test" >> {variant_test_cmakeflie_path}'
         )
