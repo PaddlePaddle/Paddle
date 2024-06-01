@@ -40,38 +40,38 @@ def group_case_for_parallel(rootPath):
             )
 
     # get nightly tests
-    nightly_tests_file = open('%s/tools/nightly_case' % rootPath, 'r')
+    nightly_tests_file = open(f'{rootPath}/tools/nightly_case', 'r')
     nightly_tests = nightly_tests_file.read().strip().split('\n')
     nightly_tests_file.close()
 
     parallel_case_file_list = [
-        '%s/tools/single_card_tests_mem0' % rootPath,
-        '%s/tools/single_card_tests' % rootPath,
-        '%s/tools/multiple_card_tests_mem0' % rootPath,
-        '%s/tools/multiple_card_tests' % rootPath,
-        '%s/tools/exclusive_card_tests_mem0' % rootPath,
-        '%s/tools/exclusive_card_tests' % rootPath,
+        f'{rootPath}/tools/single_card_tests_mem0',
+        f'{rootPath}/tools/single_card_tests',
+        f'{rootPath}/tools/multiple_card_tests_mem0',
+        f'{rootPath}/tools/multiple_card_tests',
+        f'{rootPath}/tools/exclusive_card_tests_mem0',
+        f'{rootPath}/tools/exclusive_card_tests',
     ]
-    case_file = '%s/build/ut_list' % rootPath
+    case_file = f'{rootPath}/build/ut_list'
     if os.path.exists(case_file):
         f = open(case_file, 'r')
         all_need_run_cases = f.read().strip().split('\n')
         if len(all_need_run_cases) == 1 and all_need_run_cases[0] == '':
             f.close()
-            case_file = '%s/build/all_ut_list' % rootPath
+            case_file = f'{rootPath}/build/all_ut_list'
             f = open(case_file, 'r')
             all_need_run_cases = f.read().strip().split('\n')
     else:
-        case_file = '%s/build/all_ut_list' % rootPath
+        case_file = f'{rootPath}/build/all_ut_list'
         f = open(case_file, 'r')
         all_need_run_cases = f.read().strip().split('\n')
 
-    print("case_file: %s" % case_file)
+    print(f"case_file: {case_file}")
 
     all_group_case = []
     for filename in parallel_case_file_list:
         fi = open(filename, 'r')
-        new_f = open('%s_new' % filename, 'w')
+        new_f = open(f'{filename}_new', 'w')
         lines = fi.readlines()
         new_case_file_list = []
         for line in lines:
@@ -88,7 +88,7 @@ def group_case_for_parallel(rootPath):
 
         for line in new_case_file_list:
             cases = '$|^'.join(case for case in line)
-            cases = '^job$|^%s$' % cases
+            cases = f'^job$|^{cases}$'
             new_f.write(cases + '\n')
         fi.close()
         new_f.close()
@@ -98,10 +98,10 @@ def group_case_for_parallel(rootPath):
     if len(all_need_run_cases) != 0:
         for case in all_need_run_cases:
             if case not in nightly_tests:
-                cases = cases + '$|^%s' % case
-        cases = '%s$' % cases
+                cases = cases + f'$|^{case}'
+        cases = f'{cases}$'
 
-    new_f = open('%s/tools/no_parallel_case_file' % rootPath, 'w')
+    new_f = open(f'{rootPath}/tools/no_parallel_case_file', 'w')
     new_f.write(cases + '\n')
     new_f.close()
     f.close()
