@@ -89,6 +89,7 @@ from .flash_attention import (
     flash_attention_with_sparse_mask,
     flash_attn_qkvpacked,
     flash_attn_varlen_qkvpacked,
+    reduce_attn_scores,
     scaled_dot_product_attention,
     sdp_kernel,  # noqa: F401
 )
@@ -283,5 +284,6 @@ __all__ = [
     'flash_attention_with_sparse_mask',
     'flash_attn_qkvpacked',
     'flash_attn_varlen_qkvpacked',
+    'reduce_attn_scores',
     'group_norm',
 ]

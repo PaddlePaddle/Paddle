@@ -227,6 +227,7 @@ def flash_attention(
 
     if sdp_func_name == "flash_attn":
         if in_dynamic_or_pir_mode():
+            print("fucking reach here")
             (result_attention, result_softmax, _, _) = _C_ops.flash_attn(
                 query,
                 key,
@@ -982,3 +983,11 @@ def flash_attention_with_sparse_mask(
         return outputs[0]
     else:
         return outputs
+
+
+def reduce_attn_scores(query, key, softmax_lse, return_softmax=False):
+    # umiswing: what should I assert here?
+    (reduced_scores, softmax) = _C_ops.reduce_attn_scores(
+        query, key, softmax_lse, return_softmax
+    )
+    return reduced_scores, softmax if return_softmax else None

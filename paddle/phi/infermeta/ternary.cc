@@ -462,6 +462,29 @@ void FlashAttnQKVPackedInferMeta(const MetaTensor& qkv,
   }
 }
 
+void ReduceAttnScoresInferMeta(const MetaTensor& q,
+                               const MetaTensor& k,
+                               MetaTensor* reduced_scores,
+                               MetaTensor* softmax) {
+  const auto& dims = q.dims();
+  PADDLE_ENFORCE(dims.size() == 4,
+                 phi::errors::InvalidArgument(
+                     "reduce_attn_scores receive input with dim "
+                     "[batch_size, seq_len, num_heads, head_dim]"));
+  int batch_size = q.dims()[0];
+  int num_heads = q.dims()[2];
+  int seqlen_q = q.dims()[1];
+  int seqlen_k = k.dims()[1];
+  if (reduced_scores) {
+    reduced_scores->set_dtype(phi::DataType::FLOAT32);
+    reduced_scores->set_dims({batch_size, num_heads, 1, seqlen_k});
+  }
+  if (softmax) {
+    softmax->set_dtype(q.dtype());
+    softmax->set_dims({batch_size, num_heads, seqlen_q, seqlen_k});
+  }
+}
+
 void ArangeTensorInferMeta(const MetaTensor& start,
                            const MetaTensor& end,
                            const MetaTensor& step,
