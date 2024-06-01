@@ -103,8 +103,7 @@ if(WITH_DGC)
   list(APPEND PHI_DEPS dgc)
 endif()
 
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/phi_dummy.cpp "")
-set(PHI_MAIN_SRCS
+set(PHI_SRCS
     ${common_srcs}
     ${api_srcs}
     ${core_srcs}
@@ -113,7 +112,7 @@ set(PHI_MAIN_SRCS
     ${infermeta_srcs}
     ${capi_srcs})
 
-set(PHI_KERNEL_GPU_SRCS ${kernels_gpu_srcs})
+set(PHI_GPU_SRCS ${kernels_gpu_srcs})
 
 if(WITH_SHARED_PHI)
   set(PHI_BUILD_TYPE
@@ -143,61 +142,47 @@ if(WITH_GPU)
     PROPERTIES COMPILE_FLAGS
                "-DCUDA_REAL_ARCHS=\"${NVCC_FLAGS_EXTRA_real_archs}\"")
   nv_library(
-    phi_main ${PHI_BUILD_TYPE}
-    SRCS ${PHI_MAIN_SRCS}
+    phi ${PHI_BUILD_TYPE}
+    SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
   nv_library(
-    phi_kernel_gpu ${PHI_BUILD_TYPE}
-    SRCS ${PHI_KERNEL_GPU_SRCS}
-    DEPS ${PHI_DEPS} phi_main)
-  nv_library(
-    phi ${PHI_BUILD_TYPE}
-    SRCS ${CMAKE_CURRENT_BINARY_DIR}/phi_dummy.cpp
-    DEPS phi_main phi_kernel_gpu)
+    phi_gpu ${PHI_BUILD_TYPE}
+    SRCS ${PHI_GPU_SRCS}
+    DEPS ${PHI_DEPS} phi)
 
 elseif(WITH_ROCM)
   hip_library(
-    phi_main ${PHI_BUILD_TYPE}
-    SRCS ${PHI_MAIN_SRCS}
+    phi ${PHI_BUILD_TYPE}
+    SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
   hip_library(
-    phi_kernel_gpu ${PHI_BUILD_TYPE}
-    SRCS ${PHI_KERNEL_GPU_SRCS}
-    DEPS ${PHI_DEPS} phi_main)
-  hip_library(
-    phi ${PHI_BUILD_TYPE}
-    SRCS ${CMAKE_CURRENT_BINARY_DIR}/phi_dummy.cpp
-    DEPS phi_main phi_kernel_gpu)
+    phi_gpu ${PHI_BUILD_TYPE}
+    SRCS ${PHI_GPU_SRCS}
+    DEPS ${PHI_DEPS} phi)
 
 elseif(WITH_XPU_KP)
   xpu_library(
-    phi_main ${PHI_BUILD_TYPE}
-    SRCS ${PHI_MAIN_SRCS}
-    DEPS ${PHI_DEPS})
-  xpu_library(
     phi ${PHI_BUILD_TYPE}
-    SRCS ${CMAKE_CURRENT_BINARY_DIR}/phi_dummy.cpp
-    DEPS phi_main)
+    SRCS ${PHI_SRCS}
+    DEPS ${PHI_DEPS})
+
 else()
   cc_library(
-    phi_main ${PHI_BUILD_TYPE}
-    SRCS ${PHI_MAIN_SRCS}
-    DEPS ${PHI_DEPS})
-  cc_library(
     phi ${PHI_BUILD_TYPE}
-    SRCS ${CMAKE_CURRENT_BINARY_DIR}/phi_dummy.cpp
-    DEPS phi_main)
+    SRCS ${PHI_SRCS}
+    DEPS ${PHI_DEPS})
+
 endif()
 
-target_compile_definitions(phi_main PUBLIC PHI_INNER)
+target_compile_definitions(phi PUBLIC PHI_INNER)
 
 if(WIN32)
-  target_link_libraries(phi_main shlwapi.lib)
+  target_link_libraries(phi shlwapi.lib)
 endif()
 
 if(WIN32)
   if(WITH_SHARED_PHI)
-    set_property(TARGET phi_main PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    set_property(TARGET phi PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
     set(PHI_NAME
         phi.dll
         CACHE INTERNAL "" FORCE)
@@ -232,20 +217,15 @@ set(PHI_LIB
     "${CMAKE_CURRENT_BINARY_DIR}/${PHI_NAME}"
     CACHE FILEPATH "PHI Dummy Library" FORCE)
 
-string(REPLACE "phi" "phi_main" PHI_MAIN_NAME ${PHI_NAME})
-set(PHI_MAIN_LIB
-    "${CMAKE_CURRENT_BINARY_DIR}/${PHI_MAIN_NAME}"
-    CACHE FILEPATH "PHI Main Library" FORCE)
-
 if(WITH_GPU OR WITH_ROCM)
-  string(REPLACE "phi" "phi_kernel_gpu" PHI_KERNEL_GPU_NAME ${PHI_NAME})
+  string(REPLACE "phi" "phi_gpu" PHI_GPU_NAME ${PHI_NAME})
   set(PHI_KERNEL_GPU_LIB
-      "${CMAKE_CURRENT_BINARY_DIR}/${PHI_KERNEL_GPU_NAME}"
+      "${CMAKE_CURRENT_BINARY_DIR}/${PHI_GPU_NAME}"
       CACHE FILEPATH "PHI Kernel GPU Library" FORCE)
 endif()
 
 if(MKL_FOUND AND WITH_ONEMKL)
-  target_include_directories(phi_main PRIVATE ${MKL_INCLUDE})
+  target_include_directories(phi PRIVATE ${MKL_INCLUDE})
 endif()
 
 add_dependencies(phi extern_lapack)
