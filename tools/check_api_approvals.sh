@@ -139,7 +139,7 @@ if [ -n "${echo_list}" ];then
   echo "**************************************************************"
 
   # L40 L48 L62 has fetch the result out, but there are splitted.
-  if [[ "${api_spec_diff}" != "" || "${api_annotation_diff}" != ""]] ; then
+  if [ "${api_spec_diff}" != "" -o "${api_annotation_diff}" != "" ] ; then
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec
   fi
   if [ "${api_params_diff}" != "" ] ; then
