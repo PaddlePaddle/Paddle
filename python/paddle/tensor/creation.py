@@ -719,7 +719,7 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
     return output
 
 
-def to_tensor(data, dtype=None, place=None, stop_gradient=True, new_arg=0):
+def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     r"""
     Constructs a ``paddle.Tensor`` from ``data`` ,
     which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor.
