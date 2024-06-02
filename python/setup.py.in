@@ -183,7 +183,7 @@ def show():
             rc: 0
             cuda: '10.2'
             cudnn: '7.6.5'
-            xpu: '20230114'
+            xpu_xre: '4.32.0.1'
             xpu_xccl: '1.0.7'
             xpu_xhpc: '20231208'
             cinn: False
@@ -195,7 +195,7 @@ def show():
             commit: cfa357e984bfd2ffa16820e354020529df434f7d
             cuda: '10.2'
             cudnn: '7.6.5'
-            xpu: '20230114'
+            xpu: '4.32.0.1'
             xpu_xccl: '1.0.7'
             xpu_xhpc: '20231208'
             cinn: False
@@ -805,7 +805,7 @@ if '${WITH_XPU}' == 'ON':
     for xpu_cuda_lib_file in xpu_cuda_lib_list:
         shutil.copy(xpu_cuda_lib_file, libs_path)
         package_data['paddle.libs'] += [os.path.basename(xpu_cuda_lib_file)]
-        
+
     shutil.copy('${XPU_XBLAS_LIB}', libs_path)
     package_data['paddle.libs'] += ['${XPU_XBLAS_LIB_NAME}']
     shutil.copy('${XPU_XFA_LIB}', libs_path)

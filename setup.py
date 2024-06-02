@@ -480,7 +480,7 @@ def show():
 
         cudnn: the cudnn version of package. It will return `False` if CPU version paddle package is installed
 
-        xpu: the xpu version of package. It will return `False` if non-XPU version paddle package is installed
+        xpu_xre: the xpu xre version of package. It will return `False` if non-XPU version paddle package is installed
 
         xpu_xccl: the xpu xccl version of package. It will return `False` if non-XPU version paddle package is installed
 
@@ -503,7 +503,7 @@ def show():
             rc: 0
             cuda: '10.2'
             cudnn: '7.6.5'
-            xpu: '20230114'
+            xpu_xre: '4.32.0.1'
             xpu_xccl: '1.0.7'
             xpu_xhpc: '20231208'
             cinn: False
@@ -515,7 +515,7 @@ def show():
             commit: cfa357e984bfd2ffa16820e354020529df434f7d
             cuda: '10.2'
             cudnn: '7.6.5'
-            xpu: '20230114'
+            xpu_xre: '4.32.0.1'
             xpu_xccl: '1.0.7'
             xpu_xhpc: '20231208'
             cinn: False
@@ -1205,6 +1205,11 @@ def get_package_data_and_package_dir():
             shutil.copy(xpu_cuda_lib_file, libs_path)
             package_data['paddle.libs'] += [os.path.basename(xpu_cuda_lib_file)]
 
+        shutil.copy(env_dict.get("XPU_XBLAS_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XBLAS_LIB_NAME")]
+        shutil.copy(env_dict.get("XPU_XFA_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
+
     if env_dict.get("WITH_XPU_BKCL") == 'ON':
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_BKCL_LIB_NAME")]
@@ -1216,12 +1221,6 @@ def get_package_data_and_package_dir():
     if env_dict.get("WITH_XPTI") == 'ON':
         shutil.copy(env_dict.get("XPU_XPTI_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_XPTI_LIB_NAME")]
-
-    if env_dict.get("WITH_XPU_XHPC") == 'ON':
-        shutil.copy(env_dict.get("XPU_XBLAS_LIB"), libs_path)
-        package_data['paddle.libs'] += [env_dict.get("XPU_XBLAS_LIB_NAME")]
-        shutil.copy(env_dict.get("XPU_XFA_LIB"), libs_path)
-        package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
 
     # remove unused paddle/libs/__init__.py
     if os.path.isfile(libs_path + '/__init__.py'):
