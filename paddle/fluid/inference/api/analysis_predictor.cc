@@ -1073,9 +1073,10 @@ bool AnalysisPredictor::PrepareProgram(
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
 
   std::string model_path = config_.prog_file();
+  LOG(INFO) << "model_path:" << model_path;
   PADDLE_ENFORCE_EQ(
       model_path.empty(),
-      false,
+      true,
       common::errors::InvalidArgument("Please set correct model path!"));
   if (config_.new_ir_enabled()) {
     load_pir_model_ =
