@@ -465,9 +465,12 @@ bool AnalysisPredictor::Init(
   if (!CreateExecutor()) {
     return false;
   }
-  pir_filename_ = config_.prog_file();
-  extension_ = pir_filename_.substr(pir_filename_.find_last_of(".") + 1);
-  if (config_.new_ir_enabled() && extension_ == "json") {
+
+  std::string model_path = config_.prog_file();
+
+  load_pir_model_ =
+      model_path.substr(model_path.find_last_of(".") + 1) == "json";
+  if (load_pir_model_) {
     if (!PreparePirProgram()) {
       return false;
     }
@@ -478,7 +481,7 @@ bool AnalysisPredictor::Init(
   }
 
   // Get the feed_target_names and fetch_target_names
-  if (!config_.new_ir_enabled() && extension_ != "json") {
+  if (!load_pir_model_) {
     PrepareFeedFetch();
   }
 
@@ -784,245 +787,241 @@ bool AnalysisPredictor::PrepareScope(
   return true;
 }
 
-bool AnalysisPredictor::PreparePirProgram() {
-  if (!config_.prog_file().empty()) {
-    uint64_t pir_version = 1;
-    pir::IrContext *ctx = pir::IrContext::Instance();
-
-    if (!pir_program_) {
-      pir_program_ = std::make_shared<pir::Program>(ctx);
+void AnalysisPredictor::OptimizeInferencePirProgram() {
+  auto ir_printing_conditions = [this](::pir::Pass *pass,
+                                       ::pir::Operation *op) {
+    if (this->config_.ir_debug_passes_.empty()) {
+      return true;
     }
-
-    pir::ReadModule(pir_filename_, pir_program_.get(), pir_version);
-
-    const std::string params_file = config_.params_file();
-    pir::Block *block = pir_program_->block();
-
-    std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
-    int feed_idx = 0;
-    for (auto op : block->ops()) {
-      // put pd-op.data and pd-op.fetch into idx2feeds and idx2feeds
-      if (op->isa<paddle::dialect::FetchOp>()) {
-        int idx = op->attribute("col").dyn_cast<pir::Int32Attribute>().data();
-        if (fetches_.size() <= static_cast<size_t>(idx)) {
-          fetches_.resize(idx + 1);
-          std::string fetch_name =
-              op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
-          idx2fetches_[idx] = fetch_name;
-        }
-      } else if (op->isa<paddle::dialect::DataOp>() ||
-                 op->isa<paddle::dialect::FeedOp>()) {
-        std::string data_name =
-            op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
-        idx2feeds_[feed_idx] = data_name;
-        feed_idx++;
-      }
-      for (auto var : op->results()) {
-        std::string var_name;
-        auto is_persistable =
-            var.attribute<pir::BoolAttribute>(kAttrIsPersistable);
-        if (is_persistable && is_persistable.data()) {
-          if (auto param_op = var.defining_op<::pir::ParameterOp>()) {
-            var_name = param_op.param_name();
-            param_name_var_pairs.emplace_back(var_name, var);
-          } else if (auto data_op =
-                         var.defining_op<paddle::dialect::DataOp>()) {
-            var_name = data_op.attribute<pir::StrAttribute>("name").AsString();
-            param_name_var_pairs.emplace_back(var_name, var);
-          }
-        }
-      }
-    }
-
-    std::sort(param_name_var_pairs.begin(),
-              param_name_var_pairs.end(),
-              [](const std::pair<std::string, pir::Value> &a,
-                 const std::pair<std::string, pir::Value> &b) {
-                return a.first < b.first;
-              });
-
-    std::vector<std::string> param_names;
-    std::vector<pir::Value> vars;
-    for (const auto &pair : param_name_var_pairs) {
-      param_names.emplace_back(pair.first);
-      vars.emplace_back(pair.second);
-    }
-
-    size_t len = vars.size();
-    std::vector<phi::DenseTensor *> tensor_out;
-    for (size_t i = 0; i < len; ++i) {
-      auto *var = sub_scope_->FindVar(param_names[i]);
-      pir::Value value = vars[i];
-      if (var == nullptr) {
-        VLOG(1) << "Variable not found, creating new variable: "
-                << param_names[i];
-        var = sub_scope_->Var(param_names[i]);
-        auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
-        tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
-        phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-        const phi::DeviceContext *dev_ctx = nullptr;
-        dev_ctx = pool.Get(place_);
-        pir::Type type_ = pir::GetDataTypeFromValue(value);
-        phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
-        dev_ctx->Alloc(tensor_temp, type_data);
-      } else {
-        VLOG(1) << "Variable already exists: " << param_names[i];
-      }
-      auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
-      tensor_out.push_back(tensor_temp);
-    }
-
-    CreateFeedFetchVar(sub_scope_);
-    pir::LoadCombineFunction(
-        params_file, param_names, &tensor_out, false, place_);
-
-    auto ir_printing_conditions = [this](::pir::Pass *pass,
-                                         ::pir::Operation *op) {
-      if (this->config_.ir_debug_passes_.empty()) {
-        return true;
-      }
-      return std::find(this->config_.ir_debug_passes_.begin(),
-                       this->config_.ir_debug_passes_.end(),
-                       pass->name()) != this->config_.ir_debug_passes_.end();
-    };
+    return std::find(this->config_.ir_debug_passes_.begin(),
+                     this->config_.ir_debug_passes_.end(),
+                     pass->name()) != this->config_.ir_debug_passes_.end();
+  };
 
 #ifdef PADDLE_WITH_CINN
-    auto CreatePassMgr = [&] {
-      pir::IrContext *ctx = pir::IrContext::Instance();
-      ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-      ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-      auto pass_manager =
-          std::make_shared<::pir::PassManager>(::pir::IrContext::Instance(), 2);
-      if (!config_.glog_info_disabled()) {
-        pass_manager->EnablePrintStatistics();
-      }
-      if (config_.ir_debug_) {
-        pass_manager->EnableIRPrinting(
-            std::make_unique<pir::PassManager::IRPrinterOption>(
-                ir_printing_conditions, ir_printing_conditions));
-      }
-      return pass_manager;
-    };
-
-    if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
-      VLOG(4) << "[Prim] Decomp program in predictor begin.";
-      DecompProgram decomp_object(pir_program_.get());
-      decomp_object.decomp_program();
-
-      cinn::dialect::ir::CheckInferSymbolicIfNeed(pir_program_.get(),
-                                                  CreatePassMgr);
+  auto CreatePassMgr = [&] {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+    ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+    auto pass_manager =
+        std::make_shared<::pir::PassManager>(::pir::IrContext::Instance(), 2);
+    if (!config_.glog_info_disabled()) {
+      pass_manager->EnablePrintStatistics();
     }
-
-    if (config_.cinn_enabled()) {
-      VLOG(4) << "[CINN] Begin ApplyCinnPass";
-      cinn::dialect::ir::ApplyCinnPass(pir_program_.get(), CreatePassMgr);
+    if (config_.ir_debug_) {
+      pass_manager->EnableIRPrinting(
+          std::make_unique<pir::PassManager::IRPrinterOption>(
+              ir_printing_conditions, ir_printing_conditions));
     }
+    return pass_manager;
+  };
+
+  if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
+    VLOG(4) << "[Prim] Decomp program in predictor begin.";
+    DecompProgram decomp_object(pir_program_.get());
+    decomp_object.decomp_program();
+
+    cinn::dialect::ir::CheckInferSymbolicIfNeed(pir_program_.get(),
+                                                CreatePassMgr);
+  }
+
+  if (config_.cinn_enabled()) {
+    VLOG(4) << "[CINN] Begin ApplyCinnPass";
+    cinn::dialect::ir::ApplyCinnPass(pir_program_.get(), CreatePassMgr);
+  }
 #endif
 
-    // Apply some optimization passes required by the inference
-    ::pir::PassManager pass_pm(::pir::IrContext::Instance(),
-                               config_.pm_opt_level_);
-    if (!config_.custom_passes_.empty()) {
-      for (const auto &custom_pass : config_.custom_passes_) {
-        pass_pm.AddPass(pir::PassRegistry::Instance().Get(custom_pass));
+  // Apply some optimization passes required by the inference
+  ::pir::PassManager pass_pm(::pir::IrContext::Instance(),
+                             config_.pm_opt_level_);
+  if (!config_.custom_passes_.empty()) {
+    for (const auto &custom_pass : config_.custom_passes_) {
+      pass_pm.AddPass(pir::PassRegistry::Instance().Get(custom_pass));
+    }
+  }
+  if (config_.use_gpu()) {
+    // gpu
+    if (!config_.custom_pass_only_) {
+      for (const auto &gpu_pass : kPirGpuPasses) {
+        pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
       }
     }
-    if (config_.use_gpu()) {
-      // gpu
-      if (!config_.custom_pass_only_) {
-        for (const auto &gpu_pass : kPirGpuPasses) {
-          pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
-        }
-      }
 
 #ifdef PADDLE_WITH_XPU
-    } else if (config_.use_xpu()) {
-      // xpu
-      if (!config_.custom_pass_only_) {
-        for (const auto &xpu_pass : kPirXpuPasses) {
-          pass_pm.AddPass(
-              std::move(pir::PassRegistry::Instance().Get(xpu_pass)));
-        }
+  } else if (config_.use_xpu()) {
+    // xpu
+    if (!config_.custom_pass_only_) {
+      for (const auto &xpu_pass : kPirXpuPasses) {
+        pass_pm.AddPass(std::move(pir::PassRegistry::Instance().Get(xpu_pass)));
       }
+    }
 #endif
 
 #ifdef PADDLE_WITH_DNNL
-    } else if (config_.mkldnn_enabled()) {
-      // mkldnn
-      if (!config_.custom_pass_only_) {
-        for (const auto &mkldnn_pass : kPirMkldnnPasses) {
-          pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
-        }
+  } else if (config_.mkldnn_enabled()) {
+    // mkldnn
+    if (!config_.custom_pass_only_) {
+      for (const auto &mkldnn_pass : kPirMkldnnPasses) {
+        pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
       }
+    }
 #endif
-    } else {
-      // cpu
-      if (!config_.custom_pass_only_) {
-        for (const auto &cpu_pass : kPirCpuPasses) {
-          pass_pm.AddPass(pir::PassRegistry::Instance().Get(cpu_pass));
+  } else {
+    // cpu
+    if (!config_.custom_pass_only_) {
+      for (const auto &cpu_pass : kPirCpuPasses) {
+        pass_pm.AddPass(pir::PassRegistry::Instance().Get(cpu_pass));
+      }
+    }
+  }
+
+  if (!config_.glog_info_disabled()) {
+    pass_pm.EnablePrintStatistics();
+  }
+  if (config_.ir_debug_) {
+    pass_pm.EnableIRPrinting(
+        std::make_unique<pir::PassManager::IRPrinterOption>(
+            ir_printing_conditions, ir_printing_conditions));
+  }
+  pass_pm.Run(pir_program_.get());
+
+  // Apply some basic passes required by the framework
+  ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
+                                   config_.pm_opt_level_);
+
+  auto params_sync_among_devices_pass =
+      ::pir::CreateParamsSyncAmongDevicesPass();
+  params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
+  params_sync_among_devices_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
+                                              sub_scope_);
+  basic_pass_pm.AddPass(std::move(params_sync_among_devices_pass));
+  auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
+  constant_folding_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
+  constant_folding_pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
+  basic_pass_pm.AddPass(std::move(constant_folding_pass));
+  auto dead_code_elimination_pass = ::pir::CreateDeadCodeEliminationPass();
+  dead_code_elimination_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
+                                          sub_scope_);
+  basic_pass_pm.AddPass(std::move(dead_code_elimination_pass));
+  basic_pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+  LOG(INFO) << "CreateReplaceFetchWithShadowOutputPass()执行完毕";
+  if (!config_.glog_info_disabled()) {
+    basic_pass_pm.EnablePrintStatistics();
+  }
+  if (config_.ir_debug_) {
+    basic_pass_pm.EnableIRPrinting(
+        std::make_unique<pir::PassManager::IRPrinterOption>(
+            ir_printing_conditions, ir_printing_conditions));
+  }
+  basic_pass_pm.Run(pir_program_.get());
+  LOG(INFO) << "basis_pass_pm.Run";
+  //----------------------------------------------------------------------------------------------//
+  std::cout << "pir_program_.get" << std::endl;
+  std::cout << pir_program_.get() << std::endl;
+  pir_program_ =
+      paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
+
+  ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
+  if (FLAGS_pir_apply_inplace_pass) {
+    lowered_pm.AddPass(::pir::CreateInplacePass());
+  }
+  if (!config_.glog_info_disabled()) {
+    lowered_pm.EnablePrintStatistics();
+  }
+  if (config_.ir_debug_) {
+    lowered_pm.EnableIRPrinting(
+        std::make_unique<pir::PassManager::IRPrinterOption>(
+            ir_printing_conditions, ir_printing_conditions));
+  }
+  lowered_pm.Run(pir_program_.get());
+
+  LOG(INFO) << "======= pir optimization completed =======";
+}
+
+bool AnalysisPredictor::PreparePirProgram() {
+  CHECK_EQ(pir_program_, nullptr);
+
+  pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
+
+  pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
+
+  std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
+  int feed_idx = 0;
+  for (auto op : pir_program_->block()->ops()) {
+    // put pd-op.data and pd-op.fetch into idx2feeds and idx2feeds
+    if (op->isa<paddle::dialect::FetchOp>()) {
+      int idx = op->attribute("col").dyn_cast<pir::Int32Attribute>().data();
+      if (fetches_.size() <= static_cast<size_t>(idx)) {
+        fetches_.resize(idx + 1);
+        std::string fetch_name =
+            op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+        VLOG(3) << "fetch_name: " << fetch_name;
+        idx2fetches_[idx] = fetch_name;
+      }
+    } else if (op->isa<paddle::dialect::DataOp>() ||
+               op->isa<paddle::dialect::FeedOp>()) {
+      std::string data_name =
+          op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+      VLOG(3) << "data_name: " << data_name;
+      idx2feeds_[feed_idx] = data_name;
+      feed_idx++;
+    }
+    for (auto var : op->results()) {
+      std::string var_name;
+      auto is_persistable =
+          var.attribute<pir::BoolAttribute>(kAttrIsPersistable);
+      if (is_persistable && is_persistable.data()) {
+        if (auto param_op = var.defining_op<::pir::ParameterOp>()) {
+          var_name = param_op.param_name();
+          param_name_var_pairs.emplace_back(var_name, var);
+        } else if (auto data_op = var.defining_op<paddle::dialect::DataOp>()) {
+          var_name = data_op.attribute<pir::StrAttribute>("name").AsString();
+          param_name_var_pairs.emplace_back(var_name, var);
         }
       }
     }
-
-    if (!config_.glog_info_disabled()) {
-      pass_pm.EnablePrintStatistics();
-    }
-    if (config_.ir_debug_) {
-      pass_pm.EnableIRPrinting(
-          std::make_unique<pir::PassManager::IRPrinterOption>(
-              ir_printing_conditions, ir_printing_conditions));
-    }
-    pass_pm.Run(pir_program_.get());
-
-    // Apply some basic passes required by the framework
-    ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
-                                     config_.pm_opt_level_);
-
-    auto params_sync_among_devices_pass =
-        ::pir::CreateParamsSyncAmongDevicesPass();
-    params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
-    params_sync_among_devices_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
-                                                sub_scope_);
-    basic_pass_pm.AddPass(std::move(params_sync_among_devices_pass));
-    auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
-    constant_folding_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
-    constant_folding_pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
-    basic_pass_pm.AddPass(std::move(constant_folding_pass));
-    auto dead_code_elimination_pass = ::pir::CreateDeadCodeEliminationPass();
-    dead_code_elimination_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
-                                            sub_scope_);
-    basic_pass_pm.AddPass(std::move(dead_code_elimination_pass));
-    basic_pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
-    if (!config_.glog_info_disabled()) {
-      basic_pass_pm.EnablePrintStatistics();
-    }
-    if (config_.ir_debug_) {
-      basic_pass_pm.EnableIRPrinting(
-          std::make_unique<pir::PassManager::IRPrinterOption>(
-              ir_printing_conditions, ir_printing_conditions));
-    }
-    basic_pass_pm.Run(pir_program_.get());
-    //----------------------------------------------------------------------------------------------//
-
-    pir_program_ =
-        paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
-
-    ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
-    if (FLAGS_pir_apply_inplace_pass) {
-      lowered_pm.AddPass(::pir::CreateInplacePass());
-    }
-    if (!config_.glog_info_disabled()) {
-      lowered_pm.EnablePrintStatistics();
-    }
-    if (config_.ir_debug_) {
-      lowered_pm.EnableIRPrinting(
-          std::make_unique<pir::PassManager::IRPrinterOption>(
-              ir_printing_conditions, ir_printing_conditions));
-    }
-    lowered_pm.Run(pir_program_.get());
-
-    LOG(INFO) << "======= pir optimization completed =======";
   }
+
+  std::sort(param_name_var_pairs.begin(),
+            param_name_var_pairs.end(),
+            [](const std::pair<std::string, pir::Value> &a,
+               const std::pair<std::string, pir::Value> &b) {
+              return a.first < b.first;
+            });
+
+  std::vector<std::string> param_names;
+  std::vector<pir::Value> vars;
+  for (const auto &pair : param_name_var_pairs) {
+    param_names.emplace_back(pair.first);
+    vars.emplace_back(pair.second);
+  }
+
+  size_t len = vars.size();
+  std::vector<phi::DenseTensor *> tensor_out;
+  for (size_t i = 0; i < len; ++i) {
+    auto *var = sub_scope_->FindVar(param_names[i]);
+    pir::Value value = vars[i];
+    if (var == nullptr) {
+      var = sub_scope_->Var(param_names[i]);
+      auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+      tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+      const phi::DeviceContext *dev_ctx = nullptr;
+      dev_ctx = pool.Get(place_);
+      pir::Type type_ = pir::GetDataTypeFromValue(value);
+      phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
+      dev_ctx->Alloc(tensor_temp, type_data);
+    } else {
+      VLOG(1) << "Variable already exists: " << param_names[i];
+    }
+    auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+    tensor_out.push_back(tensor_temp);
+  }
+
+  CreateFeedFetchVar(sub_scope_);
+  pir::LoadCombineFunction(
+      config_.params_file(), param_names, &tensor_out, false, place_);
+  OptimizeInferencePirProgram();
   return true;
 }
 
@@ -1075,171 +1074,24 @@ bool AnalysisPredictor::PrepareProgram(
   }
 
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
+
+  std::string model_path = config_.prog_file();
+  PADDLE_ENFORCE_EQ(
+      model_path.empty(),
+      false,
+      common::errors::InvalidArgument("Please set correct model path!"));
   if (config_.new_ir_enabled()) {
-    if (!config_.prog_file().empty()) {
-      // All parameters are saved in a single file.
-      // The file names should be consistent with that used
-      // in Python API `fluid.io.save_inference_model`.
-      std::string Pdfilename = config_.prog_file();
-      std::string extension =
-          Pdfilename.substr(Pdfilename.find_last_of(".") + 1);
-      if (extension == "json") {
-        uint64_t pir_version = 1;
-        pir::ReadModule(Pdfilename, pir_program_.get(), pir_version);
-      } else if (extension == "pdmodel") {
-        pir_program_ =
-            paddle::TranslateLegacyProgramToProgram(*inference_program_);
-      } else {
-        PADDLE_THROW(paddle::platform::errors::Fatal("Unknown file suffix"));
-      }
-    }
-    auto ir_printing_conditions = [this](::pir::Pass *pass,
-                                         ::pir::Operation *op) {
-      if (this->config_.ir_debug_passes_.empty()) {
-        return true;
-      }
-      return std::find(this->config_.ir_debug_passes_.begin(),
-                       this->config_.ir_debug_passes_.end(),
-                       pass->name()) != this->config_.ir_debug_passes_.end();
-    };
-
-#ifdef PADDLE_WITH_CINN
-    auto CreatePassMgr = [&] {
-      pir::IrContext *ctx = pir::IrContext::Instance();
-      ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
-      ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-      auto pass_manager =
-          std::make_shared<::pir::PassManager>(::pir::IrContext::Instance(), 2);
-      if (!config_.glog_info_disabled()) {
-        pass_manager->EnablePrintStatistics();
-      }
-      if (config_.ir_debug_) {
-        pass_manager->EnableIRPrinting(
-            std::make_unique<pir::PassManager::IRPrinterOption>(
-                ir_printing_conditions, ir_printing_conditions));
-      }
-      return pass_manager;
-    };
-
-    if (paddle::prim::PrimCommonUtils::IsFwdPrimEnabled()) {
-      VLOG(4) << "[Prim] Decomp program in predictor begin.";
-      DecompProgram decomp_object(pir_program_.get());
-      decomp_object.decomp_program();
-
-      cinn::dialect::ir::CheckInferSymbolicIfNeed(pir_program_.get(),
-                                                  CreatePassMgr);
-    }
-
-    if (config_.cinn_enabled()) {
-      VLOG(4) << "[CINN] Begin ApplyCinnPass";
-      cinn::dialect::ir::ApplyCinnPass(pir_program_.get(), CreatePassMgr);
-    }
-#endif
-
-    // Apply some optimization passes required by the inference
-    ::pir::PassManager pass_pm(::pir::IrContext::Instance(),
-                               config_.pm_opt_level_);
-    if (!config_.custom_passes_.empty()) {
-      for (const auto &custom_pass : config_.custom_passes_) {
-        pass_pm.AddPass(pir::PassRegistry::Instance().Get(custom_pass));
-      }
-    }
-    if (config_.use_gpu()) {
-      // gpu
-      if (!config_.custom_pass_only_) {
-        for (const auto &gpu_pass : kPirGpuPasses) {
-          pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
-        }
-      }
-
-#ifdef PADDLE_WITH_XPU
-    } else if (config_.use_xpu()) {
-      // xpu
-      if (!config_.custom_pass_only_) {
-        for (const auto &xpu_pass : kPirXpuPasses) {
-          pass_pm.AddPass(
-              std::move(pir::PassRegistry::Instance().Get(xpu_pass)));
-        }
-      }
-#endif
-
-#ifdef PADDLE_WITH_DNNL
-    } else if (config_.mkldnn_enabled()) {
-      // mkldnn
-      if (!config_.custom_pass_only_) {
-        for (const auto &mkldnn_pass : kPirMkldnnPasses) {
-          pass_pm.AddPass(pir::PassRegistry::Instance().Get(mkldnn_pass));
-        }
-      }
-#endif
+    load_pir_model_ =
+        model_path.substr(model_path.find_last_of(".") + 1) == "json";
+    if (load_pir_model_) {
+      pir::ReadModule(
+          config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
     } else {
-      // cpu
-      if (!config_.custom_pass_only_) {
-        for (const auto &cpu_pass : kPirCpuPasses) {
-          pass_pm.AddPass(pir::PassRegistry::Instance().Get(cpu_pass));
-        }
-      }
+      pir_program_ =
+          paddle::TranslateLegacyProgramToProgram(*inference_program_);
     }
-
-    if (!config_.glog_info_disabled()) {
-      pass_pm.EnablePrintStatistics();
-    }
-    if (config_.ir_debug_) {
-      pass_pm.EnableIRPrinting(
-          std::make_unique<pir::PassManager::IRPrinterOption>(
-              ir_printing_conditions, ir_printing_conditions));
-    }
-    pass_pm.Run(pir_program_.get());
-
-    // Apply some basic passes required by the framework
-    ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
-                                     config_.pm_opt_level_);
-
-    auto params_sync_among_devices_pass =
-        ::pir::CreateParamsSyncAmongDevicesPass();
-    params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
-    params_sync_among_devices_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
-                                                sub_scope_);
-    basic_pass_pm.AddPass(std::move(params_sync_among_devices_pass));
-    auto constant_folding_pass = ::pir::CreateConstantFoldingPass();
-    constant_folding_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
-    constant_folding_pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
-    basic_pass_pm.AddPass(std::move(constant_folding_pass));
-    auto dead_code_elimination_pass = ::pir::CreateDeadCodeEliminationPass();
-    dead_code_elimination_pass->SetNotOwned(pir::Pass::kParamScopeAttr,
-                                            sub_scope_);
-    basic_pass_pm.AddPass(std::move(dead_code_elimination_pass));
-    basic_pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
-    if (!config_.glog_info_disabled()) {
-      basic_pass_pm.EnablePrintStatistics();
-    }
-    if (config_.ir_debug_) {
-      basic_pass_pm.EnableIRPrinting(
-          std::make_unique<pir::PassManager::IRPrinterOption>(
-              ir_printing_conditions, ir_printing_conditions));
-    }
-    basic_pass_pm.Run(pir_program_.get());
-    //----------------------------------------------------------------------------------------------//
-
-    pir_program_ =
-        paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
-
-    ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
-    if (FLAGS_pir_apply_inplace_pass) {
-      lowered_pm.AddPass(::pir::CreateInplacePass());
-    }
-    if (!config_.glog_info_disabled()) {
-      lowered_pm.EnablePrintStatistics();
-    }
-    if (config_.ir_debug_) {
-      lowered_pm.EnableIRPrinting(
-          std::make_unique<pir::PassManager::IRPrinterOption>(
-              ir_printing_conditions, ir_printing_conditions));
-    }
-    lowered_pm.Run(pir_program_.get());
-
-    LOG(INFO) << "======= pir optimization completed =======";
   }
+  OptimizeInferencePirProgram();
   return true;
 }
 
@@ -1303,8 +1155,8 @@ bool AnalysisPredictor::PrepareExecutor() {
 #endif
   }
 
-  if (config_.new_ir_enabled() && extension_ == "json") {
-    executor_->PreparePir(sub_scope_);
+  if (load_pir_model_) {
+    executor_->Prepare(sub_scope_);
   } else {
     DisablePrepareDataOpt(inference_program_, 0, false);
     executor_->Prepare(sub_scope_, *inference_program_, 0);
@@ -1320,6 +1172,7 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.skip_gc_vars.insert(input_names.begin(),
                                          input_names.end());
     auto output_names = GetOutputNames();
+
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
 
