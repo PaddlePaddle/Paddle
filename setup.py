@@ -448,7 +448,7 @@ nccl_version     = '%(nccl)d'
 rc               = '%(rc)d'
 cuda_version     = '%(cuda)s'
 cudnn_version    = '%(cudnn)s'
-xpu_version      = '%(xpu)s'
+xpu_xre_version  = '%(xpu_xre)s'
 xpu_xccl_version = '%(xpu_xccl)s'
 xpu_xhpc_version = '%(xpu_xhpc)s'
 is_tagged          = %(is_tagged)s
@@ -532,7 +532,7 @@ def show():
     print('cuda:', cuda_version)
     print('cudnn:', cudnn_version)
     print('nccl:', nccl_version)
-    print('xpu:', xpu_version)
+    print('xpu_xre:', xpu_xre_version)
     print('xpu_xccl:', xpu_xccl_version)
     print('xpu_xhpc:', xpu_xhpc_version)
     print('cinn:', cinn_version)
@@ -594,8 +594,8 @@ def cudnn():
     """
     return cudnn_version
 
-def xpu():
-    """Get xpu version of paddle package.
+def xpu_xre():
+    """Get xpu xre version of paddle package.
 
     Returns:
         string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
@@ -605,12 +605,12 @@ def xpu():
 
             >>> import paddle
 
-            >>> paddle.version.xpu()
+            >>> paddle.version.xpu_xre()
             >>> # doctest: +SKIP('Different environments yield different output.')
             '20230114'
 
     """
-    return xpu_version
+    return xpu_xre_version
 
 def xpu_xccl():
     """Get xpu xccl version of paddle package.
@@ -688,7 +688,7 @@ def cinn():
                 'version': env_dict.get("PADDLE_VERSION"),
                 'cuda': get_cuda_version(),
                 'cudnn': get_cudnn_version(),
-                'xre': get_xpu_xre_version(),
+                'xpu_xre': get_xpu_xre_version(),
                 'xpu_xccl': get_xpu_xccl_version(),
                 'xpu_xhpc': get_xpu_xhpc_version(),
                 'commit': commit,
