@@ -29,6 +29,7 @@ from paddle.nn.functional.flash_attention import (
     flash_attn_qkvpacked,
     flash_attn_unpadded,
     flash_attn_varlen_qkvpacked,
+    reduce_attn_scores,
     scaled_dot_product_attention,
 )
 from paddle.pir_utils import test_with_pir_api
@@ -1373,6 +1374,127 @@ class TestFlashAttentionQKVPackedDeter(TestFlashAttentionQKVPackedGQADeter):
         self.head_dim = 64
         self.num_group = 1
         self.dtype = 'bfloat16'
+
+
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
+)
+class TestReduceAttnScores(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.batch_size = 2
+        self.num_head = 8
+        self.seqlen_q = 1024
+        self.seqlen_k = 8192
+        self.head_dim = 128
+        self.q_shape = [
+            self.batch_size,
+            self.seqlen_q,
+            self.num_head,
+            self.head_dim,
+        ]
+        self.k_shape = [
+            self.batch_size,
+            self.seqlen_k,
+            self.num_head,
+            self.head_dim,
+        ]
+        self.dtype = 'float16'
+
+    def naive_reduce(self, q, k):
+        q_ref = paddle.cast(paddle.transpose(q, [0, 2, 1, 3]), 'float32')
+        k_ref = paddle.cast(paddle.transpose(k, [0, 2, 1, 3]), 'float32')
+        scale = 1.0 / np.sqrt(q_ref.shape[-1])
+        product = paddle.matmul(x=q_ref, y=k_ref, transpose_y=True)
+        product = paddle.scale(product, scale)
+        product = product - paddle.max(product, axis=-1, keepdim=True)
+        attn_scores_ref = F.softmax(product, dtype='float32')
+        reduced_scores_ref = paddle.sum(attn_scores_ref, axis=-2, keepdim=True)
+        return reduced_scores_ref, attn_scores_ref
+
+    def test_reduce_attn_scores(self):
+        print(
+            f"Test reduce scores case q shape {self.q_shape} k shape {self.k_shape} dtype {self.dtype}"
+        )
+
+        paddle.disable_static()
+
+        query = np.random.random(self.q_shape)
+        key = np.random.random(self.k_shape)
+
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=True
+        )
+        k = paddle.to_tensor(
+            key, place=self.place, dtype=self.dtype, stop_gradient=True
+        )
+
+        reduced_scores_ref, attn_scores_ref = self.naive_reduce(q, k)
+
+        (_, _, softmax_lse, _) = paddle._C_ops.flash_attn(
+            q,
+            k,
+            k,
+            (None,),  # fixed_seed_offset
+            None,  # attn_mask
+            0.0,  # dropout
+            False,  # causal
+            False,  # return_softmax
+            False,  # is_test
+            "",
+        )
+
+        reduced_scores, attn_scores = reduce_attn_scores(
+            q, k, softmax_lse, return_softmax=True
+        )
+
+        np.testing.assert_allclose(
+            reduced_scores.numpy(),
+            reduced_scores_ref.numpy(),
+            rtol=1e-05,
+            atol=0,
+        )
+        np.testing.assert_allclose(
+            attn_scores.numpy(), attn_scores_ref.numpy(), rtol=1e-05, atol=0
+        )
+
+        paddle.enable_static()
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            qs = paddle.static.data(
+                name="q", shape=self.q_shape, dtype=self.dtype
+            )
+            ks = paddle.static.data(
+                name="k", shape=self.k_shape, dtype=self.dtype
+            )
+            softmax_lse_s = paddle.static.data(
+                name="softmax_lse", shape=softmax_lse.shape, dtype='float32'
+            )
+
+            reduced_scores, attn_scores = reduce_attn_scores(
+                qs, ks, softmax_lse_s, return_softmax=True
+            )
+            exe = base.Executor(self.place)
+            fetches_result = exe.run(
+                feed={
+                    "q": query.astype(self.dtype),
+                    "k": key.astype(self.dtype),
+                    "softmax_lse": softmax_lse.numpy(),
+                },
+                fetch_list=[reduced_scores, attn_scores],
+            )
+            np.testing.assert_allclose(
+                fetches_result[0],
+                reduced_scores_ref.numpy(),
+                rtol=1e-05,
+                atol=0,
+            )
+            np.testing.assert_allclose(
+                fetches_result[1], attn_scores_ref.numpy(), rtol=1e-05, atol=0
+            )
+        paddle.disable_static()
 
 
 if __name__ == '__main__':
