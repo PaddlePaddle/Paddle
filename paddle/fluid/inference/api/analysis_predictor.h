@@ -256,6 +256,12 @@ class AnalysisPredictor : public PaddlePredictor {
   void OptimizeInferenceProgram();
 
   ///
+  /// \brief According to argument information, execute the relevant pass
+  /// to get the optimized model program
+  ///
+  void OptimizeInferencePirProgram();
+
+  ///
   /// \brief Clear the intermediate tensors of the predictor
   ///
   ///
