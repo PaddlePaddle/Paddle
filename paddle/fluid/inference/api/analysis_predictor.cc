@@ -1158,16 +1158,21 @@ bool AnalysisPredictor::PrepareExecutor() {
   if (load_pir_model_) {
     executor_->Prepare(sub_scope_);
   } else {
+    VLOG(0) << "Preparing traditional executor.";
     DisablePrepareDataOpt(inference_program_, 0, false);
     executor_->Prepare(sub_scope_, *inference_program_, 0);
   }
 
   if (config_.new_executor_enabled()) {
+    VLOG(0) << "New executor enabled, setting up ExecutionConfig.";
     framework::interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
     execution_config.used_for_inference = true;
 
     auto input_names = GetInputNames();
+    for (auto input : input_names) {
+      LOG(INFO) << "input " << input;
+    }
 
     execution_config.skip_gc_vars.insert(input_names.begin(),
                                          input_names.end());
@@ -1177,6 +1182,7 @@ bool AnalysisPredictor::PrepareExecutor() {
                                          output_names.end());
 
     if (config_.new_ir_enabled()) {
+      VLOG(0) << "Preparing interpreter core with PIR program.";
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
     } else {
@@ -1193,6 +1199,7 @@ bool AnalysisPredictor::PrepareExecutor() {
             root_predictor_id_, "memory_optimize_pass");
     executor_->MakeReusePlan(reuse_table);
   }
+  LOG(INFO) << "PrepareExecutor完毕";
   return true;
 }
 
