@@ -56,7 +56,7 @@ class NaiveExecutor {
   // Create variables.
   void Prepare(Scope* scope, const ProgramDesc& program_desc, int block_id);
 
-  void PreparePir(Scope* scope);
+  void Prepare(Scope* scope);
 
   void PrepareInterpreterCore(
       Scope* scope,
