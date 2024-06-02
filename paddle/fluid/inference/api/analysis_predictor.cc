@@ -904,7 +904,6 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
                                           sub_scope_);
   basic_pass_pm.AddPass(std::move(dead_code_elimination_pass));
   basic_pass_pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
-  LOG(INFO) << "CreateReplaceFetchWithShadowOutputPass()执行完毕";
   if (!config_.glog_info_disabled()) {
     basic_pass_pm.EnablePrintStatistics();
   }
@@ -914,10 +913,8 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
             ir_printing_conditions, ir_printing_conditions));
   }
   basic_pass_pm.Run(pir_program_.get());
-  LOG(INFO) << "basis_pass_pm.Run";
   //----------------------------------------------------------------------------------------------//
-  std::cout << "pir_program_.get" << std::endl;
-  std::cout << pir_program_.get() << std::endl;
+
   pir_program_ =
       paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
@@ -955,14 +952,12 @@ bool AnalysisPredictor::PreparePirProgram() {
         fetches_.resize(idx + 1);
         std::string fetch_name =
             op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
-        VLOG(3) << "fetch_name: " << fetch_name;
         idx2fetches_[idx] = fetch_name;
       }
     } else if (op->isa<paddle::dialect::DataOp>() ||
                op->isa<paddle::dialect::FeedOp>()) {
       std::string data_name =
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
-      VLOG(3) << "data_name: " << data_name;
       idx2feeds_[feed_idx] = data_name;
       feed_idx++;
     }
@@ -1002,6 +997,8 @@ bool AnalysisPredictor::PreparePirProgram() {
     auto *var = sub_scope_->FindVar(param_names[i]);
     pir::Value value = vars[i];
     if (var == nullptr) {
+      VLOG(1) << "Variable not found, creating new variable: "
+              << param_names[i];
       var = sub_scope_->Var(param_names[i]);
       auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
       tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
