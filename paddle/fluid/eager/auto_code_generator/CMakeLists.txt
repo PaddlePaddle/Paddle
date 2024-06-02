@@ -60,6 +60,15 @@ if(WIN32)
     set(eager_generator_path "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
   endif()
 
+  if(WITH_PYTHON)
+    message("Copied python3.dll for Eager AutoCodeGen")
+    add_custom_command(
+      OUTPUT ${eager_generator_path}/python3.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${PYTHON_DLL} ${eager_generator_path}
+      DEPENDS python)
+    list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/python3.dll)
+  endif()
+
   if(WITH_SHARED_PHI)
     message("Copied phi.dll for Eager AutoCodeGen")
     add_custom_command(

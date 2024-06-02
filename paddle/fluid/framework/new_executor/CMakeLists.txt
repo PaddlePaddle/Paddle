@@ -56,9 +56,6 @@ if(WITH_GPU)
   set(standalone_executor_deps ${standalone_executor_deps} device_event_gpu)
 endif()
 
-# message(STATUS "standalone_executor_deps: ${standalone_executor_deps}")
-# message(STATUS "standalone_executor_srcs: ${standalone_executor_srcs}")
-
 cc_library(
   standalone_executor
   SRCS ${standalone_executor_srcs}
@@ -68,4 +65,7 @@ add_dependencies(standalone_executor xxhash framework_proto)
 
 if(WITH_ONEDNN)
   add_dependencies(standalone_executor onednn)
+  if(WITH_PYTHON)
+    add_dependencies(standalone_executor python pybind)
+  endif()
 endif()
