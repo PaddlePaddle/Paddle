@@ -1153,7 +1153,7 @@ bool AnalysisPredictor::PrepareExecutor() {
   }
 
   if (load_pir_model_) {
-    VLOG executor_->Prepare(sub_scope_);
+    executor_->Prepare(sub_scope_);
   } else {
     VLOG(0) << "Preparing traditional executor.";
     DisablePrepareDataOpt(inference_program_, 0, false);
