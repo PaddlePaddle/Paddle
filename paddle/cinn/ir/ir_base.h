@@ -166,6 +166,7 @@ class IrNode : public cinn::common::Object {
   //! Elevate int32 to int64 if needed
   virtual void convert_int32_to_int64();
 
+  virtual void replace(Expr old_op, Expr new_op);
   //! Get i-th operand
   const Expr& operand(int i);
 
@@ -401,6 +402,11 @@ struct UnaryOpNode : public ExprNode<T> {
     return v().type();
   }
 
+  void replace(Expr old_op, Expr new_op) {
+    if (v() == old_op) {
+      v() = new_op;
+    }
+  }
   Expr& v() { return operands().front(); }
   const Expr& v() const { return operands().front(); }
 
@@ -430,6 +436,13 @@ struct BinaryOpNode : public ExprNode<T> {
 
   Type type() const override { return a().type(); }
 
+  void replace(Expr old_op, Expr new_op) {
+    for (int i = 0; i < operands().size(); i++) {
+      if (operands()[i] == old_op) {
+        operands()[i] = new_op;
+      }
+    }
+  }
   std::vector<Expr*> expr_fields() override { return {&a(), &b()}; }
   std::vector<const Expr*> expr_fields() const override { return {&a(), &b()}; }
 

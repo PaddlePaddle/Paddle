@@ -90,7 +90,7 @@ class TestLayer(TestBase):
             paddle.rand(shape=[1, 4], dtype=paddle.float32),
             paddle.rand(shape=[1, 4], dtype=paddle.float32),
         )
-        self.net = LayerCase()
+        self.net = LayerCase
         self.atol = 1e-5
 
 

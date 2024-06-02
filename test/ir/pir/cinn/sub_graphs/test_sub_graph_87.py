@@ -200,7 +200,7 @@ class TestLayer(TestBase):
             paddle.rand(shape=[1, 72, 42, 64], dtype=paddle.float32),
             paddle.rand(shape=[1, 144, 21, 32], dtype=paddle.float32),
         )
-        self.net = LayerCase()
+        self.net = LayerCase
 
 
 if __name__ == '__main__':

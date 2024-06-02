@@ -54,6 +54,11 @@ PD_DEFINE_string(cinn_kernel_execution_label,
                                "CINN KERNEL EXECUTE"),
                  "Label used to measure kernel execution time");
 
+PD_DEFINE_string(cinn_tile_config_filename_label,
+                 StringFromEnv("FLAGS_cinn_tile_config_filename_label",
+                               "./config/"),
+                 "Label used to name file of tile config database");
+
 PD_DEFINE_int32(cinn_parallel_compile_thread,
                 Int32FromEnv("FLAGS_cinn_parallel_compile_thread",
                              (std::thread::hardware_concurrency() >> 1)),
@@ -215,6 +220,11 @@ PD_DEFINE_string(
     cinn_dump_group_instruction,
     StringFromEnv("FLAGS_cinn_dump_group_instruction", ""),
     "Specify the path for dump instruction by group, which is used for debug.");
+
+// Todo(CZ): support kernel name check for multiple kernel code gen.
+PD_DEFINE_string(cinn_debug_custom_code_path,
+                 StringFromEnv("FLAGS_cinn_debug_custom_code_path", ""),
+                 "Specify custom code path for cinn.");
 
 PD_DEFINE_string(cinn_pass_visualize_dir,
                  StringFromEnv("FLAGS_cinn_pass_visualize_dir", ""),

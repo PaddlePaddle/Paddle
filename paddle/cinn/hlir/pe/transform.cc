@@ -1159,7 +1159,7 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
         new_starts[i] = input_shape[axes[i]].as_int64() - ir::Expr(1);
       }
     } else {
-      if (new_starts[i].as_int64() < 0) {
+      if (new_starts[i].is_constant() && new_starts[i].as_int64() < 0) {
         new_starts[i] = ir::Add::Make(input_shape[axes[i]], new_starts[i]);
       }
     }

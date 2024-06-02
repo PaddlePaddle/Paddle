@@ -25,6 +25,7 @@
 
 #include "paddle/cinn/frontend/paddle/model_parser.h"
 #include "paddle/cinn/frontend/paddle_model_to_program.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/utils/string.h"
@@ -557,6 +558,12 @@ std::string _Instruction_::debug_string() const {
       s_ << "[" + utils::Join(x, ",") + "]";
     }
     void operator()(const std::vector<std::string>& x) {
+      s_ << "[" + utils::Join(x, ",") + "]";
+    }
+    void operator()(const std::vector<symbol::DimExpr>& x) {
+      s_ << "[" + utils::Join(x, ",") + "]";
+    }
+    void operator()(const cinn::dialect::SymbolBindings& x) {
       s_ << "[" + utils::Join(x, ",") + "]";
     }
   };

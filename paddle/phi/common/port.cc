@@ -18,7 +18,6 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
-
 #include "glog/logging.h"
 
 #if !defined(_WIN32)
@@ -42,7 +41,14 @@ void *dlsym(void *handle, const char *symbol_name) {
 
 void *dlopen(const char *filename, int flag) {
   std::string file_name(filename);
-  HMODULE hModule = LoadLibrary(file_name.c_str());
+  HMODULE hModule = nullptr;
+#ifdef WITH_PIP_CUDA_LIBRARIES
+  hModule =
+      LoadLibraryEx(file_name.c_str(), NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+#endif
+  if (!hModule) {
+    hModule = LoadLibrary(file_name.c_str());
+  }
   if (!hModule) {
     if (flag) {
       throw std::runtime_error(file_name + " not found.");
@@ -72,7 +78,7 @@ int gettimeofday(struct timeval *tp, void *tzp) {
 
   return (0);
 }
-#endif              // !_WIN32
+#endif  // !_WIN32
 
 void ExecShellCommand(const std::string &cmd, std::string *message) {
   std::array<char, 128> buffer = {};
