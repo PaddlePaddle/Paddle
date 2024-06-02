@@ -480,7 +480,7 @@ void ReduceAttnScoresInferMeta(const MetaTensor& q,
     reduced_scores->set_dims({batch_size, num_heads, 1, seqlen_k});
   }
   if (softmax) {
-    softmax->set_dtype(q.dtype());
+    softmax->set_dtype(phi::DataType::FLOAT32);
     softmax->set_dims({batch_size, num_heads, seqlen_q, seqlen_k});
   }
 }
