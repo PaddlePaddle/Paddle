@@ -1153,7 +1153,7 @@ bool AnalysisPredictor::PrepareExecutor() {
   }
 
   if (load_pir_model_) {
-    executor_->Prepare(sub_scope_);
+    VLOG executor_->Prepare(sub_scope_);
   } else {
     VLOG(0) << "Preparing traditional executor.";
     DisablePrepareDataOpt(inference_program_, 0, false);
@@ -1167,9 +1167,6 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.used_for_inference = true;
 
     auto input_names = GetInputNames();
-    for (auto input : input_names) {
-      LOG(INFO) << "input " << input;
-    }
 
     execution_config.skip_gc_vars.insert(input_names.begin(),
                                          input_names.end());
