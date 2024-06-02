@@ -367,11 +367,6 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return Whether the function executed successfully
   ///
 
-  ///
-  /// \brief Prepare pass optimization
-  ///
-  void PreparePassManager();
-
   bool PrepareScope(const std::shared_ptr<framework::Scope> &parent_scope);
   ///
   /// \brief Create an Executor object
