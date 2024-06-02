@@ -585,8 +585,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
-  std::string pir_filename_;
-  std::string extension_;
+  bool load_pir_model_;
 
   phi::DataType model_precision_{phi::DataType::FLOAT32};
 
