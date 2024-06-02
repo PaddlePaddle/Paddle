@@ -1415,10 +1415,6 @@ class TestReduceAttnScores(unittest.TestCase):
         return reduced_scores_ref, attn_scores_ref
 
     def test_reduce_attn_scores(self):
-        print(
-            f"Test reduce scores case q shape {self.q_shape} k shape {self.k_shape} dtype {self.dtype}"
-        )
-
         paddle.disable_static()
 
         query = np.random.random(self.q_shape)
