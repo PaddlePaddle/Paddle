@@ -170,9 +170,9 @@ SpmdInfo RmsNormGradInferSpmd(const DistMetaTensor& x,
       BuildRmsNormGradEinsum(x_shape.size());
   AlignDimsSharding(
       &dist_attrs, shapes, annotations, {}, align_annotation, false);
-  auto x_dist_attr_dst = std::move(dist_attrs[0]);
-  auto invvar_dist_attr_dst = std::move(dist_attrs[1]);
-  auto out_grad_dist_attr_dst = std::move(dist_attrs[2]);
+  auto x_dist_attr_dst = dist_attrs[0];
+  auto invvar_dist_attr_dst = dist_attrs[1];
+  auto out_grad_dist_attr_dst = dist_attrs[2];
 
   // TODO(liuzhenhai): support sharded scale and bias
   auto scale_dist_attr_dst = GetReplicatedDistAttr(scale_dist_attr_src);

@@ -385,10 +385,10 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
         BuildLayerNormGradEinsum(x_shape.size(), begin_norm_axis);
     AlignDimsSharding(
         &dist_attrs, shapes, annotations, {}, align_annotation, false);
-    x_dist_attr = std::move(dist_attrs[0]);
-    mean_dist_attr = std::move(dist_attrs[1]);
-    variance_dist_attr = std::move(dist_attrs[2]);
-    out_grad_dist_attr = std::move(dist_attrs[3]);
+    x_dist_attr = dist_attrs[0];
+    mean_dist_attr = dist_attrs[1];
+    variance_dist_attr = dist_attrs[2];
+    out_grad_dist_attr = dist_attrs[3];
   } else {
     x_dist_attr = GetReplicatedDistAttr(dist_attrs[0]);
     mean_dist_attr = GetReplicatedDistAttr(dist_attrs[1]);
