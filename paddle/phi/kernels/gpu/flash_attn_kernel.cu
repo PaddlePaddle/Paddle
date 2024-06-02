@@ -689,6 +689,5 @@ PD_REGISTER_KERNEL(reduce_attn_scores,
                    phi::ReduceAttnScoresKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
-  kernel->InputAt(3).SetBackend(
-      phi::Backend::ALL_BACKEND);  // fixed_seed_offset
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

@@ -985,7 +985,71 @@ def flash_attention_with_sparse_mask(
 
 
 def reduce_attn_scores(query, key, softmax_lse, return_softmax=False):
-    # umiswing: what should I assert here?
+    r"""
+    Warning:
+        This API only supports inputs with dtype float16 and bfloat16.
+
+    Args:
+        query(Tensor): The query tensor in the Attention module.
+                        4-D tensor with shape:
+                        [batch_size, seqlen_q, num_heads, head_dim].
+                        The dtype can be float16 or bfloat16.
+        key(Tensor): The key tensor in the Attention module.
+                        4-D tensor with shape:
+                        [batch_size, seqlen_k, num_heads, head_dim].
+                        The dtype can be float16 or bfloat16.
+        softmax_lse(Tensor): The logsumexp of each row returned by _C_ops.flash_attn().
+                        3-D tensor with shape:
+                        [batch_size, num_heads, seqlen_q].
+                        The dtype is float32.
+    Returns:
+        reduced_scores(Tensor), The reduce sum of attention scores across seqlen_q.
+                    4-D tensor with shape: [batch_size, num_heads, 1, seqlen_k].
+                    The dtype is float32.
+        softmax(Tensor): The softmax tensor. None if return_softmax is False.
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +SKIP('reduce_attn_scores need A100 compile')
+            >>> import paddle
+            >>> import numpy as np
+            >>> import paddle._C_ops as _C_ops
+            >>> from paddle.nn.functional.flash_attention import (
+            >>>     reduce_attn_scores
+            >>> )
+            >>> np.random.seed(2024)
+            >>> q_shape = (5,1024,16,128)
+            >>> k_shape = (5,2048,16,128)
+            >>> dtype = 'float16'
+            >>> query = np.random.random(q_shape)
+            >>> key = np.random.random(k_shape)
+            >>> q = paddle.to_tensor(
+            >>>     query, place=place, dtype=dtype, stop_gradient=True
+            >>> )
+            >>> k = paddle.to_tensor(
+            >>>     key, place=place, dtype=dtype, stop_gradient=True
+            >>> )
+            >>> (_,_,softmax_lse,_) = _C_ops.flash_attn(
+            >>>     q,
+            >>>     k,
+            >>>     k,
+            >>>     (None,),#fixed_seed_offset
+            >>>     None,#attn_mask
+            >>>     0.0,#dropout
+            >>>     False,#causal
+            >>>     False,#return_softmax
+            >>>     False,#is_test
+            >>>     ""#rng_name
+            >>> )
+            >>> reduced_attn_scores, softmax = reduce_attn_scores(
+            >>>     q,
+            >>>     k,
+            >>>     softmax_lse,
+            >>>     return_softmax=False
+            >>> )
+            >>> # doctest: -SKIP
+    """
+    # TODO(umiswing): add assert to disable bwd.
     if in_dynamic_mode():
         (reduced_scores, softmax) = _C_ops.reduce_attn_scores(
             query, key, softmax_lse, return_softmax
