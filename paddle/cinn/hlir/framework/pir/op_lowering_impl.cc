@@ -1352,7 +1352,7 @@ ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
   std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
 
   auto need_lower_x86 = [&]() -> bool {
-    for (const auto& op : ops) {
+    for (auto* op : ops) {
       for (size_t i = 0; i < op->num_operands(); ++i) {
         auto in = op->operand_source(i);
         auto type_info = in.type().dyn_cast<paddle::dialect::DenseTensorType>();
@@ -1383,12 +1383,14 @@ ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
         }
       }
     }
+    return true;
   };
   if (!need_lower_x86()) {
     return ir::Expr(-1);
   }
 
   this->target_ = common::DefaultHostTarget();
+  cinn::runtime::CurrentTarget::SetCurrentTarget(this->target_);
 
   std::vector<ir::Expr> func_bodies =
       LowerOps(group,
@@ -1399,6 +1401,7 @@ ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
                &tensor_map,
                &tmp_tensor_info);
   this->target_ = common::DefaultNVGPUTarget();
+  cinn::runtime::CurrentTarget::SetCurrentTarget(this->target_);
   ir::ModuleExpr mod_expr(func_bodies);
   ir::IRSchedule ir_sch(
       mod_expr, -1, false, cinn::utils::ErrorMessageLevel::kGeneral, true);
