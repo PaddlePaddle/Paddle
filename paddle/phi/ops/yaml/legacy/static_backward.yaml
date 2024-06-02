@@ -365,6 +365,26 @@
   kernel:
     func : tril_triu_grad
 
+- backward_op: cross_entropy_grad
+  forward: cross_entropy (Tensor x, Tensor label, bool soft_label = false, int ignore_index = -100) -> Tensor (out)
+  args: (Tensor x, Tensor label, Tensor out_grad, bool soft_label = false, int ignore_index = -100)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: CrossEntropyGradInferMeta
+  kernel:
+    func: cross_entropy_grad
+    data_type: out_grad
+
+- backward_op: cross_entropy_grad2
+  forward: cross_entropy2 (Tensor x, Tensor label, int ignore_index = -100) -> Tensor (out), Tensor (x_shape), Tensor (match_x)
+  args: (Tensor x_shape, Tensor label, Tensor match_x, Tensor out_grad, int ignore_index = -100)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: CrossEntropyGrad2InferMeta
+  kernel:
+    func: cross_entropy_grad2
+    data_type: x_shape
+
 - backward_op: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, str unpooling_type, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW") -> Tensor(out)
   args: (Tensor x, Tensor indices, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] paddings, IntArray output_size, str data_format)

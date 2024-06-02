@@ -216,6 +216,90 @@ void CropGradInferMeta(const MetaTensor& out_grad,
     x_grad->set_dtype(x.dtype());
   }
 }
+
+void CrossEntropyGradInferMeta(const MetaTensor& x,
+                               const MetaTensor& label,
+                               const MetaTensor& out_grad,
+                               bool soft_label,
+                               int ignore_index,
+                               MetaTensor* x_grad,
+                               MetaConfig config) {
+  const auto& x_dims = x.dims();
+  const auto& label_dims = label.dims();
+  const auto& dy_dims = out_grad.dims();
+  int rank = x_dims.size();
+  PADDLE_ENFORCE_EQ(dy_dims.size(),
+                    label_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(Y@Grad) and Input(Y) should have the same rank."
+                        "But received: Y@Grad's rank is [%d], Y's rank is [%d]",
+                        dy_dims.size(),
+                        label_dims.size()));
+
+  bool contain_unknown_dim = common::contain_unknown_dim(x_dims) ||
+                             common::contain_unknown_dim(dy_dims);
+
+  bool check = config.is_runtime || !contain_unknown_dim;
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(common::slice_ddim(x_dims, 0, rank - 1),
+                      common::slice_ddim(dy_dims, 0, rank - 1),
+                      phi::errors::InvalidArgument(
+                          "The Input(X) and Input(Y@Grad) should have the same "
+                          "shape except the last dimension. but received: "
+                          "the shape of Input(X) is [%s], "
+                          "the shape of Input(Y@Grad) is [%s].",
+                          x_dims,
+                          dy_dims));
+  }
+
+  x_grad->set_dims(x_dims);
+  x_grad->share_lod(x);
+  x_grad->set_dtype(x.dtype());
+}
+
+void CrossEntropyGrad2InferMeta(const MetaTensor& x_shape,
+                                const MetaTensor& label,
+                                const MetaTensor& match_x,
+                                const MetaTensor& out_grad,
+                                int ignore_index,
+                                MetaTensor* x_grad,
+                                MetaConfig config) {
+  const auto& x_shape_dims = x_shape.dims();
+  const auto& x_dims = phi::DDim(x_shape_dims.Get(), x_shape_dims.size() - 1);
+  const auto& label_dims = label.dims();
+  const auto& dy_dims = out_grad.dims();
+  int rank = x_dims.size();
+  PADDLE_ENFORCE_EQ(dy_dims.size(),
+                    label_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "Input(Y@Grad) and Input(Y) should have the same rank."
+                        "But received: Y@Grad's rank is [%d], Y's rank is [%d]",
+                        dy_dims.size(),
+                        label_dims.size()));
+
+  bool contain_unknown_dim = common::contain_unknown_dim(x_dims) ||
+                             common::contain_unknown_dim(dy_dims);
+
+  bool check = config.is_runtime || !contain_unknown_dim;
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(common::slice_ddim(x_dims, 0, rank - 1),
+                      common::slice_ddim(dy_dims, 0, rank - 1),
+                      phi::errors::InvalidArgument(
+                          "The Input(X) and Input(Y@Grad) should have the same "
+                          "shape except the last dimension. but received: "
+                          "the shape of Input(X) is [%s], "
+                          "the shape of Input(Y@Grad) is [%s].",
+                          x_dims,
+                          dy_dims));
+  }
+
+  x_grad->set_dims(x_dims);
+  x_grad->share_lod(x_shape);
+  x_grad->set_dtype(x_shape.dtype());
+}
+
 void CSoftmaxWithCrossEntropyGradInferMeta(const MetaTensor& softmax,
                                            const MetaTensor& label,
                                            const MetaTensor& loss_grad,
@@ -565,6 +649,194 @@ void GeneralQuinaryGradInferMeta(const MetaTensor& x,
   }
   if (dl) {
     dl->share_meta(l);
+  }
+}
+
+void GruGradInferMeta(const MetaTensor& input,
+                      const MetaTensor& h0,
+                      const MetaTensor& weight,
+                      const MetaTensor& bias,
+                      MetaTensor* input_grad,
+                      MetaTensor* h0_grad,
+                      MetaTensor* weight_grad,
+                      MetaTensor* bias_grad,
+                      MetaConfig config) {
+  const auto& input_dims = input.dims();
+  const auto& weight_dims = weight.dims();
+  int input_size = static_cast<int>(input_dims[1]);
+  int frame_size = static_cast<int>(weight_dims[0]);
+  int weight_height = static_cast<int>(weight_dims[0]);
+  int weight_width = static_cast<int>(weight_dims[1]);
+  PADDLE_ENFORCE_EQ(
+      input_size,
+      frame_size * 3,
+      phi::errors::InvalidArgument(
+          "The second dimension of Input(Input) must be 3 times of "
+          "frame_size in GRUOp, but received %d (Input) vs %d (frame_size).",
+          input_size,
+          frame_size));
+  PADDLE_ENFORCE_EQ(
+      weight_height,
+      frame_size,
+      phi::errors::InvalidArgument(
+          "The shape of Input(Weight) matrix must be [frame_size, frame_size "
+          "* 3], but received [%d, %d] (Weight) vs [%d, %d] (frame_size).",
+          weight_height,
+          weight_width,
+          frame_size,
+          frame_size * 3));
+  PADDLE_ENFORCE_EQ(
+      weight_width,
+      frame_size * 3,
+      phi::errors::InvalidArgument(
+          "The shape of Input(Weight) matrix must be [frame_size, frame_size "
+          "* 3], but received [%d, %d] (Weight) vs [%d, %d] (frame_size).",
+          weight_height,
+          weight_width,
+          frame_size,
+          frame_size * 3));
+  if (h0.initialized()) {
+    const auto& h0_dims = h0.dims();
+    PADDLE_ENFORCE_EQ(
+        h0_dims[1],
+        frame_size,
+        phi::errors::InvalidArgument(
+            "The width of Input(H0) must be equal to frame_size, but "
+            "received %d (width of H0) vs %d (frame_size).",
+            h0_dims[1],
+            frame_size));
+    if (h0_grad != nullptr) {
+      h0_grad->set_dims(h0_dims);
+      h0_grad->set_dtype(h0.dtype());
+    }
+  }
+  if (bias.initialized()) {
+    const auto& bias_dims = bias.dims();
+    int bias_height = static_cast<int>(bias_dims[0]);
+    int bias_width = static_cast<int>(bias_dims[1]);
+    PADDLE_ENFORCE_EQ(
+        bias_height,
+        1,
+        phi::errors::InvalidArgument(
+            "The shape of Bias must be [1, frame_size * 3], but received "
+            "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
+            bias_height,
+            bias_width,
+            frame_size * 3));
+    PADDLE_ENFORCE_EQ(
+        bias_width,
+        frame_size * 3,
+        phi::errors::InvalidArgument(
+            "The shape of Bias must be [1, frame_size * 3], but received "
+            "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
+            bias_height,
+            bias_width,
+            frame_size * 3));
+    if (bias_grad != nullptr) {
+      bias_grad->set_dims(bias_dims);
+      bias_grad->set_dtype(bias.dtype());
+    }
+  }
+  if (input_grad != nullptr) {
+    input_grad->set_dims(input_dims);
+    input_grad->set_dtype(input.dtype());
+  }
+  if (weight_grad != nullptr) {
+    weight_grad->set_dims(weight_dims);
+    weight_grad->set_dtype(weight.dtype());
+  }
+}
+
+void GruUnitGradInferMeta(const MetaTensor& input,
+                          const MetaTensor& hidden_prev,
+                          const MetaTensor& weight,
+                          const MetaTensor& bias,
+                          MetaTensor* input_grad,
+                          MetaTensor* hidden_prev_grad,
+                          MetaTensor* weight_grad,
+                          MetaTensor* bias_grad,
+                          MetaConfig config) {
+  const auto& input_dims = input.dims();
+  const auto& hidden_prev_dims = hidden_prev.dims();
+  const auto& weight_dims = weight.dims();
+  // int batch_size = input_dims[0];
+  int input_size = static_cast<int>(input_dims[1]);
+  int frame_size = static_cast<int>(hidden_prev_dims[1]);
+  int weight_height = static_cast<int>(weight_dims[0]);
+  int weight_width = static_cast<int>(weight_dims[1]);
+  if (config.is_runtime || input_size >= 0) {
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        frame_size * 3,
+        phi::errors::InvalidArgument(
+            "The second dimension of Input(Input) must be 3 "
+            "times of frame_size in GRUUnitGradOp, but received %d "
+            "(Input) vs %d (frame_size).",
+            input_size,
+            frame_size));
+  }
+  PADDLE_ENFORCE_EQ(
+      weight_height,
+      frame_size,
+      phi::errors::InvalidArgument(
+          "The shape of Input(Weight) matrix must be [frame_size, frame_size "
+          "* 3] in GRUUnitGradOp, but received [%d, %d] (Weight) vs [%d, %d] "
+          "(frame_size).",
+          weight_height,
+          weight_width,
+          frame_size,
+          frame_size * 3));
+  PADDLE_ENFORCE_EQ(
+      weight_width,
+      frame_size * 3,
+      phi::errors::InvalidArgument(
+          "The shape of Input(Weight) matrix must be [frame_size, frame_size "
+          "* 3] in GRUUnitGradOp, but received [%d, %d] (Weight) vs [%d, %d] "
+          "(frame_size).",
+          weight_height,
+          weight_width,
+          frame_size,
+          frame_size * 3));
+  if (bias.initialized()) {
+    const auto& bias_dims = bias.dims();
+    int bias_height = static_cast<int>(bias_dims[0]);
+    int bias_width = static_cast<int>(bias_dims[1]);
+
+    PADDLE_ENFORCE_EQ(
+        bias_height,
+        1,
+        phi::errors::InvalidArgument(
+            "The shape of Bias must be [1, frame_size * 3], but received "
+            "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
+            bias_height,
+            bias_width,
+            frame_size * 3));
+    PADDLE_ENFORCE_EQ(
+        bias_width,
+        frame_size * 3,
+        phi::errors::InvalidArgument(
+            "The shape of Bias must be [1, frame_size * 3], but received "
+            "[%d, %d] (Bias) vs [1, %d] (frame_size * 3).",
+            bias_height,
+            bias_width,
+            frame_size * 3));
+    if (bias_grad != nullptr) {
+      bias_grad->set_dims(bias_dims);
+      bias_grad->set_dtype(bias.dtype());
+    }
+  }
+
+  if (input_grad != nullptr) {
+    input_grad->set_dims(input_dims);
+    input_grad->set_dtype(input.dtype());
+  }
+  if (hidden_prev_grad != nullptr) {
+    hidden_prev_grad->set_dims(hidden_prev_dims);
+    hidden_prev_grad->set_dtype(hidden_prev.dtype());
+  }
+  if (weight_grad != nullptr) {
+    weight_grad->set_dims(weight_dims);
+    weight_grad->set_dtype(weight.dtype());
   }
 }
 

@@ -47,7 +47,7 @@ class TestAdaptiveAvgPool2d(TestBase):
         self.inputs = (
             paddle.rand(shape=[22, 480, 7, 7], dtype=paddle.float32),
         )
-        self.net = AdaptiveAvgPool2dCase()
+        self.net = AdaptiveAvgPool2dCase
 
     # NOTE prim + cinn lead to error
 
