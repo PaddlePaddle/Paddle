@@ -48,7 +48,28 @@ namespace framework {
 
 // constructor
 template <typename T>
-DatasetImpl<T>::DatasetImpl() {
+DatasetImpl<T>::DatasetImpl()
+    : readers_(),
+      preload_readers_(),
+      input_channel_(),
+      input_pv_channel_(),
+      multi_pv_output_(),
+      multi_pv_consume_(),
+      multi_output_channel_(),
+      multi_consume_channel_(),
+      local_tables_(),
+      slots_shuffle_original_data_(),
+      pull_sparse_to_local_thread_num_(0),
+      filelist_(),
+      preload_threads_(),
+      current_phase_(),
+      consume_task_pool_(),
+      input_records_(),
+      use_slots_(),
+      gpu_graph_total_keys_(),
+      keys_vec_(),
+      ranks_vec_(),
+      keys2rank_tables_() {
   VLOG(3) << "DatasetImpl<T>::DatasetImpl() constructor";
   thread_num_ = 1;
   trainer_num_ = 1;
@@ -1194,7 +1215,7 @@ void DatasetImpl<T>::DestroyPreLoadReaders() {
 template <typename T>
 int64_t DatasetImpl<T>::GetMemoryDataSize() {
   if (gpu_graph_mode_) {
-    bool is_multi_node = 0, sage_mode = 0, gpu_graph_training = 1;
+    bool is_multi_node = false, sage_mode = false, gpu_graph_training = true;
     int64_t total_path_num = 0;
     for (int i = 0; i < thread_num_; i++) {
       is_multi_node = readers_[i]->GetMultiNodeMode();

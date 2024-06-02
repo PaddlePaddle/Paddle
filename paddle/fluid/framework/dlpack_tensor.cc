@@ -124,6 +124,7 @@ struct DLDeviceVisitor {
 struct PaddleDLMTensor {
   phi::DenseTensor handle;
   DLManagedTensor tensor;
+  PaddleDLMTensor() : tensor() {}
 };
 
 void deleter(DLManagedTensor *arg) {
@@ -173,7 +174,8 @@ DLManagedTensor *toDLPack(const phi::DenseTensor &src) {
   return &(pdDLMTensor->tensor);
 }
 
-DLPackTensor::DLPackTensor(const phi::DenseTensor &tensor, LaneType lanes) {
+DLPackTensor::DLPackTensor(const phi::DenseTensor &tensor, LaneType lanes)
+    : t_{}, shape_{} {
   // init data, data buffer
   t_.data = const_cast<void *>(tensor.data());
 

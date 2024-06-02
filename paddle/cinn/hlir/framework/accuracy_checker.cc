@@ -272,19 +272,22 @@ std::string AccuracyChecker::CheckBuffer(const cinn_buffer_t* buffer,
 
 template <typename T>
 void AccuracyChecker::MemcpyDeviceToHost(const T* src, size_t numel, T* dst) {
+  target_.arch.Match(
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  if (target_ == cinn::common::DefaultNVGPUTarget()) {
-    cudaMemcpy(dst, src, numel * sizeof(T), cudaMemcpyDeviceToHost);
-    return;
-  }
+        cudaMemcpy(dst, src, numel * sizeof(T), cudaMemcpyDeviceToHost);
+#else
+        CINN_NOT_IMPLEMENTED;
 #endif
-  if (target_ == cinn::common::DefaultHostTarget()) {
-    for (size_t i = 0; i < numel; ++i) {
-      dst[i] = src[i];
-    }
-  } else {
-    CHECK(false) << "Not supported target type.";
-  }
+      },
+      [&](common::X86Arch) {
+        for (size_t i = 0; i < numel; ++i) {
+          dst[i] = src[i];
+        }
+      },
+      [&](std::variant<common::UnknownArch, common::ARMArch>) {
+        CINN_NOT_IMPLEMENTED;
+      });
 }
 
 template <typename T>

@@ -28,10 +28,10 @@ class Store;
 
 constexpr int kNodeSize = 136;
 
-HdfsStore::HdfsStore(const std::string& path) {
+HdfsStore::HdfsStore(const std::string& path)
+    : wait_timeout_(std::chrono::seconds(999999999)), self_rank_(0) {
   path_ = path;
   wait_sleep_ms_ = 10000;
-  wait_timeout_ = std::chrono::seconds(999999999);
   retry_times_ = 100;
 }
 

@@ -86,10 +86,11 @@ size_t GetScopeVarMemorySize(Scope *scope) {
 ScopeBufferedMonitor::ScopeBufferedMonitor(
     const std::vector<platform::Place> &places,
     const std::vector<Scope *> &local_exec_scopes)
-    : places_(places), local_exec_scopes_(local_exec_scopes) {
-  pre_local_exec_scopes_.resize(local_exec_scopes_.size());
-  post_local_exec_scopes_.resize(local_exec_scopes_.size());
-}
+    : places_(places),
+      local_exec_scopes_(local_exec_scopes),
+      pre_local_exec_scopes_(local_exec_scopes.size()),
+      post_local_exec_scopes_(local_exec_scopes.size()),
+      history_local_exec_scopes_() {}
 
 void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
                                  bool has_fetch) {

@@ -19,7 +19,7 @@
 #include "paddle/cinn/hlir/pass/use_pass.h"
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace pass {
@@ -76,16 +76,16 @@ void InferShape(Node* node,
   auto out_dtype =
       op_inferdtype[node->op()](inputs_dtype, node->attrs.attr_store);
 
-  CHECK_GE(node->outlinks_in_order().size(), out_shape.size())
-      << "The output number of node " << node->id() << " is "
-      << node->outlinks_in_order().size()
-      << " , which is smaller than the output shape size " << out_shape.size()
-      << " . And the op type is " << node->op()->name;
-  CHECK_GE(node->outlinks_in_order().size(), out_dtype.size())
-      << "The output number of node " << node->id() << " is "
-      << node->outlinks_in_order().size()
-      << " , which is smaller than the output dtype size " << out_dtype.size()
-      << " . And the op type is " << node->op()->name;
+  PADDLE_ENFORCE_GE(
+      node->outlinks_in_order().size(),
+      out_shape.size(),
+      phi::errors::InvalidArgument("The output number of node is smaller "
+                                   "than the output shape size"));
+  PADDLE_ENFORCE_GE(
+      node->outlinks_in_order().size(),
+      out_dtype.size(),
+      phi::errors::InvalidArgument("The output number of node is smaller "
+                                   "than the output dtype size"));
 
   int counter = 0;
   for (auto& out_edge : node->outlinks_in_order()) {

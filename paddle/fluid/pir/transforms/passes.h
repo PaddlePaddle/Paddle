@@ -41,11 +41,13 @@ USE_PIR_PASS(add_norm_fuse_pass);
 USE_PIR_PASS(fused_dot_product_attention_pass);
 USE_PIR_PASS(fused_flash_attn_pass);
 USE_PIR_PASS(remove_redundant_transpose_pass);
+USE_PIR_PASS(transfer_layout_pass);
 
 #ifdef PADDLE_WITH_DNNL
 USE_PIR_PASS(depthwise_conv_onednn_pass);
 USE_PIR_PASS(squeeze_transpose_onednn_fuse_pass);
 USE_PIR_PASS(batch_norm_act_fuse_pass);
+USE_PIR_PASS(conv2d_bn_onednn_fuse_pass);
 USE_PIR_PASS(conv2d_bias_fuse_pass);
 USE_PIR_PASS(conv2d_transpose_bias_fuse_pass);
 USE_PIR_PASS(conv3d_bias_fuse_pass);
@@ -56,7 +58,9 @@ USE_PIR_PASS(matmul_elementwise_add_fuse_pass);
 USE_PIR_PASS(matmul_activation_fuse_pass);
 USE_PIR_PASS(fc_onednn_enable_pass);
 USE_PIR_PASS(fc_activation_fuse_pass);
+#if defined(PADDLE_WITH_AVX512F) && defined(PADDLE_WITH_MKLML)
 USE_PIR_PASS(self_attention_fuse_pass);
+#endif
 USE_PIR_PASS(softplus_activation_fuse_pass);
 USE_PIR_PASS(shuffle_channel_detect_pass);
 USE_PIR_PASS(operator_reshape_onednn_fuse_pass);
@@ -73,4 +77,8 @@ USE_PIR_PASS(onednn_placement_pass);
 USE_PIR_PASS(add_layernorm_xpu_fuse_pass);
 USE_PIR_PASS(group_norm_silu_xpu_fuse_pass);
 USE_PIR_PASS(conv2d_bn_xpu_fuse_pass);
+#endif
+
+#ifdef PADDLE_WITH_CINN
+USE_PIR_PASS(convert_MEA_to_FA);
 #endif
