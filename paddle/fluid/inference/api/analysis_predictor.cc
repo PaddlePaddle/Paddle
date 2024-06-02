@@ -1193,7 +1193,6 @@ bool AnalysisPredictor::PrepareExecutor() {
             root_predictor_id_, "memory_optimize_pass");
     executor_->MakeReusePlan(reuse_table);
   }
-  LOG(INFO) << "PrepareExecutor完毕";
   return true;
 }
 
