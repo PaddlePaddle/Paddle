@@ -21,7 +21,7 @@ if [[ $# -ne 2 ]]; then
     exit 1
 fi
 
-xre_base_url=$1
+xpu_base_url=$1
 xccl_base_url=$2
 BOS_PATTERN="https://baidu-kunlun-product.su.bcebos.com"
 
@@ -87,18 +87,32 @@ else
 fi
 
 # XRE
-#xre_tar_file_names=("xre-kylin_aarch64" "xre-bdcentos_x86_64" "xre-ubuntu_x86_64" "xre-centos7_x86_64")
-#xre_inner_file_names=("include/xpu/runtime.h" "so/libxpurt.so")
-#for name in ${xre_tar_file_names[@]}; do
-#    url="${xpu_base_url}/${name}.tar.gz"
-#    check_files $url $name "${xre_inner_file_names[@]}"
-#    if [[ $? -ne 0 ]]; then
-#        echo "XRE check failed, name: $name"
-#        exit 1
-#    else
-#        echo "XRE check ok, name: $name"
-#    fi
-#done
+xre_tar_file_names=("xre-kylin_aarch64" "xre-bdcentos_x86_64" "xre-ubuntu_x86_64" "xre-centos7_x86_64")
+xre_inner_file_names=("include/xpu/runtime.h" "so/libxpurt.so")
+for name in ${xre_tar_file_names[@]}; do
+    url="${xpu_base_url}/${name}.tar.gz"
+    check_files $url $name "${xre_inner_file_names[@]}"
+    if [[ $? -ne 0 ]]; then
+        echo "XRE check failed, name: $name"
+        exit 1
+    else
+        echo "XRE check ok, name: $name"
+    fi
+done
+
+# XDNN
+xdnn_tar_file_names=("xdnn-kylin_aarch64" "xdnn-bdcentos_x86_64" "xdnn-ubuntu_x86_64" "xdnn-centos7_x86_64")
+xdnn_inner_file_names=("include/xpu/xdnn.h" "so/libxpuapi.so")
+for name in ${xdnn_tar_file_names[@]}; do
+    url="${xpu_base_url}/${name}.tar.gz"
+    check_files $url $name "${xdnn_inner_file_names[@]}"
+    if [[ $? -ne 0 ]]; then
+        echo "XDNN check failed, name: $name"
+        exit 1
+    else
+        echo "XDNN check ok, name: $name"
+    fi
+done
 
 # XCCL
 xccl_tar_file_names=("xccl_rdma-bdcentos_x86_64" "xccl_rdma-ubuntu_x86_64" "xccl_socket-bdcentos_x86_64" "xccl_socket-kylin_aarch64" "xccl_socket-ubuntu_x86_64")
