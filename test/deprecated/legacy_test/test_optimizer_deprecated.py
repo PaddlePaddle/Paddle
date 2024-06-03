@@ -25,6 +25,8 @@ from paddle.base.framework import (
     program_guard,
 )
 
+paddle.enable_static()
+
 
 class TestOptimizer(unittest.TestCase):
     def test_sgd_optimizer(self):

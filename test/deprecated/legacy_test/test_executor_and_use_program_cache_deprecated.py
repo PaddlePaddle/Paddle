@@ -22,6 +22,8 @@ sys.path.append("../../legacy_test")
 import paddle
 from paddle import base
 
+paddle.enable_static()
+
 
 class TestExecutor(unittest.TestCase):
     def test_mul(self):

@@ -210,6 +210,9 @@ class TestGRU(unittest.TestCase):
         np.testing.assert_allclose(y1, y2, atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2, atol=1e-8, rtol=1e-5)
 
+    def runTest(self):
+        self.test_with_input_lengths()
+
 
 class TestLSTM(unittest.TestCase):
     def __init__(self, time_major=True, direction="forward", place="cpu"):

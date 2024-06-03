@@ -19,6 +19,8 @@ import numpy as np
 import paddle
 from paddle import base
 
+paddle.enable_static()
+
 
 class TestAdamOpV2(unittest.TestCase):
     def test_adam_op(self):

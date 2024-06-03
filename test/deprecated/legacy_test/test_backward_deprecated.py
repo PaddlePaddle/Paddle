@@ -20,6 +20,8 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base, static
 
+paddle.enable_static()
+
 
 class BackwardNet:
     """

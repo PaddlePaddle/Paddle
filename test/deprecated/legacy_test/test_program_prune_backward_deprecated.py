@@ -26,6 +26,8 @@ from paddle import base
 from paddle.base import core
 from paddle.dataset import wmt16
 
+paddle.enable_static()
+
 DeviceType = core.DeviceType
 
 

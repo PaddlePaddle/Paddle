@@ -237,7 +237,6 @@ list(REMOVE_ITEM TEST_OPS test_filter_pruning)
 if(WIN32)
   set(SINGLE_CARD_TEST_OPS
       test_user_defined_quantization_deprecated
-      test_quantization_scale_pass
       test_quantization_scale_pass_deprecated
       test_quantization_pass_deprecated
       test_moving_average_abs_max_scale_op_deprecated

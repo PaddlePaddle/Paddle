@@ -18,6 +18,8 @@ import paddle
 from paddle import base
 from paddle.base import core, framework
 
+paddle.enable_static()
+
 
 class TestInferNoNeedBufferSlots(unittest.TestCase):
     def net(self):

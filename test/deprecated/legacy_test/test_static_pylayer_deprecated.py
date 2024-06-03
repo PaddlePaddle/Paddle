@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import functools
+import sys
 import unittest
-from test.deprecated.legacy_test.test_prune_deprecated import (
+
+sys.path.append(".")
+import numpy as np
+from test_prune_deprecated import (
     TestExecutorRunAutoPrune,
     TestPruneBase,
 )
-
-import numpy as np
 
 import paddle
 from paddle import base

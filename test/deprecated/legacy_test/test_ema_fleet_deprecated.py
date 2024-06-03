@@ -19,6 +19,8 @@ import numpy as np
 import paddle
 from paddle import static, utils
 
+paddle.enable_static()
+
 
 def gen_data():
     return np.random.random(size=(10, 5)).astype('float32')

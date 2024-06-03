@@ -464,7 +464,7 @@ long_time_test="^test_gru_op$|\
 ^test_cross_op$|\
 ^test_elementwise_nn_grad$|\
 ^test_fused_elemwise_activation_op$|\
-^test_imperative_lod_tensor_to_selected_rows$|\
+^test_imperative_lod_tensor_to_selected_rows_deprecated$|\
 ^test_imperative_selected_rows_to_lod_tensor$|\
 ^test_layer_norm_op$|\
 ^test_layer_norm_op_static_build$|\

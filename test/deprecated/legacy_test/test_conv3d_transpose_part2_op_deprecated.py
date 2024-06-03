@@ -23,6 +23,8 @@ import paddle
 from paddle import base
 from paddle.base import core
 
+paddle.enable_static()
+
 
 class TestConv3DTransposeAPI(unittest.TestCase):
     def test_case1(self):
