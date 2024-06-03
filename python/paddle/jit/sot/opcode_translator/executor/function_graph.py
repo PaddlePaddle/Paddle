@@ -748,30 +748,6 @@ class FunctionGraph:
         assert len(inputs) == len(input_names), "Number of inputs not match."
         return inputs
 
-    def prepare_inputs(
-        self, input_names: list[str]
-    ) -> list[paddle.static.InputSpec]:
-        input_specs: list[paddle.static.InputSpec] = []
-        for name in input_names:
-            found = False
-            for variable in self.input_variables:
-                if (
-                    isinstance(variable, (TensorVariable, SymbolicVariable))
-                    and variable.get_symbol().name == name
-                ):
-                    input_specs.append(variable.meta.to_input_spec())
-                    if isinstance(variable, SymbolicVariable):
-                        self.pycode_gen.gen_load_object(
-                            paddle.to_tensor, "___paddle_to_tensor"
-                        )
-                    variable.tracker.gen_instructions(self.pycode_gen)
-                    found = True
-                    if isinstance(variable, SymbolicVariable):
-                        self.pycode_gen.gen_call_function(1)
-                    break
-            assert found, f"can't find input {name} in SIR."
-        return input_specs
-
     def gen_load_inputs(
         self, inputs: OrderedSet[TensorVariable | SymbolicVariable]
     ):

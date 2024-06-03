@@ -619,7 +619,7 @@ class SymbolicVariable(VariableBase):
         else:
             self.value = value
             self.meta = MetaInfo(
-                [], paddle.int64, True, self.var_name, False, None, None
+                [], paddle.int32, True, self.var_name, False, None, None
             )
         self.need_guard_value = False
 
@@ -721,15 +721,6 @@ class SymbolicVariable(VariableBase):
             value, tracker, symbolic_inputs
         ):
             return SymbolicVariable(value, graph, tracker)
-
-        # for tracker_expr, symbolic_input in symbolic_inputs.items():
-        #     if tracker.match_expr(tracker_expr):
-        #         # TODO(zrr1999): 5 is a frequency param
-        #         if symbolic_input.get(value, 0) < 5:
-        #             symbolic_input.setdefault(value, 0)
-        #             symbolic_input[value] += 1
-        #             return SymbolicVariable(value, graph, tracker)
-        #         symbolic_input[value] += 1
         return None
 
 
