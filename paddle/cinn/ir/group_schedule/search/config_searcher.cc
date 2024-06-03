@@ -25,18 +25,18 @@ namespace search {
 
 WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
     ::pir::Program* program,
-    const IterSpace& iter_space,
+    const BucketInfo& bucket_info,
     double sampling_prob,
     int max_sampling_times,
     int repeats)
     : program_(program),
-      iter_space_(iter_space),
+      bucket_info_(bucket_info),
       measurer_(program),
       sampling_prob_(sampling_prob),
       max_sampling_times_(max_sampling_times),
       repeats_(repeats) {
   double weighted_space_size = 1.0;
-  for (const auto& dim : iter_space_.space) {
+  for (const auto& dim : bucket_info_.space) {
     PADDLE_ENFORCE_EQ(dim.upper_bound - dim.lower_bound + 1,
                       dim.weights.size(),
                       ::common::errors::InvalidArgument(
@@ -54,7 +54,7 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
   // Generate Sampling Inputs
   const auto Sample = [&]() -> std::vector<int64_t> {
     std::vector<int64_t> samples;
-    for (IterSpace::Dimension dim : iter_space_.space) {
+    for (BucketInfo::Dimension dim : bucket_info_.space) {
       int sampled = utils::SampleDiscreteFromDistribution<double>(dim.weights,
                                                                   &rand_seed_);
       samples.push_back(static_cast<int64_t>(sampled) + dim.lower_bound);
@@ -82,19 +82,15 @@ ScoreType WeightedSamplingTrailObjectiveFunc::operator()(
   auto tile_config_database = std::make_shared<NaiveTileConfigDatabase>();
   IterSpaceType iter_space_type = [&] {
     std::vector<std::pair<std::string, std::string>> res;
-    for (const auto& dim : iter_space_.space) {
+    for (const auto& dim : bucket_info_.space) {
       res.emplace_back(dim.iter_type, (dim.is_dynamic ? "dynamic" : "static"));
     }
     return res;
   }();
-  BucketInfo bucket_info{iter_space_.space[0].lower_bound,
-                         iter_space_.space[0].upper_bound,
-                         iter_space_.space[1].lower_bound,
-                         iter_space_.space[1].upper_bound};
   ScheduleConfig::TileConfig config{
       candidate[0], candidate[1], candidate[2], NoneReduceMethod()};
   tile_config_database->AddConfig(
-      cinn::common::DefaultTarget(), iter_space_type, bucket_info, config);
+      cinn::common::DefaultTarget(), bucket_info_, config);
   auto& schedule_config_manager = ScheduleConfigManager::Instance();
   schedule_config_manager.AddConfigDatabase("custom", tile_config_database);
   measurer_.Compile();

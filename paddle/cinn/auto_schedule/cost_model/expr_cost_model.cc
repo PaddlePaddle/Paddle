@@ -24,7 +24,7 @@
 #include "paddle/cinn/auto_schedule/search_space/search_state.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace auto_schedule {
 
@@ -45,8 +45,10 @@ void ExprCostModel::Train(const std::vector<const ir::ModuleExpr*>& samples,
                           const cinn::common::Target& target) {
   trained_times_.store(1);
   size_t total_size = samples.size();
-  CHECK_EQ(total_size, labels.size())
-      << "Samples must have same size as labels";
+  PADDLE_ENFORCE_EQ(
+      total_size,
+      labels.size(),
+      phi::errors::InvalidArgument("Samples must have same size as labels"));
   std::vector<std::vector<float>> train_feature_numbers(total_size);
   FeatureExtractor extractor;
   for (size_t i = 0; i < total_size; ++i) {
@@ -63,8 +65,10 @@ void ExprCostModel::Update(const std::vector<const ir::ModuleExpr*>& samples,
                            const cinn::common::Target& target) {
   ++trained_times_;
   size_t total_size = samples.size();
-  CHECK_EQ(total_size, labels.size())
-      << "Samples must have same size as labels";
+  PADDLE_ENFORCE_EQ(
+      total_size,
+      labels.size(),
+      phi::errors::InvalidArgument("Samples must have same size as labels"));
   std::vector<std::vector<float>> train_feature_numbers(total_size);
   FeatureExtractor extractor;
   for (size_t i = 0; i < total_size; ++i) {
