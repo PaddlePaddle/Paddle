@@ -272,6 +272,7 @@ from .tensor.manipulation import (
     atleast_1d,
     atleast_2d,
     atleast_3d,
+    block_diag,
     broadcast_tensors,
     broadcast_to,
     cast,
@@ -433,6 +434,7 @@ from .tensor.math import (  # noqa: F401
     inner,
     inverse,
     isfinite,
+    isin,
     isinf,
     isnan,
     isneginf,
@@ -588,6 +590,9 @@ if is_compiled_with_cuda():
         and paddle.version.with_pip_cuda_libraries == 'ON'
     ):
         package_dir = os.path.dirname(os.path.abspath(__file__))
+        nvidia_package_path = package_dir + "/.." + "/nvidia"
+        set_flags({"FLAGS_nvidia_package_dir": nvidia_package_path})
+
         cublas_lib_path = package_dir + "/.." + "/nvidia/cublas/lib"
         set_flags({"FLAGS_cublas_dir": cublas_lib_path})
 
@@ -676,7 +681,9 @@ if is_compiled_with_cuda():
                 ctypes.CDLL('msvcp140.dll')
                 ctypes.CDLL('vcruntime140_1.dll')
             except OSError:
-                print(
+                import logging
+
+                logging.error(
                     '''Microsoft Visual C++ Redistributable is not installed, this may lead to the DLL load failure.
                         It can be downloaded at https://aka.ms/vs/16/release/vc_redist.x64.exe'''
                 )
@@ -696,7 +703,6 @@ if is_compiled_with_cuda():
             path_patched = False
             for dll in dlls:
                 is_loaded = False
-                print("dll:", dll)
                 if with_load_library_flags:
                     res = kernel32.LoadLibraryExW(dll, None, 0x00001100)
                     last_error = ctypes.get_last_error()
@@ -730,6 +736,7 @@ ir_guard = IrGuard()
 ir_guard._switch_to_pir()
 
 __all__ = [
+    'block_diag',
     'iinfo',
     'finfo',
     'dtype',
@@ -843,6 +850,7 @@ __all__ = [
     'squeeze_',
     'to_tensor',
     'gather_nd',
+    'isin',
     'isinf',
     'isneginf',
     'isposinf',

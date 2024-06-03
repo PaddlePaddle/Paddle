@@ -16,7 +16,7 @@
 
 #include <algorithm>
 #include <random>
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace auto_schedule {
 
@@ -26,7 +26,10 @@ std::unique_ptr<RuleSampler> RuleSampler::Make(
     const std::string& strategy,
     utils::LinearRandomEngine::StateType rand_seed,
     const std::vector<int>& weights) {
-  CHECK_GT(potential_rules.size(), 0) << "Empty rule list";
+  PADDLE_ENFORCE_GT(
+      potential_rules.size(),
+      0,
+      phi::errors::InvalidArgument("The potential_rules should not be empty."));
   if (strategy == "traversal") {
     return std::make_unique<TraversalRuleSampler>(potential_rules,
                                                   default_remove_policy);
@@ -64,7 +67,11 @@ ProbabilisticRuleSampler::ProbabilisticRuleSampler(
   if (weights.empty()) {
     weights_.resize(potential_rules.size(), 1);
   } else {
-    CHECK_EQ(potential_rules.size(), weights_.size());
+    PADDLE_ENFORCE_EQ(
+        potential_rules.size(),
+        weights_.size(),
+        phi::errors::InvalidArgument(
+            "Potential_rules's size should same as weights's size."));
   }
   remains_ = potential_rules.size();
 }
