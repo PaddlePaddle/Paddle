@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import numpy as np
 
@@ -5138,7 +5139,9 @@ def ormqr(x, tau, y, left=True, transpose=False, name=None):
     return result
 
 
-def cholesky_inverse(x, upper=False):
+def cholesky_inverse(
+    x: paddle.Tensor, upper: bool = False, name: str | None = None
+) -> paddle.Tensor:
     r"""
     Using the Cholesky factor `U` to calculate the inverse matrix of a symmetric positive definite matrix, returns the matrix `inv`.
 
