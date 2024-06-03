@@ -308,7 +308,7 @@ if(WITH_PYTHON)
     list(REMOVE_ITEM GENERATOR_DEPS python)
   endif()
   if(NOT WIN32)
-    add_executable(paddle_generator kernel_signature_generator.cc
+    add_executable(paddle_generator generator.cc kernel_signature_generator.cc
                                     eager_legacy_op_function_generator.cc)
     target_link_libraries(paddle_generator ${OP_FUNCTION_GENERATOR_DEPS})
   endif()
