@@ -4160,6 +4160,25 @@
     func : tanh_shrink
   backward : tanh_shrink_grad
 
+- op : tdm_child
+  args: (Tensor x, Tensor tree_info, int child_nums, DataType dtype = DataType::INT32)
+  output: Tensor (child), Tensor (leaf_mask)
+  infer_meta:
+    func: TdmChildInferMeta
+  kernel:
+    func: tdm_child
+    data_type: x
+
+- op : tdm_sampler
+  args: (Tensor x, Tensor travel, Tensor layer, bool output_positive=true, int[] neg_samples_num_list={}, int[] layer_offset_lod={}, int seed = 0, int dtype=2)
+  output: Tensor(out), Tensor(labels), Tensor(mask)
+  infer_meta:
+    func : TdmSamplerInferMeta
+  kernel:
+    func : tdm_sampler
+    data_type : x
+  optional : labels
+
 - op : temporal_shift
   args : (Tensor x, int seg_num, float shift_ratio = 0.25f, str data_format = "NCHW")
   output : Tensor(out)
