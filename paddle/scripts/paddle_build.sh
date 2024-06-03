@@ -1130,7 +1130,10 @@ function check_whl_size() {
 
 function generate_upstream_develop_api_spec() {
     set -x
+    # Temporarily save some scripts from PR branch
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
+    cp ${PADDLE_ROOT}/tools/print_signatures.py /tmp
+
     mkdir -p ${PADDLE_ROOT}/build/pr_whl && mv ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl/
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
@@ -1178,17 +1181,20 @@ function generate_api_spec() {
         echo "Not supported $2"
         exit 1
     fi
+    if [ "$spec_kind" == "DEV" ]; then
+        REQUIREMENTS_PATH=/tmp/requirements.txt
+        PRINT_SIGNATURES_SCRIPT_PATH=/tmp/print_signatures.py
+    else
+        REQUIREMENTS_PATH=${PADDLE_ROOT}/python/requirements.txt
+        PRINT_SIGNATURES_SCRIPT_PATH=${PADDLE_ROOT}/tools/print_signatures.py
+    fi
 
     mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
     cd ${PADDLE_ROOT}/build/.check_api_workspace
     virtualenv -p `which python` .${spec_kind}_env
     source .${spec_kind}_env/bin/activate
+    pip install -r $REQUIREMENTS_PATH
 
-    if [ "$spec_kind" == "DEV" ]; then
-        pip install -r /tmp/requirements.txt
-    else
-        pip install -r ${PADDLE_ROOT}/python/requirements.txt
-    fi
     if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
         pip install ${PADDLE_ROOT}/build/python/dist/*whl
     elif [ -d "${PADDLE_ROOT}/dist/" ];then
@@ -1196,7 +1202,10 @@ function generate_api_spec() {
         mkdir ${PADDLE_ROOT}/build/python/dist/ && mv  ${PADDLE_ROOT}/dist/*whl  ${PADDLE_ROOT}/build/python/dist/
     fi
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
-    python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} paddle > $spec_path
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} --show-fields="args,varargs,varkw,defaults,kwonlyargs,kwonlydefaults" paddle > ${spec_path}.api
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} --show-fields="annotations" paddle > ${spec_path}.annotations
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} --show-fields="document" paddle > ${spec_path}.doc
 
     # used to log op_register data_type
     op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_TYPE_${spec_kind}.spec
@@ -1213,9 +1222,6 @@ function generate_api_spec() {
     # print api and the md5 of source code of the api.
     api_source_md5_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.source.md5
     python ${PADDLE_ROOT}/tools/count_api_without_core_ops.py -p paddle > $api_source_md5_path
-
-    awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
-    awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
 
     python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
         ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
@@ -1474,7 +1480,7 @@ function card_test() {
     if [ "${WITH_XPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
     elif [ "${WITH_ROCM}" == "ON" ];then
-        CUDA_DEVICE_COUNT=$(rocm-smi -i | grep GPU | wc -l)
+        CUDA_DEVICE_COUNT=$(rocm-smi -i | grep DCU | wc -l)
     elif [ "${WITH_IPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
     else
@@ -1517,13 +1523,22 @@ function card_test() {
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                if [ "$WITH_ROCM" == "ON" ];then
+                    (env HIP_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                else
+                    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                fi
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                if [ "$WITH_ROCM" == "ON" ];then
+                    (env HIP_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                else
+                    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                fi
+                
             fi
         fi
     done
@@ -2652,7 +2667,11 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            if [ "$WITH_ROCM" == "ON" ];then
+                env HIP_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            else
+                env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            fi
             ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
             if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
                 echo "========================================"
@@ -2826,7 +2845,9 @@ set +x
         rerun_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s"
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
-        cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt ${cfs_dir}/coverage/${AGILE_PULL_ID}/${AGILE_REVISION}/
+        if [ "$WITH_ROCM" != "ON" ];then
+            cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt ${cfs_dir}/coverage/${AGILE_PULL_ID}/${AGILE_REVISION}/
+        fi
         if [[ "$EXIT_CODE" != "0" ]]; then
             show_ut_retry_result
         fi
@@ -3727,7 +3748,10 @@ function build_pr_and_develop() {
     fi
     mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    # Temporarily save some scripts from PR branch
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
+    cp ${PADDLE_ROOT}/tools/print_signatures.py /tmp
+
     generate_api_spec "$1" "PR"
     mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
@@ -4475,6 +4499,9 @@ function main() {
         export FLAGS_PIR_OPTEST=True
         parallel_test true
         ;;
+      hyg_dcu_test)
+        parallel_test
+        ;;
       nv_cicheck_coverage)
         parallel_test
         nv_test
@@ -4495,10 +4522,6 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         run_brpc_test
-        ;;
-      assert_api)
-        generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
-        assert_api_spec_approvals
         ;;
       test_inference)
         PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
@@ -4528,9 +4551,6 @@ function main() {
       test_train)
         gen_fluid_lib ${parallel_number}
         test_fluid_lib_train
-        ;;
-      assert_api_approvals)
-        assert_api_spec_approvals
         ;;
       assert_file_approvals)
         assert_file_diff_approvals
