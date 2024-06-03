@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 from functools import cached_property
+from typing import TypeVar
 
 import paddle
 from paddle.amp.auto_cast import amp_state
@@ -26,6 +27,8 @@ from paddle.framework import use_pir_api
 from paddle.utils import flatten, is_sequence
 
 from .utils import Cache, Singleton, map_if_extend, meta_str
+
+DynamicSymbolT = TypeVar("DynamicSymbolT")
 
 
 class SymbolicInt(metaclass=Singleton):
@@ -61,6 +64,14 @@ class MetaInfo:
         self.stop_gradient = stop_gradient
         self.dynamic_axes = dynamic_axes or []
 
+    def get_dynamic_shape(
+        self, dynamic_symbol: DynamicSymbolT = -1
+    ) -> list[int | DynamicSymbolT]:
+        return [
+            dim if i not in self.dynamic_axes else dynamic_symbol
+            for i, dim in enumerate(self.shape)
+        ]
+
     @staticmethod
     def from_tensor(tensor, *, dynamic_axes: list[int] | None = None):
         if isinstance(tensor, paddle.pir.Value):
@@ -89,8 +100,8 @@ class MetaInfo:
         dynamic_axes = dynamic_axes or []
         dynamic_axes = [
             i
-            for i in range(len(tensor.shape))
-            if tensor.shape[i] == -1 or i in dynamic_axes
+            for i, dim in enumerate(tensor.shape)
+            if dim == -1 or i in dynamic_axes
         ]
         return MetaInfo(
             list(tensor.shape),
@@ -111,18 +122,13 @@ class MetaInfo:
         return -1 in self.shape
 
     def to_input_spec(self):
-        shape = [
-            dim if i not in self.dynamic_axes else None
-            for i, dim in enumerate(self.shape)
-        ]
+        shape = self.get_dynamic_shape(None)
         return paddle.static.InputSpec(
             shape, dtype=self.dtype, stop_gradient=self.stop_gradient
         )
 
     def guard_str(self):
-        shape: list[int | SymbolicInt] = [*self.shape]
-        for axis in self.dynamic_axes:
-            shape[axis] = SymbolicInt()
+        shape = self.get_dynamic_shape(SymbolicInt())
         return f"({shape}, {self.dtype}, {self.stop_gradient})"
 
     def __repr__(self):
@@ -198,10 +204,7 @@ class VariableCreator(metaclass=Singleton):
             return self.legacy_programs[1]
 
     def create_var(self, meta: MetaInfo):
-        shape = [
-            dim if i not in meta.dynamic_axes else -1
-            for i, dim in enumerate(meta.shape)
-        ]
+        shape = meta.get_dynamic_shape()
 
         if paddle.framework.use_pir_api():
             with paddle.static.program_guard(
