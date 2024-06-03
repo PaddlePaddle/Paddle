@@ -5,7 +5,6 @@
 - amax_grad
 - amin_grad
 - cast_grad
-- channel_shuffle_grad
 - conv2d_transpose_double_grad
 - conv2d_transpose_grad
 - deformable_conv_grad

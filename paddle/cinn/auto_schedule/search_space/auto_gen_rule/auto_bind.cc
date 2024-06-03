@@ -21,7 +21,7 @@
 #include "paddle/cinn/ir/schedule_block_graph.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace auto_schedule {
 
@@ -40,8 +40,11 @@ bool IsSpatialLoop(const ir::For* for_node) {
         const auto* schedule_block =
             block_realize->schedule_block.As<ir::ScheduleBlock>();
         CHECK(schedule_block) << "schedule_block field is not a ScheduleBlock";
-        CHECK_EQ(block_realize->iter_values.size(),
-                 schedule_block->iter_vars.size());
+        PADDLE_ENFORCE_EQ(
+            block_realize->iter_values.size(),
+            schedule_block->iter_vars.size(),
+            phi::errors::InvalidArgument(
+                "The size of iter_values and iter_vars should be equal."));
         for (int i = 0; i < block_realize->iter_values.size(); ++i) {
           const ir::Var& iter_var = schedule_block->iter_vars[i];
           const ir::Expr& binding = block_realize->iter_values[i];
@@ -93,10 +96,16 @@ void BindGPUIndex(ir::IRSchedule* ir_schedule,
                   int max_blocks,
                   int max_threads_per_block) {
   auto all_loops = ir_schedule->GetLoops(block_name);
-  CHECK_LE(num_loops_to_bind, all_loops.size())
-      << "The number of loops to be bind is greater than size of all_loops";
-  CHECK_GE(num_loops_to_bind, 0)
-      << "The number of loops to be bind should be greater than 0";
+  PADDLE_ENFORCE_LE(
+      num_loops_to_bind,
+      all_loops.size(),
+      phi::errors::InvalidArgument(
+          "The number of loops to be bind is greater than size of all_loops"));
+  PADDLE_ENFORCE_GE(
+      num_loops_to_bind,
+      0,
+      phi::errors::InvalidArgument(
+          "The number of loops to be bind should be greater than 0"));
   // check whether it is the case that threadIdx has been binded but blockIdx
   // not, the threadIdx can only be binded in the first loop after
   // num_loops_to_bind loops because we has excluded other cases in
@@ -130,13 +139,19 @@ void BindGPUIndex(ir::IRSchedule* ir_schedule,
 
   if (extent <= max_blocks * max_threads_per_block) {
     auto splits = ir_schedule->Split(fused_loop, {-1, max_threads_per_block});
-    CHECK_EQ(splits.size(), 2);
+    PADDLE_ENFORCE_EQ(
+        splits.size(),
+        2,
+        phi::errors::InvalidArgument("The size of splits should be 2."));
     ir_schedule->Bind(splits[0], "blockIdx.x");
     ir_schedule->Bind(splits[1], "threadIdx.x");
   } else {
     auto splits =
         ir_schedule->Split(fused_loop, {-1, max_blocks, max_threads_per_block});
-    CHECK_EQ(splits.size(), 3);
+    PADDLE_ENFORCE_EQ(
+        splits.size(),
+        3,
+        phi::errors::InvalidArgument("The size of splits should be 3."));
     ir_schedule->Reorder({splits[1], splits[2], splits[0]});
     all_loops = ir_schedule->GetLoops(block_name);
     ir_schedule->Bind(all_loops[0], "blockIdx.x");
@@ -160,8 +175,11 @@ RuleApplyType AutoBind::Init(ir::IRSchedule* ir_schedule) {
 }
 
 void AutoBind::Apply(int index) {
-  CHECK_LT(index, applicable_schedule_blocks_.size())
-      << "invalid apply index:" << index;
+  PADDLE_ENFORCE_LT(
+      index,
+      applicable_schedule_blocks_.size(),
+      phi::errors::InvalidArgument(
+          "The index should be less than size of applicable_schedule_blocks_"));
   auto applied_block = applicable_schedule_blocks_.at(index);
   auto all_loops = ir_schedule_->GetLoops(applied_block);
   BindGPUIndex(ir_schedule_,

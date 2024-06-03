@@ -17,7 +17,7 @@
 #include <algorithm>
 
 #include "paddle/cinn/ir/ir.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace auto_schedule {
 
@@ -27,7 +27,10 @@ std::unique_ptr<BlockSampler> BlockSampler::Make(
     const std::string& strategy,
     utils::LinearRandomEngine::StateType rand_seed,
     const std::vector<int>& weights) {
-  CHECK_GT(all_blocks.size(), 0) << "Empty block list";
+  PADDLE_ENFORCE_GT(
+      all_blocks.size(),
+      0,
+      phi::errors::InvalidArgument("The all_blocks should not empty."));
   if (strategy == "traversal") {
     VLOG(6) << "Init TraversalBlockSampler with block num = "
             << all_blocks.size();
@@ -87,7 +90,11 @@ ProbabilisticBlockSampler::ProbabilisticBlockSampler(
   if (weights.empty()) {
     weights_.resize(all_blocks.size(), 1);
   } else {
-    CHECK_EQ(all_blocks.size(), weights_.size());
+    PADDLE_ENFORCE_EQ(
+        all_blocks.size(),
+        weights_.size(),
+        phi::errors::InvalidArgument(
+            "The size of all_blocks and weights should be equal."));
   }
   remains_ = all_blocks.size();
 }
