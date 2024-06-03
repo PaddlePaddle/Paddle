@@ -2726,7 +2726,7 @@ def inverse(x, name=None):
         x (Tensor): The input tensor. The last two
             dimensions should be equal. When the number of dimensions is
             greater than 2, it is treated as batches of square matrix. The data
-            type can be float32 and float64.
+            type can be float32, float64, complex64, complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2751,7 +2751,12 @@ def inverse(x, name=None):
     else:
 
         def _check_input(x):
-            check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'inverse')
+            check_variable_and_dtype(
+                x,
+                'x',
+                ['float32', 'float64', 'complex64', 'complex128'],
+                'inverse',
+            )
             if len(x.shape) < 2:
                 raise ValueError(
                     "The input of inverse is expected to be a Tensor whose number "
