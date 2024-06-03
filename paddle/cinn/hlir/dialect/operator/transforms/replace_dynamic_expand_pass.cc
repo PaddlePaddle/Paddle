@@ -69,12 +69,6 @@ class DynamicExpandOpPattern
           op->operand_source(0), broadcast_axes, out_shape);
     }();
 
-    auto& shape_analysis =
-        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
-    shape_analysis.SetShapeOrDataForValue(
-        broadcast->result(0),
-        shape_analysis.GetShapeOrDataForValue(op.result(0)));
-
     if (auto pre_full = broadcast->operand_source(0)
                             .defining_op()
                             ->dyn_cast<paddle::dialect::FullOp>()) {
@@ -82,11 +76,6 @@ class DynamicExpandOpPattern
                            .type()
                            .dyn_cast<paddle::dialect::DenseTensorType>()
                            .dims();
-      if (input_dim.size() == 1 && input_dim[0] == 1) {
-        shape_analysis.SetShapeOrDataForValue(
-            pre_full->result(0),
-            shape_analysis.GetShapeOrDataForValue(op.result(0)));
-      }
     }
 
     rewriter.ReplaceAllUsesWith(op->result(0), broadcast->result(0));

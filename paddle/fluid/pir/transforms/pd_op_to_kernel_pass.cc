@@ -185,6 +185,13 @@ static bool NeedSkipPlaceTransfer(const pir::Operation* op) {
 static bool NeedFallBackCpu(const pir::Operation* op,
                             const std::string& kernel,
                             const phi::KernelKey& kernel_key) {
+  if (op->HasAttribute(kForceBackendAttr) &&
+      op->attributes()
+              .at(kForceBackendAttr)
+              .dyn_cast<pir::StrAttribute>()
+              .AsString() == "cpu") {
+    return true;
+  }
   if (UnchangeOutputOps.count(op->name()) || kernel == "" ||
       phi::KernelFactory::Instance().HasKernel(kernel, kernel_key)) {
     return false;
@@ -208,6 +215,14 @@ static bool NeedFallBackCpu(const pir::Operation* op,
 static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
                                        const std::string& kernel_name,
                                        const phi::KernelKey kernel_key) {
+  if (op->HasAttribute(kForceBackendAttr) &&
+      op->attributes()
+              .at(kForceBackendAttr)
+              .dyn_cast<pir::StrAttribute>()
+              .AsString() == "gpu") {
+    return true;
+  }
+
   // NOTE(phlrain): keep the same kernel select strategy with
   // GetExpectKernelKey
   if (op->isa<Pool2dOp>() || op->isa<Pool2dGradOp>() || op->isa<Pool3dOp>() ||
@@ -268,8 +283,8 @@ static phi::Backend DeriveBackend(const std::string& op,
                                   phi::Backend kernel_backend,
                                   size_t input_index) {
   // NOTE: Parameters are initialized on executor place defined
-  if ((op.compare(pir::SetParameterOp::name()) == 0 ||
-       op.compare(pir::ShadowOutputOp::name()) == 0) &&
+  if ((op == pir::SetParameterOp::name() ||
+       op == pir::ShadowOutputOp::name()) &&
       place.GetType() == phi::AllocationType::GPU) {
     return phi::TransToPhiBackend(place);
   }

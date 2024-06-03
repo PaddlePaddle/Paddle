@@ -111,10 +111,16 @@ PD_REGISTER_KERNEL(dequantize_linear,
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 
-PD_REGISTER_KERNEL(quantize_linear_deprecated,
+PD_REGISTER_KERNEL(quantize_linear_deprecated_train,
                    CPU,
                    ALL_LAYOUT,
-                   phi::QuantizeLinearDeprecatedKernel,
+                   phi::QuantizeLinearDeprecatedTrainKernel,
+                   float) {}
+
+PD_REGISTER_KERNEL(quantize_linear_deprecated_infer,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::QuantizeLinearDeprecatedInferKernel,
                    float) {}
 
 PD_REGISTER_KERNEL(dequantize_linear_deprecated,

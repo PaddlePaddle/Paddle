@@ -254,13 +254,8 @@ OneDNNLegacyKernelInstruction::OneDNNLegacyKernelInstruction(
 }
 
 OneDNNLegacyKernelInstruction::~OneDNNLegacyKernelInstruction() {
-  if (kernel_context_ != nullptr) {
-    delete kernel_context_;
-  }
-
-  if (phi_kernel_ != nullptr) {
-    delete phi_kernel_;
-  }
+  delete kernel_context_;
+  delete phi_kernel_;
 }
 
 void OneDNNLegacyKernelInstruction::Run() {

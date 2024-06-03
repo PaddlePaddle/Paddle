@@ -35,8 +35,8 @@ __device__ static IndexType GetBin(T input_value,
                                    T min_value,
                                    T max_value,
                                    int64_t nbins) {
-  IndexType bin = static_cast<int>((input_value - min_value) * nbins /
-                                   (max_value - min_value));
+  IndexType bin = static_cast<IndexType>((input_value - min_value) * nbins /
+                                         (max_value - min_value));
   IndexType output_index = bin < nbins - 1 ? bin : nbins - 1;
   return output_index;
 }
@@ -151,7 +151,7 @@ void HistogramKernel(const Context& dev_ctx,
   min_max.Resize({2 * block_num});
   auto* min_block_ptr = dev_ctx.template Alloc<T>(&min_max);
   auto* max_block_ptr = min_block_ptr + block_num;
-  if (output_min == output_max) {
+  if (min == max) {
     KernelMinMax<T><<<GET_BLOCKS(input_numel),
                       PADDLE_CUDA_NUM_THREADS,
                       0,
@@ -161,6 +161,27 @@ void HistogramKernel(const Context& dev_ctx,
     KernelMinMax<T><<<1, 1, 0, dev_ctx.stream()>>>(
         output_min, output_max, min_block_ptr, max_block_ptr);
   }
+
+  // copy min max value from GPU to CPU
+  std::vector<T> min_max_vec;
+  phi::TensorToVector(min_max, dev_ctx, &min_max_vec);
+  output_min = min_max_vec[0];
+  output_max = min_max_vec[1];
+
+  // check if out of range
+  double range =
+      static_cast<double>(output_max) - static_cast<double>(output_min);
+  PADDLE_ENFORCE_LT(
+      range,
+      static_cast<double>(std::numeric_limits<T>::max()),
+      phi::errors::InvalidArgument(
+          "The range of max - min is out of range for target type, "
+          "current kernel type is %s, the range should less than %f "
+          "but now min is %f, max is %f.",
+          typeid(T).name(),
+          std::numeric_limits<T>::max(),
+          output_min,
+          output_max));
 
   PADDLE_ENFORCE_EQ((std::isinf(static_cast<float>(output_min)) ||
                      std::isnan(static_cast<float>(output_max)) ||
