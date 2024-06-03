@@ -51,7 +51,7 @@ void LogicalNotKernel(const Context& dev_ctx,
   funcs::LogicalNotFunctor<T> unary_func;
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
-  funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, unary_func);
+  funcs::ElementwiseKernel<bool>(dev_ctx, ins, &outs, unary_func);
 }
 
 }  // namespace phi

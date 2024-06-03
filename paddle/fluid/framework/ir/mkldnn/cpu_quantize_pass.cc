@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"
 
+#include <Eigen/Dense>
 #include <sstream>
 #include <utility>
 #include <vector>

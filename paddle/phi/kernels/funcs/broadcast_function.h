@@ -325,9 +325,8 @@ __device__ void VectorizedBroadcastKernelImpl(
                                      Functor,
                                      ArgsT,
                                      Arity>()(func, args, result, read_lens);
-  phi::funcs::
-      ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
-          outs, result, block_offset, num, read_lens);
+  ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
+      outs, result, block_offset, num, read_lens);
 }
 
 template <typename Functor,
@@ -878,6 +877,8 @@ void BroadcastKernelForDifferentVecSize(
 #endif
 
   phi::Array<kps::details::BroadcastConfig, kArity> configs;
+  auto loader_classifier = LoaderTypeClassifier<OutT, kArity, Functor>(ins, outs);
+
 #ifdef PADDLE_WITH_XPU_KP
   PADDLE_ENFORCE_EQ(
       ins.size(),
@@ -885,9 +886,8 @@ void BroadcastKernelForDifferentVecSize(
       phi::errors::InvalidArgument(
           "XPU only support inputs is 2, but received %d", ins.size()));
 
-  auto loader_classifier = LoaderTypeClassifier<OutT, kArity, Functor>();
   const auto dims_simplifier =
-      BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
+      BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis, loader_classifier.all_elementwise);
   if (VLOG_IS_ON(6)) {
     DimsSimplifiedLogger<int64_t>::Log(
         ins, outs, dims_simplifier, "XPU Broadcast");
@@ -901,11 +901,10 @@ void BroadcastKernelForDifferentVecSize(
                                              dims_simplifier.in_dims[0],
                                              dims_simplifier.rank);
   auto type = kps::details::OptType::CanNotOptimize;
-  bool is_optimize = configs[0].cmp_type != type;
-  int vec_size = is_optimize ? VecSizeL : VecSizeM;
+  // bool is_optimize = configs[0].cmp_type != type;
+  int vec_size = (configs[0].buf_len > VecSizeS) ? VecSizeM : VecSizeS;
+  VLOG(6) << "vec_size=" << vec_size << ", read_lens=" << configs[0].buf_len;
 #else
-  auto loader_classifier =
-      LoaderTypeClassifier<OutT, kArity, Functor>(ins, outs);
   if (!loader_classifier.all_elementwise) {
     const auto dims_simplifier =
         BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
@@ -925,8 +924,9 @@ void BroadcastKernelForDifferentVecSize(
       }
     }
   }
+  int vec_size = loader_classifier.vec_size;
 #endif
-  switch (loader_classifier.vec_size) {
+  switch (vec_size) {
     case VecSizeL: {
       LaunchBroadcastKernel<OutT, Functor, kArity, NumOuts, VecSizeL>(
           ctx, ins, outs, func, configs, loader_classifier);

@@ -251,6 +251,9 @@ struct KernelImpl<Return (*)(DevCtx, Args...), kernel_fn> {
   PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(GPUContext);
 #endif
 #ifdef PADDLE_WITH_XPU
+#ifdef PADDLE_WITH_XPU_KP
+  PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(KPSContext);
+#endif
   PD_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(XPUContext);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
