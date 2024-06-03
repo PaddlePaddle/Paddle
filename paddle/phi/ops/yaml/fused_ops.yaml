@@ -400,6 +400,16 @@
     func: fused_token_prune
   support_dygraph_mode : true
 
+- op : fusion_group
+  args: (Tensor[] inputs, int[] outs_dtype = {}, int[] inputs_dtype = {}, str func_name = "", int type
+    = 0)
+  output: Tensor[] (outs){inputs.size()}
+  infer_meta:
+    func: FusionGroupInferMeta
+  kernel:
+    func: fusion_group
+    data_type : DataType::FLOAT32
+
 - op : fusion_gru
   args : (Tensor x, Tensor h0, Tensor weight_x, Tensor weight_h, Tensor bias, str activation = "tanh", str gate_activation = "sigmoid", bool is_reverse = false, bool use_seq = true, bool origin_mode = false, bool force_fp32_output = false)
   output : Tensor(reordered_h0), Tensor(xx), Tensor(batched_input), Tensor(batched_out), Tensor(hidden)
