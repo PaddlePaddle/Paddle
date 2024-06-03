@@ -508,8 +508,6 @@ endif()
 
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES LABELS
                                                            "RUN_TYPE=EXCLUSIVE")
-set_tests_properties(test_conv_nn_grad_deprecated
-                     PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 if(WITH_DISTRIBUTE)
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -806,16 +804,18 @@ foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})
   message(STATUS "PIR Copied OpTest: ${PIR_COVERAGE_TEST}_pir in legacy_test")
 endforeach()
 
-set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
-                                                                      120)
-set_tests_properties(test_fuse_bn_act_pass_static_build PROPERTIES TIMEOUT 120)
+set_tests_properties(test_decoupled_py_reader_deprecated_static_build
+                     PROPERTIES TIMEOUT 120)
+set_tests_properties(test_fuse_bn_act_pass_deprecated_static_build
+                     PROPERTIES TIMEOUT 120)
 set_tests_properties(
-  test_fuse_bn_act_pass_static_build
+  test_fuse_bn_act_pass_deprecated_static_build
   PROPERTIES
     ENVIRONMENT
     "FLAGS_cudnn_deterministic=1;FLAGS_cudnn_batchnorm_spatial_persistent=1;FLAGS_conv_workspace_size_limit=1000"
 )
-set_tests_properties(test_layer_norm_op_static_build PROPERTIES TIMEOUT 1500)
+set_tests_properties(test_layer_norm_op_deprecated_static_build
+                     PROPERTIES TIMEOUT 1500)
 set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
 py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
