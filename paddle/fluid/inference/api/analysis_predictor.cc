@@ -481,9 +481,8 @@ bool AnalysisPredictor::Init(
   }
 
   // Get the feed_target_names and fetch_target_names
-  if (!load_pir_model_) {
-    PrepareFeedFetch();
-  }
+
+  PrepareFeedFetch();
 
   // Prepare executor, create local variables.
   if (!PrepareExecutor()) {
@@ -2322,6 +2321,9 @@ bool AnalysisPredictor::MkldnnQuantize() {
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {
+  if (load_pir_model_) {
+    return;
+  }
   PADDLE_ENFORCE_NOT_NULL(sub_scope_,
                           platform::errors::InvalidArgument(
                               "The sub_scope should not be nullptr."));
