@@ -95,7 +95,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
           program.get(), bucket_info);
 
   // Step 4: Construct config candidate range and constraints.
-  std::vector<std::pair<int, int>> candidate_range{{1, 32}, {1, 1024}, {1, 1}};
+  std::vector<std::pair<int, int>> candidate_range{{1, 32}, {1, 1024}, {1, 13}};
   std::vector<cinn::ir::search::ConstraintFunc> constraints;
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
