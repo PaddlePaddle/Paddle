@@ -467,6 +467,7 @@ def mask_as(x, mask, name=None):
             The data type can be float32, float64, int32, int64, complex64, complex128, int8, int16, float16.
         mask (Tensor): The input tensor. It can be SparseCooTensor or SparseCsrTensor.
             It should be 2D or 3D when the mask is SparseCsrTensor.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A sparse tensor.
