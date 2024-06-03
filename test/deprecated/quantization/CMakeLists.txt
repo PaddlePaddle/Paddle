@@ -236,7 +236,6 @@ list(REMOVE_ITEM TEST_OPS test_filter_pruning)
 # fix
 if(WIN32)
   set(SINGLE_CARD_TEST_OPS
-      test_user_defined_quantization
       test_user_defined_quantization_deprecated
       test_quantization_scale_pass
       test_quantization_scale_pass_deprecated
@@ -271,7 +270,6 @@ endif()
 set_tests_properties(test_graph_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_quantization_pass_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_qat_channelwise PROPERTIES TIMEOUT 200)
-set_tests_properties(test_user_defined_quantization PROPERTIES TIMEOUT 200)
 set_tests_properties(test_user_defined_quantization_deprecated
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat PROPERTIES TIMEOUT 200)

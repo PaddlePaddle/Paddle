@@ -684,7 +684,6 @@ set_tests_properties(test_sgd_op_deprecated PROPERTIES TIMEOUT 250)
 set_tests_properties(test_generator_dataloader_deprecated PROPERTIES TIMEOUT
                                                                      120)
 set_tests_properties(test_reduce_op PROPERTIES TIMEOUT 500)
-set_tests_properties(test_conv_nn_grad_deprecated PROPERTIES TIMEOUT 220)
 set_tests_properties(test_program_prune_backward_deprecated PROPERTIES TIMEOUT
                                                                        120)
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 250)
