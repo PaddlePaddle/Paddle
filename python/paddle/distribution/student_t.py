@@ -43,12 +43,12 @@ class StudentT(distribution.Distribution):
     * :math:`\Gamma(\cdot)`: is the gamma function.
 
     Args:
-        df (float|Tensor): The degree of freedom of the distribution, which should be non-negative. If the input data type is int or float,
-            the data type of `rate` will be converted to a 1-D Tensor with paddle global default dtype. Supported dtype: float32, float64.
-        loc (float|Tensor): The center of the distribution. If the input data type is int or float, the data type of `rate` will be converted to a
+        df (float|Tensor): The degree of freedom of the distribution, which should be non-negative. If the input data type is float,
+            the data type of `df` will be converted to a 1-D Tensor with paddle global default dtype. Supported dtype: float32, float64.
+        loc (float|Tensor): The center of the distribution. If the input data type is float, the data type of `loc` will be converted to a
             1-D Tensor with paddle global default dtype. Supported dtype: float32, float64.
-        scale (float|Tensor): The scale of the distribution, which should be non-negative. If the input data type is int or float, the data type
-            of `rate` will be converted to a 1-D Tensor with paddle global default dtype. Supported dtype: float32, float64.
+        scale (float|Tensor): The scale of the distribution, which should be non-negative. If the input data type is float, the data type
+            of `scale` will be converted to a 1-D Tensor with paddle global default dtype. Supported dtype: float32, float64.
         name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
