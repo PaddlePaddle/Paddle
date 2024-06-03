@@ -40,7 +40,7 @@ std::shared_ptr<::pir::Program> BuildReduceSumProgram() {
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
   const float value_one = 1.0;
-  const std::vector<int64_t> shape = {-1, 1024};
+  const std::vector<int64_t> shape = {1, 13, 4096};
   auto x = builder
                .Build<paddle::dialect::DataOp>(
                    "x", shape, phi::DataType::FLOAT32, phi::GPUPlace())
@@ -67,29 +67,38 @@ TEST(ConfigSearcher, TestReduceDemo) {
 
   // Step 3: Construct iter space and objective function.
   cinn::ir::BucketInfo bucket_info;
-  bucket_info.space.push_back(
-      cinn::ir::BucketInfo::Dimension{33,
-                                      128,
-                                      "S",
-                                      /* is_dynamic = */ true,
-                                      std::vector<double>(128 - 32, 1.0)});
-  bucket_info.space.push_back(
-      cinn::ir::BucketInfo::Dimension{1024,
-                                      1024,
-                                      "R",
-                                      /* is_dynamic = */ false,
-                                      std::vector<double>(1, 1.0)});
+  int s_dimension_lower = 13;
+  int s_dimension_upper = 13;
+  auto s_dimension_type = "S";
+  auto s_dimension_is_dynamic = false;
+  int r_dimension_lower = 4096;
+  int r_dimension_upper = 4096;
+  auto r_dimension_type = "R";
+  auto r_dimension_is_dynamic = false;
+
+  bucket_info.space.push_back(cinn::ir::BucketInfo::Dimension{
+      s_dimension_lower,
+      s_dimension_upper,
+      s_dimension_type,
+      s_dimension_is_dynamic,
+      std::vector<double>(s_dimension_upper - s_dimension_lower + 1, 1.0)});
+  bucket_info.space.push_back(cinn::ir::BucketInfo::Dimension{
+      r_dimension_lower,
+      r_dimension_upper,
+      r_dimension_type,
+      r_dimension_is_dynamic,
+      std::vector<double>(r_dimension_upper - r_dimension_lower + 1, 1.0)});
+
   std::unique_ptr<cinn::ir::search::BaseObjectiveFunc> obj_func =
       std::make_unique<cinn::ir::search::WeightedSamplingTrailObjectiveFunc>(
           program.get(), bucket_info);
 
   // Step 4: Construct config candidate range and constraints.
-  std::vector<std::pair<int, int>> candidate_range{
-      {2, 4}, {32, 64}, {127, 128}};
+  std::vector<std::pair<int, int>> candidate_range{{1, 32}, {1, 1024}, {1, 13}};
   std::vector<cinn::ir::search::ConstraintFunc> constraints;
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
-        return candidate[1] % kThreadsPerWarp == 0;
+        return candidate[1] % kThreadsPerWarp == 0 || candidate[1] == 1;
       });
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
