@@ -70,16 +70,9 @@ void VisitFeedName(const pir::Program& program,
 std::string GetLoggingShapeOrDataForName(int64_t program_id,
                                          const std::string& name,
                                          const phi::DenseTensor& tensor) {
-  int64_t random_record_id = [] {
-    std::random_device rd{};
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<int64_t> dis(
-        0, std::numeric_limits<int64_t>::max());
-    return dis(gen);
-  }();
   std::ostringstream ss;
   ss << "class PirProgram_example_input_tensor_meta_" << program_id << ":";
-  ss << "\n\program_id = " << program_id;
+  ss << "\n\tprogram_id = " << program_id;
   ss << "\n\tinput_name = " << std::quoted(name);
   ss << "\n\tshape = [";
   int i = 0;
