@@ -187,8 +187,8 @@ void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
   gpu_context->SetDriverVersion(gpu_resource->GetGpuDriverVersion());
   gpu_context->SetRuntimeVersion(gpu_resource->GetGpuRuntimeVersion());
   VLOG(1) << "thread id is " << std::this_thread::get_id() << ", stream id is "
-          << reinterpret_cast<void *>(gpu_resource->GetStream())
-          << ", allotor ptr is "
+          << reinterpret_cast<const void *>(gpu_resource->GetStream())
+          << ", allocator ptr is "
           << reinterpret_cast<void *>(
                  memory::allocation::AllocatorFacade::Instance()
                      .GetAllocator(place_, gpu_resource->GetStream())
@@ -447,7 +447,7 @@ bool AnalysisPredictor::Init(
         optimized_model_path + "/" + "_optimized.pdiparams";
     if (FileExists(optimized_model) && FileExists(optimized_params)) {
       config_.SetModel(optimized_model, optimized_params);
-      LOG(INFO) << "Load Optimized model from " << optimized_model_path;
+      LOG(INFO) << "Load Optimized model from " << optimized_model_path.c_str();
     } else {
       LOG(WARNING)
           << "The optimized model is not found, fallback to original model. "
@@ -997,8 +997,6 @@ bool AnalysisPredictor::PreparePirProgram() {
     auto *var = sub_scope_->FindVar(param_names[i]);
     pir::Value value = vars[i];
     if (var == nullptr) {
-      VLOG(4) << "Variable not found, creating new variable: "
-              << param_names[i].c_str();
       var = sub_scope_->Var(param_names[i]);
       auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
       tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
@@ -1008,8 +1006,6 @@ bool AnalysisPredictor::PreparePirProgram() {
       pir::Type type_ = pir::GetDataTypeFromValue(value);
       phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
       dev_ctx->Alloc(tensor_temp, type_data);
-    } else {
-      VLOG(4) << "Variable already exists: " << param_names[i].c_str();
     }
     auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
     tensor_out.push_back(tensor_temp);
