@@ -186,6 +186,14 @@ if(WITH_GPU OR WITH_ROCM)
   target_link_libraries(phi phi_gpu)
 endif()
 
+# Note(silverling): some functions in phi_core depend on phi_gpu,
+# when phi is built to dynamic library, it's fine. But when phi
+# is built to static library, phi_gpu should be linked to phi_core.
+# By the way, cyclic dependency is allowed in static library.
+if(WITH_ROCM AND NOT WITH_SHARED_PHI)
+  target_link_libraries(phi_core phi_gpu)
+endif()
+
 target_compile_definitions(phi_core PUBLIC PHI_INNER)
 
 if(WIN32)
