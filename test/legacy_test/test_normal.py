@@ -404,5 +404,17 @@ class TestNormalAPIComplex_mean_std_are_tensor_with_different_dtype(
         self.std = np.random.uniform(1, 2, [100]).astype('float32')
 
 
+class TestNormalComplexErrors(unittest.TestCase):
+    @test_with_pir_api
+    def test_errors(self):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            mean = 1 + 1j
+            self.assertRaises(TypeError, paddle.normal, mean, dtype='float32')
+
+            mean = 2 + 0.5j
+            self.assertRaises(ValueError, paddle.normal, mean)
+
+
 if __name__ == "__main__":
     unittest.main()

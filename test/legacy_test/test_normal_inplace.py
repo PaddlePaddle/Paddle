@@ -238,5 +238,15 @@ class TestNormalRandomComplexInplaceGrad(unittest.TestCase):
         self.run_()
 
 
+class TestNormalRandomComplexInplaceErrors(unittest.TestCase):
+    def test_dtype_error(self):
+        mean = 1 + 1j
+        self.assertRaises(TypeError, paddle.normal, mean, dtype='float32')
+
+    def test_incorrect_mean(self):
+        mean = 2 + 0.5j
+        self.assertRaises(ValueError, paddle.normal, mean)
+
+
 if __name__ == '__main__':
     unittest.main()
