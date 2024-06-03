@@ -43,8 +43,8 @@ def inference(
     switch_ir_debug=False,
     collect_shape=False,
     delete_pass_lists=[],
-    enable_new_ir = False,
-    exp_enable_use_cutlass = False
+    enable_new_ir=False,
+    exp_enable_use_cutlass=False,
 ):
     def decorator(func=None):
         import inspect
@@ -54,6 +54,14 @@ def inference(
         predictors = [None]
         signature = inspect.signature(func)
         arg_names = [v.name for v in signature.parameters.values()]
+
+        import textwrap
+
+        py_script = textwrap.dedent(inspect.getsource(func))
+        py_script = py_script[py_script.find("def") :]
+        py_script = py_script.replace(func.__name__, func.__name__)
+        print(py_script)
+
         assert arg_names[0] == "self"
         save_path = save_model_dir + "/" + func.__name__ + "/infer"
         d2s_input_info_path = save_path + "_d2s_input_info.txt"
@@ -66,7 +74,9 @@ def inference(
                 for line in f.readlines():
                     name = line.split(":")[0]
                     shape = line.split(":")[1]
-                    shape = [int(s) for s in shape.split(",")]
+                    if len(shape) > 0:
+                        # this is for None input
+                        shape = [int(s) for s in shape.split(",")]
                     d2s_input_shapes.append(shape)
                     d2s_input_names.append(name)
 
@@ -82,7 +92,7 @@ def inference(
         def wrapper(*args, **kwargs):
             import paddle
 
-            def get_tensor(run_time_args):
+            def get_tensor(run_time_args, arg_name):
                 if isinstance(run_time_args, paddle.Tensor):
                     return [run_time_args]
                 elif isinstance(run_time_args, list):
@@ -93,28 +103,44 @@ def inference(
                         ), "the elements in list must be paddle.Tensor"
                         this_input_tensor_lists.append(ele)
                     return this_input_tensor_lists
+                elif run_time_args is None:
+                    return [None]
                 else:
                     raise AssertionError(
-                        f"we only support adding @paddle.incubate.layers.inference in functions whose arguments are paddle.Tensor or list[paddle.Tensor], but here we get {type(run_time_args)}, please modify your function to meet our requirement."
+                        f'''we only support adding @paddle.incubate.layers.inference in functions whose arguments are paddle.Tensor or list[paddle.Tensor],
+                        but here we get {arg_name} in your function is {type(run_time_args)}, please modify your function to meet our requirement.'''
                     )
 
             input_tensor_lists = []
             for i in range(len(args)):
                 if i > 0:
-                    input_tensor_lists += get_tensor(args[i])
+                    input_tensor_lists += get_tensor(args[i], arg_names[i])
 
+            # some are invoked from keyword arguments.
             for i in range(len(arg_names)):
                 if arg_names[i] in kwargs.keys():
                     this_input = kwargs[arg_names[i]]
-                    input_tensor_lists += get_tensor(this_input)
+                    input_tensor_lists += get_tensor(this_input, arg_names[i])
+
             # initiate the d2s_input_shapes.
             if len(d2s_input_shapes) == 0:
                 for tensor in input_tensor_lists:
-                    d2s_input_shapes.append(tensor.shape)
+                    if tensor is None:
+                        d2s_input_shapes.append([])
+                    else:
+                        d2s_input_shapes.append(tensor.shape)
 
             re_do_d2s = False
             # check whether the shape is changed
             for i in range(len(d2s_input_shapes)):
+                if input_tensor_lists[i] is None:
+                    continue
+                # The rank of this tensor has changed
+                if len(d2s_input_shapes[i]) != len(input_tensor_lists[i].shape):
+                    re_do_d2s = True
+                    d2s_input_shapes[i] = input_tensor_lists[i]
+                    print("rank is changed, we need re do d2s.")
+                    continue
                 for j in range(len(d2s_input_shapes[i])):
                     if (
                         d2s_input_shapes[i][j] != -1
@@ -123,11 +149,15 @@ def inference(
                     ):
                         re_do_d2s = True
                         d2s_input_shapes[i][j] = -1
-                        print("shape are changed, we need re do d2s.")
-                        sys.stdout.flush()
+                        print("shape is changed, we need re do d2s.")
+                sys.stdout.flush()
+
+            remove_non_input_tensor_lists = [
+                ele for ele in input_tensor_lists if ele is not None
+            ]
 
             if predictors[0] is not None and not re_do_d2s:
-                results = predictors[0].run(input_tensor_lists)
+                results = predictors[0].run(remove_non_input_tensor_lists)
                 return results if len(results) > 1 else results[0]
 
             if (
@@ -152,9 +182,13 @@ def inference(
                             )
                             suffix += 1
                         return this_input_spec
+                    elif run_time_args is None:
+                        # we need to add a None input_spec!
+                        return None
 
                 # we need do ds2.
                 input_specs = []
+                # first we handle Positional Arguments
                 for i in range(len(args)):
                     if i == 0:
                         assert isinstance(args[i], paddle.nn.Layer)
@@ -162,8 +196,7 @@ def inference(
                         input_specs.append(
                             get_d2s_spec(args[i], name=arg_names[i])
                         )
-
-                # some args are passed from kwargs, we extract them from kwargs.
+                # second we handle Keyword Arguments
                 for i in range(len(arg_names)):
                     if arg_names[i] in kwargs.keys():
                         this_input = kwargs[arg_names[i]]
@@ -173,31 +206,50 @@ def inference(
 
                 # update the input_spec's shape for doing d2s
                 d2s_shapes_id = 0
+                # initial the d2s_input_names!
+                if len(d2s_input_names) == 0:
+                    d2s_input_names.extend([None] * len(input_tensor_lists))
                 for i in range(len(input_specs)):
                     if type(input_specs[i]) == list:
                         for j in range(len(input_specs[i])):
                             input_specs[i][j].shape = d2s_input_shapes[
                                 d2s_shapes_id
                             ]
-                            d2s_input_names.append(input_specs[i][j].name)
+                            d2s_input_names[d2s_shapes_id] = input_specs[i][
+                                j
+                            ].name
                             d2s_shapes_id += 1
-                    else:
+                    elif type(input_specs[i]) == paddle.static.InputSpec:
                         input_specs[i].shape = d2s_input_shapes[d2s_shapes_id]
-                        d2s_input_names.append(input_specs[i].name)
+                        d2s_input_names[d2s_shapes_id] = input_specs[i].name
                         d2s_shapes_id += 1
-                
+                    elif input_specs[i] is None:
+                        d2s_input_names[d2s_shapes_id] = arg_names[i + 1]
+                        d2s_shapes_id += 1
+
                 os.environ["TRITON_KERNEL_CACHE_DIR"] = save_model_dir
 
                 print("we are doing d2s!!")
+                print("input_specs: ", input_specs)
                 sys.stdout.flush()
-                print("input_specs", input_specs)
-                sys.stdout.flush()
+                # input_specs[0] = paddle.static.InputSpec(shape=[None, 256, 120], dtype=paddle.bfloat16, name="x")
+                # input_specs[1] = paddle.static.InputSpec(shape=[None, 128, 1920], dtype=paddle.bfloat16, name="y")
+                # input_specs[2] = paddle.static.InputSpec(shape=[None, 1920], dtype=paddle.bfloat16, name="c")
+                # input_specs[3] = paddle.static.InputSpec(shape=[None, 30, 384, 384], dtype=paddle.bfloat16, name="mask")
                 input_specs = [input_specs]
                 mylayer = WrappedLayer(args[0])
+
+                to_jit_func = mylayer
+                new_func_name = func.__name__ + "_copy"
+                if hasattr(args[0], new_func_name):
+                    to_jit_func = getattr(args[0], new_func_name)
+                    input_specs = input_specs[0]
+
                 model = paddle.jit.to_static(
-                    mylayer, input_spec=input_specs, full_graph=True
+                    to_jit_func,
+                    input_spec=input_specs,
                 )
-                paddle.jit.save(model, save_path)
+                paddle.jit.save(model, save_path, skip_prune_program=True)
 
                 # save d2s_shapes
                 assert len(d2s_input_names) == len(d2s_input_shapes)
@@ -217,8 +269,9 @@ def inference(
                     for file in files:
                         if file.endswith("_package.so"):
                             so_full_path = os.path.join(root, file)
-                            paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_full_path)
-
+                            paddle.utils.cpp_extension.load_op_meta_info_and_register_op(
+                                so_full_path
+                            )
 
             # create predictor
             model_dir = save_model_dir + "/" + func.__name__ + "/"
@@ -286,14 +339,14 @@ def inference(
                     use_calib_mode=False,
                 )
             if predictors[0] is not None:
-                del predictors[0]
+                predictors[0] = None
 
             for pass_name in delete_pass_lists:
                 config.delete_pass(pass_name)
 
             predictors[0] = create_predictor(config)
 
-            results = predictors[0].run(input_tensor_lists)
+            results = predictors[0].run(remove_non_input_tensor_lists)
             return results if len(results) > 1 else results[0]
 
         return wrapper
