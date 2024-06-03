@@ -549,8 +549,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
       rewriter.SetInsertionPointAfter(max_res_idx_op);
     }
 
-    pir::Operation* new_op =
-        CreateOperation(op_call, src_match_ctx, rewriter, &res_match_ctx);
+    CreateOperation(op_call, src_match_ctx, rewriter, &res_match_ctx);
   });
 
   return res_match_ctx;
