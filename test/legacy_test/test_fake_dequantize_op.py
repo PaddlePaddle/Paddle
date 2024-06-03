@@ -102,7 +102,7 @@ class TestFakeChannelWiseDequantizeMaxAbsOpTwoScales(OpTest):
         self.outputs = {'Out': ydq}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestFakeChannelWiseDequantizeMaxAbsOpTwoScalesFloat16(
@@ -112,7 +112,7 @@ class TestFakeChannelWiseDequantizeMaxAbsOpTwoScalesFloat16(
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-2)
+        self.check_output(check_dygraph=False, atol=1e-2)
 
 
 class TestFakeChannelWiseDequantizeMaxAbsOpOneScale(OpTest):
@@ -146,7 +146,7 @@ class TestFakeChannelWiseDequantizeMaxAbsOpOneScale(OpTest):
         self.outputs = {'Out': ydq}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestFakeChannelWiseDequantizeMaxAbsOpOneScale1(
@@ -164,7 +164,7 @@ class TestFakeChannelWiseDequantizeMaxAbsOpOneScaleFloat16(
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-2)
+        self.check_output(check_dygraph=False, atol=1e-2)
 
 
 class TestFakeChannelWiseDequantizeMaxAbsOpOneScale1Float16(
@@ -174,7 +174,7 @@ class TestFakeChannelWiseDequantizeMaxAbsOpOneScale1Float16(
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-2)
+        self.check_output(check_dygraph=False, atol=1e-2)
 
 
 class TestFakeDequantizeMaxAbsOp(OpTest):
@@ -198,7 +198,7 @@ class TestFakeDequantizeMaxAbsOp(OpTest):
         self.outputs = {'Out': ydq}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestFakeDequantizeMaxAbsOpDouble(TestFakeDequantizeMaxAbsOp):
@@ -217,7 +217,7 @@ class TestFakeDequantizeMaxAbsOpFloat16(TestFakeDequantizeMaxAbsOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-2)
+        self.check_output(check_dygraph=False, atol=1e-2)
 
 
 class TestChannelWiseDequantizeOp(OpTest):

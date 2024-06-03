@@ -506,7 +506,11 @@ def _test_use_sync(value):
 
 
 # ops in forward_blacklist will not be replaced by composite ops.
-prim_config = {"forward_blacklist": set(), "composite_ops_record": set()}
+prim_config = {
+    "forward_blacklist": set(),
+    "composite_ops_record": set(),
+    "backward_blacklist": set(),
+}
 
 
 def _get_batch_norm_none_var(op):
@@ -588,6 +592,7 @@ def _reset_prim_forward_blacklist():
 def _set_prim_backward_blacklist(*args):
     ops = set(args)
     for item in ops:
+        prim_config["backward_blacklist"].add(item)
         if not isinstance(item, str):
             raise TypeError("all items in set must belong to string")
     _set_bwd_prim_blacklist(ops)
@@ -671,3 +676,15 @@ def _check_and_set_prim_vjp_skip_default_ops():
 
 
 _check_and_set_prim_vjp_skip_default_ops()
+
+
+def _check_prim_vjp_ops():
+    ops_org = os.getenv("FLAGS_prim_backward_blacklist", "")
+    if ops_org:
+        ops = []
+        for item in ops_org.split(";"):
+            ops.append(item.strip())
+        _set_prim_backward_blacklist(*ops)
+
+
+_check_prim_vjp_ops()

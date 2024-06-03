@@ -126,11 +126,6 @@ static void PrepareAttrMapForOps() {
   operators_with_attrs["cast"]["out_dtype"] = 5;
   operators_with_attrs["cast"]["in_dtype"] = 5;
 
-  // Handle "transfer_dtype"
-  operators_with_attrs["transfer_dtype"] = {};
-  operators_with_attrs["transfer_dtype"]["out_dtype"] = 5;
-  operators_with_attrs["transfer_dtype"]["in_dtype"] = 5;
-
   // Handle "c_split"
   operators_with_attrs["c_split"] = {};
   operators_with_attrs["c_split"]["nranks"] = 1;
@@ -139,6 +134,11 @@ static void PrepareAttrMapForOps() {
 /* --- Helper Objects --- */
 class ForwardGenerationInfo {
  public:
+  ForwardGenerationInfo()
+      : fwd_inputs_name_pos_map_(),
+        fwd_outputs_name_pos_map_(),
+        in_vars_(),
+        out_vars_() {}
   const std::string& GetOpType() const { return op_type_; }
   void SetOpType(const std::string& op_type) { op_type_ = op_type; }
 
@@ -266,6 +266,7 @@ class GradNodeGenerationInfo {
   };
 
  public:
+  GradNodeGenerationInfo() : op_base_infos_() {}
   const std::string& GetFwdOpType() const { return fwd_op_type_; }
   void SetFwdOpType(const std::string& op_type) { fwd_op_type_ = op_type; }
 
@@ -621,7 +622,7 @@ static bool BeSameAsInput(const std::string& output_name,
 static void PurifyForwardOpProto(const proto::OpProto& op_proto,
                                  ForwardGenerationInfo* fwd_info) {
   // Op Name
-  const std::string op_name = op_proto.type();
+  const std::string& op_name = op_proto.type();
 
   auto* in_vars = fwd_info->GetMutableInVars();
   auto* out_vars = fwd_info->GetMutableOutVars();

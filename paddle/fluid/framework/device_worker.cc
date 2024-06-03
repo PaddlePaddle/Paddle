@@ -93,7 +93,8 @@ void PrintLodTensorType<float>(phi::DenseTensor* tensor,
                                char separator,
                                bool need_leading_separator,
                                int num_decimals) {
-  char buf[MAX_FLOAT_BUFF_SIZE];
+  std::string buf;
+  buf.resize(MAX_FLOAT_BUFF_SIZE);
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -108,7 +109,7 @@ void PrintLodTensorType<float>(phi::DenseTensor* tensor,
       out_val += "0";
     } else {
       std::string format = "%." + std::to_string(num_decimals) + "f";
-      sprintf(buf, &format[0], tensor->data<float>()[i]);  // NOLINT
+      sprintf(&buf[0], &format[0], tensor->data<float>()[i]);  // NOLINT
       out_val += buf;
     }
   }
@@ -245,7 +246,8 @@ bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size) {
 
 void DeviceWorker::DumpParam(const Scope& scope, const int batch_id) {
   std::ostringstream os;
-  int device_id = static_cast<int>(place_.GetDeviceId());
+  int device_id =
+      static_cast<int>(static_cast<unsigned char>(place_.GetDeviceId()));
   for (auto& param : *dump_param_) {
     os.str("");
     Variable* var = scope.FindVar(param);

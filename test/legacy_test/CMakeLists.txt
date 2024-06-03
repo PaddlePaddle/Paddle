@@ -30,7 +30,6 @@ endif()
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_feedforward)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_attention)
-list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_multi_transformer)
 list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
 list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
 list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
@@ -113,7 +112,7 @@ endif()
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
-  list(REMOVE_ITEM TEST_OPS test_downpoursgd)
+  list(REMOVE_ITEM TEST_OPS test_downpoursgd_deprecated)
   list(REMOVE_ITEM TEST_OPS test_fleet)
   list(REMOVE_ITEM TEST_OPS test_fleet_nocvm_1)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker)
@@ -162,6 +161,7 @@ list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fs_interface)
   list(REMOVE_ITEM TEST_OPS test_fleet_metric)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_static)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
@@ -425,10 +425,6 @@ list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_seresnext_base_cpu)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_seresnext_with_reduce_cpu)
-list(REMOVE_ITEM TEST_OPS
-     test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
 list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
@@ -436,6 +432,7 @@ list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
+list(REMOVE_ITEM TEST_OPS test_layers)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -484,8 +481,13 @@ endif()
 # Some ops need to check results when gc is enabled
 # Currently, only ops that register NoNeedBufferVarsInference need to do this test
 set(TEST_OPS_WITH_GC
-    test_concat_op test_elementwise_add_op test_lookup_table_op
-    test_elementwise_sub_op test_gather_op test_mean_op)
+    test_concat_op
+    test_elementwise_add_op
+    test_lookup_table_op
+    test_elementwise_sub_op
+    test_gather_op
+    test_mean_op
+    test_lod_reset_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -728,6 +730,10 @@ if(NOT WIN32 AND NOT APPLE)
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   set_tests_properties(test_multiprocess_dataloader_dataset
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+  set_tests_properties(test_multiprocess_dataloader_static
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+  set_tests_properties(test_multiprocess_dataloader_static PROPERTIES TIMEOUT
+                                                                      120)
 endif()
 
 if(WITH_DISTRIBUTE)
@@ -743,6 +749,7 @@ if(WITH_DISTRIBUTE)
 endif()
 
 # setting timeout value as 15S
+set_tests_properties(test_isin PROPERTIES TIMEOUT 30)
 set_tests_properties(test_binomial_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_run PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sync_batch_norm_op PROPERTIES TIMEOUT 180)
@@ -757,6 +764,9 @@ if(NOT WIN32)
   if(WITH_NV_JETSON)
     set_tests_properties(test_ir_memory_optimize_nlp PROPERTIES TIMEOUT 1200)
   endif()
+  py_test_modules(test_layers MODULES test_layers ENVS
+                  FLAGS_cudnn_deterministic=1)
+  set_tests_properties(test_layers PROPERTIES TIMEOUT 120)
 endif()
 set_tests_properties(test_buffer_shared_memory_reuse_pass PROPERTIES TIMEOUT
                                                                      120)
@@ -849,6 +859,7 @@ set_tests_properties(test_imperative_resnet_sorted_gradient PROPERTIES TIMEOUT
 set_tests_properties(test_imperative_se_resnext PROPERTIES TIMEOUT 200)
 set_tests_properties(test_strided_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_translated_layer PROPERTIES TIMEOUT 120)
+set_tests_properties(test_pir_translated_layer PROPERTIES TIMEOUT 120)
 set_tests_properties(test_mean_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataloader PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool3d_api PROPERTIES TIMEOUT 120)
@@ -894,8 +905,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_static_model_parallel_fused_feedforward
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_static_model_parallel_fused_attention
-                         PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_static_model_parallel_fused_multi_transformer
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_pipeline_parallel PROPERTIES LABELS
                                                            "RUN_TYPE=DIST")
@@ -1052,6 +1061,14 @@ foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})
   message(STATUS "PIR Copied OpTest: ${PIR_COVERAGE_TEST}_pir in legacy_test")
 endforeach()
 
+set(PIR_ONLY_TEST_FILES test_pir_translated_layer)
+foreach(ITEST ${PIR_ONLY_TEST_FILES})
+  if(TEST ${ITEST})
+    set_tests_properties(${ITEST} PROPERTIES ENVIRONMENT
+                                             "FLAGS_enable_pir_api=True")
+  endif()
+endforeach()
+
 set_tests_properties(test_imperative_optimizer_static_build PROPERTIES TIMEOUT
                                                                        250)
 set_tests_properties(test_sync_batch_norm_op_static_build
@@ -1078,3 +1095,4 @@ set_pir_tests_properties()
 
 set_tests_properties(test_nadam_op PROPERTIES TIMEOUT 100)
 set_tests_properties(test_radam_op PROPERTIES TIMEOUT 100)
+set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)

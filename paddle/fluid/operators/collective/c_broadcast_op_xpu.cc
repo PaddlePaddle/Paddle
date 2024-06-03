@@ -72,7 +72,7 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
       VLOG(3) << "old BKCLCommContext has rid " << ring_id;
     }
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       stream = static_cast<phi::XPUContext*>(dev_ctx)->x_context()->xpu_stream;
     }
     if (comm_ctx) {
@@ -92,11 +92,10 @@ class CBroadcastOpXPUKernel : public framework::OpKernel<T> {
         VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
                 << x->numel();
         if (out != x) {
-          framework::TensorCopy(
-              *static_cast<const phi::DenseTensor*>(x),
-              place,
-              *platform::DeviceContextPool::Instance().Get(place),
-              static_cast<phi::DenseTensor*>(out));
+          framework::TensorCopy(*static_cast<const phi::DenseTensor*>(x),
+                                place,
+                                *phi::DeviceContextPool::Instance().Get(place),
+                                static_cast<phi::DenseTensor*>(out));
         }
       } else {
         auto& dev_ctx = ctx.template device_context<phi::XPUContext>();

@@ -354,7 +354,18 @@ CustomKernelInstruction::CustomKernelInstruction(
     const platform::Place& place,
     pir::Operation* op,
     const ValueExecutionInfo& value_exec_info)
-    : InstructionBase(id, place), value_exec_info_(value_exec_info) {
+    : InstructionBase(id, place),
+      input_name2id_map_(),
+      vec_input_name2id_map_(),
+      input_shapes_(),
+      vec_input_shapes_(),
+      custom_attrs_(),
+      input_dtypes_(),
+      vec_input_dtypes_(),
+      input_ptrs_(),
+      vec_input_ptrs_(),
+      cache_out_ptrs_(),
+      value_exec_info_(value_exec_info) {
   auto op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
