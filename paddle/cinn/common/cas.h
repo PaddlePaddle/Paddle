@@ -51,12 +51,12 @@ struct CasInterval {
    * 1 <= iterator_i <= 5
    */
   CasInterval(Expr expr_l, Expr expr_r) {
-    VLOG(2) << "CasInterval is : [" << expr_l << ", " << expr_r << "].";
+    VLOG(6) << "CasInterval is : [" << expr_l << ", " << expr_r << "].";
     expr_r = detail::ReplaceMinToConstant(expr_r);
     expr_l = detail::ReplaceMaxToConstant(expr_l);
     optim::Simplify(&expr_l);
     optim::Simplify(&expr_r);
-    VLOG(2) << "After simplify, CasInterval is : [" << expr_l << ", " << expr_r
+    VLOG(6) << "After simplify, CasInterval is : [" << expr_l << ", " << expr_r
             << "].";
 
     if (expr_l.is_constant() && expr_r.is_constant()) {

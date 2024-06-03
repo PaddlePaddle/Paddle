@@ -37,20 +37,14 @@ class PrintStatistics : public PassInstrumentation {
   }
 
   void RunAfterPass(Pass *pass, Operation *op) override {
-    if (pass->Has("__match_count__") && pass->Has("__all_count__")) {
-      auto match_count = pass->Get<int64_t>("__match_count__");
-      auto all_count = pass->Get<int64_t>("__all_count__");
-      PADDLE_ENFORCE_LE(match_count,
-                        all_count,
-                        phi::errors::InvalidArgument(
-                            "match_count: %d should smaller than all_count: %d",
-                            match_count,
-                            all_count));
-      if (match_count > 0) {
-        LOG(INFO) << "--- detected [" << match_count << "/" << all_count
+    if (pass->Has("__match_count_1__") && pass->Has("__match_count_2__")) {
+      auto match_count_1 = pass->Get<int64_t>("__match_count_1__");
+      auto match_count_2 = pass->Get<int64_t>("__match_count_2__");
+      if (match_count_1 > 0 || match_count_2 > 0) {
+        LOG(INFO) << "--- detected [" << match_count_1 << ", " << match_count_2
                   << "] subgraphs!";
       }
-    } else if (pass->Has("__match_count__") && !pass->Has("__all_count__")) {
+    } else if (pass->Has("__match_count__")) {
       auto match_count = pass->Get<int64_t>("__match_count__");
       if (match_count > 0) {
         LOG(INFO) << "--- detected [" << match_count << "] subgraphs!";

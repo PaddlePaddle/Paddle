@@ -74,7 +74,12 @@ void GraphNode::build_sampler(std::string sample_type) {
   } else if (sample_type == "weighted") {
     sampler = new WeightedSampler();
   }
-  sampler->build(edges);
+  if (sampler != nullptr) {
+    sampler->build(edges);
+  } else {
+    throw std::runtime_error("Failed to create a sampler of type: " +
+                             sample_type);
+  }
 }
 void FeatureNode::to_buffer(char* buffer, bool need_feature) {
   memcpy(buffer, &id, id_size);
