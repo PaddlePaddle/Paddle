@@ -1737,7 +1737,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         return self.compile_return(ret_const)
 
     def compile_return(self, ret_val):
-        compiled_fn, _ = self._graph.compile_sir(ret_val)
+        compiled_fn, _ = self._graph.compile_graph(ret_val)
         if compiled_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
             self.new_code = None
         else:
@@ -1775,7 +1775,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 store_vars.append(_var)
             store_var_info[_var.id] = name
 
-        compiled_fn, _ = self._graph.compile_sir(*store_vars)
+        compiled_fn, _ = self._graph.compile_graph(*store_vars)
 
         if compiled_fn.graph_size() < ENV_MIN_GRAPH_SIZE.get():
             return self._graph._restore_origin_opcode(

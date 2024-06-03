@@ -183,7 +183,7 @@ class CompileSIRCache(Cache, metaclass=Singleton):
         """
         sir = context.get_sir(sir_name)
         # NOTE(dev): Is str(sir) a heavy operation ?
-        hash_key = hash((str(sir), kwargs['training']))
+        hash_key = hash((str(sir), *input_spec, kwargs['training']))
         return hash_key
 
     def value_fn(

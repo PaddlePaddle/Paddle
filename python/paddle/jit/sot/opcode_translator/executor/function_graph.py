@@ -363,7 +363,7 @@ class FunctionGraph:
 
         return VariableLoader(store_var_info, self.pycode_gen)
 
-    def compile_sir(self, *ret_vars):
+    def compile_graph(self, *ret_vars):
         ret_items = [
             ret_item
             for ret_var in ret_vars
@@ -405,7 +405,7 @@ class FunctionGraph:
             statement_ir,
             symbolic_inputs,
             symbolic_outputs,
-        ) = self.compile_sir(*ret_vars)
+        ) = self.compile_graph(*ret_vars)
         compiled_fn_name = f"__compiled_fn_{statement_ir.name}"
         # prepare function and inputs
         self.pycode_gen.gen_load_object(compiled_fn, compiled_fn_name)
