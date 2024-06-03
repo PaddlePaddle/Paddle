@@ -403,10 +403,10 @@ def log_normal_(x, mean=1.0, std=2.0, name=None):
             >>> x = paddle.randn([3, 4])
             >>> x.log_normal_()
             >>> print(x)
-            Tensor(shape=[3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            [[2.53081441  , 0.07765250  , 3.24374723  , 0.94220436  ],
-             [0.54021752  , 0.16748440  , 150.20184326, 26.98592186 ],
-             [50.28606033 , 2.45613456  , 1.24211478  , 0.86626947  ]])
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[3.99360156 , 0.11746082 , 12.14813519, 4.74383831 ],
+             [0.36592522 , 0.09426476 , 31.81549835, 0.61839998 ],
+             [1.33314908 , 12.31954002, 36.44527435, 1.69572163 ]])
     """
     return normal_(x, mean=mean, std=std).exp_()
 
