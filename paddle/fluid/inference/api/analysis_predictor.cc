@@ -187,12 +187,12 @@ void UpdatePrivateDeviceContext(InferGPUContext *gpu_context,
   gpu_context->SetDriverVersion(gpu_resource->GetGpuDriverVersion());
   gpu_context->SetRuntimeVersion(gpu_resource->GetGpuRuntimeVersion());
   VLOG(1) << "thread id is " << std::this_thread::get_id() << ", stream id is "
-          << reinterpret_cast<void *>(gpu_resource->GetStream())
-          << ", allotor ptr is "
-          << reinterpret_cast<void *>(
-                 memory::allocation::AllocatorFacade::Instance()
-                     .GetAllocator(place_, gpu_resource->GetStream())
-                     .get());
+          << reinterpret_cast<const void *>(gpu_resource->GetStream());
+  << ", allotor ptr is "
+  << reinterpret_cast<void *>(
+         memory::allocation::AllocatorFacade::Instance()
+             .GetAllocator(place_, gpu_resource->GetStream())
+             .get());
 }
 #endif
 }  // namespace
@@ -447,7 +447,7 @@ bool AnalysisPredictor::Init(
         optimized_model_path + "/" + "_optimized.pdiparams";
     if (FileExists(optimized_model) && FileExists(optimized_params)) {
       config_.SetModel(optimized_model, optimized_params);
-      LOG(INFO) << "Load Optimized model from " << optimized_model_path;
+      LOG(INFO) << "Load Optimized model from " << optimized_model_path.c_str();
     } else {
       LOG(WARNING)
           << "The optimized model is not found, fallback to original model. "
