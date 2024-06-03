@@ -113,7 +113,7 @@ function check_xccl() {
     done
 }
 
-ARGS=$(getopt -o:: --long xre:,xhpc:,xccl: -n "check_xpu_dependence" -- "$@")
+ARGS=$(getopt -o:: --long xre:,xhpc:,xccl:: -n "check_xpu_dependence" -- "$@")
 eval set -- "${ARGS}"
 
 while true; do
