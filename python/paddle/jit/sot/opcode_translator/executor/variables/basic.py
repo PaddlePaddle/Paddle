@@ -619,7 +619,7 @@ class SymbolicVariable(VariableBase):
         else:
             self.value = value
             self.meta = MetaInfo(
-                [], paddle.int32, True, self.var_name, False, None, None
+                [], paddle.int64, True, self.var_name, False, None, None
             )
         self.need_guard_value = False
 
