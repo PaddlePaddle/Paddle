@@ -1067,6 +1067,7 @@
   infer_meta :
     func :  KernelWithXShapeInferMeta
     param : [xshape, out_grad]
+    spmd_rule : FlattenGradInferSpmd
   kernel :
     func : flatten_grad
     data_type : out_grad
@@ -3470,6 +3471,25 @@
   kernel:
     func: check_model_nan_inf
     data_type: out_grad
+
+- backward_op: pyramid_hash_grad
+  forward: pyramid_hash (Tensor x, Tensor w, Tensor white_list, Tensor black_list, int num_emb = 0,
+    int space_len = 0, int pyramid_layer = 2, int rand_len = 0, float drop_out_percent
+    = 0, int is_training = 0, bool use_filter = true, int white_list_len = 0, int
+    black_list_len = 0, int seed = 0, float lr = 0.0, str distribute_update_vars =
+    "") -> Tensor (out), Tensor (drop_pos), Tensor (x_temp_out)
+  args: (Tensor x, Tensor w, Tensor drop_pos, Tensor x_temp_out, Tensor out_grad, int num_emb = 0,
+    int space_len = 0, int pyramid_layer = 2, int rand_len = 0, float drop_out_percent
+    = 0, int is_training = 0, bool use_filter = true, int white_list_len = 0, int
+    black_list_len = 0, int seed = 0, float lr = 0.0, str distribute_update_vars =
+    "")
+  output: Tensor(x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: pyramid_hash_grad
+    data_type: w
 
 - backward_op: silu_double_grad
   forward: silu_grad (Tensor x, Tensor out, Tensor grad_out) -> Tensor(grad_x)

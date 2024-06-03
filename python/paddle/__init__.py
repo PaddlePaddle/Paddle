@@ -588,6 +588,9 @@ if is_compiled_with_cuda():
         and paddle.version.with_pip_cuda_libraries == 'ON'
     ):
         package_dir = os.path.dirname(os.path.abspath(__file__))
+        nvidia_package_path = package_dir + "/.." + "/nvidia"
+        set_flags({"FLAGS_nvidia_package_dir": nvidia_package_path})
+
         cublas_lib_path = package_dir + "/.." + "/nvidia/cublas/lib"
         set_flags({"FLAGS_cublas_dir": cublas_lib_path})
 

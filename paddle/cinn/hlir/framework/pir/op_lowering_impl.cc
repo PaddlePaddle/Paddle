@@ -1142,10 +1142,15 @@ ir::Tensor OpLowererImpl::GetTensor(const OpLoweringGroupPtr& group,
     }
     auto tensor = lang::CreatePlaceHolder(
         sym_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
-    const auto& tensor_value = details::GetTensorValueFromShapeOrData(
-        group->GetShapeOrDataExprs(value));
-    if (tensor_value.has_value()) {
-      tensor->set_value(*tensor_value);
+    auto IsIntType = [](const ::pir::Type& t) {
+      return t.isa<::pir::Int32Type>() || t.isa<::pir::Int64Type>();
+    };
+    if (IsIntType(dtype) && group->HasShapeOrDataExprs(value)) {
+      const auto& tensor_value = details::GetTensorValueFromShapeOrData(
+          group->GetShapeOrDataExprs(value));
+      if (tensor_value.has_value()) {
+        tensor->set_value(*tensor_value);
+      }
     }
     return tensor;
   } else {

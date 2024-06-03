@@ -19,10 +19,16 @@ namespace ir {
 
 void NaiveTileConfigDatabase::AddConfig(
     const common::Target& target,
-    const IterSpaceType& iter_space_type,
     const BucketInfo& bucket_info,
     const ScheduleConfig::TileConfig& config,
     int priority) {
+  IterSpaceType iter_space_type = [&] {
+    std::vector<std::pair<std::string, std::string>> res;
+    for (const auto& dim : bucket_info.space) {
+      res.emplace_back(dim.iter_type, (dim.is_dynamic ? "dynamic" : "static"));
+    }
+    return res;
+  }();
   config_map_[iter_space_type][bucket_info] = config;
 }
 
