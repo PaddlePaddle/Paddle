@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -144,6 +145,7 @@ class XPUTestConcatOp(XPUOpTestWrapper):
         def test_check_grad(self):
             pass
 
+    @check_run_big_shape_test()
     class TestConcatOpLargeShape1(TestConcatOp):
         def set_inputs(self):
             self.x0 = np.random.random([163840])
@@ -151,6 +153,7 @@ class XPUTestConcatOp(XPUOpTestWrapper):
             self.x2 = np.random.random([2452])
             self.axis = 0
 
+    @check_run_big_shape_test()
     class TestConcatOpLargeShape2(TestConcatOp):
         def set_inputs(self):
             self.x0 = np.random.random([5120])
@@ -158,6 +161,7 @@ class XPUTestConcatOp(XPUOpTestWrapper):
             self.x2 = np.random.random([1762])
             self.axis = 0
 
+    @check_run_big_shape_test()
     class TestConcatOpLargeShape3(TestConcatOp):
         def set_inputs(self):
             self.x0 = np.random.random([3874])

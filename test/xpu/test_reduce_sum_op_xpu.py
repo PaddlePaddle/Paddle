@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -135,6 +136,7 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
             self.reduce_all = True
             self.keep_dim = False
 
+    @check_run_big_shape_test()
     class XPUTestReduceSumLargeShape1(XPUTestReduceSumBase):
         def init_case(self):
             self.shape = (8192,)
@@ -142,6 +144,7 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
             self.reduce_all = False
             self.keep_dim = False
 
+    @check_run_big_shape_test()
     class XPUTestReduceSumLargeShape2(XPUTestReduceSumBase):
         def init_case(self):
             self.shape = (1, 8192)
@@ -149,6 +152,7 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
             self.reduce_all = False
             self.keep_dim = False
 
+    @check_run_big_shape_test()
     class XPUTestReduceSumLargeShape3(XPUTestReduceSumBase):
         def init_case(self):
             self.shape = (224, 1)
@@ -156,6 +160,7 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
             self.reduce_all = False
             self.keep_dim = False
 
+    @check_run_big_shape_test()
     class XPUTestReduceSumLargeShape4(XPUTestReduceSumBase):
         def init_case(self):
             self.shape = (334, 1)
@@ -163,6 +168,7 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
             self.reduce_all = False
             self.keep_dim = False
 
+    @check_run_big_shape_test()
     class XPUTestReduceSumLargeShape5(XPUTestReduceSumBase):
         def init_case(self):
             self.shape = (338, 1)

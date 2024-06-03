@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -210,6 +211,7 @@ class XPUTestStrideSliceOp(XPUOpTestWrapper):
             self.strides = [1, 1, 1, 2]
             self.infer_flags = [1, 1, 1, 1]
 
+    @check_run_big_shape_test()
     class XPUTestStrideSliceOpLargeShape1(XPUTestStrideSliceOp):
         def initTestCase(self):
             self.shape = (1, 8192, 5, 128)
@@ -219,6 +221,7 @@ class XPUTestStrideSliceOp(XPUOpTestWrapper):
             self.strides = [1, 1, 1, 2]
             self.infer_flags = [1, 1, 1, 1]
 
+    @check_run_big_shape_test()
     class XPUTestStrideSliceOpLargeShape2(XPUTestStrideSliceOp):
         def initTestCase(self):
             self.shape = (8192, 3456)

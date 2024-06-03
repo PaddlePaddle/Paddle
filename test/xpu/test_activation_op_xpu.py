@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -142,6 +143,7 @@ class XPUTestSiluOP(XPUOpTestWrapper):
             if os.getenv('XPU_PADDLE_ACT_LUT'):
                 del os.environ['XPU_PADDLE_ACT_LUT']
 
+    @check_run_big_shape_test()
     class TestSiluLargeShape1(XPUTestSilu):
         def init_shape(self):
             self.shape = [8192, 1728]
@@ -1344,6 +1346,7 @@ class XPUTestSinOP(XPUOpTestWrapper):
         def init_config(self):
             self.tmp_x = np.random.uniform(-np.pi, np.pi, [4, 256, 22, 22])
 
+    @check_run_big_shape_test()
     class XPUTestSinLargeShape1(XPUTestSinBase):
         def init_config(self):
             self.tmp_x = np.random.uniform(-np.pi, np.pi, [1, 8192, 1, 128])
@@ -1395,6 +1398,7 @@ class XPUTestCosOP(XPUOpTestWrapper):
         def init_config(self):
             self.tmp_x = np.random.uniform(-np.pi, np.pi, [4, 256, 22, 22])
 
+    @check_run_big_shape_test()
     class XPUTestCosLargeShape1(XPUTestCosBase):
         def init_config(self):
             self.tmp_x = np.random.uniform(-np.pi, np.pi, [1, 8192, 1, 128])

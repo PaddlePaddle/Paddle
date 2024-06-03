@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -83,6 +84,7 @@ class XPUTestSplitOp(XPUOpTestWrapper):
             self.num = 3
             self.indices_or_sections = 3
 
+    @check_run_big_shape_test()
     class TestSplitOpLargeShape1(TestSplitOp):
         def initParameters(self):
             self.x = np.random.random((1, 8192, 5, 384)).astype(self.dtype)

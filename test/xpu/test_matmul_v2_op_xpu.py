@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -315,6 +316,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.trans_x = True
             self.trans_y = False
 
+    @check_run_big_shape_test()
     class TestMatMulOpLargeShape1(TestMatMulV2Op):
         """
         Large Shape for EB
@@ -326,6 +328,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.trans_x = False
             self.trans_y = False
 
+    @check_run_big_shape_test()
     class TestMatMulOpLargeShape2(TestMatMulV2Op):
         def config(self):
             self.x_shape = (1024, 5120)
@@ -333,6 +336,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.trans_x = False
             self.trans_y = False
 
+    @check_run_big_shape_test()
     class TestMatMulOpLargeShape3(TestMatMulV2Op):
         def config(self):
             self.x_shape = (8192, 32)
@@ -340,6 +344,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.trans_x = False
             self.trans_y = False
 
+    @check_run_big_shape_test()
     class TestMatMulOpLargeShape4(TestMatMulV2Op):
         def config(self):
             self.x_shape = (8192, 640)
@@ -347,6 +352,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.trans_x = False
             self.trans_y = False
 
+    @check_run_big_shape_test()
     class TestMatMulOpLargeShape5(TestMatMulV2Op):
         def config(self):
             self.x_shape = (640, 32)

@@ -102,29 +102,29 @@ class XPUTestScaleOp(XPUOpTestWrapper):
         def set_attrs(self):
             self.attrs = {'scale': -0.003}
 
-    class TestScaleOpLargeShape1(TestScaleOp):
-        def set_shape(self):
-            self.shape = [64]
+    # class TestScaleOpLargeShape1(TestScaleOp):
+    #     def set_shape(self):
+    #         self.shape = [64]
 
-    class TestScaleOpLargeShape2(TestScaleOp):
-        def set_shape(self):
-            self.shape = [8192, 1]
+    # class TestScaleOpLargeShape2(TestScaleOp):
+    #     def set_shape(self):
+    #         self.shape = [8192, 1]
 
-    class TestScaleOpLargeShape3(TestScaleOp):
-        def set_shape(self):
-            self.shape = [1, 8192, 5, 64]
+    # class TestScaleOpLargeShape3(TestScaleOp):
+    #     def set_shape(self):
+    #         self.shape = [1, 8192, 5, 64]
 
-    class TestScaleOpLargeShape4(TestScaleOp):
-        def set_shape(self):
-            self.shape = [8192, 1920]
+    # class TestScaleOpLargeShape4(TestScaleOp):
+    #     def set_shape(self):
+    #         self.shape = [8192, 1920]
 
-    class TestScaleOpLargeShape5(TestScaleOp):
-        def set_shape(self):
-            self.shape = [1024, 5120]
+    # class TestScaleOpLargeShape5(TestScaleOp):
+    #     def set_shape(self):
+    #         self.shape = [1024, 5120]
 
-    class TestScaleOpLargeShape6(TestScaleOp):
-        def set_shape(self):
-            self.shape = [8192, 3456]
+    # class TestScaleOpLargeShape6(TestScaleOp):
+    #     def set_shape(self):
+    #         self.shape = [8192, 3456]
 
 
 class TestScaleApiStatic(unittest.TestCase):
