@@ -3584,7 +3584,7 @@
   traits : pir::SideEffectTrait
 
 - op : rrelu
-  args : (Tensor x, float lower=1.0f/8, float upper=1.0f/3, bool is_test=False)
+  args : (Tensor x, float lower=1.0f/8, float upper=1.0f/3, bool is_test=false)
   output : Tensor(out), Tensor(noise)
   infer_meta :
     func : RReluInferMeta
