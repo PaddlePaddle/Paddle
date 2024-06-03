@@ -51,7 +51,6 @@ from ..tracker import (
     DanglingTracker,
     DummyTracker,
     GetAttrTracker,
-    GetItemTracker,
     GetIterTracker,
     GlobalTracker,
     SymbolicOperationTracker,
@@ -176,26 +175,6 @@ class ConstantVariable(VariableBase):
             self.graph,
             DummyTracker([self]),
         )
-
-    @check_guard
-    def make_stringify_guard(self) -> list[StringifyExpression]:
-        # if (
-        #     ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
-        #     and isinstance(self.value, int)
-        #     and self.tracker.is_traceable()
-        # ):
-        #     from ..executor_cache import OpcodeExecutorCache
-
-        #     frame_value_tracer = self.tracker.trace_value_from_frame()
-        #     symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
-        #         self.graph.pycode_gen._origin_code
-        #     )
-        #     symbolic_inputs.setdefault(frame_value_tracer.inlined_expr, {})
-        #     symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
-        #     symbolic_input.setdefault(self.value, 0)
-        #     symbolic_input[self.value] += 1
-
-        return super().make_stringify_guard()
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
@@ -344,42 +323,6 @@ class TensorVariable(VariableBase):
         tracker: Tracker,
     ):
         super().__init__(graph, tracker)
-
-        # from ..executor_cache import OpcodeExecutorCache
-        # from .container import ListVariable
-
-        # symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
-        #     self.graph.pycode_gen._origin_code
-        # )
-        # shape = list(tensor.shape)
-        # shape_var = ListVariable(
-        #     shape,  # type: ignore
-        #     self.graph,
-        #     tracker=GetAttrTracker(self, "shape"),
-        # )
-        # for i in range(len(shape)):
-        #     dim_i = shape_var[i]
-        #     inlined_expr = (
-        #         dim_i.tracker.trace_value_from_frame().inlined_expr
-        #     )
-        #     if inlined_expr in symbolic_inputs:
-        #         symbolic_input = symbolic_inputs[inlined_expr]
-        #         # TODO(zrr1999): 5 is a frequency param
-        #         if symbolic_input.get(dim_i.value, 0) < 5:
-        #             self.dynamic_axes.append(i)
-        #     else:
-        #         symbolic_inputs.setdefault(inlined_expr, {})
-        #         symbolic_input = symbolic_inputs[inlined_expr]
-        #         if dim_i.value == -1:
-        #             # This means that meta.is_dynamic_shape() == True
-        #             # self.dynamic_axes.append(i)
-        #             # TODO(zrr1999)
-        #             raise NotImplementedError(
-        #                 "This means that meta.is_dynamic_shape() == True"
-        #             )
-        #     symbolic_input.setdefault(dim_i.value, 0)
-        #     symbolic_input[dim_i.value] += 1
-
         if isinstance(tensor, paddle.Tensor):
             self.value = None
             self.meta = MetaInfo.from_tensor(tensor)
@@ -741,23 +684,6 @@ class SymbolicVariable(VariableBase):
                 union_free_vars(frame_value_tracer.free_vars),
             )
         ]
-
-    @staticmethod
-    def find_tensor_tracker_expr(dim_tracker: Tracker):
-        from .container import ListVariable
-
-        if not isinstance(dim_tracker, GetItemTracker):
-            return None
-        if not isinstance(dim_tracker.container, ListVariable):
-            return None
-        if not isinstance(dim_tracker.container.tracker, GetAttrTracker):
-            return None
-        if dim_tracker.container.tracker.attr != "shape":
-            return None
-        if not isinstance(dim_tracker.container.tracker.obj, TensorVariable):
-            return None
-        tensor_tracker = dim_tracker.container.tracker.obj.tracker
-        return tensor_tracker.trace_value_from_frame().inlined_expr
 
     @staticmethod
     def should_create_symbolic_variable(
