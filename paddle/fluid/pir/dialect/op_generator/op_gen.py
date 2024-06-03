@@ -804,6 +804,8 @@ class OpInfoParser:
                 'selected_rows': 'paddle::dialect::SelectedRowsType',
                 'sparse_coo': 'paddle::dialect::SparseCooTensorType',
                 'sparse_csr': 'paddle::dialect::SparseCsrTensorType',
+                'vec::sparse_coo': 'pir::VectorType<paddle::dialect::SparseCooTensorType>',
+                'vec::sparse_csr': 'pir::VectorType<paddle::dialect::SparseCsrTensorType>',
             }
 
             for kernel_func_name in self.kernel_map['func']:
@@ -886,6 +888,8 @@ class OpInfoParser:
                 'selected_rows': 'paddle::dialect::SelectedRowsType',
                 'sparse_coo': 'paddle::dialect::SparseCooTensorType',
                 'sparse_csr': 'paddle::dialect::SparseCsrTensorType',
+                'vec::sparse_coo': 'pir::VectorType<paddle::dialect::SparseCooTensorType>',
+                'vec::sparse_csr': 'pir::VectorType<paddle::dialect::SparseCsrTensorType>',
             }
 
             for kernel_func_name in self.kernel_map['func']:

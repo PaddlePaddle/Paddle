@@ -836,6 +836,24 @@ class CodeGen:
                             cond_list.append(
                                 f'{name}.type().isa<paddle::dialect::SparseCsrTensorType>()'
                             )
+                    elif type == 'vec::sparse_coo':
+                        if optional == 'true':
+                            cond_list.append(
+                                f'(!{name}[0] || {name}[0]->type().isa<paddle::dialect::SparseCooTensorType>())'
+                            )
+                        else:
+                            cond_list.append(
+                                f'{name}[0].type().isa<paddle::dialect::SparseCooTensorType>()'
+                            )
+                    elif type == 'vec::sparse_csr':
+                        if optional == 'true':
+                            cond_list.append(
+                                f'(!{name}[0] || {name}[0]->type().isa<paddle::dialect::SparseCsrTensorType>())'
+                            )
+                        else:
+                            cond_list.append(
+                                f'{name}[0].type().isa<paddle::dialect::SparseCsrTensorType>()'
+                            )
                 ret_type = self._gen_ret_type(op_info)
                 in_combine, in_combine_op_list = self._gen_in_combine(
                     op_info, is_mutable_attr, is_vector_mutable_attr

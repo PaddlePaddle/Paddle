@@ -58,6 +58,8 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
             'dense': 'TensorType::DENSE_TENSOR',
             'sparse_coo': 'TensorType::SPARSE_COO',
             'sparse_csr': 'TensorType::SPARSE_CSR',
+            'vec::sparse_coo': 'TensorType::VEC_SPARSE_COO',
+            'vec::sparse_csr': 'TensorType::VEC_SPARSE_CSR',
         }
 
         if len(out_dtype_list) == 1:
@@ -70,7 +72,14 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
                 and self.outputs['names'][0] in self.inplace_map
                 else ""
             )
-            output_create = f"""
+            if (
+                out_dtype_list[0] == 'vec::sparse_csr'
+                or out_dtype_list[0] == 'vec::sparse_coo'
+            ):
+                output_create = f"""
+    auto kernel_out = SetSparseKernelOutputVector({self.outputs['names'][0]}, {output_type_map[out_dtype_list[0]]});"""
+            else:
+                output_create = f"""
     auto kernel_out = SetSparseKernelOutput({self.outputs['names'][0]}, {output_type_map[out_dtype_list[0]]});"""
 
         elif len(out_dtype_list) > 1:
@@ -89,12 +98,21 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
                         + f"""
     *{self.outputs['names'][i]} = {self.inplace_map[self.outputs['names'][i]]};"""
                     )
-
-                output_create = (
-                    output_create
-                    + f"""
-    auto kernel_out_{i} = SetSparseKernelOutput({self.outputs['names'][i]}, {output_type_map[out_dtype_list[i]]});"""
-                )
+                if (
+                    out_type_item == 'vec::sparse_csr'
+                    or out_type_item == 'vec::sparse_coo'
+                ):
+                    output_create = (
+                        output_create
+                        + f"""
+        auto kernel_out_{i} = SetSparseKernelOutputVector({self.outputs['names'][i]}, {output_type_map[out_dtype_list[i]]});"""
+                    )
+                else:
+                    output_create = (
+                        output_create
+                        + f"""
+        auto kernel_out_{i} = SetSparseKernelOutput({self.outputs['names'][i]}, {output_type_map[out_dtype_list[i]]});"""
+                    )
 
         else:
             raise ValueError(

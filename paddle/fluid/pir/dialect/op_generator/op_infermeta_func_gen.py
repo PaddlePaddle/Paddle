@@ -108,7 +108,7 @@ def get_infermeta_inputs_str(
     for idx in range(len(op_input_name_list)):
         if op_input_name_list[idx] not in inuse_infer_meta_args:
             continue
-        # is a vector<Tensor>
+        # is a vector<Tensor> or vector<SparseTensor>
         if 'pir::VectorType' in op_input_type_list[idx]:
             infermeta_inputs_str += f"  pir::VectorType {op_input_name_list[idx]} = {op_input_name_list[idx]}_.type().dyn_cast<pir::VectorType>(); (void){op_input_name_list[idx]};\n"
         # is a Tensor
@@ -310,6 +310,57 @@ def GenBuildOutputsPart2(
 
 """
 
+    CREATE_INPUT_VEC_SPARSE_COO_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrSparseCooTensor> vec_ir_tensor_{name};
+  for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
+    if({name}[i].isa<paddle::dialect::SparseCooTensorType>()) {{
+        auto {name}_type = {name}[i].dyn_cast<paddle::dialect::SparseCooTensorType>();
+        vec_ir_tensor_{name}.push_back(paddle::dialect::IrSparseCooTensor(paddle::dialect::TransToPhiDataType({name}_type.dtype()),
+                                                                    {name}_type.dims(),
+                                                                    {name}_type.non_zero_dims(),
+                                                        {name}_type.data_layout(),
+                                                        {name}_type.non_zero_elements(),
+                                                        {name}_type.non_zero_indices(),
+                                                        {name}_type.coalesced()));
+    }} else {{
+        PADDLE_THROW(phi::errors::Unimplemented("Only support SparseCooTensorType or AllocatedSparseCooTensorType"));
+    }}
+  }}
+  std::vector<paddle::dialect::IrMetaTensor> vec_meta_{name};
+  for (size_t i=0; i < vec_ir_tensor_{name}.size(); i++) {{
+    vec_meta_{name}.push_back(paddle::dialect::IrMetaTensor(&vec_ir_tensor_{name}[i]));
+  }}
+
+  std::vector<const phi::MetaTensor*> meta_{name};
+  for (size_t i=0; i < static_cast<size_t>(vec_meta_{name}.size()); i++) {{
+    meta_{name}.push_back(&vec_meta_{name}[i]);
+  }}
+ """
+
+    CREATE_INPUT_VEC_SPARSE_CSR_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrSparseCsrTensor> vec_ir_tensor_{name};
+  for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
+    if({name}[i].isa<paddle::dialect::SparseCsrTensorType>()) {{
+        auto {name}_type = {name}[i].dyn_cast<paddle::dialect::SparseCsrTensorType>();
+        vec_ir_tensor_{name}.push_back(paddle::dialect::IrSparseCsrTensor(paddle::dialect::TransToPhiDataType({name}_type.dtype()),
+                                                                    {name}_type.dims(),
+                                                        {name}_type.data_layout(),
+                                                        {name}_type.non_zero_crows(),
+                                                        {name}_type.non_zero_cols(),
+                                                        {name}_type.non_zero_elements()));
+    }} else {{
+        PADDLE_THROW(phi::errors::Unimplemented("Only support SparseCooTensorType or AllocatedSparseCooTensorType"));
+    }}
+  }}
+  std::vector<paddle::dialect::IrMetaTensor> vec_meta_{name};
+  for (size_t i=0; i < vec_ir_tensor_{name}.size(); i++) {{
+    vec_meta_{name}.push_back(paddle::dialect::IrMetaTensor(&vec_ir_tensor_{name}[i]));
+  }}
+
+  std::vector<const phi::MetaTensor*> meta_{name};
+  for (size_t i=0; i < static_cast<size_t>(vec_meta_{name}.size()); i++) {{
+    meta_{name}.push_back(&vec_meta_{name}[i]);
+  }}
+ """
+
     CREATE_INTARRAY_MUTABLE_ATTRIBUTE_WITH_UNKNOWN_DATA_TEMPLATE = """  is_from_tensor = false;
   phi::IntArray {name} = phi::IntArray(paddle::dialect::ParseValueShape({name}_, &is_from_tensor));
   if (is_from_tensor) {name}.SetFromTensor(true);\n"""
@@ -427,7 +478,7 @@ def GenBuildOutputsPart2(
             ) not in infer_meta_args:
                 # is a vector<Tensor>
                 if (
-                    'pir::VectorType'
+                    'pir::VectorType<paddle::dialect::DenseTensorType>'
                     in op_input_type_list[
                         op_input_name_list.index(
                             op_infer_meta_map['param'][idx]
@@ -447,6 +498,32 @@ def GenBuildOutputsPart2(
                                 name=op_infer_meta_map['param'][idx]
                             )
                         )
+                elif (
+                    'pir::VectorType<paddle::dialect::SparseCooTensorType>'
+                    in op_input_type_list[
+                        op_input_name_list.index(
+                            op_infer_meta_map['param'][idx]
+                        )
+                    ]
+                ):
+                    build_output_str += (
+                        CREATE_INPUT_VEC_SPARSE_COO_METATENSOR_TEMPLATE.format(
+                            name=op_infer_meta_map['param'][idx]
+                        )
+                    )
+                elif (
+                    'pir::VectorType<paddle::dialect::SparseCsrTensorType>'
+                    in op_input_type_list[
+                        op_input_name_list.index(
+                            op_infer_meta_map['param'][idx]
+                        )
+                    ]
+                ):
+                    build_output_str += (
+                        CREATE_INPUT_VEC_SPARSE_CSR_METATENSOR_TEMPLATE.format(
+                            name=op_infer_meta_map['param'][idx]
+                        )
+                    )
                 # is a Tensor
                 else:
                     input_index = op_input_name_list.index(
