@@ -974,15 +974,6 @@
   optional: bias, sample_weight, custom_dist_probs, custom_dist_alias, custom_dist_alias_probs
   backward: nce_grad
 
-- op: number_count
-  args: (Tensor numbers, int upper_range)
-  output: Tensor(out)
-  infer_meta:
-     func: NumberCountInferMeta
-  kernel:
-     func: number_count
-     data_type: numbers
-
 - op: onednn_to_paddle_layout
   args: (Tensor x, int dst_layout)
   output: Tensor(out)
