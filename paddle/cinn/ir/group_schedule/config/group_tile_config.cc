@@ -75,8 +75,6 @@ std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
   base_info->reduce_tensor_names = group_info->reduce_var_names;
   base_info->shared_var_names = group_info->shared_var_names;
   base_info->direct_output_var_names = group_info->direct_output_var_names;
-  base_info->broadcast_info = group_info->broadcast_info;
-  base_info->broadcast_to_elementwise = group_info->broadcast_to_elementwise;
   base_info->data_rank = group_info->data_space.size();
   base_info->raw_data_rank = group_info->raw_data_rank;
 
