@@ -423,9 +423,6 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
   bool transpose_x_attr = GetBoolAttr(op, "transpose_x");
   bool transpose_y_attr = GetBoolAttr(op, "transpose_y");
 
-  bool transpose_x_attr = GetBoolAttr(op, "transpose_x");
-  bool transpose_y_attr = GetBoolAttr(op, "transpose_y");
-
   auto TransposeDims =
       [](std::vector<symbol::DimExpr> dims) -> std::vector<symbol::DimExpr> {
     if (dims.size() < 2) return dims;
