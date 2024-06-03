@@ -24,15 +24,9 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
-#include "paddle/fluid/pir/utils/general_functions.h"
-#include "paddle/phi/backends/context_pool.h"
-#include "paddle/pir/include/core/attribute.h"
-#include "paddle/pir/include/core/block_argument.h"
-#include "paddle/pir/include/core/builtin_attribute.h"
-#include "paddle/pir/include/core/program.h"
+
+#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 
 #include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
@@ -70,10 +64,11 @@
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/enforce.h"
+
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/split.h"
@@ -123,6 +118,9 @@
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
@@ -132,6 +130,11 @@
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/block_argument.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -473,7 +476,6 @@ bool AnalysisPredictor::Init(
     if (!PreparePirProgram()) {
       return false;
     }
-    OptimizeInferencePirProgram();
   } else {
     if (!PrepareProgram(program)) {
       return false;
@@ -1017,6 +1019,7 @@ bool AnalysisPredictor::PreparePirProgram() {
   CreateFeedFetchVar(sub_scope_);
   pir::LoadCombineFunction(
       config_.params_file(), param_names, &tensor_out, false, place_);
+  OptimizeInferencePirProgram();
   return true;
 }
 
