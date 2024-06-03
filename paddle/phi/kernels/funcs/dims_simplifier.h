@@ -35,9 +35,21 @@ struct BroadcastDimsSimplifier {
  public:
   BroadcastDimsSimplifier(const std::vector<const DenseTensor *> &ins,
                           const phi::DDim &dims,
-                          int axis) {
+                          int axis,
+                          bool all_elementwise = false) {
     N = std::max(static_cast<int>(ins.size()), 2);
     in_dims.resize(N);
+
+    if (all_elementwise) {
+      rank = 1;
+      int64_t numel = phi::product(dims);
+      out_dims.push_back(numel);
+      for (size_t i = 0; i < N; ++i) {
+        in_dims[i].push_back(numel);
+      }
+      return;
+    }
+
     rank = dims.size();
     out_dims = phi::vectorize<int64_t>(dims);
     if (ins.size() == 1) {
@@ -333,11 +345,11 @@ struct DimsSimplifiedLogger {
                   const std::string &op_name) {
     VLOG(6) << op_name << "`s dims after simplification is below :";
     for (size_t i = 0; i < ins.size(); ++i) {
-      VLOG(6) << "input i=" << i << ": origin_dims={" << ins[i]->dims()
+      VLOG(6) << "input i=" << i << ": numel=" << ins[i]->numel() << ", origin_dims={" << ins[i]->dims()
               << "}, simplied_dims={"
               << ReversedVectorToString(dims_simplifier.in_dims[i]) << "}";
     }
-    VLOG(6) << "output: origin_dims={" << (*outs)[0]->dims()
+    VLOG(6) << "output: numel=" << (*outs)[0]->numel() << ", origin_dims={" << (*outs)[0]->dims()
             << "}, simplied_dims={"
             << ReversedVectorToString(dims_simplifier.out_dims) << "}";
   }

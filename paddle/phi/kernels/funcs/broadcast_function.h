@@ -325,9 +325,8 @@ __device__ void VectorizedBroadcastKernelImpl(
                                      Functor,
                                      ArgsT,
                                      Arity>()(func, args, result, read_lens);
-  phi::funcs::
-      ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
-          outs, result, block_offset, num, read_lens);
+  ElementwiseWriteDataCallerBc<OutT, VecSize, IsBoundary, NumOuts>()(
+      outs, result, block_offset, num, read_lens);
 }
 
 template <typename Functor,
@@ -888,7 +887,7 @@ void BroadcastKernelForDifferentVecSize(
           "XPU only support inputs is 2, but received %d", ins.size()));
 
   const auto dims_simplifier =
-      BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
+      BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis, loader_classifier.all_elementwise);
   if (VLOG_IS_ON(6)) {
     DimsSimplifiedLogger<int64_t>::Log(
         ins, outs, dims_simplifier, "XPU Broadcast");
@@ -902,8 +901,9 @@ void BroadcastKernelForDifferentVecSize(
                                              dims_simplifier.in_dims[0],
                                              dims_simplifier.rank);
   auto type = kps::details::OptType::CanNotOptimize;
-  bool is_optimize = configs[0].cmp_type != type;
-  int vec_size = is_optimize ? VecSizeL : VecSizeM;
+  // bool is_optimize = configs[0].cmp_type != type;
+  int vec_size = (configs[0].buf_len > VecSizeS) ? VecSizeM : VecSizeS;
+  VLOG(6) << "vec_size=" << vec_size << ", read_lens=" << configs[0].buf_len;
 #else
   if (!loader_classifier.all_elementwise) {
     const auto dims_simplifier =

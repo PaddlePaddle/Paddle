@@ -45,10 +45,15 @@ inline bool NeedTransformPlace(const phi::Place& input,
   if (!transform_flag.need_trans_backend()) {
     return false;
   }
+  Backend actual_target = (target != Backend::GPUDNN) ? target : Backend::GPU;
+#if defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_KP)
+  if (target == Backend::KPS) {
+    actual_target = Backend::XPU;
+  }
+#endif
   bool ret = input.GetType() == AllocationType::GPUPINNED ||
              (target != Backend::ALL_BACKEND &&
-              phi::TransToPhiBackend(input) !=
-                  (target != Backend::GPUDNN ? target : Backend::GPU));
+              phi::TransToPhiBackend(input) != actual_target);
   return ret;
 }
 

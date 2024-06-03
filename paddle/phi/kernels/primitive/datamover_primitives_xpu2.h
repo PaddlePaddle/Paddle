@@ -134,12 +134,12 @@ struct BroadcastConfig {
 
   int get_buf_len(int numel) {
     if (cmp_type == OptType::CanNotOptimize) {
-      return 256;
+      return 128;
     }
     if (cmp_type == OptType::N_1) {
       return kps::details::GetXpuReadLens(numel, 8, 64);
     }
-    int max_buf_len = 512;
+    int max_buf_len = 256;
     int buf_len = m / 16 * 16;
     if (buf_len == 0) {
       buf_len = m;
