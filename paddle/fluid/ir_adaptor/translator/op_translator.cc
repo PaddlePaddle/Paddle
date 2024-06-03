@@ -947,6 +947,16 @@ pir::Operation* OpTranscriber::operator()(pir::IrContext* ctx,
   return operation;
 }
 
+struct ArgsortOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "stable") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    }
+  }
+};
+
 struct Assign2AssignOpTranscriber : public OpTranscriber {
   pir::OpInfo LookUpOpInfo(pir::IrContext* ctx,
                            const OpDesc& op_desc) override {
@@ -2663,6 +2673,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
     pir::Value y_new;
     if (std::find(y_shape.begin(), y_shape.end(), -1) == y_shape.end()) {
       std::vector<int64_t> y_new_shape(y_shape);
+      y_new_shape.insert(y_new_shape.begin(), axis, 1);
       for (int i = 0; i < append_size; i++) {
         y_new_shape.push_back(1);
       }
@@ -3459,6 +3470,7 @@ OpTranslator::OpTranslator() {
 
   general_handler = OpTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();
+  special_handlers["argsort"] = ArgsortOpTranscriber();
   special_handlers["assign"] = AssignOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["range"] = ArangeOpTranscriber();

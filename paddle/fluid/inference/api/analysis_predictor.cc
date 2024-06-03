@@ -114,6 +114,7 @@
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
@@ -906,7 +907,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
         ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
         auto pass_manager = std::make_shared<::pir::PassManager>(
-            ::pir::IrContext::Instance(), 2);
+            ::pir::IrContext::Instance(), config_.pm_opt_level_);
         if (!config_.glog_info_disabled()) {
           pass_manager->EnablePrintStatistics();
         }
@@ -945,11 +946,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         // gpu
         if (!config_.custom_pass_only_) {
           for (const auto &gpu_pass : kPirGpuPasses) {
-            auto pass = pir::PassRegistry::Instance().Get(gpu_pass);
-            if (pass->name() == "matmul_add_act_fuse_pass") {
-              pass->Set("use_cutlass", new bool(config_.use_cutlass_));
-            }
-            pass_pm.AddPass(std::move(pass));
+            pass_pm.AddPass(pir::PassRegistry::Instance().Get(gpu_pass));
           }
         }
 
@@ -990,12 +987,20 @@ bool AnalysisPredictor::PrepareExecutor() {
             std::make_unique<pir::PassManager::IRPrinterOption>(
                 ir_printing_conditions, ir_printing_conditions));
       }
+      // set attr
+      for (const auto &pass : pass_pm.passes()) {
+        if (pass->name() == "matmul_add_act_fuse_pass" ||
+            pass->name() == "conv2d_add_act_fuse_pass" ||
+            pass->name() == "conv2d_add_fuse_pass") {
+          pass->Set("use_cutlass", new bool(config_.use_cutlass_));
+        }
+      }
       pass_pm.Run(pir_program_.get());
 
       // Apply some basic passes required by the framework
       ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
                                        config_.pm_opt_level_);
-
+      basic_pass_pm.AddPass(::pir::CreateCommonSubexpressionEliminationPass());
       auto params_sync_among_devices_pass =
           ::pir::CreateParamsSyncAmongDevicesPass();
       params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr,
@@ -1527,6 +1532,30 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   if (config_.shape_range_info_collected()) {
     HookCollectShapeRangeInfo();
   }
+#ifdef PADDLE_WITH_XPU
+  InferXPUContext *infer_xpu_ctx = nullptr;
+  if (config_.use_xpu_) {
+    PADDLE_ENFORCE(
+        private_context_,
+        paddle::platform::errors::Fatal(
+            "Must use private context if run predictor on xpu place."));
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place,
+        std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        this->GetDeviceContexts());
+    infer_xpu_ctx =
+        static_cast<InferXPUContext *>(dev_ctxs->at(place_).get().get());
+    auto *x_context = static_cast<xpu::Context *>(config_.xpu_config_.context);
+    if (x_context != nullptr) {
+      infer_xpu_ctx->SetXContext(x_context);
+    }
+    infer_xpu_ctx->SetStream(predictor_stream_);
+    infer_xpu_ctx->SetL3Info(config_.xpu_config_.l3_size,
+                             config_.xpu_config_.l3_ptr,
+                             config_.xpu_config_.l3_autotune_size,
+                             place_);
+  }
+#endif
 
   if (config_.new_executor_enabled()) {  // NOLINT
     executor_->RunInterpreterCore();
@@ -1537,7 +1566,11 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
   }
 
   inference::DisplayMemoryInfo(place_, "after run");
-
+#ifdef PADDLE_WITH_XPU
+  if (config_.use_xpu_ && infer_xpu_ctx != nullptr) {
+    infer_xpu_ctx->L3CacheAutotune();
+  }
+#endif
   // get fetch variable
   if (!GetFetch(outputs, scope)) {
     LOG(ERROR) << "fail to get fetches";

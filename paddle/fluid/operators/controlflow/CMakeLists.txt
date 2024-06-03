@@ -26,10 +26,6 @@ cc_library(
   SRCS pylayer_op_helper.cc
   DEPS op_variant operator pylayer_op)
 cc_library(
-  recurrent_op_helper
-  SRCS recurrent_op_helper.cc
-  DEPS recurrent_op op_variant operator)
-cc_library(
   while_op_helper
   SRCS while_op_helper.cc
   DEPS op_variant operator)

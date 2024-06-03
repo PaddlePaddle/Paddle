@@ -404,11 +404,7 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
     std::vector<symbol::DimExpr> dims;
     const auto &x_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(0));
-    if (x_shape_or_data.data().has_value()) {
-      dims = x_shape_or_data.data().value();
-    } else {
-      dims = x_shape_or_data.shape();
-    }
+    dims = x_shape_or_data.shape();
     return dims;
   }();
 
@@ -417,11 +413,7 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
     std::vector<symbol::DimExpr> dims;
     const auto y_shape_or_data =
         infer_context->GetShapeOrDataForValue(op->operand_source(1));
-    if (y_shape_or_data.data().has_value()) {
-      dims = y_shape_or_data.data().value();
-    } else {
-      dims = y_shape_or_data.shape();
-    }
+    dims = y_shape_or_data.shape();
     return dims;
   }();
 

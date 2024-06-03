@@ -30,7 +30,6 @@ endif()
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_feedforward)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_attention)
-list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_multi_transformer)
 list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
 list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
 list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
@@ -162,6 +161,7 @@ list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fs_interface)
   list(REMOVE_ITEM TEST_OPS test_fleet_metric)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_static)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
@@ -425,10 +425,6 @@ list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_seresnext_base_cpu)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_seresnext_with_reduce_cpu)
-list(REMOVE_ITEM TEST_OPS
-     test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
 list(REMOVE_ITEM TEST_OPS test_async_ssa_graph_executor_mnist)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
@@ -436,6 +432,7 @@ list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
+list(REMOVE_ITEM TEST_OPS test_layers)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -733,6 +730,10 @@ if(NOT WIN32 AND NOT APPLE)
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   set_tests_properties(test_multiprocess_dataloader_dataset
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+  set_tests_properties(test_multiprocess_dataloader_static
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+  set_tests_properties(test_multiprocess_dataloader_static PROPERTIES TIMEOUT
+                                                                      120)
 endif()
 
 if(WITH_DISTRIBUTE)
@@ -748,6 +749,7 @@ if(WITH_DISTRIBUTE)
 endif()
 
 # setting timeout value as 15S
+set_tests_properties(test_isin PROPERTIES TIMEOUT 30)
 set_tests_properties(test_binomial_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_run PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sync_batch_norm_op PROPERTIES TIMEOUT 180)
@@ -762,6 +764,9 @@ if(NOT WIN32)
   if(WITH_NV_JETSON)
     set_tests_properties(test_ir_memory_optimize_nlp PROPERTIES TIMEOUT 1200)
   endif()
+  py_test_modules(test_layers MODULES test_layers ENVS
+                  FLAGS_cudnn_deterministic=1)
+  set_tests_properties(test_layers PROPERTIES TIMEOUT 120)
 endif()
 set_tests_properties(test_buffer_shared_memory_reuse_pass PROPERTIES TIMEOUT
                                                                      120)
@@ -900,8 +905,6 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_static_model_parallel_fused_feedforward
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_static_model_parallel_fused_attention
-                         PROPERTIES TIMEOUT 120)
-    set_tests_properties(test_static_model_parallel_fused_multi_transformer
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_pipeline_parallel PROPERTIES LABELS
                                                            "RUN_TYPE=DIST")

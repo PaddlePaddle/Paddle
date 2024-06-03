@@ -2090,7 +2090,15 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
       output_shape[i] = shape[i];
     } else if (shape[i] == 0) {
       if (static_cast<int>(i) < in_dims.size()) {
-        output_shape[i] = in_dims[static_cast<int>(i)];
+        if (in_size == 0) {
+          // such as [3, 2, 0] -> [0, 0] is [0, 0]; [3, 2, 0] -> [10, 0] is [10,
+          // 0]
+          output_shape[i] = 0;
+        } else {
+          // such as [3, 2, 1] -> [0, 0] is [3, 2]; [3, 2, 1] -> [3, 2, 0] is
+          // [3, 2, 1]
+          output_shape[i] = in_dims[static_cast<int>(i)];
+        }
       } else {
         PADDLE_ENFORCE_EQ(
             in_size,
@@ -5414,6 +5422,23 @@ void UniformRandomInplaceInferMeta(const MetaTensor& x,
   auto xdim = x.dims();
   out->set_dims(xdim);
   out->set_dtype(x.dtype());
+}
+
+void UniformRandomBatchSizeLikeInferMeta(const MetaTensor& input,
+                                         const std::vector<int>& shape,
+                                         int input_dim_idx,
+                                         int output_dim_idx,
+                                         float min,
+                                         float max,
+                                         int seed,
+                                         int diag_num,
+                                         int diag_step,
+                                         float diag_val,
+                                         DataType dtype,
+                                         MetaTensor* out,
+                                         MetaConfig config) {
+  phi::BatchSizeLikeInferMeta(input, shape, input_dim_idx, output_dim_idx, out);
+  out->set_dtype(dtype);
 }
 
 void UniqueConsecutiveInferMeta(const MetaTensor& x,
