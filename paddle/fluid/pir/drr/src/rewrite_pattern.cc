@@ -82,8 +82,7 @@ bool DrrRewritePattern::PatternGraphMatch(
   VLOG(6) << "PatternGraphMatch Start: op(" << op->name() << ")";
   const OpCall* anchor = *source_pattern_graph_->OutputNodes().begin();
   std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
-      bind_map =
-          FindCandidateIrOutputOp(op, anchor, *(source_pattern_graph_.get()));
+      bind_map = FindCandidateIrOutputOp(op, anchor, *source_pattern_graph_);
   if (bind_map.empty()) {
     return false;
   }
@@ -116,7 +115,7 @@ bool DrrRewritePattern::PatternGraphMatch(
                        return std::make_pair(drr_op, ir_op);
                      });
       if (MatchFromOutputToInput(
-              output_op_map, *(source_pattern_graph_.get()), match_ctx)) {
+              output_op_map, *source_pattern_graph_, match_ctx)) {
         *source_pattern_match_ctx = *match_ctx;
         return true;
       }
@@ -485,6 +484,7 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
     }
   }
 
+  bool is_one_result = result_pattern_graph.owned_op_call().size() == 1;
   // topo order visit result_pattern_graph
   GraphTopo graph_topo_visit(&result_pattern_graph);
   graph_topo_visit.WalkGraphNodesTopoOrder([&](const OpCall& op_call) {
@@ -529,14 +529,41 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
         }
       }
     }
-    if (max_input_op_index == 0UL) {
-      VLOG(6) << "Not found producer op for (" << op_call.name() << ")";
-      pir::Operation* source_pattern_first_op = src_match_ctx.IrOperation(
+
+    if (is_one_result && !source_pattern_graph.owned_op_call().empty()) {
+      // 1. get source pattern min-idx op
+      pir::Operation* min_src_idx_op = src_match_ctx.IrOperation(
           source_pattern_graph.owned_op_call()[0].get());
-      max_input_op_index = op_2_temp_program_index[source_pattern_first_op];
-      rewriter.set_insertion_point(source_pattern_first_op);
+      size_t min_src_idx = op_2_temp_program_index[min_src_idx_op];
+      for (const auto& src_owned_op_call :
+           source_pattern_graph.owned_op_call()) {
+        pir::Operation* src_owned_op =
+            src_match_ctx.IrOperation(src_owned_op_call.get());
+        size_t src_owned_op_idx = op_2_temp_program_index[src_owned_op];
+        if (min_src_idx > src_owned_op_idx) {
+          min_src_idx = src_owned_op_idx;
+          min_src_idx_op = src_owned_op;
+        }
+      }
+      // 2. insert new op at point max(max_input_op_index+1, min_src_idx)
+      if (min_src_idx > max_input_op_index) {
+        rewriter.set_insertion_point(min_src_idx_op);
+        max_input_op_index = op_2_temp_program_index[min_src_idx_op];
+      } else {
+        rewriter.SetInsertionPointAfter(max_index_op);
+      }
+      VLOG(6) << "(" << op_call.name() << ") insert at idx "
+              << std::max(max_input_op_index + 1, min_src_idx);
     } else {
-      rewriter.SetInsertionPointAfter(max_index_op);
+      if (max_input_op_index == 0UL) {
+        VLOG(6) << "Not found producer op for (" << op_call.name() << ")";
+        pir::Operation* source_pattern_first_op = src_match_ctx.IrOperation(
+            source_pattern_graph.owned_op_call()[0].get());
+        max_input_op_index = op_2_temp_program_index[source_pattern_first_op];
+        rewriter.set_insertion_point(source_pattern_first_op);
+      } else {
+        rewriter.SetInsertionPointAfter(max_index_op);
+      }
     }
 
     pir::Operation* new_op =

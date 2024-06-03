@@ -60,7 +60,7 @@ class ProgramWriter {
 
   Json WriteProgram(const pir::Program* program);
   Json WriteRegion(const pir::Region* region, const std::string& region_name);
-  Json WriteBlock(const pir::Block* block, const std::string& block_name);
+  Json WriteBlock(pir::Block* block, const std::string& block_name);
   Json WriteOp(const pir::Operation& op);
   Json WriteBlockArg(const pir::Value& value);
   Json WriteValue(const pir::Value& value);

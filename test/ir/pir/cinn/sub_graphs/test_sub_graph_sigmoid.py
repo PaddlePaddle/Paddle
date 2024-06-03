@@ -45,7 +45,7 @@ class TestSigmoid(TestBase):
         self.inputs = (
             paddle.rand(shape=[10, 512, 1, 1], dtype=paddle.float32),
         )
-        self.net = SigmoidCase()
+        self.net = SigmoidCase
 
 
 if __name__ == '__main__':

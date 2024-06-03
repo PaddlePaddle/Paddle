@@ -45,7 +45,7 @@ class TestTranspose(TestBase):
         self.inputs = (
             paddle.rand(shape=[22, 4, 224, 224], dtype=paddle.float32),
         )
-        self.net = TransposeCase()
+        self.net = TransposeCase
 
 
 if __name__ == '__main__':

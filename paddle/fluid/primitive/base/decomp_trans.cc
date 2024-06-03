@@ -25,6 +25,7 @@
 #include "paddle/pir/include/core/program.h"
 
 COMMON_DECLARE_bool(prim_check_ops);
+COMMON_DECLARE_bool(prim_enable_dynamic);
 COMMON_DECLARE_string(prim_forward_blacklist);
 
 using paddle::dialect::DenseTensorType;
@@ -352,15 +353,15 @@ std::vector<pir::Value> DecompProgram::get_dst_vars() {
 bool DecompProgram::enable_decomp_by_filter(const std::string& op_name) {
   bool flag = true;
 
-  if (whitelist_.size() > 0) {
+  if (!whitelist_.empty()) {
     if (whitelist_.find(op_name) == whitelist_.end()) {
       flag = false;
     }
   }
   auto from_flag_blacklist = StringSplit(FLAGS_prim_forward_blacklist);
-  if (from_flag_blacklist.size() > 0)
+  if (!from_flag_blacklist.empty())
     blacklist_.insert(from_flag_blacklist.begin(), from_flag_blacklist.end());
-  if (blacklist_.size() > 0 && blacklist_.find(op_name) != blacklist_.end())
+  if (!blacklist_.empty() && blacklist_.find(op_name) != blacklist_.end())
     flag = false;
   return flag;
 }
@@ -455,8 +456,9 @@ void DecompProgram::decomp_block(
     bool enable_prim =
         has_decomp_rule(*op) && enable_decomp_by_filter(op->name());
     if (enable_prim && check_decomp_dynamic_shape(op) &&
-        dynamic_shape_blacklist.find(op->name()) !=
-            dynamic_shape_blacklist.end()) {
+        (!FLAGS_prim_enable_dynamic ||
+         dynamic_shape_blacklist.find(op->name()) !=
+             dynamic_shape_blacklist.end())) {
       enable_prim = false;
     }
     if (enable_prim) {
