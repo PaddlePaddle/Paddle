@@ -1218,9 +1218,8 @@ Tensor sigmoid_cross_entropy_with_logits_decomp(
     const paddle::optional<Tensor>& pos_weight,
     bool normalize,
     int ignore_index) {
-  auto dims = x.shape();
-  const Tensor zero = full<T>(dims, 0, x.type());
-  const Tensor one = full<T>(dims, 1, x.type());
+  const Tensor zero = full_like_decomp<T>(x, 0, x.type(), x.place());
+  const Tensor one = full_like_decomp<T>(x, 1, x.type(), x.place());
   Tensor pos_weight_tensor;
   if (pos_weight) {
     pos_weight_tensor = pos_weight.get();
@@ -1229,14 +1228,15 @@ Tensor sigmoid_cross_entropy_with_logits_decomp(
   }
   auto term1 = where<T>(x > zero, x, zero);
   auto term2 = x * label;
-  auto term3 = log<T>(1 + exp<T>(-abs<T>(x)));
+  auto term3 = log<T>(one + exp<T>(-abs<T>(x)));
   const Tensor tmp_out = term1 - term2 + term3 * pos_weight_tensor;
-  const Tensor ignore_index_tensor = full<T>(dims, ignore_index, label.type());
+  const Tensor ignore_index_tensor =
+      full_like_decomp<T>(x, ignore_index, label.type(), label.place());
   auto out = where<T>(label == ignore_index_tensor, zero, tmp_out);
   if (normalize) {
     // Follow the implementation in
     // paddle/phi/kernels/cpu/sigmoid_cross_entropy_with_logits_kernel.cc
-    const Tensor eps1 = full<T>(dims, 1e-6, x.type());
+    const Tensor eps1 = full_like_decomp<T>(x, 1e-6, x.type(), x.place());
     auto diff = label - ignore_index_tensor;
     const Tensor tmp_norm = sum<T>(where<T>(abs<T>(diff) > eps1, one, zero));
     // Follow the implementation in

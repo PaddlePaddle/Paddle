@@ -824,3 +824,4 @@ set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_pir_tests_properties()
 
 set_tests_properties(test_reduce_as_op PROPERTIES TIMEOUT 30)
+set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)

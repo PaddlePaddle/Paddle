@@ -30,8 +30,8 @@
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/common/enforce.h"
 #include "test/cpp/cinn/program_builder.h"
-
 namespace cinn {
 namespace auto_schedule {
 
@@ -159,7 +159,10 @@ TEST(EvolutionarySearch, Evolve) {
   auto tasks = CreateTasks(
       tests::OpBuilder("matmul").Build({{"X", {32, 32}}, {"Y", {32, 32}}}),
       target);
-  CHECK_EQ(tasks.size(), 1);
+  PADDLE_ENFORCE_EQ(
+      tasks.size(),
+      1,
+      phi::errors::InvalidArgument("The size of tasks should be 1."));
   ExprCostModel cost_model;
   std::vector<const ir::ModuleExpr*> cost_model_samples(1);
   std::vector<float> cost_model_labels(1);
@@ -206,7 +209,11 @@ TEST(EvolutionarySearch, Evolve) {
       VLOG(6) << "cost = " << s->predicted_cost;
     }
     VLOG(6) << "total_cost_next = " << total_cost_next;
-    CHECK_LE(total_cost_next, total_cost_pre);
+    PADDLE_ENFORCE_LE(
+        total_cost_next,
+        total_cost_pre,
+        phi::errors::InvalidArgument("The total cost should be less than or "
+                                     "equal to the previous one."));
     std::swap(population_pre_ptr, population_next_ptr);
   }
 }
