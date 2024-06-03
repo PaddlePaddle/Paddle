@@ -48,6 +48,14 @@ void NaiveExecutor::Prepare(Scope *scope,
   CreateOps(program_desc, block_id);
 }
 
+void NaiveExecutor::Prepare(Scope *scope) {
+  if (!scope) {
+    scope_ = new framework::Scope;
+  } else {
+    scope_ = scope;
+  }
+}
+
 void NaiveExecutor::PrepareInterpreterCore(
     Scope *scope,
     const ProgramDesc &program_desc,

@@ -256,6 +256,12 @@ class AnalysisPredictor : public PaddlePredictor {
   void OptimizeInferenceProgram();
 
   ///
+  /// \brief According to argument information, execute the relevant pass
+  /// to get the optimized model program
+  ///
+  void OptimizeInferencePirProgram();
+
+  ///
   /// \brief Clear the intermediate tensors of the predictor
   ///
   ///
@@ -348,11 +354,19 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   bool PrepareProgram(const std::shared_ptr<framework::ProgramDesc> &program);
   ///
+  /// \brief Prepare predictor's required programs, including loading model
+  /// information, graph optimization, and executor creation variables, etc.
+  ///
+  /// \return Whether the function executed successfully
+  ///
+  bool PreparePirProgram();
+  ///
   /// \brief Prepare scope environment, each predictor has its own scope
   ///
   /// \param[in] parent_scope The scope of the predictor to be cloned, or null
   /// \return Whether the function executed successfully
   ///
+
   bool PrepareScope(const std::shared_ptr<framework::Scope> &parent_scope);
   ///
   /// \brief Create an Executor object
@@ -566,6 +580,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
+  bool load_pir_model_;
 
   phi::DataType model_precision_{phi::DataType::FLOAT32};
 
