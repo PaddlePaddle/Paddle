@@ -233,15 +233,16 @@ struct ShapeSignatureGenerator {
     for (const auto& symbolic_shape : const_shape_or_data.shape()) {
       const auto& const_symbolic_shape =
           symbol::SimplifyDimExpr(symbolic_shape);
-      CHECK(const_symbolic_shape.isa<std::int64_t>())
-          << " shape or data: " << const_symbolic_shape;
+      if (!const_symbolic_shape.isa<std::int64_t>())
+        return std::make_pair(std::nullopt, std::nullopt);
       shape.push_back(symbolic_shape.Get<std::int64_t>());
     }
     if (!const_shape_or_data.data().has_value())
       return std::make_pair(shape, data);
     for (const auto& symbolic_data : *const_shape_or_data.data()) {
       const auto& const_symbolic_data = symbol::SimplifyDimExpr(symbolic_data);
-      CHECK(const_symbolic_data.isa<std::int64_t>());
+      if (!const_symbolic_data.isa<std::int64_t>())
+        return std::make_pair(std::nullopt, std::nullopt);
       data.push_back(const_symbolic_data.Get<std::int64_t>());
     }
     return std::make_pair(shape, data);

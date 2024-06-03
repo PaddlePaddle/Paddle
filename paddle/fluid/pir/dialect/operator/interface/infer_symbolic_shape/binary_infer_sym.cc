@@ -494,6 +494,7 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
 
   infer_context->SetShapeOrDataForValue(op->result(0),
                                         ShapeOrData{TensorExprs(out_dims)});
+
   return true;
 }
 
