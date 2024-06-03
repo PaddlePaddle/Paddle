@@ -30,7 +30,6 @@
 - depthwise_conv2d_transpose
 - dequantize_log
 - disable_check_model_nan_inf
-- dropout
 - empty
 - empty_like
 - enable_check_model_nan_inf

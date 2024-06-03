@@ -10,7 +10,6 @@
 - deformable_conv_grad
 - depthwise_conv2d_transpose_grad
 - disable_check_model_nan_inf_grad
-- dropout_grad
 - enable_check_model_nan_inf_grad
 - frobenius_norm_grad
 - fused_batch_norm_act_grad
