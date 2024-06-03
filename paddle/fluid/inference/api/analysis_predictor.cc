@@ -1073,6 +1073,7 @@ bool AnalysisPredictor::PrepareProgram(
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
 
   if (config_.new_ir_enabled()) {
+    CHECK_EQ(pir_program_, nullptr);
     pir_program_ = paddle::TranslateLegacyProgramToProgram(*inference_program_);
     OptimizeInferencePirProgram();
   }
