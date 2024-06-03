@@ -2194,7 +2194,7 @@ def bmm(x, y, name=None):
 
 
 def histogram(
-    input, weight=None, bins=100, min=0, max=0, density=False, name=None
+    input, bins=100, min=0, max=0, weight=None, density=False, name=None
 ):
     """
     Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max.
@@ -2203,10 +2203,10 @@ def histogram(
     Args:
         input (Tensor): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
             should be float32, float64, int32, int64.
-        weight (Tensor, optional): If provided, it must have the same shape as input.
         bins (int, optional): number of histogram bins. Default: 100.
         min (int, optional): lower end of the range (inclusive). Default: 0.
         max (int, optional): upper end of the range (inclusive). Default: 0.
+        weight (Tensor, optional): If provided, it must have the same shape as input.
         density (bool, optional): If False, the result will contain the count (or total weight) in each bin. If True, the result is the
         value of the probability density function over the bins, normalized such that the integral over the range of the bins is 1.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -2241,7 +2241,7 @@ def histogram(
                 "histogram",
             )
             out = helper.create_variable_for_type_inference(
-                dtype=VarDesc.VarType.FLOAT32
+                dtype=VarDesc.VarType.FP32
             )
         else:
             out = helper.create_variable_for_type_inference(

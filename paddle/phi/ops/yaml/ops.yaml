@@ -2130,9 +2130,9 @@
 - op : histogram
   args : (Tensor input, Tensor weight, int64_t bins = 100, int min = 0, int max = 0, bool density = false)
   output : Tensor(out)
-  optional : weight
   infer_meta :
     func : HistogramInferMeta
+  optional : weight
   kernel :
     func : histogram
 
