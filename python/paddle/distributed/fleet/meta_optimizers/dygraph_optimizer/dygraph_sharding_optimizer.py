@@ -812,6 +812,7 @@ class DygraphShardingOptimizerV2:
         copy_attr("optimize_attr")
         copy_attr("do_model_average")
         copy_attr("need_clip")
+        copy_attr("no_sync")
 
         self._slice_params[param.name] = slice_param
         return slice_param

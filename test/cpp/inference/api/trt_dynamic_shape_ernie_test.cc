@@ -231,8 +231,7 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
   const int run_batch = 2;
   const int run_seq_len = 71;
   const int max_seq_len = 128;
-
-  int32_t i1[run_seq_len] = {
+  std::vector<int32_t> i1 = {
       // sentence 1
       1,
       3558,
@@ -307,7 +306,7 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
       1012,
       102,
   };
-  int32_t i2[run_seq_len] = {// sentence 1
+  std::vector<int32_t> i2 = {// sentence 1
                              0,
                              0,
                              0,
@@ -381,32 +380,32 @@ void run(paddle_infer::Predictor* predictor, std::vector<float>* out_data) {
                              1,
                              1};
   // shape info of this batch
-  int32_t i3[3] = {0, 40, 71};
+  std::vector<int32_t> i3 = {0, 40, 71};
   // max_seq_len represents the max sentence length of all the sentences, only
   // length of
   // input i4 is useful, data means nothing.
-  float i4[max_seq_len] = {0};
+  std::vector<float> i4(max_seq_len, 0);
 
   auto input_names = predictor->GetInputNames();
   // first input
   auto input_t1 = predictor->GetInputHandle(input_names[0]);
   input_t1->Reshape({run_seq_len});
-  input_t1->CopyFromCpu(i1);
+  input_t1->CopyFromCpu(i1.data());
 
   // second input
   auto input_t2 = predictor->GetInputHandle(input_names[1]);
   input_t2->Reshape({run_seq_len});
-  input_t2->CopyFromCpu(i2);
+  input_t2->CopyFromCpu(i2.data());
 
   // third input
   auto input_t3 = predictor->GetInputHandle(input_names[2]);
   input_t3->Reshape({run_batch + 1});
-  input_t3->CopyFromCpu(i3);
+  input_t3->CopyFromCpu(i3.data());
 
   // fourth input
   auto input_t4 = predictor->GetInputHandle(input_names[3]);
   input_t4->Reshape({1, max_seq_len, 1});
-  input_t4->CopyFromCpu(i4);
+  input_t4->CopyFromCpu(i4.data());
 
   CHECK(predictor->Run());
 
