@@ -49,7 +49,11 @@ class BilinearInterpolateV2OpConverter : public OpConverter {
 
     auto layer = TRT_ENGINE_ADD_LAYER(engine_, Resize, *input);
     if (align_mode == 0) {
+#if IS_TRT_VERSION_GE(8600)
+      layer->setResizeMode(nvinfer1::InterpolationMode::kLINEAR);
+#else
       layer->setResizeMode(nvinfer1::ResizeMode::kLINEAR);
+#endif
     }
 #if IS_TRT_VERSION_GE(8000)
     if (align_corners == true) {

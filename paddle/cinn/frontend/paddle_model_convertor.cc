@@ -24,7 +24,7 @@
 #include "paddle/cinn/frontend/paddle/cpp/program_desc.h"
 #include "paddle/cinn/frontend/paddle/model_parser.h"
 #include "paddle/cinn/frontend/var_type_utils.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/common/enforce.h"
 

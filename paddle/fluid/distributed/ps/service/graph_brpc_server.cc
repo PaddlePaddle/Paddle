@@ -598,9 +598,9 @@ int32_t GraphBrpcService::sample_neighbors_across_multi_servers(
       if (fail_num > 0 && failed[seq[i]]) {
         continue;
       } else if (static_cast<size_t>(request2server[seq[i]]) != rank) {
-        char temp[actual_size[i] + 1];
-        res[seq[i]]->copy_and_forward(temp, actual_size[i]);
-        cntl->response_attachment().append(temp, actual_size[i]);
+        std::vector<char> temp(actual_size[i] + 1);
+        res[seq[i]]->copy_and_forward(temp.data(), actual_size[i]);
+        cntl->response_attachment().append(temp.data(), actual_size[i]);
       } else {
         char *temp = local_buffers[local_index++].get();
         cntl->response_attachment().append(temp, actual_size[i]);

@@ -251,7 +251,13 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     if not all(isinstance(v, pir.Value) for v in fetch_vars):
         raise TypeError("fetch_vars type must be a Value or a list of Value.")
 
-    # TODO(Ruting) remind users to set auc_states to 0 if auc op were found.
+    # remind users to set auc_states to 0 if auc op were found.
+    for op in program.global_block().ops:
+        if op.name() == 'pd_op.auc':
+            warnings.warn(
+                "Be sure that you have set auc states to 0 before saving inference model."
+            )
+            break
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
@@ -567,8 +573,14 @@ def save_pir(program, model_path, protocol=4, **configs):
 
     # get parameters and optimizer variables
     parameter_list, optimizer_param_list = get_pir_parameters(program)
-    param_dict = {var.name: get_tensor(var) for var in parameter_list}
-    opt_dict = {var.name: get_tensor(var) for var in optimizer_param_list}
+    param_dict = {
+        var.name: get_tensor(var) for var in parameter_list if var.persistable
+    }
+    opt_dict = {
+        var.name: get_tensor(var)
+        for var in optimizer_param_list
+        if var.persistable
+    }
 
     # save parameters
     param_dict = _unpack_saved_dict(param_dict, protocol)
@@ -643,10 +655,11 @@ def load_pir(program, model_path, executor=None, var_list=None):
             load_dict = _safe_load_pickle(f, encoding='latin1')
         load_dict = _pack_loaded_dict(load_dict)
     for var in parameter_list:
-        assert (
-            var.name in load_dict
-        ), f"Can not find [{var.name}] in model file [{parameter_file_name}]"
-        set_var(var.name, load_dict[var.name])
+        if var.persistable:
+            assert (
+                var.name in load_dict
+            ), f"Can not find [{var.name}] in model file [{parameter_file_name}]"
+            set_var(var.name, load_dict[var.name])
 
     if len(optimizer_param_list) > 0:
         opt_file_name = model_prefix + ".pdopt"
@@ -662,10 +675,11 @@ def load_pir(program, model_path, executor=None, var_list=None):
         with open(opt_file_name, 'rb') as f:
             load_dict = _safe_load_pickle(f, encoding='latin1')
         for var in optimizer_param_list:
-            assert (
-                var.name in load_dict
-            ), f"Can not find [{var.name}] in model file [{opt_file_name}]"
-            set_var(var.name, load_dict[var.name])
+            if var.persistable:
+                assert (
+                    var.name in load_dict
+                ), f"Can not find [{var.name}] in model file [{opt_file_name}]"
+                set_var(var.name, load_dict[var.name])
 
 
 @static_only

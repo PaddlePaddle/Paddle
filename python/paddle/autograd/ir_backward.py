@@ -45,6 +45,7 @@ from paddle.autograd.backward_utils import (
     return_map_value_list,
     some_in_set,
     update_no_grad_set_by_stopgradient,
+    warning_once,
     while_prune_check,
 )
 from paddle.base.libpaddle.pir import (
@@ -906,7 +907,7 @@ def prepare_backward_prune_set(inputs, outputs):
                 for item in get_real_op_inputs(used_op):
                     outputs_fwd_set.add(item)
         else:
-            logging.warning("input provided by inputs has no use")
+            warning_once("input provided by inputs has no use")
 
     inputs_fwd_set = ValueSet()
     for output in outputs:

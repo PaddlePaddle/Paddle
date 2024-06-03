@@ -126,11 +126,6 @@ static void PrepareAttrMapForOps() {
   operators_with_attrs["cast"]["out_dtype"] = 5;
   operators_with_attrs["cast"]["in_dtype"] = 5;
 
-  // Handle "transfer_dtype"
-  operators_with_attrs["transfer_dtype"] = {};
-  operators_with_attrs["transfer_dtype"]["out_dtype"] = 5;
-  operators_with_attrs["transfer_dtype"]["in_dtype"] = 5;
-
   // Handle "c_split"
   operators_with_attrs["c_split"] = {};
   operators_with_attrs["c_split"]["nranks"] = 1;

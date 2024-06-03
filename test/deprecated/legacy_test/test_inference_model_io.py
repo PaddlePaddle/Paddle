@@ -29,6 +29,7 @@ from paddle.distributed.io import (
     load_inference_model_distributed,
     save_persistables,
 )
+from paddle.pir_utils import test_with_pir_api
 from paddle.static.io import load_inference_model, save_inference_model
 
 paddle.enable_static()
@@ -161,14 +162,15 @@ class TestBook(unittest.TestCase):
 
 
 class TestSaveInferenceModel(unittest.TestCase):
+    @test_with_pir_api
     def test_save_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model2")
-        init_program = Program()
-        program = Program()
+        init_program = paddle.static.Program()
+        program = paddle.static.Program()
 
         # fake program without feed/fetch
-        with program_guard(program, init_program):
+        with paddle.static.program_guard(program, init_program):
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
@@ -188,14 +190,15 @@ class TestSaveInferenceModel(unittest.TestCase):
         )
         root_path.cleanup()
 
+    @test_with_pir_api
     def test_save_inference_model_with_auc(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model4")
-        init_program = Program()
-        program = Program()
+        init_program = paddle.static.Program()
+        program = paddle.static.Program()
 
         # fake program without feed/fetch
-        with program_guard(program, init_program):
+        with paddle.static.program_guard(program, init_program):
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='int32')
             predict = paddle.static.nn.fc(x, size=2, activation='softmax')
@@ -223,14 +226,15 @@ class TestSaveInferenceModel(unittest.TestCase):
 
 
 class TestInstance(unittest.TestCase):
+    # @test_with_pir_api
     def test_save_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model3")
-        init_program = Program()
-        program = Program()
+        init_program = paddle.static.Program()
+        program = paddle.static.Program()
 
         # fake program without feed/fetch
-        with program_guard(program, init_program):
+        with paddle.static.program_guard(program, init_program):
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
@@ -261,14 +265,15 @@ class TestInstance(unittest.TestCase):
 
 
 class TestSaveInferenceModelNew(unittest.TestCase):
+    # @test_with_pir_api
     def test_save_and_load_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model5")
-        init_program = base.default_startup_program()
-        program = base.default_main_program()
+        init_program = paddle.static.default_startup_program()
+        program = paddle.static.default_main_program()
 
         # fake program without feed/fetch
-        with program_guard(program, init_program):
+        with paddle.static.program_guard(program, init_program):
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
@@ -283,7 +288,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             sgd_optimizer.minimize(avg_cost, init_program)
 
         place = core.CPUPlace()
-        exe = executor.Executor(place)
+        exe = base.Executor(place)
         exe.run(init_program, feed={}, fetch_list=[])
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
@@ -344,7 +349,12 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             exe,
         )
 
-        model_path = MODEL_DIR + "_isdir.pdmodel"
+        if paddle.framework.in_pir_mode():
+            MODEL_SUFFIX = ".json"
+        else:
+            MODEL_SUFFIX = ".pdmodel"
+
+        model_path = MODEL_DIR + "_isdir" + MODEL_SUFFIX
         os.makedirs(model_path)
         self.assertRaises(
             ValueError,
@@ -356,7 +366,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         )
         os.rmdir(model_path)
 
-        params_path = MODEL_DIR + "_isdir.pdmodel"
+        params_path = MODEL_DIR + "_isdir" + MODEL_SUFFIX
         os.makedirs(params_path)
         self.assertRaises(
             ValueError,
@@ -372,7 +382,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             MODEL_DIR, [x, y], [avg_cost], exe
         )
 
-        self.assertTrue(os.path.exists(MODEL_DIR + ".pdmodel"))
+        self.assertTrue(os.path.exists(MODEL_DIR + MODEL_SUFFIX))
         self.assertTrue(os.path.exists(MODEL_DIR + ".pdiparams"))
 
         expected = exe.run(
@@ -405,7 +415,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             unsupported_param=None,
         )
         self.assertRaises(
-            (TypeError, ValueError),
+            (TypeError, RuntimeError, ValueError),
             paddle.static.load_inference_model,
             None,
             exe,
@@ -435,7 +445,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         self.assertRaises(ValueError, paddle.static.io.save_to_file, '', 123)
         # test _get_valid_program
         self.assertRaises(TypeError, paddle.static.io._get_valid_program, 0)
-        p = Program()
+        p = paddle.static.Program()
         cp = CompiledProgram(p)
         paddle.static.io._get_valid_program(cp)
         self.assertTrue(paddle.static.io._get_valid_program(cp) is p)
@@ -491,12 +501,13 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             None,
         )
 
+    @test_with_pir_api
     def test_normalize_program(self):
-        init_program = base.default_startup_program()
-        program = base.default_main_program()
+        init_program = paddle.static.default_startup_program()
+        program = paddle.static.default_main_program()
 
         # fake program without feed/fetch
-        with program_guard(program, init_program):
+        with paddle.static.program_guard(program, init_program):
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
             y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
@@ -525,7 +536,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         # test if return type of serialize_program is bytes
         res = paddle.static.normalize_program(program, [x, y], [avg_cost])
-        self.assertTrue(isinstance(res, Program))
+        self.assertTrue(isinstance(res, paddle.static.Program))
         # test program type
         self.assertRaises(
             TypeError, paddle.static.normalize_program, None, [x, y], [avg_cost]
@@ -545,6 +556,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
 
 class TestLoadInferenceModelError(unittest.TestCase):
+    @test_with_pir_api
     def test_load_model_not_exist(self):
         place = core.CPUPlace()
         exe = executor.Executor(place)

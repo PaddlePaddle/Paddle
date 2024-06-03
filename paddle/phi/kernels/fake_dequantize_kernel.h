@@ -25,4 +25,13 @@ void FakeDequantizeMaxAbsKernel(const Context& dev_ctx,
                                 float max_range,
                                 DenseTensor* out);
 
+template <typename T, typename Context>
+void FakeChannelWiseDequantizeMaxAbsKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const std::vector<const DenseTensor*>& scales,
+    const std::vector<int>& quant_bits,
+    int quant_axis,
+    int x_num_col_dims,
+    DenseTensor* out);
 }  // namespace phi
