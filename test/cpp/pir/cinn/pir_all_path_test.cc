@@ -20,7 +20,6 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/lower_cinn_fusion_op_pass.h"
@@ -62,20 +61,25 @@ static void RunAndCheckResult(::pir::Program* program,
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-  pir::PassManager pm(ctx);
-  pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
-  pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
-  pm.AddPass(
+  pir::PassManager stage_1_pm(ctx);
+  stage_1_pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
+  stage_1_pm.AddPass(
       std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
 
-  pm.AddPass(pir::CreateDeadCodeEliminationPass());
-  pm.AddPass(pir::CreateBuildCinnPass());
-  pm.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
-  pm.AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
-  pm.AddPass(pir::CreateDeadCodeEliminationPass());
-  pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
-  pm.EnableIRPrinting();
-  CHECK_EQ(pm.Run(program), true);
+  stage_1_pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  stage_1_pm.AddPass(pir::CreateBuildCinnPass());
+  stage_1_pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
+  stage_1_pm.EnableIRPrinting();
+  CHECK_EQ(stage_1_pm.Run(program), true);
+
+  pir::PassManager stage_2_pm(ctx);
+  stage_2_pm.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
+  // stage_2_pm.AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass()); //
+  // (@xiongkun) we remove yield store in new fusion strategy.
+  stage_2_pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  stage_2_pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
+  stage_2_pm.EnableIRPrinting();
+  CHECK_EQ(stage_2_pm.Run(program), true);
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 

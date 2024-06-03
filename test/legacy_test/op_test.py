@@ -431,6 +431,9 @@ class OpTest(unittest.TestCase):
         cls._check_cinn = False
         cls.check_pir_onednn = False
 
+        # Todo(CZ): to be removed in future
+        core._clear_prim_vjp_skip_default_ops()
+
         np.random.seed(123)
         random.seed(124)
 
@@ -1526,6 +1529,10 @@ class OpTest(unittest.TestCase):
         check_cinn=False,
     ):
         with paddle.pir_utils.OldIrGuard():
+            if hasattr(self, "attrs"):
+                for k, v in self.attrs.items():
+                    if isinstance(v, paddle.base.core.DataType):
+                        self.attrs[k] = paddle.pir.core.datatype_to_vartype[v]
             program = Program()
             block = program.global_block()
             op = self._append_ops(block)
@@ -1960,7 +1967,9 @@ class OpTest(unittest.TestCase):
         if getattr(self, "no_need_check_inplace", False):
             return
 
-        if os.getenv("FLAGS_enable_pir_in_executor"):
+        if os.getenv("FLAGS_enable_pir_in_executor") or os.getenv(
+            "FLAGS_enable_pir_api"
+        ):
             return
 
         has_infer_inplace = base.core.has_infer_inplace(self.op_type)
@@ -3119,18 +3128,19 @@ class OpTest(unittest.TestCase):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
         if check_prim:
-            self._check_grad_helper()
-            prim_grad_checker = PrimGradChecker(
-                self,
-                place,
-                inputs_to_check,
-                output_names,
-                no_grad_set,
-                user_defined_grad_outputs,
-            )
-            prim_grad_checker.check()
-            # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            self.__class__.check_prim = True
+            with paddle.pir_utils.OldIrGuard():
+                self._check_grad_helper()
+                prim_grad_checker = PrimGradChecker(
+                    self,
+                    place,
+                    inputs_to_check,
+                    output_names,
+                    no_grad_set,
+                    user_defined_grad_outputs,
+                )
+                prim_grad_checker.check()
+                # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
+                self.__class__.check_prim = True
 
         if check_prim_pir:
             with paddle.pir_utils.IrGuard():
@@ -3199,6 +3209,13 @@ class OpTest(unittest.TestCase):
                         python_api_info=python_api_info,
                     )
                     runtime_envs = get_subprocess_runtime_envs(place)
+
+                    num_devices = len(
+                        runtime_envs["CUDA_VISIBLE_DEVICES"].split(",")
+                    )
+                    if num_devices > paddle.device.cuda.device_count():
+                        self.skipTest("number of GPUs is not enough")
+
                     start_command = get_subprocess_command(
                         runtime_envs["CUDA_VISIBLE_DEVICES"],
                         generated_grad_test_path,
@@ -3238,6 +3255,11 @@ class OpTest(unittest.TestCase):
         if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
             op_attrs["use_mkldnn"] = False
             use_onednn = True
+        if hasattr(self, "attrs"):
+            for k, v in self.attrs.items():
+                if isinstance(v, paddle.base.core.DataType):
+                    self.attrs[k] = paddle.pir.core.datatype_to_vartype[v]
+
         self.op = create_op(
             self.scope,
             self.op_type,
@@ -3283,20 +3305,21 @@ class OpTest(unittest.TestCase):
         if numeric_place is None:
             numeric_place = place
 
-        numeric_grads = self.check_grad_with_place_for_static(
-            user_defined_grads,
-            inputs_to_check,
-            place,
-            output_names,
-            no_grad_set,
-            user_defined_grad_outputs,
-            numeric_place,
-            numeric_grad_delta,
-            in_place,
-            check_cinn,
-            max_relative_error,
-            atol,
-        )
+        with paddle.pir_utils.OldIrGuard():
+            numeric_grads = self.check_grad_with_place_for_static(
+                user_defined_grads,
+                inputs_to_check,
+                place,
+                output_names,
+                no_grad_set,
+                user_defined_grad_outputs,
+                numeric_place,
+                numeric_grad_delta,
+                in_place,
+                check_cinn,
+                max_relative_error,
+                atol,
+            )
 
         if check_pir_onednn and isinstance(
             place, paddle.base.libpaddle.CPUPlace

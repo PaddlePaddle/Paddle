@@ -331,7 +331,5 @@ void NaiveExecutor::ResetTrtOps(int num) {
 #endif
 }
 
-void NaiveExecutor::CloneLiteEngine(int num, void *stream) {}
-
 }  // namespace framework
 }  // namespace paddle

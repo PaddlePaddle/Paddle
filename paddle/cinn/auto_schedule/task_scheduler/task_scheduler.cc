@@ -19,7 +19,7 @@
 #include "paddle/cinn/auto_schedule/task/tune_task.h"
 #include "paddle/cinn/auto_schedule/task_scheduler/efficiency_priority.h"
 #include "paddle/cinn/auto_schedule/task_scheduler/round_robin.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace auto_schedule {
 
@@ -27,7 +27,10 @@ std::unique_ptr<TaskScheduler> TaskScheduler::Make(
     const std::vector<TuneTask>& tasks,
     const Config& config,
     const std::string& strategy) {
-  CHECK_GT(tasks.size(), 0) << "Empty task list";
+  PADDLE_ENFORCE_GT(
+      tasks.size(),
+      0,
+      phi::errors::InvalidArgument("The task's size should greater than 0."));
   if (strategy == "round_robin") {
     return std::make_unique<RoundRobin>(tasks, config);
   } else if (strategy == "efficiency_priority") {

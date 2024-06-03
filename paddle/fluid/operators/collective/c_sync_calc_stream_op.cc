@@ -32,7 +32,6 @@ Call calculation stream synchronization.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_sync_calc_stream,
                              ops::CSyncCalcStreamOp,

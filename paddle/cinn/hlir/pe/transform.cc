@@ -27,6 +27,7 @@
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/errors.h"
 
 namespace cinn {
 namespace hlir {
@@ -425,8 +426,9 @@ ir::Tensor Concat(const ir::Tensor& A,
 ir::Tensor Concat(const std::vector<ir::Tensor>& input_tensors,
                   int axis,
                   const std::string& name) {
+  // input size 1 is valid for Concat
   int input_size = input_tensors.size();
-  CHECK_GE(input_size, 2U) << "Concat should have at least 2 input tensors";
+  CHECK_GE(input_size, 1U) << "Concat should have at least 1 input tensors";
   std::vector<Expr> output_shape = input_tensors[0]->shape;
   int input_dim = output_shape.size();
   CHECK(axis >= -input_dim && axis < input_dim)
@@ -1055,9 +1057,20 @@ ir::Tensor Transpose(const ir::Tensor& input,
       output_name);
 }
 
+int UpdateNegAxis(int axis, int rank) {
+  if (axis < 0) {
+    PADDLE_ENFORCE_GE(
+        axis + rank,
+        0,
+        ::common::errors::InvalidArgument("The axis of slice is out of range"));
+    return axis + rank;
+  }
+  return axis;
+}
+
 ir::Tensor Slice(const ir::Tensor& A,
                  const std::vector<int>& starts,
-                 const std::vector<int>& axes,
+                 const std::vector<int>& const_axes,
                  const std::vector<int>& strides,
                  const std::vector<int>& decrease_axis,
                  const std::vector<Expr>& output_shape,
@@ -1066,6 +1079,13 @@ ir::Tensor Slice(const ir::Tensor& A,
   for (const auto& shape : A->shape) {
     input_shape.emplace_back(shape.as_int32());
   }
+  std::vector<int> axes;
+  std::transform(const_axes.begin(),
+                 const_axes.end(),
+                 std::back_inserter(axes),
+                 [rank = A->shape.size()](const int axis) -> int {
+                   return UpdateNegAxis(axis, rank);
+                 });
   std::vector<int> new_starts(starts);
   for (int i = 0; i < axes.size(); i++) {
     if (new_starts[i] < -input_shape[axes[i]]) {
@@ -1109,9 +1129,9 @@ ir::Tensor Slice(const ir::Tensor& A,
 }
 
 ir::Tensor SliceSymbolic(const ir::Tensor& A,
-                         const std::vector<int>& starts,
-                         const std::vector<int>& axes,
-                         const std::vector<int>& strides,
+                         const std::vector<Expr>& starts,
+                         const std::vector<int>& const_axes,
+                         const std::vector<Expr>& strides,
                          const std::vector<int>& decrease_axis,
                          const std::vector<Expr>& output_shape,
                          const std::string& output_name) {
@@ -1120,11 +1140,14 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
     input_shape.emplace_back(shape);
   }
 
-  std::vector<Expr> new_starts;
-  std::transform(starts.begin(),
-                 starts.end(),
-                 std::back_inserter(new_starts),
-                 [](const int start) { return ir::Expr(start); });
+  std::vector<Expr> new_starts = starts;
+  std::vector<int> axes;
+  std::transform(const_axes.begin(),
+                 const_axes.end(),
+                 std::back_inserter(axes),
+                 [rank = A->shape.size()](const int axis) -> int {
+                   return UpdateNegAxis(axis, rank);
+                 });
 
   for (int i = 0; i < axes.size(); i++) {
     if (input_shape[axes[i]].is_constant()) {
@@ -1136,7 +1159,7 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
         new_starts[i] = input_shape[axes[i]].as_int64() - ir::Expr(1);
       }
     } else {
-      if (new_starts[i].as_int64() < 0) {
+      if (new_starts[i].is_constant() && new_starts[i].as_int64() < 0) {
         new_starts[i] = ir::Add::Make(input_shape[axes[i]], new_starts[i]);
       }
     }
@@ -1306,6 +1329,61 @@ ir::Tensor Gather(const ir::Tensor& x,
         // https://github.com/PaddlePaddle/CINN/blob/85ab4981a38926dc5c1dbf672762cec335d2b857/cinn/ir/ir.cc#L477
         transformed_indice[axis] =
             ir::Cast::Make(cinn::common::Int(32), index(indice));
+        return x(transformed_indice);
+      },
+      name);
+  return output_tensor;
+}
+
+ir::Tensor Gather(const ir::Tensor& x,
+                  const ir::Tensor& index,
+                  int axis,
+                  const std::vector<Expr>& output_shape,
+                  const std::string& name) {
+  // The implementation details are explained below.
+  // If output_shape = [2, 4, 3] and axis = 0, `Compute` can be translated as
+  // the following code:
+  // {
+  //   for (i, 0, 2)
+  //   {
+  //     for (j, 0, 4)
+  //     {
+  //       for (k, 0, 3)
+  //       {
+  //         index_select_output[i, j, k] = X[index(i), j, k]
+  //       }
+  //     }
+  //   }
+  // }
+  auto output_tensor = Compute(
+      output_shape,
+      [x, index, axis](const std::vector<Expr>& indice) {
+        // 1) indice is got from `output_shape`
+        // 2) transformed_indice is used in the input `x`
+        std::vector<Expr> transformed_indice = indice;
+
+        auto index_indice = std::vector<Expr>({indice[axis]});
+
+        if (index.ndims() > 1) {
+          PADDLE_ENFORCE_EQ(
+              index.ndims(),
+              2,
+              phi::errors::InvalidArgument(
+                  "index.ndims() should be 2 when index.ndims() is not 0 or 1"
+                  "in gather_op, but received value is [%d].",
+                  index.ndims()));
+          PADDLE_ENFORCE_EQ(
+              index->shape[1],
+              Expr(1),
+              phi::errors::InvalidArgument(
+                  "index->shape[1] should be 1 when index.ndims() = 2"
+                  "in gather_op."));
+
+          index_indice.push_back(Expr(0));
+        }
+
+        transformed_indice[axis] = index(index_indice);
+
         return x(transformed_indice);
       },
       name);

@@ -88,8 +88,8 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
       stream = ctx.cuda_device_context().stream();
     }
 
-    framework::DDim x_dims = x->dims();
-    framework::DDim out_dims(x_dims);
+    phi::DDim x_dims = x->dims();
+    phi::DDim out_dims(x_dims);
     PADDLE_ENFORCE_EQ(
         x_dims[0] % nranks,
         0,
@@ -114,15 +114,15 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
       comm_ctx->GroupEnd();
       VLOG(3) << "new comm_context_manager has rid " << ring_id;
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
       for (auto i = 0; i < nranks; ++i) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclSend(
             send_buf + offset, send_numel, dtype, i, comm->comm(), stream));
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRecv(
             recv_buf + offset, send_numel, dtype, i, comm->comm(), stream));
         offset += send_numel;
       }
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupEnd());
       VLOG(3) << "old NCCLCommContext has rid " << ring_id;
     }
 #else
@@ -139,7 +139,6 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(alltoall,
                           GPU,
@@ -148,7 +147,7 @@ PD_REGISTER_STRUCT_KERNEL(alltoall,
                           float,
                           double,
 #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-                          plat::bfloat16,
+                          phi::dtype::bfloat16,
 #endif
                           int,
                           int64_t,

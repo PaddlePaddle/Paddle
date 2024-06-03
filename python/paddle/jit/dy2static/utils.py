@@ -545,6 +545,12 @@ def cinn_is_enabled(build_strategy, backend):
     return False
 
 
+def cse_is_enabled():
+    return paddle.get_flags(["FLAGS_enable_cse_in_dy2st"])[
+        "FLAGS_enable_cse_in_dy2st"
+    ]
+
+
 def prim_is_enabled():
     core.check_and_set_prim_all_enabled()
     return core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled()
@@ -588,8 +594,8 @@ def backend_guard(backend):
 
 def construct_grad_names(grad_info_map, x_vars, param_vars, out_vars):
     grad_var_names = {}
-    fn = (
-        lambda grad_var: grad_var.name
+    fn = lambda grad_var: (
+        grad_var.name
         if isinstance(grad_var, framework.Variable)
         else framework.EMPTY_VAR_NAME
     )

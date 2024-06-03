@@ -15,10 +15,6 @@ cc_library(
   SRCS while_op_eager_deletion_pass.cc
   DEPS while_op_helper graph_helper pass)
 cc_library(
-  recurrent_op_eager_deletion_pass
-  SRCS recurrent_op_eager_deletion_pass.cc
-  DEPS recurrent_op_helper graph_helper pass)
-cc_library(
   reference_count_pass_helper
   SRCS reference_count_pass_helper.cc
   DEPS garbage_collector) #
@@ -34,15 +30,7 @@ set(EAGER_DELETETION_PASS_DEPS
     conditional_block_op_eager_deletion_pass
     pylayer_op_eager_deletion_pass
     while_op_eager_deletion_pass
-    recurrent_op_eager_deletion_pass
     reference_count_pass_helper)
-if(WITH_CINN)
-  cc_library(
-    share_varinfo_into_cinn_pass
-    SRCS share_varinfo_into_cinn_pass.cc
-    DEPS pass enforce common graph_helper)
-  list(APPEND EAGER_DELETETION_PASS_DEPS share_varinfo_into_cinn_pass)
-endif()
 
 cc_library(
   eager_deletion_pass

@@ -81,6 +81,32 @@ static PyObject *static_api_set_parameter(PyObject *self,
   }
 }
 
+static PyObject *static_api_update_parameter(PyObject *self,
+                                             PyObject *args,
+                                             PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add uodata_parameter op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *parameter_obj = PyTuple_GET_ITEM(args, 0);
+    auto parameter = CastPyArg2Value(parameter_obj, "parameter", 0);
+
+    // Parse Attributes
+    PyObject *name_obj = PyTuple_GET_ITEM(args, 1);
+    std::string name = CastPyArg2String(name_obj, "name", 1);
+    // Call ir static api
+    CallStackRecorder callstack_recoder("uodata_parameter");
+    callstack_recoder.Record();
+    paddle::dialect::update_parameter(parameter, name);
+    callstack_recoder.AttachToOps();
+    Py_RETURN_NONE;
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyObject *static_api_set_persistable_value(PyObject *self,
                                                   PyObject *args,
                                                   PyObject *kwargs) {
@@ -846,6 +872,26 @@ static PyObject *run_custom_op(PyObject *self,
   }
 }
 
+static PyObject *builtin_combine_op(PyObject *self,
+                                    PyObject *args,
+                                    PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add buitin_combine op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+    // Get Value from args
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
+    auto x = CastPyArg2VectorOfValue(x_obj, "builtin_combine", 0);
+    CallStackRecorder callstack_recoder("builtin_combine_op");
+    callstack_recoder.Record();
+    auto static_api_out = paddle::dialect::builtin_combine(x);
+    callstack_recoder.AttachToOps();
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyObject *static_api_fused_gemm_epilogue(PyObject *self,
                                                 PyObject *args,
                                                 PyObject *kwargs) {
@@ -929,6 +975,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_set_parameter,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for set_parameter."},
+    {"update_parameter",
+     (PyCFunction)(void (*)(void))static_api_update_parameter,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for update_parameter."},
     {"set_persistable_value",
      (PyCFunction)(void (*)(void))static_api_set_persistable_value,
      METH_VARARGS | METH_KEYWORDS,
@@ -981,6 +1031,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))run_custom_op,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_custom_op."},
+    {"builtin_combine",
+     (PyCFunction)(void (*)(void))builtin_combine_op,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for builtin_combine_op."},
     {"array_pop",
      (PyCFunction)(void (*)(void))static_api_array_pop,
      METH_VARARGS | METH_KEYWORDS,

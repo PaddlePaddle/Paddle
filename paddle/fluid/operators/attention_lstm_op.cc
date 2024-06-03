@@ -187,7 +187,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
                           "AttentionScalarBias shapes must be 1 * 1."));
   }
 
-  framework::DDim out_dims({x_dims[0], D});
+  phi::DDim out_dims({x_dims[0], D});
   ctx->SetOutputDim("Hidden", out_dims);
   ctx->SetOutputDim("Cell", out_dims);
   ctx->SetOutputDim("AttentionedX", {x_dims[0], 1});

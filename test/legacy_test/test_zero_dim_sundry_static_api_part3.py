@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,9 +17,12 @@
 # 0D Tensor's shape is always [], numel is 1
 # which can be created by paddle.rand([])
 
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../legacy_test")
 from decorator_helper import prog_scope
 
 import paddle
@@ -378,6 +381,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(
             prog,
             feed={
+                "x1": np.array(1.0, dtype='float32'),
                 "x2": 100.5,
                 "x3": 200.5,
             },
@@ -423,33 +427,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, ())
         self.assertEqual(res[4].shape, ())
         self.assertEqual(res[5].shape, ())
-
-    @prog_scope()
-    def test_static_nn_prelu(self):
-        x1 = paddle.full([], 1.0, 'float32')
-        x1.stop_gradient = False
-        out1 = paddle.static.nn.prelu(x1, 'all')
-        grad_list = paddle.static.append_backward(
-            out1.sum(), parameter_list=[x1, out1]
-        )
-        (_, x1_grad), (_, out1_grad) = grad_list
-
-        prog = paddle.static.default_main_program()
-        self.exe.run(paddle.static.default_startup_program())
-        res = self.exe.run(
-            prog,
-            fetch_list=[
-                out1,
-                x1_grad,
-                out1_grad,
-            ],
-        )
-
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[2].shape, ())
-        np.testing.assert_allclose(res[0], np.array(1))
-        np.testing.assert_allclose(res[1], np.array(1))
 
     @test_with_pir_api
     @prog_scope()

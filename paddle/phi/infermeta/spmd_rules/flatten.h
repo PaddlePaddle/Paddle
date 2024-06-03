@@ -30,5 +30,8 @@ SpmdInfo FlattenInferSpmdReverse(const DistMetaTensor& x,
                                  const DistMetaTensor& out,
                                  int start_axis,
                                  int stop_axis);
+
+SpmdInfo FlattenGradInferSpmd(const DistMetaTensor& xshape,
+                              const DistMetaTensor& out_grad);
 }  // namespace distributed
 }  // namespace phi

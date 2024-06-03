@@ -46,7 +46,6 @@ from .sequence_lod import (
     sequence_pad,
     sequence_pool,
     sequence_reshape,
-    sequence_reverse,
     sequence_scatter,
     sequence_slice,
     sequence_softmax,
@@ -92,6 +91,5 @@ __all__ = [
     'sequence_reshape',
     'sequence_scatter',
     'sequence_enumerate',
-    'sequence_reverse',
     'prelu',
 ]

@@ -13,14 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
+
+#include <utility>
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace dialect {
 
-OpYamlInfoParser::OpYamlInfoParser(const OpInfoTuple& op_info_tuple,
-                                   bool is_legacy_op)
-    : op_info_tuple_(op_info_tuple), is_legacy_op_(is_legacy_op) {
+OpYamlInfoParser::OpYamlInfoParser(OpInfoTuple op_info_tuple, bool is_legacy_op)
+    : op_info_tuple_(std::move(op_info_tuple)), is_legacy_op_(is_legacy_op) {
   parse();
 }
 

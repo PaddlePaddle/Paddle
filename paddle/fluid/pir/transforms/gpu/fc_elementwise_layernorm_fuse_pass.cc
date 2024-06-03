@@ -52,7 +52,7 @@ class FcElementwiseLayerNormFusePattern : public paddle::drr::DrrPatternBase {
          &pat.Tensor("layernorm_mean"),
          &pat.Tensor("layernorm_variance")});
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
       if (!x_dtype.isa<pir::Float16Type>() &&
           !x_dtype.isa<pir::Float32Type>()) {
