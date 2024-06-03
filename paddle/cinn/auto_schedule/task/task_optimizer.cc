@@ -18,7 +18,6 @@
 
 #include <functional>
 #include <limits>
-
 #include "paddle/cinn/auto_schedule/analysis/analyze_ir.h"
 #include "paddle/cinn/auto_schedule/cost_model/expr_cost_model.h"
 #include "paddle/cinn/auto_schedule/measure/measure.h"
@@ -34,6 +33,7 @@
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
 #ifdef CINN_WITH_CUDA
 #include <cuda_runtime_api.h>
 
@@ -223,9 +223,12 @@ bool IsWrappedByCustomCall(const TuneTask* task) {
 
 TaskOptimizer::Result TaskOptimizer::OptimizeByEvolution(
     const TuningOptions& options) {
-  CHECK_EQ(options.num_measure_trials % options.num_samples_per_iteration, 0)
-      << "TuningOptions.num_measure_trials % "
-         "TuningOptions.num_samples_per_iteration must be 0.";
+  PADDLE_ENFORCE_EQ(
+      options.num_measure_trials % options.num_samples_per_iteration,
+      0,
+      phi::errors::InvalidArgument(
+          "TuningOptions.num_measure_trials % "
+          "TuningOptions.num_samples_per_iteration must be 0."));
 
   VLOG(4) << "Optimizing TuneTask with num_measure_trials:"
           << options.num_measure_trials
@@ -290,9 +293,11 @@ TaskOptimizer::Result TaskOptimizer::OptimizeByEvolution(
             << measure_inputs.size();
     std::vector<MeasureResult> measure_outputs =
         schedule_measurer_->Measure(measure_inputs);
-    CHECK_EQ(measure_outputs.size(), states.size())
-        << "ScheduleMeasurer didn't output same number of MeasureOutput of "
-           "states in TaskOptimizer";
+    PADDLE_ENFORCE_EQ(measure_outputs.size(),
+                      states.size(),
+                      phi::errors::InvalidArgument(
+                          "ScheduleMeasurer didn't output same number of "
+                          "MeasureOutput of states in TaskOptimizer"));
     // record to database
     for (size_t i = 0; i < states.size(); ++i) {
       database_->AddRecord(TuningRecord(measure_inputs[i].task->serialized_key,
@@ -344,9 +349,11 @@ std::vector<SearchState> TaskOptimizer::SearchOneRound(
   for (size_t i = 0; i < states.size(); ++i) {
     std::vector<ir::Expr> best_exprs =
         states[i]->ir_schedule.GetModule().GetExprs();
-    CHECK_EQ(best_exprs.size(), task_->lowered_funcs.size())
-        << "RuntimeError: Expr size is not equal to LoweredFunc size in "
-           "TaskOptimizer";
+    PADDLE_ENFORCE_EQ(best_exprs.size(),
+                      task_->lowered_funcs.size(),
+                      phi::errors::InvalidArgument(
+                          "Expr size is not equal to LoweredFunc size in "
+                          "TaskOptimizer"));
     auto init_funcs = ir::ir_utils::IRCopy(task_->lowered_funcs);
     std::vector<ir::LoweredFunc> valid_funcs;
     for (size_t j = 0; j < best_exprs.size(); ++j) {
@@ -369,8 +376,11 @@ std::vector<SearchState> TaskOptimizer::SearchOneRound(
   }
 
   states.erase(states.begin() + valid_cnt, states.end());
-  CHECK_EQ(states.size(), measure_candidates->size())
-      << "result size of states not equal to measure_candidates";
+  PADDLE_ENFORCE_EQ(
+      states.size(),
+      measure_candidates->size(),
+      phi::errors::InvalidArgument(
+          "result size of states not equal to measure_candidates"));
   VLOG(4) << "EvolutionarySearch return size=" << states.size()
           << ", valid count=" << valid_cnt;
   VLOG(4) << JoinStatesDebugString("TaskOptimizer::SearchOneRound-Result",
