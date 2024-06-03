@@ -92,7 +92,9 @@ detail::CollectBucketStrategyHostFunctionVisitor::GenDeviceKernelName(
     pos = cond_str.find("-", pos + replacement.length());
   }
   VLOG(3) << "predicate string: " << cond_str;
-  std::string new_fn_name = CurTailFnName(fn_name);
+  // NOTE(chenxi67): The kernel name is too long to be supported in cuda12.3 so
+  // we need to curtail it.
+  const std::string new_fn_name = CurTailFnName(fn_name);
   return new_fn_name + "__COND_" + cond_str + "__kernel";
 }
 
