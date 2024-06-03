@@ -49,6 +49,7 @@ class StudentT(distribution.Distribution):
             1-D Tensor with paddle global default dtype. Supported dtype: float32, float64.
         scale (float|Tensor): The scale of the distribution, which should be non-negative. If the input data type is int or float, the data type
             of `rate` will be converted to a 1-D Tensor with paddle global default dtype. Supported dtype: float32, float64.
+        name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
