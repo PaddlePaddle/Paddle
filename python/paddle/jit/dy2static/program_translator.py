@@ -1597,8 +1597,7 @@ class ProgramCache:
     def __getitem__(self, item):
         if not isinstance(item, CacheKey):
             raise ValueError(
-                'type(item) should be CacheKey, but received %s'
-                % type_name(item)
+                f'type(item) should be CacheKey, but received {type_name(item)}'
             )
         item_id = hash(item)
         self._recent_cache_key = item
@@ -1621,8 +1620,7 @@ class ProgramCache:
     def get_program(self, item):
         if not isinstance(item, CacheKey):
             raise ValueError(
-                "Input item's type should be FunctionSpec, but received %s"
-                % type_name(item)
+                f"Input item's type should be FunctionSpec, but received {type_name(item)}"
             )
         item_id = hash(item)
         if item_id not in self._caches:
