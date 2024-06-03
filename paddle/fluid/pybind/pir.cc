@@ -116,6 +116,7 @@ using pir::Program;
 using pir::StrAttribute;
 using pir::Type;
 using pir::Value;
+using pir::VectorType;
 using pybind11::return_value_policy;
 
 COMMON_DECLARE_bool(print_ir);
@@ -413,6 +414,12 @@ void BindProgram(py::module *m) {
              return Clone(self, &ir_mapper);
            })
       .def(
+          "copy_to_block",
+          [](std::shared_ptr<Program> self,
+             pir::IrMapping &mapper,
+             Block *block) { return self->CopyToBlock(mapper, block); },
+          return_value_policy::reference)
+      .def(
           "list_vars",
           [](std::shared_ptr<Program> self) {
             std::vector<pir::Value> vars;
@@ -654,9 +661,12 @@ void BindIrMapping(py::module *m) {
   ir_mapping.def(py::init<>())
       .def("look_up",
            [](IrMapping &self, Value from) { return self.Lookup(from); })
-      .def("add", [](IrMapping &self, Value from, Value to) {
-        self.Add<Value>(from, to);
-      });
+      .def("add",
+           [](IrMapping &self, Value from, Value to) {
+             self.Add<Value>(from, to);
+           })
+      .def("size",
+           [](IrMapping &self) { return self.GetMutableMap<Value>().size(); });
 }
 
 void BindCloneOptions(py::module *m) {
@@ -1321,6 +1331,13 @@ void BindType(py::module *m) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set _local_shape when building static graph"));
           })
+      .def("as_vec_type",
+           [](Type self) -> py::object {
+             if (auto vec_type = self.dyn_cast<VectorType>()) {
+               return py::cast(vec_type);
+             }
+             return py::cast<py::none>(Py_None);
+           })
       .def("__str__", [](Type &self) {
         std::ostringstream print_stream;
         print_stream << self;
@@ -1355,7 +1372,13 @@ void BindType(py::module *m) {
            }
          });
 }
-
+void BindVectorType(py::module *m) {
+  py::class_<VectorType, Type> vec_type(*m, "VectorType");
+  vec_type.def("as_list", &VectorType::data);
+  m->def("create_vec_type", [](std::vector<Type> &types) {
+    return VectorType::get(pir::IrContext::Instance(), types);
+  });
+}
 void BindAttribute(py::module *m) {
   py::class_<Attribute> ir_attr(*m, "Attribute", py::module_local());
   ir_attr.def("__eq__", &Attribute::operator==)
@@ -1813,18 +1836,6 @@ std::unordered_map<::pir::Value, std::string> GetNameMap(
   return value2name;
 }
 
-std::shared_ptr<Program> ApplyFusedBnAddActPass(
-    std::shared_ptr<Program> program) {
-  pir::PassManager pm(pir::IrContext::Instance(), 3);
-  pm.AddPass(pir::CreateFusedBnAddActPass());
-  pm.Run(program.get());
-  if (FLAGS_print_ir) {
-    std::cout << "IR After FusedBnAddActPass -------------------" << std::endl;
-    std::cout << *program << std::endl;
-  }
-  return program;
-}
-
 SplitedResult SplitForwardBackward(
     const Program &program,
     const std::vector<pir::Value> &forward_inputs,
@@ -2160,7 +2171,6 @@ void BindUtils(pybind11::module *m) {
   m->def("get_op_inplace_info", GetOpInplaceInfo);
   m->def("reset_shadow_output_name", ResetShadowOutputName);
   m->def("split_program", SplitForwardBackward);
-  m->def("apply_bn_add_act_pass", ApplyFusedBnAddActPass);
   m->def("append_shadow_outputs", AppendShadowOutputs);
   m->def("append_shadow_output", AppendShadowOutput);
   m->def("fake_value", FakeValue);
@@ -2391,18 +2401,38 @@ void InferSymbolicShapePass(
   }
 }
 
-void CommonSubexpressionEliminationPass(
-    std::shared_ptr<pir::PassManager> &pass_manager,  // NOLINT
-    pir::Program &program) {                          // NOLINT
-  pass_manager->AddPass(pir::CreateCommonSubexpressionEliminationPass());
+std::shared_ptr<Program> ApplyCommonSubexpressionEliminationPass(
+    std::shared_ptr<Program> program) {
+  pir::PassManager pm(pir::IrContext::Instance(), 2);
+  pm.AddPass(pir::CreateCommonSubexpressionEliminationPass());
+  pm.Run(program.get());
+  if (FLAGS_print_ir) {
+    std::cout
+        << "IR After CommonSubexpressionEliminationPass -------------------"
+        << std::endl;
+    std::cout << *program << std::endl;
+  }
+  return program;
+}
+
+std::shared_ptr<Program> ApplyFusedBnAddActPass(
+    std::shared_ptr<Program> program) {
+  pir::PassManager pm(pir::IrContext::Instance(), 3);
+  pm.AddPass(pir::CreateFusedBnAddActPass());
+  pm.Run(program.get());
+  if (FLAGS_print_ir) {
+    std::cout << "IR After FusedBnAddActPass -------------------" << std::endl;
+    std::cout << *program << std::endl;
+  }
+  return program;
 }
 
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
-  m->def("common_subexpression_elimination_pass",
-         CommonSubexpressionEliminationPass);
+  m->def("apply_cse_pass", ApplyCommonSubexpressionEliminationPass);
+  m->def("apply_bn_add_act_pass", ApplyFusedBnAddActPass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",
@@ -2480,6 +2510,7 @@ void BindPir(pybind11::module *module) {
   BindOperation(&ir_module);
   BindOpOperand(&ir_module);
   BindType(&ir_module);
+  BindVectorType(&ir_module);
   BindAttribute(&ir_module);
   BindInsertionPoint(&ir_module);
   BindUtils(&ir_module);

@@ -2090,7 +2090,15 @@ static phi::DDim ValidateShape(const std::vector<int64_t> shape,
       output_shape[i] = shape[i];
     } else if (shape[i] == 0) {
       if (static_cast<int>(i) < in_dims.size()) {
-        output_shape[i] = in_dims[static_cast<int>(i)];
+        if (in_size == 0) {
+          // such as [3, 2, 0] -> [0, 0] is [0, 0]; [3, 2, 0] -> [10, 0] is [10,
+          // 0]
+          output_shape[i] = 0;
+        } else {
+          // such as [3, 2, 1] -> [0, 0] is [3, 2]; [3, 2, 1] -> [3, 2, 0] is
+          // [3, 2, 1]
+          output_shape[i] = in_dims[static_cast<int>(i)];
+        }
       } else {
         PADDLE_ENFORCE_EQ(
             in_size,

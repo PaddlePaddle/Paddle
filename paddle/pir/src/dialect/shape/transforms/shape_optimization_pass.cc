@@ -185,12 +185,12 @@ void CheckInferSymWithInferMeta(
       if (infer_meta_shape.size() != infer_sym_shape.size()) {
         std::ostringstream print_stream;
         print_stream << "Warning : Check InferSymbolicShape for " << op->name()
-                     << " (op_" << op->id() << ") "
+                     << " [id:" << op->id() << "] "
                      << " carefully! rank of infer_meta_shape is ["
                      << infer_meta_shape.size()
                      << "], but rank of infer_sym_shape is ["
                      << infer_sym_shape.size() << "].";
-        VLOG(vlog_level) << print_stream.str();
+        LOG(ERROR) << print_stream.str();
         continue;
       }
 
@@ -202,11 +202,11 @@ void CheckInferSymWithInferMeta(
             std::ostringstream print_stream;
             print_stream
                 << "Warning : Check InferSymbolicShape for " << op->name()
-                << " (op_" << op->id() << ") "
+                << " [id:" << op->id() << "] "
                 << " carefully! "
                 << "shape[" << i
                 << "] of infer_sym_shape shoule be int64_t NOT a symbol!";
-            VLOG(vlog_level) << print_stream.str();
+            LOG(ERROR) << print_stream.str();
             continue;
           }
 
@@ -214,12 +214,12 @@ void CheckInferSymWithInferMeta(
           if (infer_meta_shape[i] != infer_sym_shape[i].dyn_cast<int64_t>()) {
             std::ostringstream print_stream;
             print_stream << "Warning : Check InferSymbolicShape for "
-                         << op->name() << " (op_" << op->id() << ") "
+                         << op->name() << " [id:" << op->id() << "] "
                          << " carefully! "
                          << "infer_sym_shape is [" << infer_meta_shape[i]
                          << "], but infer_meta_shape is ["
                          << infer_sym_shape[i].dyn_cast<int64_t>() << "].";
-            VLOG(vlog_level) << print_stream.str();
+            LOG(ERROR) << print_stream.str();
           }
         }
       }
@@ -299,7 +299,7 @@ void InferSymExprForBlock(const Block& block,
                    << " DOES NOT have InferSymbolicShapeInterface!";
       }
       for (uint32_t i = 0; i < op.num_results(); ++i) {
-        infer_context->SetStaticShapeForValue(op.result(i));
+        infer_context->SetSymbolForValueByStaticShape(op.result(i));
       }
     }
     DebugPrintOpInfo(&op, infer_context);
@@ -359,4 +359,4 @@ void AddShapeOptimizationPass(
 
 }  // namespace pir::shape
 
-REGISTER_IR_PASS(shape_optimization_pass, pir::ShapeOptimizationPass);
+// REGISTER_IR_PASS(shape_optimization_pass, pir::ShapeOptimizationPass);

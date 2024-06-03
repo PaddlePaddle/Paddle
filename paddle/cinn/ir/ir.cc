@@ -26,6 +26,7 @@
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/common/errors.h"
 
 namespace cinn {
 namespace ir {
@@ -255,6 +256,7 @@ Expr For::Make(Var loop_var,
                Expr body,
                VectorizeInfo vector_info,
                BindInfo bind_info) {
+  ir::TryElevateInt32ToInt64({loop_var, min, extent});
   auto node = make_shared<For>();
   CHECK(loop_var.defined());
   CHECK(min.defined());
@@ -400,6 +402,38 @@ Expr Store::index() const {
   return res;
 }
 
+void Store::replace(Expr old_op, Expr new_op) {
+  if (value == old_op) {
+    value = new_op;
+  }
+  if (tensor == old_op) {
+    tensor = new_op;
+  }
+  for (int i = 0; i < indices.size(); i++) {
+    if (indices[i] == old_op) {
+      indices[i] = new_op;
+    }
+  }
+}
+
+void Select::replace(Expr old_op, Expr new_op) {
+  if (condition == old_op) {
+    condition = new_op;
+  }
+  if (true_value == old_op) {
+    true_value = new_op;
+  }
+  if (false_value == old_op) {
+    false_value = new_op;
+  }
+}
+
+void Cast::replace(Expr old_op, Expr new_op) {
+  if (v() == old_op) {
+    v() = new_op;
+  }
+}
+
 const std::string &Store::name() const {
   auto *t = tensor.As<ir::_Tensor_>();
   CHECK(t);
@@ -495,6 +529,20 @@ Expr Call::Make(Type type,
   node->attrs = attrs;
   return Expr(node);
 }
+
+void Call::replace(Expr old_op, Expr new_op) {
+  for (int i = 0; i < read_args.size(); i++) {
+    if (read_args[i] == old_op) {
+      read_args[i] = new_op;
+    }
+  }
+  for (int i = 0; i < write_args.size(); i++) {
+    if (read_args[i] == old_op) {
+      read_args[i] = new_op;
+    }
+  }
+}
+
 std::vector<Expr *> Call::expr_fields() {
   std::vector<Expr *> res;
   for (auto &x : read_args) res.push_back(&x);
@@ -838,9 +886,21 @@ void For::Verify() const {
   CHECK(extent.defined());
   CHECK(body.defined());
 
-  CHECK_EQ(loop_var->type(), type_of<int32_t>());
-  CHECK_EQ(min->type(), type_of<int32_t>());
-  CHECK_EQ(extent->type(), type_of<int32_t>());
+  PADDLE_ENFORCE_EQ((loop_var->type() == type_of<int32_t>()) ||
+                        (loop_var->type() == type_of<int64_t>()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "loop var's type must be int32 or int64"));
+  PADDLE_ENFORCE_EQ((min->type() == type_of<int32_t>()) ||
+                        (min->type() == type_of<int64_t>()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "loop min's type must be int32 or int64"));
+  PADDLE_ENFORCE_EQ((extent->type() == type_of<int32_t>()) ||
+                        (extent->type() == type_of<int64_t>()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "loop extent's type must be int32 or int64"));
 }
 
 void PolyFor::Verify() const {

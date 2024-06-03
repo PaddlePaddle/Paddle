@@ -48,9 +48,17 @@ class GridSamplerOpConverter : public OpConverter {
     nvinfer1::InterpolationMode interpolationMode{
         nvinfer1::InterpolationMode::kNEAREST};
     if (mode == "nearest") {
+#if IS_TRT_VERSION_GE(8600)
+      interpolationMode = nvinfer1::InterpolationMode::kNEAREST;
+#else
       interpolationMode = nvinfer1::ResizeMode::kNEAREST;
+#endif
     } else if (mode == "bilinear") {
+#if IS_TRT_VERSION_GE(8600)
+      interpolationMode = nvinfer1::InterpolationMode::kLINEAR;
+#else
       interpolationMode = nvinfer1::ResizeMode::kLINEAR;
+#endif
     }
 
     nvinfer1::SampleMode sampleMode{nvinfer1::SampleMode::kFILL};
