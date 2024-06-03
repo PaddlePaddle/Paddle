@@ -42,9 +42,6 @@ struct ScheduleConfig {
     std::set<std::string> temp_var_names;
     std::set<std::string> shared_var_names;
     std::set<std::string> direct_output_var_names;
-
-    std::unordered_map<std::string, BroadcastInfo> broadcast_info;
-    std::unordered_map<std::string, BroadcastInfo> broadcast_to_elementwise;
   };
 
   struct TileConfig {
