@@ -997,7 +997,7 @@ bool AnalysisPredictor::PreparePirProgram() {
     auto *var = sub_scope_->FindVar(param_names[i]);
     pir::Value value = vars[i];
     if (var == nullptr) {
-      VLOG(1) << "Variable not found, creating new variable: "
+      VLOG(4) << "Variable not found, creating new variable: "
               << param_names[i];
       var = sub_scope_->Var(param_names[i]);
       auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
@@ -1009,7 +1009,7 @@ bool AnalysisPredictor::PreparePirProgram() {
       phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
       dev_ctx->Alloc(tensor_temp, type_data);
     } else {
-      VLOG(1) << "Variable already exists: " << param_names[i];
+      VLOG(4) << "Variable already exists: " << param_names[i];
     }
     auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
     tensor_out.push_back(tensor_temp);
@@ -1141,13 +1141,11 @@ bool AnalysisPredictor::PrepareExecutor() {
   if (load_pir_model_) {
     executor_->Prepare(sub_scope_);
   } else {
-    VLOG(0) << "Preparing traditional executor.";
     DisablePrepareDataOpt(inference_program_, 0, false);
     executor_->Prepare(sub_scope_, *inference_program_, 0);
   }
 
   if (config_.new_executor_enabled()) {
-    VLOG(0) << "New executor enabled, setting up ExecutionConfig.";
     framework::interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
     execution_config.used_for_inference = true;
@@ -1162,7 +1160,6 @@ bool AnalysisPredictor::PrepareExecutor() {
                                          output_names.end());
 
     if (config_.new_ir_enabled()) {
-      VLOG(0) << "Preparing interpreter core with PIR program.";
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
     } else {
