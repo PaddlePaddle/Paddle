@@ -39,6 +39,26 @@ std::shared_ptr<Program> Program::Clone(IrMapping& ir_mapping) const {
   return new_program;
 }
 
+void Program::CopyToBlock(IrMapping& ir_mapping, Block* insert_block) const {
+  auto clone_options = CloneOptions::All();
+  for (const auto& op : *block()) {
+    bool skip_op = false;
+    for (uint32_t i = 0; i < op.num_results(); i++) {
+      if (ir_mapping.GetMutableMap<pir::Value>().count(op.result(i))) {
+        skip_op = true;
+        break;
+      }
+    }
+    if (skip_op) {
+      continue;
+    }
+
+    auto* new_op = op.Clone(ir_mapping, clone_options);
+    insert_block->push_back(new_op);
+  }
+  return;
+}
+
 Parameter* Program::GetParameter(const std::string& name) const {
   if (parameters_.count(name) != 0) {
     return parameters_.at(name).get();

@@ -19,7 +19,7 @@
 
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/frontend/decomposer/test_helper.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::frontend {
 
 using hlir::framework::Graph;
@@ -96,7 +96,11 @@ TEST(CheckFusionAccuracyPass, ElementWise_Fusion) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B", "C", "D"});
 }
@@ -134,7 +138,11 @@ TEST(CheckFusionAccuracyPass, ElementWise_Fusion_1) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B", "C", "D"});
 }
@@ -175,7 +183,11 @@ TEST(CheckFusionAccuracyPass, ElementWise_Fusion_2) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B", "C", "D", "E", "F"});
 }
@@ -216,7 +228,11 @@ TEST(CheckFusionAccuracyPass, ElementWise_Fusion_3) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B", "C", "D", "E", "F"});
 }
@@ -257,7 +273,11 @@ TEST(CheckFusionAccuracyPass, ElementWise_Fusion_4) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B", "C", "D", "E", "F"});
 }
@@ -291,7 +311,11 @@ TEST(CheckFusionAccuracyPass, ElementWise_Fusion_5) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B"});
 }
@@ -328,7 +352,11 @@ TEST(CheckFusionAccuracyPass, Broadcast_Test_0) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B", "C", "D"});
 }
@@ -365,7 +393,11 @@ TEST(CheckFusionAccuracyPass, Broadcast_Test_2) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B", "C", "D"});
 }
@@ -404,7 +436,11 @@ TEST(CheckFusionAccuracyPass, Broadcast_Test_4) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B", "C", "D", "E"});
 }
@@ -443,7 +479,11 @@ TEST(CheckFusionAccuracyPass, Broadcast_Test_5) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B", "C", "D", "E"});
 }
@@ -479,7 +519,11 @@ TEST(CheckFusionAccuracyPass, Reduce_Test_0) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B"});
 }
@@ -514,7 +558,11 @@ TEST(CheckFusionAccuracyPass, Reduce_Test_1) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B"});
 }
@@ -552,7 +600,11 @@ TEST(CheckFusionAccuracyPass, Reduce_Test_2) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B", "C"});
 }
@@ -590,7 +642,11 @@ TEST(CheckFusionAccuracyPass, Reduce_Test_3) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B", "C", "D"});
 }
@@ -629,7 +685,11 @@ TEST(CheckFusionAccuracyPass, Reduce_Test_4) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B", "C", "D"});
 }
@@ -665,7 +725,11 @@ TEST(CheckFusionAccuracyPass, Reduce_Test_5) {
   VLOG(1) << "After CheckFusionAccuracyPass:\n"
           << graph->DebugGroupedGraph(std::unordered_set<std::string>{});
 
-  CHECK_EQ(graph->fusion_groups.size(), group_size_after);
+  PADDLE_ENFORCE_EQ(graph->fusion_groups.size(),
+                    group_size_after,
+                    phi::errors::InvalidArgument(
+                        "The number of fusion groups is not equal to the "
+                        "number of groups after the pass."));
 
   RunTest(target, graph, {"A", "B"});
 }

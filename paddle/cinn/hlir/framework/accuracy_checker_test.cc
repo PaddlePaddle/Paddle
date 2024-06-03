@@ -47,18 +47,23 @@ void SetRandomTensor(Tensor tensor, Target target, bool generate_nan) {
 
   std::vector<float> random_nan_vec(numel);
   GenerateRandomData(random_nan_vec.data(), numel, generate_nan);
-
+  target.arch.Match(
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  if (target == cinn::common::DefaultNVGPUTarget()) {
-    cudaMemcpy(dst,
-               random_nan_vec.data(),
-               numel * sizeof(float),
-               cudaMemcpyHostToDevice);
-  }
+        cudaMemcpy(dst,
+                   random_nan_vec.data(),
+                   numel * sizeof(float),
+                   cudaMemcpyHostToDevice);
+#else
+        CINN_NOT_IMPLEMENTED;
 #endif
-  if (target == cinn::common::DefaultHostTarget()) {
-    std::copy(random_nan_vec.begin(), random_nan_vec.end(), dst);
-  }
+      },
+      [&](common::X86Arch) {
+        std::copy(random_nan_vec.begin(), random_nan_vec.end(), dst);
+      },
+      [&](std::variant<common::UnknownArch, common::ARMArch>) {
+        CINN_NOT_IMPLEMENTED;
+      });
 }
 
 TEST(AccuracyChecker, tensor) {

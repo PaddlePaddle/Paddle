@@ -63,6 +63,8 @@ class DependencyBuilder {
            &((*instructions_)[op2].DeviceContext());
   }
 
+  virtual const std::string& GetInstructionName(size_t op_idx) const;
+
  protected:
   void AddDependencyForCoalesceTensorOp();
   virtual void AddDependencyForCommunicationOp();
@@ -126,6 +128,8 @@ class PirDependencyBuilder : public DependencyBuilder {
     return &((instructions_)[op1]->DeviceContext()) ==
            &((instructions_)[op2]->DeviceContext());
   }
+
+  const std::string& GetInstructionName(size_t op_idx) const override;
 
  private:
   void AddDependencyForCommunicationOp() override;

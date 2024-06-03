@@ -904,12 +904,14 @@ class PipelineParallel(MetaParallelBase):
             for idx in range(len(self._layers._loss_fn)):
                 self.total_loss[idx] = paddle.to_tensor(self.total_loss[idx])
                 if not return_micro_batch_loss:
+                    # TODO(shenliang03): it will use mean/sum to calculate loss
+                    tmp = paddle.zeros_like(self.total_loss[idx][0])
+                    for loss in self.total_loss[idx]:
+                        tmp += loss.detach()
                     if not self._delay_scale_loss:
-                        losses.append(paddle.sum(self.total_loss[idx]).detach())
+                        losses.append(tmp)
                     else:
-                        losses.append(
-                            paddle.mean(self.total_loss[idx]).detach()
-                        )
+                        losses.append(tmp / self.accumulate_steps)
                 else:
                     losses.append(self.total_loss[idx].detach())
 
