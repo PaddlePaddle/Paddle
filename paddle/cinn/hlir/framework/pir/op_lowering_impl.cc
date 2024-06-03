@@ -1388,6 +1388,7 @@ ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
         }
       }
     }
+    return true;
   };
   if (!need_lower_x86()) {
     return ir::Expr(-1);

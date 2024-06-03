@@ -2089,7 +2089,9 @@ void HandleForSpecialOp(
 
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       op_output_types.push_back(AllocatedDenseTensorType::get(
-          ctx, place, op_item->result(i).type().dyn_cast<DenseTensorType>()));
+          ctx,
+          phi::TransToPhiPlace(dst_backend),
+          op_item->result(i).type().dyn_cast<DenseTensorType>()));
     }
   }
 
