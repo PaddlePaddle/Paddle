@@ -24,15 +24,8 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
-#include "paddle/fluid/pir/utils/general_functions.h"
-#include "paddle/phi/backends/context_pool.h"
-#include "paddle/pir/include/core/attribute.h"
-#include "paddle/pir/include/core/block_argument.h"
-#include "paddle/pir/include/core/builtin_attribute.h"
-#include "paddle/pir/include/core/program.h"
+
+#include "paddle/common/enforce.h"
 
 #include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
@@ -70,10 +63,11 @@
 #include "paddle/fluid/primitive/base/decomp_trans.h"
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/phi/core/enforce.h"
+
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/split.h"
@@ -123,6 +117,9 @@
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
@@ -132,6 +129,11 @@
 #include "paddle/fluid/pir/transforms/general/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/block_argument.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
 #include "paddle/pir/include/pass/pass_manager.h"
 #include "paddle/pir/include/pass/pass_registry.h"
@@ -480,9 +482,8 @@ bool AnalysisPredictor::Init(
   }
 
   // Get the feed_target_names and fetch_target_names
-  if (!load_pir_model_) {
-    PrepareFeedFetch();
-  }
+
+  PrepareFeedFetch();
 
   // Prepare executor, create local variables.
   if (!PrepareExecutor()) {
@@ -996,8 +997,8 @@ bool AnalysisPredictor::PreparePirProgram() {
     auto *var = sub_scope_->FindVar(param_names[i]);
     pir::Value value = vars[i];
     if (var == nullptr) {
-      VLOG(1) << "Variable not found, creating new variable: "
-              << param_names[i];
+      VLOG(4) << "Variable not found, creating new variable: "
+              << param_names[i].c_str();
       var = sub_scope_->Var(param_names[i]);
       auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
       tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
@@ -1008,7 +1009,7 @@ bool AnalysisPredictor::PreparePirProgram() {
       phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
       dev_ctx->Alloc(tensor_temp, type_data);
     } else {
-      VLOG(1) << "Variable already exists: " << param_names[i];
+      VLOG(4) << "Variable already exists: " << param_names[i].c_str();
     }
     auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
     tensor_out.push_back(tensor_temp);
@@ -1071,24 +1072,11 @@ bool AnalysisPredictor::PrepareProgram(
 
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
 
-  std::string model_path = config_.prog_file();
-  LOG(INFO) << "model_path:" << model_path;
-  PADDLE_ENFORCE_EQ(
-      model_path.empty(),
-      true,
-      common::errors::InvalidArgument("Please set correct model path!"));
   if (config_.new_ir_enabled()) {
-    load_pir_model_ =
-        model_path.substr(model_path.find_last_of(".") + 1) == "json";
-    if (load_pir_model_) {
-      pir::ReadModule(
-          config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
-    } else {
-      pir_program_ =
-          paddle::TranslateLegacyProgramToProgram(*inference_program_);
-    }
+    CHECK_EQ(pir_program_, nullptr);
+    pir_program_ = paddle::TranslateLegacyProgramToProgram(*inference_program_);
+    OptimizeInferencePirProgram();
   }
-  OptimizeInferencePirProgram();
   return true;
 }
 
@@ -1155,13 +1143,11 @@ bool AnalysisPredictor::PrepareExecutor() {
   if (load_pir_model_) {
     executor_->Prepare(sub_scope_);
   } else {
-    VLOG(0) << "Preparing traditional executor.";
     DisablePrepareDataOpt(inference_program_, 0, false);
     executor_->Prepare(sub_scope_, *inference_program_, 0);
   }
 
   if (config_.new_executor_enabled()) {
-    VLOG(0) << "New executor enabled, setting up ExecutionConfig.";
     framework::interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
     execution_config.used_for_inference = true;
@@ -1176,7 +1162,6 @@ bool AnalysisPredictor::PrepareExecutor() {
                                          output_names.end());
 
     if (config_.new_ir_enabled()) {
-      VLOG(0) << "Preparing interpreter core with PIR program.";
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
     } else {
@@ -2339,6 +2324,9 @@ bool AnalysisPredictor::MkldnnQuantize() {
 }
 
 void AnalysisPredictor::PrepareFeedFetch() {
+  if (load_pir_model_) {
+    return;
+  }
   PADDLE_ENFORCE_NOT_NULL(sub_scope_,
                           platform::errors::InvalidArgument(
                               "The sub_scope should not be nullptr."));
