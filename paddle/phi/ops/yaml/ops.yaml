@@ -1053,6 +1053,15 @@
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : decayed_adagrad
+  args : (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, float decay = 0.95f, float epsilon = 1.0e-6f)
+  output : Tensor(param_out), Tensor(moment_out)
+  infer_meta :
+    func : DecayedAdagradInferMeta
+  kernel :
+    func : decayed_adagrad
+    data_type : param
+
 - op : decode_jpeg
   args : (Tensor x, str mode, Place place)
   output : Tensor(out)
