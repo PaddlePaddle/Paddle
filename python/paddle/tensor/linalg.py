@@ -5170,7 +5170,7 @@ def cholesky_inverse(x, upper=False):
 
             >>> # lower triangular matrix
             >>> x = paddle.to_tensor([[3.,.0,.0], [5.,3.,.0], [-1.,1.,2.]])
-            >>> out = paddle.cholesky_inverse(x)
+            >>> out = paddle.linalg.cholesky_inverse(x)
             >>> print(out)
             Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             [[ 0.61728382, -0.25925916,  0.22222219],
@@ -5178,7 +5178,7 @@ def cholesky_inverse(x, upper=False):
              [ 0.22222218, -0.08333331,  0.25000000]])
 
             >>> # upper triangular matrix
-            >>> out = paddle.cholesky_inverse(x.T, upper=True)
+            >>> out = paddle.linalg.cholesky_inverse(x.T, upper=True)
             >>> print(out)
             Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             [[ 0.61728382, -0.25925916,  0.22222219],
