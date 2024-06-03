@@ -154,7 +154,18 @@ bool CanBeModifiedImpl<FusedConv2dAddActOp>(pir::Operation* op) {
   }
   auto cur_layout = common::StringToDataLayout(data_format_attr.AsString());
   auto prefer_layout = PreferLayoutImpl<FusedConv2dAddActOp>(op);
-  return cur_layout != prefer_layout;
+  auto can_be_modified = cur_layout != prefer_layout;
+
+  for (auto value : RelevantOutputsImpl<FusedConv2dAddActOp>(op)) {
+    // TODO(lyk) if value was used in another block, we cannot rewrite this op
+    for (auto it = value.use_begin(); it != value.use_end(); ++it) {
+      if (it->owner()->GetParent() != op->GetParent()) {
+        return false;
+      }
+    }
+  }
+
+  return can_be_modified;
 }
 
 template <>
