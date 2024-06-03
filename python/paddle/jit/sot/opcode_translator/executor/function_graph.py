@@ -401,18 +401,18 @@ class FunctionGraph:
         from ..breakpoint import BreakpointManager
 
         BreakpointManager().on_event("start_compile")
-        compiled_fn, (
+        graph_fn, (
             statement_ir,
             symbolic_inputs,
             symbolic_outputs,
         ) = self.compile_graph(*ret_vars)
-        compiled_fn_name = f"__compiled_fn_{statement_ir.name}"
+        compiled_fn_name = f"___graph_fn_{statement_ir.name}"
         # prepare function and inputs
-        self.pycode_gen.gen_load_object(compiled_fn, compiled_fn_name)
+        self.pycode_gen.gen_load_object(graph_fn, compiled_fn_name)
         self.gen_load_inputs(symbolic_inputs)
         # Pack all args into a tuple, because we don't support *args now.
         self.pycode_gen.gen_build_tuple(count=len(symbolic_inputs))
-        # call the compiled_fn
+        # call the graph_fn
         self.pycode_gen.gen_call_function(argc=1)
 
         # Store outputs to f_locals
