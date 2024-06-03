@@ -473,6 +473,7 @@ bool AnalysisPredictor::Init(
     if (!PreparePirProgram()) {
       return false;
     }
+    OptimizeInferencePirProgram();
   } else {
     if (!PrepareProgram(program)) {
       return false;
@@ -1017,7 +1018,6 @@ bool AnalysisPredictor::PreparePirProgram() {
   CreateFeedFetchVar(sub_scope_);
   pir::LoadCombineFunction(
       config_.params_file(), param_names, &tensor_out, false, place_);
-  OptimizeInferencePirProgram();
   return true;
 }
 
@@ -1071,24 +1071,10 @@ bool AnalysisPredictor::PrepareProgram(
 
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
 
-  std::string model_path = config_.prog_file();
-  LOG(INFO) << "model_path:" << model_path;
-  PADDLE_ENFORCE_EQ(
-      model_path.empty(),
-      true,
-      common::errors::InvalidArgument("Please set correct model path!"));
   if (config_.new_ir_enabled()) {
-    load_pir_model_ =
-        model_path.substr(model_path.find_last_of(".") + 1) == "json";
-    if (load_pir_model_) {
-      pir::ReadModule(
-          config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
-    } else {
-      pir_program_ =
-          paddle::TranslateLegacyProgramToProgram(*inference_program_);
-    }
+    pir_program_ = paddle::TranslateLegacyProgramToProgram(*inference_program_);
+    OptimizeInferencePirProgram();
   }
-  OptimizeInferencePirProgram();
   return true;
 }
 
