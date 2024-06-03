@@ -431,6 +431,9 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
   bool transpose_x_attr = GetBoolAttr(op, "transpose_x");
   bool transpose_y_attr = GetBoolAttr(op, "transpose_y");
 
+  bool transpose_x_attr = GetBoolAttr(op, "transpose_x");
+  bool transpose_y_attr = GetBoolAttr(op, "transpose_y");
+
   auto TransposeDims =
       [](std::vector<symbol::DimExpr> dims) -> std::vector<symbol::DimExpr> {
     if (dims.size() < 2) return dims;
@@ -446,11 +449,13 @@ bool MatmulOpInferSymbolicShape(pir::Operation *op,
   if (ndims_x >= 2 && ndims_y >= 2) {
     infer_context->AddEqualCstr(dims_x_new[ndims_x - 1],
                                 dims_y_new[ndims_y - 2]);
-    for (auto i = 3; i <= ndims_x && i <= ndims_y; i++) {
+    for (size_t i = 3; i <= ndims_x && i <= ndims_y; i++) {
       infer_context->AddBroadcastableCstr(dims_x_new[ndims_x - i],
                                           dims_y_new[ndims_y - i]);
     }
-  } else {
+  } else if (ndims_x == 1 && ndims_y >= 2) {
+    infer_context->AddEqualCstr(dims_x_new[0], dims_y_new[ndims_y - 2]);
+  } else if (ndims_x >= 2 && ndims_y == 1) {
     infer_context->AddEqualCstr(dims_x_new[ndims_x - 1], dims_y_new[0]);
   }
 

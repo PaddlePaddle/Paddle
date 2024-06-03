@@ -2514,12 +2514,20 @@ void MatmulInferMeta(const MetaTensor& x,
       PADDLE_THROW(phi::errors::InvalidArgument(
           "matmul infermeat error, shape can not broadcast"));
     }
-  } else {
+  } else if (ndims_x == 1 && ndims_y >= 2 && dims_x_new[0] != -1 &&
+             dims_y_new[ndims_y - 2] != -1) {
+    PADDLE_ENFORCE_EQ(dims_x_new[0],
+                      dims_y_new[ndims_y - 2],
+                      phi::errors::InvalidArgument(
+                          "matmul infermeat error, shape can not matmul"));
+  } else if (ndims_x >= 2 && ndims_y == 1 && dims_x_new[ndims_x - 1] != -1 &&
+             dims_y_new[0] != -1) {
     PADDLE_ENFORCE_EQ(dims_x_new[ndims_x - 1],
                       dims_y_new[0],
                       phi::errors::InvalidArgument(
                           "matmul infermeat error, shape can not matmul"));
   }
+
   bool x_broadcasted = false, y_broadcasted = false;
   if (ndims_x == 1) {
     dims_x.insert(dims_x.begin(), 1);
