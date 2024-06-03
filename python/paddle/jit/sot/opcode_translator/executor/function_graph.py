@@ -363,20 +363,27 @@ class FunctionGraph:
 
         return VariableLoader(store_var_info, self.pycode_gen)
 
-    def get_compiled_fn(self, *ret_vars):
+    def compile_sir(self, *ret_vars):
         ret_items = [
             ret_item
             for ret_var in ret_vars
             for ret_item in ret_var.flatten_items()
         ]
 
-        tensor_items = self._find_tensor_outputs(ret_items)
-        compiled_fn, _ = self.sir_ctx.compile_fn(
-            [Symbol(tensor_var.var_name) for tensor_var in tensor_items],
+        symbolic_outputs = self._find_tensor_outputs(ret_items)
+        statement_ir = self.sir_ctx.return_TOS(
+            [Symbol(tensor_var.var_name) for tensor_var in symbolic_outputs]
+        )
+        if not statement_ir.statements:
+            return self.sir_ctx.compile_do_nothing(), (statement_ir, [], [])
+        input_names = statement_ir.inputs
+        symbolic_inputs = self._find_tensor_inputs(input_names)
+        compiled_fn = self.sir_ctx.compile_fn(
+            statement_ir.name,
+            [var.meta.to_input_spec() for var in symbolic_inputs],
             **self._kwargs,
         )
-
-        return compiled_fn
+        return compiled_fn, (statement_ir, symbolic_inputs, symbolic_outputs)
 
     @event_register("start_compile", event_level=2)
     def start_compile(self, *ret_vars: VariableBase):
@@ -394,32 +401,23 @@ class FunctionGraph:
         from ..breakpoint import BreakpointManager
 
         BreakpointManager().on_event("start_compile")
-
-        ret_items = [
-            ret_item
-            for ret_var in ret_vars
-            for ret_item in ret_var.flatten_items()
-        ]
-
-        tensor_items = self._find_tensor_outputs(ret_items)
-        compiled_fn, statement_ir = self.sir_ctx.compile_fn(
-            [Symbol(tensor_var.var_name) for tensor_var in tensor_items],
-            **self._kwargs,
-        )
-        input_names = statement_ir.inputs
+        compiled_fn, (
+            statement_ir,
+            symbolic_inputs,
+            symbolic_outputs,
+        ) = self.compile_sir(*ret_vars)
         compiled_fn_name = f"__compiled_fn_{statement_ir.name}"
         # prepare function and inputs
         self.pycode_gen.gen_load_object(compiled_fn, compiled_fn_name)
-        # TODO(SigureMo): set input_specs back
-        input_specs = self.prepare_inputs(input_names)
+        self.gen_load_inputs(symbolic_inputs)
         # Pack all args into a tuple, because we don't support *args now.
-        self.pycode_gen.gen_build_tuple(count=len(input_names))
+        self.pycode_gen.gen_build_tuple(count=len(symbolic_inputs))
         # call the compiled_fn
         self.pycode_gen.gen_call_function(argc=1)
 
         # Store outputs to f_locals
-        self.pycode_gen.gen_unpack_sequence(count=len(tensor_items))
-        for tensor_var in tensor_items:
+        self.pycode_gen.gen_unpack_sequence(count=len(symbolic_outputs))
+        for tensor_var in symbolic_outputs:
             self.pycode_gen.gen_store_fast(tensor_var.out_var_name)
         # restore the outputs.
         for ret_var in ret_vars:
@@ -710,6 +708,23 @@ class FunctionGraph:
         if variable in self._global_guarded_variables:
             self._global_guarded_variables.remove(variable)
 
+    def _find_tensor_inputs(
+        self, input_names: list[str]
+    ) -> list[TensorVariable | SymbolicVariable]:
+        inputs: list[TensorVariable | SymbolicVariable] = []
+        for name in input_names:
+            found = False
+            for variable in self.input_variables:
+                if (
+                    isinstance(variable, (TensorVariable, SymbolicVariable))
+                    and variable.get_symbol().name == name
+                ):
+                    inputs.append(variable)
+                    found = True
+                    break
+            assert found, f"can't find input {name} in SIR."
+        return inputs
+
     def prepare_inputs(
         self, input_names: list[str]
     ) -> list[paddle.static.InputSpec]:
@@ -733,6 +748,16 @@ class FunctionGraph:
                     break
             assert found, f"can't find input {name} in SIR."
         return input_specs
+
+    def gen_load_inputs(self, inputs: list[TensorVariable | SymbolicVariable]):
+        for input_var in inputs:
+            if isinstance(input_var, SymbolicVariable):
+                self.pycode_gen.gen_load_object(
+                    paddle.to_tensor, "___paddle_to_tensor"
+                )
+            input_var.tracker.gen_instructions(self.pycode_gen)
+            if isinstance(input_var, SymbolicVariable):
+                self.pycode_gen.gen_call_function(1)
 
     def _find_tensor_outputs(
         self, outputs: list[VariableBase]
