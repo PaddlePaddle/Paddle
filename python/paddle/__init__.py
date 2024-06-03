@@ -682,7 +682,9 @@ if __is_metainfo_generated and is_compiled_with_cuda():
                 ctypes.CDLL('msvcp140.dll')
                 ctypes.CDLL('vcruntime140_1.dll')
             except OSError:
-                print(
+                import logging
+
+                logging.error(
                     '''Microsoft Visual C++ Redistributable is not installed, this may lead to the DLL load failure.
                         It can be downloaded at https://aka.ms/vs/16/release/vc_redist.x64.exe'''
                 )
@@ -702,7 +704,6 @@ if __is_metainfo_generated and is_compiled_with_cuda():
             path_patched = False
             for dll in dlls:
                 is_loaded = False
-                print("dll:", dll)
                 if with_load_library_flags:
                     res = kernel32.LoadLibraryExW(dll, None, 0x00001100)
                     last_error = ctypes.get_last_error()
