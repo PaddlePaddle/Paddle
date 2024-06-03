@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import os
-
-from test_communicator_geo import TestCommunicatorGeoEnd2End
+from test.deprecated.legacy_test.test_communicator_geo_deprecated import (
+    TestCommunicatorGeoEnd2End,
+)
 
 import paddle
 

@@ -15,9 +15,9 @@
 import logging
 import random
 import unittest
+from test.deprecated.quantization.test_quant_aware_deprecated import StaticCase
 
 import numpy as np
-from test_quant_aware import StaticCase
 
 import paddle
 from paddle.static.quantization.quanter import convert, quant_aware
