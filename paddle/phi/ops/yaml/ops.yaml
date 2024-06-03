@@ -3786,6 +3786,8 @@
      data_type: x
   backward : shuffle_batch_grad
   traits : pir::SideEffectTrait
+  data_transform :
+    skip_transform : seed
 
 - op : shuffle_channel
   args : (Tensor x, int group = 1)
