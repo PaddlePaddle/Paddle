@@ -518,6 +518,7 @@ void analyse_event_info_for_two_instructions<
         return;
       }
     }
+
     return;
   }
 
