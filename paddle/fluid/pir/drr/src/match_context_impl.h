@@ -112,12 +112,9 @@ class MatchContextImpl final {
               if (op->HasAttribute(kv.first)) {
                 BindIrAttr(arg.name(), op->attribute(kv.first));
                 return true;
-              } else {
-                return false;
               }
-            } else {
-              return false;
             }
+            return false;
           },
           kv.second);
       if (!bind_success) {
