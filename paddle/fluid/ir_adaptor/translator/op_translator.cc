@@ -2673,6 +2673,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
     pir::Value y_new;
     if (std::find(y_shape.begin(), y_shape.end(), -1) == y_shape.end()) {
       std::vector<int64_t> y_new_shape(y_shape);
+      y_new_shape.insert(y_new_shape.begin(), axis, 1);
       for (int i = 0; i < append_size; i++) {
         y_new_shape.push_back(1);
       }

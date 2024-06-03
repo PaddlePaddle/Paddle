@@ -54,7 +54,7 @@ class TestMaxPool2d(TestBase):
         self.inputs = (
             paddle.rand(shape=[22, 64, 112, 112], dtype=paddle.float32),
         )
-        self.net = MaxPool2dCase()
+        self.net = MaxPool2dCase
 
 
 if __name__ == '__main__':

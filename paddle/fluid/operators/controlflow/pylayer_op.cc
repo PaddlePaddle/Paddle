@@ -91,7 +91,7 @@ class PyLayerForwardOp : public PyLayerOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const phi::Place &dev_place) const {
+               const phi::Place &dev_place) const override {
     auto *scope_var = scope.FindVar(Output(kScope));
     PADDLE_ENFORCE_NOT_NULL(
         scope_var,
