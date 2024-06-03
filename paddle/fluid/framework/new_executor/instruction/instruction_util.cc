@@ -148,11 +148,11 @@ platform::DeviceContext* ParseDeviceContext(
         dev_ctx->SetCommContext(comm_context);
         return dev_ctx;
       } else {
-      VLOG(3) << "op: "
-              << op_attributes.at("op_name")
-                     .dyn_cast<pir::StrAttribute>()
-                     .AsString()
-              << ", ring_id: " << ring_id << ", get comm_context failed!";
+        VLOG(3) << "op: "
+                << op_attributes.at("op_name")
+                       .dyn_cast<pir::StrAttribute>()
+                       .AsString()
+                << ", ring_id: " << ring_id << ", get comm_context failed!";
       }
     }
 #endif
