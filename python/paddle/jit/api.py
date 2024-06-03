@@ -321,13 +321,25 @@ def to_static(
     return decorated
 
 
+class NotToStaticDecorator(Protocol):
+    @overload
+    def __call__(
+        self, func: Callable[_InputT, _RetT]
+    ) -> Callable[_InputT, _RetT]:
+        ...
+
+    @overload
+    def __call__(self, func: None = ...) -> NotToStaticDecorator:
+        ...
+
+
 @overload
 def not_to_static(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
     ...
 
 
 @overload
-def not_to_static() -> Callable[..., ToStaticDecorator]:
+def not_to_static(func: None = ...) -> NotToStaticDecorator:
     ...
 
 
