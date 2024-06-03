@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from typing import Any, Callable
+
 from paddle.static import InputSpec
 
 from ..utils import log
@@ -136,7 +138,7 @@ class SymbolicTraceContext:
         log(2, self.TOS, "\n")
         return cur_sir
 
-    def compile_do_nothing(self):
+    def compile_do_nothing(self) -> Callable[[...], Any]:
         """
         Return a dummy function, which will return an empty list.
 
