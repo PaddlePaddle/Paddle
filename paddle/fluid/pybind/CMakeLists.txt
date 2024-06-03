@@ -14,6 +14,7 @@ set(PYBIND_DEPS
     pass
     generate_pass
     pass_builder
+    parallel_executor
     compiled_program
     profiler
     layer
@@ -129,6 +130,7 @@ set(PYBIND_SRCS
     protobuf.cc
     exception.cc
     op_function_common.cc
+    parallel_executor.cc
     compiled_program.cc
     tensor.cc
     place.cc
@@ -300,26 +302,22 @@ if(WITH_PYTHON)
                                    custom_device_common_op_registry)
   endif()
 
-  add_executable(eager_legacy_op_function_generator
-                 eager_legacy_op_function_generator.cc)
   set(GENERATOR_DEPS ${PYBIND_DEPS})
   list(REMOVE_DUPLICATES GENERATOR_DEPS)
   if(WIN32)
     list(REMOVE_ITEM GENERATOR_DEPS python)
   endif()
-  target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
   if(NOT WIN32)
-    add_executable(kernel_signature_generator kernel_signature_generator.cc)
-    target_link_libraries(kernel_signature_generator
-                          ${OP_FUNCTION_GENERATOR_DEPS})
+    add_executable(paddle_generator kernel_signature_generator.cc
+                                    eager_legacy_op_function_generator.cc)
+    target_link_libraries(paddle_generator ${OP_FUNCTION_GENERATOR_DEPS})
   endif()
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-  target_link_libraries(eager_legacy_op_function_generator
+  target_link_libraries(paddle_generator ${GENERATOR_DEPS}
                         ${os_dependency_modules})
   if(WITH_ROCM)
-    target_link_libraries(eager_legacy_op_function_generator ${ROCM_HIPRTC_LIB})
-    target_link_libraries(kernel_signature_generator ${ROCM_HIPRTC_LIB})
+    target_link_libraries(paddle_generator ${ROCM_HIPRTC_LIB})
   endif()
 
   set(op_function_output_path ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/)
@@ -335,8 +333,7 @@ if(WITH_PYTHON)
       "${PADDLE_SOURCE_DIR}/paddle/fluid/pybind/"
       "${CODE_GEN_SPLIT_FILE_COUNT}")
 
-  set(EAGER_OP_IMPL_DEPS eager_legacy_op_function_generator
-                         eager_python_c_codegen)
+  set(EAGER_OP_IMPL_DEPS paddle_generator eager_python_c_codegen)
 
   if(WIN32)
     if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
