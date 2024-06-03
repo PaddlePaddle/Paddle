@@ -763,15 +763,19 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       vectorizable_ = true;
       IRMutator<>::Visit(&node->body, &node->body);
 
-      if (target == cinn::common::DefaultNVGPUTarget()) {
-        if (!forloop->extent.As<IntImm>() ||
-            forloop->extent.as_int32() % forloop->vectorize_info().factor !=
-                0) {
-          vectorizable_ = false;
-          VLOG(5)
-              << "GPU vectorize only support extent is a multiple of factor";
-        }
-      }
+      target.arch.Match(
+          [&](common::NVGPUArch) {
+            if (!forloop->extent.As<IntImm>() ||
+                forloop->extent.as_int32() % forloop->vectorize_info().factor !=
+                    0) {
+              vectorizable_ = false;
+              VLOG(5) << "GPU vectorize only support extent is a multiple of "
+                         "factor";
+            }
+          },
+          [&](std::variant<common::UnknownArch,
+                           common::X86Arch,
+                           common::ARMArch>) {});
 
       if (extent_min || extent_max || !vectorizable_) {
         // not vectorize if has tail blocks, for llvm to optimize
@@ -817,32 +821,36 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
               << extent;
       VLOG(2) << "before vectorize body:\n" << node->body;
 
-      if (target == cinn::common::DefaultNVGPUTarget()) {
-        CudaVectorizer cuda_vectorizer(
-            new_forloop->loop_var, factor, &var_intervals);
-        cuda_vectorizer.Visit(&new_forloop->body);
-        // unroll the new forloop to compute each element of the vector
-        // iteratively
-        auto copied_loop =
-            ir::ir_utils::IRCopy(_new_forloop, /* copy_buffer_node = */ false);
-        copied_loop.As<ir::For>()->set_unrolled();
-        optim::UnrollLoop(&copied_loop);
-        // add cast exprs of vector type in the front of vectorized forloop,
-        // and replace original compute statements with the correspond unrolled
-        // ones
-        auto unroll_body = copied_loop.As<ir::Block>()->stmts;
-        auto cast_exprs = cuda_vectorizer.VectorizedTypeCastExprs();
-        auto store_exprs = cuda_vectorizer.VectorizedTypeStoreExprs();
-        auto &body_stmts = new_forloop->body.As<ir::Block>()->stmts;
-        body_stmts.assign(cast_exprs.begin(), cast_exprs.end());
-        body_stmts.insert(
-            body_stmts.end(), unroll_body.begin(), unroll_body.end());
-        body_stmts.insert(
-            body_stmts.end(), store_exprs.begin(), store_exprs.end());
-      } else {
-        Vectorizer(new_forloop->loop_var, extent, var_intervals)
-            .Visit(&new_forloop->body);
-      }
+      target.arch.Match(
+          [&](common::NVGPUArch) {
+            CudaVectorizer cuda_vectorizer(
+                new_forloop->loop_var, factor, &var_intervals);
+            cuda_vectorizer.Visit(&new_forloop->body);
+            // unroll the new forloop to compute each element of the vector
+            // iteratively
+            auto copied_loop = ir::ir_utils::IRCopy(
+                _new_forloop, /* copy_buffer_node = */ false);
+            copied_loop.As<ir::For>()->set_unrolled();
+            optim::UnrollLoop(&copied_loop);
+            // add cast exprs of vector type in the front of vectorized forloop,
+            // and replace original compute statements with the correspond
+            // unrolled ones
+            auto unroll_body = copied_loop.As<ir::Block>()->stmts;
+            auto cast_exprs = cuda_vectorizer.VectorizedTypeCastExprs();
+            auto store_exprs = cuda_vectorizer.VectorizedTypeStoreExprs();
+            auto &body_stmts = new_forloop->body.As<ir::Block>()->stmts;
+            body_stmts.assign(cast_exprs.begin(), cast_exprs.end());
+            body_stmts.insert(
+                body_stmts.end(), unroll_body.begin(), unroll_body.end());
+            body_stmts.insert(
+                body_stmts.end(), store_exprs.begin(), store_exprs.end());
+          },
+          [&](std::variant<common::UnknownArch,
+                           common::X86Arch,
+                           common::ARMArch>) {
+            Vectorizer(new_forloop->loop_var, extent, var_intervals)
+                .Visit(&new_forloop->body);
+          });
 
       VLOG(2) << "after vectorize body:\n" << node->body;
 

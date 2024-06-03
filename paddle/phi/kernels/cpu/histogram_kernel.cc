@@ -51,6 +51,21 @@ void HistogramKernel(const Context& dev_ctx,
     output_max = output_max + 1;
   }
 
+  // check if out of range
+  double range =
+      static_cast<double>(output_max) - static_cast<double>(output_min);
+  PADDLE_ENFORCE_LT(
+      range,
+      static_cast<double>(std::numeric_limits<T>::max()),
+      phi::errors::InvalidArgument(
+          "The range of max - min is out of range for target type, "
+          "current kernel type is %s, the range should less than %f "
+          "but now min is %f, max is %f.",
+          typeid(T).name(),
+          std::numeric_limits<T>::max(),
+          output_min,
+          output_max));
+
   PADDLE_ENFORCE_EQ((std::isinf(static_cast<float>(output_min)) ||
                      std::isnan(static_cast<float>(output_max)) ||
                      std::isinf(static_cast<float>(output_min)) ||

@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 
-#include <time.h>
+#include <ctime>
 
 #include <algorithm>
 #include <chrono>
@@ -1818,7 +1818,7 @@ FeatureNode *GraphShard::add_feature_node(uint64_t id,
   if (is_overlap) {
     return reinterpret_cast<FeatureNode *>(bucket[node_location[id]]);
   }
-  return NULL;
+  return nullptr;
 }
 
 void GraphShard::add_neighbor(uint64_t id, uint64_t dst_id, float weight) {

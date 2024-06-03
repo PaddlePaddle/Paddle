@@ -1835,7 +1835,10 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
             [9. , 18.])
     """
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'nansum'
+        x,
+        'x',
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+        'nansum',
     )
     check_type(axis, 'axis', (int, list, tuple, type(None)), 'nansum')
 
@@ -2359,7 +2362,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             f"The dimension of input should be 2 or 1 but receive input's shape: {input_shape}"
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.addmm(input, x, y, beta, alpha)
     else:
         inputs = {'Input': input, "X": x, "Y": y}
@@ -2723,7 +2726,7 @@ def inverse(x, name=None):
         x (Tensor): The input tensor. The last two
             dimensions should be equal. When the number of dimensions is
             greater than 2, it is treated as batches of square matrix. The data
-            type can be float32 and float64.
+            type can be float32, float64, complex64, complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2748,7 +2751,12 @@ def inverse(x, name=None):
     else:
 
         def _check_input(x):
-            check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'inverse')
+            check_variable_and_dtype(
+                x,
+                'x',
+                ['float32', 'float64', 'complex64', 'complex128'],
+                'inverse',
+            )
             if len(x.shape) < 2:
                 raise ValueError(
                     "The input of inverse is expected to be a Tensor whose number "
@@ -3963,10 +3971,16 @@ def kron(x, y, name=None):
     else:
         helper = LayerHelper('kron', **locals())
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+            'kron',
         )
         check_variable_and_dtype(
-            y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron'
+            y,
+            'y',
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+            'kron',
         )
 
         out = helper.create_variable_for_type_inference(dtype=x.dtype)

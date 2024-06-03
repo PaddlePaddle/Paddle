@@ -855,13 +855,24 @@ def decompose_dist_program(pir_program):
         ops = pir_program.global_block().ops
         for op in ops:
             bwd_op_name = op.name()
+            # todo(CZ): to be removed
+            if bwd_op_name in ["pd_op.mean_grad", "pd_op.concat_grad"]:
+                continue
+            skip_decomp = False
             if has_decomp_vjp(op):
-                pir.set_insertion_point(op)
-                orig_outs = op.results()
-                decomp_outs = call_decomp_vjp(op)
-                new_outs = _analyse_decomp_results(orig_outs, decomp_outs, op)
-                op.replace_all_uses_with(new_outs)
-                block.remove_op(op)
+                if (
+                    not core._enable_prim_dynamic_shape()
+                ) and _check_prim_dynamic(op):
+                    skip_decomp = True
+                if not skip_decomp:
+                    pir.set_insertion_point(op)
+                    orig_outs = op.results()
+                    decomp_outs = call_decomp_vjp(op)
+                    new_outs = _analyse_decomp_results(
+                        orig_outs, decomp_outs, op
+                    )
+                    op.replace_all_uses_with(new_outs)
+                    block.remove_op(op)
 
 
 def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):

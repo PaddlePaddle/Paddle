@@ -35,6 +35,10 @@ limitations under the License. */
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #endif
 
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(manually_trans_conv_filter);
+
 namespace phi {
 namespace detail {
 
@@ -620,10 +624,13 @@ void ConvInferMeta(const MetaTensor& input,
 
   const auto input_channels =
       channel_last ? in_dims[in_dims.size() - 1] : in_dims[1];
+  const auto filter_channels = channel_last && FLAGS_manually_trans_conv_filter
+                                   ? filter_dims[filter_dims.size() - 1]
+                                   : filter_dims[1];
 
   PADDLE_ENFORCE_EQ(
       input_channels,
-      filter_dims[1] * groups,
+      filter_channels * groups,
       phi::errors::InvalidArgument(
           "The number of input's channels should be equal to filter's channels "
           "* groups for Op(Conv). But received: the input's channels is %d, "
@@ -632,7 +639,7 @@ void ConvInferMeta(const MetaTensor& input,
           "The error may come from wrong data_format setting.",
           input_channels,
           in_dims,
-          filter_dims[1],
+          filter_channels,
           filter_dims,
           groups,
           data_format));
@@ -663,8 +670,13 @@ void ConvInferMeta(const MetaTensor& input,
     in_data_dims = common::slice_ddim(in_dims, 2, in_dims.size());
   }
 
-  DDim filter_data_dims =
-      common::slice_ddim(filter_dims, 2, filter_dims.size());
+  DDim filter_data_dims;
+  if (channel_last && FLAGS_manually_trans_conv_filter) {
+    filter_data_dims =
+        common::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
+  } else {
+    filter_data_dims = common::slice_ddim(filter_dims, 2, filter_dims.size());
+  }
 
   std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
   phi::UpdatePaddingAndDilation(
@@ -1016,6 +1028,126 @@ void CrossInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
   out->share_lod(x);
+}
+
+void CrossEntropyInferMeta(const MetaTensor& x,
+                           const MetaTensor& label,
+                           bool soft_label,
+                           int ignore_index,
+                           MetaTensor* out,
+                           MetaConfig config) {
+  const auto& x_dims = x.dims();
+  const auto& label_dims = label.dims();
+  int rank = x_dims.size();
+
+  bool contain_unknown_dim = common::contain_unknown_dim(x_dims) ||
+                             common::contain_unknown_dim(label_dims);
+  bool check = config.is_runtime || !contain_unknown_dim;
+
+  if (check) {
+    PADDLE_ENFORCE_EQ(
+        common::slice_ddim(x_dims, 0, rank - 1),
+        common::slice_ddim(label_dims, 0, rank - 1),
+        phi::errors::InvalidArgument(
+            "Input(X) and Input(Label) shall have the same shape "
+            "except the last dimension. But received: the shape of Input(X) "
+            "is "
+            "[%s], the shape of Input(Label) is [%s].",
+            x_dims,
+            label_dims));
+  }
+
+  if (soft_label) {
+    PADDLE_ENFORCE_EQ(
+        rank,
+        label_dims.size(),
+        phi::errors::InvalidArgument(
+            "If Attr(soft_label) == true, Input(X) and Input(Label) "
+            "shall have the same dimensions. But received: the dimensions of "
+            "Input(X) is [%d],"
+            "the shape of Input(X) is [%s], the dimensions of Input(Label) "
+            "is "
+            "[%d], the shape of"
+            "Input(Label) is [%s]",
+            rank,
+            x_dims,
+            label_dims.size(),
+            label_dims));
+
+    if (check) {
+      PADDLE_ENFORCE_EQ(
+          x_dims[rank - 1],
+          label_dims[rank - 1],
+          phi::errors::InvalidArgument(
+              "If Attr(soft_label) == true, the last dimension of "
+              "Input(X) and Input(Label) should be equal. But received: the"
+              "last dimension of Input(X) is [%d], the shape of Input(X) is "
+              "[%s],"
+              "the last dimension of Input(Label) is [%d], the shape of "
+              "Input(Label)"
+              "is [%s], the last dimension is [%d].",
+              x_dims[rank - 1],
+              x_dims,
+              label_dims[rank - 1],
+              label_dims,
+              rank - 1));
+    }
+  } else {
+    if (rank == label_dims.size()) {
+      PADDLE_ENFORCE_EQ(
+          label_dims[rank - 1],
+          1UL,
+          phi::errors::InvalidArgument(
+              "the last dimension of Input(Label) should be 1."
+              "But received: the last dimension of Input(Label) is [%d],"
+              "the last dimension is [%d]",
+              label_dims[rank - 1],
+              rank - 1));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          rank,
+          label_dims.size() + 1,
+          phi::errors::InvalidArgument(
+              "ShapeError: The rank of Input(X) should be equal to "
+              "Input(Label) plus 1."
+              "But received: The dimension of Input(X) is [%d], "
+              "the shape of Input(X) is [%s],"
+              "the dimension of Input(Label) is [%d], the shape of "
+              "Input(Label) is [%s]",
+              rank,
+              x_dims,
+              label_dims.size(),
+              label_dims));
+    }
+  }
+
+  auto y_dims = label_dims;
+  if (rank == label_dims.size()) {
+    y_dims[rank - 1] = 1;
+  }
+  out->set_dims(y_dims);
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
+}
+
+void CrossEntropy2InferMeta(const MetaTensor& x,
+                            const MetaTensor& label,
+                            int ignore_index,
+                            MetaTensor* out,
+                            MetaTensor* x_shape,
+                            MetaTensor* match_x,
+                            MetaConfig config) {
+  CrossEntropyInferMeta(x, label, false, ignore_index, out);
+
+  auto x_dims = x.dims();
+  auto x_dims_vec = common::vectorize(x_dims);
+  x_dims_vec.push_back(0);
+  x_shape->set_dims(common::make_ddim(x_dims_vec));
+  x_dims[x_dims.size() - 1] = 1;
+  match_x->set_dims(x_dims);
+  x_shape->set_dtype(x.dtype());
+  match_x->set_dtype(x.dtype());
+  x_shape->share_lod(x);
 }
 
 void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
@@ -1660,6 +1792,15 @@ void ExpandAsInferMeta(const MetaTensor& x,
   out->set_dims(common::make_ddim(target_shape));
   out->set_dtype(x.dtype());
 #undef MAX_RANK_SUPPORTED
+}
+
+void FakeDequantizeMaxAbsInferMeta(const MetaTensor& x,
+                                   const MetaTensor& scale,
+                                   float max_range,
+                                   MetaTensor* out) {
+  out->set_dtype(x.dtype());
+  out->share_dims(x);
+  out->share_lod(x);
 }
 
 void FillDiagonalTensorInferMeta(const MetaTensor& x,
@@ -3981,6 +4122,16 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument("group_size must be -1, 64 or 128."));
 
   auto dim_scale = scale.dims();
+  int64_t real_channel_shape = -1;
+  if (algo == "weight_only_int8") {
+    real_channel_shape = x.dims()[0];
+  } else if (algo == "weight_only_int4") {
+    real_channel_shape = x.dims()[0] * 2;
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we only support weight_only_int8"
+        " and weight_only_int4 algo."));
+  }
 
   // per-channel dequantization
   if (group_size == -1) {
@@ -3991,7 +4142,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                      "be 1D in per-channel mode, but got[%d]",
                                      scale.dims().size()));
     PADDLE_ENFORCE_EQ(dim_scale[0],
-                      x.dims()[0],
+                      real_channel_shape,
                       phi::errors::InvalidArgument(
                           "The scale tensor's shape must be equal to the x "
                           "tensor's shape, but got [%d] not equal to [%d]",
@@ -4013,9 +4164,16 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                 "But receive %d and %d",
                                 dim_scale[0],
                                 (x.dims()[1] + (group_size - 1)) / group_size));
+    PADDLE_ENFORCE_EQ(dim_scale[1],
+                      real_channel_shape,
+                      phi::errors::InvalidArgument(
+                          "The scale tensor's shape must be equal to the real "
+                          "channel size, but got [%d] not equal to [%d]",
+                          scale.dims()[0],
+                          real_channel_shape));
   }
   int n = static_cast<int>(x.dims()[1]);
-  int k = static_cast<int>(x.dims()[0]);
+  int k = static_cast<int>(real_channel_shape);
   out->set_dims(common::make_ddim({n, k}));
   out->set_dtype(out_dtype);
 }

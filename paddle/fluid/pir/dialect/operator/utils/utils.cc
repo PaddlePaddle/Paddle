@@ -69,8 +69,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     ShareData_Op::name(),
     SparseMomentumOp::name(),
     GetTensorFromSelectedRowsOp::name(),
-    RankAttentionOp::name(),
-    RankAttentionGradOp::name(),
     RowConvOp::name(),
     RowConvGradOp::name(),
     SoftReluOp::name(),
@@ -83,14 +81,9 @@ const std::unordered_set<std::string> LegacyOpList = {
     LrnGradOp::name(),
     MovingAverageAbsMaxScaleOp::name(),
     MovingAverageAbsMaxScale_Op::name(),
-    QuantizeLinearOp::name(),
-    QuantizeLinear_Op::name(),
-    DequantizeLinearOp::name(),
-    DequantizeLinear_Op::name(),
 #ifdef PADDLE_WITH_DNNL
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
-    paddle::onednn::dialect::QuantizeOp::name(),
     paddle::onednn::dialect::MultiGruOp::name(),
     paddle::onednn::dialect::FusionLstmOp::name(),
 #endif

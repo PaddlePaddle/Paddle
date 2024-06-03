@@ -48,7 +48,7 @@ from .variables import (
     NumpyVariable,
     RangeVariable,
     SliceVariable,
-    SymbolicIntVariable,
+    SymbolicVariable,
     TupleVariable,
     VariableBase,
     VariableFactory,
@@ -576,12 +576,12 @@ Dispatcher.register(
 # bool
 Dispatcher.register(
     bool,
-    ("ContainerVariable",),
+    ("ContainerVariable | SymbolicVariable",),
     lambda var: var.bool(),
 )
 Dispatcher.register(
     operator.truth,
-    ("ConstantVariable",),
+    ("ConstantVariable | SymbolicVariable",),
     lambda var: var.bool(),
 )
 
@@ -886,7 +886,7 @@ for unary_fn in UNARY_OPS:
     if unary_fn in fallback_tensor_unary_method:
         Dispatcher.register(
             unary_fn,
-            ("TensorVariable | SymbolicIntVariable",),
+            ("TensorVariable | SymbolicVariable",),
             raise_break_graph_fn,
         )
         continue
@@ -912,7 +912,7 @@ for unary_fn in UNARY_OPS:
         )
         Dispatcher.register(
             unary_fn,
-            ("SymbolicIntVariable",),
+            ("SymbolicVariable",),
             partial(
                 lambda magic_name, var: var.graph.call_symbolic_method(
                     magic_name, var
@@ -932,23 +932,10 @@ for binary_fn in BINARY_OPS:
                 binary_fn,
                 (
                     "TensorVariable",
-                    "TensorVariable | SymbolicIntVariable | ConstantVariable | NumpyVariable",
+                    "TensorVariable | SymbolicVariable | ConstantVariable | NumpyVariable",
                 ),
                 partial(
                     lambda magic_name, var, other: var.graph.call_tensor_method(
-                        magic_name, var, other
-                    ),
-                    magic_method.name,
-                ),
-            )
-            Dispatcher.register(
-                binary_fn,
-                (
-                    "SymbolicIntVariable",
-                    "ConstantVariable | SymbolicIntVariable",
-                ),
-                partial(
-                    lambda magic_name, var, other: var.graph.call_symbolic_method(
                         magic_name, var, other
                     ),
                     magic_method.name,
@@ -960,7 +947,7 @@ for binary_fn in BINARY_OPS:
 
                 @Dispatcher.register_decorator(operator.mod)
                 def tensor_mod_dispatcher(
-                    var: ConstantVariable | SymbolicIntVariable,
+                    var: ConstantVariable | SymbolicVariable,
                     other: TensorVariable,
                 ):
                     if var.get_py_type() is str:
@@ -973,7 +960,7 @@ for binary_fn in BINARY_OPS:
                 Dispatcher.register(
                     binary_fn,
                     (
-                        "SymbolicIntVariable | ConstantVariable | NumpyVariable",
+                        "SymbolicVariable | ConstantVariable | NumpyVariable",
                         "TensorVariable",
                     ),
                     partial(
@@ -983,17 +970,39 @@ for binary_fn in BINARY_OPS:
                         magic_method.name,
                     ),
                 )
+# Symbolic
+for binary_fn in BINARY_OPS:
+    for magic_method in magic_method_builtin_dispatch(binary_fn):
+        # skip all inplace magic method name, we will dispatch it to non-inplace
+        # magic methods
+        if magic_method.is_inplace:
+            continue
 
-                Dispatcher.register(
-                    binary_fn,
-                    ("ConstantVariable", "SymbolicIntVariable"),
-                    partial(
-                        lambda magic_name, var, other: var.graph.call_symbolic_method(
-                            magic_name, var, other
-                        ),
-                        magic_method.name,
+        if not magic_method.is_reverse:
+            Dispatcher.register(
+                binary_fn,
+                (
+                    "SymbolicVariable",
+                    "ConstantVariable | SymbolicVariable",
+                ),
+                partial(
+                    lambda magic_name, var, other: var.graph.call_symbolic_method(
+                        magic_name, var, other
                     ),
-                )
+                    magic_method.name,
+                ),
+            )
+        else:
+            Dispatcher.register(
+                binary_fn,
+                ("ConstantVariable", "SymbolicVariable"),
+                partial(
+                    lambda magic_name, var, other: var.graph.call_symbolic_method(
+                        magic_name, var, other
+                    ),
+                    magic_method.name,
+                ),
+            )
 
 # Register dispatch for NumpyVariable: fallback !
 for unary_fn in UNARY_OPS:

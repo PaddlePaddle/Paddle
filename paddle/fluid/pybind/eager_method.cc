@@ -443,15 +443,14 @@ static PyObject* tensor_method_numpy(TensorObject* self,
 
   PyObject* base = ToPyObject(paddle::Tensor(
       std::make_shared<phi::DenseTensor>(std::move(cpu_tensor))));
-
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(array_buffer) + array_offset;
   PyObject* array = api.PyArray_NewFromDescr_(
       api.PyArray_Type_,
       api.PyArray_DescrFromType_(numpy_dtype),
       static_cast<int>(py_rank),
       py_dims,
       py_strides,
-      reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(array_buffer) +
-                              array_offset),
+      reinterpret_cast<void*>(ptr),
       pybind11::detail::npy_api::NPY_ARRAY_ALIGNED_ |
           pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_,
       nullptr);
@@ -2497,7 +2496,7 @@ static PyObject* tensor_method_is_dist(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_is_sparse__doc__,
+PyDoc_STRVAR(tensor_is_sparse__doc__,  // NOLINT
              R"DOC(is_sparse($self, /)
 --
 
@@ -2521,7 +2520,7 @@ Examples:
         >>> coo.is_sparse()
         True
 
-)DOC");  // NOLINT
+)DOC");                                // NOLINT
 
 static PyObject* tensor_method_is_sparse(TensorObject* self,
                                          PyObject* args,
@@ -2535,7 +2534,7 @@ static PyObject* tensor_method_is_sparse(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_is_sparse_coo__doc__,
+PyDoc_STRVAR(tensor_is_sparse_coo__doc__,  // NOLINT
              R"DOC(is_sparse_coo($self, /)
 --
 
@@ -2559,7 +2558,7 @@ Examples:
         >>> coo.is_sparse_coo()
         True
 
-)DOC");  // NOLINT
+)DOC");                                    // NOLINT
 
 static PyObject* tensor_method_is_sparse_coo(TensorObject* self,
                                              PyObject* args,
@@ -2572,7 +2571,7 @@ static PyObject* tensor_method_is_sparse_coo(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_is_sparse_csr__doc__,
+PyDoc_STRVAR(tensor_is_sparse_csr__doc__,  // NOLINT
              R"DOC(is_sparse_csr($self, /)
 --
 
@@ -2597,7 +2596,7 @@ Examples:
         >>> csr.is_sparse_csr()
         True
 
-)DOC");  // NOLINT
+)DOC");                                    // NOLINT
 
 static PyObject* tensor_method_is_sparse_csr(TensorObject* self,
                                              PyObject* args,
@@ -2610,7 +2609,7 @@ static PyObject* tensor_method_is_sparse_csr(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_to_sparse_csr__doc__,
+PyDoc_STRVAR(tensor_to_sparse_csr__doc__,  // NOLINT
              R"DOC(to_sparse_csr($self, /)
 --
 
@@ -2640,7 +2639,7 @@ Examples:
         cols=[1, 2, 0],
         values=[1., 2., 3.])
 
-)DOC");  // NOLINT
+)DOC");                                    // NOLINT
 
 static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
                                              PyObject* args,
@@ -2657,7 +2656,7 @@ static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_is_same_shape__doc__,
+PyDoc_STRVAR(tensor_is_same_shape__doc__,  // NOLINT
              R"DOC(is_same_shape($self, y, /)
 --
 
@@ -2687,7 +2686,7 @@ Examples:
         >>> x.is_same_shape(z)
         False
 
-)DOC");  // NOLINT
+)DOC");                                    // NOLINT
 
 static PyObject* tensor_method_is_same_shape(TensorObject* self,
                                              PyObject* args,
@@ -2970,7 +2969,7 @@ static PyObject* tensor__unset_fake_empty(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_data_ptr__doc__,
+PyDoc_STRVAR(tensor_data_ptr__doc__,  // NOLINT
              R"DOC(data_ptr($self, /)
 --
 
@@ -2990,7 +2989,7 @@ Examples:
         >>> # doctest: +SKIP('return the address')
         93220864
         >>> # doctest: -SKIP
-)DOC");  // NOLINT
+)DOC");                               // NOLINT
 
 static PyObject* tensor_data_ptr(TensorObject* self,
                                  PyObject* args,
@@ -3033,7 +3032,7 @@ static PyObject* tensor__grad_ivar(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_get_strides__doc__,
+PyDoc_STRVAR(tensor_get_strides__doc__,  // NOLINT
              R"DOC(get_strides($self, /)
 --
 
@@ -3052,7 +3051,7 @@ Examples:
         >>> y = x[1]
         >>> print(y.get_strides())
         []
-)DOC");  // NOLINT
+)DOC");                                  // NOLINT
 
 static PyObject* tensor_method_strides(TensorObject* self,
                                        PyObject* args,
@@ -3073,7 +3072,7 @@ static PyObject* tensor_method_strides(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_contiguous__doc__,
+PyDoc_STRVAR(tensor_contiguous__doc__,  // NOLINT
              R"DOC(contiguous($self, /)
 --
 
@@ -3094,7 +3093,7 @@ Examples:
         >>> y = y.contiguous()
         >>> print(y)
         Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True, 2)
-)DOC");  // NOLINT
+)DOC");                                 // NOLINT
 
 static PyObject* tensor_contiguous(TensorObject* self,
                                    PyObject* args,
@@ -3125,7 +3124,7 @@ static PyObject* tensor_contiguous(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-PyDoc_STRVAR(tensor_is_contiguous__doc__,
+PyDoc_STRVAR(tensor_is_contiguous__doc__,  // NOLINT
              R"DOC(is_contiguous($self, /)
 --
 
@@ -3143,7 +3142,7 @@ Examples:
         >>> x = paddle.to_tensor([1, 2, 3])
         >>> y = x[1]
         >>> print(y.is_contiguous())
-)DOC");  // NOLINT
+)DOC");                                    // NOLINT
 
 static PyObject* tensor_is_contiguous(TensorObject* self,
                                       PyObject* args,
@@ -3233,8 +3232,7 @@ PyMethodDef variable_methods[] = {  // NOLINT
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_is_dense_tensor_hold_allocation",
-     (PyCFunction)(void (*)(
-         void))tensor_method__is_dense_tensor_hold_allocation,
+     (PyCFunction)(void (*)())tensor_method__is_dense_tensor_hold_allocation,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_copy_to",
@@ -3298,7 +3296,7 @@ PyMethodDef variable_methods[] = {  // NOLINT
      METH_VARARGS | METH_KEYWORDS,
      tensor_method_detach__doc__},
     {"detach_",
-     (PyCFunction)(void (*)(void))tensor_method_detach_,
+     (PyCFunction)(void (*)())tensor_method_detach_,
      METH_VARARGS | METH_KEYWORDS,
      tensor_method_detach___doc__},
     {"get_tensor",
@@ -3481,19 +3479,19 @@ PyMethodDef variable_methods[] = {  // NOLINT
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"contiguous",
-     (PyCFunction)(void (*)(void))tensor_contiguous,
+     (PyCFunction)(void (*)())tensor_contiguous,
      METH_VARARGS | METH_KEYWORDS,
      tensor_contiguous__doc__},
     {"is_contiguous",
-     (PyCFunction)(void (*)(void))tensor_is_contiguous,
+     (PyCFunction)(void (*)())tensor_is_contiguous,
      METH_VARARGS | METH_KEYWORDS,
      tensor_is_contiguous__doc__},
     {"get_strides",
-     (PyCFunction)(void (*)(void))tensor_method_strides,
+     (PyCFunction)(void (*)())tensor_method_strides,
      METH_VARARGS | METH_KEYWORDS,
      tensor_get_strides__doc__},
     {"_set_impl",
-     (PyCFunction)(void (*)(void))tensor_method__set_impl,
+     (PyCFunction)(void (*)())tensor_method__set_impl,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 #if defined(PADDLE_WITH_CUDA)
@@ -3505,8 +3503,7 @@ PyMethodDef variable_methods[] = {  // NOLINT
     {nullptr, nullptr, 0, nullptr}};
 
 // variable_methods for core.eager.StringTensor
-PyMethodDef string_tensor_variable_methods[] = {
-    // NOLINT
+PyMethodDef string_tensor_variable_methods[] = {  // NOLINT
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy_for_string_tensor,
      METH_VARARGS | METH_KEYWORDS,
@@ -3516,8 +3513,7 @@ PyMethodDef string_tensor_variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_is_string_tensor_hold_allocation",
-     (PyCFunction)(void (*)(
-         void))tensor_method__is_string_tensor_hold_allocation,
+     (PyCFunction)(void (*)())tensor_method__is_string_tensor_hold_allocation,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
     // TODO(zhoushunjie): Need to add _copy_to, copy_ for StringTensor.

@@ -40,6 +40,7 @@ namespace framework {
 
 class StatisticsEngine {
  public:
+  StatisticsEngine() : executor_type_(ExecutorType::EXECUTOR) {}
   int Apply(const platform::NodeTrees& trees);
 
   void Log(const std::string& full_filename);

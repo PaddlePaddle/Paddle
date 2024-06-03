@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
+#include "paddle/fluid/pir/dialect/operator/interface/layout_transformation.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
@@ -238,6 +239,9 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
   info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
                                CombineOpInferSymbolicShapeInterfaceModel>());
+  info.AttachInterface(pir::InterfaceValue::Get<
+                       LayoutTransformationInterface,
+                       LayoutTransformationInterface::Model<pir::CombineOp>>());
 
   info = ctx->GetRegisteredOpInfo(pir::ParameterOp::name());
   info.AttachInterface(
@@ -437,7 +441,9 @@ class IdManager {
     return instance;
   }
 
-  ~IdManager() {
+  IdManager() : ids_() {}
+
+  ~IdManager() {  // NOLINT
     for (auto id : ids_) {
       delete id;
     }
@@ -461,7 +467,9 @@ class AttributeManager {
     return instance;
   }
 
-  ~AttributeManager() {
+  AttributeManager() : char_pointers_(), pointers_size_() {}
+
+  ~AttributeManager() {  // NOLINT
     for (size_t i = 0; i < char_pointers_.size(); i++) {
       for (size_t j = 0; j < pointers_size_[i]; j++) {
         delete char_pointers_[i][j];

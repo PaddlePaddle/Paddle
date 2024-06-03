@@ -354,6 +354,8 @@ class GradientAccumulationInfo {
                                     bool sort_gradient,
                                     bool create_graph)
       : mapped_grad_var_(var.get()),
+        accumulator_(nullptr),
+        partial_grad_grads_(),
         sort_gradient_(sort_gradient),
         create_graph_(create_graph) {}
 
@@ -468,6 +470,7 @@ class ReadyGradVarInfoMap {
   };
 
  public:
+  ReadyGradVarInfoMap() : vars_(), target_vars_() {}
   void IncreaseRefCnt(const VariableWrapper *var) {
     ++(vars_[var].total_ref_cnt);
   }
@@ -650,7 +653,17 @@ PartialGradTask::PartialGradTask(
     bool create_graph,
     bool retain_graph,
     bool allow_unused,
-    bool only_inputs) {
+    bool only_inputs)
+    : startup_ops_(),
+      pending_ops_(),
+      op_deps_(),
+      grad_accumulators_(),
+      double_grad_nodes_(),
+      grads_to_accumulate_(),
+      input_targets_(),
+      input_target_grads_(),
+      no_grad_var_grad_(),
+      reset_stop_gradient_vars_() {
   input_targets_ = input_targets;
   place_ = place;
   create_graph_ = create_graph;

@@ -580,5 +580,29 @@ class TestFlatten0DTensorOpError(unittest.TestCase):
         self.assertRaises(ValueError, test_ValueError2)
 
 
+class TestFlattenZeroSizedTensorAPI(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        data = np.random.randn(2, 3, 0)
+        x = paddle.to_tensor(data)
+        out = paddle.flatten(x)
+        out_np = data.flatten()
+        np.testing.assert_equal(out.numpy(), out_np)
+
+    @test_with_pir_api
+    def test_static(self):
+        paddle.enable_static()
+        data = np.random.randn(2, 3, 0)
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, paddle.static.Program()):
+            x = paddle.static.data(name="x", shape=[2, 3, 0], dtype='float64')
+            out = paddle.flatten(x)
+
+        exe = paddle.static.Executor(place=paddle.CPUPlace())
+        fetch_out = exe.run(main_prog, feed={"x": data}, fetch_list=[out])[0]
+        out_np = data.flatten()
+        np.testing.assert_equal(fetch_out, out_np)
+
+
 if __name__ == "__main__":
     unittest.main()

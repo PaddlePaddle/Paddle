@@ -81,7 +81,8 @@ class BlockDimExprsAsserter {
   void AssertDimExprForOutput(pir::Operation* op) {  // NOLINT
     VLOG(5) << "Add assert for result of [ " << op->name() << " ]";
     if (op->num_results() == 0) return;
-    if (!op->HasInterface<paddle::dialect::InferSymbolicShapeInterface>()) {
+    if (!op->HasInterface<paddle::dialect::InferSymbolicShapeInterface>() ||
+        op->HasTrait<pir::SideEffectTrait>()) {
       LOG(INFO) << "skip the checking for [ " << op->name() << " ]";
       return;
     }
@@ -166,7 +167,7 @@ class BlockDimExprsAsserter {
     };
     std::vector<pir::Value> input_tensors{};
     std::vector<pir::Attribute> output_dim_expr_attrs{};
-    GenerateShapeOp::SymbolBindings symbol_bindings{};
+    SymbolBindings symbol_bindings{};
     bool success =
         MakeGenerateShapeOpAttribute(ir_ctx_,
                                      LocalDimExprs4Value,
@@ -176,14 +177,13 @@ class BlockDimExprsAsserter {
                                      &output_dim_expr_attrs,
                                      &symbol_bindings);
     if (!success) return std::nullopt;
-    auto out_shape_value =
-        builder_
-            .Build<cinn::dialect::GenerateShapeOp>(
-                input_tensors, output_dim_expr_attrs, symbol_bindings)
-            .out();
+    auto out_type = paddle::dialect::DenseTensorType::get(
+        builder_.ir_context(),
+        pir::Int64Type::get(builder_.ir_context()),
+        ::common::make_ddim({dim_exprs.size()}));
     return builder_
         .Build<cinn::dialect::GenerateShapeOp>(
-            input_tensors, output_dim_expr_attrs, symbol_bindings)
+            input_tensors, output_dim_expr_attrs, symbol_bindings, out_type)
         .out();
   }
 
@@ -232,8 +232,11 @@ class BlockDimExprsAsserter {
     PADDLE_ENFORCE_EQ(lhs_numel,
                       rhs_numel,
                       ::common::errors::InvalidArgument(
+                          "Check [%s id:%d] infer symbolic shape failed."
                           "The numel of lhs and rhs must be equal, but "
                           "received lhs's numel is [%d], rhs's numel is [%d]",
+                          op->name(),
+                          op->id(),
                           lhs_numel,
                           rhs_numel));
 
@@ -260,8 +263,8 @@ class BlockDimExprsAsserter {
             .out();
     auto assert_op = builder_.Build<paddle::dialect::AssertOp>(
         all_eq, assert_data, lhs_numel);
-    const std::string error_msg = "Check [" + op->name() + "_" +
-                                  std::to_string(op->id()) +
+    const std::string error_msg = "Check [" + op->name() +
+                                  " id:" + std::to_string(op->id()) +
                                   "] infer symbolic shape failed.";
     assert_op->set_attribute(
         paddle::dialect::AssertOp::ERROR_INFO_ATTR_NAME,
