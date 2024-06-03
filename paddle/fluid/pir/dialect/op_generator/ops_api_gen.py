@@ -168,6 +168,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_elementwise_div',
     'fused_elementwise_mul',
     'fused_elementwise_sub',
+    'fusion_group',
     'fusion_seqpool_cvm_concat',
     'nce',
     'lars_momentum',
