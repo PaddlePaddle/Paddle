@@ -25,9 +25,11 @@
 
 #include "paddle/cinn/frontend/paddle/model_parser.h"
 #include "paddle/cinn/frontend/paddle_model_to_program.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace frontend {
@@ -269,12 +271,14 @@ Variable Program::dropout_infer(
 }
 
 Instruction& Program::operator[](size_t i) {
-  CHECK_LT(i, instrs_.size());
+  PADDLE_ENFORCE_LT(
+      i, instrs_.size(), phi::errors::InvalidArgument("Index out of range"));
   return instrs_[i];
 }
 
 const Instruction& Program::operator[](size_t i) const {
-  CHECK_LT(i, instrs_.size());
+  PADDLE_ENFORCE_LT(
+      i, instrs_.size(), phi::errors::InvalidArgument("Index out of range"));
   return instrs_[i];
 }
 
@@ -554,6 +558,12 @@ std::string _Instruction_::debug_string() const {
       s_ << "[" + utils::Join(x, ",") + "]";
     }
     void operator()(const std::vector<std::string>& x) {
+      s_ << "[" + utils::Join(x, ",") + "]";
+    }
+    void operator()(const std::vector<symbol::DimExpr>& x) {
+      s_ << "[" + utils::Join(x, ",") + "]";
+    }
+    void operator()(const cinn::dialect::SymbolBindings& x) {
       s_ << "[" + utils::Join(x, ",") + "]";
     }
   };

@@ -225,24 +225,28 @@ void BindFrontend(pybind11::module *m) {
                                     "The size of tensor [%d] is different with "
                                     "the input data's size! Please check.",
                                     tensor_inputs[i]->id));
-              if (target.arch == Target::Arch::NVGPU) {
+              target.arch.Visit(adt::match{
+                  [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                  [&](common::X86Arch) {
+                    memcpy(data,
+                           input_data[i].data(),
+                           in_tensor->shape().numel() *
+                               dtype.bytes());  // All random data
+                  },
+                  [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                  [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-                CUDA_CALL(cudaMemcpy(data,
-                                     input_data[i].data(),
-                                     in_tensor->shape().numel() * dtype.bytes(),
-                                     cudaMemcpyHostToDevice));
+                    CUDA_CALL(
+                        cudaMemcpy(data,
+                                   input_data[i].data(),
+                                   in_tensor->shape().numel() * dtype.bytes(),
+                                   cudaMemcpyHostToDevice));
 #else
      PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
      "you need to set WITH_CUDA ON!"));
 #endif
-              } else if (target.arch == Target::Arch::X86) {
-                memcpy(data,
-                       input_data[i].data(),
-                       in_tensor->shape().numel() *
-                           dtype.bytes());  // All random data
-              } else {
-                CINN_NOT_IMPLEMENTED
-              }
+                  },
+              });
             }
             program->Execute();
 
@@ -297,110 +301,118 @@ void BindFrontend(pybind11::module *m) {
        * '/python/tests/test_op_benchmark.py'
        *
        */
-      .def(
-          "test_benchmark",
-          [](Program &self,
-             const cinn::common::Target &target,
-             const std::vector<Variable> &tensor_inputs,
-             const std::vector<py::array> &input_data,
-             const Variable &tensor_out,
-             int repeat_,
-             const std::string &info) {
-            std::shared_ptr<hlir::framework::Graph> g(
-                new hlir::framework::Graph(self, target));
-            hlir::framework::ApplyPass(g.get(), "InferShape");
-            std::shared_ptr<hlir::framework::Scope> scope =
-                hlir::framework::BuildScope(target, g);
-            hlir::framework::CompilationContext context(g, scope, target);
-            hlir::framework::GraphCompiler gc(context);
-            auto program = gc.Build();
-            for (size_t i = 0; i < tensor_inputs.size(); i++) {
-              auto in_tensor = scope->GetTensor(tensor_inputs[i]->id);
-              auto *data = in_tensor->mutable_data<float>(target);
-              PADDLE_ENFORCE_EQ(input_data[i].size(),
-                                in_tensor->shape().numel(),
-                                phi::errors::InvalidArgument(
-                                    "The size of tensor [%d] is different with "
-                                    "the input data's size! Please check.",
-                                    tensor_inputs[i]->id));
-              if (target.arch == Target::Arch::NVGPU) {
+      .def("test_benchmark",
+           [](Program &self,
+              const cinn::common::Target &target,
+              const std::vector<Variable> &tensor_inputs,
+              const std::vector<py::array> &input_data,
+              const Variable &tensor_out,
+              int repeat_,
+              const std::string &info) {
+             std::shared_ptr<hlir::framework::Graph> g(
+                 new hlir::framework::Graph(self, target));
+             hlir::framework::ApplyPass(g.get(), "InferShape");
+             std::shared_ptr<hlir::framework::Scope> scope =
+                 hlir::framework::BuildScope(target, g);
+             hlir::framework::CompilationContext context(g, scope, target);
+             hlir::framework::GraphCompiler gc(context);
+             auto program = gc.Build();
+             for (size_t i = 0; i < tensor_inputs.size(); i++) {
+               auto in_tensor = scope->GetTensor(tensor_inputs[i]->id);
+               auto *data = in_tensor->mutable_data<float>(target);
+               PADDLE_ENFORCE_EQ(
+                   input_data[i].size(),
+                   in_tensor->shape().numel(),
+                   phi::errors::InvalidArgument(
+                       "The size of tensor [%d] is different with "
+                       "the input data's size! Please check.",
+                       tensor_inputs[i]->id));
+               target.arch.Visit(adt::match{
+                   [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                   [&](common::X86Arch) {
+                     for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
+                       data[j] = reinterpret_cast<const float *>(
+                           input_data[i].data())[j];  // All random data
+                     }
+                   },
+                   [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                   [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-                CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
-                                     input_data[i].data(),
-                                     in_tensor->shape().numel() * sizeof(float),
-                                     cudaMemcpyHostToDevice));
+                     CUDA_CALL(
+                         cudaMemcpy(reinterpret_cast<void *>(data),
+                                    input_data[i].data(),
+                                    in_tensor->shape().numel() * sizeof(float),
+                                    cudaMemcpyHostToDevice));
 #else
      PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
      "you need to set WITH_CUDA ON!"));
 #endif
-              } else if (target.arch == Target::Arch::X86) {
-                for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
-                  data[j] = reinterpret_cast<const float *>(
-                      input_data[i].data())[j];  // All random data
-                }
-              } else {
-                CINN_NOT_IMPLEMENTED
-              }
-            }
-            VLOG(3) << info;
-            program->ExecuteTest(repeat_);
-            auto out = scope->GetTensor(tensor_out->id);
-            return out;
-          })
-      .def(
-          "test_benchmark_with_code",
-          [](Program &self,
-             const cinn::common::Target &target,
-             const std::vector<Variable> &tensor_inputs,
-             const std::vector<py::array> &input_data,
-             const Variable &tensor_out,
-             int repeat_,
-             const std::string &info,
-             const std::string &code) {
-            // std::shared_ptr<hlir::framework::Graph> g(new
-            // hlir::framework::Graph(self, target));
-            // hlir::framework::ApplyPass(g.get(), "InferShape");
-            std::unordered_set<std::string> fetch_ids;
-            auto graph = cinn::frontend::Optimize(&self, fetch_ids, target);
-            std::shared_ptr<hlir::framework::Scope> scope =
-                hlir::framework::BuildScope(target, graph);
+                   },
+               });
+             }
+             VLOG(3) << info;
+             program->ExecuteTest(repeat_);
+             auto out = scope->GetTensor(tensor_out->id);
+             return out;
+           })
+      .def("test_benchmark_with_code",
+           [](Program &self,
+              const cinn::common::Target &target,
+              const std::vector<Variable> &tensor_inputs,
+              const std::vector<py::array> &input_data,
+              const Variable &tensor_out,
+              int repeat_,
+              const std::string &info,
+              const std::string &code) {
+             // std::shared_ptr<hlir::framework::Graph> g(new
+             // hlir::framework::Graph(self, target));
+             // hlir::framework::ApplyPass(g.get(), "InferShape");
+             std::unordered_set<std::string> fetch_ids;
+             auto graph = cinn::frontend::Optimize(&self, fetch_ids, target);
+             std::shared_ptr<hlir::framework::Scope> scope =
+                 hlir::framework::BuildScope(target, graph);
 
-            hlir::framework::CompilationContext context(graph, scope, target);
-            hlir::framework::GraphCompiler gc(context);
-            auto program = gc.Build(code);
-            for (size_t i = 0; i < tensor_inputs.size(); i++) {
-              auto in_tensor = scope->GetTensor(tensor_inputs[i]->id);
-              auto *data = in_tensor->mutable_data<float>(target);
-              PADDLE_ENFORCE_EQ(input_data[i].size(),
-                                in_tensor->shape().numel(),
-                                phi::errors::InvalidArgument(
-                                    "The size of tensor [%d] is different with "
-                                    "the input data's size! Please check.",
-                                    tensor_inputs[i]->id));
-              if (target.arch == Target::Arch::NVGPU) {
+             hlir::framework::CompilationContext context(graph, scope, target);
+             hlir::framework::GraphCompiler gc(context);
+             auto program = gc.Build(code);
+             for (size_t i = 0; i < tensor_inputs.size(); i++) {
+               auto in_tensor = scope->GetTensor(tensor_inputs[i]->id);
+               auto *data = in_tensor->mutable_data<float>(target);
+               PADDLE_ENFORCE_EQ(
+                   input_data[i].size(),
+                   in_tensor->shape().numel(),
+                   phi::errors::InvalidArgument(
+                       "The size of tensor [%d] is different with "
+                       "the input data's size! Please check.",
+                       tensor_inputs[i]->id));
+               target.arch.Visit(adt::match{
+                   [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                   [&](common::X86Arch) {
+                     for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
+                       data[j] = reinterpret_cast<const float *>(
+                           input_data[i].data())[j];  // All random data
+                     }
+                   },
+                   [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                   [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-                CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
-                                     input_data[i].data(),
-                                     in_tensor->shape().numel() * sizeof(float),
-                                     cudaMemcpyHostToDevice));
+                     CUDA_CALL(
+                         cudaMemcpy(reinterpret_cast<void *>(data),
+                                    input_data[i].data(),
+                                    in_tensor->shape().numel() * sizeof(float),
+                                    cudaMemcpyHostToDevice));
 #else
      PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
      "you need to set WITH_CUDA ON!"));
 #endif
-              } else if (target.arch == Target::Arch::X86) {
-                for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
-                  data[j] = reinterpret_cast<const float *>(
-                      input_data[i].data())[j];  // All random data
-                }
-              } else {
-                CINN_NOT_IMPLEMENTED
-              }
-            }
-            VLOG(3) << info;
-            program->ExecuteTest(repeat_);
-            auto out = scope->GetTensor(tensor_out->id);
-            return out;
-          });
+                   },
+               });
+             }
+             VLOG(3) << info;
+             program->ExecuteTest(repeat_);
+             auto out = scope->GetTensor(tensor_out->id);
+             return out;
+           });
 
   py::class_<frontend::Interpreter>(*m, "Interpreter")
       .def(py::init<const std::vector<std::string> &,

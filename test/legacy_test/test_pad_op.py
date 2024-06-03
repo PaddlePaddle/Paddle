@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import os
+import sys
 import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+
+sys.path.append("../deprecated/legacy_test")
 from test_attribute_var import UnittestBase
 from utils import static_guard
 

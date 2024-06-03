@@ -51,14 +51,12 @@ typedef bool (OpLowererImpl::*ScheduleDetermineFunction)(::pir::Operation*);
 struct GroupInfo {
   std::vector<int64_t> data_space;
   std::vector<int64_t> reduce_axis;
+  int64_t raw_data_rank;
+  std::vector<int64_t> raw_reduce_axis;
   std::set<std::string> reduce_var_names;
   std::set<std::string> shared_var_names;
   std::set<std::string> direct_output_var_names;
   std::vector<std::string> broadcast_output_names;
-
-  std::unordered_map<std::string, cinn::ir::BroadcastInfo> broadcast_info;
-  std::unordered_map<std::string, cinn::ir::BroadcastInfo>
-      broadcast_to_elementwise;
 };
 
 class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
@@ -298,8 +296,6 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
   Target target_;
 
   PrettyNamer* name_gene_;
-
-  std::unordered_set<::pir::Operation*> erase_reshape;
 };
 
 }  // namespace pir

@@ -235,7 +235,6 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(LoDResetGradNoNeedBufferVarInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OPERATOR(lod_reset,
                   ops::LoDResetOp,
                   ops::LoDResetOpMaker,

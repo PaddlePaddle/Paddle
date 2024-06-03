@@ -601,7 +601,9 @@ void shrink_event_info(
       std::set<size_t> unnecessary_waiter_instr_ids;
       for (size_t cur_instr_id : waiter_instr_ids) {
         for (size_t next_instr_id : waiter_instr_ids) {
-          if (dependency_builder.OpHappensBefore(cur_instr_id, next_instr_id)) {
+          if (dependency_builder.OpHappensBefore(cur_instr_id, next_instr_id) &&
+              dependency_builder.IsSameDeviceContext(cur_instr_id,
+                                                     next_instr_id)) {
             unnecessary_waiter_instr_ids.insert(next_instr_id);
             break;
           }

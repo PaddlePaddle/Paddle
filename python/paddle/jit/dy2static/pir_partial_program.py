@@ -29,9 +29,17 @@ from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.optimizer.lr import LRScheduler
 from paddle.pir import Value, fake_value, is_fake_value
 
-from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard
+from .logging_utils import TranslatorLogger
+from .utils import (
+    RETURN_NO_VALUE_MAGIC_NUM,
+    backend_guard,
+    cinn_is_enabled,
+    cse_is_enabled,
+)
 
 __all__ = []
+
+prog_logger = TranslatorLogger()
 
 
 class NestSequence:
@@ -172,7 +180,7 @@ class RunnableProgram:
             return []
         if isinstance(values[0], str):
             return values
-        return [self.get_value_name_map[v] for v in values]
+        return [self.get_value_name_map.get(v, "FakeVar") for v in values]
 
     @cached_property
     def x_values(self):
@@ -283,10 +291,27 @@ class RunnableProgram:
         """
         origin_fwd = self.forward_program
         origin_bwd = self.backward_program
+
+        prog_logger.log(
+            1,
+            f"******** [JIT] PIR forward program before PIR PASS ********\n{origin_fwd} ",
+        )
+        prog_logger.log(
+            1,
+            f"******** [JIT] PIR backward program before PIR PASS ********\n{origin_bwd} ",
+        )
         # NOTE(dev): Add this line to trigger program_name_attr logic
         program_name_attr = self.program_name_attr
         self.forward_program, self.backward_program = pass_fn(
             origin_fwd, origin_bwd
+        )
+        prog_logger.log(
+            1,
+            f"******** [JIT] PIR forward program after PIR PASS ********\n{origin_fwd} ",
+        )
+        prog_logger.log(
+            1,
+            f"******** [JIT] PIR backward program after PIR PASS ********\n{origin_bwd} ",
         )
 
     # cached property can ensure program is splited only once.
@@ -324,21 +349,21 @@ class RunnableProgram:
             else:
                 raise ValueError(f"Unknown program attr: {k}")
             value_program_attr[k] = values
-        self.deal_inplace_values(self.forward_program)
+        self.deal_inplace_values(self.forward_program, self.backward_program)
         self.deal_inplace_values(self.backward_program)
         return value_program_attr
 
-    def deal_inplace_values(self, program):
-        # deal inplace op and modify program inplacely.
-        value2name = self._get_value_name_map_from_program(program)
+    def deal_inplace_values(self, program1, program2=None):
+        # deal inplace op and modify program1 inplacely.
+        value2name = self._get_value_name_map_from_program(program1)
 
         def has_name(value):
-            if self._get_name_defining_op(program, value) is not None:
+            if self._get_name_defining_op(program1, value) is not None:
                 return True
             return False
 
         ufset = UnionFindSet()
-        for op in program.global_block().ops:
+        for op in program1.global_block().ops:
             for out_idx, in_idx in paddle.core.pir.get_op_inplace_info(
                 op
             ).items():
@@ -351,11 +376,31 @@ class RunnableProgram:
 
         for value in ufset.iter_elements():
             if has_name(ufset.find_root(value)):
-                name_defining_op = self._get_name_defining_op(program, value)
-                if name_defining_op:
+                name_defining_op = self._get_name_defining_op(program1, value)
+                if (
+                    name_defining_op
+                    and name_defining_op.name() == 'builtin.shadow_output'
+                ):
+                    old_name = name_defining_op.attrs()['output_name']
+                    new_name = value2name[ufset.find_root(value)]
+                    if old_name == new_name:
+                        continue
                     paddle.core.pir.reset_shadow_output_name(
-                        name_defining_op, value2name[ufset.find_root(value)]
+                        name_defining_op, new_name
                     )
+                    if program2 is None:
+                        continue
+                    block = program2.global_block()
+                    kwargs = block.kwargs()
+                    if old_name in kwargs:
+                        if new_name not in kwargs:
+                            new_value = block.add_kwarg(
+                                new_name, kwargs[old_name].type()
+                            )
+                        else:
+                            new_value = kwargs[new_name]
+                        kwargs[old_name].replace_all_uses_with(new_value)
+                        block.erase_kwarg(old_name)
 
     @cached_property
     def program_name_attr(self):
@@ -386,7 +431,7 @@ class RunnableProgram:
 
 class PartialProgramLayerHook:
     def before_append_backward(self, forward_program, src_vars):
-        ...
+        return forward_program, src_vars
 
     def after_append_backward(
         self,
@@ -397,10 +442,140 @@ class PartialProgramLayerHook:
         forward_end_idx,
         backward_start_idx,
     ):
-        ...
+        return whole_program, forward_end_idx, src_vars
 
     def after_infer(self, infer_program):
-        ...
+        return infer_program
+
+
+class OperatorIndexPreservePass:
+    OP_NAME_PREFIX = "preserved_index_"
+    counter = 0
+
+    def __init__(self, index, pass_fn):
+        self.name = f"{OperatorIndexPreservePass.OP_NAME_PREFIX}{OperatorIndexPreservePass.counter}"
+        OperatorIndexPreservePass.counter += 1
+        self.pass_fn = pass_fn
+        self.index = index
+
+    def __call__(self, program):
+        if len(program.global_block().ops) == 0:
+            assert self.index == 0
+            return self.pass_fn(program)
+        paddle.base.libpaddle.pir.append_shadow_output(
+            program,
+            program.global_block().ops[0].result(0),
+            self.name,
+            self.index,
+        )
+        program = self.pass_fn(program)
+        new_index = 0
+        for op in program.global_block().ops:
+            if (
+                op.name() == "builtin.shadow_output"
+                and self.name in op.attrs()["output_name"]
+            ):
+                break
+            new_index += 1
+        # remove forward_backward_seperator
+        if new_index >= len(program.global_block().ops):
+            raise RuntimeError(
+                f"Can't find index preserve label {self.name}, don't remove it in pass."
+            )
+        program.global_block().remove_op(program.global_block().ops[new_index])
+        self.index = new_index
+        return program
+
+
+class IndicesPreservePass:
+    def __init__(self, indices, pass_fn):
+        self.pass_fn = pass_fn
+        self.indices = indices
+        self.new_indices = None
+
+    def __call__(self, program):
+        passes = [self.pass_fn]
+        for idx, index in enumerate(self.indices):
+            passes.append(OperatorIndexPreservePass(index, passes[idx]))
+        new_program = passes[-1](program)
+
+        self.new_indices = [p.index for p in passes[1:]]
+        return new_program
+
+
+class ValuePreservePass:
+    OP_NAME_PREFIX = "preserved_value_"
+
+    def __init__(self, values):
+        self.values = values
+
+    def apply(self, program):
+        raise RuntimeError("Not implemented.")
+
+    def __call__(self, program):
+        # create fake values for args
+        all_values = list(
+            filter(
+                lambda x: isinstance(x, Value) and not is_fake_value(x),
+                paddle.utils.flatten(self.values),
+            )
+        )
+
+        value2name = ValueDict()
+        for idx, v in enumerate(all_values):
+            name = f"{ValuePreservePass.OP_NAME_PREFIX}{idx}"
+            if v in value2name:
+                continue
+            value2name[v] = name
+            paddle.base.libpaddle.pir.append_shadow_output(
+                program,
+                v,
+                name,
+                len(program.global_block().ops),
+            )
+
+        # apply program pass
+        program = self.apply(program)
+
+        # collect new value
+        name2new_value = {}
+        to_remove_op = []
+        for op in program.global_block().ops:
+            if op.name() == "builtin.shadow_output":
+                if op.attrs()["output_name"].startswith(
+                    ValuePreservePass.OP_NAME_PREFIX
+                ):
+                    name2new_value[op.attrs()["output_name"]] = op.operand(
+                        0
+                    ).source()
+                    to_remove_op.append(op)
+
+        # remove old op
+        for op in to_remove_op:
+            program.global_block().remove_op(op)
+
+        # get new values
+        value2new_value = ValueDict(
+            {
+                v: name2new_value.get(name, fake_value())
+                for v, name in value2name.items()
+            }
+        )
+
+        new_args = paddle.utils.map_structure(
+            lambda x: (
+                value2new_value[x] if not is_fake_value(x) else fake_value()
+            ),
+            self.values,
+        )
+        self.values = new_args
+        return program
+
+
+class FusedBnAddActPass(ValuePreservePass):
+    def apply(self, program):
+        program = paddle.base.libpaddle.pir.apply_bn_add_act_pass(program)
+        return program
 
 
 class PartialProgramLayer:
@@ -438,7 +613,11 @@ class PartialProgramLayer:
         assert isinstance(self._build_strategy, BuildStrategy)
 
         self._origin_main_program = self._verify_program(main_program)
-        self._cuda_graph_vec = self._create_cuda_graph_vec()
+        if parameters is not None:
+            parameters[0][:] = self._params
+            parameters[1][:] = self._param_values
+        with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
+            self._cuda_graph_vec = self._create_cuda_graph_vec()
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
         # Set default mode to train
@@ -564,10 +743,16 @@ class PartialProgramLayer:
                     pm, forward_program
                 )
                 pm.run(forward_program)
+                if cse_is_enabled():
+                    paddle.base.libpaddle.pir.apply_cse_pass(forward_program)
 
                 # if-else pass
-                if self._build_strategy.build_cinn_pass:
+                if cinn_is_enabled(self._build_strategy, self._backend):
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
+                else:
+                    paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
+                        forward_program
+                    )
 
                 return forward_program, backward_program
 
@@ -586,9 +771,16 @@ class PartialProgramLayer:
             self._set_grad_type(self._params, train_program)
 
             def pass_fn(forward_program, backward_program):
-                if self._build_strategy.build_cinn_pass:
+                if cse_is_enabled():
+                    paddle.base.libpaddle.pir.apply_cse_pass(forward_program)
+                    paddle.base.libpaddle.pir.apply_cse_pass(backward_program)
+                if cinn_is_enabled(self._build_strategy, self._backend):
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
                     paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
+                else:
+                    paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
+                        forward_program
+                    )
                 return forward_program, backward_program
 
             train_program.apply_pir_program_pass(pass_fn)
@@ -838,7 +1030,30 @@ class PartialProgramLayer:
         backward_start_op_index = (
             forward_end_idx + op_between_forward_and_backward
         )
+
         # construct a runnable program.
+        fused_bn_add_act_pass = FusedBnAddActPass(
+            [inputs, params, targets, x_grad_value, p_grad_value, o_grad_value]
+        )
+        forward_index_pass = IndicesPreservePass(
+            [forward_end_idx, backward_start_op_index, backward_end_op_index],
+            fused_bn_add_act_pass,
+        )
+        program = forward_index_pass(program)
+        (
+            inputs,
+            params,
+            targets,
+            x_grad_value,
+            p_grad_value,
+            o_grad_value,
+        ) = fused_bn_add_act_pass.values
+        (
+            forward_end_idx,
+            backward_start_op_index,
+            backward_end_op_index,
+        ) = forward_index_pass.new_indices
+
         return RunnableProgram(
             program,
             (inputs, params, targets),
@@ -870,10 +1085,10 @@ class PartialProgramLayer:
 
     def _prepare_attributes(self):
         attrs = [
-            'forward_global_block',
-            self.program.forward_program.global_block(),
-            'backward_global_block',
-            self.program.backward_program.global_block(),
+            'forward_program',
+            self.program.forward_program,
+            'backward_program',
+            self.program.backward_program,
             'is_test',
             not self.training,
             'program_id',

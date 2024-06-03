@@ -35,6 +35,10 @@ namespace pir {
 // block's key:
 // which is json array with value json object
 #define BLOCKARGS "args"
+#define KEYWORDBLOCKARGS "kwargs"
+
+#define KEYWORDNAME "key"
+
 // which is json array with operation json object
 #define BLOCKOPS "ops"
 
@@ -62,4 +66,6 @@ namespace pir {
 // type/attr's contents which is json::array.
 #define DATA "D"
 
+// NULL_TYPE
+#define NULL_TYPE "NULL"
 }  // namespace pir

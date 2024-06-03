@@ -391,7 +391,7 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
     Compute the median along the specified axis.
 
     Args:
-        x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
+        x (Tensor): The input Tensor, it's data type can be float16, float32, float64, int32, int64.
         axis (int, optional): The axis along which to perform median calculations ``axis`` should be int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
             If ``axis`` is less than 0, it works the same way as :math:`axis + D`.
@@ -423,6 +423,7 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
         .. code-block:: python
 
             >>> import paddle
+            >>> import numpy as np
 
             >>> x = paddle.arange(12).reshape([3, 4])
             >>> print(x)
@@ -463,6 +464,28 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
             >>> print(median_indices)
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [1, 1, 1])
+
+            >>> # cases containing nan values
+            >>> x = paddle.to_tensor(np.array([[1,float('nan'),3,float('nan')],[1,2,3,4],[float('nan'),1,2,3]]))
+
+            >>> y6 = paddle.median(x, axis=-1, keepdim=True)
+            >>> print(y6)
+            Tensor(shape=[3, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[nan       ],
+             [2.50000000],
+             [nan       ]])
+
+            >>> median_value, median_indices = paddle.median(x, axis=1, keepdim=True, mode='min')
+            >>> print(median_value)
+            Tensor(shape=[3, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[nan],
+             [2. ],
+             [nan]])
+            >>> print(median_indices)
+            Tensor(shape=[3, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1],
+             [1],
+             [0]])
     """
     if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("In median, the input x should be a Tensor.")
@@ -500,13 +523,13 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
     sz = x.shape[axis]
     kth = sz >> 1
     tensor_topk, idx = paddle.topk(x, kth + 1, axis=axis, largest=False)
-    dtype = (
-        'float64'
-        if x.dtype
-        in [core.VarDesc.VarType.FP64, paddle.base.core.DataType.FLOAT64]
-        else 'float32'
-    )
     if mode == 'avg':
+        dtype = (
+            'float64'
+            if x.dtype
+            in [core.VarDesc.VarType.FP64, paddle.base.core.DataType.FLOAT64]
+            else 'float32'
+        )
         if sz & 1 == 0:
             out_tensor = paddle.slice(
                 tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]
@@ -521,6 +544,11 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
                 ),
                 dtype=dtype,
             )
+        out_tensor = out_tensor + paddle.sum(
+            paddle.cast(paddle.isnan(x), dtype=dtype) * x.astype(dtype),
+            axis=axis,
+            keepdim=True,
+        )
     else:  # mode == 'min'
         if sz & 1 == 0:
             out_tensor = paddle.slice(
@@ -538,10 +566,34 @@ def median(x, axis=None, keepdim=False, mode='avg', name=None):
                 out_idx = paddle.slice(
                     idx, axes=[axis], starts=[kth], ends=[kth + 1]
                 )
+        # if contain nan on axis, return nan for that axis
+        out_tensor = out_tensor + paddle.sum(
+            paddle.cast(paddle.isnan(x), dtype=x.dtype) * x,
+            axis=axis,
+            keepdim=True,
+        ).astype(x.dtype)
+        if need_idx:
+            # replace index using the first nan value's index on axis for out_idx
+            # topk is not stable on cpu device, use argsort instead
+            x_isnan = paddle.isnan(x).astype("int64")
+            x_all_zero = paddle.zeros_like(x_isnan)
+            index_along_axis = paddle.argsort(
+                x_all_zero, axis=axis, stable=True
+            )
 
-    out_tensor = out_tensor + paddle.sum(
-        paddle.cast(paddle.isnan(x), dtype=dtype) * x, axis=axis, keepdim=True
-    )
+            # find the index of the leading one in x_isnan
+            cumsum = x_isnan.cumsum(axis=axis)
+            x_isnan = x_isnan * paddle.where(cumsum > 1, 0, 1)
+
+            nan_index = paddle.sum(
+                index_along_axis * x_isnan, axis=axis, keepdim=True
+            )
+            nan_index_mask = paddle.sum(x_isnan, axis=axis, keepdim=True)
+            out_idx = (
+                out_idx * paddle.logical_not(nan_index_mask).astype('int64')
+                + nan_index
+            )
+
     if is_flatten:
         if keepdim:
             out_tensor = out_tensor.reshape([1] * dims)
@@ -708,7 +760,7 @@ def _compute_quantile(
         if interpolation == "midpoint":
             return (tensor_upper + tensor_below) / 2
 
-        weights = (index - indices_below).astype(x.dtype)
+        weights = (index - indices_below.astype(index.dtype)).astype(x.dtype)
         # "linear"
         return paddle.lerp(
             tensor_below.astype(x.dtype),

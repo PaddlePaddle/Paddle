@@ -70,12 +70,12 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
     phi::DenseTensor* sentenceScores_temp =
         context.Output<phi::DenseTensor>("SentenceScores");
 
-    if (platform::is_xpu_place(ids->at(0).place())) {
+    if (ids->at(0).place().GetType() == phi::AllocationType::XPU) {
       sentenceIds = new phi::DenseTensor();
       sentenceIds->set_lod(sentenceIds_temp->lod());
     }
 
-    if (platform::is_xpu_place(ids->at(0).place())) {
+    if (ids->at(0).place().GetType() == phi::AllocationType::XPU) {
       sentenceScores = new phi::DenseTensor();
       sentenceScores->set_lod(sentenceScores_temp->lod());
     }
@@ -84,7 +84,7 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
         *ids, *scores, sentenceIds, sentenceScores, beam_size, end_id);
     bs_xpu.apply_xpu<T>();
 
-    if (platform::is_xpu_place(ids->at(0).place())) {
+    if (ids->at(0).place().GetType() == phi::AllocationType::XPU) {
       int r = 0;
       r = CopyTensorByXPU<int64_t>(
           *sentenceIds, sentenceIds_temp, 1, ids->at(0).place());
@@ -111,7 +111,6 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(beam_search_decode,
                           XPU,

@@ -51,7 +51,7 @@ class TestReshapeTranspoeMatmulFusePatternCase1(PassTest):
                 scale_out = paddle.scale(x, scale=0.5)
                 matmul_out = paddle.matmul(scale_out, y)
                 matmul_out = paddle.assign(matmul_out)
-                self.pass_list = ['scale_matmul_fuse_pass']
+                self.pass_attr_list = [{'scale_matmul_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((2, 2, 3, 4)).astype("float32"),
                     "y": np.random.random((2, 2, 4, 3)).astype("float32"),
@@ -103,7 +103,7 @@ class TestReshapeTranspoeMatmulFusePatternCase2(PassTest):
                 scale_out = paddle.scale(y, scale=0.3)
                 matmul_out = paddle.matmul(x, scale_out)
                 matmul_out = paddle.assign(matmul_out)
-                self.pass_list = ['scale_matmul_fuse_pass']
+                self.pass_attr_list = [{'scale_matmul_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "y": np.random.random((5, 5, 5, 5)).astype("float32"),

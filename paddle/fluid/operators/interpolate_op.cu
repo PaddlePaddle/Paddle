@@ -13,7 +13,7 @@
 #include <string>
 
 #include "paddle/fluid/operators/interpolate_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
@@ -946,7 +946,7 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
     auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
     if (out_size != nullptr) {
       phi::DenseTensor sizes;
-      framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
+      framework::TensorCopySync(*out_size, phi::CPUPlace(), &sizes);
       auto size_data = sizes.data<int>();
       out_w = size_data[0];
     }
@@ -956,7 +956,7 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
                     phi::errors::InvalidArgument(
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
-  framework::DDim dim_out;
+  phi::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
     dim_out = {n, c, out_w};
   } else {
@@ -979,8 +979,9 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
   int out_cw = c * out_w;
   int pixelNum = n * out_cw;
 
-  platform::GpuLaunchConfig config =
-      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
+  phi::backends::gpu::GpuLaunchConfig config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                               pixelNum);
 
   if ("linear" == interp_method) {
     KeLinearInterpFw<T><<<config.block_per_grid,
@@ -1041,7 +1042,7 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
     auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
     if (out_size != nullptr) {
       phi::DenseTensor sizes;
-      framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
+      framework::TensorCopySync(*out_size, phi::CPUPlace(), &sizes);
       auto size_data = sizes.data<int>();
       out_h = size_data[0];
       out_w = size_data[1];
@@ -1058,7 +1059,7 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
 
-  framework::DDim dim_out;
+  phi::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
     dim_out = {n, c, out_h, out_w};
   } else {
@@ -1089,8 +1090,9 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
 
   int pixelNum = n * out_chw;
 
-  platform::GpuLaunchConfig config =
-      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
+  phi::backends::gpu::GpuLaunchConfig config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                               pixelNum);
 
   if ("nearest" == interp_method) {
     KeNearestNeighborInterpFw<T>
@@ -1196,7 +1198,7 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
     auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
     if (out_size != nullptr) {
       phi::DenseTensor sizes;
-      framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
+      framework::TensorCopySync(*out_size, phi::CPUPlace(), &sizes);
       auto size_data = sizes.data<int>();
       out_d = size_data[0];
       out_h = size_data[1];
@@ -1219,7 +1221,7 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
                         "out_w in Attr(out_shape) of Op(interpolate) "
                         "should be greater than 0."));
 
-  framework::DDim dim_out;
+  phi::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
     dim_out = {n, c, out_d, out_h, out_w};
   } else {
@@ -1255,8 +1257,9 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
 
   int pixelNum = n * out_cdhw;
 
-  platform::GpuLaunchConfig config =
-      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
+  phi::backends::gpu::GpuLaunchConfig config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                               pixelNum);
 
   if ("trilinear" == interp_method) {
     KeTrilinearInterpFw<T>
@@ -1315,7 +1318,7 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
   auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
   if (out_size != nullptr) {
     phi::DenseTensor sizes;
-    framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
+    framework::TensorCopySync(*out_size, phi::CPUPlace(), &sizes);
     auto size_data = sizes.data<int>();
     out_w = size_data[0];
   }
@@ -1327,7 +1330,7 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
   }
 
   auto* output_grad_data = output_grad.data<T>();
-  framework::DDim dim_grad;
+  phi::DDim dim_grad;
   if (data_layout == DataLayout::kNCHW) {
     dim_grad = {n, c, in_w};
   } else {
@@ -1353,8 +1356,9 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
   int out_cw = c * out_w;
   int pixelNum = n * out_cw;
 
-  platform::GpuLaunchConfig config =
-      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
+  phi::backends::gpu::GpuLaunchConfig config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                               pixelNum);
 
   if ("linear" == interp_method) {
     KeLinearInterpBw<T>
@@ -1408,7 +1412,7 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
   auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
   if (out_size != nullptr) {
     phi::DenseTensor sizes;
-    framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
+    framework::TensorCopySync(*out_size, phi::CPUPlace(), &sizes);
     auto size_data = sizes.data<int>();
     out_h = size_data[0];
     out_w = size_data[1];
@@ -1422,7 +1426,7 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
   }
 
   auto* output_grad_data = output_grad.data<T>();
-  framework::DDim dim_grad;
+  phi::DDim dim_grad;
   if (data_layout == DataLayout::kNCHW) {
     dim_grad = {n, c, in_h, in_w};
   } else {
@@ -1457,8 +1461,9 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
 
   int pixelNum = n * out_chw;
 
-  platform::GpuLaunchConfig config =
-      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
+  phi::backends::gpu::GpuLaunchConfig config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                               pixelNum);
 
   if ("nearest" == interp_method) {
     KeNearestNeighborInterpBw<T>
@@ -1556,7 +1561,7 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
   auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
   if (out_size != nullptr) {
     phi::DenseTensor sizes;
-    framework::TensorCopySync(*out_size, platform::CPUPlace(), &sizes);
+    framework::TensorCopySync(*out_size, phi::CPUPlace(), &sizes);
     auto size_data = sizes.data<int>();
     out_d = size_data[0];
     out_h = size_data[1];
@@ -1572,7 +1577,7 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
   }
 
   auto* output_grad_data = output_grad.data<T>();
-  framework::DDim dim_grad;
+  phi::DDim dim_grad;
   if (data_layout == DataLayout::kNCHW) {
     dim_grad = {n, c, in_d, in_h, in_w};
   } else {
@@ -1611,8 +1616,9 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
 
   int pixelNum = n * out_cdhw;
 
-  platform::GpuLaunchConfig config =
-      platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
+  phi::backends::gpu::GpuLaunchConfig config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(ctx.cuda_device_context(),
+                                               pixelNum);
 
   if ("trilinear" == interp_method) {
     KeTrilinearInterpBw<T>
@@ -1646,7 +1652,7 @@ class InterpolateOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
         phi::errors::NotFound("This kernel only runs on GPU device."));
     auto* input = ctx.Input<phi::DenseTensor>("X");
@@ -1668,7 +1674,7 @@ class InterpolateGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
         phi::errors::NotFound("This kernel only runs on GPU device."));
     auto* input_grad =

@@ -22,7 +22,7 @@
 #include "paddle/cinn/auto_schedule/task/task_registry.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/schedule_desc.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace auto_schedule {
 
@@ -42,8 +42,10 @@ proto::TuningRecord TuningRecord::ToProto() const {
 
 Database::Database(int capacity_per_task)
     : capacity_per_task_(capacity_per_task) {
-  CHECK_GT(capacity_per_task_, 0)
-      << "capacity_per_task_ should be greater than 0";
+  PADDLE_ENFORCE_GT(capacity_per_task_,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "capacity_per_task_ should be greater than 0"));
 }
 
 std::unique_ptr<Database> Database::Make(const DatabaseConfig& config) {

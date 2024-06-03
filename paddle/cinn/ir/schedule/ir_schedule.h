@@ -196,11 +196,6 @@ class IRSchedule {
    * @return The buffer's cache.
    */
 
-  void Broadcast(const std::string& block_name, const BroadcastInfo& info);
-
-  void BroadcastToElementwise(const std::string& block_name,
-                              const std::vector<int64_t>& axes);
-
   Expr CacheRead(const Expr& block,
                  int read_buffer_index,
                  const std::string& memory_type);

@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/sparse/unary.h"
-
 #include "paddle/phi/core/infermeta_utils.h"
 
 namespace phi {

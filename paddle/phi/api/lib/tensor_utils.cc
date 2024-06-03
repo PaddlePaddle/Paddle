@@ -37,7 +37,7 @@ phi::Place GetPlaceFromPtr(void* data) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10000
-  cudaPointerAttributes attr;
+  cudaPointerAttributes attr = {};
   cudaError_t status = cudaPointerGetAttributes(&attr, data);
   if (status == cudaSuccess && attr.type == cudaMemoryTypeDevice) {
     return phi::GPUPlace(attr.device);
@@ -48,7 +48,7 @@ phi::Place GetPlaceFromPtr(void* data) {
                                  "supported when CUDA version >= 10.0."));
 #endif
 #else
-  hipPointerAttribute_t attr;
+  hipPointerAttribute_t attr = {};
   hipError_t status = hipPointerGetAttributes(&attr, data);
   if (status == hipSuccess && attr.memoryType == hipMemoryTypeDevice) {
     return phi::GPUPlace(attr.device);
@@ -152,7 +152,7 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
     }
 
     if (dist_tensor->dist_attr() != dist_attr) {
-      auto tensor_name = (input.name() == "" ? "None" : input.name());
+      auto tensor_name = (input.name().empty() ? "None" : input.name());
       VLOG(4) << "Reshard func: tensor(" << tensor_name << ") "
               << paddle::experimental::ReshardDebugInfo(*dist_tensor,
                                                         dist_attr);

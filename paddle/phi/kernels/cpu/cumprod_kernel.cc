@@ -27,11 +27,21 @@ template <typename T, typename Context>
 void CumprodKernel(const Context& dev_ctx,
                    const DenseTensor& input,
                    int dim,
+                   bool exclusive,
+                   bool reverse,
                    DenseTensor* out) {
   const DenseTensor* x = &input;
   auto* x_data = x->data<T>();
-  auto* out_data = dev_ctx.template Alloc<T>(out);
+  auto* out_ptr = dev_ctx.template Alloc<T>(out);
   DDim shape = x->dims();
+  DenseTensor out_tmp;
+  T* out_data = nullptr;
+  if (x_data == out_ptr) {
+    out_tmp.Resize(shape);
+    out_data = dev_ctx.template Alloc<T>(&out_tmp);
+  } else {
+    out_data = out_ptr;
+  }
 
   size_t outer_dim = 1;
   size_t mid_dim = 1;
@@ -41,18 +51,53 @@ void CumprodKernel(const Context& dev_ctx,
     phi::Copy<Context>(dev_ctx, input, dev_ctx.GetPlace(), false, out);
     return;
   }
-
-  for (size_t i = 0; i < outer_dim; i++) {
-    for (size_t j = 0; j < mid_dim; j++) {
-      for (size_t k = 0; k < inner_dim; k++) {
-        size_t pos = i * mid_dim * inner_dim + j * inner_dim + k;
-        if (j == 0) {
-          out_data[pos] = x_data[pos];
-        } else {
-          out_data[pos] = out_data[pos - inner_dim] * x_data[pos];
+  if (reverse == false) {
+    for (size_t i = 0; i < outer_dim; i++) {
+      for (size_t j = 0; j < mid_dim; j++) {
+        for (size_t k = 0; k < inner_dim; k++) {
+          size_t pos = i * mid_dim * inner_dim + j * inner_dim + k;
+          if (j == 0) {
+            if (exclusive) {
+              out_data[pos] = static_cast<T>(1.0);
+            } else {
+              out_data[pos] = x_data[pos];
+            }
+          } else {
+            if (exclusive) {
+              out_data[pos] =
+                  out_data[pos - inner_dim] * x_data[pos - inner_dim];
+            } else {
+              out_data[pos] = out_data[pos - inner_dim] * x_data[pos];
+            }
+          }
         }
       }
     }
+  } else {
+    for (size_t i = 0; i < outer_dim; i++) {
+      for (size_t j = mid_dim; j > 0; j--) {
+        for (size_t k = 0; k < inner_dim; k++) {
+          size_t pos = i * mid_dim * inner_dim + (j - 1) * inner_dim + k;
+          if (j == mid_dim) {
+            if (exclusive) {
+              out_data[pos] = static_cast<T>(1.0);
+            } else {
+              out_data[pos] = x_data[pos];
+            }
+          } else {
+            if (exclusive) {
+              out_data[pos] =
+                  out_data[pos + inner_dim] * x_data[pos + inner_dim];
+            } else {
+              out_data[pos] = out_data[pos + inner_dim] * x_data[pos];
+            }
+          }
+        }
+      }
+    }
+  }
+  if (x_data == out_ptr) {
+    memcpy(out_ptr, out_data, out->numel() * sizeof(T));
   }
 }
 

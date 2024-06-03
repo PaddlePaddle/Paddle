@@ -31,7 +31,6 @@ DEFINE_ACTIVATION_CUDA_KERNEL(SoftRelu,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(soft_relu,
                           GPU,
@@ -40,7 +39,7 @@ PD_REGISTER_STRUCT_KERNEL(soft_relu,
                           float,
                           double,
                           phi::dtype::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::bfloat16) {}
 PD_REGISTER_STRUCT_KERNEL(soft_relu_grad,
                           GPU,
                           ALL_LAYOUT,
@@ -48,4 +47,4 @@ PD_REGISTER_STRUCT_KERNEL(soft_relu_grad,
                           float,
                           double,
                           phi::dtype::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::bfloat16) {}
