@@ -83,10 +83,8 @@ std::optional<pir::Value> InsertGenerateShapeOpToRunFirst(
                                    &symbol_bindings);
   if (success) {
     return builder
-        ->Build<cinn::dialect::GenerateShapeOp>(minimal_inputs,
-                                                output_dim_expr_attrs,
-                                                symbol_bindings,
-                                                value.type())
+        ->Build<cinn::dialect::GenerateShapeOp>(
+            minimal_inputs, output_dim_expr_attrs, symbol_bindings)
         .out();
   }
   return std::nullopt;

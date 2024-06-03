@@ -233,24 +233,17 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
                                                   &rhs_symbol_bindings);
   CHECK(success);
 
-  auto out_type = paddle::dialect::DenseTensorType::get(
-      builder.ir_context(),
-      pir::Int64Type::get(builder.ir_context()),
-      ::common::make_ddim({1}));
-
   auto lhs_value =
       builder
           .Build<cinn::dialect::GenerateShapeOp>(lhs_minimal_inputs,
                                                  lhs_output_dim_expr_attrs,
-                                                 lhs_symbol_bindings,
-                                                 out_type)
+                                                 lhs_symbol_bindings)
           .out();
   auto rhs_value =
       builder
           .Build<cinn::dialect::GenerateShapeOp>(rhs_minimal_inputs,
                                                  rhs_output_dim_expr_attrs,
-                                                 rhs_symbol_bindings,
-                                                 out_type)
+                                                 rhs_symbol_bindings)
           .out();
 
   auto const_one = builder

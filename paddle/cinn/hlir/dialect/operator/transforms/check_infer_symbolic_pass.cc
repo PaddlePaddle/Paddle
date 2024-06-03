@@ -232,7 +232,7 @@ class BlockDimExprsAsserter {
     };
     std::vector<pir::Value> input_tensors{};
     std::vector<pir::Attribute> output_dim_expr_attrs{};
-    SymbolBindings symbol_bindings{};
+    GenerateShapeOp::SymbolBindings symbol_bindings{};
     bool success =
         MakeGenerateShapeOpAttribute(ir_ctx_,
                                      LocalDimExprs4Value,
@@ -242,13 +242,14 @@ class BlockDimExprsAsserter {
                                      &output_dim_expr_attrs,
                                      &symbol_bindings);
     if (!success) return std::nullopt;
-    auto out_type = paddle::dialect::DenseTensorType::get(
-        builder_.ir_context(),
-        pir::Int64Type::get(builder_.ir_context()),
-        ::common::make_ddim({dim_exprs.size()}));
+    auto out_shape_value =
+        builder_
+            .Build<cinn::dialect::GenerateShapeOp>(
+                input_tensors, output_dim_expr_attrs, symbol_bindings)
+            .out();
     return builder_
         .Build<cinn::dialect::GenerateShapeOp>(
-            input_tensors, output_dim_expr_attrs, symbol_bindings, out_type)
+            input_tensors, output_dim_expr_attrs, symbol_bindings)
         .out();
   }
 
@@ -297,11 +298,8 @@ class BlockDimExprsAsserter {
     PADDLE_ENFORCE_EQ(lhs_numel,
                       rhs_numel,
                       ::common::errors::InvalidArgument(
-                          "Check [%s id:%d] infer symbolic shape failed."
                           "The numel of lhs and rhs must be equal, but "
                           "received lhs's numel is [%d], rhs's numel is [%d]",
-                          op->name(),
-                          op->id(),
                           lhs_numel,
                           rhs_numel));
 
@@ -328,8 +326,8 @@ class BlockDimExprsAsserter {
             .out();
     auto assert_op = builder_.Build<paddle::dialect::AssertOp>(
         all_eq, assert_data, lhs_numel);
-    const std::string error_msg = "Check [" + op->name() +
-                                  " id:" + std::to_string(op->id()) +
+    const std::string error_msg = "Check [" + op->name() + "_" +
+                                  std::to_string(op->id()) +
                                   "] infer symbolic shape failed.";
     assert_op->set_attribute(
         paddle::dialect::AssertOp::ERROR_INFO_ATTR_NAME,

@@ -168,8 +168,7 @@ class IR_API GenerateShapeOp
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::Value> &inputs,
                     const std::vector<pir::Attribute> &output_dim_exprs,
-                    const SymbolBindings &symbol_bindings,
-                    const pir::Type &output_type);
+                    const SymbolBindings &symbol_bindings);
 
   void VerifySig() {}
 
