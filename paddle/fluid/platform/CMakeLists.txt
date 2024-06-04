@@ -104,11 +104,14 @@ if(WITH_GLOO)
     DEPS framework_proto gloo_wrapper enforce common)
 endif()
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../pir/dialect/operator/ir)
 # separate init from device_context to avoid cycle dependencies
 cc_library(
   init
-  SRCS init.cc
+  SRCS init.cc ../
   DEPS device_context phi common fluid_memory)
+
+target_sources(init PRIVATE ../pir/dialect/operator/ir/op_dialect.cc)
 
 #fluid_memory depends on device_context, here add deps individually for
 # avoiding cycle dependencies
