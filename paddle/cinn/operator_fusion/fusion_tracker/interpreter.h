@@ -13,14 +13,30 @@
 // limitations under the License.
 
 #pragma once
+#include <functional>
+#include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
+#include "paddle/cinn/operator_fusion/fusion_tracker/tracker.h"
 #include "paddle/cinn/operator_fusion/pattern.h"
 #include "paddle/cinn/operator_fusion/pattern_fuser.h"
 
 namespace cinn::fusion {
-struct FusionScope {};
-struct FusionInterpreter {};
 
-using TrivialOp = cinn::hlir::framework::pir::trivial_fusion_detail::TrivialOp;
-using ReduceOp = cinn::hlir::framework::pir::trivial_fusion_detail::ReduceOp;
-using FusionOp = std::variant<ReduceOp, TrivialOp>;
+struct PatternExpr {
+  std::vector<ir::Expr> exprs;
+};
+using PatternExprPtr = std::shared_ptr<PatternExpr>;
+
+struct FusionInterpreter {
+  FusionInterpreter(
+      const FusionTrackerPtr& tracker,
+      const std::unordered_map<pir::Operator*, ir::Expr>& lowered_expr)
+      : tracker(tracker), lowered_expr(lowered_expr) {}
+
+  std::unordered_map<pir::Operator*, ir::Expr> lowered_expr;
+  std::unordered_map<std::string, PatternExprPtr> scope;
+  FusionTrackerPtr tracker;
+
+  PatternExpr Run();
+};
+
 }  // namespace cinn::fusion

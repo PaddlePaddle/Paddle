@@ -17,37 +17,81 @@
 
 namespace cinn::fusion {
 
+enum InstructionType {
+  T_Rename,
+  T_Combine,
+  T_Return,
+  T_InitPattern,
+  T_TrivialInline,
+  T_TmpTransform,
+  T_TmpTransformWithFakeReduceIter,
+  T_AnchorTransform,
+};
+
 struct FusionInstruction {
-  virtual size_t hash() const;
-  virtual bool operator==(const FusionInstruction& other) const;
+  virtual InstructionType type();
 };
 
 using FusionInstrPtr = std::shared_ptr<FusionInstruction>;
 
+struct RenamePatternInstr : public FusionInstruction {
+  RenamePatternInstr(const std::string& origin_name,
+                     const std::string& new_name)
+      : origin_name_(origin_name), new_name_(new_name) {}
+  virtual InstructionType type() { return T_Rename; }
+  std::string origin_name_;
+  std::string new_name_;
+};
+
+struct CombineInstr : public FusionInstruction {
+  CombineInstr(const std::string& first,
+               const std::string& second,
+               const std::string& result)
+      : first_(first), second_(second), result_(result) {}
+  virtual InstructionType type() { return T_Combine; }
+  std::string first_;
+  std::string second_;
+  std::string result_;
+};
+
+struct ReturnInstr : public FusionInstruction {
+  RenamePatternInstr(const std::string& ret_name) : ret_name_(ret_name) {}
+  virtual InstructionType type() { return T_Return; }
+  std::string ret_name_;
+};
+
+// struct RemovePatternInstr : public FusionInstruction {};
+
 struct InitPatternInstr : public FusionInstruction {
   InitPatternInstr(pir::Operation* op, const std::string& result)
       : op_(op), result_(result) {}
+  virtual InstructionType type() { return T_InitPattern; }
   pir::Operation* op_;
   std::string result_;
 };
+
 struct TrivialInlineInstr : public FusionInstruction {
   TrivialInlineInstr(const std::string& upstream,
                      const std::string& downstream,
                      const std::string& result)
       : upstream_(upstream), downstream_(downstream), result_(result) {}
+  virtual InstructionType type() { return T_TrivialInline; }
   std::string upstream_;
   std::string downstream_;
   std::string result_;
 };
+
 struct TmpTransformInstr : public FusionInstruction {
   TmpTransformInstr(const std::string& upstream,
                     const std::string& downstream,
                     const std::string& result)
       : upstream_(upstream), downstream_(downstream), result_(result) {}
+  virtual InstructionType type() { return T_TmpTransform; }
   std::string upstream_;
   std::string downstream_;
   std::string result_;
 };
+
 struct TmpTransformWithFakeReduceIterInstr : public FusionInstruction {
   TmpTransformWithFakeReduceIterInstr(
       const std::string& upstream,
@@ -58,11 +102,13 @@ struct TmpTransformWithFakeReduceIterInstr : public FusionInstruction {
         downstream_(downstream),
         result_(result),
         fake_reduce_iter_idx_(fake_reduce_iter_idx) {}
+  virtual InstructionType type() { return T_TmpTransformWithFakeReduceIter; }
   std::string upstream_;
   std::string downstream_;
   std::string result_;
   std::vector<size_t> fake_reduce_iter_idx_;
 };
+
 struct AnchorTransformInstr : public FusionInstruction {
   AnchorTransformInstr(const std::string& upstream,
                        const std::string& downstream,
@@ -74,29 +120,13 @@ struct AnchorTransformInstr : public FusionInstruction {
         result_(result),
         transform_route_(transform_route),
         is_upstream_anchor_(is_upstream_anchor) {}
+  virtual InstructionType type() { return T_AnchorTransform; }
   std::string upstream_;
   std::string downstream_;
   std::string result_;
   AnchorTransformRoute transform_route_;
   bool is_upstream_anchor_;
 };
-struct CombineInstr : public FusionInstruction {
-  CombineInstr(const std::string& first,
-               const std::string& second,
-               const std::string& result)
-      : first_(first), second_(second), result_(result) {}
-  std::string first_;
-  std::string second_;
-  std::string result_;
-};
-struct RenamePatternInstr : public FusionInstruction {
-  RenamePatternInstr(const std::string& origin_name,
-                     const std::string& new_name)
-      : origin_name_(origin_name), new_name_(new_name) {}
-  std::string origin_name_;
-  std::string new_name_;
-};
-// struct RemovePatternInstr : public FusionInstruction {};
 
 struct FusionTracker {
   using FusionTrackerPtr = std::shared_ptr<FusionTracker>;
@@ -107,7 +137,6 @@ struct FusionTracker {
   }
   void append(FusionInstrPtr instr) { instructions_.emplace_back(instr); }
   std::string DebugStr() const;
-
   std::vector<FusionInstrPtr> instructions_;
 };
 

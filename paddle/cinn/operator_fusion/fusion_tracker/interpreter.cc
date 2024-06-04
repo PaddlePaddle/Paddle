@@ -21,6 +21,10 @@
 
 namespace cinn::fusion {
 
+using TrivialOp = cinn::hlir::framework::pir::trivial_fusion_detail::TrivialOp;
+using ReduceOp = cinn::hlir::framework::pir::trivial_fusion_detail::ReduceOp;
+using FusionOp = std::variant<ReduceOp, TrivialOp>;
+
 template <>
 StmtPattern<BackendStage> ConvertToStmtPattern(
     const PatternContent<BackendStage>& content) {
@@ -488,6 +492,53 @@ TrivialPattern<BackendStage> RecoverAnchorPatternToTrivial(
       anchor_pattern.anchor().defining_op(),
       std::get<TrivialOp>(
           anchor_pattern.anchor_state.promise[0].root_fusion_op));
+}
+
+void RunRenameInstr(const FusionInstrPtr& instr, FusionInterpreter* scope);
+void RunCombineInstr(const FusionInstrPtr& instr, FusionInterpreter* scope);
+void RunReturnInstr(const FusionInstrPtr& instr, FusionInterpreter* scope);
+void RunInitPatternInstr(const FusionInstrPtr& instr, FusionInterpreter* scope);
+void RunTrivialInlineInstr(const FusionInstrPtr& instr,
+                           FusionInterpreter* scope);
+void RunTmpTransformInstr(const FusionInstrPtr& instr,
+                          FusionInterpreter* scope);
+void RunTmpTransformWithFakeReduceIterInstr(const FusionInstrPtr& instr,
+                                            FusionInterpreter* scope);
+void RunAnchorTransformInstr(const FusionInstrPtr& instr,
+                             FusionInterpreter* scope);
+
+PatternExpr FusionInterpreter::Run() {
+  for (const auto instr : tracker->instructions_) {
+    switch (instr->type()) {
+      case T_Rename:
+        RunRenameInstr(instr, this);
+        break;
+      case T_Combine:
+        RunCombineInstr(instr, this);
+        break;
+      case T_InitPattern:
+        RunInitPatternInstr(instr, this);
+        break;
+      case T_TrivialInline:
+        RunTrivialInlineInstr(instr, this);
+        break;
+      case T_TmpTransform:
+        RunTmpTransformInstr(instr, this);
+        break;
+      case T_TmpTransformWithFakeReduceIter:
+        RunTmpTransformWithFakeReduceIterInstr(instr, this);
+        break;
+      case T_AnchorTransform:
+        RunAnchorTransformInstr(instr, this);
+        break;
+      case T_Return:
+        auto ret_ptr = std::dynamic_pointer_cast<ReturnInstr>(instr);
+        if (!ret_ptr) PADDLE_THROW("Non ReturnInstr return T_Return as type.");
+        return scope[ret_ptr->ret_name_];
+      default:
+        PADDLE_THROW("Unsupported Fusion Instrution");
+    }
+  }
 }
 
 }  // namespace cinn::fusion
