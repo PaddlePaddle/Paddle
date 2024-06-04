@@ -314,6 +314,9 @@ void InferSymExprForAllValues(ModuleOp module_op) {
   auto infer_context = shape_analysis.MutInferSymbolicShapeContext();
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
+      for (auto& [_, value] : block.kwargs()) {
+        infer_context->SetSymbolForValueByStaticShape(value);
+      }
       InferSymExprForBlock(block, infer_context);
     }
   }
