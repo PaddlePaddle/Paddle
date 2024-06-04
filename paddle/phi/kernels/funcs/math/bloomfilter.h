@@ -19,7 +19,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef __APPLE__
+#include <sys/sysctl.h>
+#include <sys/types.h>
+#elif defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif
+#include <windows.h>
+#else
 #include <unistd.h>
+#endif  // _WIN32
+
 #include <cinttypes>
 
 namespace phi {
@@ -35,10 +47,10 @@ struct bloomfilter {
 };
 #pragma pack(pop)
 
-int bloomfilter_get(const struct bloomfilter *bloomfilter,
-                    const void *key,
-                    size_t len);
-int bloomfilter_check(struct bloomfilter *filter);
+inline int bloomfilter_get(const struct bloomfilter *bloomfilter,
+                           const void *key,
+                           size_t len);
+inline int bloomfilter_check(struct bloomfilter *filter);
 
 #define bit_get(v, n) ((v)[(n) >> 3] & (0x1 << (0x7 - ((n)&0x7))))
 #define ROTL64(x, r) (((x) << (r)) | ((x) >> (64 - (r))))
@@ -149,7 +161,7 @@ void murmurhash3_x64_128(const void *key,
   reinterpret_cast<uint64_t *>(out)[1] = h2;
 }
 
-int bloomfilter_check(struct bloomfilter *filter) {
+inline int bloomfilter_check(struct bloomfilter *filter) {
   if (filter->magic_num == BLOOMFILTER_MAGIC_NUM_NEW) {
     return 1;
   } else {
@@ -158,9 +170,9 @@ int bloomfilter_check(struct bloomfilter *filter) {
   }
 }
 
-int bloomfilter_get(const struct bloomfilter *bloomfilter,
-                    const void *key,
-                    size_t len) {
+inline int bloomfilter_get(const struct bloomfilter *bloomfilter,
+                           const void *key,
+                           size_t len) {
   uint32_t i;
   uint64_t result[2];
 

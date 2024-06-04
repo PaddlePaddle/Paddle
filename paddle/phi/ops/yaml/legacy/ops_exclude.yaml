@@ -22,7 +22,6 @@
 - c_sync_calc_stream
 - c_sync_comm_stream
 - cast
-- channel_shuffle
 - conv2d_transpose
 - conv2d_transpose_bias
 - copy_to
