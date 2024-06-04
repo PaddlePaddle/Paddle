@@ -402,6 +402,11 @@ struct UnaryOpNode : public ExprNode<T> {
     return v().type();
   }
 
+  void replace(Expr old_op, Expr new_op) {
+    if (v() == old_op) {
+      v() = new_op;
+    }
+  }
   Expr& v() { return operands().front(); }
   const Expr& v() const { return operands().front(); }
 
