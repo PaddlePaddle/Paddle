@@ -398,5 +398,23 @@ void XPUContext::SetBkclContext(xpu::BKCLContext_t context) {
 
 void XPUContext::CreateStream(int i) { impls_[i]->CreateStream(); }
 
+void XPUContext::RecordEvent(XPUEvent event, int s) {
+  int r = xpu_event_record(event, stream(s));
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
+}
+
+void XPUContext::StreamWaitEvent(XPUEvent event, int s) {
+  int r = xpu_stream_wait_event(stream(s), event);
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
+}
+
+void XPUContext::StreamWaitStream(int wait_stream, int record_stream) {
+  XPUEvent event;
+  int r = xpu_event_create(&event);
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
+  RecordEvent(event, record_stream);
+  StreamWaitEvent(event, wait_stream);
+}
+
 void XPUContext::Init() { impls_[0]->Init(); }
 }  // namespace phi

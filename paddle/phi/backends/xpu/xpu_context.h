@@ -53,6 +53,9 @@ class XPUContext : public DeviceContext,
   xpu::BKCLContext_t bkcl_context() const;
   void SetBkclContext(xpu::BKCLContext_t context);
   void CreateStream(int i = 0);
+  void RecordEvent(XPUEvent event, int s);
+  void StreamWaitEvent(XPUEvent event, int s);
+  void StreamWaitStream(int wait_stream, int record_stream);
 
   // For share external stream.
   void SetStream(void* stream, int i = 0);
