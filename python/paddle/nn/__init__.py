@@ -69,7 +69,9 @@ from .layer.common import (
     Upsample,
     UpsamplingBilinear2D,
     UpsamplingNearest2D,
+    ZeroPad1D,
     ZeroPad2D,
+    ZeroPad3D,
 )
 
 # TODO: import all neural network related api under this directory,
@@ -300,4 +302,6 @@ __all__ = [
     'Unflatten',
     'FractionalMaxPool2D',
     'FractionalMaxPool3D',
+    'ZeroPad1D',
+    'ZeroPad3D',
 ]

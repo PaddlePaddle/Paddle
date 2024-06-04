@@ -744,13 +744,20 @@ void slice_grad(const Tensor& input,
       paddings.push_back(offsets[i]);
       paddings.push_back((in_dims[i] - out_dims[i]) - offsets[i]);
     }
+    Tensor reshape_out_grad;
+    if (out_grad.shape().size() == 0) {
+      reshape_out_grad = full<T>({1}, 1, input.dtype());
+    } else {
+      reshape_out_grad = out_grad;
+    }
+
     if (decrease_size > 0 &&
         (decrease_size != static_cast<size_t>(in_dims.size()))) {
       auto out_tmp =
-          pad<T>(reshape<T>(out_grad, origin_out_shape), paddings, 0.0);
+          pad<T>(reshape<T>(reshape_out_grad, origin_out_shape), paddings, 0.0);
       set_output<T>(out_tmp, input_grad);
     } else {
-      auto out_tmp = pad<T>(out_grad, paddings, 0.0);
+      auto out_tmp = pad<T>(reshape_out_grad, paddings, 0.0);
       set_output<T>(out_tmp, input_grad);
     }
   }

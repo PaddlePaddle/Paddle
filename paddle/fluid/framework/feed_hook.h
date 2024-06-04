@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,12 +14,16 @@
 
 #pragma once
 
-#include "pybind11/pybind11.h"
+namespace pir {
 
-namespace paddle {
-namespace pybind {
+class Program;
 
-void BindParallelExecutor(pybind11::module& m);  // NOLINT
+}
 
-}  // namespace pybind
-}  // namespace paddle
+namespace paddle::framework {
+
+class Scope;
+
+void RunFeedHooks(const pir::Program& program, const Scope& scope);
+
+}  // namespace paddle::framework
