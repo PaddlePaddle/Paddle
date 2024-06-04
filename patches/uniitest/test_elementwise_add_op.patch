@@ -1,0 +1,39 @@
+diff --git a/test/legacy_test/test_elementwise_add_op.py b/test/legacy_test/test_elementwise_add_op.py
+index b6d332f30d..9547f2c1f5 100644
+--- a/test/legacy_test/test_elementwise_add_op.py
++++ b/test/legacy_test/test_elementwise_add_op.py
+@@ -617,6 +617,7 @@ class TestAddApi(unittest.TestCase):
+ 
+     def test_name(self):
+         with base.program_guard(base.Program()):
++            paddle.enable_static()
+             x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
+             y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
+ 
+@@ -625,7 +626,7 @@ class TestAddApi(unittest.TestCase):
+ 
+     def test_declarative(self):
+         with base.program_guard(base.Program()):
+-
++            paddle.enable_static()
+             def gen_data():
+                 return {
+                     "x": np.array([2, 3, 4]).astype('float32'),
+@@ -658,7 +659,7 @@ class TestAddInplaceApi(TestAddApi):
+     def _executed_api(self, x, y, name=None):
+         return x.add_(y, name)
+ 
+-
++@unittest.skipIf(paddle.device.cuda.get_device_name() == "K100_AI", "K100_AI not support fp64")
+ class TestAddInplaceBroadcastSuccess(unittest.TestCase):
+     def init_data(self):
+         self.x_numpy = np.random.rand(2, 3, 4).astype('float')
+@@ -919,7 +920,7 @@ class TestTensorFloa32Float16Add(TestTensorFloa32Bfloat16OrFloat16Add):
+         with base.dygraph.base.guard(place=place):
+             self._floa32_bfloat16_or_float16_add(y_dtype=paddle.float16)
+ 
+-
++@unittest.skipIf(paddle.device.cuda.device_count()==1,"only 1 gpu")
+ class TestElementwiseAddOpAutoParallel(OpTest):
+     def init_kernel_type(self):
+         self.use_mkldnn = False

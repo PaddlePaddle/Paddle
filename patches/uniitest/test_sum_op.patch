@@ -1,0 +1,22 @@
+diff --git a/test/legacy_test/test_sum_op.py b/test/legacy_test/test_sum_op.py
+index 951df097ad..ee55e999b3 100644
+--- a/test/legacy_test/test_sum_op.py
++++ b/test/legacy_test/test_sum_op.py
+@@ -568,7 +568,7 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
+     def init_data(self):
+         self.pd_api = paddle.sum
+         self.np_api = np.sum
+-        self.x = paddle.randn([10, 5, 9, 9], dtype='float64')
++        self.x = paddle.randn([10, 5, 9, 9], dtype='float32')
+         self.np_axis = np.array((1, 2), dtype='int64')
+         self.tensor_axis = paddle.to_tensor(self.np_axis, dtype='int64')
+ 
+@@ -639,7 +639,7 @@ class TestSumWithTensorAxis1(TestReduceOPTensorAxisBase):
+     def init_data(self):
+         self.pd_api = paddle.sum
+         self.np_api = np.sum
+-        self.x = paddle.randn([10, 5, 9, 9], dtype='float64')
++        self.x = paddle.randn([10, 5, 9, 9], dtype='float32')
+         self.np_axis = np.array([0, 1, 2], dtype='int64')
+         self.tensor_axis = [
+             0,

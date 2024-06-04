@@ -1,0 +1,13 @@
+diff --git a/test/legacy_test/test_scale_op.py b/test/legacy_test/test_scale_op.py
+index ab89a4c242..c3e9fe3ca1 100644
+--- a/test/legacy_test/test_scale_op.py
++++ b/test/legacy_test/test_scale_op.py
+@@ -79,7 +79,7 @@ class TestScaleOpSelectedRows(unittest.TestCase):
+     def check_with_place(self, place, in_name, out_name):
+         scope = core.Scope()
+ 
+-        self.dtype = np.float64
++        self.dtype = np.float32
+         self.init_dtype_type()
+ 
+         # create and initialize Grad Variable
