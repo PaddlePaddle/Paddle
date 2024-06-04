@@ -39,6 +39,45 @@ void RewriteByInfermeta(pir::Operation* op, common::DataLayout new_layout) {
 }
 
 template <>
+std::vector<pir::Value> RelevantInputsImpl<AddGroupNormSiluOp>(
+    pir::Operation* op) {
+  auto concrete_op = op->dyn_cast<AddGroupNormSiluOp>();
+  return {concrete_op.x(), concrete_op.residual()};
+}
+
+template <>
+std::vector<pir::Value> RelevantOutputsImpl<AddGroupNormSiluOp>(
+    pir::Operation* op) {
+  auto concrete_op = op->dyn_cast<AddGroupNormSiluOp>();
+  return {concrete_op.y(), concrete_op.residual_out()};
+}
+
+template <>
+common::DataLayout PreferLayoutImpl<AddGroupNormSiluOp>(pir::Operation* op) {
+  // Note(bukejiyu): add_group_norm_silu only supports NHWC layout now.
+  return common::DataLayout::NHWC;
+}
+
+template <>
+void RewriteByLayoutImpl<AddGroupNormSiluOp>(pir::Operation* op,
+                                             common::DataLayout new_layout) {
+  op->set_attribute(
+      "data_format",
+      pir::StrAttribute::get(pir::IrContext::Instance(),
+                             common::DataLayoutToString(new_layout)));
+
+  std::vector<pir::Type> new_outputs = AddGroupNormSiluOp::InferMeta(
+      op->operands_source(), const_cast<pir::AttributeMap*>(&op->attributes()));
+  for (size_t i = 0; i < new_outputs.size(); ++i) {
+    op->result(i).set_type(new_outputs[i]);
+  }
+
+  for (auto value : RelevantOutputsImpl<AddGroupNormSiluOp>(op)) {
+    SetNewLayoutForValue(value, new_layout);
+  }
+}
+
+template <>
 common::DataLayout PreferLayoutImpl<Conv2dOp>(pir::Operation* op) {
   auto data_format_attr = op->attribute<pir::StrAttribute>("data_format");
   if (!data_format_attr) {
@@ -96,6 +135,14 @@ common::DataLayout PreferLayoutImpl<FusedConv2dAddActOp>(pir::Operation* op) {
 
   auto original_layout =
       common::StringToDataLayout(data_format_attr.AsString());
+
+  if (op->HasAttribute(kForceBackendAttr) &&
+      op->attributes()
+              .at(kForceBackendAttr)
+              .dyn_cast<pir::StrAttribute>()
+              .AsString() == "gpu") {
+    return common::DataLayout::NHWC;
+  }
 
   auto concrete_op = op->dyn_cast<FusedConv2dAddActOp>();
   if (auto in = concrete_op.input()) {

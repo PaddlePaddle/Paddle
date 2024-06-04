@@ -1826,6 +1826,22 @@
   kernel :
     func : logsumexp_grad
 
+- backward_op : lstm_grad
+  forward: lstm (Tensor input, Tensor h0, Tensor c0, Tensor weight, Tensor bias, bool use_peepholes
+    = true, bool is_reverse = false, bool is_test = false, str gate_activation = "sigmoid",
+    str cell_activation = "tanh", str candidate_activation = "tanh") -> Tensor (hidden), Tensor (cell), Tensor (batch_gate), Tensor (batch_cell_pre_act)
+  args: (Tensor input, Tensor h0, Tensor c0, Tensor weight, Tensor bias, Tensor hidden, Tensor cell,
+    Tensor batch_gate, Tensor batch_cell_pre_act, Tensor hidden_grad, bool use_peepholes, bool is_reverse, bool is_test, str gate_activation,
+    str cell_activation, str candidate_activation)
+  output: Tensor(input_grad), Tensor(h0_grad), Tensor(c0_grad), Tensor(weight_grad), Tensor(bias_grad)
+  infer_meta:
+    func: LSTMGradInferMeta
+    param: [input, h0, c0, weight, bias]
+  kernel:
+    func: lstm_grad
+    data_type: input
+  optional: h0, c0
+
 - backward_op : lu_grad
   forward : lu (Tensor x, bool pivot = true) -> Tensor(out), Tensor(pivots), Tensor(infos)
   args : (Tensor x, Tensor out, Tensor pivots, Tensor out_grad, bool pivot)

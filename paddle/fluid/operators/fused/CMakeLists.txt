@@ -6,7 +6,6 @@ endif()
 register_operators(
   EXCLUDES
   fused_bn_activation_op
-  fusion_group_op
   fused_bn_add_activation_op
   fused_attention_op
   fused_transformer_op
@@ -35,10 +34,6 @@ if(WITH_GPU OR WITH_ROCM)
   # HIP not support cudnnTransformTensor
   # HIP not support cudnnConvolutionBiasActivationForward
   op_library(fused_gate_attention_op)
-  # fusion_group
-  if(NOT APPLE AND NOT WIN32)
-    op_library(fusion_group_op)
-  endif()
   # fused_bn_add_activation
   # HIP not support bn act fuse in MIOPEN
   if((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 7401))

@@ -63,10 +63,10 @@ void RmsNormKernel(const Context& dev_ctx,
   const T* norm_weight_data = norm_weight.data<T>();
   const T* norm_bias_data = norm_bias ? norm_bias.get().data<T>() : nullptr;
   // float* inv_var_data = nullptr;
-  if (inv_var != nullptr) {
-    // inv_var_data = dev_ctx.template Alloc<float>(inv_var);
-    PD_THROW("rms_norm in XPU kernel does not support inv_var output");
-  }
+  // if (inv_var != nullptr) {
+  // inv_var_data = dev_ctx.template Alloc<float>(inv_var);
+  // PD_THROW("rms_norm in XPU kernel does not support inv_var output");
+  // }
 
   int32_t rows = 1;
   int32_t cols = 1;

@@ -356,7 +356,10 @@ bool DrrRewritePattern::MatchFromOutputToInput(
       break;
     }
     // Step 1: Bind Operation of current op to match_ctx.
-    source_pattern_match_ctx->BindIrOperation(drr_node, ir_node);
+    if (!source_pattern_match_ctx->BindIrOperation(drr_node, ir_node)) {
+      matched = false;
+      break;
+    }
 
     // Step 2: Bind input_tensor of current op to match_ctx.
     const auto& drr_input_tensors = drr_node->inputs();
@@ -391,7 +394,7 @@ bool DrrRewritePattern::MatchFromOutputToInput(
           ir_input_values[i].use_count()) {
         matched = false;
         VLOG(8) << drr_node->name() << " Match failed: consumers of drr intput["
-                << i << "] { " << drr_node->outputs().size()
+                << i << "] { " << drr_input_tensors[i]->consumers().size()
                 << " } != consumers of pir intput[" << i << "] { "
                 << ir_input_values[i].use_count() << " }.";
         break;
