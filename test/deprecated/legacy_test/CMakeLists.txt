@@ -824,3 +824,4 @@ set_pir_tests_properties()
 
 set_tests_properties(test_reduce_as_op PROPERTIES TIMEOUT 30)
 set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)
+set_tests_properties(test_inference_api_deprecated PROPERTIES TIMEOUT 100)

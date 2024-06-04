@@ -184,7 +184,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_functional_conv3d$|\
 ^test_functional_conv3d_transpose$|\
 ^test_imperative_layer_children$|\
-^test_inference_api$|\
+^test_inference_api_deprecated$|\
 ^test_trans_layout_op$|\
 ^test_pool2d_op$|\
 ^test_conv3d_transpose_op$|\
@@ -211,7 +211,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_callback_visualdl$|\
 ^test_callback_wandb$|\
 ^test_user_defined_quantization$|\
-^test_quantization_scale_pass$|\
+^test_quantization_scale_pass_deprecated$|\
 ^test_quantization_pass$|\
 ^test_imperative_qat$|\
 ^test_graph$|\

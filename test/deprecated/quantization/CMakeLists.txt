@@ -280,3 +280,6 @@ if(APPLE)
                                                                         300)
   set_tests_properties(test_imperative_skip_op PROPERTIES TIMEOUT 300)
 endif()
+
+set_tests_properties(test_quantization_scale_pass_deprecated PROPERTIES TIMEOUT
+                                                                        100)
