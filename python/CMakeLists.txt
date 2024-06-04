@@ -25,7 +25,7 @@ set(PY_FILES paddle/__init__.py ${UTILS_PY_FILES} ${FLUID_PY_FILES})
 if(WITH_GPU)
   set(PACKAGE_NAME "paddlepaddle-gpu")
 elseif(WITH_ROCM)
-  set(PACKAGE_NAME "paddlepaddle-rocm")
+  set(PACKAGE_NAME "paddlepaddle-dcu")
 elseif(WITH_XPU)
   set(PACKAGE_NAME "paddlepaddle-xpu")
 elseif(WITH_IPU)
@@ -173,17 +173,10 @@ endif()
 
 add_custom_target(paddle_python ALL
                   DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
+
 if(BUILD_WHL_PACKAGE AND NOT WITH_SETUP_INSTALL)
-  add_custom_target(
-    paddle_copy ALL
-    # generate tensor.pyi for type hints
-    COMMAND
-      ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python
-      ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/gen_tensor_stub.py
-      --input-file
-      ${PADDLE_SOURCE_DIR}/python/paddle/tensor/tensor.prototype.pyi
-      --output-file ${PADDLE_BINARY_DIR}/python/paddle/tensor/tensor.pyi
-    DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel)
+  add_custom_target(paddle_copy ALL
+                    DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel)
   add_dependencies(paddle_copy paddle_python)
 endif()
 
