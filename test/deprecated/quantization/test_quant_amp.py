@@ -15,10 +15,12 @@
 
 import logging
 import os
+import sys
 import unittest
-from test.deprecated.quantization.test_quant_aware_deprecated import MobileNet
 
+sys.path.append(".")
 import numpy as np
+from test_quant_aware_deprecated import MobileNet
 
 import paddle
 from paddle.static.quantization.quanter import convert, quant_aware

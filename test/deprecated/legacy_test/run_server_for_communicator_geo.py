@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import os
-from test.deprecated.legacy_test.test_communicator_geo_deprecated import (
+import sys
+
+sys.path.append(".")
+from test_communicator_geo_deprecated import (
     TestCommunicatorGeoEnd2End,
 )
 

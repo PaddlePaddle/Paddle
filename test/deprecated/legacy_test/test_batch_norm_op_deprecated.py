@@ -24,6 +24,8 @@ import paddle
 from paddle import base
 from paddle.base import core
 
+paddle.enable_static()
+
 _set_use_system_allocator(True)
 
 
