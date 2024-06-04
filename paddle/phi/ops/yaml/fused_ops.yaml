@@ -685,3 +685,15 @@
     func : yolo_box_xpu
     data_type : x
   optional : x_max
+
+- op: add_group_norm_silu
+  args : (Tensor x,Tensor residual, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_format = "NCHW", str activation = "")
+  output : Tensor(y), Tensor(residual_out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : AddGroupNormSiluInferMeta
+  kernel :
+    func : add_group_norm_silu
+    data_type : x
+  optional : scale, bias, residual, residual_out
+  support_dygraph_mode : true
+  interfaces : paddle::dialect::LayoutTransformationInterface
