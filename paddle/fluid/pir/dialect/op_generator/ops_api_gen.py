@@ -262,14 +262,9 @@ class OpsAPIGen(CodeGen):
             return FUNCTION_IMPL_TEMPLATE.format(name=name)
 
     def _gen_sparse_one_function_impl(self, name, name_suffix):
-        if name in NEED_GEN_STATIC_ONLY_APIS:
-            return SPARSE_STATIC_ONLY_FUNCTION_IMPL_TEMPLATE.format(
-                name=name, name_suffix=name_suffix
-            )
-        else:
-            return SPARSE_FUNCTION_IMPL_TEMPLATE.format(
-                name=name, name_suffix=name_suffix
-            )
+        return SPARSE_FUNCTION_IMPL_TEMPLATE.format(
+            name=name, name_suffix=name_suffix
+        )
 
     def _gen_one_ops_api(self, name):
         return OPS_API_TEMPLATE.format(name=name)
