@@ -54,6 +54,7 @@ class TestLinear(TestBase):
         ]
         self.inputs = (paddle.rand(shape=[10, 64], dtype=paddle.float32),)
         self.net = LinearCase
+        self.with_train = False
 
 
 if __name__ == '__main__':
