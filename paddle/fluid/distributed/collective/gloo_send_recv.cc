@@ -20,8 +20,7 @@
 #include "gloo/types.h"
 #include "paddle/fluid/distributed/collective/gloo_send_recv.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 void send_recv(SendRecvOptions* opts) {
   const auto& context = opts->context;
@@ -38,5 +37,4 @@ void send_recv(SendRecvOptions* opts) {
   }
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

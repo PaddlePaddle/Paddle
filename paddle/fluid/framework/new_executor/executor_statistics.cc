@@ -35,8 +35,7 @@ PADDLE_DEFINE_EXPORTED_string(static_executor_perfstat_filepath,
                               "enables performance statistics for the static "
                               "graph executor.");
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class StatisticsEngine {
  public:
@@ -632,5 +631,4 @@ void StaticGraphExecutorPerfStatistics(
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

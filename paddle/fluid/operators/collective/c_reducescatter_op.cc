@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CReduceScatterOp : public framework::OperatorWithKernel {
  public:
@@ -63,8 +62,7 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 
