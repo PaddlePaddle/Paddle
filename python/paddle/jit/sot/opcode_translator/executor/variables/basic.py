@@ -90,6 +90,8 @@ DTYPE_ABBRS = {
     core.DataType.BOOL: "bool",
 }
 
+STATIC_DIM_FREQ_THRESHOLD = 5
+
 
 class ConstantVariable(VariableBase):
     """
@@ -173,24 +175,6 @@ class ConstantVariable(VariableBase):
             self.graph,
             DummyTracker([self]),
         )
-
-    @check_guard
-    def make_stringify_guard(self) -> list[StringifyExpression]:
-        if (
-            ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
-            and isinstance(self.value, int)
-            and self.tracker.need_guard()
-        ):
-            from ..executor_cache import OpcodeExecutorCache
-
-            frame_value_tracer = self.tracker.trace_value_from_frame()
-            symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
-            symbolic_inputs.setdefault(frame_value_tracer.inlined_expr, {})
-            symbolic_input = symbolic_inputs[frame_value_tracer.inlined_expr]
-            symbolic_input.setdefault(self.value, 0)
-            symbolic_input[self.value] += 1
-
-        return super().make_stringify_guard()
 
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
@@ -349,9 +333,23 @@ class TensorVariable(VariableBase):
             raise InnerError(
                 f"Required type(tensor) is paddle.Tensor or ProxyTensor, but received {type(tensor).__name__}."
             )
+        dynamic_axes: list[int] = []
+        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and self.tracker.is_traceable():
+            dynamic_axes = self.analyse_dynamic_axes()
+        self.meta.dynamic_axes = dynamic_axes
         self.origin_meta = self.meta
         self.var_name = TensorVariable.var_name_generator.next()
         self.graph.side_effects.record_mutable_variable(self)
+
+    def analyse_dynamic_axes(self):
+        shape_dims = (
+            self.shape.proxy.get_all()
+        )  # Trigger convert all shape dims to Variable
+        return [
+            i
+            for i, dim in enumerate(shape_dims)
+            if isinstance(dim, SymbolicVariable)
+        ]
 
     def __len__(self):
         if self.meta.shape[0] == -1:
@@ -399,9 +397,13 @@ class TensorVariable(VariableBase):
     def make_stringify_guard(self) -> list[StringifyExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
 
+        if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
+            str_left_expr = f"MetaInfo.from_tensor({{}}, dynamic_axes={self.meta.dynamic_axes}).guard_str()"
+        else:
+            str_left_expr = "MetaInfo.from_tensor({}).guard_str()"
         return [
             StringifyExpression(
-                f"MetaInfo.from_tensor({{}}).guard_str() == '{self.origin_meta.guard_str()}'",
+                f"{str_left_expr} == '{self.origin_meta.guard_str()}'",
                 [frame_value_tracer],
                 union_free_vars(
                     {"MetaInfo": MetaInfo},
@@ -483,15 +485,15 @@ class TensorVariable(VariableBase):
 
     @tensor_property
     def shape(self):
+        # TODO(zrr1999): support more tensor properties
         if self.meta.is_dynamic_shape():
             raise BreakGraphError(
                 f"Getting shape for a dynamic shape tensor causes graph break. shape = {self.meta.shape}"
             )
         from .container import ListVariable
 
-        return ListVariable(
-            self.meta.shape, self.graph, tracker=DummyTracker([self])
-        )
+        tracker = GetAttrTracker(self, "shape")
+        return ListVariable(self.meta.shape, self.graph, tracker=tracker)
 
     def numel(self):
         return self.size
@@ -605,7 +607,7 @@ class SymbolicVariable(VariableBase):
 
     def __init__(
         self,
-        value: int | MetaInfo,
+        value: int | None | MetaInfo,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
@@ -663,7 +665,9 @@ class SymbolicVariable(VariableBase):
         from ..executor_cache import OpcodeExecutorCache
 
         frame_value_tracer = self.tracker.trace_value_from_frame()
-        symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
+        symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
+            self.graph.pycode_gen._origin_code
+        )
 
         assert frame_value_tracer.inlined_expr in symbolic_inputs
 
@@ -681,25 +685,42 @@ class SymbolicVariable(VariableBase):
             )
         ]
 
+    @staticmethod
+    def should_create_symbolic_variable(
+        value: Any, tracker: Tracker, symbolic_inputs: dict[str, dict[int, int]]
+    ):
+        tracker_expr = tracker.trace_value_from_frame().inlined_expr
+        symbolic_inputs.setdefault(tracker_expr, {})
+        for expr, symbolic_input in symbolic_inputs.items():
+            if tracker.match_expr(expr):
+                symbolic_input.setdefault(value, 0)
+                symbolic_input[value] += 1
+                if symbolic_input[value] >= STATIC_DIM_FREQ_THRESHOLD:
+                    return False
+                if len(symbolic_input.keys()) > 1:
+                    return True
+                return False
+        return False
+
     @VariableFactory.register_from_value(successor="ConstantVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
-            return
+            return None
         if not isinstance(value, int):
-            return
-        if not tracker.need_guard():
-            return
+            return None
+        if not tracker.is_traceable():
+            return None
 
         from ..executor_cache import OpcodeExecutorCache
 
-        symbolic_inputs = OpcodeExecutorCache().symbolic_inputs
+        symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
+            graph.pycode_gen._origin_code
+        )
 
-        for tracker_expr, symbolic_input in symbolic_inputs.items():
-            if tracker.match_expr(tracker_expr):
-                symbolic_input.setdefault(value, 0)
-                symbolic_input[value] += 1
-                # TODO(zrr1999): determine frequency
-                return SymbolicVariable(value, graph, tracker)
+        if SymbolicVariable.should_create_symbolic_variable(
+            value, tracker, symbolic_inputs
+        ):
+            return SymbolicVariable(value, graph, tracker)
         return None
 
 

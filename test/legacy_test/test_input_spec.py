@@ -35,9 +35,17 @@ class TestInputSpec(unittest.TestCase):
         self.assertIsNone(tensor_spec.name)
 
     def test_from_tensor(self):
-        x_bool = paddle.tensor.fill_constant(
-            shape=[1], dtype='bool', value=True
-        )
+        if paddle.framework.use_pir_api():
+            x_bool = paddle.pir.core.create_parameter(
+                dtype='float32',
+                shape=[1],
+                name='xx',
+                initializer=paddle.nn.initializer.Uniform(),
+            )
+        else:
+            x_bool = paddle.tensor.fill_constant(
+                shape=[1], dtype='bool', value=True
+            )
         bool_spec = InputSpec.from_tensor(x_bool)
         self.assertEqual(bool_spec.dtype, x_bool.dtype)
         self.assertEqual(list(bool_spec.shape), list(x_bool.shape))

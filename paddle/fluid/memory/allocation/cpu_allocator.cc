@@ -19,9 +19,7 @@
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 bool CPUAllocator::IsAllocThreadSafe() const { return true; }
 
@@ -52,6 +50,4 @@ phi::Allocation *CPUAllocator::AllocateImpl(size_t size) {
   HOST_MEMORY_STAT_UPDATE(Reserved, 0, size);
   return new Allocation(p, size, platform::CPUPlace());
 }
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

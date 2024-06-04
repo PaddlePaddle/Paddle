@@ -15,7 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/cinn/frontend/decomposer/test_helper.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 
@@ -39,7 +39,10 @@ TEST(OpFusionPass, ElementWise_Fusion_0) {
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
+  PADDLE_ENFORCE_EQ(
+      graph->fusion_groups.size(),
+      1,
+      phi::errors::InvalidArgument("fusion group size should be 1"));
 }
 
 TEST(OpFusionPass, ElementWise_Fusion_1) {
@@ -63,7 +66,10 @@ TEST(OpFusionPass, ElementWise_Fusion_1) {
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
+  PADDLE_ENFORCE_EQ(
+      graph->fusion_groups.size(),
+      1,
+      phi::errors::InvalidArgument("fusion group size should be 1"));
 }
 
 TEST(OpFusionPass, Broadcast_Test_0) {
@@ -86,7 +92,10 @@ TEST(OpFusionPass, Broadcast_Test_0) {
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
+  PADDLE_ENFORCE_EQ(
+      graph->fusion_groups.size(),
+      1,
+      phi::errors::InvalidArgument("fusion group size should be 1"));
 }
 
 TEST(OpFusionPass, Broadcast_Test_1) {
@@ -111,7 +120,10 @@ TEST(OpFusionPass, Broadcast_Test_1) {
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
+  PADDLE_ENFORCE_EQ(
+      graph->fusion_groups.size(),
+      1,
+      phi::errors::InvalidArgument("fusion group size should be 1"));
 }
 
 TEST(OpFusionPass, Broadcast_Test_2) {
@@ -131,7 +143,10 @@ TEST(OpFusionPass, Broadcast_Test_2) {
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
+  PADDLE_ENFORCE_EQ(
+      graph->fusion_groups.size(),
+      1,
+      phi::errors::InvalidArgument("fusion group size should be 1"));
 }
 
 TEST(OpFusionPass, Reduce_Test_0) {
@@ -155,7 +170,10 @@ TEST(OpFusionPass, Reduce_Test_0) {
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 2);
+  PADDLE_ENFORCE_EQ(
+      graph->fusion_groups.size(),
+      2,
+      phi::errors::InvalidArgument("fusion group size should be 2"));
 }
 
 TEST(OpFusionPass, Reduce_Test_1) {
@@ -180,7 +198,10 @@ TEST(OpFusionPass, Reduce_Test_1) {
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
+  PADDLE_ENFORCE_EQ(
+      graph->fusion_groups.size(),
+      1,
+      phi::errors::InvalidArgument("fusion group size should be 1"));
 }
 
 TEST(OpFusionPass, Reduce_Test_2) {
@@ -205,7 +226,10 @@ TEST(OpFusionPass, Reduce_Test_2) {
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 2);
+  PADDLE_ENFORCE_EQ(
+      graph->fusion_groups.size(),
+      2,
+      phi::errors::InvalidArgument("fusion group size should be 2"));
 }
 
 TEST(OpFusionPass, Injective_Test_0) {
@@ -229,7 +253,10 @@ TEST(OpFusionPass, Injective_Test_0) {
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
+  PADDLE_ENFORCE_EQ(
+      graph->fusion_groups.size(),
+      1,
+      phi::errors::InvalidArgument("fusion group size should be 1"));
 }
 
 TEST(OP_LOWERING, Injective_Test_1) {
@@ -247,7 +274,10 @@ TEST(OP_LOWERING, Injective_Test_1) {
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
+  PADDLE_ENFORCE_EQ(
+      graph->fusion_groups.size(),
+      1,
+      phi::errors::InvalidArgument("fusion group size should be 1"));
 }
 
 TEST(OpFusionPass, Test_Insert_BroadcastTo) {
@@ -269,7 +299,10 @@ TEST(OpFusionPass, Test_Insert_BroadcastTo) {
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
 
-  CHECK_EQ(graph->fusion_groups.size(), 1);
+  PADDLE_ENFORCE_EQ(
+      graph->fusion_groups.size(),
+      1,
+      phi::errors::InvalidArgument("fusion group size should be 1"));
 }
 
 }  // namespace frontend
