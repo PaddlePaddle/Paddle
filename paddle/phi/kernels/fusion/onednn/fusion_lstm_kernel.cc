@@ -458,7 +458,7 @@ void RunKernel(const Context& dev_ctx,
 
   auto* hidden_onednn_data = hidden_onednn_memory_p->get_data_handle();
   auto* hidden_data =
-      phi::funcs::to_void_cast(hidden->mutable_data<Tout>(dev_ctx.GetPlace()));
+      phi::funcs::to_void_cast(dev_ctx.template Alloc<Tout>(hidden));
   if (handler.is_NTC()) {
     handler.reorderRNNdata(hidden_onednn_data,
                            hidden_data,
