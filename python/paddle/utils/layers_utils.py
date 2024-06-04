@@ -15,10 +15,12 @@
 import copy
 from collections import defaultdict
 from collections.abc import Sequence
+from typing import Any, TypeVar, Union
 from uuid import uuid4
 from weakref import WeakKeyDictionary
 
 import numpy as np
+from typing_extensions import TypeGuard
 
 import paddle
 from paddle.pir.core import convert_np_dtype_to_dtype_
@@ -30,6 +32,10 @@ from ..base.framework import (
     in_dygraph_mode,
 )
 from ..pir import Value
+
+_T = TypeVar("_T")
+
+Structure = Union[_T, dict[str, "Structure[_T]"], Sequence["Structure[_T]"]]
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -102,7 +108,7 @@ def convert_to_list(value, n, name, dtype=int):
         return value_list
 
 
-def is_sequence(seq):
+def is_sequence(seq: Any) -> TypeGuard[Sequence[Any]]:
     """
     Whether `seq` is an entry or nested structure
     """
@@ -164,7 +170,7 @@ def to_sequence(nest):
         return [nest]
 
 
-def flatten(nest):
+def flatten(nest: Structure[_T]) -> Sequence[_T]:
     """
         :alias_main: paddle.flatten
         :alias: paddle.flatten,paddle.tensor.flatten,paddle.tensor.manipulation.flatten
