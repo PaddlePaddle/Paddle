@@ -46,6 +46,7 @@ project(paddle CXX C)
 # TODO(Shibo Tao): remove find_package(CUDA) completely.
 find_package(CUDA QUIET)
 find_package(MKL CONFIG QUIET)
+option(WITH_K100_AI "Compile PaddlePaddle with DCU ZHONGDA" OFF)
 option(WITH_ONEMKL "Compile PaddlePaddle with oneMKL" OFF)
 option(WITH_GPU "Compile PaddlePaddle with NVIDIA GPU" ${CUDA_FOUND})
 option(WITH_MPI "Compile PaddlePaddle with MPI" OFF)

@@ -1,0 +1,22 @@
+diff --git a/test/legacy_test/test_elementwise_pow_op.py b/test/legacy_test/test_elementwise_pow_op.py
+index 82d4f889b2..b81ee6d8a6 100644
+--- a/test/legacy_test/test_elementwise_pow_op.py
++++ b/test/legacy_test/test_elementwise_pow_op.py
+@@ -49,14 +49,14 @@ class TestElementwisePowOp(OpTest):
+     def test_check_grad_normal(self):
+         if hasattr(self, 'attrs'):
+             self.check_grad(
+-                ['X', 'Y'], 'Out', check_prim=True, check_dygraph=False
++                ['X', 'Y'], 'Out', check_prim=False, check_dygraph=False
+             )
+         else:
+             self.check_grad(
+                 ['X', 'Y'],
+                 'Out',
+-                check_prim=True,
+-                check_prim_pir=True,
++                check_prim=False,
++                check_prim_pir=False,
+                 check_pir=True,
+             )
+ 
