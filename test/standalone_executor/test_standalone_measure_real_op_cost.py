@@ -112,7 +112,7 @@ class TestOpProfiling(unittest.TestCase):
         return loss_data
 
     def _compare_loss_between(self, loss_run1, loss_run2):
-        s1, s2 = '%.6f' % loss_run1, '%.6f' % loss_run2
+        s1, s2 = f'{loss_run1:.6f}', f'{loss_run2:.6f}'
         return s1 == s2
 
     def test_op_profiling_cuda0(self):

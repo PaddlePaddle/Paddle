@@ -274,7 +274,7 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
       SetShapeOrDataForAxis(axis);
     } else {
       pir::Value res = op->result(0);
-      infer_context->SetStaticShapeForValue(res);
+      infer_context->SetSymbolForValueByStaticShape(res);
       // update axis value
       auto res_shape = infer_context->GetShapeOrDataForValue(res);
       for (size_t i = 0; i < rank; ++i) {
