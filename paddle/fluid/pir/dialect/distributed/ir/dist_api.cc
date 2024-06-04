@@ -25,8 +25,7 @@
 #include "paddle/pir/include/core/value.h"
 #include "paddle/utils/flat_hash_map.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 pir::Value shard_tensor(
     const pir::Value& x,
@@ -64,5 +63,4 @@ pir::Value reshard(const pir::Value& x,
   return reshard_op.result(0);
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
