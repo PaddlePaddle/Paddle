@@ -1233,7 +1233,7 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_memory_reuse_exclude_feed_var',
     'test_polygon_box_transform',
     'math_function_gpu_test',
-    'test_program_prune_backward',
+    'test_program_prune_backward_deprecated',
     'test_ema_fleet',
     'test_fleet_amp_init',
     'test_normalize',

@@ -373,7 +373,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_profiler',
     'test_program',
     'test_program_code_deprecated',
-    'test_program_prune_backward',
+    'test_program_prune_backward_deprecated',
     'test_program_to_string',
     'test_protobuf_descs',
     'test_proximal_gd_op',
