@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import numpy
 
 import paddle
@@ -1469,6 +1471,66 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
     )
 
 
+def _feature_alpha_dropout_impl(
+    x: paddle.Tensor,
+    feature_dropout: bool,
+    p: float | int,
+    training: bool = True,
+    name: str | None = None,
+) -> paddle.Tensor:
+    if not isinstance(p, (float, int)):
+        raise TypeError("p argument should be a float or int")
+    if p < 0 or p > 1:
+        raise ValueError("p argument should between 0 and 1")
+
+    if not in_dynamic_mode():
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'alpha_dropout'
+        )
+
+    if training:
+        if p == 1:
+            return paddle.scale(x, scale=0.0)
+        # get transformation params
+        alpha = 1.6732632423543772848170429916717
+        scale = 1.0507009873554804934193349852946
+        alpha_p = -alpha * scale
+        a = ((1 - p) * (1 + p * alpha_p**2)) ** -0.5
+        b = -a * alpha_p * p
+
+        dtype = x.dtype
+        if not feature_dropout:
+            input_shape = x.shape
+        else:
+            if x.ndim < 2:
+                raise ValueError(
+                    'Feature alpha dropout needs at least 2D input.'
+                )
+            input_shape = list(x.shape[:2]) + [1] * len(x.shape[2:])
+
+        # get mask
+        random_tensor = paddle.uniform(
+            input_shape, dtype='float32', min=0.0, max=1.0
+        )
+        p = full(shape=input_shape, fill_value=p, dtype='float32')
+        keep_mask = paddle.greater_equal(random_tensor, p)
+        keep_mask = paddle.cast(keep_mask, dtype)
+        drop_mask = paddle.subtract(
+            full(shape=input_shape, fill_value=1.0, dtype=dtype), keep_mask
+        )
+
+        # apply mask
+        b = full(shape=input_shape, fill_value=b, dtype=dtype)
+        y = paddle.add(
+            paddle.multiply(x, keep_mask),
+            paddle.scale(drop_mask, scale=alpha_p),
+        )
+        res = paddle.add(paddle.scale(y, scale=a), b, name=name)
+        return res
+    else:  # test
+        return x
+
+
 def alpha_dropout(x, p=0.5, training=True, name=None):
     """
     Alpha Dropout is a type of Dropout that maintains the self-normalizing property.
@@ -1502,50 +1564,15 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
             [[-1.,  1.],
             [-1.,  1.]])
     """
-    if not isinstance(p, (float, int)):
-        raise TypeError("p argument should be a float or int")
-    if p < 0 or p > 1:
-        raise ValueError("p argument should between 0 and 1")
+    return _feature_alpha_dropout_impl(
+        x, feature_dropout=False, p=p, training=training, name=name
+    )
 
-    if not in_dynamic_mode():
-        check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'alpha_dropout'
-        )
 
-    if training:
-        if p == 1:
-            return paddle.scale(x, scale=0.0)
-        # get transformation params
-        alpha = 1.6732632423543772848170429916717
-        scale = 1.0507009873554804934193349852946
-        alpha_p = -alpha * scale
-        a = ((1 - p) * (1 + p * alpha_p**2)) ** -0.5
-        b = -a * alpha_p * p
-
-        dtype = x.dtype
-        input_shape = x.shape
-
-        # get mask
-        random_tensor = paddle.uniform(
-            input_shape, dtype='float32', min=0.0, max=1.0
-        )
-        p = full(shape=input_shape, fill_value=p, dtype='float32')
-        keep_mask = paddle.greater_equal(random_tensor, p)
-        keep_mask = paddle.cast(keep_mask, dtype)
-        drop_mask = paddle.subtract(
-            full(shape=input_shape, fill_value=1.0, dtype=dtype), keep_mask
-        )
-
-        # apply mask
-        b = full(shape=input_shape, fill_value=b, dtype=dtype)
-        y = paddle.add(
-            paddle.multiply(x, keep_mask),
-            paddle.scale(drop_mask, scale=alpha_p),
-        )
-        res = paddle.add(paddle.scale(y, scale=a), b, name=name)
-        return res
-    else:  # test
-        return x
+def feature_alpha_dropout(x, p=0.5, training=True, name=None):
+    return _feature_alpha_dropout_impl(
+        x, feature_dropout=True, p=p, training=training, name=name
+    )
 
 
 def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
@@ -2091,9 +2118,11 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     smooth_label = helper.create_variable_for_type_inference(label.dtype)
     helper.append_op(
         type="label_smooth",
-        inputs={"X": label, "PriorDist": prior_dist}
-        if prior_dist
-        else {"X": label},
+        inputs=(
+            {"X": label, "PriorDist": prior_dist}
+            if prior_dist
+            else {"X": label}
+        ),
         outputs={"Out": smooth_label},
         attrs={"epsilon": float(epsilon)},
     )
