@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -23,9 +22,6 @@ from paddle.distributed import fleet
 
 
 class TestFleetBaseSingleError(unittest.TestCase):
-    def setUp(self):
-        os.environ.pop("PADDLE_TRAINER_ENDPOINTS")
-
     def gen_data(self):
         return {
             "x": np.random.random(size=(128, 32)).astype('float32'),
