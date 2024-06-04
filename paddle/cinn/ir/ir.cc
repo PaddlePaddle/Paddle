@@ -26,6 +26,7 @@
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/common/errors.h"
 
 namespace cinn {
 namespace ir {
@@ -884,6 +885,22 @@ void For::Verify() const {
   CHECK(min.defined());
   CHECK(extent.defined());
   CHECK(body.defined());
+
+  PADDLE_ENFORCE_EQ((loop_var->type() == type_of<int32_t>()) ||
+                        (loop_var->type() == type_of<int64_t>()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "loop var's type must be int32 or int64"));
+  PADDLE_ENFORCE_EQ((min->type() == type_of<int32_t>()) ||
+                        (min->type() == type_of<int64_t>()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "loop min's type must be int32 or int64"));
+  PADDLE_ENFORCE_EQ((extent->type() == type_of<int32_t>()) ||
+                        (extent->type() == type_of<int64_t>()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "loop extent's type must be int32 or int64"));
 }
 
 void PolyFor::Verify() const {

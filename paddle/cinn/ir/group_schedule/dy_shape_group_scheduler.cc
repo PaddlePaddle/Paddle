@@ -66,32 +66,42 @@ void DynamicShapeGroupScheduler::InitBuckets() {
             << iter_space_info.total_sp_extent;
     VLOG(4) << "iter_space_info.total_rb_extent: "
             << iter_space_info.total_rb_extent;
-    VLOG(4) << "bucket_info.sp_lower_bound: " << bucket_info.sp_lower_bound;
-    VLOG(4) << "bucket_info.sp_upper_bound: " << bucket_info.sp_upper_bound;
-    VLOG(4) << "bucket_info.rb_lower_bound: " << bucket_info.rb_lower_bound;
-    VLOG(4) << "bucket_info.rb_upper_bound: " << bucket_info.rb_upper_bound;
-    if (OutOfRange(iter_space_info.total_sp_extent,
-                   bucket_info.sp_lower_bound,
-                   bucket_info.sp_upper_bound) ||
-        OutOfRange(iter_space_info.total_rb_extent,
-                   bucket_info.rb_lower_bound,
-                   bucket_info.rb_upper_bound)) {
-      VLOG(4) << "Out of range";
-      return;
+    VLOG(4) << "bucket_info is: ";
+    int dims = bucket_info.space.size();
+    SymbolicPredicate predicate = ir::Expr(true);
+    for (int i = 0; i < dims; ++i) {
+      VLOG(4) << "bucket_info.space[" << i
+              << "].lower_bound= " << bucket_info.space[i].lower_bound;
+      VLOG(4) << "bucket_info.space[" << i
+              << "].upper_bound= " << bucket_info.space[i].upper_bound;
+      if (dims == 2 && bucket_info.space[1].iter_type == "R") {
+        if (i == 0 && OutOfRange(iter_space_info.total_sp_extent,
+                                 bucket_info.space[i].lower_bound,
+                                 bucket_info.space[i].upper_bound)) {
+          VLOG(4) << "Dimension " << i << " Out of range";
+          return;
+        }
+        if (i == 1 && OutOfRange(iter_space_info.total_rb_extent,
+                                 bucket_info.space[i].lower_bound,
+                                 bucket_info.space[i].upper_bound)) {
+          VLOG(4) << "Dimension " << i << " Out of range";
+          return;
+        }
+        auto extent = (i == 0) ? iter_space_info.total_sp_extent
+                               : iter_space_info.total_rb_extent;
+        SymbolicPredicate lower_bound_predicate =
+            ir::GE::Make(extent, ir::Expr(bucket_info.space[i].lower_bound));
+        SymbolicPredicate upper_bound_predicate =
+            ir::LE::Make(extent, ir::Expr(bucket_info.space[i].upper_bound));
+        SymbolicPredicate curr_predicate =
+            ir::And::Make(lower_bound_predicate, upper_bound_predicate);
+        predicate = ir::And::Make(predicate, curr_predicate);
+      } else {
+        PADDLE_THROW(::common::errors::Unimplemented(
+            "Now, the function InitBucket doesn't support the cases except "
+            "SR"));
+      }
     }
-    SymbolicPredicate sp_lower_bound_predicate = ir::GE::Make(
-        iter_space_info.total_sp_extent, ir::Expr(bucket_info.sp_lower_bound));
-    SymbolicPredicate sp_upper_bound_predicate = ir::LE::Make(
-        iter_space_info.total_sp_extent, ir::Expr(bucket_info.sp_upper_bound));
-    SymbolicPredicate rb_lower_bound_predicate = ir::GE::Make(
-        iter_space_info.total_rb_extent, ir::Expr(bucket_info.rb_lower_bound));
-    SymbolicPredicate rb_upper_bound_predicate = ir::LE::Make(
-        iter_space_info.total_rb_extent, ir::Expr(bucket_info.rb_upper_bound));
-    SymbolicPredicate sp_predicate =
-        ir::And::Make(sp_lower_bound_predicate, sp_upper_bound_predicate);
-    SymbolicPredicate rb_predicate =
-        ir::And::Make(rb_lower_bound_predicate, rb_upper_bound_predicate);
-    SymbolicPredicate predicate = ir::And::Make(sp_predicate, rb_predicate);
     ScheduleContext schedule_context{output_names,
                                      target_,
                                      std::move(iter_space_info),

@@ -79,18 +79,22 @@ class ExecutionEngine {
   void *Lookup(absl::string_view name);
 
   template <typename CodeGenT = CodeGenLLVM>
-  void Link(const ir::Module &module);
+  void Link(const ir::Module &module, bool add_module = true);
 
   void ExportObject(const std::string &path);
 
   bool AddModule(std::unique_ptr<llvm::Module> module,
                  std::unique_ptr<llvm::LLVMContext> context);
 
+  bool AddSelfModule();
+
  protected:
   explicit ExecutionEngine(bool enable_object_cache,
                            RuntimeSymbols &&module_symbols)
       : cache_(std::make_unique<NaiveObjectCache>()),
-        module_symbols_(std::move(module_symbols)) {}
+        module_symbols_(std::move(module_symbols)),
+        ctx(std::make_unique<llvm::LLVMContext>()),
+        b(std::make_unique<llvm::IRBuilder<>>(*ctx)) {}
 
   void RegisterRuntimeSymbols();
 
@@ -107,7 +111,6 @@ class ExecutionEngine {
   std::unique_ptr<NaiveObjectCache> cache_;
   RuntimeSymbols module_symbols_;
 
- public:
   std::unique_ptr<llvm::LLVMContext> ctx;
   std::unique_ptr<llvm::Module> m;
   std::unique_ptr<llvm::IRBuilder<>> b;

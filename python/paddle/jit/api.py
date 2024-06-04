@@ -337,14 +337,12 @@ class _SaveLoadConfig:
             return
         if not isinstance(spec, list):
             raise TypeError(
-                "The config `output_spec` should be 'list', but received input type is %s."
-                % type(input)
+                f"The config `output_spec` should be 'list', but received input type is {type(input)}."
             )
             for var in spec:
                 if not isinstance(var, core.eager.Tensor):
                     raise TypeError(
-                        "The element in config `output_spec` list should be 'Variable', but received element's type is %s."
-                        % type(var)
+                        f"The element in config `output_spec` list should be 'Variable', but received element's type is {type(var)}."
                     )
         self._output_spec = spec
 
@@ -358,8 +356,7 @@ class _SaveLoadConfig:
             return
         if not isinstance(filename, str):
             raise TypeError(
-                "The config `model_filename` should be str, but received input's type is %s."
-                % type(filename)
+                f"The config `model_filename` should be str, but received input's type is {type(filename)}."
             )
         if len(filename) == 0:
             raise ValueError("The config `model_filename` is empty string.")
@@ -375,8 +372,7 @@ class _SaveLoadConfig:
             return
         if not isinstance(filename, str):
             raise TypeError(
-                "The config `params_filename` should be str, but received input's type is %s."
-                % type(filename)
+                f"The config `params_filename` should be str, but received input's type is {type(filename)}."
             )
         if len(filename) == 0:
             raise ValueError("The config `params_filename` is empty string.")
@@ -392,8 +388,7 @@ class _SaveLoadConfig:
             return
         if not isinstance(value, bool):
             raise TypeError(
-                "The config `keep_name_table` should be bool value, but received input's type is %s."
-                % type(value)
+                f"The config `keep_name_table` should be bool value, but received input's type is {type(value)}."
             )
         self._keep_name_table = value
 
@@ -413,8 +408,7 @@ def _parse_save_configs(configs):
     for key in configs:
         if key not in supported_configs:
             raise ValueError(
-                "The additional config (%s) of `paddle.jit.save` is not supported."
-                % (key)
+                f"The additional config ({key}) of `paddle.jit.save` is not supported."
             )
 
     # construct inner config
@@ -439,8 +433,7 @@ def _parse_load_config(configs):
     for key in configs:
         if key not in supported_configs:
             raise ValueError(
-                "The additional config (%s) of `paddle.jit.load` is not supported."
-                % (key)
+                f"The additional config ({key}) of `paddle.jit.load` is not supported."
             )
 
     # construct inner config
@@ -636,9 +629,9 @@ def _build_load_path_and_config(path, config):
         )
     elif not prefix_format_exist and not directory_format_exist:
         raise ValueError(
-            "The ``path`` (%s) to load model not exists. "
+            f"The ``path`` ({path}) to load model not exists. "
             "Please make sure that *.pdmodel exists or "
-            "don't using ``skip_forward=True`` to jit.save." % path
+            "don't using ``skip_forward=True`` to jit.save."
         )
     else:
         if prefix_format_exist:
@@ -954,8 +947,7 @@ def save(layer, path, input_spec=None, **configs):
         isinstance(layer, (Layer, StaticFunction)) or inspect.isfunction(layer)
     ):
         raise TypeError(
-            "The input of paddle.jit.save should be 'Layer' or 'Function', but received input type is %s."
-            % type(layer)
+            f"The input of paddle.jit.save should be 'Layer' or 'Function', but received input type is {type(layer)}."
         )
     elif inspect.isfunction(layer) or isinstance(layer, StaticFunction):
         warnings.warn(
@@ -996,14 +988,12 @@ def save(layer, path, input_spec=None, **configs):
                     and 'forward' != attr_func
                 ):
                     raise ValueError(
-                        "If there are static functions other than 'forward' that need to be saved, the input 'input_spec' should be None, but received the type of 'input_spec' is %s."
-                        % type(input_spec)
+                        f"If there are static functions other than 'forward' that need to be saved, the input 'input_spec' should be None, but received the type of 'input_spec' is {type(input_spec)}."
                     )
 
         if not isinstance(input_spec, (list, tuple)):
             raise TypeError(
-                "The input input_spec should be 'list', but received input_spec's type is %s."
-                % type(input_spec)
+                f"The input input_spec should be 'list', but received input_spec's type is {type(input_spec)}."
             )
         inner_input_spec = []
         for var in paddle.utils.flatten(input_spec):

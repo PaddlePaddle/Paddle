@@ -179,7 +179,7 @@ class FunctionSpec:
                 if isinstance(var_spec, paddle.static.InputSpec):
                     stop_gradient = getattr(var_spec, 'stop_gradient', False)
                     feed_value = paddle.static.input.data(
-                        name=var_spec.name or "feed_%s" % i,
+                        name=var_spec.name or f"feed_{i}",
                         shape=var_spec.shape,
                         dtype=convert_dtype(var_spec.dtype),
                     )
@@ -232,7 +232,7 @@ class FunctionSpec:
                 stop_gradient = getattr(var_spec, 'stop_gradient', False)
                 feed_layer = block.create_var(
                     # TODO(Aurelius84): consider a more elegant way to name this
-                    name=var_spec.name or "feed_%s" % i,
+                    name=var_spec.name or f"feed_{i}",
                     shape=var_spec.shape,
                     dtype=var_spec.dtype,
                     is_data=True,
