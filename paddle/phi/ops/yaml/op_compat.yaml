@@ -4265,6 +4265,8 @@
     {x: X}
   outputs:
     {out: Out, noise: Noise}
+  extra:
+    outputs: [noise]
 
 - op: send_v2
   inputs :
