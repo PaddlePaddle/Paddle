@@ -489,8 +489,8 @@ def load_vars_pir(
                     file_path,
                     -1,
                     [],
-                    False,
                     var.get_tensor(),
+                    False,
                     executor._default_executor.get_place(),
                 )
             else:

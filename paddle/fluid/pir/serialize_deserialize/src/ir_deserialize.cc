@@ -88,6 +88,13 @@ void ProgramReader::ReadBlock(Json* block_json, pir::Block* block) {
   VLOG(4) << "Finish Read " << block_name << ".";
   return;
 }
+pir::ArrayAttribute GetOneBoolArrayAttribute(pir::IrContext* ctx,
+                                             Json* attr_json) {
+  std::vector<pir::Attribute> val;
+  bool bool_value = attr_json->template get<int32_t>() != 0;
+  val.push_back(pir::BoolAttribute::get(ctx, bool_value));
+  return pir::ArrayAttribute::get(ctx, val);
+}
 
 pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
   // attr is_distributed; is_parameter; need_clip; parameter_name; persistable;
@@ -102,16 +109,25 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
 
   Json& attrs_json = op_json->at(ATTRS);
   pir::AttributeMap attributes;
-  attributes.insert({"is_distributed", ReadAttribute(&attrs_json.at(0))});
-  attributes.insert({"is_parameter", ReadAttribute(&attrs_json.at(1))});
-  attributes.insert({"need_clip", ReadAttribute(&attrs_json.at(2))});
-  attributes.insert({"parameter_name", ReadAttribute(&attrs_json.at(3))});
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  attributes.insert(
+      {"is_distributed", GetOneBoolArrayAttribute(ctx, &attrs_json.at(0))});
+  attributes.insert(
+      {"is_parameter", GetOneBoolArrayAttribute(ctx, &attrs_json.at(1))});
+  attributes.insert(
+      {"need_clip", GetOneBoolArrayAttribute(ctx, &attrs_json.at(2))});
+  attributes.insert({"parameter_name",
+                     pir::StrAttribute::get(
+                         ctx, attrs_json.at(3).template get<std::string>())});
 
   if (op_json->contains(OPRESULTS_ATTRS)) {
     Json& other_attrs_json = op_json->at(OPRESULTS_ATTRS);
-    attributes.insert({"persistable", ReadAttribute(&other_attrs_json.at(0))});
+    attributes.insert({"persistable",
+                       GetOneBoolArrayAttribute(ctx, &other_attrs_json.at(0))});
+    attributes.insert({"stop_gradient",
+                       GetOneBoolArrayAttribute(ctx, &other_attrs_json.at(1))});
     attributes.insert(
-        {"stop_gradient", ReadAttribute(&other_attrs_json.at(1))});
+        {"trainable", GetOneBoolArrayAttribute(ctx, &other_attrs_json.at(2))});
   }
 
   pir::IrContext* ctx_ = pir::IrContext::Instance();
