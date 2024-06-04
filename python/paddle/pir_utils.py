@@ -212,3 +212,41 @@ def test_with_dygraph_pir(func):
             func(*args, **kwargs)
 
     return impl
+
+
+def get_memory(value):
+    from ..base.core import DataType
+
+    numel = value.numel()
+    mapping = {
+        DataType.BOOL: 1,
+        DataType.INT8: 1,
+        DataType.INT16: 2,
+        DataType.INT32: 4,
+        DataType.INT64: 8,
+        DataType.UINT8: 1,
+        DataType.UINT16: 2,
+        DataType.UINT32: 4,
+        DataType.UINT64: 8,
+        DataType.FP32: 4,
+        DataType.FP64: 8,
+    }
+    dtype = mapping[value.type().dtype]
+    return dtype * numel
+
+
+def analysis_io(program: paddle.pir.Program):
+    # 1. don't support control flow now
+    # 2. each op is consider read all inputs and write all outputs once.
+    # 3. unit is "GByte"
+    total_io = 0.0
+    for block in program.global_block():
+        for op in block.ops:
+            for operand in op.operands():
+                value = operand.source()
+                total_io += get_memory(value)
+
+            for value in op.results():
+                total_io += get_memory(value)
+
+    return total_io / 1024 / 1024 / 1024
