@@ -188,4 +188,9 @@ SpmdInfo FlattenInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr}, {out_dist_attr_dst}};
 }
 
+SpmdInfo FlattenGradInferSpmd(const DistMetaTensor& xshape,
+                              const DistMetaTensor& out_grad) {
+  return ReshapeGradInferSpmd(xshape, out_grad);
+}
+
 }  // namespace phi::distributed
