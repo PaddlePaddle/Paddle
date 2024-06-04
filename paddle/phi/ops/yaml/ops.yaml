@@ -4683,10 +4683,10 @@
   output: Tensor[](param_out){param.size()}, Tensor[](velocity_out){param.size()}, Tensor[](master_param_out){param.size()}
   infer_meta:
     func: LarsMomentumInferMeta
-    param: [param, velocity, learning_rate, grad, master_param, lars_weight_decay, mu, lars_coeff, epsilon, multi_precision, rescale_grad]
+    param: [param, velocity, learning_rate, grad, master_param, mu, lars_coeff, lars_weight_decay, epsilon, multi_precision, rescale_grad]
   kernel:
     func: lars_momentum
-    param: [param, velocity, learning_rate, grad, master_param, lars_weight_decay, mu, lars_coeff, epsilon, multi_precision, rescale_grad]
+    param: [param, velocity, learning_rate, grad, master_param, mu, lars_coeff, lars_weight_decay, epsilon, multi_precision, rescale_grad]
     data_type: param
   optional: master_param, master_param_out
 
