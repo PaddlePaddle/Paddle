@@ -937,8 +937,6 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
 }
 
 bool AnalysisPredictor::PreparePirProgram() {
-  // CHECK_EQ(pir_program_.get(), nullptr);
-
   if (!pir_program_) {
     pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
   }
