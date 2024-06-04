@@ -4062,6 +4062,12 @@
   outputs :
     {slimmed_x : SlimmedX, cls_inds : CLSInds}
 
+- op: fusion_group
+  inputs:
+    inputs : Inputs
+  outputs:
+    outs : Outs
+
 - op: fusion_seqpool_cvm_concat
   inputs:
     {x : X, cvm : CVM}
