@@ -591,7 +591,7 @@ class ReshapeOpInferSymbolicShapeTest(TestBase):
         self.cases = [np.random.rand(4, 5, 6)]
         self.expected = [
             [
-                'shape[Mul(S0, S1, S2, 1 / (20)), 4, 5], data[NULL]',
+                'shape[0, 4, 5], data[NULL]',
                 'shape[S0, S1, 12], data[NULL]',
             ]
         ]
