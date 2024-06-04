@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 

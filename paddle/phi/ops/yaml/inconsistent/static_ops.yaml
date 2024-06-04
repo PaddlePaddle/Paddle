@@ -49,14 +49,6 @@
   inplace : (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
-- op : assign_pos
-  args : (Tensor x, Tensor cum_count, Tensor eff_num_len)
-  output : Tensor(out)
-  infer_meta :
-    func : AssignPosInferMeta
-  kernel :
-    func : assign_pos
-
 - op : assign_value
   args : (int[] shape, DataType dtype, Scalar[] values, Place place = {})
   output : Tensor(out)
@@ -850,16 +842,6 @@
   backward : subtract_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : tdm_sampler
-  args: (Tensor x, Tensor travel, Tensor layer, bool output_positive=true, int[] neg_samples_num_list={}, int[] layer_offset_lod={}, int seed = 0, int dtype=2)
-  output: Tensor(out), Tensor(labels), Tensor(mask)
-  infer_meta:
-    func : TdmSamplerInferMeta
-  kernel:
-    func : tdm_sampler
-    data_type : x
-  optional : labels
-
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})
   output : Tensor(out)
@@ -991,15 +973,6 @@
     data_type: input
   optional: bias, sample_weight, custom_dist_probs, custom_dist_alias, custom_dist_alias_probs
   backward: nce_grad
-
-- op: number_count
-  args: (Tensor numbers, int upper_range)
-  output: Tensor(out)
-  infer_meta:
-     func: NumberCountInferMeta
-  kernel:
-     func: number_count
-     data_type: numbers
 
 - op: onednn_to_paddle_layout
   args: (Tensor x, int dst_layout)

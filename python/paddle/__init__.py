@@ -14,12 +14,16 @@
 
 import typing
 
+__is_metainfo_generated = False
 try:
     from paddle.cuda_env import *  # noqa: F403
     from paddle.version import (  # noqa: F401
         commit as __git_commit__,
         full_version as __version__,
     )
+
+    __is_metainfo_generated = True
+
 except ImportError:
     import sys
 
@@ -272,6 +276,7 @@ from .tensor.manipulation import (
     atleast_1d,
     atleast_2d,
     atleast_3d,
+    block_diag,
     broadcast_tensors,
     broadcast_to,
     cast,
@@ -433,6 +438,7 @@ from .tensor.math import (  # noqa: F401
     inner,
     inverse,
     isfinite,
+    isin,
     isinf,
     isnan,
     isneginf,
@@ -577,8 +583,7 @@ if is_compiled_with_cinn():
     if os.path.exists(cuh_file):
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
-
-if is_compiled_with_cuda():
+if __is_metainfo_generated and is_compiled_with_cuda():
     import os
     import platform
 
@@ -734,6 +739,7 @@ ir_guard = IrGuard()
 ir_guard._switch_to_pir()
 
 __all__ = [
+    'block_diag',
     'iinfo',
     'finfo',
     'dtype',
@@ -847,6 +853,7 @@ __all__ = [
     'squeeze_',
     'to_tensor',
     'gather_nd',
+    'isin',
     'isinf',
     'isneginf',
     'isposinf',

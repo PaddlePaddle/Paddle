@@ -292,9 +292,10 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
 
   void BuildBroadcastInfo(const OpLoweringGroupPtr& group,
                           std::shared_ptr<GroupInfo> group_info);
-
   Target target_;
-
+  ir::Expr LowerX86(const OpLoweringGroupPtr& group,
+                    const std::vector<::pir::Operation*>& ops,
+                    bool apply_op_schedule);
   PrettyNamer* name_gene_;
 };
 
