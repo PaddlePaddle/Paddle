@@ -47,22 +47,22 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(score_size == 2 || score_size == 3,
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The rank of Input(Scores) must be 2 or 3"
                             ". But received rank = %d",
                             score_size));
-      PADDLE_ENFORCE_EQ(box_dims.size(),
-                        3,
-                        platform::errors::InvalidArgument(
-                            "The rank of Input(BBoxes) must be 3"
-                            ". But received rank = %d",
-                            box_dims.size()));
+      PADDLE_ENFORCE_EQ(
+          box_dims.size(),
+          3,
+          phi::errors::InvalidArgument("The rank of Input(BBoxes) must be 3"
+                                       ". But received rank = %d",
+                                       box_dims.size()));
       if (score_size == 3) {
         PADDLE_ENFORCE_EQ(box_dims[2] == 4 || box_dims[2] == 8 ||
                               box_dims[2] == 16 || box_dims[2] == 24 ||
                               box_dims[2] == 32,
                           true,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The last dimension of Input"
                               "(BBoxes) must be 4 or 8, "
                               "represents the layout of coordinate "
@@ -74,7 +74,7 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             box_dims[1],
             score_dims[2],
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The 2nd dimension of Input(BBoxes) must be equal to "
                 "last dimension of Input(Scores), which represents the "
                 "predicted bboxes."
@@ -84,14 +84,14 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
       } else {
         PADDLE_ENFORCE_EQ(box_dims[2],
                           4,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The last dimension of Input"
                               "(BBoxes) must be 4. But received dimension = %d",
                               box_dims[2]));
         PADDLE_ENFORCE_EQ(
             box_dims[1],
             score_dims[1],
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The 2nd dimension of Input"
                 "(BBoxes) must be equal to the 2nd dimension of Input(Scores). "
                 "But received box dimension = %d, score dimension = %d",
@@ -112,7 +112,7 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Scores"),
-        platform::CPUPlace());
+        phi::CPUPlace());
   }
 };
 

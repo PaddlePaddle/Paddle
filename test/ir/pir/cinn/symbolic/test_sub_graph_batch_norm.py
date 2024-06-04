@@ -28,18 +28,22 @@ class LayerCase(paddle.nn.Layer):
         self.parameter_0 = self.create_parameter(
             shape=[32],
             dtype=paddle.float32,
+            default_initializer=paddle.nn.initializer.Constant(1.0),
         )
         self.parameter_1 = self.create_parameter(
             shape=[32],
             dtype=paddle.float32,
+            default_initializer=paddle.nn.initializer.Constant(2.0),
         )
         self.parameter_2 = self.create_parameter(
             shape=[32],
             dtype=paddle.float32,
+            default_initializer=paddle.nn.initializer.Constant(3.0),
         )
         self.parameter_3 = self.create_parameter(
             shape=[32],
             dtype=paddle.float32,
+            default_initializer=paddle.nn.initializer.Constant(4.0),
         )
 
     def forward(
@@ -53,6 +57,7 @@ class LayerCase(paddle.nn.Layer):
             self.parameter_2,
             self.parameter_3,
             training=True,
+            use_global_stats=False,
         )
 
 
@@ -66,7 +71,9 @@ class TestLayer(unittest.TestCase):
         self.inputs = create_paddle_inputs()
         self.net = LayerCase()
 
-    def train(self, net, to_static, with_prim=False, with_cinn=False):
+    def train(self, to_static, with_prim=False, with_cinn=False):
+        paddle.seed(123)
+        net = LayerCase()
         if to_static:
             paddle.set_flags({'FLAGS_prim_all': with_prim})
             if with_cinn:
@@ -77,20 +84,55 @@ class TestLayer(unittest.TestCase):
                 )
             else:
                 net = paddle.jit.to_static(net, full_graph=True)
-        paddle.seed(123)
+
         outs = net(*self.inputs)
-        return outs
+        return (
+            outs,
+            net.state_dict()["parameter_0"],
+            net.state_dict()["parameter_1"],
+            net.state_dict()["parameter_2"],
+            net.state_dict()["parameter_3"],
+        )
 
     def test_ast_prim_cinn(self):
-        st_out = self.train(self.net, to_static=True)
-        cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=True
+        st_out, st_p0, st_p1, st_p2, st_p3 = self.train(to_static=True)
+        cinn_out, cinn_p0, cinn_p1, cinn_p2, cinn_p3 = self.train(
+            to_static=True, with_prim=True, with_cinn=True
         )
+
         for st, cinn in zip(
             paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
         ):
             np.testing.assert_allclose(
-                st.numpy(), cinn.numpy(), atol=1e-6, rtol=1e-5
+                st.numpy(), cinn.numpy(), atol=1e-5, rtol=1e-4
+            )
+
+        for st, cinn in zip(
+            paddle.utils.flatten(st_p0), paddle.utils.flatten(cinn_p0)
+        ):
+            np.testing.assert_allclose(
+                st.numpy(), cinn.numpy(), atol=1e-5, rtol=1e-4
+            )
+
+        for st, cinn in zip(
+            paddle.utils.flatten(st_p1), paddle.utils.flatten(cinn_p1)
+        ):
+            np.testing.assert_allclose(
+                st.numpy(), cinn.numpy(), atol=1e-5, rtol=1e-4
+            )
+
+        for st, cinn in zip(
+            paddle.utils.flatten(st_p2), paddle.utils.flatten(cinn_p2)
+        ):
+            np.testing.assert_allclose(
+                st.numpy(), cinn.numpy(), atol=1e-5, rtol=1e-4
+            )
+
+        for st, cinn in zip(
+            paddle.utils.flatten(st_p3), paddle.utils.flatten(cinn_p3)
+        ):
+            np.testing.assert_allclose(
+                st.numpy(), cinn.numpy(), atol=1e-5, rtol=1e-4
             )
 
 

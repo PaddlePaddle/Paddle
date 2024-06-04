@@ -19,11 +19,11 @@
 #include <vector>
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/for_range.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -154,7 +154,7 @@ class SparseMomentumOp : public framework::OperatorWithKernel {
     auto lr_dims = common::product(ctx->GetInputDim("LearningRate"));
     PADDLE_ENFORCE_EQ(lr_dims != 0 && lr_dims == 1,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Learning_rate should be a scalar. But Received "
                           "LearningRate's dim [%s]",
                           lr_dims));
@@ -163,7 +163,7 @@ class SparseMomentumOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         param_dim,
         ctx->GetInputDim("Velocity"),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Param and Velocity of SparseMomentumOp should have the same "
             "dimension. But received Param's dim [%s] and Velocity [%s].",
             param_dim,
@@ -304,11 +304,11 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     const bool multi_precision = ctx.Attr<bool>("multi_precision");
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
     auto index = ctx.Input<phi::DenseTensor>("Index");
-    const auto& index_type = framework::TransToProtoVarType(index->dtype());
+    const auto& index_type = index->dtype();
     if (multi_precision) {
       if (use_nesterov) {
         auto update_method = UseNesterov<MPDType>();
-        if (index_type == framework::proto::VarType::INT32) {
+        if (index_type == phi::DataType::INT32) {
           InnerCompute<MPDType, int, UseNesterov<MPDType>>(
               ctx, multi_precision, update_method);
         } else {
@@ -317,7 +317,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
         }
       } else {
         auto update_method = NoNesterov<MPDType>();
-        if (index_type == framework::proto::VarType::INT32) {
+        if (index_type == phi::DataType::INT32) {
           InnerCompute<MPDType, int, NoNesterov<MPDType>>(
               ctx, multi_precision, update_method);
         } else {
@@ -328,7 +328,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     } else {
       if (use_nesterov) {
         auto update_method = UseNesterov<T>();
-        if (index_type == framework::proto::VarType::INT32) {
+        if (index_type == phi::DataType::INT32) {
           InnerCompute<T, int, UseNesterov<T>>(
               ctx, multi_precision, update_method);
         } else {
@@ -337,7 +337,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
         }
       } else {
         auto update_method = NoNesterov<T>();
-        if (index_type == framework::proto::VarType::INT32) {
+        if (index_type == phi::DataType::INT32) {
           InnerCompute<T, int, NoNesterov<T>>(
               ctx, multi_precision, update_method);
         } else {
@@ -370,12 +370,11 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("Axis")) {
       phi::DenseTensor cpu_axis;
       const phi::DenseTensor* axis_tensor = ctx.Input<phi::DenseTensor>("Axis");
-      framework::TensorCopy(*axis_tensor, platform::CPUPlace(), &cpu_axis);
-      const auto& axis_type =
-          framework::TransToProtoVarType(axis_tensor->dtype());
-      if (axis_type == framework::proto::VarType::INT32) {
+      framework::TensorCopy(*axis_tensor, phi::CPUPlace(), &cpu_axis);
+      const auto& axis_type = axis_tensor->dtype();
+      if (axis_type == phi::DataType::INT32) {
         axis = static_cast<int>(cpu_axis.data<int32_t>()[0]);
-      } else if (axis_type == framework::proto::VarType::INT64) {
+      } else if (axis_type == phi::DataType::INT64) {
         axis = static_cast<int>(cpu_axis.data<int64_t>()[0]);
       }
     } else {
@@ -384,8 +383,8 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         axis == 0 || axis == 1,
         true,
-        platform::errors::InvalidArgument("The axis of sparse_momentum_op only "
-                                          "support axis=0 or axis=1 now."));
+        phi::errors::InvalidArgument("The axis of sparse_momentum_op only "
+                                     "support axis=0 or axis=1 now."));
 
     auto learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
     auto param = ctx.Input<phi::DenseTensor>("Param");
@@ -400,13 +399,13 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GT(
           index->dims()[0],
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The index of sparse_momentum_op should not be empty"
               "when the index's rank is 1."));
     } else if (index->dims().size() == 2) {
       PADDLE_ENFORCE_EQ(index->dims()[1],
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "If the index's rank of sparse_momentum_op is 2,"
                             " the second dimension should be 1."));
     }
@@ -418,7 +417,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
           ctx.HasInput("MasterParam") && ctx.HasOutput("MasterParamOut");
       PADDLE_ENFORCE_EQ(has_master,
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The Input(MasterParam) and Output(MasterParamOut) "
                             "should not be null when "
                             "the attr `multi_precision` is true"));
@@ -436,23 +435,23 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
 
     auto grad = ctx.Input<phi::DenseTensor>("Grad");
 
-    platform::ForRange<DeviceContext> for_range(
+    phi::funcs::ForRange<DeviceContext> for_range(
         static_cast<const DeviceContext&>(ctx.device_context()),
         param->numel());
 
     auto param_dims = param->dims();
     auto grad_dims = grad->dims();
 
-    PADDLE_ENFORCE_EQ(param_dims.size(),
-                      2,
-                      platform::errors::InvalidArgument(
-                          "The Param's rank of sparse_momentum_op"
-                          " must be 2 now."));
-    PADDLE_ENFORCE_EQ(grad_dims.size(),
-                      2,
-                      platform::errors::InvalidArgument(
-                          "The Grad's rank of sparse_momentum_op"
-                          " must be 2 now."));
+    PADDLE_ENFORCE_EQ(
+        param_dims.size(),
+        2,
+        phi::errors::InvalidArgument("The Param's rank of sparse_momentum_op"
+                                     " must be 2 now."));
+    PADDLE_ENFORCE_EQ(
+        grad_dims.size(),
+        2,
+        phi::errors::InvalidArgument("The Grad's rank of sparse_momentum_op"
+                                     " must be 2 now."));
 
     phi::DenseTensor sorted_index, grad_index, sort_value;
     auto sorted_index_ptr =
@@ -460,12 +459,12 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     auto grad_index_ptr =
         grad_index.mutable_data<IndexT>({num_index}, ctx.GetPlace());
 
-    if (platform::is_gpu_place(ctx.GetPlace())) {
+    if (ctx.GetPlace().GetType() == phi::AllocationType::GPU) {
 #if defined(__NVCC__) || defined(__HIPCC__)
       auto sort_value_ptr =
           sort_value.mutable_data<IndexT>({num_index}, ctx.GetPlace());
 
-      platform::ForRange<DeviceContext> for_range_index(
+      phi::funcs::ForRange<DeviceContext> for_range_index(
           static_cast<const DeviceContext&>(ctx.device_context()), num_index);
       RangeFunctor<IndexT> range_functor(sort_value_ptr);
       for_range_index(range_functor);
@@ -494,7 +493,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
               sizeof(IndexT) * 8,
               ctx.cuda_device_context().stream())));
 #endif
-    } else if (platform::is_cpu_place(ctx.GetPlace())) {
+    } else if (ctx.GetPlace().GetType() == phi::AllocationType::CPU) {
       std::vector<std::pair<IndexT, IndexT>> vec_tosort;
       auto index_ptr = index->data<IndexT>();
       for (IndexT i = 0; i < num_index; i++) {
@@ -511,7 +510,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
         grad_index_ptr[i] = vec_tosort[i].second;
       }
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
+      PADDLE_THROW(phi::errors::Unimplemented(
           "sparse_momentum %s is not supported.", ctx.GetPlace()));
     }
 

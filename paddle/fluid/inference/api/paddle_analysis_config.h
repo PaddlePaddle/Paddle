@@ -47,34 +47,6 @@ namespace paddle {
 class AnalysisPredictor;
 struct MkldnnQuantizerConfig;
 
-struct LiteNNAdapterConfig {
-  bool use_nnadapter{false};
-  std::string nnadapter_model_cache_dir;
-  std::map<std::string, std::vector<char>> nnadapter_model_cache_buffers;
-  std::vector<std::string> nnadapter_device_names;
-  std::string nnadapter_context_properties;
-  std::string nnadapter_subgraph_partition_config_path;
-  std::string nnadapter_subgraph_partition_config_buffer;
-
-  LiteNNAdapterConfig& SetDeviceNames(const std::vector<std::string>& names);
-
-  LiteNNAdapterConfig& SetContextProperties(const std::string& properties);
-
-  LiteNNAdapterConfig& SetModelCacheDir(const std::string& dir);
-
-  LiteNNAdapterConfig& SetModelCacheBuffers(
-      const std::string& model_cache_token,
-      const std::vector<char>& model_cache_buffer);
-
-  LiteNNAdapterConfig& SetSubgraphPartitionConfigPath(const std::string& path);
-
-  LiteNNAdapterConfig& SetSubgraphPartitionConfigBuffer(
-      const std::string& buffer);
-
-  LiteNNAdapterConfig& Enable();
-  LiteNNAdapterConfig& Disable();
-};
-
 struct PD_INFER_DECL XpuConfig {
   // Select which xpu device to run model.
   int device_id{0};
@@ -519,12 +491,6 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool use_onnxruntime() const { return use_onnxruntime_; }
   ///
-  /// \brief A boolean state telling whether the Lite OpenCL is turned on.
-  ///
-  /// \return bool Whether the Lite OpenCL is turned on.
-  ///
-  bool use_opencl() const { return use_opencl_; }
-  ///
   /// \brief A boolean state telling whether the ONNXRuntime Optimization is
   /// turned on.
   ///
@@ -936,31 +902,6 @@ struct PD_INFER_DECL AnalysisConfig {
   bool dlnne_enabled() const { return use_dlnne_; }
 
   ///
-  /// \brief Turn on the usage of Lite sub-graph engine.
-  ///
-  /// \param precision_mode Precision used in Lite sub-graph engine.
-  /// \param passes_filter Set the passes used in Lite sub-graph engine.
-  /// \param ops_filter Operators not supported by Lite.
-  ///
-  void EnableLiteEngine(Precision precision_mode = Precision::kFloat32,
-                        bool zero_copy = false,
-                        const std::vector<std::string>& passes_filter = {},
-                        const std::vector<std::string>& ops_filter = {});
-
-  ///
-  /// \brief Turn on the usage of Lite sub-graph engine with opencl.
-  ///
-  void EnableOpenCL();
-
-  ///
-  /// \brief A boolean state indicating whether the Lite sub-graph engine is
-  /// used.
-  ///
-  /// \return bool whether the Lite sub-graph engine is used.
-  ///
-  bool lite_engine_enabled() const { return use_lite_; }
-
-  ///
   /// \brief Control whether to debug IR graph analysis phase.
   /// This will generate DOT files for visualizing the computation graph after
   /// each analysis pass applied.
@@ -1198,8 +1139,6 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   std::string Summary();
 
-  LiteNNAdapterConfig& NNAdapter() { return nnadapter_config_; }
-
   void SetDistConfig(const DistConfig& dist_config) {
     dist_config_ = dist_config;
   }
@@ -1406,26 +1345,12 @@ struct PD_INFER_DECL AnalysisConfig {
 
   mutable std::unique_ptr<PassStrategy> pass_builder_;
 
-  bool use_lite_{false};
-  std::vector<std::string> lite_passes_filter_;
-  std::vector<std::string> lite_ops_filter_;
-  Precision lite_precision_mode_;
-  bool lite_zero_copy_;
-
   // CINN compiler related.
   bool use_cinn_{false};
 
   // XPU related.
   bool use_xpu_{false};
   XpuConfig xpu_config_;
-  bool xpu_lite_l3_locked_{false};
-  bool xpu_lite_enable_multi_stream_{false};
-
-  // LITE OPENCL SETTINGS
-  bool use_opencl_{false};
-
-  // NNAdapter related
-  LiteNNAdapterConfig nnadapter_config_;
 
   // onednn related.
   int mkldnn_cache_capacity_{10};

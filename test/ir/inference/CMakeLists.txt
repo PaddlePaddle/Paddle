@@ -57,13 +57,6 @@ if(WIN32)
        "test_trt_explicit_quantization_mobilenet")
 endif()
 
-# Only for cpu(mkl + openblas)
-set(TEST_INFERENCE_CPU_UT "test_mul_lstm_fuse_pass" "test_mul_gru_fuse_pass")
-
-foreach(CPU_UT ${TEST_INFERENCE_CPU_UT})
-  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${CPU_UT})
-endforeach()
-
 foreach(TEST_INFERENCE_IR_PASS ${TEST_TRT_IR_PASSES})
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_INFERENCE_IR_PASS})
 endforeach()
@@ -153,18 +146,6 @@ if(WITH_ONEDNN
   endforeach()
 endif()
 
-if(NOT WITH_ONEDNN
-   AND NOT TENSORRT_FOUND
-   AND NOT WITH_GPU)
-  foreach(target ${TEST_INFERENCE_CPU_UT})
-    py_test_modules(${target} MODULES ${target})
-    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
-  endforeach()
-
-  set_tests_properties(test_mul_lstm_fuse_pass PROPERTIES TIMEOUT 1000)
-  set_tests_properties(test_mul_gru_fuse_pass PROPERTIES TIMEOUT 600)
-endif()
-
 if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_subgraph_pass PROPERTIES TIMEOUT 120)
   # longer timeout for trt_activation_pass for longer trt optimization time in trt 8
@@ -177,7 +158,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_inference_fp16_io PROPERTIES TIMEOUT 500)
   set_tests_properties(test_trt_convert_unary PROPERTIES TIMEOUT 600)
-  set_tests_properties(test_seq_concat_fc_fuse_pass PROPERTIES TIMEOUT 200)
   if(NOT WIN32)
     set_tests_properties(test_trt_explicit_quantization_resnet
                          PROPERTIES TIMEOUT 300)
@@ -249,6 +229,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_conv_eltwiseadd_bn_fuse_pass PROPERTIES TIMEOUT
                                                                       300)
     set_tests_properties(test_save_optimized_model_pass PROPERTIES TIMEOUT 300)
+    set_tests_properties(test_seq_concat_fc_fuse_pass PROPERTIES TIMEOUT 200)
     if(WIN32)
       set_tests_properties(test_matmul_scale_fuse_pass PROPERTIES TIMEOUT 300)
       set_tests_properties(test_matmul_v2_scale_fuse_pass PROPERTIES TIMEOUT

@@ -22,6 +22,10 @@ import paddle.pir.core as ir_static
 from paddle.base import core
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
+from paddle.distributed.auto_parallel.placement_type import (
+    to_placements,
+)
+from paddle.jit.pir_translated_layer import PirTranslatedLayer
 from paddle.jit.translated_layer import TranslatedLayer
 from paddle.nn.layer import layers
 
@@ -55,7 +59,8 @@ class FunctionSpec:
         # parse *args
         self.varargs_name = parse_varargs_name(function)
         if self.varargs_name is not None and isinstance(
-            getattr(function, '__self__', None), TranslatedLayer
+            getattr(function, '__self__', None),
+            (TranslatedLayer, PirTranslatedLayer),
         ):
             self._arg_names += function.__self__._input_args_names
 
@@ -174,7 +179,7 @@ class FunctionSpec:
                 if isinstance(var_spec, paddle.static.InputSpec):
                     stop_gradient = getattr(var_spec, 'stop_gradient', False)
                     feed_value = paddle.static.input.data(
-                        name=var_spec.name or "feed_%s" % i,
+                        name=var_spec.name or f"feed_{i}",
                         shape=var_spec.shape,
                         dtype=convert_dtype(var_spec.dtype),
                     )
@@ -187,8 +192,11 @@ class FunctionSpec:
 
                     if isinstance(var_spec, DistributedInputSpec):
                         # paddle.distributed.shard_tensor(feed_value)
+                        placements = to_placements(
+                            var_spec.dims_mapping, var_spec
+                        )
                         dist_feed_value = paddle._pir_ops.shard_tensor(
-                            feed_value, var_spec.mesh, var_spec.dims_mapping
+                            feed_value, var_spec.mesh, placements
                         )
                         inputs.append(dist_feed_value)
                         # dist_dense_tensor_type = paddle.base.libpaddle.pir.create_dist_dense_tensor_type_by_dense_tensor(
@@ -224,7 +232,7 @@ class FunctionSpec:
                 stop_gradient = getattr(var_spec, 'stop_gradient', False)
                 feed_layer = block.create_var(
                     # TODO(Aurelius84): consider a more elegant way to name this
-                    name=var_spec.name or "feed_%s" % i,
+                    name=var_spec.name or f"feed_{i}",
                     shape=var_spec.shape,
                     dtype=var_spec.dtype,
                     is_data=True,

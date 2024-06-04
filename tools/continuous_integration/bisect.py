@@ -84,11 +84,11 @@ ret = subprocess.check_output(
     [f'git rev-list --first-parent {args.good_commit}...{args.bad_commit}'],
     shell=True,
 )
-sys.stdout.write('commits found:\n%s\n' % ret)
+sys.stdout.write(f'commits found:\n{ret}\n')
 commits = ret.strip().split('\n')
 os.chdir(args.build_dir)
 # Clean up previous logs.
-subprocess.check_output(['echo "" > %s' % args.log_file], shell=True)
+subprocess.check_output([f'echo "" > {args.log_file}'], shell=True)
 
 last_culprit = ''
 while True:
@@ -96,8 +96,7 @@ while True:
     os.chdir(args.git_dir)
     subprocess.check_output(
         [
-            'git checkout %s && git clean -fd && git checkout .'
-            % args.bisect_branch
+            f'git checkout {args.bisect_branch} && git clean -fd && git checkout .'
         ],
         shell=True,
     )
@@ -109,7 +108,7 @@ while True:
     pick_idx = len(commits) / 2
     pick = commits[pick_idx]
     os.chdir(args.git_dir)
-    subprocess.check_output(['git checkout %s' % pick], shell=True)
+    subprocess.check_output([f'git checkout {pick}'], shell=True)
 
     # Clean builds and compile.
     # We assume mainline commits should always compile.
@@ -120,7 +119,7 @@ while True:
         'rm -rf * && '
         f'cmake -DWITH_TESTING=ON {args.git_dir} >> {args.log_file} && make -j{args.build_parallel} >> {args.log_file}'
     )
-    sys.stdout.write('cmd: %s\n' % cmd)
+    sys.stdout.write(f'cmd: {cmd}\n')
     try:
         subprocess.check_output([cmd], shell=True)
     except subprocess.CalledProcessError as e:
@@ -130,7 +129,7 @@ while True:
     passed = True
     try:
         cmd = f'ctest --repeat-until-fail {args.test_times} -R {args.test_target} >> {args.log_file}'
-        sys.stdout.write('cmd: %s\n' % cmd)
+        sys.stdout.write(f'cmd: {cmd}\n')
         subprocess.check_output([cmd], shell=True)
     except subprocess.CalledProcessError as e:
         passed = False
@@ -145,4 +144,4 @@ while True:
             break
         commits = commits[pick_idx + 1 :]
 
-sys.stdout.write('Culprit commit: %s\n' % last_culprit)
+sys.stdout.write(f'Culprit commit: {last_culprit}\n')

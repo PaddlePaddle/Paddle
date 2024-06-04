@@ -76,7 +76,7 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
     phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   }
 
-  auto x_dims = x.dims();
+  const auto& x_dims = x.dims();
   const int64_t numel = indices[0]->numel();
   auto x_stride = common::stride(x_dims);
 

@@ -66,33 +66,6 @@ std::vector<DimExpr> DimExprBuilder::ConstShape(
   return ret;
 }
 
-void DimExprBuilder::CstrBroadcastable(const DimExpr& lhs, const DimExpr& rhs) {
-  SYMBOL_NOT_IMPLEMENTED;
-}
-
-void DimExprBuilder::CstrBroadcastable(const std::vector<DimExpr>& lhs,
-                                       const std::vector<DimExpr>& rhs) {
-  SYMBOL_NOT_IMPLEMENTED;
-}
-
-void DimExprBuilder::CstrEq(const DimExpr& lhs, const DimExpr& rhs) {
-  constraints_->emplace_back(Equal<DimExpr>(lhs, rhs));
-}
-
-void DimExprBuilder::CstrEq(const std::vector<DimExpr>& lhs,
-                            const std::vector<DimExpr>& rhs) {
-  PADDLE_ENFORCE_EQ(
-      lhs.size(),
-      rhs.size(),
-      phi::errors::InvalidArgument("Please make sure input sizes are equal, "
-                                   "lhs.size() = %d, rhs.size() = %d.",
-                                   lhs.size(),
-                                   rhs.size()));
-  for (std::size_t i = 0; i < lhs.size(); ++i) {
-    CstrEq(lhs.at(i), rhs.at(i));
-  }
-}
-
 std::vector<DimExpr> DimExprBuilder::Concat(const std::vector<DimExpr>& lhs,
                                             const std::vector<DimExpr>& rhs) {
   std::vector<DimExpr> ret{};
@@ -119,10 +92,6 @@ std::pair<std::vector<DimExpr>, std::vector<DimExpr>> DimExprBuilder::SplitAt(
   std::vector<DimExpr> lhs(dim_exprs.begin(), dim_exprs.begin() + index);
   std::vector<DimExpr> rhs(dim_exprs.begin() + index, dim_exprs.end());
   return std::make_pair(lhs, rhs);
-}
-
-const std::vector<DimExprConstraint>& DimExprBuilder::constraints() const {
-  return *constraints_;
 }
 
 }  // namespace symbol

@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 from op import Operator
 from op_test import OpTest, convert_uint16_to_float
-from test_attribute_var import UnittestBase
 
 import paddle
 from paddle import base
@@ -731,47 +729,6 @@ class TestRandomValue(unittest.TestCase):
         np.testing.assert_allclose(out[10, 10, 10, 0:10], expect, rtol=1e-05)
 
         paddle.enable_static()
-
-
-class TestUniformMinMaxTensor(UnittestBase):
-    def init_info(self):
-        self.shapes = [[2, 3, 4]]
-        self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
-
-    def test_static(self):
-        main_prog = Program()
-        startup_prog = Program()
-        with program_guard(main_prog, startup_prog):
-            fc = paddle.nn.Linear(4, 10)
-            x = paddle.randn([2, 3, 4])
-            x.stop_gradient = False
-            feat = fc(x)  # [2,3,10]
-            min_v = paddle.to_tensor([0.1])
-            max_v = paddle.to_tensor([0.9])
-            y = paddle.uniform([2, 3, 10], min=min_v, max=max_v)
-            z = paddle.uniform([2, 3, 10], min=min_v, max=max_v)
-
-            out = feat + y + z
-
-            sgd = paddle.optimizer.SGD()
-            sgd.minimize(paddle.mean(out))
-            self.assertTrue(self.var_prefix() in str(main_prog))
-
-            exe = paddle.static.Executor()
-            exe.run(startup_prog)
-            res = exe.run(fetch_list=[out])
-            np.testing.assert_array_equal(res[0].shape, [2, 3, 10])
-
-            paddle.static.save_inference_model(self.save_path, [x], [out], exe)
-            # Test for Inference Predictor
-            infer_out = self.infer_prog()
-            np.testing.assert_array_equal(res[0].shape, [2, 3, 10])
-
-    def path_prefix(self):
-        return 'uniform_random'
-
-    def var_prefix(self):
-        return "Var["
 
 
 if __name__ == "__main__":

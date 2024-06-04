@@ -68,6 +68,7 @@ option(WITH_PIP_CUDA_LIBRARIES
        "Paddle uses the CUDA library provided by NVIDIA" OFF)
 option(WITH_NIGHTLY_BUILD
        "Compile nightly paddle whl package of the develop branch" OFF)
+option(WITH_CPP_TEST "Compile PaddlePaddle skip cpp test" ON)
 find_package(Git REQUIRED)
 
 # config GIT_URL with github mirrors to speed up dependent repos clone
@@ -98,6 +99,9 @@ if(WITH_GPU AND WITH_ROCM)
 endif()
 
 if(WITH_GPU AND NOT APPLE)
+  if(WITH_PIP_CUDA_LIBRARIES AND CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    add_definitions(-DPADDLE_WITH_PIP_CUDA_LIBRARIES)
+  endif()
   #(Note risemeup1): The cudart dynamic library libcudart.so is used by set CUDA_USE_STATIC_CUDA_RUNTIME and CMAKE_CUDA_FLAGS
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL
                                             "x86_64")
@@ -106,8 +110,8 @@ if(WITH_GPU AND NOT APPLE)
         CACHE BOOL "" FORCE)
     set(CMAKE_CUDA_FLAGS "--cudart shared")
     if(WITH_PIP_CUDA_LIBRARIES)
-      #(Note risemeup1): Flag 'WITH_PIP_CUDA_LIBRARIES' will be used in dynamic_loader.cc to search for CUDA-related .so files through the Python libraries provided by NVIDIA.
-      add_definitions(-DWITH_PIP_CUDA_LIBRARIES)
+      #(Note risemeup1): Flag 'PADDLE_WITH_PIP_CUDA_LIBRARIES' will be used in dynamic_loader.cc to search for CUDA-related .so files through the Python libraries provided by NVIDIA.
+      add_definitions(-DPADDLE_WITH_PIP_CUDA_LIBRARIES)
     endif()
   endif()
   enable_language(CUDA)
@@ -306,7 +310,6 @@ option(
   SANITIZER_TYPE
   "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined"
   OFF)
-option(WITH_LITE "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_CINN "Compile PaddlePaddle with CINN" OFF)
 option(WITH_NCCL "Compile PaddlePaddle with NCCL support" ON)
 option(WITH_RCCL "Compile PaddlePaddle with RCCL support" ON)

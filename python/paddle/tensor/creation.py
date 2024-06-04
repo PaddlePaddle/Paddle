@@ -905,7 +905,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             paddle.utils.check_shape(shape)
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
-                    shape = paddle.utils.get_int_tensor_list(shape, place)
+                    shape = paddle.utils.get_int_tensor_list(shape)
             elif isinstance(shape, paddle.pir.Value):
                 pass
             else:
@@ -1216,6 +1216,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'uint16',
                 'int32',
                 'int64',
                 'complex64',
@@ -1643,7 +1644,7 @@ def meshgrid(*args, **kwargs):
 
     Args:
         *args(Tensor|list of Tensor) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,),
-            (N2,),..., (Nk,). Support data types: ``float64``, ``float16``, ``float32``, ``int32``, ``int64``.
+            (N2,),..., (Nk,). Support data types: ``float64``, ``bfloat16``, ``float16``, ``float32``, ``int32``, ``int64``, ``complex64``, ``complex128``.
         **kwargs (optional): Currently, only accept name in **kwargs
             The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -1685,7 +1686,16 @@ def meshgrid(*args, **kwargs):
             check_dtype(
                 input_.dtype,
                 'create data type',
-                ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                [
+                    'uint16',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'complex64',
+                    'complex128',
+                ],
                 'meshgrid',
             )
 
@@ -1918,7 +1928,7 @@ def diagflat(x, offset=0, name=None):
         check_dtype(
             x.dtype,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             'diagflat',
         )
         check_type(offset, 'offset', (int), 'diagflat')
@@ -2041,6 +2051,7 @@ def diag(x, offset=0, padding_value=0, name=None):
                 'uint16',
                 'float32',
                 'float64',
+                'uint16',
                 'int32',
                 'int64',
                 'complex64',
@@ -2137,6 +2148,8 @@ def empty(shape, dtype=None, name=None):
                     'float32',
                     'float64',
                     'uint16',
+                    'int8',
+                    'int16',
                     'int32',
                     'int64',
                     'complex64',
@@ -2150,9 +2163,7 @@ def empty(shape, dtype=None, name=None):
                 shape = shape.tolist()
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
-                    shape = paddle.utils.get_int_tensor_list(
-                        shape, _current_expected_place()
-                    )
+                    shape = paddle.utils.get_int_tensor_list(shape)
             elif isinstance(shape, paddle.pir.Value):
                 pass
             else:
@@ -2175,6 +2186,8 @@ def empty(shape, dtype=None, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'int16',
                 'int32',
                 'int64',
                 'complex64',
@@ -2266,9 +2279,13 @@ def empty_like(x, dtype=None, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'int16',
                 'int32',
                 'int64',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'empty_like',
         )
@@ -2280,9 +2297,13 @@ def empty_like(x, dtype=None, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'int16',
                 'int32',
                 'int64',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'empty_like',
         )

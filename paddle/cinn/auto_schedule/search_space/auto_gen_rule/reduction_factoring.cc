@@ -23,7 +23,7 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace auto_schedule {
 
@@ -32,10 +32,16 @@ bool ReductionFactoring::CanApply(const std::string& block_name,
   ir::Expr block_expr = ir_schedule->GetBlock(block_name);
   ir::ScheduleBlockRealize* block_realize =
       block_expr.As<ir::ScheduleBlockRealize>();
-  CHECK_NOTNULL(block_realize);
+  PADDLE_ENFORCE_NOT_NULL(
+      block_realize,
+      phi::errors::InvalidArgument(
+          "The block_expr should be a ScheduleBlockRealize."));
   ir::ScheduleBlock* sch_block =
       block_realize->schedule_block.As<ir::ScheduleBlock>();
-  CHECK_NOTNULL(sch_block);
+  PADDLE_ENFORCE_NOT_NULL(
+      sch_block,
+      phi::errors::InvalidArgument(
+          "The schedule_block field is not a ScheduleBlock."));
   AnalyzeScheduleBlockReadWriteBuffer(sch_block);
 
   // 1. The block must have write buffer
@@ -135,7 +141,11 @@ void ReductionFactoring::Apply(const std::string& block_name,
     return;
   }
   // 3. Reorder if new_loop_order differs from the original order
-  CHECK_EQ(all_loops.size(), new_loop_order.size());
+  PADDLE_ENFORCE_EQ(
+      all_loops.size(),
+      new_loop_order.size(),
+      phi::errors::InvalidArgument("The size of all_loops should be equal to "
+                                   "the size of new_loop_order."));
   for (int i = 0; i < all_loops.size(); ++i) {
     if (all_loops[i].As<ir::For>()->loop_var->name !=
         new_loop_order[i].As<ir::For>()->loop_var->name) {
@@ -152,7 +162,11 @@ void ReductionFactoring::Apply(const std::string& block_name,
     for (int i = num_spatial_loops; i < all_loops.size(); ++i) {
       reduction_loop_indices.push_back(i);
     }
-    CHECK_EQ(reduction_loop_indices.size(), num_reduction_loops);
+    PADDLE_ENFORCE_EQ(reduction_loop_indices.size(),
+                      num_reduction_loops,
+                      phi::errors::InvalidArgument(
+                          "The size of reduction_loop_indices should be equal "
+                          "to num_reduction_loops."));
     fused_reduce_loop = ir_schedule->Fuse(block_name, reduction_loop_indices);
   } else {
     all_loops = ir_schedule->GetLoops(block_name);

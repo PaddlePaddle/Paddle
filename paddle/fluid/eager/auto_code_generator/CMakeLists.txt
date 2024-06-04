@@ -12,6 +12,10 @@ set(EAGER_GENERATOR_DEPS
     imperative_profiler
     imperative_flag)
 
+if(WITH_CINN)
+  list(REMOVE_ITEM EAGER_GENERATOR_DEPS imperative_flag)
+endif()
+
 if(WITH_CUSTOM_DEVICE)
   set(EAGER_GENERATOR_DEPS ${EAGER_GENERATOR_DEPS}
                            custom_device_common_op_registry)
@@ -97,7 +101,7 @@ if(WIN32)
     message("Copied mkldnn.dll for Eager AutoCodeGen")
     add_custom_command(
       OUTPUT ${eager_generator_path}/mkldnn.dll
-      COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB}
+      COMMAND ${CMAKE_COMMAND} -E copy ${ONEDNN_SHARED_LIB}
               ${eager_generator_path}
       DEPENDS onednn)
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/mkldnn.dll)

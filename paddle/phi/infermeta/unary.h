@@ -55,6 +55,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
 void ArgsortInferMeta(const MetaTensor& input,
                       int axis,
                       bool descending,
+                      bool stable,
                       MetaTensor* output,
                       MetaTensor* indices);
 
@@ -224,6 +225,27 @@ void ExpandInferMeta(const MetaTensor& x,
                      const IntArray& shape,
                      MetaTensor* out);
 
+void FakeChannelWiseQuantizeAbsMaxInferMeta(const MetaTensor& x,
+                                            int bit_length,
+                                            int round_type,
+                                            int quant_axis,
+                                            bool is_test,
+                                            MetaTensor* out,
+                                            MetaTensor* out_scale);
+
+void FakeChannelWiseQuantizeDequantizeAbsMaxInferMeta(const MetaTensor& x,
+                                                      int bit_length,
+                                                      int round_type,
+                                                      int quant_axis,
+                                                      MetaTensor* out,
+                                                      MetaTensor* out_scale);
+
+void FakeQuantizeAbsMaxInferMeta(const MetaTensor& x,
+                                 int bit_length,
+                                 int round_type,
+                                 MetaTensor* out,
+                                 MetaTensor* out_scale);
+
 void FillAnyLikeInferMeta(const MetaTensor& x,
                           const Scalar& value,
                           DataType dtype,
@@ -259,6 +281,11 @@ void FlattenInferMeta(const MetaTensor& x,
                       int start_axis,
                       int stop_axis,
                       MetaTensor* out);
+
+void Flatten2InferMeta(const MetaTensor& x,
+                       int axis,
+                       MetaTensor* out,
+                       MetaTensor* x_shape);
 
 void FlattenWithXShapeInferMeta(const MetaTensor& x,
                                 int start_axis,
@@ -621,6 +648,8 @@ void ShardIndexInferMeta(const MetaTensor& in,
 
 void NumelInferMeta(const MetaTensor& input, MetaTensor* out);
 
+void ShuffleChannelInferMeta(const MetaTensor& x, int group, MetaTensor* out);
+
 void SliceArrayInferMeta(const MetaTensor& input,
                          const IntArray& starts,
                          const IntArray& ends,
@@ -665,6 +694,8 @@ void SplitWithNumInferMeta(const MetaTensor& x_meta,
                            MetaConfig config = MetaConfig());
 
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out);
+
+void L1NormInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void SqueezeInferMeta(const MetaTensor& x,
                       const IntArray& axes,
@@ -806,6 +837,20 @@ void UniformRandomInplaceInferMeta(const MetaTensor& x,
                                    int diag_step,
                                    float diag_val,
                                    MetaTensor* out);
+
+void UniformRandomBatchSizeLikeInferMeta(const MetaTensor& input,
+                                         const std::vector<int>& shape,
+                                         int input_dim_idx,
+                                         int output_dim_idx,
+                                         float min,
+                                         float max,
+                                         int seed,
+                                         int diag_num,
+                                         int diag_step,
+                                         float diag_val,
+                                         DataType dtype,
+                                         MetaTensor* out,
+                                         MetaConfig config = MetaConfig());
 
 void UniqueConsecutiveInferMeta(const MetaTensor& x,
                                 bool return_inverse,

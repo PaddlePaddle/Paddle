@@ -27,7 +27,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace auto_schedule {
 
@@ -53,7 +53,7 @@ class MultiLevelTiling : public AutoGenRule {
     std::vector<int> write_cache_levels;
   };
 
-  static const std::unordered_map<cinn::common::Target::Arch, Config> kConfigs;
+  static const std::unordered_map<cinn::common::Arch, Config> kConfigs;
 
   MultiLevelTiling(const cinn::common::Target& target, const Config& config);
   ~MultiLevelTiling() = default;
@@ -103,8 +103,11 @@ class MultiLevelTiling : public AutoGenRule {
   // Sample num_split integers whose product equals extent
   template <typename T>
   std::vector<T> SampleTileSplit(T extent, int num_split) const {
-    CHECK_GT(num_split, 0)
-        << "num_split in SampleTileSplit must be greater than 0";
+    PADDLE_ENFORCE_GT(
+        num_split,
+        0,
+        phi::errors::InvalidArgument(
+            "num_split in SampleTileSplit must be greater than 0"));
     if (num_split == 1) {
       return {extent};
     }

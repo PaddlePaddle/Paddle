@@ -25,7 +25,7 @@ namespace {
 
 class SqueezeTransposePattern : public paddle::drr::DrrPatternBase {
  public:
-  SqueezeTransposePattern() {}
+  SqueezeTransposePattern() = default;
 
   std::string name() const override { return "SqueezeTransposePattern"; }
 
@@ -46,7 +46,7 @@ class SqueezeTransposePattern : public paddle::drr::DrrPatternBase {
 
     transpose({&pat.Tensor("squeeze_out")}, {&pat.Tensor("transpose_op_out")});
 
-    pat.RequireNativeCall([&](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
       auto axis = match_ctx.Attr<std::vector<int64_t>>("full_1_value");
       auto perm = match_ctx.Attr<std::vector<int>>("perm");
       if (perm.size() <= 0) return false;

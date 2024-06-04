@@ -197,8 +197,8 @@ int GetSharedSize(::pir::Operation* op) {
       lane = inshape[idx];
     }
     // int max_num_threads =
-    // cinn::common::DefaultNVGPUTarget().max_num_threads(); todo(phlrain): get
-    // gpu max threads
+    // cinn::common::DefaultDeviceTarget().max_num_threads();
+    // todo(phlrain): get gpu max threads
     int max_num_threads = 2048;
     if (lane > max_num_threads / 2) {
       return 0;
@@ -236,10 +236,8 @@ int GetSharedSize(::pir::Operation* op) {
   return 0;
 }
 
-using ConditionFunction =
-    std::function<bool(::pir::Operation*,
-                       const GroupPtr&,
-                       const ::pir::ShapeConstraintIRAnalysis&)>;
+using ConditionFunction = std::function<bool(
+    ::pir::Operation*, const GroupPtr&, ::pir::ShapeConstraintIRAnalysis*)>;
 
 // Op Fusion Pass which performs Ops fusion, Ops are fused
 // "vertically", meaning producing Ops are fused into their consumers
@@ -354,7 +352,7 @@ class OpFusionPassHelper {
 
  private:
   void DoOpFusion() {
-    const auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
+    auto& shape_analysis = pir::ShapeAnalysisManager::Instance().Get(
         ops_.front()->GetParentProgram());
     for (auto consumer : ops_) {
       auto consumer_kind =
@@ -413,7 +411,7 @@ class OpFusionPassHelper {
           }
         }
 
-        if (!can_fuse || !CanFuse(producer, consumer, shape_analysis)) {
+        if (!can_fuse || !CanFuse(producer, consumer, &shape_analysis)) {
           continue;
         }
 
@@ -443,7 +441,7 @@ class OpFusionPassHelper {
           // VLOG(3) << "Insert Global Output Node : " << producer->id();
           consumer_fusion->output_ops.insert(producer);
         } else if (producer_data_used_num > 1 && producer->num_operands() > 0 &&
-                   is_same_size(producer, consumer_fusion, shape_analysis)) {
+                   is_same_size(producer, consumer_fusion, &shape_analysis)) {
           // producer is not a const value op.
           consumer_fusion->internal_ops.insert(producer);
         }
@@ -484,7 +482,7 @@ class OpFusionPassHelper {
           {OpPatternKind::kBroadcast,
            [](::pir::Operation* producer,
               const GroupPtr& consumer,
-              const ::pir::ShapeConstraintIRAnalysis& shape_analysis) -> bool {
+              ::pir::ShapeConstraintIRAnalysis* shape_analysis) -> bool {
              // NOTE, producer and consumer NEVER be same size
              if (is_same_size(producer, consumer, shape_analysis)) {
                return true;
@@ -598,7 +596,7 @@ class OpFusionPassHelper {
 
   bool CanFuse(::pir::Operation* producer,
                const ::pir::Operation* consumer,
-               const ::pir::ShapeConstraintIRAnalysis& shape_analysis) {
+               ::pir::ShapeConstraintIRAnalysis* shape_analysis) {
     auto& relation =
         fusion_relation_map_[hlir::framework::pir::CompatibleInfo::OpKind(
             *producer)];

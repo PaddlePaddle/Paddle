@@ -42,21 +42,19 @@ class OpLoweringGroup {
   OpLoweringGroup(const OpLoweringGroup&) = delete;
   OpLoweringGroup(OpLoweringGroup&&) = delete;
 
-  explicit OpLoweringGroup(const std::vector<::pir::Operation*>& group_ops)
-      : ops_(group_ops) {
-    fn_name_ = CompatibleInfo::GroupOpsName(ops_);
-  }
+  explicit OpLoweringGroup(const std::vector<::pir::Operation*>& group_ops,
+                           const std::string& fn_name)
+      : ops_(group_ops), fn_name_(fn_name) {}
 
-  explicit OpLoweringGroup(std::initializer_list<::pir::Operation*> group_ops)
-      : ops_(group_ops) {
-    fn_name_ = CompatibleInfo::GroupOpsName(ops_);
-  }
+  explicit OpLoweringGroup(std::initializer_list<::pir::Operation*> group_ops,
+                           const std::string& fn_name)
+      : ops_(group_ops), fn_name_(fn_name) {}
 
   const std::string& FuncName() const { return this->fn_name_; }
   ::pir::Block* GetParentBlock() const;
   ::pir::Program* GetParentProgram() const;
   std::vector<::pir::Value> GetGroupOutputValues() const;
-  std::unordered_set<::pir::Value> GetInputOpValues() const;
+  std::vector<::pir::Value> GetInputOpValues() const;
   std::unordered_set<::pir::Value> GetOutputOpValues() const;
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
       const ::pir::Value& value) const;
@@ -72,6 +70,11 @@ class OpLoweringGroup {
     for (const auto& op : ops_) {
       VisitOp(op);
     }
+  }
+
+  bool IsBroadcastLeaf() const { return is_broadcast_leaf_; }
+  void SetIsBroadcastLeaf(bool is_broadcast_leaf) {
+    is_broadcast_leaf_ = is_broadcast_leaf;
   }
 
   const std::vector<::pir::Operation*>& ops() const { return ops_; }
@@ -198,6 +201,10 @@ class OpLoweringGroup {
   std::unordered_set<::pir::Operation*> output_ops_;
   // op pattern kind.
   OpPatternKind op_pattern_kind_{kElementWise};
+  // FIXME(Aurelius84): Need more elegent way to deal with SymDimExprs
+  // from local and global ShapeAnalysis. It will be removed after
+  // refactoring logic of OpLoweringGroup.
+  bool is_broadcast_leaf_{false};
 
   std::vector<std::string> input_names_;
   std::vector<std::string> output_names_;

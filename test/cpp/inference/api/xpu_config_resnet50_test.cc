@@ -80,24 +80,4 @@ TEST(xpu_config, inference) {
   CompareOutput(predictor);
 }
 
-TEST(xpu_config, lite) {
-  size_t l3_size = 10 * 1024 * 1024;
-  XpuConfig xpu_config;
-  xpu_config.l3_size = l3_size;
-  std::string model_dir = FLAGS_infer_model + "/" + "model";
-  Config config;
-  config.SetModel(model_dir + "/model", model_dir + "/params");
-  config.EnableXpu();
-  config.SetXpuConfig(xpu_config);
-  config.EnableLiteEngine();
-
-  XpuConfig xpu_config_test = config.xpu_config();
-  CHECK_EQ(xpu_config_test.l3_size, l3_size);
-
-  auto predictor = CreatePredictor(config);
-  PrepareInput(predictor);
-  predictor->Run();
-  CompareOutput(predictor);
-}
-
 }  // namespace paddle_infer

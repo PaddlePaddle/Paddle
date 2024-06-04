@@ -20,6 +20,9 @@ if(WITH_ONEDNN AND NOT WIN32)
   py_test_modules(
     test_dequantize_mkldnn_op_static_build MODULES test_dequantize_mkldnn_op
     ENVS FLAGS_new_executor_static_build=true)
+  py_test_modules(
+    test_quantize_mkldnn_op_static_build MODULES test_quantize_mkldnn_op ENVS
+    FLAGS_new_executor_static_build=true)
 endif()
 
 set_tests_properties(test_concat_mkldnn_op PROPERTIES TIMEOUT 120)
@@ -32,4 +35,4 @@ if(WITH_ONEDNN AND NOT WIN32)
 endif()
 # set_tests_properties(test_flags_mkldnn_ops_on_off PROPERTIES TIMEOUT 120)
 
-set_pit_tests_properties()
+set_pir_tests_properties()

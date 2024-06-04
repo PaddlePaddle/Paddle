@@ -28,14 +28,14 @@ void OpInfo::AttachInterface(InterfaceValue &&interface_value) {
 }
 
 void OpInfoImpl::AttachInterface(InterfaceValue &&interface_value) {
+  auto type_id = interface_value.type_id();
   auto success = interface_set_.insert(std::move(interface_value)).second;
-  PADDLE_ENFORCE_EQ(success,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "Interface: id[%u] is already registered. inset failed",
-                        interface_value.type_id()));
-  VLOG(10) << "Attach a interface: id[" << interface_value.type_id() << "]. to "
-           << op_name_;
+  PADDLE_ENFORCE_EQ(
+      success,
+      true,
+      phi::errors::InvalidArgument(
+          "Interface: id[%u] is already registered. inset failed", type_id));
+  VLOG(10) << "Attach a interface: id[" << type_id << "]. to " << op_name_;
 }
 
 OpInfoImpl::OpInfoImpl(std::set<InterfaceValue> &&interface_set,
@@ -72,28 +72,34 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
            << " interfaces, " << traits_num << " traits, " << attributes_num
            << " attributes.";
   size_t base_size = sizeof(TypeId) * traits_num + sizeof(OpInfoImpl);
-  char *base_ptr = static_cast<char *>(::operator new(base_size));
+  std::unique_ptr<char[]> base_ptr(new char[base_size]);
   VLOG(10) << "Malloc " << base_size << " Bytes at "
-           << static_cast<void *>(base_ptr);
+           << static_cast<void *>(base_ptr.get());
+
+  char *raw_base_ptr = base_ptr.get();
   if (traits_num > 0) {
-    auto p_first_trait = reinterpret_cast<TypeId *>(base_ptr);
-    memcpy(base_ptr, trait_set.data(), sizeof(TypeId) * traits_num);
+    auto p_first_trait = reinterpret_cast<TypeId *>(raw_base_ptr);
+    memcpy(raw_base_ptr, trait_set.data(), sizeof(TypeId) * traits_num);
     std::sort(p_first_trait, p_first_trait + traits_num);
-    base_ptr += traits_num * sizeof(TypeId);
+    raw_base_ptr += traits_num * sizeof(TypeId);
   }
+
   // Construct OpInfoImpl.
-  VLOG(10) << "Construct OpInfoImpl at " << reinterpret_cast<void *>(base_ptr)
-           << " ......";
-  OpInfo op_info = OpInfo(new (base_ptr) OpInfoImpl(std::move(interface_set),
-                                                    dialect,
-                                                    op_id,
-                                                    op_name,
-                                                    traits_num,
-                                                    attributes_num,
-                                                    attributes_name,
-                                                    verify_sig,
-                                                    verify_region));
-  return op_info;
+  VLOG(10) << "Construct OpInfoImpl at "
+           << reinterpret_cast<void *>(raw_base_ptr) << " ......";
+  OpInfoImpl *impl = new (raw_base_ptr) OpInfoImpl(std::move(interface_set),
+                                                   dialect,
+                                                   op_id,
+                                                   op_name,
+                                                   traits_num,
+                                                   attributes_num,
+                                                   attributes_name,
+                                                   verify_sig,
+                                                   verify_region);
+
+  // Release the unique_ptr ownership after successful construction
+  base_ptr.release();
+  return OpInfo(impl);
 }
 void OpInfoImpl::Destroy(OpInfo info) {
   if (info.impl_) {
@@ -137,6 +143,14 @@ void OpInfoImpl::Destroy() {
   // (3) free memory
   VLOG(10) << "Free base_ptr " << reinterpret_cast<void *>(base_ptr);
   ::operator delete(base_ptr);
+}
+
+std::vector<std::string> OpInfoImpl::GetAttributesName() const {
+  std::vector<std::string> attributes_name;
+  for (size_t i = 0; i < num_attributes_; ++i) {
+    attributes_name.push_back(p_attributes_[i]);
+  }
+  return attributes_name;
 }
 
 }  // namespace pir

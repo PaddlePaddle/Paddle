@@ -212,6 +212,8 @@ pir::Type parseType(Json* type_json) {
     size_t offset = data_json.at(4).get<size_t>();
     return pir::DenseTensorType::get(
         ctx, dtype, ddim, data_layout, lod, offset);
+  } else if (type_name == NULL_TYPE) {
+    return pir::Type();
   } else {
     PADDLE_ENFORCE(false,
                    phi::errors::InvalidArgument(

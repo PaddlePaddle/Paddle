@@ -125,6 +125,17 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
       for (auto in_dim : src_dims) {
         if (src_shape[in_dim] > 1) {
           input_dims.emplace_back(std::make_shared<InputDim>(in_dim));
+        } else if (src_shape[in_dim] == 1 && s == 1 && t == 1) {
+          // NOTE: for the case like:
+          //    shape: [1, 512, 4096] --> [1, 2, 256, 4096],
+          //    input dims_mapping: [0, 1, -1]
+          //    expected output dims_mapping: [0, 1, -1, -1] (not [-1, 1, -1,
+          //    -1])
+          // In this case, the dim0 in target shape is 1 and it is from
+          // dim0 in source shape. make the dim0's transformation be InputDim
+          // rather than Singleton so that the sharding status can be
+          // propagated.
+          input_dims.emplace_back(std::make_shared<InputDim>(in_dim));
         }
       }
       std::shared_ptr<DimTrans> flatten = make_flatten(input_dims);
@@ -310,26 +321,41 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
 SpmdInfo ReshapeInferSpmdDynamic(const DistMetaTensor& x,
                                  const std::vector<int64_t>& shape) {
   auto spmd_info = ReshapeInferSpmd(x, shape);
-  spmd_info.second.emplace_back(spmd_info.first[0]);
+  auto xshape_dist_dst = PADDLE_GET_CONST(TensorDistAttr, spmd_info.first[0]);
+  auto xshape_dims_mapping = xshape_dist_dst.dims_mapping();
+  xshape_dims_mapping.insert(xshape_dims_mapping.begin(), -1);
+  xshape_dist_dst.set_dims_mapping(xshape_dims_mapping);
+  spmd_info.second.emplace_back(xshape_dist_dst);
   return spmd_info;
 }
 
 SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
                               const DistMetaTensor& out_grad) {
   std::vector<int64_t> out_grad_shape = common::vectorize(out_grad.dims());
-  const auto& x_shape_dist_src = x_shape.dist_attr();
-  auto tmp = ReshapeInferSpmdDynamic(x_shape, out_grad_shape);
+  auto x_shape_dist_tmp = x_shape.dist_attr();
+  auto x_dims_mapping = x_shape_dist_tmp.dims_mapping();
+  x_dims_mapping.erase(x_dims_mapping.begin());
+  x_shape_dist_tmp.set_dims_mapping(x_dims_mapping);
+  auto tmp = ReshapeInferSpmd(DistMetaTensor(x_shape.dims(), x_shape_dist_tmp),
+                              out_grad_shape);
   // check no shard is needed
   const auto& x_shape_dist_dst = PADDLE_GET_CONST(TensorDistAttr, tmp.first[0]);
   const auto& out_grad_dist_dst =
       PADDLE_GET_CONST(TensorDistAttr, tmp.second[0]);
-  PADDLE_ENFORCE_EQ(x_shape_dist_src,
-                    x_shape_dist_dst,
+  PADDLE_ENFORCE_EQ(x_shape_dist_tmp.dims_mapping(),
+                    x_shape_dist_dst.dims_mapping(),
                     phi::errors::InvalidArgument(
                         "x_shape should not be re shared: [%s] => [%s]",
-                        x_shape_dist_src.to_string(),
+                        x_shape_dist_tmp.to_string(),
                         x_shape_dist_dst.to_string()));
   return {{out_grad_dist_dst}, {x_shape_dist_dst}};
+}
+
+SpmdInfo StaticReshapeGradInferSpmd(const DistMetaTensor& x_shape,
+                                    const DistMetaTensor& out_grad) {
+  auto spmd_info = ReshapeGradInferSpmd(x_shape, out_grad);
+  spmd_info.first.insert(spmd_info.first.begin(), x_shape.dist_attr());
+  return spmd_info;
 }
 
 }  // namespace distributed

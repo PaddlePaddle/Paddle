@@ -21,10 +21,12 @@
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_utils.h"
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/common/errors.h"
 
 namespace cinn {
 namespace ir {
@@ -254,6 +256,7 @@ Expr For::Make(Var loop_var,
                Expr body,
                VectorizeInfo vector_info,
                BindInfo bind_info) {
+  ir::TryElevateInt32ToInt64({loop_var, min, extent});
   auto node = make_shared<For>();
   CHECK(loop_var.defined());
   CHECK(min.defined());
@@ -379,7 +382,8 @@ Expr Store::Make(Expr tensor, Expr value, const std::vector<Expr> &indices) {
   auto node = make_shared<Store>();
   node->tensor = tensor;
   node->value = value;
-  node->indices = indices;
+  node->indices =
+      utils::GetCompitableStoreLoadIndices(tensor.as_tensor_ref(), indices);
 
   if (tensor->type() != Void()) {
     node->set_type(
@@ -398,6 +402,38 @@ Expr Store::index() const {
   return res;
 }
 
+void Store::replace(Expr old_op, Expr new_op) {
+  if (value == old_op) {
+    value = new_op;
+  }
+  if (tensor == old_op) {
+    tensor = new_op;
+  }
+  for (int i = 0; i < indices.size(); i++) {
+    if (indices[i] == old_op) {
+      indices[i] = new_op;
+    }
+  }
+}
+
+void Select::replace(Expr old_op, Expr new_op) {
+  if (condition == old_op) {
+    condition = new_op;
+  }
+  if (true_value == old_op) {
+    true_value = new_op;
+  }
+  if (false_value == old_op) {
+    false_value = new_op;
+  }
+}
+
+void Cast::replace(Expr old_op, Expr new_op) {
+  if (v() == old_op) {
+    v() = new_op;
+  }
+}
+
 const std::string &Store::name() const {
   auto *t = tensor.As<ir::_Tensor_>();
   CHECK(t);
@@ -405,6 +441,7 @@ const std::string &Store::name() const {
 }
 
 Type Store::type() const { return value.type(); }
+
 std::vector<Expr *> Store::expr_fields() {
   std::vector<Expr *> exprs({&tensor, &value});
   for (auto &idx : indices) exprs.push_back(&idx);
@@ -492,6 +529,20 @@ Expr Call::Make(Type type,
   node->attrs = attrs;
   return Expr(node);
 }
+
+void Call::replace(Expr old_op, Expr new_op) {
+  for (int i = 0; i < read_args.size(); i++) {
+    if (read_args[i] == old_op) {
+      read_args[i] = new_op;
+    }
+  }
+  for (int i = 0; i < write_args.size(); i++) {
+    if (read_args[i] == old_op) {
+      read_args[i] = new_op;
+    }
+  }
+}
+
 std::vector<Expr *> Call::expr_fields() {
   std::vector<Expr *> res;
   for (auto &x : read_args) res.push_back(&x);
@@ -584,8 +635,10 @@ Var &Var::operator=(const _Var_ *x) {
   return *this;
 }
 
-Expr Load::Make(Expr tensor, const std::vector<Expr> &indices) {
+Expr Load::Make(Expr tensor, const std::vector<Expr> &origin_indices) {
   CHECK(tensor->type().valid());
+  const auto indices = utils::GetCompitableStoreLoadIndices(
+      tensor.as_tensor_ref(), origin_indices);
   CHECK(!indices.empty());
   TryElevateInt32ToInt64(indices);
   for (auto &idx : indices) {
@@ -598,6 +651,12 @@ Expr Load::Make(Expr tensor, const std::vector<Expr> &indices) {
   node->set_type(node->type());
   return Expr(node);
 }
+
+void Load::convert_int32_to_int64() {
+  IrNode::convert_int32_to_int64();
+  tensor->convert_int32_to_int64();
+}
+
 Type Load::type() const {
   CHECK(tensor.defined());
   CHECK(tensor.type().valid());
@@ -772,6 +831,9 @@ Expr Reduce::Make(Reduce::ReduceType reduce_type,
   n->set_type(body.type());
   return Expr(n);
 }
+
+Type Reduce::type() const { return body.type().ElementOf(); }
+
 std::vector<Expr *> Reduce::expr_fields() {
   std::vector<Expr *> res;
   if (init.defined()) {
@@ -798,6 +860,12 @@ void Reduce::Verify() const {
   CHECK_EQ(init.type(), body.type());
 }
 
+Type Select::type() const {
+  PADDLE_ENFORCE_EQ(
+      true_value.type(), false_value.type(), "Type of Select must be same");
+  return type_;
+}
+
 void Select::Verify() const {
   CHECK(condition.defined());
   CHECK(true_value.defined());
@@ -818,9 +886,21 @@ void For::Verify() const {
   CHECK(extent.defined());
   CHECK(body.defined());
 
-  CHECK_EQ(loop_var->type(), type_of<int32_t>());
-  CHECK_EQ(min->type(), type_of<int32_t>());
-  CHECK_EQ(extent->type(), type_of<int32_t>());
+  PADDLE_ENFORCE_EQ((loop_var->type() == type_of<int32_t>()) ||
+                        (loop_var->type() == type_of<int64_t>()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "loop var's type must be int32 or int64"));
+  PADDLE_ENFORCE_EQ((min->type() == type_of<int32_t>()) ||
+                        (min->type() == type_of<int64_t>()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "loop min's type must be int32 or int64"));
+  PADDLE_ENFORCE_EQ((extent->type() == type_of<int32_t>()) ||
+                        (extent->type() == type_of<int64_t>()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "loop extent's type must be int32 or int64"));
 }
 
 void PolyFor::Verify() const {
@@ -858,11 +938,15 @@ void MultiOperandVerify(llvm::ArrayRef<Expr> operands) {
   }
 }
 
+Type Product::type() const { return operands().front().type(); }
+
 void Product::Verify() const {
   CHECK_GT(operands().size(), 1UL)
       << "Product node should have more than 1 operands";
   MultiOperandVerify(operands());
 }
+
+Type Sum::type() const { return operands().front().type(); }
 
 void Sum::Verify() const {
   CHECK_GT(operands().size(), 1UL)

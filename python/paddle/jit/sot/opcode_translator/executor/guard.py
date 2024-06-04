@@ -18,6 +18,8 @@ import types
 import weakref
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
+import paddle
+
 from ...profiler import EventGuard
 from ...utils import current_tmp_name_records, log, log_do
 
@@ -45,16 +47,16 @@ class StringifyExpression:
     def __init__(self, str_expr, sub_exprs, free_vars):
         expr = str_expr.format(*[arg.expr for arg in sub_exprs])
         self.expr = current_tmp_name_records().add_tmp_var(expr)
-        self.debug_expr = str_expr.format(
-            *[arg.debug_expr for arg in sub_exprs]
+        self.inlined_expr = str_expr.format(
+            *[arg.inlined_expr for arg in sub_exprs]
         )
         self.free_vars = free_vars
 
     def __hash__(self):
         if self.free_vars:
-            return hash((self.debug_expr, id(self)))
+            return hash((self.inlined_expr, id(self)))
         else:
-            return hash(self.debug_expr)
+            return hash(self.inlined_expr)
 
 
 def union_free_vars(*free_vars: dict[str, Any]):
@@ -88,7 +90,7 @@ def make_guard(stringify_guards: list[StringifyExpression]) -> Guard:
             func_result = ""
             for str_expr in stringify_exprs:
                 func_result += str_expr.expr + " and "
-                lambda_string += str_expr.debug_expr + " and "
+                lambda_string += str_expr.inlined_expr + " and "
                 free_vars = union_free_vars(free_vars, str_expr.free_vars)
 
             func_string += f"    return {func_result[:-5]}"
@@ -171,3 +173,12 @@ def object_equal_stringify_guard(self) -> list[StringifyExpression]:
             ),
         )
     ]
+
+
+def stringify_pyobject(obj: object) -> tuple[str, dict[str, Any]]:
+    if isinstance(obj, paddle.core.VarDesc.VarType):
+        return f"paddle.core.VarDesc.VarType({obj.value})", {"paddle": paddle}
+    elif isinstance(obj, paddle.core.DataType):
+        return f"paddle.core.DataType({obj.value})", {"paddle": paddle}
+    # For builtin values
+    return f"{obj!r}", {}
