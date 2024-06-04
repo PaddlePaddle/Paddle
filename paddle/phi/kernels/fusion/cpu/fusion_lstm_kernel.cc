@@ -45,7 +45,6 @@ namespace phi {
   const T *wp_data = bias->data<T>() + D4;                             \
   /* for peephole only*/                                               \
   T *checked_cell_data = nullptr;                                      \
-  auto place = dev_ctx.GetPlace();                                     \
   if (use_peepholes) {                                                 \
     /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                   \
     checked_cell_data = dev_ctx.template Alloc<T>(checked_cell);       \
@@ -205,32 +204,32 @@ void BatchCompute(const Context &dev_ctx,
   INIT_BASE_DEFINES;
   if (x->lod()[0].size() == 2) {
     xx->Resize({x_dims[0], D4});
-    SeqCompute(dev_ctx,
-               x_in,
-               weight_x_in,
-               weight_h_in,
-               bias_in,
-               h0_in,
-               c0_in,
-               use_peepholes,
-               is_reverse,
-               use_seq,
-               gate_activation,
-               cell_activation,
-               candidate_activation,
-               scale_data,
-               shift_data,
-               scale_weights,
-               force_fp32_output,
-               hidden,
-               cell,
-               xx,
-               batched_input,
-               batched_hidden,
-               batched_cell,
-               reordered_h0,
-               reordered_c0,
-               checked_cell);
+    SeqCompute<T, Context>(dev_ctx,
+                           x_in,
+                           weight_x_in,
+                           weight_h_in,
+                           bias_in,
+                           h0_in,
+                           c0_in,
+                           use_peepholes,
+                           is_reverse,
+                           use_seq,
+                           gate_activation,
+                           cell_activation,
+                           candidate_activation,
+                           scale_data,
+                           shift_data,
+                           scale_weights,
+                           force_fp32_output,
+                           hidden,
+                           cell,
+                           xx,
+                           batched_input,
+                           batched_hidden,
+                           batched_cell,
+                           reordered_h0,
+                           reordered_c0,
+                           checked_cell);
     return;
   }
   INIT_OTHER_DEFINES;
@@ -376,7 +375,7 @@ void FusionLSTMKernel(const Context &dev_ctx,
                       DenseTensor *batched_cell,
                       DenseTensor *reordered_h0,
                       DenseTensor *reordered_c0,
-                      DenseTensor *checked_cell) const override {
+                      DenseTensor *checked_cell) {
   if (use_seq) {
     SeqCompute<T, Context>(dev_ctx,
                            x_in,

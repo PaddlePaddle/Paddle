@@ -49,10 +49,10 @@ class LSTMMKLDNNHandler
                     bool use_peepholes,
                     std::string gate_activation,
                     std::string cell_activation,
-                    std::string candidate_activation, )
+                    std::string candidate_activation)
       : RNNMKLDNNHandler<T, dnnl::lstm_forward, T_out>(dev_ctx,
                                                        onednn_engine,
-                                                       ctx.GetPlace(),
+                                                       dev_ctx.GetPlace(),
                                                        input,
                                                        weight_h,
                                                        h0,

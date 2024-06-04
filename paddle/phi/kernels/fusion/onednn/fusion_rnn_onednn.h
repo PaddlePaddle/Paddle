@@ -43,7 +43,7 @@ class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
                    const std::string& unique_name,
                    float scale_data,
                    float shift_data,
-                   vector<float> scale_weights)
+                   std::vector<float> scale_weights)
       : phi::funcs::OneDNNHandlerT<T, T_alg>(
             dev_ctx,
             dev_ctx.GetEngine(),
