@@ -3083,7 +3083,6 @@
     func : NopInferMeta
   kernel :
     func : nop
-  inplace: (x -> out)
   interfaces : paddle::dialect::ParseKernelKeyInterface
 
 - op : norm
