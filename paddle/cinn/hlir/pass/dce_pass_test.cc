@@ -15,7 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/cinn/frontend/decomposer/test_helper.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 
@@ -36,7 +36,10 @@ TEST(DCE, Test_0) {
       std::make_shared<hlir::framework::Graph>(program, fetch_ids, target);
   hlir::framework::ApplyPass(graph.get(), "DCE");
 
-  CHECK_EQ(graph->nodes().size(), 4);
+  PADDLE_ENFORCE_EQ(
+      graph->nodes().size(),
+      4,
+      phi::errors::InvalidArgument("The graph nodes's size should be 4."));
 }
 
 TEST(DCE, Test_1) {
@@ -59,7 +62,10 @@ TEST(DCE, Test_1) {
   auto graph =
       std::make_shared<hlir::framework::Graph>(program, fetch_ids, target);
   hlir::framework::ApplyPass(graph.get(), "DCE");
-  CHECK_EQ(graph->nodes().size(), 8);
+  PADDLE_ENFORCE_EQ(
+      graph->nodes().size(),
+      8,
+      phi::errors::InvalidArgument("The graph nodes's size should be 8."));
 }
 
 }  // namespace frontend

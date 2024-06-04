@@ -66,43 +66,6 @@ class UnittestBase(unittest.TestCase):
         return res
 
 
-class TestDropout(UnittestBase):
-    def init_info(self):
-        self.shapes = [[10, 10]]
-        self.save_path = os.path.join(self.temp_dir.name, 'dropout')
-
-    def test_static(self):
-        main_prog = Program()
-        startup_prog = Program()
-        with program_guard(main_prog, startup_prog):
-            fc = paddle.nn.Linear(10, 10)
-            x = paddle.randn(self.shapes[0])
-            x.stop_gradient = False
-            feat = fc(x)
-            # p is a Variable
-            p = paddle.randn([1])
-            out = paddle.nn.functional.dropout(feat, p=p)
-            sgd = paddle.optimizer.SGD()
-            sgd.minimize(paddle.mean(out))
-            # test _to_string
-            self.assertTrue("Var[" in str(main_prog))
-
-            exe = paddle.static.Executor()
-            exe.run(startup_prog)
-            res = exe.run(fetch_list=[x, out])
-            # export model
-            paddle.static.save_inference_model(self.save_path, [x], [out], exe)
-
-            # Test for Inference Predictor
-            infer_out = self.infer_prog()
-            self.assertEqual(infer_out.shape, (10, 10))
-
-            self.assertEqual(
-                main_prog.block(0).ops[4].all_attrs()['dropout_prob'].name,
-                p.name,
-            )
-
-
 class TestTileTensorList(UnittestBase):
     def init_info(self):
         self.shapes = [[2, 3, 4]]

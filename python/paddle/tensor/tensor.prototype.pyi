@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The `Tensor` template for `tools/gen_tensor_stub.py` generates the stub file `tensor.pyi`.
-# Add docstring, attributes, methods and alias with type annotaions for `Tensor`
+# The `Tensor` template `tensor.prototype.pyi` for `tools/gen_tensor_stub.py` to generate the stub file `tensor.pyi`.
+# Add docstring, attributes, methods and alias with type annotaions for `Tensor` in `tensor.prototype.pyi`
 # if not conveniently coding in original place (like c++ source file).
 
 from typing import Any, overload

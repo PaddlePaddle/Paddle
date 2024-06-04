@@ -4355,6 +4355,12 @@
   outputs :
     out : Out
 
+- op: transfer_layout
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op: uniform_random_batch_size_like
   inputs:
      input : Input
