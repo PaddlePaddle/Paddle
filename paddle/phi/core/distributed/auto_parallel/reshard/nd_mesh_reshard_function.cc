@@ -27,8 +27,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 namespace {
 ProcessMesh GetSubProcessMesh(const ProcessMesh& mesh, int64_t axis) {
@@ -326,5 +325,4 @@ void CrossNdMeshReshardFunction::Eval(DeviceContext* dev_ctx,
   same_status_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

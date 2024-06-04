@@ -17,9 +17,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class ExprWrapper {
  public:
@@ -42,12 +40,15 @@ class ExprWrapper {
                               const ExprWrapper& b,
                               nvinfer1::DimensionOperation op) {
     ExprWrapper result = {};
+    assert(a.expr);
+    assert(b.expr);
     if (a.expr_builder) {
       result.expr_builder = a.expr_builder;
     }
     if (b.expr_builder) {
       result.expr_builder = b.expr_builder;
     }
+    assert(result.expr_builder);
     assert(result.expr);
     result.expr = result.expr_builder->operation(op, *a.expr, *b.expr);
     return result;
@@ -896,6 +897,4 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(pad, PadInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(argsort, ArgsortInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(scatter, ScatterInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(solve, SolveInferMeta);
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt

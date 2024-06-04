@@ -23,8 +23,7 @@
 #include "paddle/fluid/primitive/utils/utils.h"
 #include "paddle/pir/include/core/operation.h"
 
-namespace paddle {
-namespace primitive {
+namespace paddle::primitive {
 
 std::vector<std::vector<paddle::Tensor>> add_n_vjp(
     const std::vector<paddle::Tensor>& x,
@@ -186,5 +185,4 @@ std::vector<std::vector<paddle::Tensor>> fused_attention_vjp(
   return vjp_res;
 }
 
-}  // namespace primitive
-}  // namespace paddle
+}  // namespace paddle::primitive

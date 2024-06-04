@@ -18,9 +18,7 @@
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
                                   const std::string& name_scope) {
@@ -489,9 +487,7 @@ void SquaredMatSubFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(fusion_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(squared_mat_sub_fuse_pass,
               paddle::framework::ir::SquaredMatSubFusePass);

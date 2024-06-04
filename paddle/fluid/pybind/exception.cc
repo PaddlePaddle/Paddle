@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "paddle/common/exception.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 /* Paddle Exception mapping rules:
  *   - InvalidArgumentError -> ValueError
@@ -139,5 +138,4 @@ void ThrowExceptionToPython(std::exception_ptr p) {
     PyErr_SetString(PyExc_OSError, e.what());
   }
 }
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind
