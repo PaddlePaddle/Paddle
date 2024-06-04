@@ -4233,7 +4233,6 @@ struct CudaHardTanhGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaThresholdedReluFunctor : public BaseActivationFunctor<T> {
-  T zero = static_cast<T>(0.0f);
   float threshold;
   float value;
 
