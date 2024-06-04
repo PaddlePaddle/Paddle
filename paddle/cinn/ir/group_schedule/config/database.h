@@ -32,7 +32,6 @@ using IterSpaceType = std::vector<std::pair<std::string, std::string>>;
 class TileConfigDatabase {
  public:
   virtual void AddConfig(const common::Target& target,
-                         const IterSpaceType& iter_space_type,
                          const BucketInfo& bucket_info,
                          const ScheduleConfig::TileConfig& config,
                          int priority) = 0;
@@ -45,7 +44,6 @@ class TileConfigDatabase {
 class NaiveTileConfigDatabase final : public TileConfigDatabase {
  public:
   void AddConfig(const common::Target& target,
-                 const IterSpaceType& iter_space_type,
                  const BucketInfo& bucket_info,
                  const ScheduleConfig::TileConfig& config,
                  int priority = 1) override;

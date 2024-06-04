@@ -42,8 +42,7 @@
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::vector<int> GetValueIds(pir::Value value,
                              const ValueExecutionInfo& value_exec_info) {
@@ -407,5 +406,4 @@ bool GetCondData(const phi::DenseTensor& cond) {
   return cpu_cond->data<bool>()[0];
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -35,6 +35,12 @@ class TestInverseOp(OpTest):
 
         np.random.seed(123)
         mat = np.random.random(self.matrix_shape).astype(self.dtype)
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
+            mat = (
+                np.random.random(self.matrix_shape)
+                + 1j * np.random.random(self.matrix_shape)
+            ).astype(self.dtype)
+
         inverse = np.linalg.inv(mat)
 
         self.inputs = {'Input': mat}
@@ -90,6 +96,26 @@ class TestInverseOpLargeFP32(TestInverseOpFP32):
         self.matrix_shape = [32, 32]
         self.dtype = "float32"
         self.python_api = paddle.tensor.math.inverse
+
+
+class TestInverseOpComplex64(TestInverseOp):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "complex64"
+        self.python_api = paddle.tensor.math.inverse
+
+    def test_grad(self):
+        self.check_grad(['Input'], 'Output', check_pir=True)
+
+
+class TestInverseOpComplex128(TestInverseOp):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "complex128"
+        self.python_api = paddle.tensor.math.inverse
+
+    def test_grad(self):
+        self.check_grad(['Input'], 'Output', check_pir=True)
 
 
 class TestInverseAPI(unittest.TestCase):

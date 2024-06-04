@@ -14,12 +14,10 @@
 
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
 
-namespace paddle {
-namespace prim {
+namespace paddle::prim {
 StaticCompositeContext* StaticCompositeContext::static_composite_context_ =
     new StaticCompositeContext();
 thread_local bool StaticCompositeContext::enable_bwd_prim_ = false;
 thread_local bool StaticCompositeContext::enable_fwd_prim_ = false;
 thread_local bool StaticCompositeContext::enable_eager_prim_ = false;
-}  // namespace prim
-}  // namespace paddle
+}  // namespace paddle::prim
