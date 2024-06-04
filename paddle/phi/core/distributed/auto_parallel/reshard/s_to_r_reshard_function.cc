@@ -26,8 +26,7 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/split_kernel.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 namespace {
 
@@ -221,5 +220,4 @@ void SToRReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
   }
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed
