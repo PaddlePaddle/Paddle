@@ -264,7 +264,8 @@ struct ShapeSignatureGenerator {
           op_shape_analysis->GetShapeOrDataForValue(op.operand_source(i));
       const auto& [shape, data] =
           ConvertSymbolToConst(shape_or_data, substitute_pattern);
-      if (!shape.has_value()) return std::make_pair(ShapeList(), DataList());
+      if (!shape.has_value() || shape->empty())
+        return std::make_pair(ShapeList(), DataList());
       shape_list.emplace_back(*shape);
       data_list.emplace_back(*data);
     }
@@ -287,7 +288,7 @@ struct ShapeSignatureGenerator {
           op_shape_analysis->GetShapeOrDataForValue(op.result(i));
       const auto& [shape, data] =
           ConvertSymbolToConst(shape_or_data, substitute_pattern);
-      if (!shape.has_value()) return ShapeList();
+      if (!shape.has_value() || shape->empty()) return ShapeList();
       shape_list.emplace_back(*shape);
     }
     VLOG(4) << "  shape_list: " << shape_list;
