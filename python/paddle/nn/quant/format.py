@@ -75,43 +75,74 @@ class LinearQuanter(Layer):
         self._group_size = group_size
 
     def forward(self, input):
-        if in_dynamic_mode():
-            if len(self._scales.shape) > 1:
-                bnt = (1 << (self._bit_length - 1)) - 1
-                new_s = paddle.repeat_interleave(
-                    self._scales, self._group_size, 0
+        if isinstance(self._bit_length, tuple):
+            dtype = input.dtype
+            input = input * self._scales
+            if (
+                self._bit_length[0] == 4
+                and self._bit_length[1] == 3
+                and len(self._bit_length) == 2
+            ):
+                input = (
+                    input.clip(min=-1 * 448.0, max=448.0)
+                    .to(paddle.float8_e4m3fn)
+                    .cast(dtype)
                 )
-                quant_weight = paddle.clip(
-                    paddle.round(input.cast('float32') / new_s * bnt),
-                    -bnt - 1,
-                    bnt,
+            elif (
+                self._bit_length[0] == 5
+                and self._bit_length[1] == 2
+                and len(self._bit_length) == 2
+            ):
+                input = (
+                    input.clip(min=-1 * 57344.0, max=57344.0)
+                    .to(paddle.float8_e5m2)
+                    .cast(dtype)
                 )
-                return quant_weight.cast(input.dtype)
-            return _C_ops.quantize_linear(
-                input.cast('float32'),
-                self._scales,
-                self._zero_point,
-                "quant_axis",
-                self._quant_axis,
-                "bit_length",
-                self._bit_length,
-            ).cast(input.dtype)
+            else:
+                raise NotImplementedError(
+                    "Currently, only float8_e4m3 and float8_e5m2 formats are supported. Please set quant_bits to (4,3) or (5,2) for the corresponding format."
+                )
+            return input
         else:
-            out = self._helper.create_variable_for_type_inference(input.dtype)
-            self._helper.append_op(
-                type='quantize_linear',
-                inputs={
-                    'X': input,
-                    'Scale': self._scales,
-                    'ZeroPoint': self._zero_point,
-                },
-                outputs={'Y': out},
-                attrs={
-                    'quant_axis': self._quant_axis,
-                    'bit_length': self._bit_length,
-                },
-            )
-            return out
+            if in_dynamic_mode():
+                if len(self._scales.shape) > 1:
+                    bnt = (1 << (self._bit_length - 1)) - 1
+                    new_s = paddle.repeat_interleave(
+                        self._scales, self._group_size, 0
+                    )
+                    quant_weight = paddle.clip(
+                        paddle.round(input.cast('float32') / new_s * bnt),
+                        -bnt - 1,
+                        bnt,
+                    )
+                    return quant_weight.cast(input.dtype)
+                return _C_ops.quantize_linear(
+                    input.cast('float32'),
+                    self._scales,
+                    self._zero_point,
+                    "quant_axis",
+                    self._quant_axis,
+                    "bit_length",
+                    self._bit_length,
+                ).cast(input.dtype)
+            else:
+                out = self._helper.create_variable_for_type_inference(
+                    input.dtype
+                )
+                self._helper.append_op(
+                    type='quantize_linear',
+                    inputs={
+                        'X': input,
+                        'Scale': self._scales,
+                        'ZeroPoint': self._zero_point,
+                    },
+                    outputs={'Y': out},
+                    attrs={
+                        'quant_axis': self._quant_axis,
+                        'bit_length': self._bit_length,
+                    },
+                )
+                return out
 
     @staticmethod
     def from_quanter(quanter):
@@ -153,40 +184,46 @@ class LinearDequanter(Layer):
         self._group_size = group_size
 
     def forward(self, input):
-        if in_dynamic_mode():
-            if len(self._scales.shape) > 1:
-                bnt = (1 << (self._bit_length - 1)) - 1
-                new_s = paddle.repeat_interleave(
-                    self._scales, self._group_size, 0
-                )
-                quant_dequant_weight = input.cast('float32') / bnt * new_s
-                return quant_dequant_weight.cast(input.dtype)
-
-            return _C_ops.dequantize_linear(
-                input.cast('float32'),
-                self._scales,
-                self._zero_point,
-                "quant_axis",
-                self._quant_axis,
-                "bit_length",
-                self._bit_length,
-            ).cast(input.dtype)
+        if isinstance(self._bit_length, tuple):
+            tensor = (input / self._scales).cast(input.dtype)
+            return tensor
         else:
-            out = self._helper.create_variable_for_type_inference(input.dtype)
-            self._helper.append_op(
-                type='dequantize_linear',
-                inputs={
-                    'X': input,
-                    'Scale': self._scales,
-                    'ZeroPoint': self._zero_point,
-                },
-                outputs={'Y': out},
-                attrs={
-                    'quant_axis': self._quant_axis,
-                    'bit_length': self._bit_length,
-                },
-            )
-            return out
+            if in_dynamic_mode():
+                if len(self._scales.shape) > 1:
+                    bnt = (1 << (self._bit_length - 1)) - 1
+                    new_s = paddle.repeat_interleave(
+                        self._scales, self._group_size, 0
+                    )
+                    quant_dequant_weight = input.cast('float32') / bnt * new_s
+                    return quant_dequant_weight.cast(input.dtype)
+
+                return _C_ops.dequantize_linear(
+                    input.cast('float32'),
+                    self._scales,
+                    self._zero_point,
+                    "quant_axis",
+                    self._quant_axis,
+                    "bit_length",
+                    self._bit_length,
+                ).cast(input.dtype)
+            else:
+                out = self._helper.create_variable_for_type_inference(
+                    input.dtype
+                )
+                self._helper.append_op(
+                    type='dequantize_linear',
+                    inputs={
+                        'X': input,
+                        'Scale': self._scales,
+                        'ZeroPoint': self._zero_point,
+                    },
+                    outputs={'Y': out},
+                    attrs={
+                        'quant_axis': self._quant_axis,
+                        'bit_length': self._bit_length,
+                    },
+                )
+                return out
 
     @staticmethod
     def from_quanter(quanter):
@@ -195,127 +232,6 @@ class LinearDequanter(Layer):
             zero_point=quanter.zero_points(),
             quant_axis=quanter.quant_axis(),
             bit_length=quanter.bit_length(),
-        )
-
-
-class FP8LinearQuanterDequanter(Layer):
-    def __init__(self, quanter, dequanter):
-        super().__init__()
-        self._quanter = quanter
-        self._dequanter = dequanter
-
-    def forward(self, input):
-        out = input
-        if self._quanter is not None:
-            out = self._quanter(out)
-        if self._dequanter is not None:
-            out = self._dequanter(out)
-        return out
-
-    @staticmethod
-    def from_quanter(quanter):
-        assert quanter is not None
-        return FP8LinearQuanterDequanter(
-            FP8Linearquanter.from_quanter(quanter),
-            FP8LinearDequanter.from_quanter(quanter),
-        )
-
-
-class FP8Linearquanter(Layer):
-    def __init__(
-        self, scales, zero_point=None, quant_axis=None, quant_bits=(4, 3)
-    ):
-        super().__init__()
-        scales = paddle.to_tensor(scales, dtype="float32")
-        scale_attr = paddle.framework.ParamAttr(
-            name=paddle.utils.unique_name.generate('quant_dequant.scale'),
-            initializer=paddle.nn.initializer.Constant(1.0),
-            trainable=False,
-        )
-        self._scales = self.create_parameter(
-            shape=scales.shape, attr=scale_attr, dtype="float32"
-        )
-        self._scales.set_value(scales)
-        self._zero_point = (
-            paddle.zeros([1], dtype="float32")
-            if zero_point is None
-            else paddle.to_tensor(zero_point)
-        )
-        self._quant_axis = -1 if quant_axis is None else quant_axis
-        self._quant_bits = quant_bits
-
-    def forward(self, input):
-        dtype = input.dtype
-        input = input * self._scales
-        if (
-            self._quant_bits[0] == 4
-            and self._quant_bits[1] == 3
-            and len(self._quant_bits) == 2
-        ):
-            input = (
-                input.clip(min=-1 * 448.0, max=448.0)
-                .to(paddle.float8_e4m3fn)
-                .cast(dtype)
-            )
-        elif (
-            self._quant_bits[0] == 5
-            and self._quant_bits[1] == 2
-            and len(self._quant_bits) == 2
-        ):
-            input = (
-                input.clip(min=-1 * 57344.0, max=57344.0)
-                .to(paddle.float8_e5m2)
-                .cast(dtype)
-            )
-        else:
-            raise NotImplementedError(
-                "Currently, only float8_e4m3 and float8_e5m2 formats are supported. Please set quant_bits to (4,3) or (5,2) for the corresponding format."
-            )
-        return input
-
-    @staticmethod
-    def from_quanter(quanter):
-        return FP8Linearquanter(
-            quanter.scales(),
-            zero_point=quanter.zero_points(),
-            quant_axis=quanter.quant_axis(),
-            quant_bits=quanter._quant_bits,
-        )
-
-
-class FP8LinearDequanter(Layer):
-    def __init__(
-        self, scales, zero_point=None, quant_axis=None, quant_bits=(4, 3)
-    ):
-        super().__init__()
-        scales = paddle.to_tensor(scales, dtype="float32")
-        scale_attr = paddle.framework.ParamAttr(
-            name=paddle.utils.unique_name.generate('quant_dequant.scale'),
-            initializer=paddle.nn.initializer.Constant(1.0),
-            trainable=False,
-        )
-        self._scales = self.create_parameter(
-            shape=scales.shape, attr=scale_attr, dtype="float32"
-        )
-        self._scales.set_value(scales)
-        self._zero_point = (
-            paddle.zeros([1], dtype="float32")
-            if zero_point is None
-            else paddle.to_tensor(zero_point)
-        )
-        self._quant_axis = -1 if quant_axis is None else quant_axis
-
-    def forward(self, input):
-        tensor = (input / self._scales).cast(input.dtype)
-        return tensor
-
-    @staticmethod
-    def from_quanter(quanter):
-        return FP8LinearDequanter(
-            quanter.scales(),
-            zero_point=quanter.zero_points(),
-            quant_axis=quanter.quant_axis(),
-            quant_bits=quanter._quant_bits,
         )
 
 
@@ -387,10 +303,7 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
         quanter = getattr(self, quanter_name)
         if quanter is None:
             return None
-        if isinstance(quanter._quant_bits, tuple):
-            quanter = FP8LinearQuanterDequanter.from_quanter(quanter)
-        else:
-            quanter = LinearQuanterDequanter.from_quanter(quanter)
+        quanter = LinearQuanterDequanter.from_quanter(quanter)
         setattr(self, quanter_name, quanter)
         self._sub_layers[quanter_name] = quanter
         return quanter
