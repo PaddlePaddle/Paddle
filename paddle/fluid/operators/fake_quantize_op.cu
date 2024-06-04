@@ -18,12 +18,6 @@ limitations under the License. */
 namespace ops = paddle::operators;
 using float16 = phi::dtype::float16;
 
-PD_REGISTER_STRUCT_KERNEL(moving_average_abs_max_scale,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::MovingAverageAbsMaxScaleKernel,
-                          float,
-                          float16) {}
 PD_REGISTER_STRUCT_KERNEL(straight_through_estimator_grad,
                           GPU,
                           ALL_LAYOUT,

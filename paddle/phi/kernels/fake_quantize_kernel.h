@@ -98,4 +98,16 @@ void FakeQuantizeDequantizeAbsMaxKernel(const Context& dev_ctx,
                                         DenseTensor* out,
                                         DenseTensor* out_scale);
 
+template <typename T, typename Context>
+void MovingAverageAbsMaxScaleKernel(const Context& dev_ctx,
+                                    const DenseTensor& x,
+                                    const DenseTensor& in_accum,
+                                    const DenseTensor& in_state,
+                                    float moving_rate,
+                                    bool is_test,
+                                    DenseTensor* out,
+                                    DenseTensor* out_scale,
+                                    DenseTensor* out_state,
+                                    DenseTensor* out_accum);
+
 }  // namespace phi

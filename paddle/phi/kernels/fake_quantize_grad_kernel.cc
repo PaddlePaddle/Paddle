@@ -61,6 +61,14 @@ void FakeQuantizeDequantizeMovingAverageAbsMaxGradKernel(
   QuantizeGradFunc<T, Context>(dev_ctx, dout, dx);
 }
 
+template <typename T, typename Context>
+void MovingAverageAbsMaxScaleGradKernel(const Context& dev_ctx,
+                                        const DenseTensor& dout,
+                                        float moving_rate,
+                                        bool is_test,
+                                        DenseTensor* dx) {
+  QuantizeGradFunc<T, Context>(dev_ctx, dout, dx);
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fake_channel_wise_quantize_dequantize_abs_max_grad,
@@ -87,6 +95,14 @@ PD_REGISTER_KERNEL(fake_quantize_dequantize_moving_average_abs_max_grad,
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
+PD_REGISTER_KERNEL(moving_average_abs_max_scale_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MovingAverageAbsMaxScaleGradKernel,
+                   float) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(fake_channel_wise_quantize_dequantize_abs_max_grad,
                    GPU,
@@ -102,5 +118,10 @@ PD_REGISTER_KERNEL(fake_quantize_dequantize_moving_average_abs_max_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FakeQuantizeDequantizeMovingAverageAbsMaxGradKernel,
+                   float) {}
+PD_REGISTER_KERNEL(moving_average_abs_max_scale_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::MovingAverageAbsMaxScaleGradKernel,
                    float) {}
 #endif

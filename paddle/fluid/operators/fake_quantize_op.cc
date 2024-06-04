@@ -31,69 +31,6 @@ struct Compare {
   bool operator()(const T a, const T b) { return (std::abs(a) < std::abs(b)); }
 };
 
-class MovingAverageAbsMaxScaleOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(
-        ctx->HasInput("X"), "Input", "X", "MovingAverageAbsMaxScale");
-    OP_INOUT_CHECK(ctx->HasOutput("OutScale"),
-                   "Output",
-                   "OutScale",
-                   "MovingAverageAbsMaxScale");
-
-    if (ctx->HasOutput("OutState")) {
-      ctx->SetOutputDim("OutState", {1});
-    }
-    if (ctx->HasOutput("OutAccum")) {
-      ctx->SetOutputDim("OutAccum", {1});
-    }
-    if (ctx->HasOutput("Out")) {
-      ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-      ctx->SetOutputDim("OutScale", {1});
-      ctx->ShareLoD("X", /*->*/ "Out");
-    }
-  }
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-                          ctx.GetPlace());
-  }
-};
-
-class MovingAverageAbsMaxScaleOpMaker
-    : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "(Tensor) Input is float data type.");
-    AddInput("InAccum", "Last accum.").AsDispensable();
-    AddInput("InState", "Last state.").AsDispensable();
-    AddOutput("Out",
-              "(Tensor) Output tensor is just equivalent to the input tensor.")
-        .AsDispensable();
-    AddOutput("OutScale", " Current scale");
-    AddOutput("OutState", "(Tensor) state buffer.").AsDispensable();
-    AddOutput("OutAccum", "(Tensor) accum buffer.").AsDispensable();
-    AddAttr<float>("moving_rate", "(float, default 0.9) moving rate.")
-        .SetDefault(0.9);
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set true for inference only and false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
-    AddComment(R"DOC(
-MovingAverageAbsMaxScale operator is only used for calculating the quantization scale.
-And it will not quantize the input tensor.
-
-$$scale = (moving\_rate*accum+max(abs(x)))/(moving\_rate*state+1)$$
-$$Out = X$$
-
-)DOC");
-  }
-};
-
 class StraightThroughEstimatorGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -140,18 +77,6 @@ class StraightThroughEstimatorMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 using CPU = phi::CPUContext;
-
-REGISTER_OPERATOR(
-    moving_average_abs_max_scale,
-    ops::MovingAverageAbsMaxScaleOp,
-    ops::MovingAverageAbsMaxScaleOpMaker,
-    ops::StraightThroughEstimatorMaker<paddle::framework::OpDesc>,
-    ops::StraightThroughEstimatorMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(moving_average_abs_max_scale,
-                          CPU,
-                          ALL_LAYOUT,
-                          ops::MovingAverageAbsMaxScaleKernel,
-                          float) {}
 
 REGISTER_OPERATOR(straight_through_estimator_grad,
                   ops::StraightThroughEstimatorGradOp);

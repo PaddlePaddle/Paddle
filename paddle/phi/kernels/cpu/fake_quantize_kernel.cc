@@ -56,3 +56,9 @@ PD_REGISTER_KERNEL(fake_quantize_dequantize_abs_max,
                    ALL_LAYOUT,
                    phi::FakeQuantizeDequantizeAbsMaxKernel,
                    float) {}
+
+PD_REGISTER_KERNEL(moving_average_abs_max_scale,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MovingAverageAbsMaxScaleKernel,
+                   float) {}

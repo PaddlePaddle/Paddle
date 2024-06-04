@@ -43,4 +43,10 @@ void FakeQuantizeDequantizeMovingAverageAbsMaxGradKernel(
     int round_type,
     DenseTensor* dx);
 
+template <typename T, typename Context>
+void MovingAverageAbsMaxScaleGradKernel(const Context& dev_ctx,
+                                        const DenseTensor& dout,
+                                        float moving_rate,
+                                        bool is_test,
+                                        DenseTensor* dx);
 }  // namespace phi

@@ -36,42 +36,6 @@ struct QuantizeDataType<phi::dtype::float16> {
 };
 
 template <typename T>
-__global__ void FindAbsMaxKernel(const T *in, const int n, T *out) {
-  int bid = threadIdx.x + blockIdx.x * blockDim.x;
-  int tid = threadIdx.x;
-
-  extern __shared__ char *shared_max_data_tmp[];
-  auto shared_max_data = reinterpret_cast<T *>(shared_max_data_tmp);
-  if (gridDim.x > 1) {
-    T local_max_data = T(0);
-    for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
-      T tmp = abs(in[i]);
-      if (tmp > local_max_data) {
-        local_max_data = tmp;
-      }
-    }
-    shared_max_data[tid] = local_max_data;
-  } else {
-    if (bid < n) {
-      shared_max_data[tid] = abs(in[bid]);
-    } else {
-      shared_max_data[tid] = T(0);
-    }
-  }
-  __syncthreads();
-
-  for (int i = blockDim.x / 2; i > 0; i >>= 1) {
-    if (tid < i && (shared_max_data[tid] < shared_max_data[tid + i])) {
-      shared_max_data[tid] = shared_max_data[tid + i];
-    }
-    __syncthreads();
-  }
-  if (tid == 0) {
-    out[blockIdx.x] = shared_max_data[0];
-  }
-}
-
-template <typename T>
 __global__ void ClipAndQuantKernel(const T *in,
                                    const T *scale,
                                    const int bin_cnt,
