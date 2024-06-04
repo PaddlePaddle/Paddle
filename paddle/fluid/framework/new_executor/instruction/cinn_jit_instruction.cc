@@ -142,7 +142,6 @@ CinnJitInstruction::CinnJitInstruction(
     const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place) {
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();
-  // VLOG(-1) << jit_kernel_op.cinn_kernel_info().fn_name;
   fn_ptr_impl_ = std::make_shared<FnPtrImpl>(jit_kernel_op.cinn_kernel_info());
   op_ = op;
   input_tensor_size = op->num_operands();
@@ -163,11 +162,6 @@ CinnJitInstruction::CinnJitInstruction(
     tensor_args_.push_back(tensor);
   }
 
-  std::cerr << "place is"
-            << op->attribute("exec_backend")
-                   .dyn_cast<paddle::dialect::PlaceAttribute>()
-                   .data()
-            << std::endl;
   if (op->HasAttribute("exec_backend")) {
     place_ = op->attribute("exec_backend")
                  .dyn_cast<paddle::dialect::PlaceAttribute>()

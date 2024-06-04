@@ -1824,7 +1824,6 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
           "The Slice op doesn't find [starts] attribute!"));
     }
   }();
-  // VLOG(0) << "###### starts_expr: " << starts_expr;
   const std::vector<Expr> ends_expr = [&] {
     if (inputs.size() == 3) {
       const auto &value = inputs.at(2).self()->value();
@@ -1838,7 +1837,6 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
           "The Slice op doesn't find [ends] attribute!"));
     }
   }();
-  // VLOG(0) << "###### ends_expr: " << ends_expr;
   const std::vector<int> axes = [&] {
     std::vector<int> axes;
     if (attrs.attr_store.find("axes") != attrs.attr_store.end()) {
@@ -1863,7 +1861,6 @@ std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
     }
     return ToCinnExprs(strides);
   }();
-  // VLOG(0) << "###### strides_expr: " << strides_expr;
   const std::vector<int> decrease_axis = [&] {
     if (attrs.attr_store.find("decrease_axis") != attrs.attr_store.end()) {
       return GetIntVectorFromAttr(attrs.attr_store.at("decrease_axis"));

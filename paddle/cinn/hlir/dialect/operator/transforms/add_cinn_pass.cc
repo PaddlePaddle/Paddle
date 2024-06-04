@@ -114,7 +114,6 @@ void ApplyCinnPreprocessPass(
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
     pass_manager->AddPass(
         cinn::dialect::ir::CreateFuseShapeOpsIntoGenerateShapeOpPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateConvertFA2QKVMHAPass());
     pass_manager->AddPass(pir::CreateDeadCodeEliminationPass());
   }
 

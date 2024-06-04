@@ -1139,7 +1139,6 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
   for (const auto& shape : A->shape) {
     input_shape.emplace_back(shape);
   }
-  // VLOG(0) << "###### input_shape: " << input_shape;
 
   std::vector<Expr> new_starts = starts;
   std::vector<int> axes;
@@ -1151,8 +1150,6 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
                  });
 
   for (int i = 0; i < axes.size(); i++) {
-    // VLOG(0) << "### axes: [" << i << "] = " << axes[i];
-    // VLOG(0) << "### new_starts[i]: " << new_starts[i];
     if (input_shape[axes[i]].is_constant()) {
       if (new_starts[i].as_int64() < -input_shape[axes[i]].as_int64()) {
         new_starts[i] = ir::Expr(0);
@@ -1179,7 +1176,6 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
   return Compute(
       output_shape,
       [=](const std::vector<Expr>& indice) {
-        // VLOG(0) << "#### indice: " << indice;
         std::vector<Expr> temp;
         int indice_i = 0;
         for (int i = 0; i < input_shape.size(); ++i) {
@@ -1191,12 +1187,10 @@ ir::Tensor SliceSymbolic(const ir::Tensor& A,
             indice_i++;
           }
         }
-        // VLOG(0) << "#### temp tmp: " << temp;
         for (int i = 0; i < axes.size(); i++) {
           temp[axes[i]] =
               temp[axes[i]] * Expr(strides[i]) + Expr(new_starts[i]);
         }
-        // VLOG(0) << "#### temp: " << temp;
         return A(temp);
       },
       output_name);
