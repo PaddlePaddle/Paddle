@@ -7,7 +7,6 @@ register_operators(
   EXCLUDES
   fused_bn_activation_op
   fusion_group_op
-  fusion_lstm_op
   fused_bn_add_activation_op
   fused_attention_op
   fused_transformer_op
@@ -18,8 +17,6 @@ register_operators(
   fused_gemm_epilogue_op
   fused_gate_attention_op
   resnet_basic_block_op)
-
-op_library(fusion_lstm_op)
 
 if(WITH_XPU)
   op_library(resnet_basic_block_op)
