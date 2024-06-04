@@ -70,6 +70,17 @@ class LinearQuanter(Layer):
             if zero_point is None
             else paddle.to_tensor(zero_point)
         )
+        if type(zero_point) != int and len(zero_point.shape) > 1:
+            zero_point = paddle.to_tensor(zero_point, dtype="float32")
+            zp_attr = paddle.framework.ParamAttr(
+                name=paddle.utils.unique_name.generate('quant_dequant.zero_point'),
+                initializer=paddle.nn.initializer.Constant(0.0),
+                trainable=False,
+            )
+            self._zero_point = self.create_parameter(
+                shape=zero_point.shape, attr=zp_attr, dtype="float32"
+            )
+            self._zero_point.set_value(zero_point)
         self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
         self._group_size = group_size
@@ -78,11 +89,8 @@ class LinearQuanter(Layer):
         if in_dynamic_mode():
             if len(self._scales.shape) > 1:
                 bnt = (1 << (self._bit_length - 1)) - 1
-                new_s = paddle.repeat_interleave(
-                    self._scales, self._group_size, 0
-                )
                 quant_weight = paddle.clip(
-                    paddle.round(input.cast('float32') / new_s * bnt),
+                    paddle.round(input.cast('float32') / self._scales) + self._zero_point,
                     -bnt - 1,
                     bnt,
                 )
@@ -143,11 +151,23 @@ class LinearDequanter(Layer):
             shape=scales.shape, attr=scale_attr, dtype="float32"
         )
         self._scales.set_value(scales)
+        # self._scales = paddle.to_tensor(scales)
         self._zero_point = (
             paddle.zeros([1], dtype="float32")
             if zero_point is None
             else paddle.to_tensor(zero_point)
         )
+        if type(zero_point) != int and len(zero_point.shape) > 1:
+            zero_point = paddle.to_tensor(zero_point, dtype="float32")
+            zp_attr = paddle.framework.ParamAttr(
+                name=paddle.utils.unique_name.generate('quant_dequant.zero_point'),
+                initializer=paddle.nn.initializer.Constant(0.0),
+                trainable=False,
+            )
+            self._zero_point = self.create_parameter(
+                shape=zero_point.shape, attr=zp_attr, dtype="float32"
+            )
+            self._zero_point.set_value(zero_point)
         self._quant_axis = -1 if quant_axis is None else quant_axis
         self._bit_length = bit_length
         self._group_size = group_size
@@ -156,10 +176,7 @@ class LinearDequanter(Layer):
         if in_dynamic_mode():
             if len(self._scales.shape) > 1:
                 bnt = (1 << (self._bit_length - 1)) - 1
-                new_s = paddle.repeat_interleave(
-                    self._scales, self._group_size, 0
-                )
-                quant_dequant_weight = input.cast('float32') / bnt * new_s
+                quant_dequant_weight = (input.cast('float32') - self._zero_point) * self._scales
                 return quant_dequant_weight.cast(input.dtype)
 
             return _C_ops.dequantize_linear(
@@ -260,9 +277,11 @@ class ConvertibleQuantedLayer(Layer, metaclass=abc.ABCMeta):
 
     def _convert_quanter_to_qdq(self, quanter_name) -> LinearQuanterDequanter:
         r"""Convert quanter to an instance of LinearQuanterDequanter."""
-        assert hasattr(
-            self, quanter_name
-        ), f"{quanter_name} is not attribute of current layer."
+        # assert hasattr(
+        #     self, quanter_name
+        # ), f"{quanter_name} is not attribute of current layer."
+        if not hasattr(self, quanter_name):
+            return None
         quanter = getattr(self, quanter_name)
         if quanter is None:
             return None
