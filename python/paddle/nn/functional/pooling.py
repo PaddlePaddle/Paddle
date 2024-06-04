@@ -2377,10 +2377,10 @@ def lp_pool1d(
             4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
-        ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
+        ceil_mode(bool, optional): When True, it will use `ceil` instead of `floor` to compute the output shape. Default: False.
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCL"`,
-            `"NLC"`. The default is `"NCL"`. When it is `"NCL"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_length]`.
+            `"NLC"`. When it is `"NCL"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_length]`. Default:`"NCL"`.
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
@@ -2510,10 +2510,10 @@ def lp_pool2d(
             4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
-        ceil_mode (bool): when True, will use `ceil` instead of `floor` to compute the output shape
-        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
+        ceil_mode(bool, optional): When True, it will use `ceil` instead of `floor` to compute the output shape. Default: False.
+        data_format (string, optional): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
                         The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-                        `[batch_size, input_channels, input_height, input_width]`.
+                        `[batch_size, input_channels, input_height, input_width]`. Default: "NCHW".
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.

@@ -324,7 +324,7 @@ class AvgPool3D(Layer):
 
 class LPPool1D(Layer):
     r"""
-    This operation applies a 1D power-average pooling over an input signal composed
+    Performing a 1D power-average pooling over an input signal composed
     of several input planes, based on the input, output_size, return_mask parameters.
     Input(X) and output(Out) are in NCL format, where N is batch
     size, C is the number of channels, L is the length of the feature.
@@ -351,11 +351,10 @@ class LPPool1D(Layer):
             4. A list[int] or tuple(int) whose length is 2. It has the form [pad_before, pad_after].
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
-        ceil_mode(bool, optional): ${ceil_mode_comment}Whether to use the ceil function to calculate output height
-            and width. If it is set to False, the floor function will be used. The default value is False.
+        ceil_mode(bool, optional): When True, it will use `ceil` instead of `floor` to compute the output shape. Default: False.
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCL"`,
-            `"NLC"`. The default is `"NCL"`. When it is `"NCL"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_length]`.
+            `"NLC"`. When it is `"NCL"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_length]`. Default: "NCL"
         name(str, optional): For eed to detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no nset and None by default.
 
@@ -423,20 +422,20 @@ class LPPool1D(Layer):
 
 class LPPool2D(Layer):
     r"""
-    This operation applies 2D power-average pooling over input features based on the input,
+    Performing 2D power-average pooling over input features based on the input,
     and kernel_size, stride, padding parameters. Input(X) and Output(Out) are
     in NCHW format, where N is batch size, C is the number of channels,
     H is the height of the feature, and W is the width of the feature.
 
     Example:
         Input:
-            X shape: :math:`(N, C, :math:`H_{in}`, :math:`W_{in}`)`
+            X shape: :math:`(N, C, H_{in}, W_{in})`
         Attr:
-            kernel_size: kernel_size
-            norm_type: norm_type
+            - kernel_size: kernel_size
+            - norm_type: norm_type
 
         Output:
-            Out shape: :math:`(N, C, :math:`H_{out}`, :math:`W_{out}`)`
+            Out shape: :math:`(N, C, H_{out}, W_{out})`
 
         ..  math::
 
@@ -459,10 +458,10 @@ class LPPool2D(Layer):
             4. A list[int] or tuple(int) whose length is 4. [pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
             The default value is 0.
-        ceil_mode(bool, optional): When True, will use `ceil` instead of `floor` to compute the output shape.
+        ceil_mode(bool, optional): When True, it will use `ceil` instead of `floor` to compute the output shape. Default: False.
         data_format(str, optional): The data format of the input and output data. An optional string from: `"NCHW"`,
-            `"NHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
+            `"NHWC"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. Default: "NCHW".
         name(str, optional): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default.
 

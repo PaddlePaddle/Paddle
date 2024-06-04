@@ -121,14 +121,14 @@ class TestCholeskyOp(OpTest):
                 for i in range(len(out)):
                     yi = out[i]
                     dy = paddle.static.data(
-                        name='dys_%s' % i,
+                        name=f'dys_{i}',
                         shape=yi.shape,
                         dtype=root_data.dtype,
                     )
                     dy.stop_gradient = False
                     dy.persistable = True
                     value = np.zeros(yi.shape, dtype=root_data.dtype)
-                    feeds.update({'dys_%s' % i: value})
+                    feeds.update({f'dys_{i}': value})
                     dys.append(dy)
                 fetch_list = base.gradients(out, root, dys)
             grad_check(

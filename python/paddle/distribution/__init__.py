@@ -34,6 +34,7 @@ from .multinomial import Multinomial
 from .multivariate_normal import MultivariateNormal
 from .normal import Normal
 from .poisson import Poisson
+from .student_t import StudentT
 from .transform import (  # noqa:F401
     AbsTransform,
     AffineTransform,
@@ -77,6 +78,7 @@ __all__ = [
     'Geometric',
     'Binomial',
     'Poisson',
+    'StudentT',
 ]
 
 __all__.extend(transform.__all__)
