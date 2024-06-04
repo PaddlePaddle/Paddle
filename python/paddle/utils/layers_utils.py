@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+import typing
 from collections import defaultdict
 from collections.abc import Sequence
 from typing import Any, Dict, TypeVar, Union
@@ -35,7 +36,9 @@ from ..pir import Value
 
 _T = TypeVar("_T")
 
-Structure = Union[_T, Dict[str, "Structure[_T]"], Sequence["Structure[_T]"]]
+Structure = Union[
+    _T, Dict[str, "Structure[_T]"], typing.Sequence["Structure[_T]"]
+]
 
 
 def convert_to_list(value, n, name, dtype=int):

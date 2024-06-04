@@ -13,8 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Sequence, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
