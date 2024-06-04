@@ -335,6 +335,7 @@ PD_MANUAL_OP_LIST = {
     'add_n_',
     'split_grad',
     'expand',
+    'fused_gemm_epilogue',
     'increment',
     'increment_',
     'assign_out_',
