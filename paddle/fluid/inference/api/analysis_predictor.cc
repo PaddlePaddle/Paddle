@@ -936,10 +936,11 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
 }
 
 bool AnalysisPredictor::PreparePirProgram() {
-  CHECK_EQ(pir_program_.get(), nullptr);
+  // CHECK_EQ(pir_program_.get(), nullptr);
 
-  pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
-
+  if (!pir_program_) {
+    pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
+  }
   pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
 
   std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
@@ -1069,7 +1070,6 @@ bool AnalysisPredictor::PrepareProgram(
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
 
   if (config_.new_ir_enabled()) {
-    CHECK_EQ(pir_program_.get(), nullptr);
     pir_program_ = paddle::TranslateLegacyProgramToProgram(*inference_program_);
     OptimizeInferencePirProgram();
   }
