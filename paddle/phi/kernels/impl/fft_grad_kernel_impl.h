@@ -92,16 +92,16 @@ void FFTC2RGradKernel(const Context& ctx,
 
   const int64_t double_length =
       out_grad.dims()[axes.back()] - x_grad->dims()[axes.back()];
-  int64_t strides_axis = 1;
+  int64_t stride_to_last_axis = 1;
   auto ddim = x_grad->dims();
   for (int i = ddim.size() - 2; i >= axes.back(); --i) {
-    strides_axis *= ddim[i + 1];
+    stride_to_last_axis *= ddim[i + 1];
   }
-  int64_t strides_axis_minus_1 = strides_axis * ddim[axes.back()];
+  int64_t stride_second_to_last_axis = stride_to_last_axis * ddim[axes.back()];
   funcs::FFTFillConjGradFunctor<C> func(x_grad->data<C>(),
                                         axes.back(),
-                                        strides_axis_minus_1,
-                                        strides_axis,
+                                        stride_second_to_last_axis,
+                                        stride_to_last_axis,
                                         double_length);
   size_t limit = x_grad->numel();
   funcs::ForRange<Context> for_range(ctx, limit);
