@@ -84,7 +84,8 @@ class LinearQuanter(Layer):
             if len(self._scales.shape) > 1:
                 bnt = (1 << (self._bit_length - 1)) - 1
                 quant_tensor = paddle.clip(
-                    paddle.round(input.cast('float32') / self._scales) + self._zero_point,
+                    paddle.round(input.cast('float32') / self._scales)
+                    + self._zero_point,
                     -bnt - 1,
                     bnt,
                 )
@@ -162,7 +163,9 @@ class LinearDequanter(Layer):
         if in_dynamic_mode():
             if len(self._scales.shape) > 1:
                 bnt = (1 << (self._bit_length - 1)) - 1
-                quant_dequant_tensor = (input.cast('float32') - self._zero_point) * self._scales
+                quant_dequant_tensor = (
+                    input.cast('float32') - self._zero_point
+                ) * self._scales
                 return quant_dequant_tensor.cast(input.dtype)
 
             return _C_ops.dequantize_linear(

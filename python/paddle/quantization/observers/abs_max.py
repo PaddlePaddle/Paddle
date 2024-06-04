@@ -75,4 +75,4 @@ class AbsmaxObserverLayer(BaseObserver):
         return self.abs_max_val
 
     def zero_points(self):
-        return 0.
+        return 0.0
