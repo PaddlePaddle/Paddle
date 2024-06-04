@@ -104,8 +104,8 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void GEMM(ARGS... args) {
 #if defined(PADDLE_WITH_K100AI)
-    PADDLE_THROW(
-    phi::errors::Unimplemented("K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
 #endif
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_dgemm(args...));
   }
@@ -113,8 +113,8 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
 #if defined(PADDLE_WITH_K100AI)
-    PADDLE_THROW(
-    phi::errors::Unimplemented("K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
 #endif
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_daxpy(args...));
   }
@@ -122,8 +122,8 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void SCAL(ARGS... args) {
 #if defined(PADDLE_WITH_K100AI)
-    PADDLE_THROW(
-    phi::errors::Unimplemented("K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
 #endif
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_dscal(args...));
   }
@@ -131,8 +131,8 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
 #if defined(PADDLE_WITH_K100AI)
-    PADDLE_THROW(
-    phi::errors::Unimplemented("K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
 #endif
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_dcopy(args...));
   }
@@ -140,8 +140,8 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
 #if defined(PADDLE_WITH_K100AI)
-    PADDLE_THROW(
-    phi::errors::Unimplemented("K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
 #endif
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_dgemv(args...));
   }
@@ -149,8 +149,8 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void GEMM_STRIDED_BATCH(ARGS... args) {
 #if defined(PADDLE_WITH_K100AI)
-    PADDLE_THROW(
-    phi::errors::Unimplemented("K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
 #endif
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::rocblas_dgemm_strided_batched(args...));
@@ -159,8 +159,8 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args) {
 #if defined(PADDLE_WITH_K100AI)
-    PADDLE_THROW(
-    phi::errors::Unimplemented("K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
 #endif
     PADDLE_THROW(
         phi::errors::Unimplemented("Currently there are not cublasDgemmEx."));
@@ -169,8 +169,8 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void TRSM(ARGS... args) {
 #if defined(PADDLE_WITH_K100AI)
-    PADDLE_THROW(
-    phi::errors::Unimplemented("K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "K100_AI not support fp64 rocblas api, please cahnge to fp32!"));
 #endif
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::rocblas_dtrsm(args...));
   }
