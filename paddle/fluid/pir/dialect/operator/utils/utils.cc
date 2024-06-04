@@ -85,7 +85,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
     paddle::onednn::dialect::MultiGruOp::name(),
-    paddle::onednn::dialect::FusionLstmOp::name(),
 #endif
     CReduceAvgOp::name(),
     CReduceAvg_Op::name(),
