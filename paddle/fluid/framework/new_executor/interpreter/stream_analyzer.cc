@@ -28,9 +28,7 @@
 COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-namespace paddle {
-namespace framework {
-namespace interpreter {
+namespace paddle::framework::interpreter {
 
 using DeviceContext = platform::DeviceContext;
 using DeviceEvent = platform::DeviceEvent;
@@ -872,6 +870,4 @@ PirStreamAnalyzer::GetEventInfo() const {
   return event_info_;
 }
 
-}  // namespace interpreter
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::interpreter
