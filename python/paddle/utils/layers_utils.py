@@ -15,7 +15,7 @@
 import copy
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Any, TypeVar, Union
+from typing import Any, Dict, TypeVar, Union
 from uuid import uuid4
 from weakref import WeakKeyDictionary
 
@@ -35,7 +35,7 @@ from ..pir import Value
 
 _T = TypeVar("_T")
 
-Structure = Union[_T, dict[str, "Structure[_T]"], Sequence["Structure[_T]"]]
+Structure = Union[_T, Dict[str, "Structure[_T]"], Sequence["Structure[_T]"]]
 
 
 def convert_to_list(value, n, name, dtype=int):
