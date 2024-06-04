@@ -33,14 +33,11 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 
 void NCCLParallelContext::BcastNCCLId(
@@ -232,5 +229,4 @@ void NCCLParallelContext::SynchronizeCompute() {
 
 #endif
 
-}  //  namespace imperative
-}  //  namespace paddle
+}  // namespace paddle::imperative
