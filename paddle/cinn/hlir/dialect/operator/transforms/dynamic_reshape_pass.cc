@@ -38,9 +38,10 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
   std::vector<pir::Attribute> output_dim_expr_attrs{};
   GenerateShapeOp::SymbolBindings symbol_bindings{};
 
-  unsigned output_dim_idx = 0, input_dim_idx = 0;
   int64_t local_dim_expr_id = 0;
-  for (; output_dim_idx < output_shape.size(); ++output_dim_idx) {
+  for (unsigned output_dim_idx = 0, input_dim_idx = 0;
+       output_dim_idx < output_shape.size();
+       ++output_dim_idx) {
     const auto& dim_expr = output_shape.at(output_dim_idx);
     if (dim_expr.isa<int64_t>()) {
       output_dim_expr_attrs.emplace_back(
@@ -64,8 +65,16 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
       }
     }
   }
+  auto out_type = paddle::dialect::DenseTensorType::get(
+      rewriter.ir_context(),
+      pir::Int64Type::get(rewriter.ir_context()),
+      ::common::make_ddim(
+          {static_cast<int64_t>(output_dim_expr_attrs.size())}));
   auto cinn_generate_shape = rewriter.Build<cinn::dialect::GenerateShapeOp>(
-      std::vector<pir::Value>{input}, output_dim_expr_attrs, symbol_bindings);
+      std::vector<pir::Value>{input},
+      output_dim_expr_attrs,
+      symbol_bindings,
+      out_type);
   auto pd_reshape = rewriter.Build<paddle::dialect::ReshapeOp>(
       op->operand_source(0), cinn_generate_shape.result(0));
 

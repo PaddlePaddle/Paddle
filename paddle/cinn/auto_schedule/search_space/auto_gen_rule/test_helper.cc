@@ -18,7 +18,6 @@
 #include <gtest/gtest.h>
 #include <memory.h>
 #include <stdlib.h>
-
 #include "paddle/cinn/auto_schedule/analysis/analyze_ir.h"
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/cinn.h"
@@ -29,6 +28,7 @@
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/framework/tensor.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
+#include "paddle/common/enforce.h"
 #ifdef CINN_WITH_CUDA
 #include <cuda_runtime.h>
 #endif
@@ -89,8 +89,10 @@ std::string TestAutoGenRuleBase::GetIR(const ir::IRSchedule& schedule) {
 
 ir::Module TestAutoGenRuleBase::BuildIRModule(const ir::IRSchedule& schedule) {
   auto&& updated_bodys = schedule.GetModule().GetExprs();
-  CHECK_EQ(lowered_funcs_.size(), updated_bodys.size())
-      << "associated exprs size not equal";
+  PADDLE_ENFORCE_EQ(
+      lowered_funcs_.size(),
+      updated_bodys.size(),
+      phi::errors::InvalidArgument("Associated exprs size not equal"));
 
   ir::Module::Builder builder("test_builder", this->target_);
   for (int i = 0; i < lowered_funcs_.size(); ++i) {
@@ -175,10 +177,16 @@ void CheckResult(raw_func_type test_func,
                  const cinn::common::Target& target) {
   CHECK(input_names.size()) << "The number of inputs must be greater than 0.";
   CHECK(output_names.size()) << "The number of outputs must be greater than 0.";
-  CHECK_EQ(input_names.size(), input_shapes.size())
-      << "The quantity of input_names and input_shapes must be equal.";
-  CHECK_EQ(output_names.size(), output_shapes.size())
-      << "The quantity of output_names and output_shapes must be equal.";
+  PADDLE_ENFORCE_EQ(
+      input_names.size(),
+      input_shapes.size(),
+      phi::errors::InvalidArgument(
+          "The quantity of input_names and input_shapes must be equal."));
+  PADDLE_ENFORCE_EQ(
+      output_names.size(),
+      output_shapes.size(),
+      phi::errors::InvalidArgument(
+          "The quantity of output_names and output_shapes must be equal."));
 
   // Initialize data
   std::vector<float*> input_data_ptrs(input_names.size());
