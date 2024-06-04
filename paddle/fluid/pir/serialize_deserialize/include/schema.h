@@ -74,10 +74,4 @@ namespace pir {
 // special op compress
 
 #define PARAMETEROP "p"
-#define PARAMETEROP_NAME "n"
-#define PARAMETEROP_ISDISTRUBUTE "d"
-#define PARAMETEROP_ISPARAMETER "p"
-#define PARAMETEROP_NEEDCLIP "c"
-#define PARAMETEROP_STOPGRADIENT "sp"
-#define PARAMETEROP_PERSISTABLE "pt"
 }  // namespace pir
