@@ -108,7 +108,7 @@ endif()
 cc_library(
   init
   SRCS init.cc
-  DEPS device_context phi common fluid_memory op_dialect)
+  DEPS device_context phi common fluid_memory op_dialect op_dialect_vjp)
 
 #fluid_memory depends on device_context, here add deps individually for
 # avoiding cycle dependencies
