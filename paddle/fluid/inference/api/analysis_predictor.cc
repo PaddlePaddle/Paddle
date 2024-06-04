@@ -26,7 +26,6 @@
 #include <vector>
 
 #include "paddle/common/enforce.h"
-
 #include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
