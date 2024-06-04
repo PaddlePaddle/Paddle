@@ -21,7 +21,7 @@
 #include "paddle/cinn/hlir/op/op_util.h"
 #include "paddle/cinn/utils/functional.h"
 #include "paddle/cinn/utils/type_defs.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace pass {
@@ -238,7 +238,10 @@ void fold_expand_dims_fill_constant(const FusionHelperBase* helper,
   // [0, total_size-1]. check axes can't repeat.
   std::sort(axes.begin(), axes.end(), std::less<int>());
   for (int idx = 0; idx < axes_size - 1; ++idx) {
-    CHECK_NE(axes[idx], axes[idx + 1]);
+    PADDLE_ENFORCE_NE(axes[idx],
+                      axes[idx + 1],
+                      phi::errors::InvalidArgument(
+                          "The axes of expand_dims should not repeat."));
   }
   // insert 1 to new shape.
   std::vector<int> n_shape(total_size, 1);

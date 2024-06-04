@@ -99,6 +99,9 @@ if(WITH_GPU AND WITH_ROCM)
 endif()
 
 if(WITH_GPU AND NOT APPLE)
+  if(WITH_PIP_CUDA_LIBRARIES AND CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    add_definitions(-DPADDLE_WITH_PIP_CUDA_LIBRARIES)
+  endif()
   #(Note risemeup1): The cudart dynamic library libcudart.so is used by set CUDA_USE_STATIC_CUDA_RUNTIME and CMAKE_CUDA_FLAGS
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL
                                             "x86_64")
@@ -107,8 +110,8 @@ if(WITH_GPU AND NOT APPLE)
         CACHE BOOL "" FORCE)
     set(CMAKE_CUDA_FLAGS "--cudart shared")
     if(WITH_PIP_CUDA_LIBRARIES)
-      #(Note risemeup1): Flag 'WITH_PIP_CUDA_LIBRARIES' will be used in dynamic_loader.cc to search for CUDA-related .so files through the Python libraries provided by NVIDIA.
-      add_definitions(-DWITH_PIP_CUDA_LIBRARIES)
+      #(Note risemeup1): Flag 'PADDLE_WITH_PIP_CUDA_LIBRARIES' will be used in dynamic_loader.cc to search for CUDA-related .so files through the Python libraries provided by NVIDIA.
+      add_definitions(-DPADDLE_WITH_PIP_CUDA_LIBRARIES)
     endif()
   endif()
   enable_language(CUDA)

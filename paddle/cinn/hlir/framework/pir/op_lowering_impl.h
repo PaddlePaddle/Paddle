@@ -57,10 +57,6 @@ struct GroupInfo {
   std::set<std::string> shared_var_names;
   std::set<std::string> direct_output_var_names;
   std::vector<std::string> broadcast_output_names;
-
-  std::unordered_map<std::string, cinn::ir::BroadcastInfo> broadcast_info;
-  std::unordered_map<std::string, cinn::ir::BroadcastInfo>
-      broadcast_to_elementwise;
 };
 
 class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
@@ -296,12 +292,11 @@ class OpLowererImpl : public OpLowererImplBase<OpLoweringGroupPtr> {
 
   void BuildBroadcastInfo(const OpLoweringGroupPtr& group,
                           std::shared_ptr<GroupInfo> group_info);
-
   Target target_;
-
+  ir::Expr LowerX86(const OpLoweringGroupPtr& group,
+                    const std::vector<::pir::Operation*>& ops,
+                    bool apply_op_schedule);
   PrettyNamer* name_gene_;
-
-  std::unordered_set<::pir::Operation*> erase_reshape;
 };
 
 }  // namespace pir

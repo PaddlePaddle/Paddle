@@ -138,8 +138,14 @@ class AllreduceMatmulGradOverlappingPass(PassBase):
                 name: allreduce_op.output(name) for name in allreduce_op_outputs
             }
 
+            # matmul_v2 + reshape + reshape + matmul_v2 + reshape + ... + original c_allreduce_sum
+            # =>
+            # matmul_v2 + new c_allreduce_sum + reshape + reshape + matmul_v2 + reshape + ... + original c_allreduce_sum
+            #
+            # NOTE(liym27): new c_allreduce_sum must be inserted to "the next of the first matmul_v2", otherwise another
+            # pass fused_linear_param_grad_add will not work.
             allreduce_op = block._insert_op_without_sync(
-                index=allreduce_id + 1,
+                index=matmul_grad_id + 1,
                 type=allreduce_op.type,
                 inputs=allreduce_op_inputs,
                 outputs=allreduce_op_outputs,

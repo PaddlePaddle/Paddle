@@ -66,7 +66,7 @@ def start_local_trainers_cpu(
         proc_env = {
             "PADDLE_DISTRI_BACKEND": "gloo",
             "PADDLE_TRAINER_ID": "%d" % rank_id,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % endpoint,
+            "PADDLE_CURRENT_ENDPOINT": f"{endpoint}",
             "PADDLE_TRAINERS_NUM": "%d" % n_rank,
             "PADDLE_TRAINER_ENDPOINTS": ",".join(trainer_endpoints),
         }
@@ -118,10 +118,11 @@ def start_local_trainers(
     procs = []
     for t in pod.trainers:
         proc_env = {
-            f"FLAGS_selected_{accelerator_type}s": "%s"
-            % ",".join([str(g) for g in t.gpus]),
+            f"FLAGS_selected_{accelerator_type}s": "{}".format(
+                ",".join([str(g) for g in t.gpus])
+            ),
             "PADDLE_TRAINER_ID": "%d" % t.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
+            "PADDLE_CURRENT_ENDPOINT": f"{t.endpoint}",
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
             "FLAGS_dynamic_static_unified_comm": "0",
