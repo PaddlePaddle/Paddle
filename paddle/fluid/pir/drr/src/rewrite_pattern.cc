@@ -356,7 +356,10 @@ bool DrrRewritePattern::MatchFromOutputToInput(
       break;
     }
     // Step 1: Bind Operation of current op to match_ctx.
-    source_pattern_match_ctx->BindIrOperation(drr_node, ir_node);
+    if (!source_pattern_match_ctx->BindIrOperation(drr_node, ir_node)) {
+      matched = false;
+      break;
+    }
 
     // Step 2: Bind input_tensor of current op to match_ctx.
     const auto& drr_input_tensors = drr_node->inputs();
