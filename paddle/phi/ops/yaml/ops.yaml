@@ -3754,7 +3754,7 @@
   backward: sequence_conv_grad
 
 - op : sequence_mask
-  args: (Tensor x, Scalar(int) max_len, DataType out_dtype)
+  args: (Tensor x, Scalar(int) max_len=-1, DataType out_dtype=DataType::UNDEFINED)
   output: Tensor(y)
   infer_meta:
     func: SequenceMaskScalarInferMeta
