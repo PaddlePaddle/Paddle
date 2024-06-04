@@ -1895,7 +1895,7 @@ def main():
         )
 
     # generate stub file `tensor.pyi`
-    generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
+    # generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
 
     setup(
         name=package_name,
