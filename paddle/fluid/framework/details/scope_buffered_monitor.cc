@@ -17,17 +17,13 @@
 #include "paddle/common/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 COMMON_DECLARE_double(local_exe_sub_scope_limit);
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 static constexpr double kMB = 1.0 / (1024.0 * 1024.0);
 
@@ -208,6 +204,4 @@ void ScopeBufferedMonitor::ClearHistoryLocalExecScopes() {
   history_local_exec_scopes_.clear();
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

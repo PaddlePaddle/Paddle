@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/cusolver.h"
 
-namespace phi {
-namespace dynload {
+namespace phi::dynload {
 
 std::once_flag cusolver_dso_flag;
 void *cusolver_dso_handle;
@@ -32,5 +31,4 @@ CUSOLVER_ROUTINE_EACH_R1(DEFINE_WRAP);
 CUSOLVER_ROUTINE_EACH_R2(DEFINE_WRAP);
 #endif
 
-}  // namespace dynload
-}  // namespace phi
+}  // namespace phi::dynload
