@@ -18,8 +18,7 @@ limitations under the License. */
 
 #include "paddle/common/macros.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 class TensorAssign {
  public:
@@ -705,5 +704,4 @@ Instantiate_Template_Function(cpu_gather_kernel)                  // NOLINT
     Instantiate_Template_Function_With_Out(
         cpu_scatter_mul_min_max_value_grad_kernel)  // NOLINT
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs
