@@ -35,6 +35,7 @@ from .utils import (
 PIR_PASS = [
     'fused_gemm_epilogue_pass',
     'fused_linear_param_grad_add_pass',
+    'fuse_allreduce_split_to_reducescatter_pass',
     'fused_dropout_add_pass',
 ]
 
@@ -555,4 +556,5 @@ class Parallelizer:
                 "pp_stage": get_pp_stage(self._dist_context, rank),
                 "vpp_degree": self._strategy.pipeline.vpp_degree,
                 "dist_context": self._dist_context,
+                "split_backward": self._strategy.pipeline.split_backward,
             }

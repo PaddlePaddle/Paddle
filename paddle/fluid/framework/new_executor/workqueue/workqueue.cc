@@ -41,7 +41,7 @@ class WorkQueueImpl : public WorkQueue {
     if (options_.track_task && options.events_waiter != nullptr) {
       empty_notifier_ = options.events_waiter->RegisterEvent(kQueueEmptyEvent);
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
-      tracker_ = new (storage) TaskTracker(*empty_notifier_.get());
+      tracker_ = new (storage) TaskTracker(*empty_notifier_);
     }
     if (options_.detached == false && options.events_waiter != nullptr) {
       destruct_notifier_ =
@@ -132,7 +132,7 @@ WorkQueueGroupImpl::WorkQueueGroupImpl(
         options.events_waiter != nullptr) {
       empty_notifier_ = options.events_waiter->RegisterEvent(kQueueEmptyEvent);
       void* storage = AlignedMalloc(sizeof(TaskTracker), alignof(TaskTracker));
-      tracker_ = new (storage) TaskTracker(*empty_notifier_.get());
+      tracker_ = new (storage) TaskTracker(*empty_notifier_);
     }
     if (options.detached == false && options.events_waiter != nullptr &&
         !destruct_notifier_) {

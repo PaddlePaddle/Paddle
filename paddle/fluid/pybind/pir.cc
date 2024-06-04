@@ -39,6 +39,7 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
@@ -46,6 +47,8 @@
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/gpu/fused_bn_add_act_pass.h"
 #include "paddle/fluid/pir/transforms/passes.h"
 #include "paddle/fluid/pybind/control_flow_api.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -63,6 +66,7 @@
 #include "paddle/pir/include/core/value.h"
 #include "paddle/pir/include/core/visitors.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
 #include "paddle/pir/include/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/include/dialect/shape/transforms/shape_optimization_pass.h"
@@ -88,6 +92,7 @@ using paddle::dialect::IfOp;
 using paddle::dialect::PyLayerOp;
 using paddle::dialect::SelectedRowsType;
 using paddle::dialect::WhileOp;
+using pir::TuplePopOp;
 
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::TensorDistAttribute;
@@ -98,6 +103,7 @@ using pir::Block;
 using pir::BlockArgument;
 using pir::BoolAttribute;
 using pir::CloneOptions;
+using pir::Int32Attribute;
 using pir::IrContext;
 using pir::IrMapping;
 using pir::IrParser;
@@ -107,8 +113,10 @@ using pir::OpResult;
 using pir::Pass;
 using pir::PassManager;
 using pir::Program;
+using pir::StrAttribute;
 using pir::Type;
 using pir::Value;
+using pir::VectorType;
 using pybind11::return_value_policy;
 
 COMMON_DECLARE_bool(print_ir);
@@ -188,8 +196,7 @@ std::string GetValueInfo(Value v) {
 
 Value GetOutputValueByName(const Program &program, const std::string &name) {
   auto &block = *program.block();
-  pir::StrAttribute name_attr =
-      pir::StrAttribute::get(IrContext::Instance(), name);
+  StrAttribute name_attr = StrAttribute::get(IrContext::Instance(), name);
   Value value;
   for (auto &op : block) {
     if (op.isa<pir::ShadowOutputOp>()) {
@@ -205,15 +212,32 @@ Value GetOutputValueByName(const Program &program, const std::string &name) {
   return value;
 }
 
+Value GetParameterValueByName(const Program &program, const std::string &name) {
+  auto &block = *program.block();
+  StrAttribute name_attr = StrAttribute::get(IrContext::Instance(), name);
+  Value value;
+  for (auto &op : block) {
+    if (op.isa<pir::ParameterOp>()) {
+      if (op.attribute("parameter_name") == name_attr) {
+        if (value) {
+          PADDLE_THROW(common::errors::PreconditionNotMet(
+              "More than one parameter named with %s found.", name));
+        }
+        value = op.result(0);
+      }
+    }
+  }
+  return value;
+}
+
 void SetValueName(Value value, const std::string name) {
   pir::Operation *define_op = value.defining_op();
   if (define_op->isa<pir::ParameterOp>()) {
     define_op->set_attribute(
-        "parameter_name",
-        pir::StrAttribute::get(pir::IrContext::Instance(), name));
+        "parameter_name", StrAttribute::get(pir::IrContext::Instance(), name));
   } else if (define_op->isa<paddle::dialect::DataOp>()) {
     define_op->set_attribute(
-        "name", pir::StrAttribute::get(pir::IrContext::Instance(), name));
+        "name", StrAttribute::get(pir::IrContext::Instance(), name));
   } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
     PADDLE_THROW(
         phi::errors::InvalidArgument("Can Not set name for BlockArgument! "));
@@ -221,8 +245,7 @@ void SetValueName(Value value, const std::string name) {
     auto nextOp = value.first_use().owner();
     if (nextOp->isa<::pir::ShadowOutputOp>()) {
       nextOp->set_attribute(
-          "output_name",
-          pir::StrAttribute::get(pir::IrContext::Instance(), name));
+          "output_name", StrAttribute::get(pir::IrContext::Instance(), name));
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Currently, we can only set name of Value which is "
@@ -254,7 +277,7 @@ std::string GetValueName(Value value) {
   if (auto param_op = value.defining_op<::pir::ParameterOp>()) {
     return param_op.param_name();
   } else if (auto data_op = value.defining_op<paddle::dialect::DataOp>()) {
-    return data_op.attribute<pir::StrAttribute>("name").AsString();
+    return data_op.attribute<StrAttribute>("name").AsString();
   } else if (auto block_arg = value.dyn_cast<BlockArgument>()) {
     if (block_arg.is_kwarg()) {
       return block_arg.keyword();
@@ -264,7 +287,7 @@ std::string GetValueName(Value value) {
   } else if (value.first_use()) {
     auto nextOp = value.first_use().owner();
     if (nextOp->isa<::pir::ShadowOutputOp>()) {
-      return nextOp->attribute<pir::StrAttribute>("output_name").AsString();
+      return nextOp->attribute<StrAttribute>("output_name").AsString();
     } else {
       PADDLE_THROW(phi::errors::InvalidArgument(
           "Currently, we can only get name of Value which is "
@@ -277,7 +300,21 @@ std::string GetValueName(Value value) {
   }
 }
 
+py::object Clone(const Program &self, IrMapping *p_mapper = nullptr) {
+  IrMapping mapper;
+  if (p_mapper == nullptr) {
+    p_mapper = &mapper;
+  }
+  auto src_obj = py::cast(self);
+  auto new_obj = py::cast(self.Clone(*p_mapper));
+  for (auto item : src_obj.attr("__dict__").cast<py::dict>()) {
+    new_obj.attr(item.first.cast<std::string>().c_str()) = item.second;
+  }
+  return new_obj;
+}
+
 void BindProgram(py::module *m) {
+  static int64_t global_prog_seed = 0;
   py::class_<Program, std::shared_ptr<Program>> program(
       *m, "Program", py::dynamic_attr(), R"DOC(
     Create Python Program. Program is an abstraction of model structure, divided into
@@ -342,7 +379,9 @@ void BindProgram(py::module *m) {
   )DOC");
   program
       .def(py::init([]() {
-        return std::make_shared<Program>(pir::IrContext::Instance());
+        auto prog = std::make_shared<Program>(pir::IrContext::Instance());
+        SetProgramInt64Attr(prog, "random_seed", global_prog_seed);
+        return prog;
       }))
       .def("__str__",
            [](const std::shared_ptr<Program> &self) {
@@ -369,18 +408,16 @@ void BindProgram(py::module *m) {
           "global_block",
           [](std::shared_ptr<Program> self) { return self->block(); },
           return_value_policy::reference)
+      .def("clone", [](Program &self) { return Clone(self); })
+      .def("clone",
+           [](Program &self, IrMapping &ir_mapper) {
+             return Clone(self, &ir_mapper);
+           })
       .def(
-          "clone",
-          [](std::shared_ptr<Program> self) {
-            pir::IrMapping mapper;
-            return self->Clone(mapper);
-          },
-          return_value_policy::reference)
-      .def(
-          "clone",
-          [](std::shared_ptr<Program> self, pir::IrMapping &mapper) {
-            return self->Clone(mapper);
-          },
+          "copy_to_block",
+          [](std::shared_ptr<Program> self,
+             pir::IrMapping &mapper,
+             Block *block) { return self->CopyToBlock(mapper, block); },
           return_value_policy::reference)
       .def(
           "list_vars",
@@ -406,6 +443,19 @@ void BindProgram(py::module *m) {
           [](std::shared_ptr<Program> self, int64_t random_seed) {
             SetProgramInt64Attr(self, "random_seed", random_seed);
           })
+      .def_property(
+          "_seed",
+          [](const std::shared_ptr<Program> &self) {
+            return GetProgramInt64Attr(self, "random_seed", 0);
+          },
+          [](std::shared_ptr<Program> self, int64_t random_seed) {
+            SetProgramInt64Attr(self, "random_seed", random_seed);
+          })
+      .def("global_seed",
+           [](std::shared_ptr<Program> self, int64_t random_seed) {
+             global_prog_seed = random_seed;
+             SetProgramInt64Attr(self, "random_seed", random_seed);
+           })
       .def_property_readonly(
           "blocks",
           [](const std::shared_ptr<Program> &self) {
@@ -418,6 +468,10 @@ void BindProgram(py::module *m) {
       .def("get_output_value_by_name",
            [](Program &self, const std::string &name) {
              return GetOutputValueByName(self, name);
+           })
+      .def("get_parameter_value_by_name",
+           [](Program &self, const std::string &name) {
+             return GetParameterValueByName(self, name);
            })
       .def("num_ops", [](Program &self) { return self.num_ops(); })
       .def(
@@ -607,9 +661,12 @@ void BindIrMapping(py::module *m) {
   ir_mapping.def(py::init<>())
       .def("look_up",
            [](IrMapping &self, Value from) { return self.Lookup(from); })
-      .def("add", [](IrMapping &self, Value from, Value to) {
-        self.Add<Value>(from, to);
-      });
+      .def("add",
+           [](IrMapping &self, Value from, Value to) {
+             self.Add<Value>(from, to);
+           })
+      .def("size",
+           [](IrMapping &self) { return self.GetMutableMap<Value>().size(); });
 }
 
 void BindCloneOptions(py::module *m) {
@@ -643,6 +700,8 @@ void BindOperation(py::module *m) {
            return_value_policy::reference)
       .def("num_operands", &Operation::num_operands)
       .def("num_results", &Operation::num_results)
+      .def("num_regions", &Operation::num_regions)
+
       .def("operand", &Operation::operand)
       .def("result",
            [](Operation &self, uint32_t index) {
@@ -652,17 +711,41 @@ void BindOperation(py::module *m) {
       .def("operands", &Operation::operands)
       .def("results",
            [](Operation &self) -> py::list {
-             py::list op_list;
+             py::list value_list;
              for (uint32_t i = 0; i < self.num_results(); i++) {
-               op_list.append(static_cast<pir::Value>(self.result(i)));
+               value_list.append(static_cast<pir::Value>(self.result(i)));
              }
-             return op_list;
+             return value_list;
            })
       .def(
           "blocks",
           [](Operation &self) { return &self.blocks(); },
           return_value_policy::reference)
       .def("has_attr", &Operation::HasAttribute)
+      .def("str_attr",
+           [](Operation &self, const std::string &attr_name) -> py::object {
+             auto str_attr = self.attribute<StrAttribute>(attr_name);
+             if (str_attr) {
+               return py::cast(str_attr.AsString());
+             } else {
+               return py::cast<py::none>(Py_None);
+             }
+           })
+      .def("int_attr",
+           [](Operation &self, const std::string &attr_name) -> py::object {
+             auto int_attr = self.attribute<Int32Attribute>(attr_name);
+             if (int_attr) {
+               return py::cast(int_attr.data());
+             } else {
+               return py::cast<py::none>(Py_None);
+             }
+           })
+      .def("set_bool_attr",
+           [](Operation &self, std::string &attr_name, bool flag) {
+             self.set_attribute(
+                 attr_name,
+                 pir::BoolAttribute::get(pir::IrContext::Instance(), flag));
+           })
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
@@ -678,6 +761,12 @@ void BindOperation(py::module *m) {
                }
              }
              return attrs_dict;
+           })
+      .def("set_execution_stream",
+           [](Operation &self, const std::string &exe_stream) {
+             self.set_attribute(
+                 "execution_stream",
+                 StrAttribute::get(pir::IrContext::Instance(), exe_stream));
            })
       .def("set_scheduling_priority",
            [](Operation &self, int64_t priority) {
@@ -746,6 +835,13 @@ void BindOperation(py::module *m) {
            })
       .def("get_input_grad_semantics",
            [](Operation &self) -> py::list {
+             if (self.HasInterface<paddle::dialect::OpYamlInfoInterface>() ==
+                 false) {
+               PADDLE_THROW(common::errors::InvalidArgument(
+                   "Currently, we can only get input grad semantics of "
+                   "Operation that "
+                   "has OpYamlInfoInterface"));
+             }
              py::list op_list;
              paddle::dialect::OpYamlInfoInterface yaml_interface =
                  self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
@@ -765,13 +861,23 @@ void BindOperation(py::module *m) {
            [](Operation &self) -> PyLayerOp {
              auto pylayer_op = self.dyn_cast<PyLayerOp>();
              if (!pylayer_op) {
-               PADDLE_THROW(phi::errors::InvalidArgument(
+               PADDLE_THROW(common::errors::InvalidArgument(
                    "Can't cast non-pylayer_op type Operation to PyLayerOp."));
              }
              return pylayer_op;
            })
       .def("as_while_op",
            [](Operation &self) { return PyWhileOp(self.dyn_cast<WhileOp>()); })
+      .def(
+          "as_tuple_pop_op",
+          [](Operation &self) -> TuplePopOp {
+            auto tuple_pop_op = self.dyn_cast<TuplePopOp>();
+            if (!tuple_pop_op) {
+              PADDLE_THROW(common::errors::InvalidArgument(
+                  "Can't cast non-tuple_pop_op type Operation to TuplePopOp."));
+            }
+            return tuple_pop_op;
+          })
       .def("__repr__",
 
            [](Operation &self) {
@@ -813,13 +919,13 @@ void BindOperation(py::module *m) {
                 op_callstack.dyn_cast<pir::ArrayAttribute>();
             for (size_t i = 0; i < op_callstack_array_attr.size(); ++i) {
               PADDLE_ENFORCE(
-                  op_callstack_array_attr.at(i).isa<pir::StrAttribute>(),
+                  op_callstack_array_attr.at(i).isa<StrAttribute>(),
                   phi::errors::PreconditionNotMet(
                       "The callstack info of operation `%s` should be array of "
                       "string attribute.",
                       self.name()));
               callstack_list.append(op_callstack_array_attr.at(i)
-                                        .dyn_cast<pir::StrAttribute>()
+                                        .dyn_cast<StrAttribute>()
                                         .AsString());
             }
             return callstack_list;
@@ -829,7 +935,7 @@ void BindOperation(py::module *m) {
             std::vector<pir::Attribute> op_callstack_infos;
             for (auto str : callstack) {
               op_callstack_infos.push_back(
-                  pir::StrAttribute::get(pir::IrContext::Instance(), str));
+                  StrAttribute::get(pir::IrContext::Instance(), str));
             }
 
             self.set_attribute(
@@ -840,12 +946,12 @@ void BindOperation(py::module *m) {
           })
       .def_property(
           "dist_attr",
-          [](Operation &self) {
+          [](Operation &self) -> py::object {
             if (self.HasAttribute(kAttrOpDistAttr)) {
-              return self.attribute<OperationDistAttribute>(kAttrOpDistAttr);
+              return py::cast(
+                  self.attribute<OperationDistAttribute>(kAttrOpDistAttr));
             } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "dist_attr is only for dist op."));
+              return py::cast<py::none>(Py_None);
             }
           },
           [](Operation &self, OperationDistAttribute op_dist_attr) {
@@ -1088,6 +1194,14 @@ void BindValue(py::module *m) {
           return_value_policy::reference)
       .def("numel", [](Value self) { return phi::product(GetValueDims(self)); })
       .def("type", &Value::type)
+      .def("index",
+           [](Value self) -> uint32_t {
+             if (auto op_result = self.dyn_cast<OpResult>()) {
+               return op_result.index();
+             }
+             PADDLE_THROW(phi::errors::InvalidArgument(
+                 "only support accesss index from op_result."));
+           })
       .def("is_dense_tensor_type",
            [](Value self) { return self.type().isa<DenseTensorType>(); })
       .def("is_selected_row_type",
@@ -1124,7 +1238,7 @@ void BindValue(py::module *m) {
              auto share_data_op =
                  ApiBuilder::Instance()
                      .GetBuilder()
-                     ->Build<paddle::dialect::ShareDataOp>(self);
+                     ->Build<paddle::dialect::ShareData_Op>(self);
              auto out = share_data_op.out();
              out.set_attribute(
                  kAttrStopGradients,
@@ -1136,15 +1250,16 @@ void BindValue(py::module *m) {
            [](Value self) { return self.type().isa<pir::VectorType>(); })
       .def("is_dist",
            [](Value self) { return self.type().isa<DistTypeInterface>(); })
-      .def(
-          "dist_attr",
-          [](Value &self) {
-            if (!self.type().isa<DistTypeInterface>()) {
-              PADDLE_THROW(common::errors::InvalidArgument(
-                  "dist_attr is only for dist type tensor."));
-            }
-            return self.type().dyn_cast<DistTypeInterface>().tensor_dist_attr();
-          })
+      // TODO(winter-wang): Move to python end: return self.type().dist_attr().
+      .def("dist_attr",
+           [](Value self) -> py::object {
+             auto type = self.type();
+             if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
+               return py::cast(dist_type.tensor_dist_attr());
+             } else {
+               return py::cast<py::none>(Py_None);
+             }
+           })
       // The function will calculate the new local shape based on the global
       // shape and the dist_attr argument.
       .def("update_dist_attr", [](Value &self, TensorDistAttribute dist_attr) {
@@ -1194,6 +1309,35 @@ void BindType(py::module *m) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set dtype when building static graph"));
           })
+      .def("dist_attr",
+           [](Type self) -> py::object {
+             if (auto dist_type = self.dyn_cast<DistTypeInterface>()) {
+               return py::cast(dist_type.tensor_dist_attr());
+             } else {
+               return py::cast<py::none>(Py_None);
+             }
+           })
+      .def_property(
+          "_local_shape",
+          [](Type self) {
+            if (!self.isa<DistDenseTensorType>()) {
+              PADDLE_THROW(phi::errors::InvalidArgument(
+                  "_local_shape is only for distdense tensor."));
+            }
+            return phi::vectorize(
+                self.dyn_cast<DistDenseTensorType>().local_ddim());
+          },
+          [](Type self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set _local_shape when building static graph"));
+          })
+      .def("as_vec_type",
+           [](Type self) -> py::object {
+             if (auto vec_type = self.dyn_cast<VectorType>()) {
+               return py::cast(vec_type);
+             }
+             return py::cast<py::none>(Py_None);
+           })
       .def("__str__", [](Type &self) {
         std::ostringstream print_stream;
         print_stream << self;
@@ -1228,7 +1372,13 @@ void BindType(py::module *m) {
            }
          });
 }
-
+void BindVectorType(py::module *m) {
+  py::class_<VectorType, Type> vec_type(*m, "VectorType");
+  vec_type.def("as_list", &VectorType::data);
+  m->def("create_vec_type", [](std::vector<Type> &types) {
+    return VectorType::get(pir::IrContext::Instance(), types);
+  });
+}
 void BindAttribute(py::module *m) {
   py::class_<Attribute> ir_attr(*m, "Attribute", py::module_local());
   ir_attr.def("__eq__", &Attribute::operator==)
@@ -1263,7 +1413,6 @@ struct PyInsertionPoint {
 void BindInsertionPoint(pybind11::module *m) {
   py::class_<PyInsertionPoint> ir_insertion_point(*m, "InsertionPoint", R"DOC(
     InsertionPoint class represents the insertion point in the Builder.)DOC");
-
   ir_insertion_point
       .def(
           "next",
@@ -1299,6 +1448,10 @@ void BindInsertionPoint(pybind11::module *m) {
             }
             return *(self.value.second);
           },
+          return_value_policy::reference)
+      .def(
+          "block",
+          [](PyInsertionPoint &self) { return self.value.first; },
           return_value_policy::reference);
 }
 
@@ -1348,7 +1501,7 @@ std::map<int, int> GetOpInplaceInfo(const pir::Operation *op) {
   std::string op_name = op->name();
   if (op->attributes().count("op_name")) {
     op_name =
-        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
+        op->attributes().at("op_name").dyn_cast<StrAttribute>().AsString();
   }
 
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
@@ -1604,27 +1757,27 @@ std::pair<std::shared_ptr<Program>, ValueMap> CloneProgram(
       std::make_pair(associated_array_key, associated_array_value));
 }
 
-void AppendShadowOutput(Program *forward_program,
+void AppendShadowOutput(Program *program,
                         const pir::Value &value,
                         const std::string &name,
                         size_t start_point) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
   pir::AttributeMap attribute_map = {
-      {"output_name", pir::StrAttribute::get(ctx, name)},
+      {"output_name", StrAttribute::get(ctx, name)},
   };
   pir::Operation *operation =
       pir::Operation::Create({value}, attribute_map, {}, op_info);
-  auto position = forward_program->block()->begin();
+  auto position = program->block()->begin();
   std::advance(position, start_point);
-  if (position == forward_program->block()->end()) {
-    forward_program->block()->push_back(operation);
+  if (position == program->block()->end()) {
+    program->block()->push_back(operation);
   } else {
-    forward_program->block()->insert(position, operation);
+    program->block()->insert(position, operation);
   }
 }
 
-int AppendShadowOutputs(Program *forward_program,
+int AppendShadowOutputs(Program *program,
                         const std::vector<pir::Value> &outputs,
                         int start_point,
                         std::string name_prefix) {
@@ -1637,7 +1790,7 @@ int AppendShadowOutputs(Program *forward_program,
         shadow_output_name = GetValueName(value);
       }
       AppendShadowOutput(
-          forward_program, value, shadow_output_name, start_point + counter);
+          program, value, shadow_output_name, start_point + counter);
       counter += 1;
       added_value.insert(value);
     }
@@ -1655,25 +1808,22 @@ std::unordered_map<::pir::Value, std::string> GetNameMap(
   for (auto &op : *block) {
     std::string name;
     if (op.name() == "pd_op.data") {
-      name =
-          op.attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
+      name = op.attributes().at("name").dyn_cast<StrAttribute>().AsString();
       value2name[op.results()[0].Value::impl()] = name;
     } else if (op.name() == "builtin.set_parameter") {
       name = op.attributes()
                  .at("parameter_name")
-                 .dyn_cast<pir::StrAttribute>()
+                 .dyn_cast<StrAttribute>()
                  .AsString();
       value2name[op.operand(0).source()] = name;
     } else if (op.name() == "builtin.shadow_output") {
-      name = op.attributes()
-                 .at("output_name")
-                 .dyn_cast<pir::StrAttribute>()
-                 .AsString();
+      name =
+          op.attributes().at("output_name").dyn_cast<StrAttribute>().AsString();
       value2name[op.operand(0).source()] = name;
     } else if (op.name() == "builtin.parameter") {
       name = op.attributes()
                  .at("parameter_name")
-                 .dyn_cast<pir::StrAttribute>()
+                 .dyn_cast<StrAttribute>()
                  .AsString();
       value2name[op.result(0).Value::impl()] = name;
     } else if (op.name() == "builtin.constant") {
@@ -1770,7 +1920,7 @@ SplitedResult SplitForwardBackward(
         }
         auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
         pir::AttributeMap attribute_map = {
-            {"output_name", pir::StrAttribute::get(ctx, shadow_output_name)},
+            {"output_name", StrAttribute::get(ctx, shadow_output_name)},
         };
         pir::Operation *operation = pir::Operation::Create(
             {forward_value_map[v]}, attribute_map, {}, op_info);
@@ -1788,8 +1938,8 @@ SplitedResult SplitForwardBackward(
     auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
     pir::AttributeMap attribute_map = {
         {"output_name",
-         pir::StrAttribute::get(
-             ctx, std::string("output_") + std::to_string(counter))},
+         StrAttribute::get(ctx,
+                           std::string("output_") + std::to_string(counter))},
     };
     pir::Operation *operation = pir::Operation::Create(
         {backward_value_map.at(v)}, attribute_map, {}, op_info);
@@ -2011,7 +2161,7 @@ static void inline CreateVariableIfNotExist(
 void ResetShadowOutputName(pir::Operation *op, const std::string &name) {
   pir::IrContext *ctx = pir::IrContext::Instance();
   if (op->isa<pir::ShadowOutputOp>()) {
-    op->set_attribute("output_name", pir::StrAttribute::get(ctx, name));
+    op->set_attribute("output_name", StrAttribute::get(ctx, name));
   }
 }
 
@@ -2022,6 +2172,7 @@ void BindUtils(pybind11::module *m) {
   m->def("reset_shadow_output_name", ResetShadowOutputName);
   m->def("split_program", SplitForwardBackward);
   m->def("append_shadow_outputs", AppendShadowOutputs);
+  m->def("append_shadow_output", AppendShadowOutput);
   m->def("fake_value", FakeValue);
   m->def("is_fake_value", IsFakeValue);
   m->def("get_current_insertion_point", []() -> PyInsertionPoint {
@@ -2250,10 +2401,38 @@ void InferSymbolicShapePass(
   }
 }
 
+std::shared_ptr<Program> ApplyCommonSubexpressionEliminationPass(
+    std::shared_ptr<Program> program) {
+  pir::PassManager pm(pir::IrContext::Instance(), 2);
+  pm.AddPass(pir::CreateCommonSubexpressionEliminationPass());
+  pm.Run(program.get());
+  if (FLAGS_print_ir) {
+    std::cout
+        << "IR After CommonSubexpressionEliminationPass -------------------"
+        << std::endl;
+    std::cout << *program << std::endl;
+  }
+  return program;
+}
+
+std::shared_ptr<Program> ApplyFusedBnAddActPass(
+    std::shared_ptr<Program> program) {
+  pir::PassManager pm(pir::IrContext::Instance(), 3);
+  pm.AddPass(pir::CreateFusedBnAddActPass());
+  pm.Run(program.get());
+  if (FLAGS_print_ir) {
+    std::cout << "IR After FusedBnAddActPass -------------------" << std::endl;
+    std::cout << *program << std::endl;
+  }
+  return program;
+}
+
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
+  m->def("apply_cse_pass", ApplyCommonSubexpressionEliminationPass);
+  m->def("apply_bn_add_act_pass", ApplyFusedBnAddActPass);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",
@@ -2331,6 +2510,7 @@ void BindPir(pybind11::module *module) {
   BindOperation(&ir_module);
   BindOpOperand(&ir_module);
   BindType(&ir_module);
+  BindVectorType(&ir_module);
   BindAttribute(&ir_module);
   BindInsertionPoint(&ir_module);
   BindUtils(&ir_module);

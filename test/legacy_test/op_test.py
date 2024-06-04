@@ -114,7 +114,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
                         )
                     input_t.append(
                         paddle.static.data(
-                            name='data_%s' % index, shape=shape, dtype=dtype
+                            name=f'data_{index}', shape=shape, dtype=dtype
                         )
                     )
 
@@ -223,7 +223,7 @@ def get_numeric_gradient(
             return tensor._get_complex128_element(i)
         else:
             raise TypeError(
-                "Unsupported test data type %s." % tensor_to_check_dtype
+                f"Unsupported test data type {tensor_to_check_dtype}."
             )
 
     def __set_elem__(tensor, i, e):
@@ -251,7 +251,7 @@ def get_numeric_gradient(
             return tensor._set_complex128_element(i, e)
         else:
             raise TypeError(
-                "Unsupported test data type %s." % tensor_to_check_dtype
+                f"Unsupported test data type {tensor_to_check_dtype}."
             )
 
     # we only compute gradient of one element each time.
@@ -431,6 +431,9 @@ class OpTest(unittest.TestCase):
         cls._check_cinn = False
         cls.check_pir_onednn = False
 
+        # Todo(CZ): to be removed in future
+        core._clear_prim_vjp_skip_default_ops()
+
         np.random.seed(123)
         random.seed(124)
 
@@ -498,7 +501,7 @@ class OpTest(unittest.TestCase):
                 and not hasattr(cls, "exist_check_grad")
             ):
                 raise AssertionError(
-                    "This test of %s op needs check_grad." % cls.op_type
+                    f"This test of {cls.op_type} op needs check_grad."
                 )
 
             # check for op test with fp64 precision, but not check onednn op test for now
@@ -515,8 +518,7 @@ class OpTest(unittest.TestCase):
                 and not cls.check_prim_pir
             ):
                 raise AssertionError(
-                    "This test of %s op needs check_grad with fp64 precision."
-                    % cls.op_type
+                    f"This test of {cls.op_type} op needs check_grad with fp64 precision."
                 )
 
             if (
@@ -1058,7 +1060,7 @@ class OpTest(unittest.TestCase):
                     name_temp = name
                 else:
                     nplist_value_temp = np_list[name]
-                    name_temp = unique_name.generate("%s_out" % (name))
+                    name_temp = unique_name.generate(f"{name}_out")
                 v = create_var(
                     nplist_value_temp,
                     name_temp,
@@ -1181,10 +1183,9 @@ class OpTest(unittest.TestCase):
                 return None
             if not hasattr(self, "python_api"):
                 print(kernel_sig)
-            assert hasattr(self, "python_api"), (
-                "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_dygraph = True"
-                % self.op_type
-            )
+            assert hasattr(
+                self, "python_api"
+            ), f"Detect there is KernelSignature for `{self.op_type}` op, please set the `self.python_api` if you set check_dygraph = True"
             args = OpTestUtils.prepare_python_api_arguments(
                 self.python_api,
                 dygraph_tensor_inputs,
@@ -1285,10 +1286,9 @@ class OpTest(unittest.TestCase):
                 return None
             if not hasattr(self, "python_api"):
                 print(kernel_sig)
-            assert hasattr(self, "python_api"), (
-                "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_dygraph = True"
-                % self.op_type
-            )
+            assert hasattr(
+                self, "python_api"
+            ), f"Detect there is KernelSignature for `{self.op_type}` op, please set the `self.python_api` if you set check_dygraph = True"
             return kernel_sig
 
     def get_ir_input_attr_dict_and_feed(self, stop_gradient):
@@ -1526,6 +1526,10 @@ class OpTest(unittest.TestCase):
         check_cinn=False,
     ):
         with paddle.pir_utils.OldIrGuard():
+            if hasattr(self, "attrs"):
+                for k, v in self.attrs.items():
+                    if isinstance(v, paddle.base.core.DataType):
+                        self.attrs[k] = paddle.pir.core.datatype_to_vartype[v]
             program = Program()
             block = program.global_block()
             op = self._append_ops(block)
@@ -2566,7 +2570,7 @@ class OpTest(unittest.TestCase):
                 not in no_check_set_white_list.no_check_set_white_list
             ):
                 raise AssertionError(
-                    "no_check_set of op %s must be set to None." % self.op_type
+                    f"no_check_set of op {self.op_type} must be set to None."
                 )
 
         if check_prim:
@@ -3084,7 +3088,7 @@ class OpTest(unittest.TestCase):
             analytic_grads,
             inputs_to_check,
             max_relative_error,
-            "Gradient Check On %s" % str(place),
+            f"Gradient Check On {str(place)}",
             atol=atol,
         )
 
@@ -3202,6 +3206,13 @@ class OpTest(unittest.TestCase):
                         python_api_info=python_api_info,
                     )
                     runtime_envs = get_subprocess_runtime_envs(place)
+
+                    num_devices = len(
+                        runtime_envs["CUDA_VISIBLE_DEVICES"].split(",")
+                    )
+                    if num_devices > paddle.device.cuda.device_count():
+                        self.skipTest("number of GPUs is not enough")
+
                     start_command = get_subprocess_command(
                         runtime_envs["CUDA_VISIBLE_DEVICES"],
                         generated_grad_test_path,
@@ -3241,6 +3252,11 @@ class OpTest(unittest.TestCase):
         if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
             op_attrs["use_mkldnn"] = False
             use_onednn = True
+        if hasattr(self, "attrs"):
+            for k, v in self.attrs.items():
+                if isinstance(v, paddle.base.core.DataType):
+                    self.attrs[k] = paddle.pir.core.datatype_to_vartype[v]
+
         self.op = create_op(
             self.scope,
             self.op_type,
@@ -3347,7 +3363,7 @@ class OpTest(unittest.TestCase):
                     dygraph_dygraph_grad,
                     inputs_to_check,
                     max_relative_error,
-                    "Gradient Check On %s" % str(place),
+                    f"Gradient Check On {str(place)}",
                     atol=atol,
                 )
 
@@ -3387,7 +3403,7 @@ class OpTest(unittest.TestCase):
                     pir_grad,
                     inputs_to_check,
                     max_relative_error,
-                    "Gradient Check On %s" % str(place),
+                    f"Gradient Check On {str(place)}",
                     atol=atol,
                 )
 
@@ -3465,7 +3481,7 @@ class OpTest(unittest.TestCase):
                         )
                     else:
                         raise TypeError(
-                            "Unsupported test data type %s." % type(cast_input)
+                            f"Unsupported test data type {type(cast_input)}."
                         )
 
                 outputs = {}
@@ -3831,12 +3847,12 @@ class OpTest(unittest.TestCase):
                         range(len(user_defined_grad_outputs)),
                     ):
                         grad_val = paddle.static.data(
-                            name='val_grad_%s' % idx,
+                            name=f'val_grad_{idx}',
                             shape=grad_out_value.shape,
                             dtype=grad_out_value.dtype,
                         )
                         grad_outputs.append(grad_val)
-                        feed.update({'val_grad_%s' % idx: grad_out_value})
+                        feed.update({f'val_grad_{idx}': grad_out_value})
                     # delete the inputs which no need to calculate grad
                     for no_grad_val in no_grad_set:
                         del static_inputs[no_grad_val]
@@ -3875,8 +3891,7 @@ class OpTest(unittest.TestCase):
                             )
                         else:
                             raise TypeError(
-                                "Unsupported test data type %s."
-                                % type(cast_input)
+                                f"Unsupported test data type {type(cast_input)}."
                             )
 
                     outputs = {}

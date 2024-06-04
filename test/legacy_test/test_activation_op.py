@@ -365,19 +365,19 @@ class TestParameter:
                 data = paddle.static.data(
                     name="X", shape=[-1, 1], dtype="float32"
                 )
-                out = eval("paddle.%s(data, name='Y')" % self.op_type)
+                out = eval(f"paddle.{self.op_type}(data, name='Y')")
                 place = base.CPUPlace()
                 exe = base.Executor(place)
                 (result,) = exe.run(feed={"X": np_x}, fetch_list=[out])
-                expected = eval("np.%s(np_x)" % self.op_type)
+                expected = eval(f"np.{self.op_type}(np_x)")
                 np.testing.assert_allclose(result, expected, rtol=1e-05)
 
     def test_dygraph(self):
         with base.dygraph.guard():
             np_x = np.array([0.1])
             x = paddle.to_tensor(np_x)
-            z = eval("paddle.%s(x).numpy()" % self.op_type)
-            z_expected = eval("np.%s(np_x)" % self.op_type)
+            z = eval(f"paddle.{self.op_type}(x).numpy()")
+            z_expected = eval(f"np.{self.op_type}(np_x)")
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
 
@@ -4988,12 +4988,14 @@ def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
 class TestHardSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "hard_sigmoid"
+        self.prim_op_type = "comp"
         self.dtype = 'float64'
         self.slope = 0.166666666666667
         self.offset = 0.5
         self.set_attrs()
         self.init_shape()
         self.python_api = paddle.nn.functional.hardsigmoid
+        self.public_python_api = paddle.nn.functional.hardsigmoid
 
         x = np.random.uniform(-5, 5, self.shape).astype(self.dtype)
         lower_threshold = -self.offset / self.slope
@@ -5020,7 +5022,9 @@ class TestHardSigmoid(TestActivation):
 
     def test_check_output(self):
         self.check_output(
-            check_pir=True, check_pir_onednn=self.check_pir_onednn
+            check_pir=True,
+            check_prim_pir=True,
+            check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_grad(self):
@@ -5355,7 +5359,7 @@ def create_test_act_fp16_class(
     enable_cinn=False,
     check_pir=False,
     grad_atol=1e-2,
-    **kwargs
+    **kwargs,
 ):
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -5552,7 +5556,7 @@ def create_test_act_bf16_class(
     check_pir=False,
     check_prim_pir=False,
     grad_atol=1e-2,
-    **kwargs
+    **kwargs,
 ):
     @unittest.skipIf(
         not core.is_compiled_with_cuda()

@@ -1072,77 +1072,79 @@ bool CasSimplifyMutator::SimplifySpecificSumMod(Expr* result, Expr a, Expr b) {
       }
     }
   }
-#ifdef CINN_WITH_CUDA
-  return false;
-#else
-
-  int const_value = 0;
-  Expr lower_bound;
-  Expr upper_bound;
-  Expr rest_oper;
-  bool can_simplify = true;
-  bool has_int = false;
-  // fold only the expr bound(may contains the var) and try to simplify the var
-  Expr unfolded_lower_bound, unfolded_upper_bound;
-  for (Expr& v : a_sum->operands()) {
-    auto* v_int = v.As<IntImm>();
-    if (v_int) {
-      const_value += v_int->value;
-      has_int = true;
-    } else if (GetVarBound(&lower_bound, &upper_bound, v, false)) {
-      AddBaseAndSimplify(&rest_oper, v);
-    } else {
-      can_simplify = false;
-      break;
-    }
-  }
-  can_simplify = can_simplify && has_int &&
-                 std::abs(const_value) % b_i->value == b_i->value - 1 &&
-                 lower_bound.defined() && upper_bound.defined() &&
-                 rest_oper.defined();
-  // further infer the vars' bound by the intervals infos, try to get the
-  // constant
-  if (can_simplify) {
-    std::vector<Expr> bounds = {lower_bound, upper_bound};
-    for (int i = 0; i < bounds.size(); ++i) {
-      Expr bound = bounds[i];
-      Expr bound_l, bound_r;
-      GetExprBound(&bound_l, &bound_r, bound);
-      if (i == 0 && bound_l.defined()) {
-        lower_bound = bound_l;
-      }
-      if (i == 1 && bound_r.defined()) {
-        upper_bound = bound_r;
-      }
-    }
-  } else {
-    return false;
-  }
-  // case1: (32+(-x))%33 = 32-x%33 (0<=x<=32)
-  // case2: (x-32)%33 = x%33 - 32%33 (0<=x<=32)
-  can_simplify = can_simplify && lower_bound.is_constant();
-  bool case1 = can_simplify && const_value >= 0 &&
-               lower_bound.get_constant() >= -const_value &&
-               upper_bound.is_constant() && upper_bound.get_constant() <= 0;
-  bool case2 = can_simplify && const_value <= 0 &&
-               lower_bound.get_constant() >= 0 && upper_bound.is_constant() &&
-               upper_bound.get_constant() <= -const_value;
-  can_simplify = can_simplify && (case1 || case2);
-  if (can_simplify) {
-    Expr const_expr;
-    if (const_value < 0) {
-      const_expr = make_const(b->type(), const_value % b_i->value);
-    } else {
-      const_expr = make_const(b->type(), const_value % b_i->value);
-    }
-    *result = CasSimplify(
-        Sum::Make(
-            {const_expr, CasSimplify(Mod::Make(rest_oper, b), var_intervals)}),
-        var_intervals);
-    return true;
-  }
-  return false;
-#endif
+  return cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](common::NVGPUArch) { return false; },
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+        int const_value = 0;
+        Expr lower_bound;
+        Expr upper_bound;
+        Expr rest_oper;
+        bool can_simplify = true;
+        bool has_int = false;
+        // fold only the expr bound(may contains the var) and try to simplify
+        // the var
+        Expr unfolded_lower_bound, unfolded_upper_bound;
+        for (Expr& v : a_sum->operands()) {
+          auto* v_int = v.As<IntImm>();
+          if (v_int) {
+            const_value += v_int->value;
+            has_int = true;
+          } else if (GetVarBound(&lower_bound, &upper_bound, v, false)) {
+            AddBaseAndSimplify(&rest_oper, v);
+          } else {
+            can_simplify = false;
+            break;
+          }
+        }
+        can_simplify = can_simplify && has_int &&
+                       std::abs(const_value) % b_i->value == b_i->value - 1 &&
+                       lower_bound.defined() && upper_bound.defined() &&
+                       rest_oper.defined();
+        // further infer the vars' bound by the intervals infos, try to get the
+        // constant
+        if (can_simplify) {
+          std::vector<Expr> bounds = {lower_bound, upper_bound};
+          for (int i = 0; i < bounds.size(); ++i) {
+            Expr bound = bounds[i];
+            Expr bound_l, bound_r;
+            GetExprBound(&bound_l, &bound_r, bound);
+            if (i == 0 && bound_l.defined()) {
+              lower_bound = bound_l;
+            }
+            if (i == 1 && bound_r.defined()) {
+              upper_bound = bound_r;
+            }
+          }
+        } else {
+          return false;
+        }
+        // case1: (32+(-x))%33 = 32-x%33 (0<=x<=32)
+        // case2: (x-32)%33 = x%33 - 32%33 (0<=x<=32)
+        can_simplify = can_simplify && lower_bound.is_constant();
+        bool case1 = can_simplify && const_value >= 0 &&
+                     lower_bound.get_constant() >= -const_value &&
+                     upper_bound.is_constant() &&
+                     upper_bound.get_constant() <= 0;
+        bool case2 = can_simplify && const_value <= 0 &&
+                     lower_bound.get_constant() >= 0 &&
+                     upper_bound.is_constant() &&
+                     upper_bound.get_constant() <= -const_value;
+        can_simplify = can_simplify && (case1 || case2);
+        if (can_simplify) {
+          Expr const_expr;
+          if (const_value < 0) {
+            const_expr = make_const(b->type(), const_value % b_i->value);
+          } else {
+            const_expr = make_const(b->type(), const_value % b_i->value);
+          }
+          *result = CasSimplify(
+              Sum::Make({const_expr,
+                         CasSimplify(Mod::Make(rest_oper, b), var_intervals)}),
+              var_intervals);
+          return true;
+        }
+        return false;
+      });
 }
 
 // Return if the var's interval is nonnegative.

@@ -527,8 +527,7 @@ def pow(x, y, name=None):
             return _C_ops.elementwise_pow(x, y)
         else:
             raise TypeError(
-                'y must be scalar , Tensor(in dygraph mode), Value(in pir mode) but received: %s '
-                % (y.dtype)
+                f"y must be scalar, Tensor(in dygraph mode), Value(in pir mode) but received: {type(y)}"
             )
     else:
         # in static graph mode
@@ -548,7 +547,7 @@ def pow(x, y, name=None):
             return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
         else:
             raise TypeError(
-                'y must be scalar or tensor type, but received: %s ' % (type(y))
+                f"y must be scalar or tensor type, but received: {type(y)}"
             )
 
 
@@ -1581,8 +1580,8 @@ def reduce_as(x, target, name=None):
     Computes the sum of tensor elements make the shape of its result equal to the shape of target.
 
     Args:
-        x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int32 or int64.
-        target (Tensor): An N-D Tensor, the length of x shape must greater than or equal to the length of target shape. The data type is bool, float16, float32, float64, int32 or int64.
+        x (Tensor): An N-D Tensor, the data type is bool, float16, float32, float64, int8, uint8, int16, uint16, int32, int64, complex64 or complex128.
+        target (Tensor): An N-D Tensor, the length of x shape must greater than or equal to the length of target shape. The data type is bool, float16, float32, float64, int8, uint8, int16, uint16, int32, int64, complex64 or complex128.
 
     Returns:
         Tensor: The sum of the input tensor x along some axis has the same shape as the shape of the input tensor target, if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`, otherwise it's data type is the same as `x`.
@@ -1615,13 +1614,17 @@ def reduce_as(x, target, name=None):
             'x',
             [
                 'bool',
-                'uint16',
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'uint8',
                 'int16',
+                'uint16',
                 'int32',
                 'int64',
+                'complex64',
+                'complex128',
             ],
             'reduce_as',
         )
@@ -1630,13 +1633,17 @@ def reduce_as(x, target, name=None):
             'target',
             [
                 'bool',
-                'uint16',
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'uint8',
                 'int16',
+                'uint16',
                 'int32',
                 'int64',
+                'complex64',
+                'complex128',
             ],
             'reduce_as',
         )
@@ -1828,7 +1835,10 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
             [9. , 18.])
     """
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'nansum'
+        x,
+        'x',
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+        'nansum',
     )
     check_type(axis, 'axis', (int, list, tuple, type(None)), 'nansum')
 
@@ -2352,7 +2362,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
             f"The dimension of input should be 2 or 1 but receive input's shape: {input_shape}"
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.addmm(input, x, y, beta, alpha)
     else:
         inputs = {'Input': input, "X": x, "Y": y}
@@ -2716,7 +2726,7 @@ def inverse(x, name=None):
         x (Tensor): The input tensor. The last two
             dimensions should be equal. When the number of dimensions is
             greater than 2, it is treated as batches of square matrix. The data
-            type can be float32 and float64.
+            type can be float32, float64, complex64, complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2741,7 +2751,12 @@ def inverse(x, name=None):
     else:
 
         def _check_input(x):
-            check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'inverse')
+            check_variable_and_dtype(
+                x,
+                'x',
+                ['float32', 'float64', 'complex64', 'complex128'],
+                'inverse',
+            )
             if len(x.shape) < 2:
                 raise ValueError(
                     "The input of inverse is expected to be a Tensor whose number "
@@ -3956,10 +3971,16 @@ def kron(x, y, name=None):
     else:
         helper = LayerHelper('kron', **locals())
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron'
+            x,
+            'x',
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+            'kron',
         )
         check_variable_and_dtype(
-            y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron'
+            y,
+            'y',
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
+            'kron',
         )
 
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -4378,7 +4399,7 @@ def cumprod(x, dim=None, dtype=None, name=None):
         x = cast(x, dtype)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.cumprod(x, dim)
+        return _C_ops.cumprod(x, dim, False, False)
     else:
         check_variable_and_dtype(
             x,
@@ -4418,7 +4439,7 @@ def cumprod_(x, dim=None, dtype=None, name=None):
         x = cast_(x, dtype)
 
     if in_dynamic_mode():
-        return _C_ops.cumprod_(x, dim)
+        return _C_ops.cumprod_(x, dim, False, False)
 
 
 def isfinite(x, name=None):
@@ -7737,7 +7758,7 @@ def isposinf(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The output Tensor. Each element of output indicates whether the input element is positive infinity or not.
+        out (Tensor), The output Tensor. Each element of output indicates whether the input element is positive infinity or not.
 
     Examples:
         .. code-block:: python
@@ -7784,7 +7805,7 @@ def isneginf(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The output Tensor. Each element of output indicates whether the input element is negative infinity or not.
+        out (Tensor), The output Tensor. Each element of output indicates whether the input element is negative infinity or not.
 
     Examples:
         .. code-block:: python
@@ -7831,7 +7852,7 @@ def isreal(x, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (Tensor): The output Tensor. Each element of output indicates whether the input element is a real number or not.
+        out (Tensor), The output Tensor. Each element of output indicates whether the input element is a real number or not.
 
     Examples:
         .. code-block:: python
@@ -7869,3 +7890,271 @@ def isreal(x, name=None):
         return paddle.ones_like(x, dtype='bool')
 
     return paddle.equal(paddle.imag(x), 0)
+
+
+def sinc(x, name=None):
+    r"""
+    Calculate the normalized sinc of ``x`` elementwise.
+
+    .. math::
+
+        out_i =
+        \left\{
+        \begin{aligned}
+        &1 & \text{ if $x_i = 0$} \\
+        &\frac{\sin(\pi x_i)}{\pi x_i} & \text{ otherwise}
+        \end{aligned}
+        \right.
+
+    Args:
+        x (Tensor): The input Tensor. Must be one of the following types: bfloat16, float16, float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor), The Tensor of elementwise-computed normalized sinc result.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> paddle.seed(100)
+            >>> x = paddle.rand([2,3], dtype='float32')
+            >>> res = paddle.sinc(x)
+            >>> print(res)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.56691176, 0.93089867, 0.99977750],
+             [0.61639023, 0.79618412, 0.89171958]])
+    """
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+
+    check_variable_and_dtype(
+        x,
+        "x",
+        [
+            'uint16',
+            'float16',
+            'float32',
+            'float64',
+        ],
+        "sinc",
+    )
+
+    tmp = paddle.where(x != 0, x, paddle.full_like(x, 1.0e-20))
+    tmp = paddle.multiply(tmp, paddle.to_tensor(math.pi, dtype=x.dtype))
+    tmp = paddle.divide(tmp.sin(), tmp)
+    return paddle.where(~paddle.isnan(tmp), tmp, paddle.full_like(x, 1.0))
+
+
+@inplace_apis_in_dygraph_only
+def sinc_(x, name=None):
+    r"""
+    Inplace version of ``sinc`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_sinc`.
+    """
+    if not isinstance(x, (paddle.Tensor, Variable)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+
+    check_variable_and_dtype(
+        x,
+        "x",
+        [
+            'uint16',
+            'float16',
+            'float32',
+            'float64',
+        ],
+        "sinc_",
+    )
+
+    paddle.where_(x != 0, x, paddle.full_like(x, 1.0e-20))
+    paddle.multiply_(x, paddle.to_tensor(math.pi, dtype=x.dtype))
+    tmp = paddle.clone(x)
+    paddle.sin_(x)
+    paddle.divide_(x, tmp)
+    return paddle.where(~paddle.isnan(x), x, paddle.full_like(x, 1.0))
+
+
+def isin(x, test_x, assume_unique=False, invert=False, name=None):
+    r"""
+    Tests if each element of `x` is in `test_x`.
+
+    Args:
+        x (Tensor): The input Tensor. Supported data type: 'bfloat16', 'float16', 'float32', 'float64', 'int32', 'int64'.
+        test_x (Tensor): Tensor values against which to test for each input element. Supported data type: 'bfloat16', 'float16', 'float32', 'float64', 'int32', 'int64'.
+        assume_unique (bool, optional): If True, indicates both `x` and `test_x` contain unique elements, which could make the calculation faster. Default: False.
+        invert (bool, optional): Indicate whether to invert the boolean return tensor. If True, invert the results. Default: False.
+        name (str, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor), The output Tensor with the same shape as `x`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+            >>> x = paddle.to_tensor([-0., -2.1, 2.5, 1.0, -2.1], dtype='float32')
+            >>> test_x = paddle.to_tensor([-2.1, 2.5], dtype='float32')
+            >>> res = paddle.isin(x, test_x)
+            >>> print(res)
+            Tensor(shape=[5], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, True, True, False, True])
+
+            >>> x = paddle.to_tensor([-0., -2.1, 2.5, 1.0, -2.1], dtype='float32')
+            >>> test_x = paddle.to_tensor([-2.1, 2.5], dtype='float32')
+            >>> res = paddle.isin(x, test_x, invert=True)
+            >>> print(res)
+            Tensor(shape=[5], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True, False, False, True, False])
+
+            >>> # Set `assume_unique` to True only when `x` and `test_x` contain unique values, otherwise the result may be incorrect.
+            >>> x = paddle.to_tensor([0., 1., 2.]*20).reshape([20, 3])
+            >>> test_x = paddle.to_tensor([0., 1.]*20)
+            >>> correct_result = paddle.isin(x, test_x, assume_unique=False)
+            >>> print(correct_result)
+            Tensor(shape=[20, 3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [[True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False],
+             [True , True , False]])
+
+            >>> incorrect_result = paddle.isin(x, test_x, assume_unique=True)
+            >>> print(incorrect_result)
+            Tensor(shape=[20, 3], dtype=bool, place=Place(gpu:0), stop_gradient=True,
+            [[True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , True ],
+             [True , True , False]])
+
+    """
+    if not isinstance(x, (paddle.Tensor, Variable, paddle.pir.Value)):
+        raise TypeError(f"x must be tensor type, but got {type(x)}")
+    if not isinstance(test_x, (paddle.Tensor, Variable, paddle.pir.Value)):
+        raise TypeError(f"x must be tensor type, but got {type(test_x)}")
+
+    check_variable_and_dtype(
+        x,
+        "x",
+        [
+            'uint16',
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+        ],
+        "isin",
+    )
+
+    check_variable_and_dtype(
+        test_x,
+        "test_x",
+        [
+            'uint16',
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+        ],
+        "isin",
+    )
+
+    x_zero_dim = False
+    if len(x.shape) == 0:
+        x = x.reshape([1])
+        x_zero_dim = True
+
+    size_x = math.prod(x.shape)
+    size_t = math.prod(test_x.shape)
+    if size_t < math.pow(size_x, 0.145) * 10.0:
+        # use brute-force searching if the test_x size is small
+        if len(x.shape) == 0:
+            return paddle.zeros([], dtype='bool')
+
+        tmp = x.reshape(tuple(x.shape) + ((1,) * test_x.ndim))
+        cmp = tmp == test_x
+        dim = tuple(range(-1, -test_x.ndim - 1, -1))
+        cmp = cmp.any(axis=dim)
+        if invert:
+            cmp = ~cmp
+    else:
+        x_flat = x.flatten()
+        test_x_flat = test_x.flatten()
+        if assume_unique:
+            # if x and test_x both contain unique elements, use stable argsort method which could be faster
+            all_elements = paddle.concat([x_flat, test_x_flat])
+            sorted_index = paddle.argsort(all_elements, stable=True)
+            sorted_x = all_elements[sorted_index]
+
+            duplicate_mask = paddle.full_like(sorted_index, False, dtype='bool')
+            if not in_dynamic_mode():
+                duplicate_mask = paddle.static.setitem(
+                    duplicate_mask,
+                    paddle.arange(duplicate_mask.numel() - 1),
+                    sorted_x[1:] == sorted_x[:-1],
+                )
+            else:
+                duplicate_mask[:-1] = sorted_x[1:] == sorted_x[:-1]
+
+            if invert:
+                duplicate_mask = duplicate_mask.logical_not()
+
+            mask = paddle.empty_like(duplicate_mask)
+            if not in_dynamic_or_pir_mode():
+                mask = paddle.static.setitem(mask, sorted_index, duplicate_mask)
+            else:
+                mask[sorted_index] = duplicate_mask
+
+            cmp = mask[0 : x.numel()].reshape(x.shape)
+        else:
+            # otherwise use searchsorted method
+            sorted_test_x = paddle.sort(test_x_flat)
+            idx = paddle.searchsorted(sorted_test_x, x_flat)
+            test_idx = paddle.where(
+                idx < sorted_test_x.numel(),
+                idx,
+                paddle.zeros_like(idx, 'int64'),
+            )
+            cmp = sorted_test_x[test_idx] == x_flat
+            cmp = cmp.logical_not() if invert else cmp
+            cmp = cmp.reshape(x.shape)
+
+    if x_zero_dim:
+        return cmp.reshape([])
+    else:
+        return cmp

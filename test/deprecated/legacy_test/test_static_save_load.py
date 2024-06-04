@@ -1904,6 +1904,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
 
 
 class TestStaticSaveLoadPickle(unittest.TestCase):
+    @test_with_pir_api
     def test_pickle_protocol(self):
         # enable static graph mode
         paddle.enable_static()
@@ -1915,7 +1916,8 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
                 shape=[None, 10],
                 dtype='float32',
             )
-            x.desc.set_need_check_feed(False)
+            if not in_pir_mode():
+                x.desc.set_need_check_feed(False)
             z = paddle.static.nn.fc(x, 10, bias_attr=False)
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -1952,6 +1954,11 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
                 # set var to zero
                 for var in prog.list_vars():
                     if isinstance(var, framework.Parameter) or var.persistable:
+                        if (
+                            in_pir_mode()
+                            and var.get_defining_op().name() == "pd_op.fetch"
+                        ):
+                            continue
                         ten = (
                             base.global_scope().find_var(var.name).get_tensor()
                         )
@@ -1966,6 +1973,11 @@ class TestStaticSaveLoadPickle(unittest.TestCase):
 
                 for var in prog.list_vars():
                     if isinstance(var, framework.Parameter) or var.persistable:
+                        if (
+                            in_pir_mode()
+                            and var.get_defining_op().name() == "pd_op.fetch"
+                        ):
+                            continue
                         new_t = np.array(
                             base.global_scope().find_var(var.name).get_tensor()
                         )
@@ -1981,11 +1993,13 @@ class TestSaveLoadInferenceModel(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_pir_api
     def test_no_params(self):
-        main_program = framework.Program()
-        with framework.program_guard(main_program):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
             x = paddle.static.data(name="x", shape=[10, 10], dtype='float32')
-            x.desc.set_need_check_feed(False)
+            if not in_pir_mode():
+                x.desc.set_need_check_feed(False)
             y = x + x
 
             place = paddle.CPUPlace()
@@ -2000,9 +2014,25 @@ class TestSaveLoadInferenceModel(unittest.TestCase):
             ] = paddle.static.load_inference_model(self.model_path, exe)
 
             self.assertEqual(feed_target_names, ['x'])
-            self.assertEqual(fetch_targets[0].shape, (10, 10))
-            ops = [op.type for op in inference_program.block(0).ops]
-            self.assertEqual(ops, ['feed', 'elementwise_add', 'scale', 'fetch'])
+            if in_pir_mode():
+                self.assertEqual(fetch_targets[0].shape, [10, 10])
+                ops = [op.name() for op in inference_program.global_block().ops]
+                self.assertEqual(
+                    ops,
+                    [
+                        'pd_op.data',
+                        'pd_op.add',
+                        'pd_op.full',
+                        'pd_op.scale',
+                        'pd_op.fetch',
+                    ],
+                )
+            else:
+                self.assertEqual(fetch_targets[0].shape, (10, 10))
+                ops = [op.type for op in inference_program.block(0).ops]
+                self.assertEqual(
+                    ops, ['feed', 'elementwise_add', 'scale', 'fetch']
+                )
 
 
 if __name__ == '__main__':

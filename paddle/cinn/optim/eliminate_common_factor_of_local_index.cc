@@ -239,7 +239,7 @@ std::vector<ir::Expr> CalculateIndexCommonFactor(
     // FLAGS_cinn_bucket_compile=1. However, some unit tests (e.g.
     // test_resnet_cinn, test_instance_norm_op) are still running with the
     // deprecated OpScheduler, and the ir::Expr will break this guarantee after
-    // IRCudaScheduleBlockReduce function. So we have to relax the restriction
+    // IRGpuScheduleBlockReduce function. So we have to relax the restriction
     // here.
     if (indexes[i].size() != indexes[0].size()) {
       LOG(WARNING)
@@ -357,10 +357,10 @@ void EliminateCommonFactorHelper(ir::Expr* expr) {
 }
 
 void EliminateCommonFactorOfLocalIndex(ir::Expr* expr) {
-  VLOG(2) << "Before EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
+  VLOG(4) << "Before EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
   EliminateCommonFactorHelper<Gcd>(expr);
   EliminateCommonFactorHelper<Offset>(expr);
-  VLOG(2) << "After EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
+  VLOG(4) << "After EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
 }
 
 }  // namespace optim

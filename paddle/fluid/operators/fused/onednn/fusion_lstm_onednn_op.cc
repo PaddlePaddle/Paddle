@@ -33,7 +33,7 @@ class LSTMMKLDNNHandler
   LSTMMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                     const OneDNNContext& dev_ctx,
                     const dnnl::engine onednn_engine,
-                    platform::Place cpu_place UNUSED,
+                    phi::Place cpu_place UNUSED,
                     const phi::DenseTensor* input,
                     const phi::DenseTensor* weight_h,
                     const phi::DenseTensor* h0,
@@ -398,15 +398,13 @@ class FusionLSTMMKLDNNKernel : public framework::OpKernel<T> {
     std::shared_ptr<dnnl::memory> h0_memory_p, weight_h_memory_p,
         weight_x_memory_p;
 
-    if (framework::TransToProtoVarType(weight_h->dtype()) ==
-        paddle::framework::proto::VarType_Type_FP32) {
+    if (weight_h->dtype() == phi::DataType::FLOAT32) {
       h0_memory_p = handler.template AcquireH0Memory<float>(h0);
       weight_x_memory_p =
           handler.template AcquireWeightXMemory<float>(weight_x);
       weight_h_memory_p =
           handler.template AcquireWeightHMemory<float>(weight_h);
-    } else if (framework::TransToProtoVarType(weight_h->dtype()) ==
-               paddle::framework::proto::VarType_Type_BF16) {
+    } else if (weight_h->dtype() == phi::DataType::BFLOAT16) {
       h0_memory_p = handler.template AcquireH0Memory<phi::dtype::bfloat16>(h0);
       weight_x_memory_p =
           handler.template AcquireWeightXMemory<phi::dtype::bfloat16>(weight_x);

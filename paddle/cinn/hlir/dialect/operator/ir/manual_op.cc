@@ -197,6 +197,19 @@ void FusionOp::Print(pir::IrPrinter& printer) {
   os << printer.indentation() << "}";
 }
 
+bool FusionOp::InferSymbolicShape(
+    ::pir::InferSymbolicShapeContext* infer_context) {
+  ::pir::InferSymExprForBlock(*block(), infer_context);
+
+  for (uint32_t rst_idx = 0; rst_idx < num_results(); rst_idx++) {
+    auto inner_yield_value = block()->back().operand_source(rst_idx);
+    const auto& shape =
+        infer_context->GetShapeOrDataForValue(inner_yield_value);
+    infer_context->SetShapeOrDataForValue(result(rst_idx), shape);
+  }
+  return true;
+}
+
 void YieldStoreOp::Build(pir::Builder& builder,
                          pir::OperationArgument& argument,
                          pir::Value x,
@@ -268,7 +281,7 @@ void SplitOp::Build(pir::Builder& builder,             // NOLINT
                     pir::Value input,
                     const std::vector<int>& sections,
                     int axis) {
-  VLOG(4) << "Start build ConcatOp";
+  VLOG(4) << "Start build SplitOp";
 
   argument.inputs.push_back(input);
 
@@ -311,12 +324,12 @@ void SplitOp::Build(pir::Builder& builder,             // NOLINT
 const char* GenerateShapeOp::attributes_name[attributes_num] = {
     "output_dim_exprs", "symbol_bindings"};
 
-void GenerateShapeOp::Build(
-    pir::Builder& builder,
-    pir::OperationArgument& argument,
-    const std::vector<pir::Value>& inputs,
-    const std::vector<pir::Attribute>& output_dim_exprs,
-    const GenerateShapeOp::SymbolBindings& symbol_bindings) {
+void GenerateShapeOp::Build(pir::Builder& builder,
+                            pir::OperationArgument& argument,
+                            const std::vector<pir::Value>& inputs,
+                            const std::vector<pir::Attribute>& output_dim_exprs,
+                            const SymbolBindings& symbol_bindings,
+                            const pir::Type& output_type) {
   if (inputs.empty()) {
     VLOG(3) << "GenerateShapeOp inputs is empty";
     for (const auto& attr : output_dim_exprs) {
@@ -331,13 +344,7 @@ void GenerateShapeOp::Build(
   argument.AddAttribute(
       "symbol_bindings",
       ConvertSymbolBindingsToAttribute(builder, symbol_bindings));
-  argument.AddOutputs({[&]() {
-    auto* ctx = pir::IrContext::Instance();
-    auto type = pir::Int64Type::get(ctx);
-    auto dim =
-        ::common::make_ddim({static_cast<int64_t>(output_dim_exprs.size())});
-    return DenseTensorType::get(ctx, type, dim);
-  }()});
+  argument.AddOutput(output_type);
   ::pir::PassStopGradientsDefaultly(argument);
 }
 
@@ -478,24 +485,19 @@ GenerateShapeOp::ConvertAttributeToSymbolBindings(
   }
   return std::move(ret);
 }
-
 bool GenerateShapeOp::InferSymbolicShape(
     pir::InferSymbolicShapeContext* infer_context) {
   const auto attr_dim_exprs = [&] {
-    std::vector<symbol::DimExpr> dim_exprs{};
     pir::Attribute dim_expr_attr = this->attributes().at("output_dim_exprs");
-    PADDLE_ENFORCE(dim_expr_attr.isa<pir::ArrayAttribute>(),
-                   ::common::errors::PreconditionNotMet(
-                       "Required dim_expr_attr is ArrayAttribute."));
-    auto array = dim_expr_attr.dyn_cast<pir::ArrayAttribute>();
-    for (int i = 0; i < array.size(); ++i) {
-      const auto& dim_expr = ConvertAttributeToDimExpr(array.at(i));
-      PADDLE_ENFORCE(dim_expr.has_value(),
-                     ::common::errors::PreconditionNotMet(
-                         "Required dim_expr.has_value()==true."));
-      dim_exprs.push_back(dim_expr.value());
-    }
-    return dim_exprs;
+    auto dim_exprs = ConvertAttributeToDimExprs(dim_expr_attr);
+
+    PADDLE_ENFORCE_EQ(
+        dim_exprs.has_value(),
+        true,
+        ::common::errors::PreconditionNotMet(
+            "Required success to execute convert attribute to dim exprs."));
+
+    return dim_exprs.value();
   }();
   const auto symbol_bindings = [&] {
     pir::Attribute symbol_bindings_attr =

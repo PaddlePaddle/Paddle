@@ -14,9 +14,9 @@
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
 
 namespace paddle {
 namespace operators {

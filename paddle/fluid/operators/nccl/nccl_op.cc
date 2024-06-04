@@ -31,7 +31,7 @@ class NCCLInitOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     PADDLE_ENFORCE_NOT_NULL(
         scope.FindVar(Input(kParallelScopes)),
         phi::errors::NotFound("Can not find variable '%s' in the scope.",
