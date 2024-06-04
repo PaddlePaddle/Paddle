@@ -277,7 +277,6 @@ def block_cache_to_naive_cache(
     return out_cache_k, out_cache_v
 
 
-# MHA
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or get_cuda_version() < 11040
