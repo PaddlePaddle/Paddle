@@ -23,7 +23,7 @@ import threading
 import types
 import warnings
 from collections import OrderedDict
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from contextlib import contextmanager
 from types import ModuleType
 from typing import (
@@ -34,7 +34,7 @@ from typing import (
     overload,
 )
 
-from typing_extensions import Literal, ParamSpec, TypeAlias, Unpack
+from typing_extensions import Literal, NotRequired, ParamSpec, TypeAlias, Unpack
 
 import paddle
 from paddle._typing import NestedSequence
@@ -151,8 +151,8 @@ def _check_and_set_backend(backend, build_strategy):
 
 
 class ToStaticOptions(TypedDict):
-    property: bool
-    full_graph: bool
+    property: NotRequired[bool]
+    full_graph: NotRequired[bool]
 
 
 class ToStaticDecorator(Protocol):
@@ -186,6 +186,17 @@ def to_static(
     backend: Backends | None = ...,
     **kwargs: Unpack[ToStaticOptions],
 ) -> StaticFunction[_InputT, _RetT]:
+    ...
+
+
+@overload
+def to_static(
+    function: Any,
+    input_spec: NestedSequence[InputSpec] | None = ...,
+    build_strategy: BuildStrategy | None = ...,
+    backend: Backends | None = ...,
+    **kwargs: Unpack[ToStaticOptions],
+) -> Any:
     ...
 
 
@@ -483,13 +494,13 @@ class _SaveLoadConfig:
 
 
 class _SaveLoadOptions(TypedDict):
-    output_spec: Any
-    with_hook: Any
-    combine_params: Any
-    clip_extra: Any
-    skip_forward: Any
-    input_names_after_prune: Any
-    skip_prune_program: Any
+    output_spec: NotRequired[Sequence[InputSpec]]
+    with_hook: NotRequired[bool]
+    combine_params: NotRequired[bool]
+    clip_extra: NotRequired[bool]
+    skip_forward: NotRequired[bool]
+    input_names_after_prune: NotRequired[list[str]]
+    skip_prune_program: NotRequired[bool]
 
 
 def _parse_save_configs(configs: _SaveLoadOptions):

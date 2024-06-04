@@ -19,9 +19,9 @@ import inspect
 import threading
 import warnings
 import weakref
-from typing import TYPE_CHECKING, Any, Callable, Generic, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
 
-from typing_extensions import Self
+from typing_extensions import ParamSpec, Self
 
 import paddle
 import paddle.pir.core as ir_static
