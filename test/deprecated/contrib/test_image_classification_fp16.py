@@ -117,7 +117,6 @@ def img_conv_group_pir(
 def resnet_cifar10(input, depth=32):
     def conv_bn_layer(
         input,
-        ch_in,
         ch_out,
         filter_size,
         stride,
@@ -127,7 +126,7 @@ def resnet_cifar10(input, depth=32):
     ):
         if in_pir_mode():
             conv = paddle.nn.Conv2D(
-                in_channels=ch_in,
+                in_channels=input.shape[1],
                 out_channels=ch_out,
                 kernel_size=filter_size,
                 stride=stride,
@@ -135,7 +134,7 @@ def resnet_cifar10(input, depth=32):
                 bias_attr=bias_attr,
             )
             tmp = conv(input)
-            bn = paddle.nn.BatchNorm(ch_out, act=act)
+            bn = paddle.nn.BatchNorm(tmp.shape[1], act=act)
             return bn(tmp)
         else:
             tmp = paddle.static.nn.conv2d(
@@ -151,15 +150,13 @@ def resnet_cifar10(input, depth=32):
 
     def shortcut(input, ch_in, ch_out, stride):
         if ch_in != ch_out:
-            return conv_bn_layer(input, ch_in, ch_out, 1, stride, 0, None)
+            return conv_bn_layer(input, ch_out, 1, stride, 0, None)
         else:
             return input
 
     def basicblock(input, ch_in, ch_out, stride):
-        tmp = conv_bn_layer(input, ch_in, ch_out, 3, stride, 1)
-        tmp = conv_bn_layer(
-            tmp, ch_in, ch_out, 3, 1, 1, act=None, bias_attr=True
-        )
+        tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
+        tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None, bias_attr=True)
         short = shortcut(input, ch_in, ch_out, stride)
         return paddle.nn.functional.relu(paddle.add(x=tmp, y=short))
 
@@ -172,12 +169,12 @@ def resnet_cifar10(input, depth=32):
     assert (depth - 2) % 6 == 0
     n = (depth - 2) // 6
     conv1 = conv_bn_layer(
-        input=input, ch_in=3, ch_out=16, filter_size=3, stride=1, padding=1
+        input=input, ch_out=16, filter_size=3, stride=1, padding=1
     )
     res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
-    # res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
-    # res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
-    pool = paddle.nn.functional.avg_pool2d(x=res1, kernel_size=8, stride=1)
+    res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
+    res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
+    pool = paddle.nn.functional.avg_pool2d(x=res3, kernel_size=8, stride=1)
     return pool
 
 
@@ -366,7 +363,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                         loss_t, acc_t = exe.run(
                             program=test_program,
                             feed=feeder.feed(test_data),
-                            fetch_list=fetch_list,  # [avg_cost, acc],
+                            fetch_list=fetch_list,
                         )
                         if math.isnan(float(loss_t)):
                             sys.exit("got NaN loss, training failed.")
