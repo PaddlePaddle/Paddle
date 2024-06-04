@@ -111,7 +111,7 @@ def convert_to_list(value, n, name, dtype=int):
         return value_list
 
 
-def is_sequence(seq: Any) -> TypeGuard[Sequence[Any]]:
+def is_sequence(seq: Any) -> TypeGuard[typing.Sequence[Any]]:
     """
     Whether `seq` is an entry or nested structure
     """
@@ -173,7 +173,7 @@ def to_sequence(nest):
         return [nest]
 
 
-def flatten(nest: Structure[_T]) -> Sequence[_T]:
+def flatten(nest: Structure[_T]) -> typing.Sequence[_T]:
     """
         :alias_main: paddle.flatten
         :alias: paddle.flatten,paddle.tensor.flatten,paddle.tensor.manipulation.flatten
