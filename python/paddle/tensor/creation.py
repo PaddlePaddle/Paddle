@@ -21,7 +21,12 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle._typing import DTypeLike, PlaceLike, TensorLike
+from paddle._typing import (
+    DTypeLike,
+    NestedNumbericSequence,
+    PlaceLike,
+    TensorLike,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -721,7 +726,7 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
 
 
 def to_tensor(
-    data: TensorLike,
+    data: TensorLike | NestedNumbericSequence,
     dtype: DTypeLike | None = None,
     place: PlaceLike | None = None,
     stop_gradient: bool = True,
