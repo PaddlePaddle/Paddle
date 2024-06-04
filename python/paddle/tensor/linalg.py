@@ -2275,10 +2275,14 @@ def histogram_bin_edges(input, bins=100, range=None, name=None):
         Tensor: the values of the histogram and the bin edges. The output data type will be float32.
     Examples:
         .. code-block:: python
-            import paddle
-            inputs = paddle.to_tensor([1, 2, 1])
-            result = paddle.histogram_bin_edges(inputs, bins=4, range=(0, 3))
-            print(result) # [0., 0.75, 1.5, 2.25, 3.]
+
+            >>> import paddle
+
+            >>> inputs = paddle.to_tensor([1, 2, 1])
+            >>> result = paddle.histogram_bin_edges(inputs, bins=4, range=(0, 3))
+            >>> print(result)
+            Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 0.75000000, 1.50000000, 2.25000000, 3.        ])
     """
     check_type(input, 'input', (Variable), 'histogram_bin_edges')
     check_dtype(
@@ -2289,8 +2293,8 @@ def histogram_bin_edges(input, bins=100, range=None, name=None):
     )
     check_type(bins, 'bins', int, 'histogram_bin_edges')
     if range is None:
-        start = paddle.max(input)
-        stop = paddle.min(input)
+        start = paddle.min(input)
+        stop = paddle.max(input)
     else:
         check_type(range, 'range', (list, tuple), 'histogram_bin_edges')
         if len(range) != 2:
