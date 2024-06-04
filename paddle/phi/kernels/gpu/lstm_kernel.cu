@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/kernels/lstm_kernel.h"
+#include "paddle/phi/kernels/impl/lstm_kernel_impl.h"
 
-namespace phi {
-
-KernelSignature ChannelShuffleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("channel_shuffle_grad",
-                         {"Out@GRAD"},
-                         {"groups", "data_format"},
-                         {"X@GRAD"});
-}
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(channel_shuffle_grad,
-                           phi::ChannelShuffleGradOpArgumentMapping);
+PD_REGISTER_KERNEL(lstm, GPU, ALL_LAYOUT, phi::LSTMKernel, float, double) {}
