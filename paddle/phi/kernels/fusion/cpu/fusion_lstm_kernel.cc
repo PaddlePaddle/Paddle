@@ -14,6 +14,7 @@
 
 #include <string>
 
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
@@ -204,7 +205,32 @@ void BatchCompute(const Context &dev_ctx,
   INIT_BASE_DEFINES;
   if (x->lod()[0].size() == 2) {
     xx->Resize({x_dims[0], D4});
-    SeqCompute(ctx);
+    SeqCompute(dev_ctx,
+               x_in,
+               weight_x_in,
+               weight_h_in,
+               bias_in,
+               h0_in,
+               c0_in,
+               use_peepholes,
+               is_reverse,
+               use_seq,
+               gate_activation,
+               cell_activation,
+               candidate_activation,
+               scale_data,
+               shift_data,
+               scale_weights,
+               force_fp32_output,
+               hidden,
+               cell,
+               xx,
+               batched_input,
+               batched_hidden,
+               batched_cell,
+               reordered_h0,
+               reordered_c0,
+               checked_cell);
     return;
   }
   INIT_OTHER_DEFINES;
@@ -352,9 +378,59 @@ void FusionLSTMKernel(const Context &dev_ctx,
                       DenseTensor *reordered_c0,
                       DenseTensor *checked_cell) const override {
   if (use_seq) {
-    SeqCompute<T, Context>(dev_ctx);
+    SeqCompute<T, Context>(dev_ctx,
+                           x_in,
+                           weight_x_in,
+                           weight_h_in,
+                           bias_in,
+                           h0_in,
+                           c0_in,
+                           use_peepholes,
+                           is_reverse,
+                           use_seq,
+                           gate_activation,
+                           cell_activation,
+                           candidate_activation,
+                           scale_data,
+                           shift_data,
+                           scale_weights,
+                           force_fp32_output,
+                           hidden,
+                           cell,
+                           xx,
+                           batched_input,
+                           batched_hidden,
+                           batched_cell,
+                           reordered_h0,
+                           reordered_c0,
+                           checked_cell);
   } else {
-    BatchCompute<T, Context>(dev_ctx);
+    BatchCompute<T, Context>(dev_ctx,
+                             x_in,
+                             weight_x_in,
+                             weight_h_in,
+                             bias_in,
+                             h0_in,
+                             c0_in,
+                             use_peepholes,
+                             is_reverse,
+                             use_seq,
+                             gate_activation,
+                             cell_activation,
+                             candidate_activation,
+                             scale_data,
+                             shift_data,
+                             scale_weights,
+                             force_fp32_output,
+                             hidden,
+                             cell,
+                             xx,
+                             batched_input,
+                             batched_hidden,
+                             batched_cell,
+                             reordered_h0,
+                             reordered_c0,
+                             checked_cell);
   }
 }
 
