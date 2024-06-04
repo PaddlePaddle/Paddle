@@ -48,11 +48,30 @@ common::DataLayout PreferLayoutImpl<Conv2dOp>(pir::Operation* op) {
         data_format_attr));
   }
 
-  // Note(lyk): We exhibit the layout transformation for conv2d
+  auto concrete_op = op->dyn_cast<Conv2dOp>();
+  if (auto in = concrete_op.input()) {
+    if (auto in_type = in.type()) {
+      if (in_type.isa<DenseTensorType>()) {
+        if (auto tensor_type = in_type.dyn_cast<DenseTensorType>()) {
+          if (tensor_type.dtype().isa<pir::Float16Type>()) {
+            return common::DataLayout::NHWC;
+          }
+        }
+      }
+    }
+  }
+
+  return common::StringToDataLayout(data_format_attr.AsString());
+}
+
+template <>
+std::vector<pir::Value> RelevantInputsImpl<Conv2dOp>(pir::Operation* op) {
+  // Note(lyk): We exhibit the layout transformation for filter of conv2d
   // due to issues with its infermeta and kernel not functioning
   // properly in NHWC layout. However, if the FLAGS_manually_trans_conv_filter
   // is enabled, the transfer_layout_pass can also operate correctly.
-  return common::StringToDataLayout(data_format_attr.AsString());
+  auto concrete_op = op->dyn_cast<Conv2dOp>();
+  return {concrete_op.input()};
 }
 
 template <>
@@ -122,6 +141,31 @@ void RewriteByLayoutImpl<FusedConv2dAddActOp>(pir::Operation* op,
                              common::DataLayoutToString(new_layout)));
 
   RewriteByInfermeta<FusedConv2dAddActOp>(op, new_layout);
+}
+
+template <>
+bool CanBeModifiedImpl<FusedConv2dAddActOp>(pir::Operation* op) {
+  auto data_format_attr = op->attribute<pir::StrAttribute>("data_format");
+  if (!data_format_attr) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "op (%s) should have attribute `data_format`, but got %s",
+        op,
+        data_format_attr));
+  }
+  auto cur_layout = common::StringToDataLayout(data_format_attr.AsString());
+  auto prefer_layout = PreferLayoutImpl<FusedConv2dAddActOp>(op);
+  auto can_be_modified = cur_layout != prefer_layout;
+
+  for (auto value : RelevantOutputsImpl<FusedConv2dAddActOp>(op)) {
+    // TODO(lyk) if value was used in another block, we cannot rewrite this op
+    for (auto it = value.use_begin(); it != value.use_end(); ++it) {
+      if (it->owner()->GetParent() != op->GetParent()) {
+        return false;
+      }
+    }
+  }
+
+  return can_be_modified;
 }
 
 template <>

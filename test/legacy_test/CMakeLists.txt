@@ -1182,7 +1182,6 @@ set_tests_properties(test_matmul_op_static_build PROPERTIES TIMEOUT 120)
 set_tests_properties(test_matmul_v2_op_static_build PROPERTIES TIMEOUT 120)
 set_tests_properties(test_paddle_save_load_binary_static_build
                      PROPERTIES TIMEOUT 120)
-
 set_tests_properties(test_argsort_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv_nn_grad PROPERTIES TIMEOUT 220)

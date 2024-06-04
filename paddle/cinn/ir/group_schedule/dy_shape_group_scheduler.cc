@@ -164,6 +164,14 @@ DynamicShapeGroupScheduler::GetIRs() {
   return irs;
 }
 
+std::vector<std::pair<SymbolicPredicate, ir::Expr>>
+DynamicShapeGroupScheduler::GetCX86IRs() {
+  std::vector<std::pair<SymbolicPredicate, ir::Expr>> irs(1);
+  irs[0].first = ir::EQ::Make(ir::Expr(1), ir::Expr(1));
+  irs[1].second = ir_sch_->GetModule().GetExprs()[0];
+  return irs;
+}
+
 IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
     ScheduleBlockNode* node) {
   VLOG(5) << "global master: " << node->id();

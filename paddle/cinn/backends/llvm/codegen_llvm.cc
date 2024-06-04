@@ -288,6 +288,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Sub *op) {
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Mul *op) {
+  ir::TryElevateInt32ToInt64({op->a(), op->b()});
   auto *lhs = Visit(&op->a());
   auto *rhs = Visit(&op->b());
   return EmitBinaryOp(lhs, rhs, '*', is_integral_type(op->type()));
@@ -591,8 +592,8 @@ llvm::Value *CodeGenLLVM::CreateSerialFor(const ir::For *op, int stride) {
 
   llvm::Value *old_var = GetVar(op->loop_var->name);
   // loop iterator
-  llvm::AllocaInst *loop_var =
-      Alloca(b_->getInt32Ty(), nullptr, op->loop_var->name);
+  llvm::AllocaInst *loop_var = Alloca(
+      b_->getIntNTy(op->min->type().bits()), nullptr, op->loop_var->name);
   loop_var->setAlignment(llvm::Align(4));
   SetVar(op->loop_var->name, loop_var);
 
@@ -613,7 +614,8 @@ llvm::Value *CodeGenLLVM::CreateSerialFor(const ir::For *op, int stride) {
 
   // loop_body
   b_->SetInsertPoint(body_bb);
-  llvm::Value *step = llvm::ConstantInt::get(b_->getInt32Ty(), stride);
+  llvm::Value *step =
+      llvm::ConstantInt::get(b_->getIntNTy(op->min->type().bits()), stride);
 
   Visit(&op->body);
   llvm::Value *indvar_inc = Add(indvar,
@@ -1520,12 +1522,15 @@ llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::BufferCreate *op) {
   CHECK(buffer_node);
   std::vector<llvm::Value *> args(
       {ll_const_int32(buffer_node->target.runtime_arch())});
-  uint64_t memory_size = (buffer_node->dtype.ElementOf().bits() + 7) / 8;
-  for (auto shape : buffer_node->shape) {
-    int shape_int = shape.as_int32();
-    memory_size *= shape_int;
+  int64_t memory_size = (buffer_node->dtype.ElementOf().bits() + 7) / 8;
+  // Calculate buffer size and determine if it contains a symbolic constant
+  Expr buffer_size(static_cast<int64_t>(1));
+  buffer_size = buffer_size * ir::Expr(memory_size);
+  for (int i = 0; i < buffer_node->shape.size(); i++) {
+    buffer_size = buffer_size * buffer_node->shape[i];
   }
-  args.push_back(ll_const_int64(memory_size));
+  ir::TryElevateInt32ToInt64({buffer_size});
+  args.push_back(Visit(&buffer_size));
   args.push_back(ll_const_int32(32));
 
   return Call(callee, args);
