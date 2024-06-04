@@ -4938,6 +4938,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
     # test paddle.nn.ThresholdedReLU, paddle.nn.functional.thresholded_relu
     def setUp(self):
         self.threshold = 15
+        self.value = 5
         np.random.seed(1024)
         self.x_np = np.random.uniform(-20, 20, [10, 12]).astype(np.float64)
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
@@ -4952,22 +4953,30 @@ class TestThresholdedReluAPI(unittest.TestCase):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
-                out1 = F.thresholded_relu(x, self.threshold)
-                thresholded_relu = paddle.nn.ThresholdedReLU(self.threshold)
+                out1 = F.thresholded_relu(x, self.threshold, self.value)
+                thresholded_relu = paddle.nn.ThresholdedReLU(
+                    self.threshold, self.value
+                )
                 out2 = thresholded_relu(x)
                 exe = paddle.static.Executor(self.place)
                 res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
-            out_ref = ref_thresholded_relu(self.x_np, self.threshold)
+            out_ref = ref_thresholded_relu(
+                self.x_np, self.threshold, self.value
+            )
             for r in res:
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
-            out1 = F.thresholded_relu(x, self.threshold)
-            thresholded_relu = paddle.nn.ThresholdedReLU(self.threshold)
+            out1 = F.thresholded_relu(x, self.threshold, self.value)
+            thresholded_relu = paddle.nn.ThresholdedReLU(
+                self.threshold, self.value
+            )
             out2 = thresholded_relu(x)
-            out_ref = ref_thresholded_relu(self.x_np, self.threshold)
+            out_ref = ref_thresholded_relu(
+                self.x_np, self.threshold, self.value
+            )
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
