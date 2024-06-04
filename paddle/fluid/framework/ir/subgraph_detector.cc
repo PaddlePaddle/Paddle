@@ -16,9 +16,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Graph;
 class Node;
@@ -485,6 +483,4 @@ inline bool CheckNodeIndegreeEquals(const Node &node, size_t n) {
   return node.inputs.size() == n;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

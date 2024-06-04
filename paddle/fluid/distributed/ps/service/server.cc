@@ -20,8 +20,7 @@
 #include "paddle/fluid/distributed/ps/service/ps_local_server.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 REGISTER_PSCORE_CLASS(PSServer, BrpcPsServer);
 REGISTER_PSCORE_CLASS(PSServer, PsLocalServer);
@@ -107,5 +106,4 @@ int32_t PSServer::Configure(
 
   return Initialize();
 }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

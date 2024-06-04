@@ -33,7 +33,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/runtime/flags.h"
-
+#include "paddle/common/enforce.h"
 PD_DECLARE_bool(auto_schedule_use_cost_model);
 
 namespace cinn {
@@ -109,7 +109,10 @@ SearchState SearchSpace::RandomScheduleMutate(const SearchState& state) {
   --iter;
 
   int sample_rule_index = iter->second;
-  CHECK_LT(sample_rule_index, ret->applicable_rules.size());
+  PADDLE_ENFORCE_LT(sample_rule_index,
+                    ret->applicable_rules.size(),
+                    phi::errors::InvalidArgument(
+                        "The sample_rule_index should less than ret's."));
   AutoGenRule* sample_rule = ret->applicable_rules.at(sample_rule_index);
   VLOG(7) << "Apply rule: " << sample_rule->GetRuleName()
           << " with index=" << sample_weighted_index - iter->first;

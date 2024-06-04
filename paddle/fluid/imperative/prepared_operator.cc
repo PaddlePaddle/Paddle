@@ -39,8 +39,7 @@ COMMON_DECLARE_bool(check_nan_inf);
 PD_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(run_kp_kernel);
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 static const phi::Kernel empty_kernel;
 static const framework::RuntimeContext empty_ctx({}, {});
@@ -752,5 +751,4 @@ void PreparedOp::Run(const NameVarMap<egr::EagerVariable>& ins,
   }
 }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

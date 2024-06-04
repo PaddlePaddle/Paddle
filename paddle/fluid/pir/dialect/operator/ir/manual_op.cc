@@ -56,8 +56,7 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 OpInfoTuple AddNOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -4513,8 +4512,7 @@ phi::DataType ArrayPopOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)
