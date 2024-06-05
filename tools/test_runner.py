@@ -40,7 +40,7 @@ import static_mode_white_list
 
 def main():
     sys.path.append(os.getcwd())
-    os.environ["FLAGS_dynamic_static_unified_comm"] = "false"
+    os.environ["FLAGS_dynamic_static_unified_comm"] = "true"
     if core.is_compiled_with_cuda() or core.is_compiled_with_rocm():
         if os.getenv('FLAGS_enable_gpu_memory_usage_log') is None:
             os.environ['FLAGS_enable_gpu_memory_usage_log'] = 'true'
