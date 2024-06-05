@@ -960,14 +960,17 @@ bool AnalysisPredictor::PreparePirProgram() {
 
   optimized_model_path_ = GetOptimizedModelPath();
   optimized_model_ = optimized_model_path_ + "/" + "_optimized.json";
+  LOG(INFO) << "optimized_model_" << optimized_model_;
+  LOG(INFO) << "config_.use_optimized_model_" << config_.use_optimized_model_;
 
-  if (config_.use_optimized_model_) {
-    if (FileExists(optimized_model_)) {
+  if (FileExists(optimized_model_)) {
+    if (config_.use_optimized_model_) {
       pir::ReadModule(optimized_model_, pir_program_.get(), 1 /*pir_version*/);
       LOG(INFO) << "加载了优化后的json模型";
       std::cout << "加载了优化后的 pir_program " << *pir_program_ << std::endl;
     }
   } else {
+    LOG(INFO) << "加载了未优化的json模型";
     pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
   }
 
@@ -1078,14 +1081,12 @@ bool AnalysisPredictor::PreparePirProgram() {
   }
 
   CreateFeedFetchVar(sub_scope_);
-  if (!config_.use_optimized_model_) {
-    if (FileExists(optimized_params_)) {
-      std::vector<const phi::DenseTensor *> const_tensor_out(tensor_out.begin(),
-                                                             tensor_out.end());
+  if (FileExists(optimized_params_)) {
+    if (!config_.use_optimized_model_) {
       LOG(INFO) << "param_names个数" << param_names.size();
       LOG(INFO) << "tensor_out的个数" << tensor_out.size();
-      pir::SaveCombineFunction(
-          const_tensor_out, param_names, optimized_params_, true, false, true);
+      pir::LoadCombineFunction(
+          optimized_params_, param_names, &tensor_out, false, place_);
     }
   } else {
     pir::LoadCombineFunction(
