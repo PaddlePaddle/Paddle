@@ -54,6 +54,7 @@ def inference(
         predictors = [None]
         signature = inspect.signature(func)
         arg_names = [v.name for v in signature.parameters.values()]
+        arg_defaults = [v.default for v in signature.parameters.values()]
 
         import textwrap
 
@@ -112,7 +113,9 @@ def inference(
                     )
 
             input_tensor_lists = []
+            collected_names = []
             for i in range(len(args)):
+                collected_names.append(arg_names[i])
                 if i > 0:
                     input_tensor_lists += get_tensor(args[i], arg_names[i])
 
@@ -121,6 +124,16 @@ def inference(
                 if arg_names[i] in kwargs.keys():
                     this_input = kwargs[arg_names[i]]
                     input_tensor_lists += get_tensor(this_input, arg_names[i])
+                    collected_names.append(arg_names[i])
+
+            if collected_names != arg_names:
+                print(
+                    "below arguments are not specified:",
+                    set(arg_names) - set(collected_names),
+                )
+                assert (
+                    collected_names == arg_names
+                ), "some arguments are not specified when you invoke your function."
 
             # initiate the d2s_input_shapes.
             if len(d2s_input_shapes) == 0:
