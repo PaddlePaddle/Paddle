@@ -25,8 +25,7 @@
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 void BindXpuStream(py::module *m_ptr) {
   auto &m = *m_ptr;
 
@@ -47,5 +46,4 @@ void BindXpuStream(py::module *m_ptr) {
   });
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

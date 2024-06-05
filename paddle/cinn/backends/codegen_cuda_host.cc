@@ -23,7 +23,7 @@
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/llvm/llvm_util.h"
 #include "paddle/cinn/runtime/intrinsic.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace backends {
 
@@ -65,10 +65,22 @@ llvm::Value* CodeGenCUDA_Host::LowerGPUKernelLauncher(
   llvm::Value* kernel_stream = nullptr;
   if (ll_function_args.size() == 3) {
     kernel_stream = ll_function_args[2];
-    CHECK_EQ(kernel_stream->getType(), ll_void_p_ty());  // void* stream
+    PADDLE_ENFORCE_EQ(
+        kernel_stream->getType(),
+        ll_void_p_ty(),
+        phi::errors::InvalidArgument(
+            "The type of kernel_stream should be void*"));  // void* stream
   }
-  CHECK_EQ(kernel_args->getType(), ll_void_p_ty());       // void* args
-  CHECK_EQ(kernel_args_count->getType(), ll_int32_ty());  // int32
+  PADDLE_ENFORCE_EQ(
+      kernel_args->getType(),
+      ll_void_p_ty(),
+      phi::errors::InvalidArgument(
+          "The type of kernel_args should be void*"));  // void* args
+  PADDLE_ENFORCE_EQ(
+      kernel_args_count->getType(),
+      ll_int32_ty(),
+      phi::errors::InvalidArgument(
+          "The type of kernel_args_count should be int32"));  // int32
 
   std::unordered_map<std::string, llvm::Value*> global_args = {
       {KERNEL_ARGS, kernel_args},
@@ -199,7 +211,11 @@ llvm::Value* CodeGenCUDA_Host::LowerHostFunc(const ir::_LoweredFunc_* func) {
   // @}
 
   // Set local scope table
-  CHECK_EQ(ll_function_args.size(), func->args.size());
+  PADDLE_ENFORCE_EQ(ll_function_args.size(),
+                    func->args.size(),
+                    phi::errors::InvalidArgument(
+                        "The number of arguments is not equal to the number of "
+                        "function arguments"));
   for (int i = 0; i < ll_function_args.size(); ++i) {
     SetVar(func->args[i].name(), ll_function_args[i]);
   }
@@ -224,7 +240,11 @@ llvm::Value* CodeGenCUDA_Host::LowerParseArgsValueCall(
     const ir::Call* call_ir) {
   auto ret_type = CinnTypeToLLVMType(Int(64), m_);
   std::vector<llvm::Type*> args_type;
-  CHECK_EQ(call_ir->read_args.size(), 2);
+  PADDLE_ENFORCE_EQ(
+      call_ir->read_args.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The number of arguments of ParseArgsValue should be 2"));
   CHECK(call_ir->read_args[0].is_var() &&
         call_ir->read_args[0].as_var()->type().is_cpp_handle());
   CHECK(call_ir->read_args[1].type().is_int(32));
@@ -251,10 +271,22 @@ llvm::Value* CodeGenCUDA_Host::LowerCUDAKernelCall(const ir::Call* call_ir) {
   llvm::Value* kernel_stream = nullptr;
   if (ll_function_args.size() == 3) {
     kernel_stream = ll_function_args[2];
-    CHECK_EQ(kernel_stream->getType(), ll_void_p_ty());  // void* stream
+    PADDLE_ENFORCE_EQ(
+        kernel_stream->getType(),
+        ll_void_p_ty(),
+        phi::errors::InvalidArgument(
+            "The type of kernel_stream should be void*"));  // void* stream
   }
-  CHECK_EQ(kernel_args->getType(), ll_void_p_ty());       // void* args
-  CHECK_EQ(kernel_args_count->getType(), ll_int32_ty());  // int32
+  PADDLE_ENFORCE_EQ(
+      kernel_args->getType(),
+      ll_void_p_ty(),
+      phi::errors::InvalidArgument(
+          "The type of kernel_args should be void*"));  // void* args
+  PADDLE_ENFORCE_EQ(
+      kernel_args_count->getType(),
+      ll_int32_ty(),
+      phi::errors::InvalidArgument(
+          "The type of kernel_args_count should be int32"));  // int32
 
   std::unordered_map<std::string, llvm::Value*> global_args = {
       {KERNEL_ARGS, kernel_args},

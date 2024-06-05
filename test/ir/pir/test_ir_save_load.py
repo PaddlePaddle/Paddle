@@ -302,6 +302,70 @@ class TestSaveModuleWithwhileOp(unittest.TestCase):
             main_program.global_block(), recover_program.global_block()
         )
 
+    def test_nested_net(self):
+        def external_cond(i, j, init, sums):
+            return paddle.less_than(i, loop_len1)
+
+        def external_body(i, j, init, sums):
+            def internal_cond(j, init, sums):
+                return paddle.less_than(j, loop_len2)
+
+            def internal_body(j, init, sums):
+                init = paddle.add(x=init, y=ones)
+                sums = paddle.add(x=init, y=sums)
+                j = paddle.increment(j)
+                return [j, init, sums]
+
+            result = paddle.static.nn.while_loop(
+                internal_cond, internal_body, [j, init, sums]
+            )
+            j = result[0]
+            init = result[1]
+            sums = result[2]
+            sums = paddle.add(x=init, y=sums)
+            i = paddle.increment(i)
+            return [i, j, init, sums]
+
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            i = paddle.zeros(shape=[1], dtype='int64')
+            j = paddle.zeros(shape=[1], dtype='int64')
+            init = paddle.static.data(
+                name='init', shape=[3, 3], dtype='float32'
+            )
+            sums = paddle.static.data(
+                name='sums', shape=[3, 3], dtype='float32'
+            )
+            loop_len1 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=2
+            )
+            loop_len2 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=3
+            )
+            ones = paddle.tensor.fill_constant(
+                shape=[3, 3], dtype='float32', value=1
+            )
+
+            out = paddle.static.nn.while_loop(
+                external_cond, external_body, [i, j, init, sums]
+            )
+
+        file_path = os.path.join(
+            self.temp_dir.name, "test_save_program_while_nest.json"
+        )
+        pir_version = 1
+        base.core.serialize_pir_program(main_program, file_path, pir_version)
+
+        recover_program = paddle.static.Program()
+        base.core.deserialize_pir_program(
+            file_path, recover_program, pir_version
+        )
+
+        self.check_block(
+            main_program.global_block(), recover_program.global_block()
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

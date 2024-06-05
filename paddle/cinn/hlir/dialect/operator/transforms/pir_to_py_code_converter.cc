@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include <iomanip>
+#include <limits>
 #include <mutex>
 #include <random>
 #include <sstream>
@@ -317,13 +318,16 @@ struct PirToPyCodeConverterHelper {
         }
       }());
     }
-    const std::string ret_lambda_name = "ret_lambda";
+    const std::string ret_lambda_name = [&] {
+      return std::string("ret_lambda_") + func_op_name;
+    }();
     const auto GetRetLambda = [&]() {
       const auto& args_str = ConvertValuesAsArgs(block.args());
       const auto& kwargs_str = ConvertKwargsToString(block);
       IString ret_lambda_declare(
           std::string("def ") + ret_lambda_name + "(" + args_str +
-          (kwargs_str.empty() ? "" : ", *, ") + kwargs_str + "):");
+          (args_str.empty() || kwargs_str.empty() ? "" : ", ") + kwargs_str +
+          "):");
       IStrings return_lambda{ret_lambda_declare};
       PushBackIndented(&return_lambda, block_body);
       return return_lambda;
@@ -862,27 +866,52 @@ struct PirToPyCodeConverterHelper {
   }
 
   std::string ConvertInputTypes(const pir::Operation* op) {
-    std::stringstream ss;
-    ss << "[";
-    for (int i = 0; i < op->num_operands(); ++i) {
-      if (i > 0) {
-        ss << ", ";
+    const auto& VisitValue = [&](const auto& DoEachValue) {
+      for (int i = 0; i < op->num_operands(); ++i) {
+        DoEachValue(op->operand_source(i));
       }
-      ss << ConvertType(op->operand_source(i).type());
-    }
-    ss << "]";
-    return ss.str();
+    };
+    return ConvertValueTypes(VisitValue);
+  }
+
+  std::string ConvertBlockArgTypes(const pir::Block& block) {
+    const auto& VisitValue = [&](const auto& DoEachValue) {
+      for (const auto& arg : block.args()) {
+        DoEachValue(arg);
+      }
+    };
+    return ConvertValueTypes(VisitValue);
+  }
+
+  std::string ConvertBlockKwArgTypes(const pir::Block& block) {
+    const auto& VisitValue = [&](const auto& DoEachValue) {
+      for (const auto& [_, arg] : block.kwargs()) {
+        DoEachValue(arg);
+      }
+    };
+    return ConvertValueTypes(VisitValue);
   }
 
   std::string ConvertOutputTypes(const pir::Operation* op) {
+    const auto& VisitValue = [&](const auto& DoEachValue) {
+      for (int i = 0; i < op->num_results(); ++i) {
+        DoEachValue(op->result(i));
+      }
+    };
+    return ConvertValueTypes(VisitValue);
+  }
+
+  template <typename VisitValueT>
+  std::string ConvertValueTypes(const VisitValueT& VisitValue) {
     std::stringstream ss;
     ss << "[";
-    for (int i = 0; i < op->num_results(); ++i) {
-      if (i > 0) {
+    int i = 0;
+    VisitValue([&](pir::Value value) {
+      if (i++ > 0) {
         ss << ", ";
       }
-      ss << ConvertType(op->result(i).type());
-    }
+      ss << ConvertType(value.type());
+    });
     ss << "]";
     return ss.str();
   }
@@ -899,7 +928,7 @@ struct PirToPyCodeConverterHelper {
     using AdtTypeId = ::common::AdtTypeId<T>;
 
     std::string operator()(AdtTypeId<cinn::dialect::ir::NullType>) {
-      return "self.t_null";
+      return "self.t_null()";
     }
 
     std::string operator()(AdtTypeId<::pir::VectorType>) {
@@ -1094,7 +1123,45 @@ struct PirToPyCodeConverterHelper {
         }
         ss << "]";
       }
-      ss << "]";
+      ss << "], ";
+    }
+    {
+      int i = 0;
+      ss << "block_positional_arg_types=[";
+      for (const auto& region : *op) {
+        if (i++ > 0) {
+          ss << ",";
+        }
+        int j = 0;
+        ss << "[";
+        for (const auto& block : region) {
+          if (j++ > 0) {
+            ss << ",";
+          }
+          ss << ConvertBlockArgTypes(block);
+        }
+        ss << "]";
+      }
+      ss << "], ";
+    }
+    {
+      int i = 0;
+      ss << "block_keyword_arg_types=[";
+      for (const auto& region : *op) {
+        if (i++ > 0) {
+          ss << ",";
+        }
+        int j = 0;
+        ss << "[";
+        for (const auto& block : region) {
+          if (j++ > 0) {
+            ss << ",";
+          }
+          ss << ConvertBlockKwArgTypes(block);
+        }
+        ss << "]";
+      }
+      ss << "], ";
     }
     return ss.str();
   }
@@ -1134,14 +1201,8 @@ struct PirToPyCodeConverterHelper {
 
   std::string GetPyClassName() {
     std::ostringstream ss;
-    ss << "PirProgram_" << RandomInt();
+    ss << "PirProgram_" << program_->id();
     return ss.str();
-  }
-
-  int64_t RandomInt() {
-    std::random_device rd{};
-    std::mt19937_64 gen(rd());
-    return gen();
   }
 
   std::string ConvertIStringsToString(const IStrings& istrings) {

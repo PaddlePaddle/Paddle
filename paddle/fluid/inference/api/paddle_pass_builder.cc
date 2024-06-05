@@ -538,6 +538,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "group_norm_silu_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
       "qk_qkv_attention_xpu_fuse_pass",
+      "block_multihead_attention_xpu_pass",
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_adaptive_seqlen_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
@@ -610,12 +611,17 @@ const std::vector<std::string> kPirGpuPasses{
     "embedding_eltwise_layernorm_fuse_pass",
     "fused_flash_attn_pass",
     "multihead_matmul_fuse_pass",
+    "fused_weight_only_linear_pass",
     "matmul_add_act_fuse_pass",
     "fc_elementwise_layernorm_fuse_pass",
+    "add_norm_fuse_pass",
+    "group_norm_silu_fuse_pass",
     "matmul_scale_fuse_pass",
     "matmul_transpose_fuse_pass",
     "transpose_flatten_concat_fuse_pass",
-    "remove_redundant_transpose_pass"};
+    "remove_redundant_transpose_pass",
+    "transfer_layout_pass",
+};
 
 const std::vector<std::string> kPirXpuPasses{// Functional pass
                                              "map_op_to_another_pass",
@@ -623,7 +629,7 @@ const std::vector<std::string> kPirXpuPasses{// Functional pass
                                              // Operator fusion pass
                                              "add_layernorm_xpu_fuse_pass",
                                              "conv2d_bn_xpu_fuse_pass",
-                                             "group_norm_silu_xpu_fuse_pass"};
+                                             "group_norm_silu_fuse_pass"};
 
 const std::vector<std::string> kPirMkldnnPasses {
   "depthwise_conv_onednn_pass",              //

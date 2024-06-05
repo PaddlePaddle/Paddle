@@ -30,7 +30,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/runtime/intrinsic.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::backends {
 
 CodeGenX86::CodeGenX86(llvm::Module* m,
@@ -144,8 +144,10 @@ void CodeGenX86::CreateParallelLaunch(Expr body, int num_task) {
   symbol_table_->PopScope();
   std::swap(parallel_env_, par_env);
   std::swap(f_, f);
-  CHECK_NE(par_env.parallel_loop_count, 0)
-      << "find no parallel loop within parallel launch";
+  PADDLE_ENFORCE_NE(par_env.parallel_loop_count,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "find no parallel loop within parallel launch"));
   b_->SetInsertPoint(launch_end);
 }
 

@@ -19,6 +19,7 @@
 #include <map>
 #include <vector>
 
+#include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
 #include "paddle/cinn/ir/group_schedule/search/measurer.h"
 #include "paddle/cinn/utils/random_engine.h"
 #include "paddle/pir/include/core/program.h"
@@ -39,7 +40,7 @@ class BaseObjectiveFunc {
 class WeightedSamplingTrailObjectiveFunc : public BaseObjectiveFunc {
  public:
   WeightedSamplingTrailObjectiveFunc(::pir::Program* program,
-                                     const IterSpace& iter_space,
+                                     const BucketInfo& bucket_info,
                                      double sampling_prob = 1.0,
                                      int max_sampling_times = 65536,
                                      int repeats = 10);
@@ -48,12 +49,14 @@ class WeightedSamplingTrailObjectiveFunc : public BaseObjectiveFunc {
 
  private:
   ::pir::Program* program_;
-  IterSpace iter_space_;
+  BucketInfo bucket_info_;
   Measurer measurer_;
   double sampling_prob_;
   int max_sampling_times_;
   int repeats_;
   int sampling_times_;
+  std::vector<std::unordered_map<std::string, std::vector<int64_t>>>
+      inputs_sampling_;
 
   utils::LinearRandomEngine::StateType rand_seed_ = 1;
 };
