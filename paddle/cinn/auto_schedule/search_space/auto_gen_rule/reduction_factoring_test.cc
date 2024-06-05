@@ -23,8 +23,8 @@
 
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/test_helper.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/common/enforce.h"
 #include "test/cpp/cinn/concrete_program_builder.h"
-
 PD_DECLARE_bool(cinn_new_group_scheduler);
 
 namespace cinn {
@@ -64,8 +64,13 @@ class TestReductionFactoring : public TestAutoGenRuleBase {
 
     // check
     const std::vector<ir::Expr>& blocks = ir_schedule.GetAllBlocks();
-    CHECK_EQ(blocks.size(), 2UL);
-    CHECK_EQ(ir.str(), expected_ir);
+    PADDLE_ENFORCE_EQ(
+        blocks.size(),
+        2UL,
+        phi::errors::InvalidArgument("The size of blocks should be 2."));
+    PADDLE_ENFORCE_EQ(ir.str(),
+                      expected_ir,
+                      phi::errors::InvalidArgument("The ir is not correct."));
   }
 };
 

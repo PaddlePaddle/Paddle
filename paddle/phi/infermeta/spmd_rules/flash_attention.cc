@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 const int kNumHeadsDimIndex = 2;
 
 #define LOG_SPMD_INPUT(name)                                                  \
@@ -806,5 +805,4 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
           {q_grad, k_grad, v_grad}};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed
