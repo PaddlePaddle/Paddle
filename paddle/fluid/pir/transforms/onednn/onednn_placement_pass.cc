@@ -51,7 +51,12 @@ class OneDNNPlacementPattern : public pir::OpRewritePattern<OpType> {
       paddle::dialect::OpRunTimeInfo runtime_info =
           std::get<3>(yaml_interface->get_op_info_(target_op_name));
       for (auto &attr : runtime_info.extra_args_default_value) {
-        attributes[attr.first] = attr.second;
+        if (attributes.find(attr.first) == attributes.end()) {
+          attributes[attr.first] = attr.second;
+        }
+        if (attr.first == "is_test") {
+          attributes[attr.first] = rewriter.bool_attr(true);
+        }
       }
 
       pir::Operation *op_item_inner = rewriter.Build(op->operands_source(),
