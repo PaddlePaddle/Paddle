@@ -22,6 +22,9 @@ PD_REGISTER_KERNEL(numel,
                    GPU,
                    ALL_LAYOUT,
                    phi::NumelKernel,
+#ifdef PADDLE_WITH_MUSA
+                   uint8_t,
+#endif
                    int16_t,
                    int,
                    int64_t,
