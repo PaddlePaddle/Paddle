@@ -443,6 +443,8 @@ void XPUContext::StreamWaitStream(int wait_stream, int record_stream) const {
   PADDLE_ENFORCE_XRE_SUCCESS(r);
   RecordEvent(event, record_stream);
   StreamWaitEvent(event, wait_stream);
+  r = xpu_event_destroy(event);
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
 }
 
 int64_t XPUContext::GetStreamNum() const { return impls_.size(); }
