@@ -2144,7 +2144,7 @@
     func : histogram
 
 - op : hsigmoid_loss
-  args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool is_sparse)
+  args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes=2, bool is_sparse=false)
   output : Tensor(out), Tensor(pre_out), Tensor(w_out)
   infer_meta :
     func : HSigmoidLossInferMeta
