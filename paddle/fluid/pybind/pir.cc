@@ -79,6 +79,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_cinn_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/check_infer_symbolic_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/pir_to_py_code_converter.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #endif
 
@@ -121,6 +122,7 @@ using pybind11::return_value_policy;
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
+COMMON_DECLARE_bool(logging_pir_py_code_dump_symbolic_dims);
 
 namespace paddle {
 namespace pybind {
@@ -2427,12 +2429,21 @@ std::shared_ptr<Program> ApplyFusedBnAddActPass(
   return program;
 }
 
+void DumpPirPyCodeIfNeed(const std::shared_ptr<Program> &program,
+                         const std::string &file_name) {
+  ::cinn::dialect::ir::PirToPyCodeConverter(program.get())
+      .file_name(file_name)
+      .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
+      .SaveIfFlagEnabled();
+}
+
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
   m->def("apply_cse_pass", ApplyCommonSubexpressionEliminationPass);
   m->def("apply_bn_add_act_pass", ApplyFusedBnAddActPass);
+  m->def("dump_pir_py_code_if_need", DumpPirPyCodeIfNeed);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",
