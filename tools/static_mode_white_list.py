@@ -122,7 +122,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_cumsum_op',
     'test_cvm_op',
     'test_data',
-    'test_dataloader_early_reset',
+    'test_dataloader_early_reset_deprecated',
     'test_dataloader_keep_order_deprecated',
     'test_dataloader_unkeep_order_deprecated',
     'test_debugger',

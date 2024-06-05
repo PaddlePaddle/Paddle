@@ -16,7 +16,7 @@
 # /*================Fixed Disabled Windows CUDA10.x MKL(PR-CI-Windows) unittests===========================*/
 # TODO: fix these unittest that is bound to fail
 disable_wingpu_test="^test_model$|\
-^test_dataloader_early_reset$|\
+^test_dataloader_early_reset_deprecated$|\
 ^test_add_reader_dependency_deprecated$|\
 ^test_add_reader_dependency_for_interpretercore$|\
 ^test_decoupled_py_reader_deprecated$|\
@@ -235,7 +235,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_fuse_bn_act_pass_deprecated_static_build$|\
 ^test_fuse_bn_add_act_pass$|\
 ^test_model$|\
-^test_dataloader_early_reset$|\
+^test_dataloader_early_reset_deprecated$|\
 ^test_add_reader_dependency_deprecated$|\
 ^test_conv2d_fusion_op$|\
 ^test_fused_conv2d_add_act_op$|\
@@ -350,6 +350,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_conv_eltwiseadd_bn_fuse_pass$|\
 ^test_custom_relu_op_setup$|\
 ^test_conv3d_transpose_part2_op$|\
+^test_deform_conv2d$|\
 ^test_deform_conv2d_deprecated$|\
 ^test_matmul_op$|\
 ^test_matmul_op_static_build$|\
@@ -411,7 +412,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_fuse_bn_add_act_pass$|\
 ^test_decoupled_py_reader_data_check$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
-^test_dataloader_early_reset$|\
+^test_dataloader_early_reset_deprecated$|\
 ^test_fleet_base_single$|\
 ^test_sequence_pool$|\
 ^test_simplify_with_basic_ops_pass_autoscan$|\
