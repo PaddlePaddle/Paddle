@@ -82,7 +82,11 @@ class TestSimpleNetForSemiAutoParallel:
         # create loss
         loss_fn = nn.MSELoss()
         layer, opt = paddle.amp.decorate(
-            models=layer, optimizers=opt, level='O2'
+            models=layer,
+            optimizers=opt,
+            level='O2',
+            master_weight=False,
+            master_grad=False,
         )
         # static training
         dist_model = dist.to_static(layer, dist_loader, loss_fn, opt)

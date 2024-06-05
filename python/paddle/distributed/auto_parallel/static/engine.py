@@ -695,7 +695,7 @@ class Engine:
                     #     loss, startup_program, params_grads=params_grads
                     # )
 
-                    # self._optimizer.minimize(loss, startup_program=None)
+                    # self._optimizer.minimize(loss, startup_program=startup_program)
             else:
                 self._logger.info(
                     "loss value is not found, skip append backward."
