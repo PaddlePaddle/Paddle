@@ -30,7 +30,7 @@ RUN echo "channels:" >> ~/.condarc && \
     echo "  simpleitk: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud" >> ~/.condarc && \
     echo "show_channel_urls: true" >> ~/.condarc && \
     echo "channel_priority: strict" >> ~/.condarc
-    
+
 # Install R
 RUN conda install -y r -c conda-forge
 
@@ -44,4 +44,4 @@ RUN Rscript -e 'install.packages("reticulate", repos="https://cran.rstudio.com")
 COPY example example
 RUN cd example && \
     curl -O https://paddle-inference-dist.cdn.bcebos.com/mobilenet-test-model-data.tar.gz && \
-    tar -zxvf mobilenet-test-model-data.tar.gz && rm mobilenet-test-model-data.tar.gz 
+    tar -zxvf mobilenet-test-model-data.tar.gz && rm mobilenet-test-model-data.tar.gz

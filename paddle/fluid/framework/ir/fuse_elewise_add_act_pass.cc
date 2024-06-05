@@ -193,6 +193,8 @@ ir::Graph *FuseElewiseAddActPass::FuseElewiseAddActInplaceGrad(
     desc.SetOutput(GradVarName("IntermediateOut"),
                    std::vector<std::string>({d_itermediate_out_n}));
 
+    desc.SetAttr("axis", -1);
+    desc.SetAttr("scale", 0.0f);
     desc.SetAttr("save_intermediate_out", false);
     desc.SetAttr("functor_list",
                  std::vector<std::string>(
@@ -273,6 +275,8 @@ ir::Graph *FuseElewiseAddActPass::FuseActElewiseAddInplaceGrad(
     desc.SetOutput(GradVarName("IntermediateOut"),
                    std::vector<std::string>({d_intermediate_var_n}));
 
+    desc.SetAttr("axis", -1);
+    desc.SetAttr("scale", 0.0f);
     desc.SetAttr("save_intermediate_out", false);
     desc.SetAttr("functor_list",
                  std::vector<std::string>({ele_add_grad_op->Op()->Type(),
@@ -315,6 +319,8 @@ Node *FuseElewiseAddActPass::CreateFuseElewiseAddActNode(
   desc.SetOutput("Out", std::vector<std::string>({act_out_n}));
   desc.SetOutput("IntermediateOut", std::vector<std::string>({ele_out_n}));
   desc.SetType("fused_elemwise_add_activation");
+  desc.SetAttr("axis", -1);
+  desc.SetAttr("scale", 0.0f);
   desc.SetAttr("save_intermediate_out", true);
   desc.SetAttr(
       "functor_list",

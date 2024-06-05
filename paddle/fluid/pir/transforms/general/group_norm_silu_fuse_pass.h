@@ -21,6 +21,6 @@ namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateGroupNormSiluXpuFusePass();
+IR_API std::unique_ptr<Pass> CreateGroupNormSiluFusePass();
 
 }  // namespace pir

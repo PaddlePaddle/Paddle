@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/xpu/group_norm_silu_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/general/group_norm_silu_fuse_pass.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -37,11 +37,19 @@ graph:
                       |
                     output
 ------------------------------------------------------
-After the pass is applied:
+After the pass is applied:XPU
                       X
               Scale   |   Bias
                    \  |  /
-                group_norm_silu
+                group_norm_silu_xpu
+                      |
+                     Out
+------------------------------------------------------
+After the pass is applied:GPU
+                      X
+              Scale   |   Bias
+                   \  |  /
+                add_group_norm_silu
                       |
                      Out
 */
@@ -54,31 +62,62 @@ class GroupNormSiluPattern : public paddle::drr::DrrPatternBase {
 
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &groupnorm = pat.Op(
-        paddle::dialect::GroupNormOp::name(),
-        {{"epsilon", pat.Attr("epsilon")}, {"groups", pat.Attr("groups")}});
+    const auto &group_norm = pat.Op(paddle::dialect::GroupNormOp::name(),
+                                    {{"epsilon", pat.Attr("epsilon")},
+                                     {"groups", pat.Attr("groups")},
+                                     {"data_format", pat.Attr("data_format")}});
 
     const auto &silu = pat.Op(paddle::dialect::SiluOp::name());
 
-    groupnorm({&pat.Tensor("X"), &pat.Tensor("Scale"), &pat.Tensor("Bias")},
-              {&pat.Tensor("Y"), &pat.Tensor("Mean"), &pat.Tensor("Variance")});
+    group_norm(
+        {&pat.Tensor("X"), &pat.Tensor("Scale"), &pat.Tensor("Bias")},
+        {&pat.Tensor("Y"), &pat.Tensor("Mean"), &pat.Tensor("Variance")});
     silu({&pat.Tensor("Y")}, {&pat.Tensor("Out")});
 
-    paddle::drr::ResultPattern res = pat.ResultPattern();
+#ifdef PADDLE_WITH_CUDA
+    pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
+      auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("X"));
+      if (!x_dtype.isa<pir::Float16Type>() &&
+          !x_dtype.isa<pir::BFloat16Type>()) {
+        return false;
+      }
+      return true;
+    });
+#endif
 
+#ifdef PADDLE_WITH_CUDA
+    paddle::drr::ResultPattern res = pat.ResultPattern();
+    const auto &add_group_norm_silu_op =
+        res.Op(paddle::dialect::AddGroupNormSiluOp::name(),
+               {{"epsilon", pat.Attr("epsilon")},
+                {"groups", pat.Attr("groups")},
+                {"data_format", pat.Attr("data_format")},
+                {"activation", res.StrAttr("silu")}});
+    add_group_norm_silu_op({&res.Tensor("X"),
+                            &res.InputNoneTensor(),
+                            &res.Tensor("Scale"),
+                            &res.Tensor("Bias")},
+                           {&res.Tensor("Out"),
+                            &res.OutputNoneTensor(),
+                            &res.Tensor("Mean"),
+                            &res.Tensor("Variance")});
+#endif
+#ifdef PADDLE_WITH_XPU
+    paddle::drr::ResultPattern res = pat.ResultPattern();
     const auto &group_norm_silu_xpu = res.Op(
         paddle::dialect::GroupNormSiluXpuOp::name(),
         {{{"epsilon", pat.Attr("epsilon")}, {"groups", pat.Attr("groups")}}});
     group_norm_silu_xpu(
         {&res.Tensor("X"), &res.Tensor("Scale"), &res.Tensor("Bias")},
         {&res.Tensor("Out")});
+#endif
   }
 };
 
-class GroupNormSiluXpuFusePass : public pir::PatternRewritePass {
+class GroupNormSiluFusePass : public pir::PatternRewritePass {
  public:
-  GroupNormSiluXpuFusePass()
-      : pir::PatternRewritePass("group_norm_silu_xpu_fuse_pass", 2) {}
+  GroupNormSiluFusePass()
+      : pir::PatternRewritePass("group_norm_silu_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -90,10 +129,10 @@ class GroupNormSiluXpuFusePass : public pir::PatternRewritePass {
 }  // namespace
 
 namespace pir {
-std::unique_ptr<Pass> CreateGroupNormSiluXpuFusePass() {
-  return std::make_unique<GroupNormSiluXpuFusePass>();
+std::unique_ptr<Pass> CreateGroupNormSiluFusePass() {
+  return std::make_unique<GroupNormSiluFusePass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(group_norm_silu_xpu_fuse_pass, GroupNormSiluXpuFusePass);
+REGISTER_IR_PASS(group_norm_silu_fuse_pass, GroupNormSiluFusePass);

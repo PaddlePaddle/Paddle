@@ -3289,6 +3289,15 @@
   backward : prod_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : prune_gate_by_capacity
+  args : (Tensor gate_idx, Tensor expert_count, int64_t n_expert=0, int64_t n_worker=0)
+  output : Tensor(out_gate_idx)
+  infer_meta :
+    func : PruneGateByCapacityInferMeta
+  kernel :
+    func : prune_gate_by_capacity
+    data_type : gate_idx
+
 - op : psroi_pool
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, int output_channels=1, float spatial_scale=1.0)
   output : Tensor
@@ -3809,6 +3818,19 @@
     func : ShardIndexInferMeta
   kernel :
     func : shard_index
+
+- op : shuffle_batch
+  args : (Tensor x, Tensor seed, int startup_seed=0)
+  output : Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
+  infer_meta:
+     func: ShuffleBatchInferMeta
+  kernel:
+     func: shuffle_batch
+     data_type: x
+  backward : shuffle_batch_grad
+  traits : pir::SideEffectTrait
+  data_transform :
+    skip_transform : seed
 
 - op : shuffle_channel
   args : (Tensor x, int group = 1)
