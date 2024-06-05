@@ -4680,8 +4680,8 @@
     func: MovingAverageAbsMaxScaleInferMeta
   kernel:
     func: moving_average_abs_max_scale
+    data_type: x
   optional : in_accum, in_state, out, out_state, out_accum
-  inplace : (in_accum -> out_accum), (in_state -> out_state)
   backward : moving_average_abs_max_scale_grad
 
 - op: number_count

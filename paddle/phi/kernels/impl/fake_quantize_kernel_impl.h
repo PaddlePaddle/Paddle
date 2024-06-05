@@ -242,7 +242,7 @@ void MovingAverageAbsMaxScaleKernel(
     DenseTensor *out_state,
     DenseTensor *out_accum) {
   dev_ctx.template Alloc<T>(out);
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), true, out);
+  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   // testing
   if (is_test) {
     return;
@@ -256,9 +256,9 @@ void MovingAverageAbsMaxScaleKernel(
   phi::funcs::FindAbsMaxFunctor<Context, T>()(
       dev_ctx, x.data<T>(), x.numel(), cur_scale_data);
 
+  dev_ctx.template Alloc<T>(out_scale);
   dev_ctx.template Alloc<T>(out_state);
   dev_ctx.template Alloc<T>(out_accum);
-  dev_ctx.template Alloc<T>(out_scale);
 
   phi::funcs::FindMovingAverageAbsMaxFunctor<Context, T>()(dev_ctx,
                                                            in_accum.get(),
