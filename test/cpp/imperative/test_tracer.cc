@@ -90,11 +90,16 @@ TEST(test_tracer, test_trace_op) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>(
+      "matmul_with_flatten", ins, outs, mul_attr_map, place, true);
 
 #ifndef PADDLE_WITH_XPU
-  ASSERT_THROW(tracer.TraceOp<VarBase>(
-      "mul", ins, outs, mul_attr_map, platform::XPUPlace(0), true);
+  ASSERT_THROW(tracer.TraceOp<VarBase>("matmul_with_flatten",
+                                       ins,
+                                       outs,
+                                       mul_attr_map,
+                                       platform::XPUPlace(0),
+                                       true);
                , platform::EnforceNotMet);
 #endif
 
@@ -142,7 +147,8 @@ TEST(test_tracer, test_trace_op_with_backward) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>(
+      "matmul_with_flatten", ins, outs, mul_attr_map, place, true);
   const auto& out_tensor = vout->Var().Get<phi::DenseTensor>();
   for (int i = 0; i < vout->Var().Get<phi::DenseTensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
@@ -188,7 +194,8 @@ TEST(test_tracer, test_track_backward_output) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>(
+      "matmul_with_flatten", ins, outs, mul_attr_map, place, true);
   ASSERT_EQ(x_in->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(y_in->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(vout->GradVarBase()->GradOpNum(), 1UL);
@@ -233,7 +240,8 @@ TEST(test_tracer, test_track_backward_input) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>(
+      "matmul_with_flatten", ins, outs, mul_attr_map, place, true);
 
   ASSERT_EQ(x_in->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(y_in->GradVarBase()->GradOpNum(), 0UL);
@@ -418,7 +426,8 @@ TEST(test_tracer, test_var_without_grad_var) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>(
+      "matmul_with_flatten", ins, outs, mul_attr_map, place, true);
 
   const auto& out_tensor = vout->Var().Get<phi::DenseTensor>();
   for (int i = 0; i < vout->Var().Get<phi::DenseTensor>().numel(); i++) {
@@ -489,7 +498,7 @@ static void TestVarOpDestructionMain(const platform::Place& place,
       size_t op_base_num = op_bases.size();
 
       auto z = std::make_shared<VarBase>("z_" + std::to_string(i));
-      tracer.TraceOp<VarBase>("mul",
+      tracer.TraceOp<VarBase>("matmul_with_flatten",
                               NameVarBaseMap{{"X", {x}}, {"Y", {y}}},
                               NameVarBaseMap{{"Out", {z}}},
                               framework::AttributeMap{},
@@ -584,7 +593,8 @@ TEST(test_tracer, test_var_op_destruction) {
 }
 
 TEST(test_tracer, test_execution_context) {
-  auto op = framework::OpRegistry::CreateOp("mul", {}, {}, {}, false);
+  auto op =
+      framework::OpRegistry::CreateOp("matmul_with_flatten", {}, {}, {}, false);
   framework::Scope scope;
   auto ctx = framework::RuntimeContext({}, {});
   NameVarBaseMap ins = {{"X", {nullptr}}, {"Y", {nullptr}}};
@@ -638,7 +648,7 @@ TEST(test_tracer, eager_tracer) {
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp<egr::EagerVariable>(
-      "mul", ins, outs, mul_attr_map, place, true);
+      "matmul_with_flatten", ins, outs, mul_attr_map, place, true);
 
   const auto& out_tensor = vout->Var().Get<phi::DenseTensor>();
   for (int i = 0; i < vout->Var().Get<phi::DenseTensor>().numel(); i++) {

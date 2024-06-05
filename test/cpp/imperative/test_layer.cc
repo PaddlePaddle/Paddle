@@ -295,9 +295,10 @@ TEST(test_layer, test_clear_backward_info) {
   framework::AttributeMap concat_att_map;
   concat_att_map["axis"] = 1;
 
-  auto node = CreateGradNode(0, "mul", ins, outs, concat_att_map, place);
-  auto pending_node =
-      CreateGradNode(0, "mul", ins, outs, concat_att_map, place);
+  auto node = CreateGradNode(
+      0, "matmul_with_flatten", ins, outs, concat_att_map, place);
+  auto pending_node = CreateGradNode(
+      0, "matmul_with_flatten", ins, outs, concat_att_map, place);
   node->InsertGradPendingNode(pending_node);
 
   ASSERT_EQ(node->size(), 1UL);
@@ -352,7 +353,8 @@ TEST(test_layer, test_dygraph_execution_context) {
   framework::AttributeMap concat_att_map;
   concat_att_map["axis"] = 1;
 
-  auto op = framework::OpRegistry::CreateOp("mul", {}, {}, {}, false);
+  auto op =
+      framework::OpRegistry::CreateOp("matmul_with_flatten", {}, {}, {}, false);
   paddle::platform::CPUPlace cpu_place;
 
   paddle::platform::DeviceContextPool& pool =

@@ -116,7 +116,8 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
       std::make_shared<std::function<void()>>([&]() { hook_value = 10; }));
 
   // 2. forward
-  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>(
+      "matmul_with_flatten", ins, outs, mul_attr_map, place, true);
 
   ASSERT_EQ(x->GradVarBase()->GradOpNum(), 0UL);
   ASSERT_EQ(y->GradVarBase()->GradOpNum(), 0UL);
@@ -212,13 +213,15 @@ void GradVarLeafBackwardHookWithGradAccumulatedTest() {
   NameVarBaseMap outs = {out_xy_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>(
+      "matmul_with_flatten", ins, outs, mul_attr_map, place, true);
 
   var_pair z_pair = var_pair("Y", vb_vector(1, z));
   var_pair out_xz_pair = var_pair("Out", vb_vector(1, out_xz));
   ins = {x_pair, z_pair};
   outs = {out_xz_pair};
-  tracer.TraceOp<VarBase>("mul", ins, outs, mul_attr_map, place, true);
+  tracer.TraceOp<VarBase>(
+      "matmul_with_flatten", ins, outs, mul_attr_map, place, true);
 
   var_pair xy_pair = var_pair("X", vb_vector(1, out_xy));
   var_pair xz_pair = var_pair("Y", vb_vector(1, out_xz));

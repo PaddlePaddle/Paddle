@@ -50,10 +50,11 @@ TEST(test_eager, eager_debug) {
   imperative::NameVarMap<egr::EagerVariable> ins = {{"X", {x_in}},
                                                     {"Y", {y_in}}};
   imperative::NameVarMap<egr::EagerVariable> outs = {{"Out", {vout}}};
-  LayerDebugString("mul", ins, outs);
+  LayerDebugString("matmul_with_flatten", ins, outs);
 }
 TEST(test_create_node, eager_node) {
-  auto op = framework::OpRegistry::CreateOp("mul", {}, {}, {}, false);
+  auto op =
+      framework::OpRegistry::CreateOp("matmul_with_flatten", {}, {}, {}, false);
   framework::Scope scope;
   auto ctx = framework::RuntimeContext({}, {});
   imperative::NameVarMap<egr::EagerVariable> ins = {{"X", {nullptr}},
