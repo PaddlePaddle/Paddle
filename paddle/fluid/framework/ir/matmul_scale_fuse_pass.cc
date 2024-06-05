@@ -22,9 +22,7 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Node;
 
@@ -237,9 +235,7 @@ void MatmulV2ScaleFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(matmul_scale_fuse_pass,
               paddle::framework::ir::MatmulScaleFusePass);

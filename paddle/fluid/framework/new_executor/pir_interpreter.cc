@@ -94,8 +94,7 @@ COMMON_DECLARE_int32(low_precision_op_list);
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
       op_idx++, place_, &op, value_exe_info_.get()));
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void RecordLowPrecisionOp(const InstructionBase* instr_node) {
   if (FLAGS_low_precision_op_list) {
@@ -2035,5 +2034,4 @@ void PirInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
       "SetCopyProgram is not implemented in PirInterpreter."));
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

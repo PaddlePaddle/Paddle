@@ -27,7 +27,7 @@
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/runtime/flags.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace backends {
 
@@ -205,7 +205,11 @@ struct CollectBucketStrategyHostFunctionVisitor
     if (op->functions.size() == 1 && op->predicates.size() == 0) {
       expr->as_module()->predicates.push_back(ir::Expr(true));
     }
-    CHECK_EQ(op->functions.size(), op->predicates.size());
+    PADDLE_ENFORCE_EQ(
+        op->functions.size(),
+        op->predicates.size(),
+        phi::errors::InvalidArgument(
+            "The size of functions and predicates should be equal"));
     for (int i = 0; i < op->functions.size(); ++i) {
       ProcessLoweredFunc(op->functions[i], op->predicates[i]);
       if (i == 0) {

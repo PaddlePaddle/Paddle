@@ -25,8 +25,7 @@ extern "C" {
 #include "paddle/fluid/framework/program_converter.h"
 #include "paddle/fluid/framework/version.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 BlockDesc *ProgramDesc::AppendBlock(const BlockDesc &parent) {
   auto *b = desc_.add_blocks();
@@ -287,5 +286,4 @@ bool ProgramDesc::NeedUpdate() const {
   return need;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
