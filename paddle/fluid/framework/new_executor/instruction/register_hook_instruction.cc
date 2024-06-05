@@ -86,19 +86,19 @@ void RegisterHookInstruction::Run() {
                           platform::errors::InvalidArgument(
                               "The func of RegisterHookOp must not be NULL."));
 
-  PyObject* func_obj_ptr = reinterpret_cast<PyObject*>(func_void_ptr);
+  // func return Variable
+  auto callable = py::reinterpret_borrow<py::object>(
+      reinterpret_cast<PyObject*>(func_void_ptr));
 
-  if (0 == strcmp((reinterpret_cast<PyTypeObject*>(func_obj_ptr))->tp_name,
-                  "NoneType")) {
+  if (callable.is_none()) {
     // 或许应该使用深拷贝
     output_var_ = input_var_;
     return;
   }
 
-  // func return Variable
-  auto callable = py::reinterpret_borrow<py::object>(func_obj_ptr);
-  py::object result = callable(input_var_);
-  output_var_ = py::handle(result).cast<Variable*>();
+  //  py::object result = callable(input_var_);
+  py::object result = callable(input);
+  // output_var_ = py::handle(result).cast<Variable*>();
 }
 
 }  // namespace framework

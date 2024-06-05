@@ -59,6 +59,9 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
+#if !defined(PADDLE_NO_PYTHON)
+#include "Python.h"
+#endif
 
 namespace paddle {
 namespace dialect {
@@ -4541,6 +4544,8 @@ void RegisterHookOp::Build(pir::Builder &builder,
       pir::IrContext::Instance(), backward_hook_func);
   argument.AddAttribute("backward_hook_func", attr_backward_hook_func);
   argument_attributes.insert({"backward_hook_func", attr_backward_hook_func});
+  Py_INCREF(forward_hook_func);
+  Py_INCREF(backward_hook_func);
 
   // TODO(gouzil): add Py_INCREF and Py_DECREF
 

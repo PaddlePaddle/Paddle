@@ -374,19 +374,17 @@ std::vector<std::vector<pir::Value>> RegisterHookOp::Vjp(
   VLOG(6) << "Vjp prepare call RegisterHook's vjp inteface";
   pir::Value input_grad = inputs_[0][0];
 
-  PyTypeObject* py_null = new PyTypeObject();
-  py_null->tp_name = "NoneType";
-
-  PyObject* forward_hook_func = reinterpret_cast<PyObject*>(py_null);
+  pybind11::object forward_hook_func = pybind11::none();
 
   auto backward_hook_func_grad =
-      op->attribute<::pir::PointerAttribute>("backward_hook_func_grad").data();
+      op->attribute<::pir::PointerAttribute>("backward_hook_func").data();
 
   auto& builder = *ApiBuilder::Instance().GetBuilder();
   auto func_grad = builder.Build<RegisterHookOp>(
-      input_grad, backward_hook_func_grad, forward_hook_func);
+      input_grad, backward_hook_func_grad, &forward_hook_func);
 
-  std::vector<std::vector<pir::Value>> res(1);
+  std::vector<std::vector<pir::Value>> res(0);
+  // std::vector<std::vector<pir::Value>> res(1);
   // res[0].push_back(func_grad.out());
   return res;
 }
