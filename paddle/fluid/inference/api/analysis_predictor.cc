@@ -28,6 +28,7 @@
 #include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/feed_hook.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
@@ -114,6 +115,7 @@
 
 #include "paddle/common/flags.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/transforms/general/common_subexpression_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/general/inplace_pass.h"
@@ -906,7 +908,7 @@ bool AnalysisPredictor::PrepareExecutor() {
         ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
         ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
         auto pass_manager = std::make_shared<::pir::PassManager>(
-            ::pir::IrContext::Instance(), 2);
+            ::pir::IrContext::Instance(), config_.pm_opt_level_);
         if (!config_.glog_info_disabled()) {
           pass_manager->EnablePrintStatistics();
         }
@@ -999,7 +1001,7 @@ bool AnalysisPredictor::PrepareExecutor() {
       // Apply some basic passes required by the framework
       ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
                                        config_.pm_opt_level_);
-
+      basic_pass_pm.AddPass(::pir::CreateCommonSubexpressionEliminationPass());
       auto params_sync_among_devices_pass =
           ::pir::CreateParamsSyncAmongDevicesPass();
       params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr,
@@ -1443,7 +1445,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to set feed";
     return false;
   }
-
+  if (config_.new_ir_enabled()) {
+    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
+  }
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
@@ -1518,7 +1522,9 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     LOG(ERROR) << "fail to set feed";
     return false;
   }
-
+  if (config_.new_ir_enabled()) {
+    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
+  }
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =

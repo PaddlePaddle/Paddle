@@ -56,8 +56,7 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 OpInfoTuple AddNOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -1428,7 +1427,7 @@ std::vector<pir::Type> CreateArrayOp::InferMeta(
   return argument_outputs;
 }
 
-const char *CreateArrayLikeOp::attributes_name[1] = {"val"};
+const char *CreateArrayLikeOp::attributes_name[1] = {"val"};  // NOLINT
 
 OpInfoTuple CreateArrayLikeOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -2050,7 +2049,8 @@ std::vector<pir::Type> ArrayWrite_Op::InferMeta(
   return argument_outputs;
 }
 
-const char *ArrayToTensorOp::attributes_name[2] = {"axis", "use_stack"};
+const char *ArrayToTensorOp::attributes_name[2] = {"axis",
+                                                   "use_stack"};  //  NOLINT
 
 OpInfoTuple ArrayToTensorOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -2242,7 +2242,8 @@ std::vector<pir::Type> ArrayToTensorOp::InferMeta(
   return argument_outputs;
 }
 
-const char *TensorToArrayOp::attributes_name[2] = {"axis", "use_stack"};
+const char *TensorToArrayOp::attributes_name[2] = {"axis",
+                                                   "use_stack"};  // NOLINT
 
 OpInfoTuple TensorToArrayOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -4511,8 +4512,7 @@ phi::DataType ArrayPopOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)

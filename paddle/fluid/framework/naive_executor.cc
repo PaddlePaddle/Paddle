@@ -33,8 +33,7 @@
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 void NaiveExecutor::Prepare(Scope *scope,
                             const ProgramDesc &program_desc,
                             int block_id) {
@@ -331,5 +330,4 @@ void NaiveExecutor::ResetTrtOps(int num) {
 #endif
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -17,8 +17,7 @@
 #include <utility>
 #include "paddle/common/enforce.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 IrSelectedRows::IrSelectedRows(phi::DataType dtype,
                                const phi::DDim& dims,
                                phi::DataLayout layout,
@@ -48,7 +47,8 @@ IrSelectedRows& IrSelectedRows::operator=(const IrSelectedRows& other) {
   return *this;
 }
 
-IrSelectedRows& IrSelectedRows::operator=(IrSelectedRows&& other) noexcept {
+IrSelectedRows& IrSelectedRows::operator=(
+    IrSelectedRows&& other) noexcept {  // NOLINT
   dims_ = std::move(other.dims());
   dtype_ = other.dtype();
   layout_ = other.layout();
@@ -70,5 +70,4 @@ void* IrSelectedRows::AllocateFrom(phi::Allocator* allocator,
   IR_THROW("Don't use IrSelectedRows::AllocateFrom method.");
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

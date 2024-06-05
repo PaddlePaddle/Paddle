@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/distributed/collective/common.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 std::vector<Place> GetPlaceList(const std::vector<phi::DenseTensor>& tensors) {
   std::vector<Place> places;
@@ -65,5 +64,4 @@ bool CheckTensorsInXPUPlace(const std::vector<phi::DenseTensor>& tensors) {
       });
 }
 
-}  //  namespace distributed
-}  //  namespace paddle
+}  // namespace paddle::distributed

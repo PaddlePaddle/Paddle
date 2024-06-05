@@ -1532,9 +1532,14 @@ PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
 PHI_DEFINE_EXPORTED_bool(pir_debug,
                          false,
                          "Whether print more pir debug info.");
-PHI_DEFINE_EXPORTED_bool(prim_skip_dynamic,
-                         true,
-                         "Whether to skip decomposing op with dynamic shape.");
+PHI_DEFINE_EXPORTED_bool(
+    prim_skip_dynamic,
+    true,
+    "Whether to skip decomposing vjp op with dynamic shape.");
+PHI_DEFINE_EXPORTED_bool(
+    prim_enable_dynamic,
+    false,
+    "Whether to enable decomposing composite op with dynamic shape.");
 PHI_DEFINE_EXPORTED_bool(prim_check_ops,
                          false,
                          "Whether to check the decomposed program, to ensure "
@@ -1608,6 +1613,12 @@ PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
                          "to infer symbolic shape");
 
 PHI_DEFINE_EXPORTED_string(
+    nvidia_package_dir,  // NOLINT
+    "",
+    "Specify root dir path for nvidia site-package, such as "
+    "python3.9/site-packages/nvidia");
+
+PHI_DEFINE_EXPORTED_string(
     cudnn_dir,  // NOLINT
     "",
     "Specify path for loading libcudnn.so. For instance, "
@@ -1679,12 +1690,12 @@ PHI_DEFINE_EXPORTED_bool(
  * Apply CSE optimize pass in Dy2St
  * Name: enable_cse_in_dy2st
  * Since Version: 3.0.0
- * Value Range: bool, default=false
+ * Value Range: bool, default=true
  * Example:
  * Note: If True, will apply CSE optimize pass in Dy2St.
  */
 PHI_DEFINE_EXPORTED_bool(enable_cse_in_dy2st,
-                         false,
+                         true,
                          "Apply CSE optimize pass in Dy2St");
 
 /**
@@ -1724,3 +1735,7 @@ PHI_DEFINE_EXPORTED_string(cusolver_dir,  // NOLINT
 PHI_DEFINE_EXPORTED_string(cusparse_dir,  // NOLINT
                            "",
                            "Specify path for loading libcusparse.so.*.");
+PHI_DEFINE_EXPORTED_string(
+    win_cuda_bin_dir,  // NOLINT
+    "",
+    "Specify path for loading *.dll about cuda on windows");
