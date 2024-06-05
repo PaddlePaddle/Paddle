@@ -984,7 +984,7 @@ def flash_attention_with_sparse_mask(
         return outputs
 
 
-def reduce_attn_scores(query, key, softmax_lse, return_softmax=False):
+def reduce_attn_scores(query, key, softmax_lse):
     r"""
     Warning:
         This API only supports inputs with dtype float16 and bfloat16.
@@ -1006,7 +1006,6 @@ def reduce_attn_scores(query, key, softmax_lse, return_softmax=False):
         reduced_scores(Tensor), The reduce sum of attention scores across seqlen_q.
                     4-D tensor with shape: [batch_size, num_heads, 1, seqlen_k].
                     The dtype is float32.
-        softmax(Tensor): The softmax tensor. None if return_softmax is False.
     Examples:
         .. code-block:: python
 
@@ -1041,20 +1040,19 @@ def reduce_attn_scores(query, key, softmax_lse, return_softmax=False):
             >>>     False,#is_test
             >>>     ""#rng_name
             >>> )
-            >>> reduced_attn_scores, softmax = reduce_attn_scores(
+            >>> reduced_attn_scores = reduce_attn_scores(
             >>>     q,
             >>>     k,
             >>>     softmax_lse,
-            >>>     return_softmax=False
             >>> )
             >>> # doctest: -SKIP
     """
     # TODO(umiswing): add assert to disable bwd.
     if in_dynamic_mode():
-        (reduced_scores, softmax) = _C_ops.reduce_attn_scores(
-            query, key, softmax_lse, return_softmax
+        (reduced_scores, _) = _C_ops.reduce_attn_scores(
+            query, key, softmax_lse, False
         )
-        return reduced_scores, softmax if return_softmax else None
+        return reduced_scores
 
     helper = LayerHelper('reduce_attn_scores', **locals())
     reduced_scores = helper.create_variable_for_type_inference(paddle.float32)
@@ -1073,7 +1071,7 @@ def reduce_attn_scores(query, key, softmax_lse, return_softmax=False):
         inputs=inputs,
         outputs=outputs,
         attrs={
-            'return_softmax': return_softmax,
+            'return_softmax': False,
         },
     )
-    return reduced_scores, softmax if return_softmax else None
+    return reduced_scores
