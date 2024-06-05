@@ -227,8 +227,7 @@ def _load_pir_parameter_vars(model_path, program_holder, params_filename):
         )
     else:
         raise ValueError(
-            "The file %s does not exist. Please check the model path."
-            % var_file_path
+            f"The file {var_file_path} does not exist. Please check the model path."
         )
 
     load_var_dict.update(other_var_dict)
@@ -327,8 +326,7 @@ def _run_dygraph(instance, input, program_holder):
     for i, value in enumerate(input):
         if not isinstance(value, (np.ndarray, core.eager.Tensor)):
             raise TypeError(
-                "The type of input in PirTranslatedLayer must be numpy array or Variable(Tensor), but received %s."
-                % type(value)
+                f"The type of input in PirTranslatedLayer must be numpy array or Variable(Tensor), but received {type(value)}."
             )
         # NOTE: In order to unify the API, firstly convert the input to Tensor
         if isinstance(value, np.ndarray):
@@ -360,8 +358,7 @@ def _run_dygraph(instance, input, program_holder):
             persistable_tensors.append(instance._buffers[dy_var_name])
         else:
             raise ValueError(
-                "The persistable variable %s does not exist in current PirTranslatedLayer."
-                % var_name
+                f"The persistable variable {var_name} does not exist in current PirTranslatedLayer."
             )
 
     from paddle.jit.dy2static.pir_partial_program import PartialProgramLayer
@@ -592,7 +589,7 @@ class PirTranslatedLayer(layers.Layer):
         # 0. dir and filename check
         model_path = os.path.normpath(model_path)
         if not os.path.isdir(model_path):
-            raise ValueError("There is no directory named '%s'" % model_path)
+            raise ValueError(f"There is no directory named '{model_path}'")
         model_filename = None
         params_filename = None
         if configs is not None:
@@ -750,8 +747,7 @@ class PirTranslatedLayer(layers.Layer):
         program_holder = self._program_holder_dict.get(method_name, None)
         if program_holder is None:
             raise ValueError(
-                "The method `%s` does not exist in loaded PirTranslatedLayer."
-                % method_name
+                f"The method `{method_name}` does not exist in loaded PirTranslatedLayer."
             )
         return program_holder
 

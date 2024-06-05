@@ -18,9 +18,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(Graph *graph) const {
   auto matmul_types = {"matmul", "matmul_v2", "fused_matmul"};
@@ -264,9 +262,7 @@ ReshapeTransposeMatmulMkldnnFusePass::ReshapeTransposeMatmulMkldnnFusePass() {
       .End();
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(reshape_transpose_matmul_onednn_fuse_pass,
               paddle::framework::ir::ReshapeTransposeMatmulMkldnnFusePass);

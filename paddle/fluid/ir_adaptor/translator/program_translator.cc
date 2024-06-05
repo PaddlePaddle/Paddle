@@ -41,8 +41,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
-namespace paddle {
-namespace translator {
+namespace paddle::translator {
 
 using ProgramDesc = ::paddle::framework::ProgramDesc;
 using BlockDesc = ::paddle::framework::BlockDesc;
@@ -824,5 +823,4 @@ ProgramTranslator::VarDesc2Value() {
   return var_desc_2_value;
 }
 
-}  // namespace translator
-}  // namespace paddle
+}  // namespace paddle::translator
