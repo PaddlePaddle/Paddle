@@ -572,6 +572,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::shared_ptr<framework::ProgramDesc> inference_program_;
   std::shared_ptr<pir::Program> pir_program_;
   bool load_pir_model_{false};
+  std::string optimized_model_;
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
   // Sorted according to the idx.

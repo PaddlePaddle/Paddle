@@ -366,6 +366,7 @@ def save_vars_pir(
 
         save_var_map = {}
         for v in vars:
+            print("v.name", v.name)
             var = global_scope().find_var(v.name)
             # TODO(chenzhiyang): deal with RAW type and sparse
             if filename is None and save_to_memory is False:
@@ -376,10 +377,12 @@ def save_vars_pir(
             else:
                 save_var_map[v.name] = var.get_tensor()
 
+        print("filename", filename)
         if filename is not None or save_to_memory:
             save_var_list = []
             save_var_names = []
             for name in sorted(save_var_map.keys()):
+                print("save_var_map[name]", save_var_map[name])
                 save_var_list.append(save_var_map[name])
                 save_var_names.append(name)
 
@@ -387,6 +390,7 @@ def save_vars_pir(
             if save_to_memory is False:
                 save_path = os.path.join(os.path.normpath(dirname), filename)
 
+            print("save_var_names", save_var_names)
             core.save_combine_func(
                 save_var_list,
                 save_var_names,
@@ -506,12 +510,15 @@ def load_vars_pir(
             load_var_list = []
             load_var_names = []
             for name in sorted(load_var_map.keys()):
+                print("load_var_list", load_var_map[name].get_tensor())
                 load_var_list.append(load_var_map[name].get_tensor())
                 load_var_names.append(name)
 
             if vars_from_memory is False:
                 filename = os.path.join(dirname, filename)
 
+            print("filename", filename)
+            print("load_var_names", load_var_names)
             core.load_combine_func(
                 filename,
                 load_var_names,
@@ -743,6 +750,10 @@ def save_pir_inference_model(
 
     readable = kwargs.get('readable', False)
     trainable = kwargs.get('trainable', True)
+    print("readable", readable)
+    print("trainable", trainable)
+    print("model_path", model_path)
+    print("program", program)
     paddle.core.serialize_pir_program(
         program, model_path, 1, True, readable, trainable
     )
