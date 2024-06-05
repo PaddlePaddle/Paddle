@@ -24,8 +24,8 @@ enum InstructionType {
   T_InitPattern,
   T_TrivialInline,
   T_TmpTransform,
-  T_TmpTransformWithFakeReduceIter,
-  T_AnchorTransform,
+  T_TrivialLoopAlign,
+  T_AnchorTransformAndReturn,
 };
 
 struct FusionInstruction {
@@ -34,9 +34,8 @@ struct FusionInstruction {
 
 using FusionInstrPtr = std::shared_ptr<FusionInstruction>;
 
-struct RenamePatternInstr : public FusionInstruction {
-  RenamePatternInstr(const std::string& origin_name,
-                     const std::string& new_name)
+struct RenameInstr : public FusionInstruction {
+  RenameInstr(const std::string& origin_name, const std::string& new_name)
       : origin_name_(origin_name), new_name_(new_name) {}
   virtual InstructionType type() { return T_Rename; }
   std::string origin_name_;
@@ -55,9 +54,9 @@ struct CombineInstr : public FusionInstruction {
 };
 
 struct ReturnInstr : public FusionInstruction {
-  RenamePatternInstr(const std::string& ret_name) : ret_name_(ret_name) {}
+  explict ReturnInstr(const std::string& target) : target_(target) {}
   virtual InstructionType type() { return T_Return; }
-  std::string ret_name_;
+  std::string target_;
 };
 
 // struct RemovePatternInstr : public FusionInstruction {};
@@ -84,48 +83,44 @@ struct TrivialInlineInstr : public FusionInstruction {
 struct TmpTransformInstr : public FusionInstruction {
   TmpTransformInstr(const std::string& upstream,
                     const std::string& downstream,
-                    const std::string& result)
-      : upstream_(upstream), downstream_(downstream), result_(result) {}
-  virtual InstructionType type() { return T_TmpTransform; }
-  std::string upstream_;
-  std::string downstream_;
-  std::string result_;
-};
-
-struct TmpTransformWithFakeReduceIterInstr : public FusionInstruction {
-  TmpTransformWithFakeReduceIterInstr(
-      const std::string& upstream,
-      const std::string& downstream,
-      const std::string& result,
-      const std::vector<size_t>& fake_reduce_iter_idx)
+                    const std::string& result,
+                    const std::vector<size_t>& fake_reduce_iter_idx)
       : upstream_(upstream),
         downstream_(downstream),
         result_(result),
         fake_reduce_iter_idx_(fake_reduce_iter_idx) {}
-  virtual InstructionType type() { return T_TmpTransformWithFakeReduceIter; }
+  virtual InstructionType type() { return T_TmpTransform; }
   std::string upstream_;
   std::string downstream_;
   std::string result_;
   std::vector<size_t> fake_reduce_iter_idx_;
 };
 
-struct AnchorTransformInstr : public FusionInstruction {
-  AnchorTransformInstr(const std::string& upstream,
-                       const std::string& downstream,
-                       const std::string& result,
-                       const AnchorTransformRoute& transform_route,
-                       bool is_upstream_anchor)
+struct TrivialLoopAlignInstr : public FusionInstruction {
+  TrivialLoopAlignInstr(const std::string& upstream,
+                        const std::string& downstream,
+                        const std::string& result,
+                        const std::vector<size_t>& fake_reduce_iter_idx)
       : upstream_(upstream),
         downstream_(downstream),
         result_(result),
-        transform_route_(transform_route),
-        is_upstream_anchor_(is_upstream_anchor) {}
-  virtual InstructionType type() { return T_AnchorTransform; }
+        fake_reduce_iter_idx_(fake_reduce_iter_idx) {}
+  virtual InstructionType type() { return T_TrivialLoopAlign; }
   std::string upstream_;
   std::string downstream_;
   std::string result_;
+  std::vector<size_t> fake_reduce_iter_idx_;
+};
+
+struct AnchorTransformAndReturnInstr : public FusionInstruction {
+  AnchorTransformAndReturnInstr(const std::string& target,
+                                const std::string& result,
+                                const AnchorTransformRoute& transform_route)
+      : target_(target), result_(result), transform_route_(transform_route) {}
+  virtual InstructionType type() { return T_AnchorTransformAndReturn; }
+  std::string target_;
+  std::string result_;
   AnchorTransformRoute transform_route_;
-  bool is_upstream_anchor_;
 };
 
 struct FusionTracker {

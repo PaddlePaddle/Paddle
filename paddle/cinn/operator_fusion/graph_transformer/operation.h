@@ -124,8 +124,7 @@ struct LiftReduceToReduceTreeOperation {
     const auto& reduce_pattern = std::get<ReducePattern>(node->stmt_pattern());
     node->set_stmt_pattern(
         ReduceTreePattern({}, reduce_pattern, *(reduce_pattern.tracker())));
-    node->UpdateTracker(
-        make_shared<RenamePatternInstr>(origin_name, node->name()));
+    node->UpdateTracker(make_shared<RenameInstr>(origin_name, node->name()));
     return node;
   }
 };
@@ -137,8 +136,7 @@ struct LiftToHorizontalFusionPatternOperation {
         {typename HorizontalFusionPattern::PaddingStmtPattern(
              node->stmt_pattern(), {}),
          *(node->tracker())}));
-    node->UpdateTracker(
-        make_shared<RenamePatternInstr>(origin_name, node->name()));
+    node->UpdateTracker(make_shared<RenameInstr>(origin_name, node->name()));
     return node;
   }
 };
@@ -159,8 +157,7 @@ struct LiftToAnchorPatternOperation {
         ops,
         anchor,
         AnchorState({InitExprPromise(node->stmt_pattern(), anchor)})));
-    node->UpdateTracker(
-        make_shared<RenamePatternInstr>(origin_name, node->name()));
+    node->UpdateTracker(make_shared<RenameInstr>(origin_name, node->name()));
     return node;
   }
 };
@@ -270,7 +267,7 @@ struct SplitRecomputeOperation {
     upstream->set_stmt_pattern(RecoverAnchorPatternToTrivial(
         std::get<AnchorPattern>(upstream->stmt_pattern())));
     upstream->UpdateTracker(
-        make_shared<RenamePatternInstr>(origin_name, node->name()));
+        make_shared<RenameInstr>(origin_name, node->name()));
     MergeTrivialPatternOperation()(graph, upstream);
   }
 };

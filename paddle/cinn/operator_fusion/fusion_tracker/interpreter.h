@@ -14,29 +14,40 @@
 
 #pragma once
 #include <functional>
-#include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
+#include "paddle/cinn/operator_fusion/fusion_tracker/expr_utils.h"
 #include "paddle/cinn/operator_fusion/fusion_tracker/tracker.h"
 #include "paddle/cinn/operator_fusion/pattern.h"
 #include "paddle/cinn/operator_fusion/pattern_fuser.h"
 
 namespace cinn::fusion {
 
-struct PatternExpr {
-  std::vector<ir::Expr> exprs;
+struct ScopeElement {
+  std::vector<FusionOp> fusion_ops;
 };
-using PatternExprPtr = std::shared_ptr<PatternExpr>;
+using ScopeElementPtr = std::shared_ptr<ScopeElement>;
+
+ScopeElementPtr CombineScopeElement(const ScopeElementPtr& a,
+                                    const ScopeElementPtr& b);
 
 struct FusionInterpreter {
   FusionInterpreter(
       const FusionTrackerPtr& tracker,
-      const std::unordered_map<pir::Operator*, ir::Expr>& lowered_expr)
+      const std::unordered_map<pir::Operation*, FusionOp>& lowered_expr)
       : tracker(tracker), lowered_expr(lowered_expr) {}
 
-  std::unordered_map<pir::Operator*, ir::Expr> lowered_expr;
-  std::unordered_map<std::string, PatternExprPtr> scope;
+  std::unordered_map<pir::Operation*, FusionOp> lowered_expr;
+  std::unordered_map<std::string, ScopeElementPtr> scope;
   FusionTrackerPtr tracker;
 
-  PatternExpr Run();
+  std::vector<ir::Expr> ret_expr;
+  std::vector<ir::Expr> Run();
 };
+
+template <typename T>
+std::shared_ptr<T> dynamic_cast_instr_with_err(FusionInstrPtr instr) {
+  auto chile_instr = std::dynamic_pointer_cast<T>(instr);
+  if (!chile_instr) PADDLE_THROW("Cast Fusion Instr Failed.");
+  return chile_instr;
+}
 
 }  // namespace cinn::fusion
