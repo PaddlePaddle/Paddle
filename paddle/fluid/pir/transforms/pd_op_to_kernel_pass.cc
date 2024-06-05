@@ -2031,7 +2031,7 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->isa<cinn::dialect::JitKernelOp>()) {
+  if (op_item->name() == "cinn_runtime.jit_kernel") {
     std::vector<pir::Value> in_temps;
     for (size_t i = 0; i < op_item->num_operands(); ++i) {
       auto cur_in = op_item->operand_source(i);
