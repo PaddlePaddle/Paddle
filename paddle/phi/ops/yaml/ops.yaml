@@ -3486,7 +3486,7 @@
   backward : renorm_grad
 
 - op : repeat_interleave
-  args : (Tensor x, int repeats, int axis)
+  args : (Tensor x, int repeats=0, int axis=0)
   output : Tensor(out)
   infer_meta :
     func : RepeatInterleaveInferMeta
