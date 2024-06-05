@@ -501,6 +501,14 @@ echo %task_name%|findstr build >nul && (
 )
 
 :cmake_impl
+if "%WITH_TESTING%"=="ON" (
+    cd /d %work_dir%\%BUILD_DIR%
+    rem whether to run cpp test
+    python -m pip install PyGithub
+    python %work_dir%\tools\check_only_change_python_files.py
+    if exist %work_dir%\%BUILD_DIR%\only_change_python_file.txt set WITH_CPP_TEST=OFF
+    echo WITH_CPP_TEST: %WITH_CPP_TEST%
+)
 cd /d %work_dir%\%BUILD_DIR%
 rem whether to run cpp test
 python -m pip install PyGithub
