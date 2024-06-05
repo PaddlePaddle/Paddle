@@ -155,7 +155,6 @@ if(WITH_TESTING)
 
   if(WITH_DISTRIBUTE)
     add_subdirectory(collective)
-    add_subdirectory(distributed_passes)
   endif()
 
   if(NOT WIN32 OR NOT WITH_GPU)
