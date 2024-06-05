@@ -318,25 +318,17 @@ class TensorVariable(VariableBase):
 
     def __init__(
         self,
-        tensor: paddle.Tensor | MetaInfo,
+        meta: MetaInfo,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
         super().__init__(graph, tracker)
-        if isinstance(tensor, paddle.Tensor):
-            self.value = None
-            self.meta = MetaInfo.from_tensor(tensor)
-        elif isinstance(tensor, MetaInfo):
-            self.value = None
-            self.meta = tensor
-        else:
-            raise InnerError(
-                f"Required type(tensor) is paddle.Tensor or ProxyTensor, but received {type(tensor).__name__}."
-            )
+        self.value = None
+        self.meta = meta
         dynamic_axes: list[int] = []
         if ENV_SOT_ALLOW_DYNAMIC_SHAPE.get() and self.tracker.is_traceable():
             dynamic_axes = self.analyse_dynamic_axes()
-        self.meta.dynamic_axes = dynamic_axes
+        self.meta = self.meta.with_dynamic_axes(dynamic_axes)
         self.origin_meta = self.meta
         self.var_name = TensorVariable.var_name_generator.next()
         self.graph.side_effects.record_mutable_variable(self)
@@ -485,8 +477,10 @@ class TensorVariable(VariableBase):
 
     @tensor_property
     def shape(self):
-        # TODO(zrr1999): support more tensor properties
-        if self.meta.is_dynamic_shape():
+        if (
+            not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
+            and self.meta.is_dynamic_shape()
+        ):
             raise BreakGraphError(
                 f"Getting shape for a dynamic shape tensor causes graph break. shape = {self.meta.shape}"
             )
@@ -594,6 +588,11 @@ class TensorVariable(VariableBase):
     @VariableFactory.register_from_value()
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, (paddle.Tensor, MetaInfo)):
+            value = (
+                MetaInfo.from_tensor(value)
+                if isinstance(value, paddle.Tensor)
+                else value
+            )
             return TensorVariable(value, graph, tracker)
         return None
 
@@ -727,15 +726,16 @@ class SymbolicVariable(VariableBase):
 class ParameterVariable(TensorVariable):
     def __init__(
         self,
-        param: paddle.Tensor | MetaInfo,
+        meta: MetaInfo,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
-        super().__init__(param, graph, tracker)
+        super().__init__(meta, graph, tracker)
 
     @VariableFactory.register_from_value(successor="TensorVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if isinstance(value, (paddle.base.framework.EagerParamBase)):
+            value = MetaInfo.from_tensor(value)
             return ParameterVariable(value, graph, tracker)
         return None
 
