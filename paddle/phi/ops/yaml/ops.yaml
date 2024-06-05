@@ -3819,6 +3819,19 @@
   kernel :
     func : shard_index
 
+- op : shuffle_batch
+  args : (Tensor x, Tensor seed, int startup_seed=0)
+  output : Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
+  infer_meta:
+     func: ShuffleBatchInferMeta
+  kernel:
+     func: shuffle_batch
+     data_type: x
+  backward : shuffle_batch_grad
+  traits : pir::SideEffectTrait
+  data_transform :
+    skip_transform : seed
+
 - op : shuffle_channel
   args : (Tensor x, int group = 1)
   output : Tensor(out)

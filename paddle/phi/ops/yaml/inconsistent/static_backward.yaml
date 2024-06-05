@@ -493,13 +493,3 @@
     func: MatchMatrixTensorGradInferMeta
   kernel:
     func: match_matrix_tensor_grad
-
-- backward_op: shuffle_batch_grad
-  forward: shuffle_batch (Tensor x, Tensor seed, int startup_seed=0) -> Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
-  args: (Tensor shuffle_idx, Tensor out_grad,int startup_seed=0)
-  output : Tensor(x_grad)
-  infer_meta:
-    func: ShuffleBatchGradInferMeta
-  kernel:
-    func: shuffle_batch_grad
-    data_type : out_grad

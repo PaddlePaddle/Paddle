@@ -786,17 +786,6 @@
     param: [x]
   inplace : (x -> out)
 
-- op : shuffle_batch
-  args : (Tensor x, Tensor seed, int startup_seed=0)
-  output : Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
-  infer_meta:
-     func: ShuffleBatchInferMeta
-  kernel:
-     func: shuffle_batch
-     data_type: x
-  backward : shuffle_batch_grad
-  traits : pir::SideEffectTrait
-
 - op : soft_relu
   args : (Tensor x, float threshold = 20.0f)
   output : Tensor(out)
