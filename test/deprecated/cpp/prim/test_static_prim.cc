@@ -31,8 +31,7 @@
 PD_DECLARE_bool(prim_enabled);
 COMMON_DECLARE_string(tensor_operants_mode);
 
-namespace paddle {
-namespace prim {
+namespace paddle::prim {
 
 using Tensor = paddle::Tensor;
 struct TestBaseProgram {
@@ -527,5 +526,4 @@ TEST(StaticPrim, TestFlags) {
   ASSERT_FALSE(PrimCommonUtils::IsBwdPrimEnabled());
 }
 
-}  // namespace prim
-}  // namespace paddle
+}  // namespace paddle::prim

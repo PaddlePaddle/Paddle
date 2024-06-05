@@ -20,8 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 /**
  * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
@@ -430,8 +429,7 @@ class FusedFeedForwardOpDoubleGradMaker
  protected:
   void Apply(GradOpPtr<T> grad_op) const override {}
 };
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fused_feedforward,

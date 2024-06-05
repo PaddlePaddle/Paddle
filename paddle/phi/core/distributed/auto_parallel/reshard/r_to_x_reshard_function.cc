@@ -27,8 +27,7 @@
 #include "paddle/phi/kernels/p_send_kernel.h"
 #include "paddle/phi/kernels/split_kernel.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 bool RToXExpandReshardFunction::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
@@ -134,5 +133,4 @@ void RToXExpandReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   }
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

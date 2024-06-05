@@ -14,13 +14,16 @@
 
 #pragma once
 
-#include <memory>
-#include "paddle/pir/include/core/dll_decl.h"
-
 namespace pir {
 
-class Pass;
+class Program;
 
-IR_API std::unique_ptr<Pass> CreateGroupNormSiluXpuFusePass();
+}
 
-}  // namespace pir
+namespace paddle::framework {
+
+class Scope;
+
+void RunFeedHooks(const pir::Program& program, const Scope& scope);
+
+}  // namespace paddle::framework
