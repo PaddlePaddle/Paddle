@@ -434,6 +434,346 @@ def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
 
 ########################### adaptive layer norm ###############################
 @triton.jit
+def fused_adaLN_scale_residual_kernel(
+    mha_out_ptr,  # input: attention result
+    x_ptr,  # input: residual input of attention
+    gate_msa_ptr,
+    weight_ptr,
+    bias_ptr,
+    scale_mlp_ptr,
+    shift_mlp_ptr,
+    resi_out_ptr,  # output: residual result of attention
+    adaLN_out_ptr,  # output: adaptive layer norm result
+    M,
+    N,
+    seq_size,
+    epsilon,
+    BLOCK_SIZE: tl.constexpr,
+):
+    row = tl.program_id(axis=0)
+    mha_out_ptr += row * N
+    x_ptr += row * N
+    resi_out_ptr += row * N
+    adaLN_out_ptr += row * N
+
+    gate_msa_ptr += (row // seq_size) * N
+    _resi_outs = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
+    _sum = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
+    _sum_square = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
+    # compute residual mean var
+    for col_off in range(0, N, BLOCK_SIZE):
+        cols = col_off + tl.arange(0, BLOCK_SIZE)
+        mask = cols < N
+        mha_eles = tl.load(mha_out_ptr + cols, mask=mask, other=0.0).to(
+            tl.float32
+        )
+        gate_msas = tl.load(gate_msa_ptr + cols, mask=mask, other=0.0)
+        x_eles = tl.load(x_ptr + cols, mask=mask, other=0.0).to(tl.float32)
+        _resi_outs = mha_eles * gate_msas + x_eles
+        tl.store(resi_out_ptr + cols, _resi_outs, mask=mask)
+        _sum += _resi_outs
+        _sum_square += _resi_outs * _resi_outs
+
+    mean = tl.sum(_sum, axis=0) / N
+    var = tl.sum(_sum_square, axis=0) / N - mean * mean
+    rstd = 1 / tl.sqrt(var + epsilon)
+
+    # compute adaLN
+    scale_mlp_ptr += (row // seq_size) * N
+    shift_mlp_ptr += (row // seq_size) * N
+    for col_off in range(0, N, BLOCK_SIZE):
+        cols = col_off + tl.arange(0, BLOCK_SIZE)
+        mask = cols < N
+        eles = tl.load(resi_out_ptr + cols, mask=mask, other=0.0).to(tl.float32)
+        resi_hat = (eles - mean) * rstd
+        if weight_ptr is not None:
+            weights = tl.load(weight_ptr + cols, mask=mask, other=0.0)
+            resi_hat = resi_hat * weights
+        if bias_ptr is not None:
+            bias = tl.load(bias_ptr + cols, mask=mask, other=0.0)
+            resi_hat = resi_hat + bias
+        scales = tl.load(scale_mlp_ptr + cols, mask=mask, other=0.0)
+        shifts = tl.load(shift_mlp_ptr + cols, mask=mask, other=0.0)
+        y = resi_hat * (1 + scales) + shifts
+        tl.store(adaLN_out_ptr + cols, y, mask=mask)
+
+
+fused_adaLN_scale_residual_template = (
+    paddle_custom_op_head_part
+    + """
+
+std::vector<paddle::Tensor> ${op_name}_func(
+    const paddle::Tensor &x,
+    const paddle::Tensor &mha_out,
+    const paddle::Tensor &gate_msa,
+    const paddle::Tensor &scale_mlp,
+    const paddle::Tensor &shift_mlp,
+    paddle::optional<paddle::Tensor> &weight,
+    paddle::optional<paddle::Tensor> &bias,
+    float epsilon) {
+  int M = x.dims()[0] * x.dims()[1];
+  int N = x.dims()[2];
+  int seq_size = x.dims()[1];
+  auto resi_out = paddle::full(x.shape(), 0, x.dtype(), x.place());
+  auto adaLN_out = paddle::full(x.shape(), 0, x.dtype(), x.place());
+
+  auto dev_x = get_tensor_ptr(x);
+  auto dev_mha_out = get_tensor_ptr(mha_out);
+  auto dev_resi_out = get_tensor_ptr(resi_out);
+  auto dev_adaLN_out = get_tensor_ptr(adaLN_out);
+  auto dev_gate_msa = get_tensor_ptr(gate_msa);
+  auto dev_scale_mlp = get_tensor_ptr(scale_mlp);
+  auto dev_shift_mlp = get_tensor_ptr(shift_mlp);
+  CUdeviceptr dev_weight = (CUdeviceptr)(nullptr);
+  if (weight) {
+    dev_weight = get_tensor_ptr(*weight);
+  }
+  CUdeviceptr dev_bias = (CUdeviceptr)(nullptr);
+  if (bias) {
+    dev_bias = get_tensor_ptr(*bias);
+  }
+
+  auto run_triton_kernel = [&](int algo_id) -> CUresult{
+      return ${op_name}_kernel(adaLN_out.stream(),
+                                                           dev_mha_out,
+                                                           dev_x,
+                                                           dev_gate_msa,
+                                                           dev_weight,
+                                                           dev_bias,
+                                                           dev_scale_mlp,
+                                                           dev_shift_mlp,
+                                                           dev_resi_out,
+                                                           dev_adaLN_out,
+                                                           M,
+                                                           N,
+                                                           seq_size,
+                                                           epsilon,
+                                                           algo_id);
+  };
+
+  std::vector<int> problem_size = {M, N};
+"""
+    + tune_and_invoke_part
+    + """
+    return {resi_out, adaLN_out};
+}
+
+std::vector<std::vector<int64_t>> ${op_name}_InferShape(
+        const std::vector<int64_t>& A_shape) {
+  return {A_shape, A_shape};
+}
+
+std::vector<paddle::DataType> ${op_name}_InferDtype(const paddle::DataType& A_dtype) {
+    return {A_dtype, A_dtype};
+}
+
+PD_BUILD_OP(${op_name})
+    .Inputs({"x", "mha_out", "gate_msa", "scale_mlp", "shift_mlp", paddle::Optional("weight"), paddle::Optional("bias")})
+    .Outputs({"resi_out", "adaLN_out"})
+    .SetKernelFn(PD_KERNEL(${op_name}_func))
+    .Attrs({"epsilon: float"})
+    .SetInferDtypeFn(PD_INFER_DTYPE(${op_name}_InferDtype))
+    .SetInferShapeFn(PD_INFER_SHAPE(${op_name}_InferShape));
+"""
+)
+
+
+def fused_adaLN_scale_residual(
+    x,
+    mha_out,
+    gate_msa,
+    scale_mlp,
+    shift_mlp,
+    weight=None,
+    bias=None,
+    epsilon=1e-05,
+):
+    assert x.shape == mha_out.shape, "x and mha_out should have same shape"
+    assert (
+        gate_msa.shape == scale_mlp.shape == shift_mlp.shape
+    ), "gate_msa, scale_mlp and shift_mlp should have same shape"
+
+    assert (
+        len(x.shape) == 3
+    ), "x should be 3-dim [batch_size, seq_size, feature_dim]"
+    if weight is not None:
+        assert len(weight.shape) == 1, "weight should be 1-dim [feature_dim]"
+        assert (
+            weight.shape[-1] == x.shape[-1]
+        ), "x and weight should have same shape[-1] == feature_dim"
+    if bias is not None:
+        assert len(bias.shape) == 1, "bias should be 1-dim [feature_dim]"
+        assert (
+            bias.shape[-1] == x.shape[-1]
+        ), "x and bias should have same shape[-1] == feature_dim"
+    assert (
+        len(scale_mlp.shape) == 2 and len(shift_mlp.shape) == 2
+    ), "scale and shift should be 2-dim [batch_size, feature_dim]"
+    assert (
+        scale_mlp.shape[0] == shift_mlp.shape[0] == x.shape[0]
+    ), "x, scale and shift should have same shape[0] == batch_size"
+    assert (
+        scale_mlp.shape[1] == shift_mlp.shape[1] == x.shape[-1]
+    ), "x, scale and shift should have same shape[-1] == feature_dim"
+
+    M = x.shape[0] * x.shape[1]
+    N = x.shape[2]
+    seq_size = x.shape[1]
+    BLOCK_SIZE = min(1024, triton.next_power_of_2(N))
+
+    # if in_dynamic_or_pir_mode():
+    #     resi_out = paddle.empty_like(x)
+    #     adaLN_out = paddle.empty_like(x)
+    #     fused_adaLN_scale_residual_kernel[(M,)](
+    #         mha_out,
+    #         x,
+    #         gate_msa,
+    #         weight,
+    #         bias,
+    #         scale_mlp,
+    #         shift_mlp,
+    #         resi_out,
+    #         adaLN_out,
+    #         M,
+    #         N,
+    #         seq_size,
+    #         epsilon,
+    #         BLOCK_SIZE=BLOCK_SIZE,
+    #     )
+    #     return resi_out, adaLN_out
+
+    op_name = "triton_fused_adaLN_scale_residual"
+    if x.dtype == paddle.float16:
+        op_name += "_fp16"
+    elif x.dtype == paddle.float32:
+        op_name += "_fp32"
+    elif x.dtype == paddle.bfloat16:
+        op_name += "_bf16"
+    else:
+        raise NotImplementedError(
+            "triton_fused_adaLN_scale_residual now supports only fp16 and fp32 dtype."
+        )
+    op_name += f"_{BLOCK_SIZE}"
+
+    # if in_dynamic_or_pir_mode && op is already registered, call it directly.
+    if (
+        op_name in OpProtoHolder.instance().op_proto_map.keys()
+        and in_dynamic_or_pir_mode()
+    ):
+        outs = _C_ops._run_custom_op(
+            op_name,
+            x,
+            mha_out,
+            gate_msa,
+            scale_mlp,
+            shift_mlp,
+            weight,
+            bias,
+            epsilon,
+        )
+        return outs[0], outs[1]
+
+    x_list = [M, N, seq_size, epsilon]
+    value_hint = get_value_hint(x_list)
+    dtypes = [x.dtype] * 9
+    address_hint = get_pointer_hint(dtypes)
+
+    python_package_name = f"{op_name}_package"
+    generated_dir = os.getenv("TRITON_KERNEL_CACHE_DIR", None)
+    print("the kernel cache dir is:", generated_dir)
+    assert (
+        generated_dir is not None
+    ), "TRITON_KERNEL_CACHE_DIR is None, please set it such as export TRITON_KERNEL_CACHE_DIR=/tmp/haha "
+    generated_dir = f"{generated_dir}/{op_name}"
+    os.makedirs(generated_dir, exist_ok=True)
+
+    py_script_file = f"{generated_dir}/triton_kernels.py"
+    extract_triton_kernel(fused_adaLN_scale_residual_kernel, py_script_file)
+
+    op_dict = {"op_name": op_name, "reset_zero_when_tune": ""}
+    paddle_custom_op_file_path = f"{generated_dir}/{op_name}.cu"
+    so_path = find_so_path(generated_dir, python_package_name)
+
+    if so_path is None:
+        print("== we do not find so_path, we need to compile it")
+        with open(paddle_custom_op_file_path, "w") as f:
+            f.write(
+                SubstituteTemplate(fused_adaLN_scale_residual_template, op_dict)
+            )
+            f.close()
+
+        # ahead of time compile command.
+        aot_template = (
+            f"""{python_path}   {compile_file} {py_script_file}   -n fused_adaLN_scale_residual_kernel -o {generated_dir}/{op_name}_kernel --out-name {op_name}_kernel  """
+            + """ -s "{address_hint} {value_hint}  {BLOCK_SIZE}"   \
+                             -g "M, 1, 1" \
+                       """
+        )
+
+        codegen_command = aot_template.format(
+            address_hint=address_hint,
+            value_hint=value_hint,
+            BLOCK_SIZE=BLOCK_SIZE,
+        )
+        print(codegen_command)
+        re = os.system(codegen_command)
+        assert re == 0
+
+        link_command = f"{python_path}  {link_file}  {generated_dir}/*.h -o {generated_dir}/{op_name}_kernel"
+        re = os.system(link_command)
+        assert re == 0
+
+        # rename the .c file to .cu
+        rename_c_to_cu(generated_dir)
+        # build the package to so, not install
+        build_package(generated_dir, python_package_name)
+
+    if op_name not in OpProtoHolder.instance().op_proto_map.keys():
+        so_path = find_so_path(generated_dir, python_package_name)
+        print("== we find so_path: ", so_path)
+        assert so_path is not None
+        paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
+
+    if in_dynamic_or_pir_mode():
+        print(f"== we are in dynamic mode, op_name: {op_name}")
+        outs = _C_ops._run_custom_op(
+            op_name,
+            x,
+            mha_out,
+            gate_msa,
+            scale_mlp,
+            shift_mlp,
+            weight,
+            bias,
+            epsilon,
+        )
+        return outs[0], outs[1]
+    else:
+        print(f"== we are in dynamic to static mode, op_name: {op_name}")
+        helper = LayerHelper(op_name, **locals())
+        inputs = {
+            'x': x,
+            'mha_out': mha_out,
+            'gate_msa': gate_msa,
+            'scale_mlp': scale_mlp,
+            'shift_mlp': shift_mlp,
+            'weight@OPTIONAL': weight,
+            'bias@OPTIONAL': bias,
+        }
+        resi_out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        adaLN_out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type=op_name,
+            inputs=inputs,
+            attrs={
+                'epsilon': epsilon,
+            },
+            outputs={'resi_out': resi_out, 'adaLN_out': adaLN_out},
+        )
+        return resi_out, adaLN_out
+
+
+@triton.jit
 def adaptive_layer_norm_kernel(
     x_ptr,
     y_ptr,
@@ -451,20 +791,15 @@ def adaptive_layer_norm_kernel(
     x_ptr += row * N
     y_ptr += row * N
     # Compute mean
-    _mean = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
+    _sum = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
+    _sum_square = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
     for col_off in range(0, N, BLOCK_SIZE):
         cols = col_off + tl.arange(0, BLOCK_SIZE)
         eles = tl.load(x_ptr + cols, mask=cols < N, other=0.0).to(tl.float32)
-        _mean += eles
-    mean = tl.sum(_mean, axis=0) / N
-    # Compute variance
-    _var = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
-    for col_off in range(0, N, BLOCK_SIZE):
-        cols = col_off + tl.arange(0, BLOCK_SIZE)
-        eles = tl.load(x_ptr + cols, mask=cols < N, other=0.0).to(tl.float32)
-        eles = tl.where(cols < N, eles - mean, 0.0)
-        _var += eles * eles
-    var = tl.sum(_var, axis=0) / N
+        _sum += eles
+        _sum_square += eles * eles
+    mean = tl.sum(_sum, axis=0) / N
+    var = tl.sum(_sum_square, axis=0) / N - mean * mean
     rstd = 1 / tl.sqrt(var + epsilon)
     # Compute output
     scale_ptr += (row // seq_size) * N
