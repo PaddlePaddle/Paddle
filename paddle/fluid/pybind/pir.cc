@@ -82,7 +82,6 @@
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #endif
 
-namespace py = pybind11;
 using paddle::dialect::ApiBuilder;
 using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
