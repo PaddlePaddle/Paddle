@@ -659,8 +659,6 @@ TEST(test_tracer, eager_tracer) {
 }  // namespace imperative
 }  // namespace paddle
 
-USE_OP_ITSELF(matmul_with_flatten);
-USE_OP_ITSELF(matmul_with_flatten_grad);
 USE_OP_ITSELF(reduce_sum);
 USE_OP_ITSELF(reduce_sum_grad);
 USE_OP_ITSELF(elementwise_add);

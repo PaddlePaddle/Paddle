@@ -416,5 +416,3 @@ TEST(test_layer, test_eager) {
 
 }  // namespace imperative
 }  // namespace paddle
-
-USE_OP_ITSELF(matmul_with_flatten);
