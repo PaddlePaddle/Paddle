@@ -35,17 +35,6 @@ namespace cinn {
 namespace ir {
 namespace search {
 
-std::string IterSpace::ToString() const {
-  std::stringstream ss;
-  ss << "IterSpace: [";
-  for (const auto& dim : space) {
-    ss << dim.iter_type << "(" << dim.lower_bound << " - " << dim.upper_bound
-       << "), ";
-  }
-  ss << "]";
-  return ss.str();
-}
-
 std::shared_ptr<pir::PassManager> CreatePassManager() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
