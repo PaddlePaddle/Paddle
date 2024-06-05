@@ -391,6 +391,7 @@ def save_vars_pir(
                 save_path = os.path.join(os.path.normpath(dirname), filename)
 
             print("save_var_names", save_var_names)
+            print("save_to_memory", save_to_memory)
             core.save_combine_func(
                 save_var_list,
                 save_var_names,
