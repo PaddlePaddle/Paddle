@@ -13,9 +13,7 @@
 # limitations under the License.
 
 import os
-import sys
 
-sys.path.append("../../cpp_extension")
 from utils import paddle_includes
 
 from paddle.utils.cpp_extension import CppExtension, setup
