@@ -832,7 +832,6 @@ set -x
         fi
 set +x
         EXIT_CODE=0;
-
         tmpfile_rand=`date +%s%N`
         tmpfile=$tmp_dir/$tmpfile_rand
         get_quickly_disable_ut||disable_ut_quickly='disable_ut' # indicate whether the case was in quickly disable list
