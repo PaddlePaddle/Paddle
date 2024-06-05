@@ -57,7 +57,9 @@ class MLP(nn.Layer):
         weight_attr_0 = create_numpy_like_random(param_prefix + "_0")
         weight_attr_1 = create_numpy_like_random(param_prefix + "_1")
 
-        self.linear_0 = nn.Linear(IMAGE_SIZE, IMAGE_SIZE, weight_attr_0)
+        self.linear_0 = nn.Linear(
+            IMAGE_SIZE * BATCH_SIZE, IMAGE_SIZE, weight_attr_0
+        )
         self.linear_1 = nn.Linear(IMAGE_SIZE, CLASS_NUM, weight_attr_1)
         if shard_weight:
             self.linear_0.weight = dist.shard_tensor(
@@ -129,14 +131,8 @@ class TestStaticReshard(unittest.TestCase):
         return loader
 
     def test_reshard_mesh(self):
-        mesh0 = dist.ProcessMesh(
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-            dim_names=["x"],
-        )
-        mesh1 = dist.ProcessMesh(
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-            dim_names=["x"],
-        )
+        mesh0 = dist.ProcessMesh([0], dim_names=["x"])
+        mesh1 = dist.ProcessMesh([1], dim_names=["x"])
 
         dy2static_layer = DemoNetPP(mesh0, mesh1)
 
