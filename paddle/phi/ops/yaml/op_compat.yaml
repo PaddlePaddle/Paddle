@@ -4287,8 +4287,8 @@
     x : X
   outputs:
     {out : Out, max_index : MaxIndex}
-  extra :
-    attrs : [bool is_test = false]
+  extra:
+    attrs: [is_test]
 
 - op: set_value
   backward: set_value_grad
