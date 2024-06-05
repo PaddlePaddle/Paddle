@@ -14,17 +14,11 @@
 
 #include "paddle/fluid/framework/ir/memory_optimize_pass/op_graph_view.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 class OpHandleBase;
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 OpGraphView::OpGraphView(const std::vector<details::OpHandleBase *> &ops)
     : preceding_ops_(), pending_ops_() {
@@ -94,6 +88,4 @@ OpGraphView::GetPrecedingDepNum() const {
 
 size_t OpGraphView::OpNumber() const { return preceding_ops_.size(); }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

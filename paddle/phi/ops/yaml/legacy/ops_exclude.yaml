@@ -21,7 +21,6 @@
 - c_reduce_sum
 - c_sync_calc_stream
 - c_sync_comm_stream
-- channel_shuffle
 - conv2d_transpose
 - conv2d_transpose_bias
 - copy_to
@@ -74,7 +73,6 @@
 - repeat_interleave
 - repeat_interleave_with_tensor_index
 - rnn
-- rrelu
 - sequence_mask
 - set_value_with_tensor
 - slice

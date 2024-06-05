@@ -58,6 +58,7 @@ from .parallelizer_v2 import Parallelizer
 from .pir_pass import (
     apply_partition_pass,
     apply_reshard_pass,
+    remove_other_rank_op_pass,
     remove_unuseful_comm_op_pass,
 )
 from .planner_v2 import Planner
@@ -695,6 +696,8 @@ class Engine:
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
         apply_reshard_pass(dist_program)
+
+        remove_other_rank_op_pass(dist_program)
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
