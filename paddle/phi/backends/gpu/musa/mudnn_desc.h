@@ -88,7 +88,8 @@ class TensorDescriptor {
       strides[i] = dims[i + 1] * strides[i + 1];
     }
     desc_->SetType(ToCudnnDataType(tensor.dtype()));
-    desc_->SetNdInfo(static_cast<int>(dims.size()), dims.data(), strides.data());
+    desc_->SetNdInfo(
+        static_cast<int>(dims.size()), dims.data(), strides.data());
     desc_->SetAddr(tensor.data());
   }
 
@@ -101,7 +102,8 @@ class TensorDescriptor {
       strides[i] = dims[i + 1] * strides[i + 1];
     }
     desc_->SetType(ToCudnnDataType(tensor.dtype()));
-    desc_->SetNdInfo(static_cast<int>(dims.size()), dims.data(), strides.data());
+    desc_->SetNdInfo(
+        static_cast<int>(dims.size()), dims.data(), strides.data());
     desc_->SetAddr(data);
   }
 
@@ -117,7 +119,8 @@ class TensorDescriptor {
     }
     desc_->SetFormat(format);
     desc_->SetType(dtype);
-    desc_->SetNdInfo(static_cast<int>(transformed_dims.size()), transformed_dims.data());
+    desc_->SetNdInfo(static_cast<int>(transformed_dims.size()),
+                     transformed_dims.data());
   }
 
   void set(const phi::DenseTensor& tensor,
@@ -155,7 +158,8 @@ class FilterDescriptor {
     }
     desc_->SetFormat(format);
     desc_->SetType(dtype);
-    desc_->SetNdInfo(static_cast<int>(transformed_dims.size()), transformed_dims.data());
+    desc_->SetNdInfo(static_cast<int>(transformed_dims.size()),
+                     transformed_dims.data());
   }
 
   void set(const phi::DenseTensor& tensor,
@@ -187,7 +191,11 @@ class ConvolutionDescriptor {
     allow_tf32_ = allow_tf32;
     desc_->SetNdInfo(
         pads.size(), pads.data(), strides.data(), dilations.data());
-    desc_->SetComputeMode(dynload::Convolution::ComputeMode::TENSOR);
+    if (allow_tf32_) {
+      desc_->SetComputeMode(dynload::Convolution::ComputeMode::TENSOR);
+    } else {
+      desc_->SetComputeMode(dynload::Convolution::ComputeMode::SCALAR);
+    }
     desc_->SetGroups(groups);
   }
 

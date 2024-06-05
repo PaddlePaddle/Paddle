@@ -25,7 +25,11 @@ namespace phi {
 bool allow_tf32_cublas = true;
 void SetAllowTF32Cublas(bool active) { allow_tf32_cublas = active; }
 bool AllowTF32Cublas() { return allow_tf32_cublas; }
+#if defined (PADDLE_WITH_MUSA)
+bool allow_tf32_cudnn = false;
+#else
 bool allow_tf32_cudnn = true;
+#endif
 void SetAllowTF32Cudnn(bool active) { allow_tf32_cudnn = active; }
 bool AllowTF32Cudnn() { return allow_tf32_cudnn; }
 #endif  // PADDLE_WITH_CUDA
