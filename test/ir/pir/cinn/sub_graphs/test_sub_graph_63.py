@@ -15,11 +15,9 @@
 # repo: PaddleDetection
 # model: configs^cascade_rcnn^cascade_rcnn_r50_fpn_1x_coco_single_dy2st_train
 # api:paddle.tensor.manipulation.gather||api:paddle.tensor.manipulation.gather||method:cast||api:paddle.nn.functional.loss.binary_cross_entropy_with_logits||api:paddle.tensor.manipulation.gather||api:paddle.tensor.manipulation.concat||api:paddle.tensor.manipulation.gather||method:__sub__||api:paddle.tensor.abs||method:sum||method:__truediv__||method:__truediv__
-import unittest
+from base import *  # noqa: F403
 
-import numpy as np
-
-import paddle
+from paddle.static import InputSpec
 
 
 class LayerCase(paddle.nn.Layer):
@@ -52,8 +50,43 @@ class LayerCase(paddle.nn.Layer):
         return var_16, var_17
 
 
-class TestLayer(unittest.TestCase):
-    def setUp(self):
+class TestLayer(TestBase):
+    def init(self):
+        self.input_specs = [
+            InputSpec(
+                shape=(-1,),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, 1),
+                dtype=paddle.int64,
+                name=None,
+                stop_gradient=True,
+            ),
+            InputSpec(
+                shape=(-1,), dtype=paddle.int32, name=None, stop_gradient=True
+            ),
+            InputSpec(
+                shape=(-1, 1),
+                dtype=paddle.int64,
+                name=None,
+                stop_gradient=True,
+            ),
+            InputSpec(
+                shape=(-1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            ),
+        ]
         self.inputs = (
             paddle.rand(shape=[171888], dtype=paddle.float32),
             paddle.randint(low=0, high=10, shape=[256, 1], dtype=paddle.int64),
@@ -62,34 +95,12 @@ class TestLayer(unittest.TestCase):
             paddle.rand(shape=[171888, 4], dtype=paddle.float32),
             paddle.rand(shape=[171888, 4], dtype=paddle.float32),
         )
-        self.net = LayerCase()
+        self.net = LayerCase
+        self.with_train = False
 
-    def train(self, net, to_static, with_prim=False, with_cinn=False):
-        if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
-            if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
-            else:
-                net = paddle.jit.to_static(net, full_graph=True)
-        paddle.seed(123)
-        outs = net(*self.inputs)
-        return outs
-
-    def test_ast_prim_cinn(self):
-        # TODO(Aurelius84): deny cinn_op.gather
+    def set_flags(self):
+        # NOTE(Aurelius84): cinn_op.pool2d only support pool_type='avg' under adaptive=True
         paddle.set_flags({"FLAGS_deny_cinn_ops": "gather"})
-        st_out = self.train(self.net, to_static=True)
-        cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=True
-        )
-        for st, cinn in zip(
-            paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
-        ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
 
 
 if __name__ == '__main__':

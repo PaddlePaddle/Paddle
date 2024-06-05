@@ -26,9 +26,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy,
@@ -41,8 +39,15 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       local_exec_scopes_(local_exec_scopes),
       places_(places),
       graph_(graph),
+      op_deps_(),
+      bootstrap_ops_(),
+      fetch_ctxs_(),
+      remaining_(0),
+      atomic_op_deps_(),
+      pool_(nullptr),
       // add one more thread for generate op_deps
-      prepare_pool_(1) {
+      prepare_pool_(1),
+      traced_ops_() {
   platform::EmplaceDeviceContexts(
       &fetch_ctxs_,
       places,
@@ -383,6 +388,4 @@ bool FastThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
   }
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

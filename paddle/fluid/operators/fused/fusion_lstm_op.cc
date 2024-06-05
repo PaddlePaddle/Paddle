@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fusion_lstm");
@@ -567,8 +566,7 @@ class FusionLSTMKernel : public framework::OpKernel<T> {
 #undef INIT_BASE_DEFINES
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_lstm, ops::FusionLSTMOp, ops::FusionLSTMOpMaker);

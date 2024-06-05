@@ -34,8 +34,7 @@
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
 
-namespace paddle {
-namespace inference {
+namespace paddle::inference {
 
 template <>
 std::string to_string<std::vector<float>>(
@@ -446,5 +445,4 @@ void InitGflagsFromEnv() {
   framework::InitGflags(gflags);
 }
 
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference

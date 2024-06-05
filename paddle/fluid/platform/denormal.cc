@@ -38,8 +38,7 @@
 #include <pmmintrin.h>
 #endif
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 static void SetDenormalState(bool flush_zero_mode, bool denormals_zero_mode) {
 #ifdef DENORM_USE_INTRINSICS
@@ -70,7 +69,8 @@ static std::pair<bool, bool> GetDenormalState() {
   return {false, false};
 }
 
-ScopedRestoreFlushDenormalState::ScopedRestoreFlushDenormalState() {
+ScopedRestoreFlushDenormalState::ScopedRestoreFlushDenormalState()
+    : flush_zero_mode_(false), denormals_zero_mode_(false) {
   std::tie(flush_zero_mode_, denormals_zero_mode_) = GetDenormalState();
 }
 
@@ -79,5 +79,4 @@ ScopedRestoreFlushDenormalState::~ScopedRestoreFlushDenormalState() {
 }
 
 ScopedFlushDenormal::ScopedFlushDenormal() { SetDenormalState(true, true); }
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

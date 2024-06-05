@@ -81,7 +81,7 @@ static PyObject *static_api_set_parameter(PyObject *self,
   }
 }
 
-static PyObject *static_api_updata_parameter(PyObject *self,
+static PyObject *static_api_update_parameter(PyObject *self,
                                              PyObject *args,
                                              PyObject *kwargs) {
   try {
@@ -98,7 +98,7 @@ static PyObject *static_api_updata_parameter(PyObject *self,
     // Call ir static api
     CallStackRecorder callstack_recoder("uodata_parameter");
     callstack_recoder.Record();
-    paddle::dialect::updata_parameter(parameter, name);
+    paddle::dialect::update_parameter(parameter, name);
     callstack_recoder.AttachToOps();
     Py_RETURN_NONE;
   } catch (...) {
@@ -975,10 +975,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_set_parameter,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for set_parameter."},
-    {"updata_parameter",
-     (PyCFunction)(void (*)(void))static_api_updata_parameter,
+    {"update_parameter",
+     (PyCFunction)(void (*)(void))static_api_update_parameter,
      METH_VARARGS | METH_KEYWORDS,
-     "C++ interface function for updata_parameter."},
+     "C++ interface function for update_parameter."},
     {"set_persistable_value",
      (PyCFunction)(void (*)(void))static_api_set_persistable_value,
      METH_VARARGS | METH_KEYWORDS,

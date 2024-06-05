@@ -16,12 +16,12 @@ ENV HOME /root
 RUN apt-get update && \
     apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa && \
     apt-get update && \
-    apt-get install -y curl wget vim git unzip unrar tar xz-utils bzip2 gzip \ 
+    apt-get install -y curl wget vim git unzip unrar tar xz-utils bzip2 gzip \
         coreutils ntp language-pack-zh-hans python-qt4 libsm6 libxext6 libxrender-dev
 
 
 # Downgrade gcc&&g++
-WORKDIR /usr/bin 
+WORKDIR /usr/bin
 RUN apt-get update --fix-missing
 COPY script_build /script_build
 RUN bash /script_build/install_gcc.sh gcc82 && rm -rf /script_build && \
@@ -30,7 +30,7 @@ RUN bash /script_build/install_gcc.sh gcc82 && rm -rf /script_build && \
     ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ && \
     ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc && \
     ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++
-ENV PATH=/usr/local/gcc-8.2/bin:$PATH 
+ENV PATH=/usr/local/gcc-8.2/bin:$PATH
 
 RUN apt-get update && \
     apt-get install -y python3.6 python3.6-dev python3.6-venv && \
@@ -43,8 +43,8 @@ RUN wget -q https://cmake.org/files/v3.20/cmake-3.20.0-linux-x86_64.tar.gz && ta
 ENV PATH=/home/cmake-3.20.0-linux-x86_64/bin:$PATH
 
 # remove them when apt-get support 2.27 and higher version
-RUN wget -q https://ftp.gnu.org/gnu/binutils/binutils-2.33.1.tar.gz && \ 
-    tar -xzf binutils-2.33.1.tar.gz && \ 
+RUN wget -q https://ftp.gnu.org/gnu/binutils/binutils-2.33.1.tar.gz && \
+    tar -xzf binutils-2.33.1.tar.gz && \
     cd binutils-2.33.1 && \
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.33.1 binutils-2.33.1.tar.gz
 
@@ -99,7 +99,7 @@ RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
     make -j8 && make install && \
     ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
 
-# For CINN environment 
+# For CINN environment
 RUN apt update --fix-missing && \
     apt install autoconf autogen libtool zlib1g-dev sudo libginac-dev clang cmake -y && \
     apt remove python3-six python-six -y && \
