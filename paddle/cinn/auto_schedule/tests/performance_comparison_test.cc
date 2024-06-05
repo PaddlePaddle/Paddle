@@ -32,8 +32,8 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/data_util.h"
+#include "paddle/common/enforce.h"
 #include "test/cpp/cinn/program_builder.h"
-
 /* This test is used as a tool to evaluate or compare performance of 3
  * schedules(no schedule, manual schedule, auto-schedule). One can specify which
  * schedules to be evaluated through `FLAGS_evaluate_knobs` and specify which
@@ -355,7 +355,10 @@ TEST_F(PerformanceTester, Gather) {
 
 // paddle model test
 TEST_F(PerformanceTester, ResNet50) {
-  CHECK_NE(FLAGS_resnet50_model_dir, "");
+  PADDLE_ENFORCE_NE(FLAGS_resnet50_model_dir,
+                    "",
+                    phi::errors::InvalidArgument(
+                        "The FLAGS_resnet50_model's dir should not be empty."));
   FLAGS_cinn_infer_model_version = 1.0;
   std::unordered_map<std::string, std::vector<int64_t>> feeds = {
       {"inputs", {batch_size, 3, 224, 224}}};

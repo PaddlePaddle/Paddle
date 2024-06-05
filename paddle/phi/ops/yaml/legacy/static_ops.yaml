@@ -699,6 +699,14 @@
     func : swish
   backward : swish_grad
 
+- op : transfer_layout
+  args: (Tensor x, int src_layout = -1, int dst_layout=-1)
+  output: Tensor (out)
+  infer_meta:
+    func: TransferLayoutInferMeta
+  kernel:
+    func: transfer_layout
+
 - op : tril_indices
   args : (int rows = 0, int cols = 0, int offset = 0, DataType dtype = DataType::INT64)
   output : Tensor(out)

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.18)
 
 if(NOT DEFINED PYTHON_EXECUTABLE)
   message(

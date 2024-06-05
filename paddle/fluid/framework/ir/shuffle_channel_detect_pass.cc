@@ -18,9 +18,7 @@
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES             \
@@ -230,9 +228,7 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(shuffle_channel_detect_pass,
               paddle::framework::ir::ShuffleChannelDetectPass);

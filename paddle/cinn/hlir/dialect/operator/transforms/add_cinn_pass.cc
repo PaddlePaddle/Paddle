@@ -57,6 +57,7 @@ COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(disable_dyshape_in_train);
 COMMON_DECLARE_bool(enable_cinn_accuracy_check);
 COMMON_DECLARE_bool(enable_fuse_parallel_matmul_pass);
+COMMON_DECLARE_bool(logging_pir_py_code_dump_symbolic_dims);
 PD_DECLARE_bool(group_schedule_tiling_first);
 
 namespace cinn::dialect::ir {
@@ -229,7 +230,7 @@ void ApplyCinnPass(::pir::Program* program,
                        CreatePassManager) {
   PirToPyCodeConverter(program)
       .file_name("original_programs.py")
-      .dump_symbolic_shape(false)
+      .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
       .SaveIfFlagEnabled();
   ApplyPdToCinnPass(program, CreatePassManager);
   ApplyCinnPreprocessPass(program, CreatePassManager);

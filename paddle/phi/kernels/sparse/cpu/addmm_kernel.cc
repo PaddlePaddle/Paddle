@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 /* DENSE + COO @ DENSE -> DENSE */
 template <typename T, typename Context>
@@ -45,8 +44,7 @@ void AddmmCsrDenseKernel(const Context& dev_ctx UNUSED,
       "Not support CPU kernel of 'sparse.addmm' now."));
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(addmm_coo_dense,
                    CPU,
