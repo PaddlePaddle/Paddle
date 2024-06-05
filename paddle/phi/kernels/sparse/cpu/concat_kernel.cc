@@ -129,14 +129,13 @@ void ConcatCsr3D1A(const std::vector<const phi::SparseCsrTensor*>& x,
   std::vector<int64_t> values_index(num_split + 1, 0);
   auto cpu_place = dev_ctx.GetPlace();
   for (size_t b = 0; b < batch; b++) {
-    // 针对每一轮batch的初始化
     out_crows_data[crow_index] = 0;
     crow_index++;
     cumulative_offset = 0;
 
     for (size_t i = 0; i < num_split; i++) {
       const int64_t* x_crows_ptr = x[i]->crows().data<int64_t>();
-      // crows_numel[i] == 第i组的row+1
+      // nnz for batch and in tensor
       int64_t x_crows_nnz = x_crows_ptr[(b + 1) * (crows_numel[i]) - 1];
       now_crows_ptr = crows_data_vec[i] + b * crows_numel[i];
       now_value_ptr = values_data_vec[i] + values_index[i];
@@ -144,7 +143,6 @@ void ConcatCsr3D1A(const std::vector<const phi::SparseCsrTensor*>& x,
       values_index[i] += x_crows_nnz;
 
       if (x_crows_nnz) {
-        // nnz == 0 的特殊情况,此时out_values_data指针很可能是错误的
         memory_utils::Copy(cpu_place,
                            out_values_data + value_offset,
                            cpu_place,
@@ -229,7 +227,6 @@ void ConcatCsr2D1A(const std::vector<const phi::SparseCsrTensor*>& x,
     for (size_t i = 0; i < num_split; i++) {
       for (int64_t k = 0; k < crows_data_vec[i][j] - crows_data_vec[i][j - 1];
            k++) {
-        // 针对col需要添加之前的列数作为额外的offset
         out_cols_data[out_index] =
             cols_data_vec[i][offset_vec[i]] + column_offset;
         out_values_data[out_index] = values_data_vec[i][offset_vec[i]];

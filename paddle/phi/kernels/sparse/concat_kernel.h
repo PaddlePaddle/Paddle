@@ -31,7 +31,7 @@
 
 namespace phi {
 namespace sparse {
-
+// This Functor is based on DenseTensor's concat
 template <typename T, typename Context>
 void ConcatFunctor(const Context& context,
                    const std::vector<phi::DenseTensor>& x,
@@ -57,6 +57,8 @@ void ConcatFunctor(const Context& context,
       output_offset += in_stride[axis];
     }
   } else {
+    // TODO(bapijun) use a std::vector<DenseTensor *> to optimize the
+    // concat_functor
     phi::funcs::ConcatFunctor<Context, T> functor;
     functor(context, x, axis, out);
   }

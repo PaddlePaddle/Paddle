@@ -40,16 +40,9 @@ void ConcatCooGradKernel(const Context& dev_ctx,
   axis = phi::funcs::ComputeAxis(static_cast<int64_t>(axis),
                                  static_cast<int64_t>(x[0]->dims().size()));
   const size_t num_split = x_grad.size();
-  // get output tensor that the name is not kEmptyVarName
   for (size_t i = 0; i < num_split; i++) {
     if (x_grad[i] && x_grad[i]->numel() != 0UL) {
-      // 不需要处理 crows和cols,在empty中会处理这里的复制
-      // 另外value的长度也会在这里处理
-
-      // DenseTensor* out_values = x_grad[i]->mutable_values();
-
-      // x_grad[i]->set_meta(x[i]->meta());
-      // dev_ctx.template Alloc<T>(out_values);
+      // Handle of cols
       EmptyLikeCooKernel<T, Context>(dev_ctx, *x[i], x_grad[i]);
 
     } else {
@@ -81,8 +74,7 @@ void ConcatCsrGradKernel(const Context& dev_ctx,
   const size_t num_split = x_grad.size();
   for (size_t i = 0; i < num_split; i++) {
     if (x_grad[i] && x_grad[i]->numel() != 0UL) {
-      // 不需要处理 crows和cols,在empty中会处理这里的复制
-      // 另外value的长度也会在这里处理
+      // Handle of crows and cols
       EmptyLikeCsrKernel<T, Context>(dev_ctx, *x[i], x_grad[i]);
 
     } else {
@@ -99,7 +91,6 @@ void ConcatCsrGradKernel(const Context& dev_ctx,
                                    "equal to 0, but received axis is %d.",
                                    axis));
   int64_t cumulative_offset = 0;
-  // TODO(bapijun) 如果有了split的函数可以进行替换
   for (size_t i = 0; i < num_split; ++i) {
     phi::sparse::SliceCsrKernel<T, Context>(
         dev_ctx,
@@ -111,7 +102,7 @@ void ConcatCsrGradKernel(const Context& dev_ctx,
     cumulative_offset += x[i]->dims()[axis];
   }
 }
-// CSR grad 可以参考element 那一段
+
 }  // namespace sparse
 }  // namespace phi
 
