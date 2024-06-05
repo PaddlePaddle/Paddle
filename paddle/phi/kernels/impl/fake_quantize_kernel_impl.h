@@ -230,16 +230,17 @@ void FakeQuantizeDequantizeAbsMaxKernel(const Context &dev_ctx,
 }
 
 template <typename T, typename Context>
-void MovingAverageAbsMaxScaleKernel(const Context &dev_ctx,
-                                    const DenseTensor &x,
-                                    const DenseTensor &in_accum,
-                                    const DenseTensor &in_state,
-                                    float moving_rate,
-                                    bool is_test,
-                                    DenseTensor *out,
-                                    DenseTensor *out_scale,
-                                    DenseTensor *out_state,
-                                    DenseTensor *out_accum) {
+void MovingAverageAbsMaxScaleKernel(
+    const Context &dev_ctx,
+    const DenseTensor &x,
+    const paddle::optional<DenseTensor> &in_accum,
+    const paddle::optional<DenseTensor> &in_state,
+    float moving_rate,
+    bool is_test,
+    DenseTensor *out,
+    DenseTensor *out_scale,
+    DenseTensor *out_state,
+    DenseTensor *out_accum) {
   dev_ctx.template Alloc<T>(out);
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), true, out);
   // testing
