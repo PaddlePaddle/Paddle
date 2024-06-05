@@ -307,7 +307,7 @@ static int64_t get_l3_size(int i) {
 
 XPUContext::XPUContext() : DeviceContext() {
   if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
-    int default_num_stream = 4;
+    int default_num_stream = 2;
     if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL_STREAM_NUMBER") != nullptr) {
       default_num_stream =
           atoi(std::getenv("XPU_CDNN_CLUSTER_PARALLEL_STREAM_NUMBER"));
