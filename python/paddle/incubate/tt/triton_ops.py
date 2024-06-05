@@ -514,8 +514,8 @@ std::vector<paddle::Tensor> ${op_name}_func(
   int M = x.dims()[0] * x.dims()[1];
   int N = x.dims()[2];
   int seq_size = x.dims()[1];
-  auto resi_out = paddle::full(x.shape(), 0, x.dtype(), x.place());
-  auto adaLN_out = paddle::full(x.shape(), 0, x.dtype(), x.place());
+  auto resi_out = paddle::empty(x.shape(), x.dtype(), x.place());
+  auto adaLN_out = paddle::empty(x.shape(), x.dtype(), x.place());
 
   auto dev_x = get_tensor_ptr(x);
   auto dev_mha_out = get_tensor_ptr(mha_out);
@@ -835,7 +835,7 @@ std::vector<paddle::Tensor> ${op_name}_func(
   int M = x.dims()[0] * x.dims()[1];
   int N = x.dims()[2];
   int seq_size = x.dims()[1];
-  auto y = paddle::full(x.shape(), 0, x.dtype(), x.place());
+  auto y = paddle::empty(x.shape(), x.dtype(), x.place());
 
   auto dev_x = get_tensor_ptr(x);
   auto dev_y = get_tensor_ptr(y);
