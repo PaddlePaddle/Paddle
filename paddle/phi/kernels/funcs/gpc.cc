@@ -28,8 +28,7 @@
 
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 typedef struct lmt_shape { /* Local minima table                */
   double y;                /* Y coordinate at local minimum     */
@@ -2263,5 +2262,4 @@ void gpc_tristrip_clip(gpc_op op,
   gpc_free<double>(sbt);
 }  // NOLINT
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

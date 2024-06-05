@@ -19,11 +19,9 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;

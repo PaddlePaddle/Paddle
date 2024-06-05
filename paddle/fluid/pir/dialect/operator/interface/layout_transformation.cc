@@ -22,8 +22,7 @@
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/pass/utils.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 template <typename ConcreteOp>
 void RewriteByInfermeta(pir::Operation* op, common::DataLayout new_layout) {
@@ -410,6 +409,5 @@ void RewriteByLayoutImpl<SwishOp>(pir::Operation* op,
   RewriteByInfermeta<SwishOp>(op, new_layout);
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::LayoutTransformationInterface)

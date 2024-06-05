@@ -18,9 +18,7 @@
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 QuantDequantFusePass::QuantDequantFusePass() {
   AddOpCompat(OpCompat("fake_quantize_range_abs_max"))
       .AddInput("X")
@@ -625,9 +623,7 @@ void QuantDequantFusePass::ApplyImpl(ir::Graph* graph) const {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(quant_conv2d_dequant_fuse_pass,
               paddle::framework::ir::QuantDequantFusePass);
