@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.sparse
 
-devices = ['cpu']
+devices = ['cpu', 'gpu']
 
 
 class TestSparseUnary(unittest.TestCase):
@@ -40,7 +40,6 @@ class TestSparseUnary(unittest.TestCase):
         format,
         shape,
         axis,
-        device='cpu',
         dtype='float64',
     ):
         x = self.generate_data(dtype, shape[0])
@@ -48,13 +47,13 @@ class TestSparseUnary(unittest.TestCase):
 
         # --- check sparse coo with dense --- #
         dense_x = x['origin'] * x['mask']
-        dense_x.to(device)
+
         sp_x = self.to_sparse(dense_x, format)
         sp_x.stop_gradient = False
         dense_x.stop_gradient = False
 
         dense_y = y['origin'] * y['mask']
-        dense_y.to(device)
+
         sp_y = self.to_sparse(dense_y, format)
         sp_y.stop_gradient = False
         dense_y.stop_gradient = False
@@ -75,15 +74,19 @@ class TestSparseUnary(unittest.TestCase):
         np.testing.assert_allclose(
             sp_x.grad.to_dense().numpy(), expect_grad, rtol=1e-05
         )
+        # compare backward
+        expect_grad_y = (dense_y.grad * y['mask']).numpy()
+        np.testing.assert_allclose(
+            sp_y.grad.to_dense().numpy(), expect_grad_y, rtol=1e-05
+        )
 
     def compare_with_dense(self, shape, axis, format, dtype='float64'):
         for device in devices:
-            # The sparse unary op is only compatible with float16 on the CUDA.
-            if (device == 'cpu' and dtype != 'float16') or (
+            if device == 'cpu' or (
                 device == 'gpu' and paddle.is_compiled_with_cuda()
             ):
-                self.check_result(format, shape, axis, device, dtype)
-                self.check_result(format, shape, axis, device, dtype)
+                paddle.device.set_device(device)
+                self.check_result(format, shape, axis, dtype)
 
     def test_sparse_concat(self):
         self.compare_with_dense([[3, 4, 5], [3, 5, 5]], 1, 'coo', 'float64')
