@@ -106,3 +106,7 @@ paddle/phi/kernels/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen_tmp/*
 paddle/fluid/pybind/static_op_function.*
 paddle/fluid/pybind/ops_api.cc
 python/paddle/tensor/tensor.pyi
+paddle/phi/kernels/fusion/cutlass/conv2d/build
+paddle/phi/kernels/fusion/cutlass/conv2d/cutlass
+paddle/phi/kernels/fusion/cutlass/gemm_epilogue/build
+paddle/phi/kernels/fusion/cutlass/gemm_epilogue/cutlass
