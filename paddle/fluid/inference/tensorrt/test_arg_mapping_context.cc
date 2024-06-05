@@ -17,9 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/inference/tensorrt/plugin_arg_mapping_context.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 TEST(ArgMappingContextTest, BasicFunction) {
   paddle::framework::proto::OpDesc op;
@@ -123,6 +121,4 @@ TEST(ArgMappingContextTest, BasicFunction) {
   EXPECT_EQ(context.IsDenseTensorOutput("Out"), true);
 }
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt

@@ -28,9 +28,7 @@ COMMON_DECLARE_bool(use_mkldnn);
 PD_DECLARE_bool(use_cinn);
 #endif
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
   // Should fix the allreduce op order if scheduling
@@ -503,9 +501,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
   return graph;
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details
 
 USE_PASS(sync_batch_norm_pass);
 USE_PASS(fuse_relu_depthwise_conv_pass);

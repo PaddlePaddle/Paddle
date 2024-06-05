@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 /*
  * All tensors' dimension should be the same and the values of
@@ -132,5 +131,4 @@ struct SplitFunctor<phi::CPUContext, T> {
 
 FOR_ALL_TYPES(DEFINE_FUNCTOR);
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

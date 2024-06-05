@@ -321,6 +321,14 @@
   backward : assign_out__grad
   traits : pir::SideEffectTrait
 
+- op : assign_pos
+  args : (Tensor x, Tensor cum_count, Tensor eff_num_len)
+  output : Tensor(out)
+  infer_meta :
+    func : AssignPosInferMeta
+  kernel :
+    func : assign_pos
+
 - op : assign_value_
   args : (Tensor output, int[] shape, DataType dtype, Scalar[] values, Place place = {})
   output : Tensor(out)
@@ -760,6 +768,7 @@
   kernel :
     func : class_center_sample
     data_type : label
+  traits : pir::SideEffectTrait
 
 - op : clip
   args : (Tensor x, Scalar(float) min, Scalar(float) max)
@@ -1052,6 +1061,15 @@
     backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : decayed_adagrad
+  args : (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, float decay = 0.95f, float epsilon = 1.0e-6f)
+  output : Tensor(param_out), Tensor(moment_out)
+  infer_meta :
+    func : DecayedAdagradInferMeta
+  kernel :
+    func : decayed_adagrad
+    data_type : param
+
 - op : decode_jpeg
   args : (Tensor x, str mode, Place place)
   output : Tensor(out)
@@ -1262,6 +1280,7 @@
   optional : seed_tensor
   intermediate : mask
   backward : dropout_grad
+  traits : pir::SideEffectTrait
 
 - op : edit_distance
   args : (Tensor hyps, Tensor refs, Tensor hypslength, Tensor refslength, bool normalized = false)
@@ -1672,6 +1691,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : FlattenWithXShapeInferMeta
+    spmd_rule : FlattenInferSpmd
   kernel :
     func : flatten
     data_type : x
@@ -2658,6 +2678,20 @@
   backward : logsumexp_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : lstm
+  args: (Tensor input, Tensor h0, Tensor c0, Tensor weight, Tensor bias, bool use_peepholes
+    = true, bool is_reverse = false, bool is_test = false, str gate_activation = "sigmoid",
+    str cell_activation = "tanh", str candidate_activation = "tanh")
+  output: Tensor (hidden), Tensor (cell), Tensor (batch_gate), Tensor (batch_cell_pre_act)
+  infer_meta:
+    func: LSTMInferMeta
+  kernel:
+    func: lstm
+    data_type: input
+  optional: h0, c0
+  intermediate: batch_gate, batch_cell_pre_act
+  backward: lstm_grad
+
 - op : lstsq
   args : (Tensor x, Tensor y, Scalar rcond=0.0f, str driver="gels")
   output : Tensor(solution), Tensor(residuals), Tensor(rank), Tensor(singular_values)
@@ -3255,6 +3289,15 @@
   backward : prod_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : prune_gate_by_capacity
+  args : (Tensor gate_idx, Tensor expert_count, int64_t n_expert=0, int64_t n_worker=0)
+  output : Tensor(out_gate_idx)
+  infer_meta :
+    func : PruneGateByCapacityInferMeta
+  kernel :
+    func : prune_gate_by_capacity
+    data_type : gate_idx
+
 - op : psroi_pool
   args : (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, int output_channels=1, float spatial_scale=1.0)
   output : Tensor
@@ -3584,7 +3627,7 @@
   traits : pir::SideEffectTrait
 
 - op : rrelu
-  args : (Tensor x, float lower, float upper, bool is_test)
+  args : (Tensor x, float lower=1.0f/8, float upper=1.0f/3, bool is_test=false)
   output : Tensor(out), Tensor(noise)
   infer_meta :
     func : RReluInferMeta
@@ -3775,6 +3818,19 @@
     func : ShardIndexInferMeta
   kernel :
     func : shard_index
+
+- op : shuffle_batch
+  args : (Tensor x, Tensor seed, int startup_seed=0)
+  output : Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
+  infer_meta:
+     func: ShuffleBatchInferMeta
+  kernel:
+     func: shuffle_batch
+     data_type: x
+  backward : shuffle_batch_grad
+  traits : pir::SideEffectTrait
+  data_transform :
+    skip_transform : seed
 
 - op : shuffle_channel
   args : (Tensor x, int group = 1)
@@ -4148,6 +4204,25 @@
     func : tanh_shrink
   backward : tanh_shrink_grad
 
+- op : tdm_child
+  args: (Tensor x, Tensor tree_info, int child_nums, DataType dtype = DataType::INT32)
+  output: Tensor (child), Tensor (leaf_mask)
+  infer_meta:
+    func: TdmChildInferMeta
+  kernel:
+    func: tdm_child
+    data_type: x
+
+- op : tdm_sampler
+  args: (Tensor x, Tensor travel, Tensor layer, bool output_positive=true, int[] neg_samples_num_list={}, int[] layer_offset_lod={}, int seed = 0, int dtype=2)
+  output: Tensor(out), Tensor(labels), Tensor(mask)
+  infer_meta:
+    func : TdmSamplerInferMeta
+  kernel:
+    func : tdm_sampler
+    data_type : x
+  optional : labels
+
 - op : temporal_shift
   args : (Tensor x, int seg_num, float shift_ratio = 0.25f, str data_format = "NCHW")
   output : Tensor(out)
@@ -4374,6 +4449,7 @@
     data_type: x
   inplace: (x -> out)
   backward: uniform_inplace_grad
+  traits : pir::SideEffectTrait
 
 - op : uniform_random_batch_size_like
   args: (Tensor input, int[] shape, int input_dim_idx = 0, int output_dim_idx = 0,
@@ -4386,6 +4462,7 @@
            uniform_random_batch_size_like_sr {selected_rows -> selected_rows}
     data_type: dtype
   no_need_buffer: input
+  traits : pir::SideEffectTrait
 
 - op : unique_consecutive
   args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, DataType dtype = DataType::FLOAT32)
@@ -4631,3 +4708,12 @@
     func: MoeInferMeta
   kernel:
     func: moe
+
+- op: number_count
+  args: (Tensor numbers, int upper_range)
+  output: Tensor(out)
+  infer_meta:
+     func: NumberCountInferMeta
+  kernel:
+     func: number_count
+     data_type: numbers

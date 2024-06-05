@@ -24,6 +24,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/framework/pir/compilation_task.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/cinn/utils/data_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -34,6 +35,7 @@
 
 PD_DECLARE_bool(cinn_bucket_compile);
 
+using cinn::hlir::framework::pir::CompatibleInfo;
 using cinn::hlir::framework::pir::OpLoweringGroup;
 using cinn::hlir::framework::pir::OpLoweringGroupPtr;
 
@@ -50,8 +52,11 @@ ProgramInfo BuildProgram(std::vector<int64_t> input_shape) {
       input_shape, value_one, phi::DataType::FLOAT32, phi::GPUPlace());
 
   std::vector<OpLoweringGroupPtr> groups;
+  const std::string fn_name = CompatibleInfo::GroupOpsName(
+      std::initializer_list<::pir::Operation*>({full_op_x.operation()}));
   groups.emplace_back(std::make_shared<OpLoweringGroup>(
-      std::initializer_list<::pir::Operation*>({full_op_x.operation()})));
+      std::initializer_list<::pir::Operation*>({full_op_x.operation()}),
+      fn_name));
   groups.back()->mut_output_ops().insert(full_op_x.operation());
 
   return {program, groups};

@@ -35,8 +35,8 @@ class Conv2dAddActFusePassDrrPattern : public paddle::drr::DrrPatternBase {
  private:
   std::string act_name_;
   bool cutlass_pattern_;
-  const std::unordered_set<std::string> conv2d_depthwise_act_set_ = {
-      "relu", "swish", "sigmoid"};
+  const std::unordered_set<std::string> conv2d_depthwise_act_set_ = {"relu",
+                                                                     "swish"};
 
  public:
   static const int CUTLASS_NHWC_ALIGNMENT = 8;
@@ -152,62 +152,6 @@ class Conv2dAddActFusePassDrrPattern : public paddle::drr::DrrPatternBase {
         [this](const paddle::drr::MatchContext &match_ctx) -> std::string {
           return cutlass_pattern_ ? "gpu" : "gpudnn";
         });
-    const auto &perm_weight_shape = res.ComputeAttr(
-        [this](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          auto data_format = match_ctx.Attr<std::string>("data_format");
-          if (cutlass_pattern_ || data_format == "NHWC") {
-            return {0, 2, 3, 1};
-          } else {
-            return {0, 1, 2, 3};
-          }
-        });
-    const auto &perm_input_shape = res.ComputeAttr(
-        [this](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          auto data_format = match_ctx.Attr<std::string>("data_format");
-          if (cutlass_pattern_ && data_format == "NCHW") {
-            return {0, 2, 3, 1};
-          } else {
-            return {0, 1, 2, 3};
-          }
-        });
-    const auto &perm_bias_shape = res.ComputeAttr(
-        [this](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          auto data_format = match_ctx.Attr<std::string>("data_format");
-          auto bias_shape = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
-          if (cutlass_pattern_ && data_format == "NCHW") {
-            if (bias_shape.size() == 4) {
-              return {0, 2, 3, 1};
-            } else if (bias_shape.size() == 3) {
-              return {0, 2, 1};
-            } else {
-              return {0};
-            }
-          } else {
-            std::vector<int> dst_vector(bias_shape.size());
-            std::iota(dst_vector.begin(), dst_vector.end(), 0);
-            return dst_vector;
-          }
-        });
-    const auto &data_format_conv = res.ComputeAttr(
-        [this](const paddle::drr::MatchContext &match_ctx) -> std::string {
-          auto data_format = match_ctx.Attr<std::string>("data_format");
-          if (cutlass_pattern_ && data_format == "NCHW") {
-            return "NHWC";
-          } else {
-            return data_format;
-          }
-        });
-    // TODO(bukejiyu) When the transfer_layout_pass is supported,
-    // transpose_op will be deleted.
-    const auto &transpose_op_w = res.Op(paddle::dialect::TransposeOp::name(),
-                                        {{"perm", perm_weight_shape}});
-    const auto &transpose_op_input = res.Op(
-        paddle::dialect::TransposeOp::name(), {{"perm", perm_input_shape}});
-    const auto &transpose_op_bias = res.Op(paddle::dialect::TransposeOp::name(),
-                                           {{"perm", perm_bias_shape}});
-    res.Tensor("filter_transpose") = transpose_op_w(res.Tensor("filter"));
-    res.Tensor("input_transpose") = transpose_op_input(res.Tensor("input"));
-    res.Tensor("bias_transpose") = transpose_op_bias(res.Tensor("bias"));
     const auto &fused_conv2d_add_act = res.Op(
         paddle::dialect::FusedConv2dAddActOp::name(),
         {{
@@ -216,7 +160,7 @@ class Conv2dAddActFusePassDrrPattern : public paddle::drr::DrrPatternBase {
             {"padding_algorithm", pat.Attr("padding_algorithm")},
             {"dilations", pat.Attr("dilations")},
             {"groups", pat.Attr("groups")},
-            {"data_format", data_format_conv},
+            {"data_format", pat.Attr("data_format")},
             {"activation", res.StrAttr(act_name_)},
             {"split_channels", res.VectorInt32Attr({})},
             {"exhaustive_search", res.BoolAttr(false)},
@@ -224,24 +168,11 @@ class Conv2dAddActFusePassDrrPattern : public paddle::drr::DrrPatternBase {
             {"fuse_alpha", res.Float32Attr(0.0f)},
         }},
         {{{paddle::dialect::kForceBackendAttr, force_backend_runtime_attr}}});
-    fused_conv2d_add_act({&res.Tensor("input_transpose"),
-                          &res.Tensor("filter_transpose"),
-                          &res.Tensor("bias_transpose"),
+    fused_conv2d_add_act({&res.Tensor("input"),
+                          &res.Tensor("filter"),
+                          &res.Tensor("bias"),
                           &res.InputNoneTensor()},
-                         {&res.Tensor("fuesd_conv2d_add_act_out")});
-    const auto &perm_out_shape = res.ComputeAttr(
-        [this](const paddle::drr::MatchContext &match_ctx) -> std::vector<int> {
-          auto data_format = match_ctx.Attr<std::string>("data_format");
-          if (cutlass_pattern_ && data_format == "NCHW") {
-            return {0, 3, 1, 2};
-          } else {
-            return {0, 1, 2, 3};
-          }
-        });
-    const auto &transpose_op_out = res.Op(paddle::dialect::TransposeOp::name(),
-                                          {{"perm", perm_out_shape}});
-    res.Tensor("act_out") =
-        transpose_op_out(res.Tensor("fuesd_conv2d_add_act_out"));
+                         {&res.Tensor("act_out")});
   }
 };
 
@@ -278,11 +209,9 @@ class Conv2dAdd2ActFusePattern
     if (next_op->isa<paddle::dialect::ReluOp>()) {
       act_name = "relu";
     }
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 8000 && CUDNN_VERSION < 8700
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8700
     if (next_op->isa<paddle::dialect::TanhOp>()) {
       act_name = "tanh";
-    } else if (next_op->isa<paddle::dialect::SigmoidOp>()) {
-      act_name = "sigmoid";
     }
 #endif
     if (act_name == "") {
@@ -346,11 +275,10 @@ class Conv2dAddActFusePass : public pir::PatternRewritePass {
                 paddle::dialect::FusedConv2dAddActOp::name()});
 
 // NOTE(liuyuanle): cudnn [8.7, 8.9 now) version has bug when act is
-// sigmoid/tanh. Ref to issue
+// tanh. Ref to issue
 // https://github.com/PaddlePaddle/Paddle/issues/50853
 #if CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8700
-    const std::unordered_set<std::string> cudnn_act_set(
-        {"relu", "sigmoid", "tanh"});
+    const std::unordered_set<std::string> cudnn_act_set({"relu", "tanh"});
 #else
     const std::unordered_set<std::string> cudnn_act_set({"relu"});
 #endif
