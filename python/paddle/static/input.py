@@ -41,7 +41,7 @@ def evaluate_flag(val) -> bool:
 
 
 @static_only
-def data(name, shape, dtype=None, lod_level=0):
+def data(name, shape, dtype=None, lod_level=0) -> paddle.pir.Value:
     """
 
     This function creates a variable on the global block. The global variable

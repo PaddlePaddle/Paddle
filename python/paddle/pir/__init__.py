@@ -21,7 +21,7 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
     PassManager,
     Program,
     Type,
-    Value,
+    Value as Value,
     check_unregistered_ops,
     create_shaped_type,
     fake_value,
