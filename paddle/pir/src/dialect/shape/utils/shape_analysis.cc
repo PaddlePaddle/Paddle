@@ -60,7 +60,6 @@ InferSymbolicShapeContext::GetShapeOrDataForValue(Value val) const {
     return empty;
   }
   if (!HasShapeOrDataForValue(val)) {
-    VLOG(3) << "fail value defining op: " << val.defining_op()->name();
     PADDLE_THROW(phi::errors::Fatal(
         "Fail to GetShapeOrDataForValue on InferSymbolicShape!"));
   }
