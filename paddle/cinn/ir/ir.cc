@@ -26,6 +26,7 @@
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/common/errors.h"
 
 namespace cinn {
 namespace ir {
@@ -255,6 +256,7 @@ Expr For::Make(Var loop_var,
                Expr body,
                VectorizeInfo vector_info,
                BindInfo bind_info) {
+  ir::TryElevateInt32ToInt64({loop_var, min, extent});
   auto node = make_shared<For>();
   CHECK(loop_var.defined());
   CHECK(min.defined());
@@ -884,9 +886,21 @@ void For::Verify() const {
   CHECK(extent.defined());
   CHECK(body.defined());
 
-  CHECK_EQ(loop_var->type(), type_of<int32_t>());
-  CHECK_EQ(min->type(), type_of<int32_t>());
-  CHECK_EQ(extent->type(), type_of<int32_t>());
+  PADDLE_ENFORCE_EQ((loop_var->type() == type_of<int32_t>()) ||
+                        (loop_var->type() == type_of<int64_t>()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "loop var's type must be int32 or int64"));
+  PADDLE_ENFORCE_EQ((min->type() == type_of<int32_t>()) ||
+                        (min->type() == type_of<int64_t>()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "loop min's type must be int32 or int64"));
+  PADDLE_ENFORCE_EQ((extent->type() == type_of<int32_t>()) ||
+                        (extent->type() == type_of<int64_t>()),
+                    true,
+                    ::common::errors::InvalidArgument(
+                        "loop extent's type must be int32 or int64"));
 }
 
 void PolyFor::Verify() const {

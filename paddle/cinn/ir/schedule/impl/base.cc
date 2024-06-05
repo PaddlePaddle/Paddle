@@ -92,7 +92,7 @@ void DyScheduleImpl::MergeExprs() {
     }
   }
   for (auto& block : merged_block) {
-    VLOG(3) << "in merged_block, it has " << block;
+    VLOG(3) << "in merged_block, it has \n" << block;
   }
   auto merged_expr = ir::Block::Make(merged_block);
   exprs[0]

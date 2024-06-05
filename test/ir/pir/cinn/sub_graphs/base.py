@@ -30,7 +30,7 @@ class TestBase(unittest.TestCase):
         self.atol = 1e-6
         self.train_atol = 1e-6
         self.with_precision_compare = True
-        self.with_train = False  # 本个pr中默认为false，下个增量pr中改为默认true
+        self.with_train = True  # 本个pr中默认为false，下个增量pr中改为默认true
         # override customized settting
         self.init()
         if self.inputs:
