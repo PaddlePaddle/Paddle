@@ -1257,8 +1257,7 @@ class PartialProgramLayer:
         """
         if not isinstance(self._params, (list, tuple)):
             raise TypeError(
-                "Type of self._params in PartialProgramLayer should be list or tuple, but received %s."
-                % type(self._params)
+                f"Type of self._params in PartialProgramLayer should be list or tuple, but received {type(self._params)}."
             )
 
         param_and_buffer_names_set = set()

@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 bool ProcessGroup::Task::IsCompleted() {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -53,5 +52,4 @@ void ProcessGroupIdMap::DestroyProcessGroup() {
   id_map.clear();
 }
 
-}  //  namespace distributed
-}  //  namespace paddle
+}  // namespace paddle::distributed

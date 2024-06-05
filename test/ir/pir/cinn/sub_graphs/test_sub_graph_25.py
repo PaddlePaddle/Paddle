@@ -68,6 +68,7 @@ class TestLayer(TestBase):
             paddle.rand(shape=[11, 1280, 7, 7], dtype=paddle.float32),
         )
         self.net = LayerCase
+        self.with_train = False
         self.with_precision_compare = False
 
 

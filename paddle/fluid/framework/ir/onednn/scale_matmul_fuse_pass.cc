@@ -22,9 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Graph;
 
@@ -141,9 +139,7 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
                     found_scale_matmul_fuse_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(scale_matmul_fuse_pass,
               paddle::framework::ir::ScaleMatmulFusePass);

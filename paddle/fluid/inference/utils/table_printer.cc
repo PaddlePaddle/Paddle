@@ -30,8 +30,7 @@
 #include <string>
 #include <vector>
 
-namespace paddle {
-namespace inference {
+namespace paddle::inference {
 
 std::string TablePrinter::PrintTable() {
   std::stringstream ss;
@@ -211,5 +210,4 @@ void TablePrinter::AddRow(std::stringstream& ss, size_t row_idx) {
   }
 }
 
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference
