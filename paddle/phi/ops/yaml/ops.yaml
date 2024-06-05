@@ -2656,7 +2656,7 @@
   backward : logsigmoid_grad
 
 - op : logspace
-  args : (Tensor start, Tensor stop, Tensor num, Tensor base, DataType dtype, Place place={})
+  args : (Tensor start, Tensor stop, Tensor num, Tensor base, DataType dtype, Place place==CPUPlace())
   output : Tensor(out)
   infer_meta:
     func : LogspaceInferMeta
