@@ -950,7 +950,8 @@ cc_library(
        phi
        common
        imperative_flag
-       layer)
+       layer
+       op_dialect_vjp)
 
 cc_library(
   type_info
