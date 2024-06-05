@@ -19,7 +19,6 @@
 #include <string>
 #include <unordered_set>
 
-#include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
@@ -135,7 +134,7 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     FeedOp::name(),
     DataOp::name(),
     ArrayLengthOp::name(),
-    cinn::dialect::JitKernelOp::name()};
+    "cinn_runtime.jit_kernel"};
 const std::unordered_set<std::string> SpecialLowerOps = {
     pir::CombineOp::name(),
     pir::ConstantTensorOp::name(),
@@ -155,7 +154,7 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     AssertOp::name(),
     SelectInputOp::name(),
     SelectOutputOp::name(),
-    cinn::dialect::JitKernelOp::name()};
+    "cinn_runtime.jit_kernel"};
 
 const std::unordered_map<std::string, uint32_t> NoBufferRelatedOps = {
     {paddle::dialect::ReshapeOp::name(), /*xshape_idx*/ 1U},
