@@ -634,6 +634,14 @@ void SequenceMaskScalarInferMeta(const MetaTensor& x,
                                  DataType out_dtype,
                                  MetaTensor* y);
 
+void SequencePoolInferMeta(const MetaTensor& x,
+                           bool is_test,
+                           const std::string& pooltype,
+                           float pad_value,
+                           MetaTensor* out,
+                           MetaTensor* max_index,
+                           MetaConfig config = MetaConfig());
+
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void ShapeInferMeta(const MetaTensor& input, MetaTensor* out);
