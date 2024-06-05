@@ -78,7 +78,7 @@ struct PatternNode {
   void UniqueUpstream() { upstream_ = UniqueVectorBySet(upstream_); }
   void UniqueDownstream() { downstream_ = UniqueVectorBySet(downstream_); }
   void UpdateTracker(FusionInstrPtr instr) {
-    GetPatternTracker(stmt_pattern_)->append(instr);
+    GetFusionTracker(stmt_pattern_)->append(instr);
   }
 
  private:

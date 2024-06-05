@@ -43,18 +43,15 @@ struct RenameInstr : public FusionInstruction {
 };
 
 struct CombineInstr : public FusionInstruction {
-  CombineInstr(const std::string& first,
-               const std::string& second,
-               const std::string& result)
-      : first_(first), second_(second), result_(result) {}
+  CombineInstr(const std::vector<std::string>& names, const std::string& result)
+      : names_(names), result_(result) {}
   virtual InstructionType type() { return T_Combine; }
-  std::string first_;
-  std::string second_;
+  std::vector<std::string> names_;
   std::string result_;
 };
 
 struct ReturnInstr : public FusionInstruction {
-  explict ReturnInstr(const std::string& target) : target_(target) {}
+  explicit ReturnInstr(const std::string& target) : target_(target) {}
   virtual InstructionType type() { return T_Return; }
   std::string target_;
 };
@@ -84,7 +81,7 @@ struct TmpTransformInstr : public FusionInstruction {
   TmpTransformInstr(const std::string& upstream,
                     const std::string& downstream,
                     const std::string& result,
-                    const std::vector<size_t>& fake_reduce_iter_idx)
+                    const std::vector<size_t>& fake_reduce_iter_idx = {})
       : upstream_(upstream),
         downstream_(downstream),
         result_(result),
@@ -114,12 +111,10 @@ struct TrivialLoopAlignInstr : public FusionInstruction {
 
 struct AnchorTransformAndReturnInstr : public FusionInstruction {
   AnchorTransformAndReturnInstr(const std::string& target,
-                                const std::string& result,
                                 const AnchorTransformRoute& transform_route)
-      : target_(target), result_(result), transform_route_(transform_route) {}
+      : target_(target), transform_route_(transform_route) {}
   virtual InstructionType type() { return T_AnchorTransformAndReturn; }
   std::string target_;
-  std::string result_;
   AnchorTransformRoute transform_route_;
 };
 

@@ -264,7 +264,7 @@ std::vector<GroupClusterNode> GroupSplit(cinn::dialect::GroupOp group_op) {
                  std::back_inserter(trackers),
                  [](const cinn::fusion::PatternNodePtr node)
                      -> cinn::fusion::FusionTrackerPtr {
-                   return cinn::fusion::GetPatternTracker(node->stmt_pattern());
+                   return cinn::fusion::GetFusionTracker(node->stmt_pattern());
                  });
 
   // Each stmts corresponds to each fusion op(cluster node).

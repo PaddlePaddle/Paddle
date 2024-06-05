@@ -114,8 +114,8 @@ void RunReturnInstr(const std::shared_ptr<ReturnInstr>& instr,
                     FusionInterpreter* interpreter) {
   for (auto fusion_op : interpreter->scope[instr->target_]->fusion_ops) {
     auto exprs = std::visit(FusionOp2Expr(), fusion_op);
-    interpreter.ret_expr.insert(
-        interpreter.ret_expr.end(), exprs.begin(), exprs.end());
+    interpreter->ret_expr.insert(
+        interpreter->ret_expr.end(), exprs.begin(), exprs.end());
   }
 }
 
@@ -140,7 +140,7 @@ std::vector<ir::Expr> FusionInterpreter::Run() {
         RunTmpTransformInstr(
             dynamic_cast_instr_with_err<TmpTransformInstr>(instr), this);
         break;
-      case T_AnchorTransform:
+      case T_AnchorTransformAndReturn:
         RunAnchorTransformAndReturnInstr(
             dynamic_cast_instr_with_err<AnchorTransformAndReturnInstr>(instr),
             this);

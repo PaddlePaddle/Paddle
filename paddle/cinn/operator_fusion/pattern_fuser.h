@@ -162,27 +162,32 @@ StmtPattern MergePatternImpl(const ReduceTreePattern& first,
 }
 
 // Anchor Fusion
-ExprPromise InitExprPromiseImpl(const TrivialPattern& pattern,
-                                pir::Value anchor) {
-  return ExprPromise(anchor);
+std::vector<ExprPromise> InitExprPromiseImpl(const TrivialPattern& pattern,
+                                             pir::Value anchor) {
+  return {ExprPromise(anchor, pattern.name())};
 }
 
-ExprPromise InitExprPromiseImpl(const ReducePattern& pattern,
-                                pir::Value anchor) {
-  return ExprPromise(anchor);
+std::vector<ExprPromise> InitExprPromiseImpl(const ReducePattern& pattern,
+                                             pir::Value anchor) {
+  return {ExprPromise(anchor, pattern.name())};
 }
 
-ExprPromise InitExprPromiseImpl(const ReduceTreePattern& pattern,
-                                pir::Value anchor) {
+std::vector<ExprPromise> InitExprPromiseImpl(const ReduceTreePattern& pattern,
+                                             pir::Value anchor) {
+  // TODO(@wuzhanfei) this is temporary
+  // now we do not support anchor fusion for reduce op,
+  // so, this is ok currently. but need to be redesigned later
   return InitExprPromiseImpl(pattern.GetRootPattern(), anchor);
 }
 
 template <typename PATTERN>
-ExprPromise InitExprPromiseImpl(const PATTERN& pattern, pir::Value anchor) {
+std::vector<ExprPromise> InitExprPromiseImpl(const PATTERN& pattern,
+                                             pir::Value anchor) {
   PADDLE_THROW("Can not Init ExprPromise");
 }
 
-ExprPromise InitExprPromise(const StmtPattern& pattern, pir::Value anchor) {
+std::vector<ExprPromise> InitExprPromise(const StmtPattern& pattern,
+                                         pir::Value anchor) {
   return std::visit(
       [anchor](const auto& arg) { return InitExprPromiseImpl(arg, anchor); },
       pattern.variant());
@@ -425,16 +430,8 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
   return std::visit(PatternMatch, first.variant(), second.variant());
 }
 
-void SetReturnInstrImpl(const TrivialPattern& pattern) {}
-void SetReturnInstrImpl(const ReducePattern& pattern) {}
-void SetReturnInstrImpl(const ReduceTreePattern& pattern) {}
-void SetReturnInstrImpl(const ReduceTreePlusTrivialPattern& pattern) {}
-void SetReturnInstrImpl(const AnchorPattern& pattern) {}
-void SetReturnInstrImpl(const HorizontalFusionPattern& pattern) {}
-void SetReturnInstrImpl(const UnsupportPattern& pattern) {}
-
 void SetReturnInstr(const StmtPattern& s) {
-  std::visit([](const auto& impl) { SetReturnInstrImpl(impl); }, s.variant());
+  std::visit([](const auto& impl) { impl.set_return(); }, s.variant());
 }
 
 }  // namespace cinn::fusion

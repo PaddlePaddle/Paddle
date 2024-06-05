@@ -19,37 +19,32 @@ namespace cinn::fusion {
 // Matcher
 
 struct AlwaysTrue {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return true;
   }
 };
 
 template <typename StmtPattern>
 struct StmtPatternGraphMatcher {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return GetPatternName(node->stmt_pattern()) == StmtPattern::name();
   }
 };
 
 struct CanFuseRxTMatcher {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    return (
-        std::holds_alternative<ReduceTreePattern<T>>(node->stmt_pattern()) &&
-        !node->downstream().empty() &&
-        std::holds_alternative<TrivialPattern<T>>(
-            node->downstream().at(0)->stmt_pattern()));
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
+    return (std::holds_alternative<ReduceTreePattern>(node->stmt_pattern()) &&
+            !node->downstream().empty() &&
+            std::holds_alternative<TrivialPattern>(
+                node->downstream().at(0)->stmt_pattern()));
   }
 };
 
 struct CanFuseReduceTreeMatcher {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    return StmtPatternGraphMatcher<ReduceTreePattern<T>>()(graph, node) &&
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
+    return StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
            !node->downstream().empty() &&
-           std::holds_alternative<ReduceTreePattern<T>>(
+           std::holds_alternative<ReduceTreePattern>(
                node->downstream().at(0)->stmt_pattern()) &&
            graph.policy_manager()
                .template GetPolicy<GeneralTopoPolicy>()
@@ -61,11 +56,10 @@ struct CanFuseReduceTreeMatcher {
 };
 
 struct CanFuseReduceTreeAndTrivialMatcher {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    return StmtPatternGraphMatcher<ReduceTreePattern<T>>()(graph, node) &&
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
+    return StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
            !node->downstream().empty() &&
-           std::holds_alternative<TrivialPattern<T>>(
+           std::holds_alternative<TrivialPattern>(
                node->downstream().at(0)->stmt_pattern()) &&
            graph.policy_manager()
                .template GetPolicy<GeneralTopoPolicy>()
@@ -77,36 +71,31 @@ struct CanFuseReduceTreeAndTrivialMatcher {
 };
 
 struct LiftToAnchorPatternMatcher {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     bool not_reduce_tree =
-        !StmtPatternGraphMatcher<ReduceTreePattern<T>>()(graph, node) &&
-        !StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern<T>>()(graph,
-                                                                    node);
+        !StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
+        !StmtPatternGraphMatcher<ReduceTreePlusTrivialPattern>()(graph, node);
     bool reduce_tree_with_single_reduce =
-        StmtPatternGraphMatcher<ReduceTreePattern<T>>()(graph, node) &&
-        std::get<ReduceTreePattern<T>>(node->stmt_pattern()).childs().size() ==
-            0;
+        StmtPatternGraphMatcher<ReduceTreePattern>()(graph, node) &&
+        std::get<ReduceTreePattern>(node->stmt_pattern()).childs().size() == 0;
     return not_reduce_tree || reduce_tree_with_single_reduce;
   }
 };
 
 struct RecomputeNodeMatcher {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
-    return StmtPatternGraphMatcher<AnchorPattern<T>>()(graph, node) &&
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
+    return StmtPatternGraphMatcher<AnchorPattern>()(graph, node) &&
            node->downstream().size() >= 1 &&
-           (std::get<AnchorPattern<T>>(node->stmt_pattern()).can_recompute());
+           (std::get<AnchorPattern>(node->stmt_pattern()).can_recompute());
   }
 };
 
 struct HasUpstreamAnchorMatcher {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph,
-                  const PatternNodePtr<T>& upstream,
-                  const PatternNodePtr<T>& downstream) {
-    if (!StmtPatternGraphMatcher<AnchorPattern<T>>()(graph, upstream) ||
-        !StmtPatternGraphMatcher<AnchorPattern<T>>()(graph, downstream)) {
+  bool operator()(const PatternGraph& graph,
+                  const PatternNodePtr& upstream,
+                  const PatternNodePtr& downstream) {
+    if (!StmtPatternGraphMatcher<AnchorPattern>()(graph, upstream) ||
+        !StmtPatternGraphMatcher<AnchorPattern>()(graph, downstream)) {
       return false;
     }
     return graph.policy_manager()
@@ -119,12 +108,11 @@ struct HasUpstreamAnchorMatcher {
 };
 
 struct HasDownstreamAnchorMatcher {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph,
-                  const PatternNodePtr<T>& upstream,
-                  const PatternNodePtr<T>& downstream) {
-    if (!StmtPatternGraphMatcher<AnchorPattern<T>>()(graph, upstream) ||
-        !StmtPatternGraphMatcher<AnchorPattern<T>>()(graph, downstream)) {
+  bool operator()(const PatternGraph& graph,
+                  const PatternNodePtr& upstream,
+                  const PatternNodePtr& downstream) {
+    if (!StmtPatternGraphMatcher<AnchorPattern>()(graph, upstream) ||
+        !StmtPatternGraphMatcher<AnchorPattern>()(graph, downstream)) {
       return false;
     }
     return graph.policy_manager()
@@ -136,21 +124,20 @@ struct HasDownstreamAnchorMatcher {
   }
 };
 
-template <typename T>
 struct HorizontalFusionMatcher {
-  bool operator()(const PatternGraph<T>& graph,
-                  const PatternNodePtr<T>& lhs,
-                  const PatternNodePtr<T>& rhs) {
-    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, lhs)) {
+  bool operator()(const PatternGraph& graph,
+                  const PatternNodePtr& lhs,
+                  const PatternNodePtr& rhs) {
+    if (!StmtPatternGraphMatcher<HorizontalFusionPattern>()(graph, lhs)) {
       return false;
     }
-    if (!StmtPatternGraphMatcher<HorizontalFusionPattern<T>>()(graph, rhs)) {
+    if (!StmtPatternGraphMatcher<HorizontalFusionPattern>()(graph, rhs)) {
       return false;
     }
     const auto& lhs_pattern =
-        std::get<HorizontalFusionPattern<T>>(lhs->stmt_pattern());
+        std::get<HorizontalFusionPattern>(lhs->stmt_pattern());
     const auto& rhs_pattern =
-        std::get<HorizontalFusionPattern<T>>(rhs->stmt_pattern());
+        std::get<HorizontalFusionPattern>(rhs->stmt_pattern());
 
     return graph.policy_manager()
                .template GetPolicy<GeneralTopoPolicy>()
@@ -161,15 +148,13 @@ struct HorizontalFusionMatcher {
 };
 
 struct NonSinkNodeMatcher {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return !node->downstream().empty();
   }
 };
 
 struct IsOutputNodeMatcher {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     bool res = IsAnyFirstInSecond(node->sink_op()->results(), graph.outputs());
     return res;
   }
@@ -177,16 +162,14 @@ struct IsOutputNodeMatcher {
 
 template <int N>
 struct DownstreamSmallerThan {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return node->downstream().size() < N;
   }
 };
 
 template <int N>
 struct DownstreamGreaterThan {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return node->downstream().size() > N;
   }
 };
@@ -196,16 +179,14 @@ struct And {};
 
 template <typename A>
 struct And<A> {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return A()(graph, node);
   }
 };
 
 template <typename A, typename... Args>
 struct And<A, Args...> {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return A()(graph, node) && And<Args...>()(graph, node);
   }
 };
@@ -215,24 +196,21 @@ struct Or {};
 
 template <typename A>
 struct Or<A> {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return A()(graph, node);
   }
 };
 
 template <typename A, typename... Args>
 struct Or<A, Args...> {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return A()(graph, node) || Or<Args...>()(graph, node);
   }
 };
 
 template <typename A>
 struct Not {
-  template <typename T>
-  bool operator()(const PatternGraph<T>& graph, const PatternNodePtr<T>& node) {
+  bool operator()(const PatternGraph& graph, const PatternNodePtr& node) {
     return !A()(graph, node);
   }
 };

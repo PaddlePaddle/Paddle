@@ -116,9 +116,11 @@ using AnchorTransform = std::variant<UnsupportTransformPtr,
 using AnchorTransformRoute = std::vector<AnchorTransform>;
 
 struct ExprPromise {
-  explicit ExprPromise(const pir::Value& root) : root_value(root) {}
+  explicit ExprPromise(const pir::Value& root, const std::string& name)
+      : root_value(root), name_(name) {}
   AnchorTransformRoute transform_route;
   pir::Value root_value;
+  std::string name_;
 
   void update(const AnchorTransformRoute& route) {
     transform_route.insert(transform_route.end(), route.begin(), route.end());

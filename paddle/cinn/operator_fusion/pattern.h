@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <functional>
 #include <unordered_set>
 #include <variant>
 #include <vector>
@@ -54,6 +55,8 @@ struct TrivialPattern {
   std::string name_;
 
   FusionTrackerPtr tracker_;
+
+  void set_return() { tracker_->append(make_shared<ReturnInstr>(name_)); }
 };
 
 struct ReducePattern {
@@ -75,6 +78,8 @@ struct ReducePattern {
   std::string name_;
 
   FusionTrackerPtr tracker_;
+
+  void set_return() { tracker_->append(std::make_shared<ReturnInstr>(name_)); }
 };
 
 struct ReduceTreePattern {
@@ -113,6 +118,27 @@ struct ReduceTreePattern {
 
   FusionTrackerPtr tracker_;
 
+  void set_return() {
+    std::vector<std::string> names({GetRootPattern().name()});
+    const auto hook = [tracker = tracker_, &names](const std::string& up,
+                                                   const std::string& down) {
+      tracker->append(std::make_shared<TmpTransformInstr>(up, down, up));
+      names.emplace_back(std::move(std::string(up)));
+    };
+    recursive_call(hook);
+
+    for (auto it = names.end() - 1; it > names.begin(); it--) {
+      tracker_->append(std::make_shared<ReturnInstr>(*it));
+    }
+  }
+  using Hook = std::function<void(const std::string&, const std::string&)>;
+  void recursive_call(const Hook& hook) {
+    for (auto child : childs_) {
+      hook(child.GetRootPattern().name(), GetRootPattern().name());
+      child.recursive_call(hook);
+    }
+  }
+
  private:
   std::vector<ReduceTreePattern> childs_;
   ReducePattern root_;
@@ -141,6 +167,35 @@ struct ReduceTreePlusTrivialPattern {
   std::string name_;
 
   FusionTrackerPtr tracker_;
+  void set_return() {
+    std::vector<std::string> names(
+        {sink_trivial.name(), tree.GetRootPattern().name()});
+    tracker_->append(
+        std::make_shared<TmpTransformInstr>(tree.GetRootPattern().name(),
+                                            sink_trivial.name(),
+                                            tree.GetRootPattern().name(),
+                                            fake_reduce_iter_idx));
+
+    const auto hook =
+        [tracker = tracker_, &names, fake_reduce = fake_reduce_iter_idx](
+            const std::string& up, const std::string& down) {
+          tracker->append(
+              std::make_shared<TmpTransformInstr>(up, down, up, fake_reduce));
+          names.emplace_back(std::move(std::string(up)));
+        };
+
+    tree.recursive_call(hook);
+
+    tracker_->append(
+        std::make_shared<TrivialLoopAlignInstr>(tree.GetRootPattern().name(),
+                                                sink_trivial.name(),
+                                                sink_trivial.name(),
+                                                fake_reduce_iter_idx));
+
+    for (auto it = names.end() - 1; it > names.begin(); it--) {
+      tracker_->append(std::make_shared<ReturnInstr>(*it));
+    }
+  }
 };
 
 struct AnchorPattern {
@@ -188,6 +243,12 @@ struct AnchorPattern {
   std::string name_;
 
   FusionTrackerPtr tracker_;
+  void set_return() {
+    for (auto p : anchor_state.promise) {
+      tracker_->append(std::make_shared<AnchorTransformAndReturnInstr>(
+          p.name_, p.transform_route));
+    }
+  }
 
  private:
   std::vector<pir::Operation*> ops_;
@@ -227,6 +288,9 @@ struct HorizontalFusionPattern {
   std::string name_;
 
   FusionTrackerPtr tracker_;
+  void set_return() {
+    // TODO(@wuzhanfei)
+  }
 };
 
 struct UnsupportPattern {
@@ -246,6 +310,7 @@ struct UnsupportPattern {
   std::string name_;
 
   FusionTrackerPtr tracker_;
+  void set_return() { tracker_->append(make_shared<ReturnInstr>(name_)); }
 };
 
 using StmtPatternBase = std::variant<TrivialPattern,
@@ -275,7 +340,7 @@ std::string GetPatternName(const StmtPattern& s) {
   return std::visit([](const auto& impl) { return impl.name(); }, s.variant());
 }
 
-FusionTrackerPtr GetPatternTracker(const StmtPattern& s) {
+FusionTrackerPtr GetFusionTracker(const StmtPattern& s) {
   return std::visit([](const auto& impl) { return impl.tracker_; },
                     s.variant());
 }
