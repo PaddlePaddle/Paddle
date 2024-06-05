@@ -5,7 +5,6 @@ mock
 gym==0.26.2
 pygame==2.5.2
 hypothesis
-opencv-python<=4.2.0.32
 visualdl==2.5.3
 paddle2onnx>=0.9.6
 scipy>=1.6, !=1.7.2, !=1.7.3
