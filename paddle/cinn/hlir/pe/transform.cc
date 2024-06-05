@@ -1338,7 +1338,6 @@ ir::Tensor SliceAssign(const ir::Tensor& input,
                       input->shape.size(),
                       phi::errors::InvalidArgument(
                           "axes should less than input's shape size"));
-    << "axes should less than input's shape size";
 
     if (new_starts[i] < 0) {
       new_starts[i] = input_shape[axes[i]] + new_starts[i];
