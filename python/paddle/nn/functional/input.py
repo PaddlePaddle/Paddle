@@ -117,6 +117,10 @@ def one_hot(x, num_classes, name=None):
         return one_hot_out
 
 
+import paddle
+
+
+@paddle.utils.print_utils.print_args
 def embedding(x, weight, padding_idx=None, sparse=False, name=None):
     r"""
     Used to lookup embeddings vector of ids provided by :attr:`x` .

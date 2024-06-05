@@ -471,6 +471,7 @@ def _c_softmax_with_cross_entropy(
         return loss
 
 
+@paddle.utils.print_utils.print_args
 def _linear(x, weight, bias=None, name=None):
     """
     Function Linear

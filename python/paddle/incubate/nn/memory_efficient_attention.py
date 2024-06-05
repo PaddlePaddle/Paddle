@@ -67,6 +67,7 @@ def _get_tensor_bias(attn_bias):
         return None
 
 
+@paddle.utils.print_utils.print_args
 def memory_efficient_attention(
     query, key, value, attn_bias=None, p=0.0, scale=None, training=True
 ):

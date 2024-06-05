@@ -514,6 +514,7 @@ def uniform_random_batch_size_like(
     return out
 
 
+@paddle.utils.print_utils.print_args
 def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
     """
     Returns a Tensor filled with random values sampled from a Gaussian
@@ -586,6 +587,7 @@ def gaussian(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 @dygraph_only
 def gaussian_(x, mean=0.0, std=1.0, seed=0, name=None):
     """
@@ -896,6 +898,7 @@ def normal_(x, mean=0.0, std=1.0, name=None):
     return gaussian_(x, mean=mean, std=std)
 
 
+@paddle.utils.print_utils.print_args
 def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     """
     Returns a Tensor filled with random values sampled from a uniform
@@ -1076,6 +1079,7 @@ def uniform_(x, min=-1.0, max=1.0, seed=0, name=None):
     return _C_ops.uniform_inplace_(x, min, max, seed, 0, 0, 1.0)
 
 
+@paddle.utils.print_utils.print_args
 def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     """
     Returns a Tensor filled with random integers from a discrete uniform

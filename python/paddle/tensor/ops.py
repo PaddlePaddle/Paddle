@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import paddle
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from .. import _C_ops
@@ -413,6 +414,7 @@ def ceil(x, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def cos(x, name=None):
     """
     Cosine Operator. Computes cosine of x element-wise.
@@ -504,6 +506,7 @@ def cosh(x, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def exp(x, name=None):
     """
 
@@ -727,6 +730,7 @@ def round(x, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def rsqrt(x, name=None):
     """
     Rsqrt Activation Operator.
@@ -814,6 +818,7 @@ def sigmoid(x, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def sin(x, name=None):
     """
     Sine Activation Operator.
@@ -948,6 +953,7 @@ def sqrt(x, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def square(x, name=None):
     """
     Square each elements of the inputs.
