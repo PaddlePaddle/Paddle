@@ -76,8 +76,6 @@ struct MergeReduceTreeOperation {
     VLOG(4) << "MergeReduceTreeOperation: \nupstream " << node->DebugStr()
             << "\ndownstream " << downstream->DebugStr() << "\nmerged "
             << merged_node->DebugStr();
-    merged_node->UpdateTracker(make_shared<TmpTransformInstr>(
-        upstream->name(), downstream->name(), merged_node->name()));
     return merged_node;
   }
 };
@@ -109,11 +107,6 @@ struct MergeReduceTreeAndTrivialOperation {
     VLOG(4) << "MergeReduceTreeAndTrivialOperation: \nupstream "
             << node->DebugStr() << "\ndownstream " << downstream->DebugStr()
             << "\nmerged " << merged_node->DebugStr();
-    merged_node->UpdateTracker(make_shared<TmpTransformWithFakeReduceIterInstr>(
-                                   upstream->name(),
-                                   downstream->name(),
-                                   merged_node->name(),
-                                   fake_reduce_iter_idx););
     return merged_node;
   }
 };
@@ -201,12 +194,6 @@ struct FuseUpstreamAnchorOperation {
         << std::get<AnchorPattern>(downstream->stmt_pattern()).anchor().impl()
         << ", merged node anchor: "
         << std::get<AnchorPattern>(merged_node->stmt_pattern()).anchor().impl();
-    merged_node->UpdateTracker(
-        make_shared<AnchorTransformInstr>(upstream->name(),
-                                          downstream->name(),
-                                          merged_node->name(),
-                                          transform_route,
-                                          true));
     return merged_node;
   }
 };
@@ -251,12 +238,6 @@ struct FuseDownstreamAnchorOperation {
         << std::get<AnchorPattern>(downstream->stmt_pattern()).anchor().impl()
         << ", merged node anchor: "
         << std::get<AnchorPattern>(merged_node->stmt_pattern()).anchor().impl();
-    merged_node->UpdateTracker(
-        make_shared<AnchorTransformInstr>(upstream->name(),
-                                          downstream->name(),
-                                          merged_node->name(),
-                                          transform_route,
-                                          false));
     return merged_node;
   }
 };
@@ -296,8 +277,6 @@ struct HorizontalFusionOperation {
             << j->DebugStr() << "\nmerged " << merged_node->DebugStr();
     graph->RemoveNode(i);
     graph->RemoveNode(j);
-    merged_node->UpdateTracker(
-        make_shared<CombineInstr>(i->name(), j->name(), merged_node()););
     return merged_node;
   }
 };

@@ -425,4 +425,16 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
   return std::visit(PatternMatch, first.variant(), second.variant());
 }
 
+void SetReturnInstrImpl(const TrivialPattern& pattern) {}
+void SetReturnInstrImpl(const ReducePattern& pattern) {}
+void SetReturnInstrImpl(const ReduceTreePattern& pattern) {}
+void SetReturnInstrImpl(const ReduceTreePlusTrivialPattern& pattern) {}
+void SetReturnInstrImpl(const AnchorPattern& pattern) {}
+void SetReturnInstrImpl(const HorizontalFusionPattern& pattern) {}
+void SetReturnInstrImpl(const UnsupportPattern& pattern) {}
+
+void SetReturnInstr(const StmtPattern& s) {
+  std::visit([](const auto& impl) { SetReturnInstrImpl(impl); }, s.variant());
+}
+
 }  // namespace cinn::fusion

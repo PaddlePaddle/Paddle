@@ -64,7 +64,13 @@ std::vector<PatternNodePtr> PatternGraph::ClusterOps() {
   HorizontalFusion();
   VLOG(4) << "[Group Cluster] After HorizontalFusion: " << GraphInfo();
 
-  return SortByTopoOrder();
+  return ReturnFusionResults();
+}
+
+std::vector<PatternNodePtr> PatternGraph::ReturnFusionResults() {
+  auto sorted_nodes = SortByTopoOrder();
+  for (auto node : sorted_nodes) {
+  }
 }
 
 std::vector<PatternNodePtr> PatternGraph::SortByTopoOrder() {

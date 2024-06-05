@@ -41,6 +41,7 @@ class PatternGraph {
   void LiftToAnchorPattern();
   void AnchorPatternFusion();
   void SplitRecomputePattern();
+  std::vector<PatternNodePtr> ReturnFusionResults();
 
   void RemoveNode(const PatternNodePtr& node);
   void AppendNode(const PatternNodePtr& node);

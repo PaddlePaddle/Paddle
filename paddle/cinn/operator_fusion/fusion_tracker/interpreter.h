@@ -22,12 +22,17 @@
 namespace cinn::fusion {
 
 struct ScopeElement {
+  ScopeElement() = default;
+  ScopeElemnt(const std::vector<FusionOp> fusion_ops)
+      : fusion_ops(fusion_ops) {}
   std::vector<FusionOp> fusion_ops;
 };
 using ScopeElementPtr = std::shared_ptr<ScopeElement>;
 
 ScopeElementPtr CombineScopeElement(const ScopeElementPtr& a,
-                                    const ScopeElementPtr& b);
+                                    const ScopeElementPtr& b) {
+  return make_shared<ScopeElemnt>(ConcatVector(a->fusion_ops, b->fusion_ops));
+}
 
 struct FusionInterpreter {
   FusionInterpreter(
