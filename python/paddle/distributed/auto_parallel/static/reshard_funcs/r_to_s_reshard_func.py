@@ -59,15 +59,17 @@ class RToSReshardFunction(ReshardFunction):
 
             out_value = paddle.slice(src_value, [split_axis], [start], [end])
 
-            out_value.set_type(src_value.type())
-            out_value.update_dist_attr(dst_dist_attr)
+            out_value.set_type(dst_type)
             out_value.get_defining_op().dist_attr = (
                 paddle.base.libpaddle.pir.create_op_dist_attribute(
                     mesh, [src_dist_attr], [dst_dist_attr]
                 )
             )
             return out_value
-        return None
+        # fake var will be removed in remove_other_rank_op_pass.
+        fake_var = paddle._C_ops.reshard_v2(src_value, dst_dist_attr)
+        fake_var.set_type(dst_type)
+        return fake_var
 
 
 class RToSReshardFunctionCrossMesh(ReshardFunction):

@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo WhereInferSpmd(const DistMetaTensor& condition,
@@ -397,5 +396,4 @@ SpmdInfo WhereGradInferSpmd(const DistMetaTensor& condition,
       {cond_dist_attr, x_dist_attr, y_dist_attr, out_grad_dist_attr},
       {x_grad, y_grad});
 }
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed
