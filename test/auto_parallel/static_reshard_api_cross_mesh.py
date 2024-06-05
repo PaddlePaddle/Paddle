@@ -57,9 +57,7 @@ class MLP(nn.Layer):
         weight_attr_0 = create_numpy_like_random(param_prefix + "_0")
         weight_attr_1 = create_numpy_like_random(param_prefix + "_1")
 
-        self.linear_0 = nn.Linear(
-            IMAGE_SIZE * BATCH_SIZE, IMAGE_SIZE, weight_attr_0
-        )
+        self.linear_0 = nn.Linear(IMAGE_SIZE, IMAGE_SIZE, weight_attr_0)
         self.linear_1 = nn.Linear(IMAGE_SIZE, CLASS_NUM, weight_attr_1)
         if shard_weight:
             self.linear_0.weight = dist.shard_tensor(
