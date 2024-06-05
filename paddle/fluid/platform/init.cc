@@ -15,6 +15,7 @@ limitations under the License. */
 #include <fstream>
 #include <string>
 
+#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"

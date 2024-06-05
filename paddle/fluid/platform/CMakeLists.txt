@@ -112,9 +112,10 @@ cc_library(
        phi
        common
        fluid_memory
+       framework_proto
        op_dialect
        op_dialect_vjp
-       proto_desc_base)
+       op_registry)
 
 #fluid_memory depends on device_context, here add deps individually for
 # avoiding cycle dependencies
