@@ -100,6 +100,10 @@ void Measurer::Run(const std::unordered_map<std::string, std::vector<int64_t>>&
 
   common::PerformanceStatistician& ps =
       common::PerformanceStatistician::Instance();
+  int num_warp_up = 10;
+  for (int i = 0; i < num_warp_up; ++i) {
+    executor_->Run(input_names, input_tensors, true);
+  }
   for (int i = 0; i < repeat; ++i) {
     ps.Start(execute_label_ + "\n" + intput_shape_label);
     executor_->Run(input_names, input_tensors, true);
@@ -123,6 +127,12 @@ MeasureResult Measurer::Result() const {
   auto compile_time = ::common::PerformanceReporter::Mean(compile_durations);
   auto avg_total_execute_time =
       ::common::PerformanceReporter::Mean(total_execute_durations);
+  VLOG(3)
+      << "min time "
+      << ::common::PerformanceReporter::Min(kernel_execute_durations).count();
+  VLOG(3)
+      << "max time "
+      << ::common::PerformanceReporter::Max(kernel_execute_durations).count();
   auto avg_kernel_execute_time =
       ::common::PerformanceReporter::Mean(kernel_execute_durations);
 

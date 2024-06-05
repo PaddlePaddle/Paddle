@@ -19,6 +19,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/ir/group_schedule/config/database.h"
+#include "paddle/cinn/ir/group_schedule/config/filedatabase.h"
 #include "paddle/cinn/ir/group_schedule/search/config_searcher.h"
 #include "paddle/cinn/ir/group_schedule/search/measurer.h"
 #include "paddle/cinn/utils/string.h"
@@ -94,7 +95,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
           program.get(), bucket_info);
 
   // Step 4: Construct config candidate range and constraints.
-  std::vector<std::pair<int, int>> candidate_range{{1, 32}, {1, 1024}, {1, 13}};
+  std::vector<std::pair<int, int>> candidate_range{{1, 32}, {1, 1024}, {1, 1}};
   std::vector<cinn::ir::search::ConstraintFunc> constraints;
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {

@@ -72,6 +72,10 @@ PD_DEFINE_bool(cinn_use_op_fusion,
                BoolFromEnv("FLAGS_cinn_use_op_fusion", true),
                "Whether to use op fusion pass.");
 
+PD_DEFINE_bool(cinn_use_best_tile_config,
+               BoolFromEnv("FLAGS_cinn_use_best_tile_config", false),
+               "Whether to usec best tile config.");
+
 PD_DEFINE_bool(general_fusion_merge_pass,
                BoolFromEnv("FLAGS_general_fusion_merge_pass", true),
                "Whether to use general fusion_merge pass.");
