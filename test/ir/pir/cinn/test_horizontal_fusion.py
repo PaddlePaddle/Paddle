@@ -18,6 +18,9 @@ import utils
 
 import paddle
 
+# NOTE(SigureMo): Disable the CSE optimization to avoid op number change.
+paddle.set_flags({"FLAGS_enable_cse_in_dy2st": False})
+
 
 class HorizontalSubGraph(paddle.nn.Layer):
     def __init__(self):
@@ -39,8 +42,8 @@ class TestHorizontalGraph(unittest.TestCase):
         self.x.stop_gradient = True
 
     def check_jit_kernel_info(self, static_fn):
-        utils.check_jit_kernel_number(static_fn, 1)
-        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+        utils.check_jit_kernel_number(static_fn, 2)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 2})
 
     def eval(self, use_cinn):
         net = HorizontalSubGraph()

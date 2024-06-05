@@ -25,7 +25,7 @@ set(PY_FILES paddle/__init__.py ${UTILS_PY_FILES} ${FLUID_PY_FILES})
 if(WITH_GPU)
   set(PACKAGE_NAME "paddlepaddle-gpu")
 elseif(WITH_ROCM)
-  set(PACKAGE_NAME "paddlepaddle-rocm")
+  set(PACKAGE_NAME "paddlepaddle-dcu")
 elseif(WITH_XPU)
   set(PACKAGE_NAME "paddlepaddle-xpu")
 elseif(WITH_IPU)
@@ -156,16 +156,24 @@ else()
       COMMAND cp -r ${PADDLE_SOURCE_DIR}/test ${PADDLE_BINARY_DIR}/
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
               pass_desc_py_proto ${PY_FILES})
-
-    add_custom_command(
-      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel
-      COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
-      COMMENT "Packing whl packages------>>>")
+    if(APPLE AND WITH_ARM)
+      add_custom_command(
+        OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel
+        COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
+                --plat-name=macosx_11_0_arm64
+        COMMENT "Packing whl packages------>>>")
+    else()
+      add_custom_command(
+        OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel
+        COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
+        COMMENT "Packing whl packages------>>>")
+    endif()
   endif()
 endif()
 
 add_custom_target(paddle_python ALL
                   DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
+
 if(BUILD_WHL_PACKAGE AND NOT WITH_SETUP_INSTALL)
   add_custom_target(paddle_copy ALL
                     DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel)

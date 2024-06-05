@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/spmd_rule_macro_define.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -90,5 +89,4 @@ SpmdInfo OneHotInferSpmdDynamic(const DistMetaTensor& x,
   return OneHotInferSpmd(x, num_classes.to<int32_t>());
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

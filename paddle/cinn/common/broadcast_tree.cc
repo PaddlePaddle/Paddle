@@ -17,8 +17,8 @@
 #include <optional>
 #include <unordered_map>
 
+#include "paddle/common/enforce.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
-
 namespace cinn::common {
 
 namespace {
@@ -288,7 +288,10 @@ std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
   if (ret.has_value()) return ret.value();
   ForEachBroadcastDimExpr(leaves, [&](const auto& broadcast) -> bool {
     const auto& operands = broadcast.operands;
-    CHECK_GE(operands->size(), 2);
+    PADDLE_ENFORCE_GE(operands->size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The operands size should be greater than 2."));
     CHECK(operands->at(0) != operands->at(1));
     ret = symbol::Broadcastable<symbol::DimExpr>{operands->at(0),
                                                  operands->at(1)};

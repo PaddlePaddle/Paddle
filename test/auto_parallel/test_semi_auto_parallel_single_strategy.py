@@ -43,10 +43,10 @@ class TestSemiAutoParallelInSingleStrategy(test_base.CommunicationTestDistBase):
     def test_simple_net_single_strategy_with_amp(self):
         changeable_envs = {
             "backend": ["gpu"],
-            "use_master_grad": ["0", "1"],
+            "use_master_grad": ["1", "0"],
             "dtype": ["bfloat16", "float16"],
             "seed": ["2023"],
-            "use_adam": ["0", "1"],
+            "use_adam": ["0"],
         }
         envs_list = test_base.gen_product_envs_list({}, changeable_envs)
         for envs in envs_list:

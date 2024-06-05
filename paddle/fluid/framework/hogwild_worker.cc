@@ -84,8 +84,10 @@ class GPUParallelCopyer {
   GPUParallelCopyer(const phi::gpuStream_t &stream,
                     const int device_id,
                     const int stream_num)
-      : dev_stream_(stream), device_id_(device_id), max_stream_(stream_num) {
-    streams_.resize(max_stream_);
+      : dev_stream_(stream),
+        device_id_(device_id),
+        max_stream_(stream_num),
+        streams_(stream_num) {
     platform::CUDADeviceGuard guard(device_id_);
     for (size_t i = 0; i < max_stream_; ++i) {
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&streams_[i]));
@@ -307,7 +309,8 @@ int HogwildWorker::IsParameter(const std::string &name, bool full_match) {
   }
 }
 void HogwildWorker::BuildShardingDepends(const ProgramDesc &program) {
-  nccl_rank_id_ = place_.GetDeviceId();
+  nccl_rank_id_ =
+      static_cast<int>(static_cast<unsigned char>(place_.GetDeviceId()));
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
   auto gpu_ps = PSGPUWrapper::GetInstance();
   nccl_rank_id_ = gpu_ps->GetNCCLRankId(nccl_rank_id_);
@@ -913,9 +916,10 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
       }
       str_os << "\n";
     }
-    char filename[512] = {0};
-    snprintf(filename, sizeof(filename), "./device_%d_ops.txt", thread_id_);
-    WriteToFile(filename, str_os.str());
+    std::string filename = "./device_";
+    filename += std::to_string(thread_id_);
+    filename += "_ops.txt";
+    WriteToFile(filename.c_str(), str_os.str());
   }
   // debug
   VLOG(0) << "device id=" << thread_id_
@@ -1316,7 +1320,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
   }
 #endif
   bool infer_out_of_ins = false;
-  while (1) {
+  while (true) {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
     if (FLAGS_gpugraph_force_device_batch_num_equal) {
@@ -1520,7 +1524,7 @@ void HogwildWorker::TrainFiles() {
   }
 #endif
   bool infer_out_of_ins = false;
-  while (1) {
+  while (true) {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
     if (FLAGS_gpugraph_force_device_batch_num_equal) {

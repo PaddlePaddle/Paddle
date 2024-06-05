@@ -21,12 +21,12 @@
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
-
 #include <algorithm>
 #include <iomanip>
 #include <memory>
 #include <utility>
 #include <vector>
+#include "paddle/common/enforce.h"
 
 #include "paddle/cinn/backends/llvm/cinn_runtime_llvm_ir.h"
 #include "paddle/cinn/cinn.h"
@@ -96,7 +96,10 @@ auto CreateIrBuffer(cinn::common::Type t,
                     std::string name,
                     std::vector<int> shape,
                     int data_alignment = 0) {
-  CHECK_GE(data_alignment, 0);
+  PADDLE_ENFORCE_GE(data_alignment,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "data_alignment should be greater than or equal to 0"));
   auto buffer = ir::_Buffer_::Make(std::move(name), std::move(t));
 
   if (data_alignment) {

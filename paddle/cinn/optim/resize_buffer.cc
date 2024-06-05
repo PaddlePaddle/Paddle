@@ -249,6 +249,7 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
     ir::Store* store = expr->As<ir::Store>();
     ir::Tensor tensor = store->tensor.as_tensor_ref();
     ResizeTensor(&tensor);
+    ReplaceTensorIndices<ir::Store>(store);
     ir::IRMutator<>::Visit(op, expr);
   }
 
@@ -264,11 +265,8 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
       return;
     }
 
-    const std::string& buffer_name = load->tensor.as_tensor_ref()->buffer->name;
-    if (buffer_name_to_shape_.count(buffer_name) > 0) {
-      load->tensor.as_tensor_ref()->shape =
-          buffer_name_to_shape_.at(buffer_name);
-    }
+    ir::Tensor tensor = load->tensor.as_tensor_ref();
+    ResizeTensor(&tensor);
 
     // For the moment, align the load tensor indices with the tensor shape using
     // the trick method. A better way would be to modify the FlattenLoop
@@ -277,6 +275,7 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
     for (int i = 0; i < cnt; i++) {
       load->indices.erase(load->indices.begin());
     }
+    ReplaceTensorIndices<ir::Load>(load);
     ir::IRMutator<>::Visit(op, expr);
   }
 
@@ -302,6 +301,35 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
               << analyzed_size;
       buffer->shape = {analyzed_size};
     }
+  }
+
+  template <typename T>
+  void ReplaceTensorIndices(T* op) {
+    ir::Tensor tensor = op->tensor.as_tensor_ref();
+    ir::Buffer buffer = tensor->buffer;
+    if (!buffer.defined()) return;
+    if (buffer->memory_type != ir::MemoryType::GPULocal) return;
+
+    VLOG(4) << "replacing index of tensor: " << tensor->name;
+    ir::Expr index_expr = op->index();
+    std::unordered_map<std::string, ir::Expr> var_name_to_expr;
+    ir::ir_utils::CollectIRNodes(index_expr, [&](const ir::Expr* x) {
+      const ir::_Var_* var = x->as_var();
+      if (var) {
+        var_name_to_expr[var->name] = var->Copy();
+      }
+      return false;
+    });
+    if (var_name_to_expr.size() != 1) {
+      return;
+    }
+
+    ir::Expr single_var = var_name_to_expr.begin()->second;
+    VLOG(4) << "found single var: " << single_var;
+    for (size_t i = 0; i + 1 < op->indices.size(); i++) {
+      op->indices[i] = ir::Expr(0);
+    }
+    op->indices.back() = single_var;
   }
 
  private:
