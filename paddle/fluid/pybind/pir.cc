@@ -2431,10 +2431,12 @@ std::shared_ptr<Program> ApplyFusedBnAddActPass(
 
 void DumpPirPyCodeIfNeed(const std::shared_ptr<Program> &program,
                          const std::string &file_name) {
+#ifdef PADDLE_WITH_CINN
   ::cinn::dialect::ir::PirToPyCodeConverter(program.get())
       .file_name(file_name)
       .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
       .SaveIfFlagEnabled();
+#endif
 }
 
 void BindIrPass(pybind11::module *m) {
