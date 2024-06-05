@@ -22,8 +22,7 @@
 PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 COMMON_DECLARE_bool(new_executor_use_cuda_graph);
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void InitCUDNNRelatedHandle(phi::GPUContext* dev_ctx) {
@@ -186,5 +185,4 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
 }
 #endif
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

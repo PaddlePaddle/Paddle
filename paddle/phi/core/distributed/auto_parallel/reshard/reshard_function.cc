@@ -20,8 +20,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -74,5 +73,4 @@ DenseTensor* ReshardFunction::GetMutableTensor(DistTensor* tensor) {
   return tensor->value_.get();
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

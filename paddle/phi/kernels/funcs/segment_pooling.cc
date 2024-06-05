@@ -19,8 +19,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 using Tensor = DenseTensor;
 
@@ -168,5 +167,4 @@ template class SegmentPoolGradFunctor<CPU, int64_t, int64_t>;
 template class SegmentPoolGradFunctor<CPU, float16, int>;
 template class SegmentPoolGradFunctor<CPU, float16, int64_t>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

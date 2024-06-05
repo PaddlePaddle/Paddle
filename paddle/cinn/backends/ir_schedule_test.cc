@@ -31,7 +31,7 @@
 #include "paddle/cinn/optim/remove_schedule_block.h"
 #include "paddle/cinn/optim/unroll_loops.h"
 #include "paddle/cinn/optim/vectorize_loops.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace backends {
 
@@ -563,7 +563,10 @@ TEST(IrSchedule, vectorize) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 2U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      2U,
+      phi::errors::InvalidArgument("The size of loops should be 2."));
   ir_sch.Vectorize(loops[1], 16);
   std::string origin = utils::GetStreamCnt(func[0]);
   EXPECT_EQ(origin, utils::Trim(R"ROC(
@@ -637,7 +640,10 @@ TEST(IrSchedule, unroll) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 2U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      2U,
+      phi::errors::InvalidArgument("The size of loops should be 2."));
   ir_sch.Unroll(loops[1]);
   std::string origin = utils::GetStreamCnt(func[0]);
   EXPECT_EQ(origin, utils::Trim(R"ROC(
@@ -711,7 +717,10 @@ TEST(IrSchedule, bind) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 2U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      2U,
+      phi::errors::InvalidArgument("The size of loops should be 2."));
   ir_sch.Bind(loops[0], "blockIdx.x");
   std::string origin = utils::GetStreamCnt(func[0]);
   EXPECT_EQ(origin, utils::Trim(R"ROC(
@@ -753,7 +762,10 @@ TEST(IrSchedule, simple_compute_at) {
 
   auto func = cinn::lang::LowerVec(
       "test_simple_compute_at", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -826,7 +838,10 @@ TEST(IrSchedule, compute_at0) {
 
   auto func = cinn::lang::LowerVec(
       "test_compute_at0", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -900,7 +915,10 @@ TEST(IrSchedule, compute_at1) {
 
   auto func = cinn::lang::LowerVec(
       "test_compute_at1", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -972,7 +990,10 @@ TEST(IrSchedule, compute_at2) {
 
   auto func = cinn::lang::LowerVec(
       "test_compute_at2", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1044,7 +1065,10 @@ TEST(IrSchedule, compute_at3) {
 
   auto func = cinn::lang::LowerVec(
       "test_compute_at3", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1125,7 +1149,10 @@ TEST(IrSchedule, compute_at4) {
 
   auto func = cinn::lang::LowerVec(
       "test_compute_at4", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1187,7 +1214,10 @@ TEST(IrSchedule, compute_at5) {
 
   auto func = cinn::lang::LowerVec(
       "test_compute_at5", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1250,7 +1280,10 @@ TEST(IrSchedule, compute_at6) {
 
   auto func = cinn::lang::LowerVec(
       "test_compute_at6", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1316,7 +1349,10 @@ TEST(IrSchedule, cache_read1) {
   auto func = cinn::lang::LowerVec(
       "test_cache_read1", stages, {A, C}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1399,7 +1435,10 @@ TEST(IrSchedule, cache_read2) {
   auto func = cinn::lang::LowerVec(
       "test_cache_read2", stages, {A, B}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1469,7 +1508,10 @@ TEST(IrSchedule, cache_write1) {
   auto func = cinn::lang::LowerVec(
       "test_cache_write1", stages, {A, C}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1553,7 +1595,10 @@ TEST(IrSchedule, cache_write2) {
   auto func = cinn::lang::LowerVec(
       "test_cache_write2", stages, {A, B}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1624,7 +1669,10 @@ TEST(IrSchedule, cache_read3) {
   auto func = cinn::lang::LowerVec(
       "test_cache_read3", stages, {A, C}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1705,7 +1753,10 @@ TEST(IrSchedule, cache_write3) {
   auto func = cinn::lang::LowerVec(
       "test_cache_write3", stages, {A, C}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1788,7 +1839,10 @@ TEST(IrSchedule, sync_threads) {
   auto func = cinn::lang::LowerVec(
       "test_sync_threads", stages, {A, C}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1870,7 +1924,10 @@ TEST(IrSchedule, cache_write4) {
   auto func = cinn::lang::LowerVec(
       "test_cache_write4", stages, {A, B}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1953,7 +2010,10 @@ TEST(IrSchedule, rfactor) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 3U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      3U,
+      phi::errors::InvalidArgument("The size of loops should be 3."));
   auto new_rf_tensor = ir_sch.Rfactor(loops[2], 0);
   auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
   CHECK(new_rf_tensor_ref);
@@ -2080,7 +2140,10 @@ TEST(IrSchedule, rfactor1) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 3U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      3U,
+      phi::errors::InvalidArgument("The size of loops should be 3."));
   auto new_rf_tensor = ir_sch.Rfactor(loops[1], 1);
   auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
   CHECK(new_rf_tensor_ref);
@@ -2206,7 +2269,10 @@ TEST(IrSchedule, rfactor2) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("C");
-  CHECK_EQ(loops.size(), 3U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      3U,
+      phi::errors::InvalidArgument("The size of loops should be 3."));
   auto new_rf_tensor = ir_sch.Rfactor(loops[2], 0);
   auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
   CHECK(new_rf_tensor_ref);
@@ -2347,7 +2413,10 @@ TEST(IrSchedule, factorize_reduction) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 3U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      3U,
+      phi::errors::InvalidArgument("The size of loops should be 3."));
   auto new_rf_tensor = ir_sch.FactorizeReduction(loops[1], 0);
   auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
   CHECK(new_rf_tensor_ref);
@@ -2436,7 +2505,10 @@ TEST(IrSchedule, factorize_reduction1) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 3U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      3U,
+      phi::errors::InvalidArgument("The size of loops should be 3."));
   auto new_rf_tensor = ir_sch.FactorizeReduction(loops[1], 1);
   auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
   CHECK(new_rf_tensor_ref);
@@ -2520,9 +2592,15 @@ TEST(IrSchedule, factorize_reduction2) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 2U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      2U,
+      phi::errors::InvalidArgument("The size of loops should be 2."));
   auto splited_loops = ir_sch.Split(loops[1], {4, 5});
-  CHECK_EQ(splited_loops.size(), 2U);
+  PADDLE_ENFORCE_EQ(
+      splited_loops.size(),
+      2U,
+      phi::errors::InvalidArgument("The size of splited_loops should be 2."));
   auto new_rf_tensor = ir_sch.FactorizeReduction(splited_loops[0], 1);
   auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
   CHECK(new_rf_tensor_ref);
@@ -3278,13 +3356,19 @@ TEST(IrSchedule, ComplexIndices) {
   VLOG(3) << "Lowered Expr:" << ir_sch.GetModule().GetExprs().front();
 
   auto loops_b = ir_sch.GetLoops("B");
-  CHECK_EQ(loops_b.size(), 2);
+  PADDLE_ENFORCE_EQ(
+      loops_b.size(),
+      2,
+      phi::errors::InvalidArgument("The loops size of B should be 2."));
   ir_sch.Split("B", 0, {8, -1});
   ir_sch.Split(
       "B", 2, {32, -1});  // after first splited, loops size has added to 3
   VLOG(3) << "Splited Expr:" << ir_sch.GetModule().GetExprs().front();
 
-  CHECK_EQ(ir_sch.GetLoops("B").size(), 4);
+  PADDLE_ENFORCE_EQ(ir_sch.GetLoops("B").size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "The loops size of B should be 4 after split."));
   ir_sch.Reorder("B", {2, 0, 3, 1});
   VLOG(3) << "Reordered Expr:\n" << ir_sch.GetModule().GetExprs().front();
 

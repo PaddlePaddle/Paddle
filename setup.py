@@ -955,34 +955,56 @@ def get_setup_requires():
 def get_paddle_extra_install_requirements():
     # (Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas, thereby making the operation of 'pip install paddle' no longer dependent on the installation of cuda and cudnn.
     if env_dict.get("WITH_PIP_CUDA_LIBRARIES") == "ON":
-        PADDLE_CUDA_INSTALL_REQUIREMENTS = {
-            "V11": (
-                "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cuda-cupti-cu11==11.8.87; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cudnn-cu11==8.7.0.84; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cublas-cu11==11.11.3.6; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cufft-cu11==10.9.0.58; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-curand-cu11==10.3.0.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cusolver-cu11==11.4.1.48; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cusparse-cu11==11.7.5.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-nccl-cu11==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-nvtx-cu11==11.8.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cuda-nvrtc-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64'"
-            ),
-            "V12": (
-                "nvidia-cuda-runtime-cu12==12.3.101; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cuda-cupti-cu12==12.3.101; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cudnn-cu12==9.0.0.312; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cublas-cu12==12.3.4.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cufft-cu12==11.2.1.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-curand-cu12==10.3.5.147; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cusolver-cu12==11.6.1.9; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cusparse-cu12==12.3.1.170; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-nccl-cu12==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-nvtx-cu12==12.4.127; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cuda-nvrtc-cu12==12.3.107; platform_system == 'Linux' and platform_machine == 'x86_64'"
-            ),
-        }
+        if platform.system() == 'Linux':
+            PADDLE_CUDA_INSTALL_REQUIREMENTS = {
+                "V11": (
+                    "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cuda-cupti-cu11==11.8.87; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cudnn-cu11==8.7.0.84; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cublas-cu11==11.11.3.6; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cufft-cu11==10.9.0.58; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-curand-cu11==10.3.0.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusolver-cu11==11.4.1.48; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusparse-cu11==11.7.5.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nccl-cu11==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nvtx-cu11==11.8.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cuda-nvrtc-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64'"
+                ),
+                "V12": (
+                    "nvidia-cuda-runtime-cu12==12.3.101; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cuda-cupti-cu12==12.3.101; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cudnn-cu12==9.0.0.312; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cublas-cu12==12.3.4.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cufft-cu12==11.2.1.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-curand-cu12==10.3.5.147; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusolver-cu12==11.6.1.9; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusparse-cu12==12.3.1.170; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nccl-cu12==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nvtx-cu12==12.4.127; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cuda-nvrtc-cu12==12.3.107; platform_system == 'Linux' and platform_machine == 'x86_64'"
+                ),
+            }
+        elif platform.system() == 'Windows':
+            PADDLE_CUDA_INSTALL_REQUIREMENTS = {
+                "V11": (
+                    "nvidia-cuda-runtime-cu11==11.8.89 | "
+                    "nvidia-cudnn-cu11==8.9.4.19 | "
+                    "nvidia-cublas-cu11==11.11.3.6 | "
+                    "nvidia-cufft-cu11==10.9.0.58 | "
+                    "nvidia-curand-cu11==10.3.0.86 | "
+                    "nvidia-cusolver-cu11==11.4.1.48 | "
+                    "nvidia-cusparse-cu11==11.7.5.86 "
+                ),
+                "V12": (
+                    "nvidia-cuda-runtime-cu12==12.3.101 | "
+                    "nvidia-cudnn-cu12==9.0.0.312 | "
+                    "nvidia-cublas-cu12==12.3.4.1 | "
+                    "nvidia-cufft-cu12==11.2.1.3 | "
+                    "nvidia-curand-cu12==10.3.5.147 | "
+                    "nvidia-cusolver-cu12==11.6.1.9 | "
+                    "nvidia-cusparse-cu12==12.3.1.170 "
+                ),
+            }
         try:
             output = subprocess.check_output(['nvcc', '--version']).decode(
                 'utf-8'
@@ -1468,7 +1490,15 @@ def get_headers():
 def get_setup_parameters():
     # get setup_requires
     setup_requires = get_setup_requires()
-    if platform.system() == 'Linux' and platform.machine() == 'x86_64':
+    if (
+        env_dict.get("WITH_GPU") == 'ON'
+        and platform.system() in ('Linux', 'Windows')
+        and platform.machine()
+        in (
+            'x86_64',
+            'AMD64',
+        )
+    ):
         paddle_cuda_requires = get_paddle_extra_install_requirements()
         setup_requires += paddle_cuda_requires
 
@@ -1766,6 +1796,25 @@ def check_submodules():
             sys.exit(1)
 
 
+def generate_tensor_stub(paddle_binary_dir, paddle_source_dir):
+    print('-' * 2, 'Generate stub file tensor.pyi ... ')
+    script_path = paddle_source_dir + '/tools/'
+    sys.path.append(script_path)
+    import gen_tensor_stub
+
+    gen_tensor_stub.generate_stub_file(
+        input_file=paddle_source_dir
+        + '/python/paddle/tensor/tensor.prototype.pyi',
+        output_file=paddle_binary_dir + '/python/paddle/tensor/tensor.pyi',
+    )
+
+    shutil.copy(
+        paddle_binary_dir + '/python/paddle/tensor/tensor.pyi',
+        paddle_source_dir + '/python/paddle/tensor/tensor.pyi',
+    )
+    print('-' * 2, 'End Generate stub file tensor.pyi ... ')
+
+
 def main():
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
@@ -1844,6 +1893,9 @@ def main():
             headers,
             package_data['paddle.libs'],
         )
+
+    # generate stub file `tensor.pyi`
+    generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
 
     setup(
         name=package_name,
