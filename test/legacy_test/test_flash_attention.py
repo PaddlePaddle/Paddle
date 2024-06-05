@@ -1384,10 +1384,10 @@ class TestFlashAttentionQKVPackedDeter(TestFlashAttentionQKVPackedGQADeter):
 class TestReduceAttnScores(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
-        self.batch_size = 2
+        self.batch_size = 1
         self.num_head = 8
         self.seqlen_q = 1024
-        self.seqlen_k = 8192
+        self.seqlen_k = 10240
         self.head_dim = 128
         self.q_shape = [
             self.batch_size,
@@ -1410,15 +1410,15 @@ class TestReduceAttnScores(unittest.TestCase):
         product = paddle.matmul(x=q_ref, y=k_ref, transpose_y=True)
         product = paddle.scale(product, scale)
         product = product - paddle.max(product, axis=-1, keepdim=True)
-        attn_scores_ref = F.softmax(product, dtype='float32')
-        reduced_scores_ref = paddle.sum(attn_scores_ref, axis=-2, keepdim=True)
-        return reduced_scores_ref, attn_scores_ref
+        product = F.softmax(product, dtype='float32')
+        product = paddle.sum(product, axis=-2, keepdim=True)
+        return product
 
     def test_reduce_attn_scores(self):
         paddle.disable_static()
 
-        query = np.random.random(self.q_shape)
-        key = np.random.random(self.k_shape)
+        query = paddle.randn(self.q_shape)
+        key = paddle.randn(self.k_shape)
 
         q = paddle.to_tensor(
             query, place=self.place, dtype=self.dtype, stop_gradient=True
@@ -1427,7 +1427,7 @@ class TestReduceAttnScores(unittest.TestCase):
             key, place=self.place, dtype=self.dtype, stop_gradient=True
         )
 
-        reduced_scores_ref, attn_scores_ref = self.naive_reduce(q, k)
+        reduced_scores_ref = self.naive_reduce(q, k)
 
         (_, _, softmax_lse, _) = paddle._C_ops.flash_attn(
             q,
@@ -1442,18 +1442,13 @@ class TestReduceAttnScores(unittest.TestCase):
             "",
         )
 
-        reduced_scores, attn_scores = reduce_attn_scores(
-            q, k, softmax_lse, return_softmax=True
-        )
+        reduced_scores = reduce_attn_scores(q, k, softmax_lse)
 
         np.testing.assert_allclose(
             reduced_scores.numpy(),
             reduced_scores_ref.numpy(),
             rtol=1e-05,
             atol=0,
-        )
-        np.testing.assert_allclose(
-            attn_scores.numpy(), attn_scores_ref.numpy(), rtol=1e-05, atol=0
         )
 
         paddle.enable_static()
@@ -1469,26 +1464,21 @@ class TestReduceAttnScores(unittest.TestCase):
                 name="softmax_lse", shape=softmax_lse.shape, dtype='float32'
             )
 
-            reduced_scores, attn_scores = reduce_attn_scores(
-                qs, ks, softmax_lse_s, return_softmax=True
-            )
+            reduced_scores = reduce_attn_scores(qs, ks, softmax_lse_s)
             exe = base.Executor(self.place)
             fetches_result = exe.run(
                 feed={
-                    "q": query.astype(self.dtype),
-                    "k": key.astype(self.dtype),
+                    "q": query.numpy().astype(self.dtype),
+                    "k": key.numpy().astype(self.dtype),
                     "softmax_lse": softmax_lse.numpy(),
                 },
-                fetch_list=[reduced_scores, attn_scores],
+                fetch_list=[reduced_scores],
             )
             np.testing.assert_allclose(
                 fetches_result[0],
                 reduced_scores_ref.numpy(),
                 rtol=1e-05,
                 atol=0,
-            )
-            np.testing.assert_allclose(
-                fetches_result[1], attn_scores_ref.numpy(), rtol=1e-05, atol=0
             )
         paddle.disable_static()
 
