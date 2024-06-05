@@ -850,13 +850,15 @@ def decompose_dist_program(pir_program):
     decompose(pir_program, [])
 
     # decomp backward ops
+    blacklist = core.prim_config["backward_blacklist"]
+
     block = pir_program.global_block()
+    pre_combine_op = None
     with paddle.pir.core.program_guard(pir_program):
         ops = pir_program.global_block().ops
         for op in ops:
             bwd_op_name = op.name()
-            # todo(CZ): to be removed
-            if bwd_op_name in ["pd_op.mean_grad", "pd_op.concat_grad"]:
+            if bwd_op_name.split(".")[-1] in blacklist:
                 continue
             skip_decomp = False
             if has_decomp_vjp(op):
@@ -867,12 +869,44 @@ def decompose_dist_program(pir_program):
                 if not skip_decomp:
                     pir.set_insertion_point(op)
                     orig_outs = op.results()
+
+                    is_next_split = False
                     decomp_outs = call_decomp_vjp(op)
-                    new_outs = _analyse_decomp_results(
-                        orig_outs, decomp_outs, op
-                    )
-                    op.replace_all_uses_with(new_outs)
+                    for i in range(len(orig_outs)):
+                        if orig_outs[i].has_one_use():
+                            next_op = orig_outs[i].first_use().owner()
+                            if next_op.name() == "builtin.split":
+                                is_next_split = True
+                                _check_op_results(
+                                    next_op.name(),
+                                    next_op.results(),
+                                    decomp_outs[i],
+                                )
+                                next_op.replace_all_uses_with(decomp_outs[i])
+                                block.remove_op(next_op)
+
+                    if not is_next_split:
+                        new_outs = _analyse_decomp_results(
+                            orig_outs, decomp_outs, op
+                        )
+                        _check_op_results(op.name(), orig_outs, new_outs)
+                        op.replace_all_uses_with(new_outs)
+
                     block.remove_op(op)
+
+                if op.name() == "builtin.combine":
+                    pre_combine_op = op
+
+                if pre_combine_op is not None:
+                    remove_op = True
+                    for item in pre_combine_op.results():
+                        if item.has_one_use():
+                            remove_op = False
+                            break
+                    if remove_op:
+                        block.remove_op(pre_combine_op)
+                    pre_combine_op = None
+    paddle.pir.set_insertion_point_to_block_end(block)
 
 
 def decompose_pir_program(pir_program, param_mapping, grad_var_to_var):

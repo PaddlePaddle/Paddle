@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import unittest
 
 import paddle
 import paddle.distributed as dist
@@ -183,14 +182,11 @@ class TestReshardNdMesh:
         tgt_out_value = (self._mesh.process_ids, [-1, 1, -1], {})
 
     def run_pr_to_ss_case(self):
-        # [Partial(), Replicate()] --> [Shard(0), Shard(1)]
-        # raise NotImplementedError
-        with unittest.TestCase().assertRaises(NotImplementedError):
-            self.create_program(
-                [self.BATCH_SIZE, self.SEQ_LEN, self.HIDDEN_SIZE],
-                [dist.Partial(dist.ReduceType.kRedSum), dist.Replicate()],
-                [dist.Shard(0), dist.Shard(1)],
-            )
+        self.create_program(
+            [self.BATCH_SIZE, self.SEQ_LEN, self.HIDDEN_SIZE],
+            [dist.Partial(dist.ReduceType.kRedSum), dist.Replicate()],
+            [dist.Shard(0), dist.Shard(1)],
+        )
 
     def run_ss_to_ss_case(self):
         # [Shard(0), Shard(1)] --> [Shard(1), Shard(0)]

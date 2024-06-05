@@ -35,8 +35,7 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
                             "Use local_scope in new executor(especially used "
                             "in UT), can turn off for better performance");
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const BlockDesc& block,
@@ -170,5 +169,4 @@ Variable* InterpreterCore::DebugVar(const std::string& name) const {
   return impl_->DebugVar(name);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
