@@ -40,14 +40,14 @@ TEST(ConfigSearcher, TestReduceDemo) {
 
   // Step 1: Construct iter space and tile config.
   cinn::ir::BucketInfo bucket_info;
-  int s_dimension_lower = 32;
-  int s_dimension_upper = 128;
+  int s_dimension_lower = 13;
+  int s_dimension_upper = 13;
   auto s_dimension_type = "S";
-  auto s_dimension_is_dynamic = true;
-  int r_dimension_lower = 1024;
-  int r_dimension_upper = 1024;
+  auto s_dimension_is_dynamic = false;
+  int r_dimension_lower = 4096;
+  int r_dimension_upper = 4096;
   auto r_dimension_type = "R";
-  auto r_dimension_is_dynamic = true;
+  auto r_dimension_is_dynamic = false;
 
   bucket_info.space.push_back(cinn::ir::BucketInfo::Dimension{
       s_dimension_lower,
@@ -63,11 +63,12 @@ TEST(ConfigSearcher, TestReduceDemo) {
       std::vector<double>(r_dimension_upper - r_dimension_lower + 1, 1.0)});
 
   cinn::ir::ScheduleConfig::TileConfig tile_config;
-  tile_config.spatial_inner_num = 32;
-  tile_config.warp_num = 32;
-  tile_config.tree_reduce_num = 128;
+  tile_config.spatial_inner_num = 9;
+  tile_config.warp_num = 14;
+  tile_config.tree_reduce_num = 512;
   std::vector<std::pair<std::string, std::string>> iter_space_type = {
-      std::make_pair("S", "dynamic"), std::make_pair("R", "dynamic")};
+      std::make_pair(s_dimension_type, "static"),
+      std::make_pair(r_dimension_type, "static")};
   // Step 2: Add to json/Read from json
   cinn::ir::FileTileConfigDatabase file_database;
   file_database.AddConfig(
