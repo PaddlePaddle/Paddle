@@ -19,8 +19,7 @@
 #include <unordered_map>
 
 #include "paddle/phi/core/generator.h"
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 void RandomSampler::build(GraphEdgeBlob *edges) { this->edges = edges; }
 
@@ -164,5 +163,4 @@ int WeightedSampler::sample(
   subtract_count_map[this]++;
   return return_idx;
 }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

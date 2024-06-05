@@ -251,7 +251,7 @@ def _pir_transform(t, dtype):
                 param = op.operand(0).source()
                 cast_param = paddle.cast(param, dtype)
                 cast_param.persistable = True
-                paddle._pir_ops.updata_parameter(cast_param, t.name)
+                paddle._pir_ops.update_parameter(cast_param, t.name)
                 block.remove_op(op)
                 break
     main.set_parameters_from(startup)

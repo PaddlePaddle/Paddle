@@ -22,9 +22,7 @@
 #include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 using EigenVectorArrayMap = Eigen::Map<Eigen::Array<double, Eigen::Dynamic, 1>>;
 using EigenVectorArrayMapFloat =
@@ -1313,9 +1311,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeFusionLSTM(graph);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(cpu_quantize_pass, paddle::framework::ir::CPUQuantizePass)
     .RequirePassAttr("quant_var_scales");
