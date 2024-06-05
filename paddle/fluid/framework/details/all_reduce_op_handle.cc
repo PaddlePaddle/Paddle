@@ -24,9 +24,7 @@
 COMMON_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
@@ -335,6 +333,4 @@ void AllReduceOpHandle::SyncNCCLAllReduce() {
 #endif
 
 std::string AllReduceOpHandle::Name() const { return "all_reduce"; }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

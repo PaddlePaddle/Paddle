@@ -4062,6 +4062,12 @@
   outputs :
     {slimmed_x : SlimmedX, cls_inds : CLSInds}
 
+- op: fusion_group
+  inputs:
+    inputs : Inputs
+  outputs:
+    outs : Outs
+
 - op: fusion_seqpool_cvm_concat
   inputs:
     {x : X, cvm : CVM}
@@ -4128,6 +4134,15 @@
     {start: Start, stop: Stop, num: Num, base: Base}
   outputs:
     {out: Out}
+
+- op: lstm
+  backward: lstm_grad
+  inputs:
+    {input : Input, h0 : H0, c0 : C0, weight : Weight, bias : Bias}
+  outputs:
+    {hidden : Hidden, cell : Cell, batch_gate : BatchGate, batch_cell_pre_act : BatchCellPreAct}
+  extra:
+    outputs: [batch_gate, batch_cell_pre_act]
 
 - op: lu
   backward: lu_grad
@@ -4250,6 +4265,8 @@
     {x: X}
   outputs:
     {out: Out, noise: Noise}
+  extra:
+    outputs: [noise]
 
 - op: send_v2
   inputs :

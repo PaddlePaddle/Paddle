@@ -17,9 +17,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class ExprWrapper {
  public:
@@ -124,6 +122,7 @@ static std::vector<ExprWrapper> DimsExprs2VecExprWrapper(
     nvinfer1::IExprBuilder& expr_builder  // NOLINT
 ) {
   std::vector<ExprWrapper> x_dims_wrap;
+  x_dims_wrap.reserve(x_dims.nbDims);
   for (int i = 0; i < x_dims.nbDims; i++) {
     x_dims_wrap.emplace_back(x_dims.d[i], &expr_builder);
   }
@@ -154,6 +153,7 @@ nvinfer1::DimsExprs GatherNdInferMeta(
   std::vector<const nvinfer1::IDimensionExpr*> result_dims;
   // The result dims is
   //   Index.shape[:-1] + X.shape[Index.shape[-1]:]
+  result_dims.reserve(index_dims_size - 1);
   for (int i = 0; i < index_dims_size - 1; ++i) {
     result_dims.emplace_back(index_dims.d[i]);
   }
@@ -899,6 +899,4 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(pad, PadInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(argsort, ArgsortInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(scatter, ScatterInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(solve, SolveInferMeta);
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt

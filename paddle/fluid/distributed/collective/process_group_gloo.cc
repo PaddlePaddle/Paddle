@@ -32,8 +32,7 @@
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 #ifdef _WIN32
 #define GENERATE_FUNC(type, func, ...)       \
@@ -727,5 +726,4 @@ phi::distributed::GlooCommContext* ProcessGroupGloo::GetCommContext() {
   return comm_context;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

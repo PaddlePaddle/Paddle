@@ -2678,6 +2678,20 @@
   backward : logsumexp_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : lstm
+  args: (Tensor input, Tensor h0, Tensor c0, Tensor weight, Tensor bias, bool use_peepholes
+    = true, bool is_reverse = false, bool is_test = false, str gate_activation = "sigmoid",
+    str cell_activation = "tanh", str candidate_activation = "tanh")
+  output: Tensor (hidden), Tensor (cell), Tensor (batch_gate), Tensor (batch_cell_pre_act)
+  infer_meta:
+    func: LSTMInferMeta
+  kernel:
+    func: lstm
+    data_type: input
+  optional: h0, c0
+  intermediate: batch_gate, batch_cell_pre_act
+  backward: lstm_grad
+
 - op : lstsq
   args : (Tensor x, Tensor y, Scalar rcond=0.0f, str driver="gels")
   output : Tensor(solution), Tensor(residuals), Tensor(rank), Tensor(singular_values)
@@ -3604,7 +3618,7 @@
   traits : pir::SideEffectTrait
 
 - op : rrelu
-  args : (Tensor x, float lower, float upper, bool is_test)
+  args : (Tensor x, float lower=1.0f/8, float upper=1.0f/3, bool is_test=false)
   output : Tensor(out), Tensor(noise)
   infer_meta :
     func : RReluInferMeta
