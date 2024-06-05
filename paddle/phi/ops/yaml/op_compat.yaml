@@ -4224,7 +4224,7 @@
   inputs:
     {gate_idx: GateIdx, expert_count: ExpertCount}
   outputs:
-    new_gate_idx: NewGateIdx
+    out_gate_idx: NewGateIdx
 
 - op: pyramid_hash
   backward: pyramid_hash_grad
