@@ -31,8 +31,7 @@
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 std::shared_ptr<gloo::transport::Device> CreateDeviceForInterface(
     const std::string& ifname) {
   gloo::transport::tcp::attr attr;
@@ -106,5 +105,4 @@ void send_recv(SendRecvOptions* opts) {
   }
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

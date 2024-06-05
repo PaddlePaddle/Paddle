@@ -19,9 +19,7 @@
 #include "paddle/fluid/framework/ir/onednn/shuffle_channel_onednn_detect_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void AddVarToScope(Scope* param_scope,
                    const std::string& name,
@@ -78,8 +76,6 @@ TEST(ShuffleChannelOneDNNDetectPass, ShuffleChannelOneDNNDetectPassTest) {
   MainTest();
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(shuffle_channel_onednn_detect_pass);

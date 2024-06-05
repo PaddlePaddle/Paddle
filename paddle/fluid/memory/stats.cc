@@ -22,8 +22,7 @@ PADDLE_DEFINE_EXPORTED_bool(
     log_memory_stats,
     false,
     "Log memory stats after each op runs, just used for debug.");
-namespace paddle {
-namespace memory {
+namespace paddle::memory {
 
 class StatRegistry {
  public:
@@ -173,5 +172,4 @@ int RegisterAllStats() {
 
 UNUSED static int register_all_stats = RegisterAllStats();
 
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory
