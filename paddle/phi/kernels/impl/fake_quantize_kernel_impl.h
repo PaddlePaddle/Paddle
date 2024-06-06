@@ -241,8 +241,11 @@ void MovingAverageAbsMaxScaleKernel(
     DenseTensor *out_scale,
     DenseTensor *out_state,
     DenseTensor *out_accum) {
-  dev_ctx.template Alloc<T>(out);
-  phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  if (out) {
+    dev_ctx.template Alloc<T>(out);
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+  }
+
   // testing
   if (is_test) {
     return;
