@@ -161,10 +161,10 @@ class TestStaticReshard(unittest.TestCase):
                 varnames.append(varname)
 
         # check
-        assert block.var(varnames[0]).shape == (4, 8)
-        assert block.var(varnames[1]).shape == (2, 8)
-        assert block.var(varnames[2]).shape == (2, 8)
-        assert block.var(varnames[3]).shape == (4, 8)
+        assert block.var(varnames[0]).shape == (4, 16)
+        assert block.var(varnames[1]).shape == (2, 16)
+        assert block.var(varnames[2]).shape == (2, 16)
+        assert block.var(varnames[3]).shape == (4, 16)
 
     def run_test_case(self):
         self.test_reshard_dims_mapping()
