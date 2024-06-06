@@ -24,8 +24,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sparse/flatten_indices.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename IntT>
 void MaskCooCPUKernel(const CPUContext& dev_ctx,
@@ -154,8 +153,7 @@ void MaskHelperCooKernel(const Context& dev_ctx,
       }));
 }
 
-}  // namespace sparse
-}  // namespace phi
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(mask_coo,
                    CPU,

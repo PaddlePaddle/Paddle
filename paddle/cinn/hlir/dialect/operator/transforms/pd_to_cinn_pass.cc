@@ -84,6 +84,9 @@ class SumOpPattern : public pir::OpRewritePattern<paddle::dialect::SumOp> {
         op->operand_source(0), axis, keep_dim, dtype);
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_reduce.result(0));
     rewriter.EraseOp(op);
+    if (full_int_array_op->use_empty()) {
+      rewriter.EraseOp(full_int_array_op);
+    }
   }
 };
 
@@ -115,6 +118,9 @@ class ReduceMinMaxOpPattern : public pir::OpRewritePattern<SOURCE_OP> {
         rewriter.Build<TARGET_OP>(op->operand_source(0), axis, keep_dim);
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_reduce.result(0));
     rewriter.EraseOp(op);
+    if (full_int_array_op->use_empty()) {
+      rewriter.EraseOp(full_int_array_op);
+    }
   }
 };
 
@@ -146,6 +152,9 @@ class ProdOpPattern : public pir::OpRewritePattern<paddle::dialect::ProdOp> {
         op->operand_source(0), axis, keep_dim, reduce_all);
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_reduce.result(0));
     rewriter.EraseOp(op);
+    if (full_int_array_op->use_empty()) {
+      rewriter.EraseOp(full_int_array_op);
+    }
   }
 };
 

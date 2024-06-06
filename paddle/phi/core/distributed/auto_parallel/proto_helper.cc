@@ -23,8 +23,7 @@
   object.to_proto(&proto);                  \
   return proto
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 auto_parallel::TensorDistAttrProto to_proto(const TensorDistAttr& dist_attr) {
   TO_PROTO_HELPER(dist_attr, auto_parallel::TensorDistAttrProto);
@@ -61,5 +60,4 @@ auto_parallel::DistributedMapperProto to_proto(
     const auto_parallel::DistributedMapper& dist_mapper) {
   TO_PROTO_HELPER(dist_mapper, auto_parallel::DistributedMapperProto);
 }
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

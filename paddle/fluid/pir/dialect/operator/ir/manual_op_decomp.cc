@@ -98,12 +98,22 @@ std::vector<std::vector<pir::Value>> BatchNormOp::Decomp(pir::Operation* op) {
   res[2].push_back(std::static_pointer_cast<primitive::LazyTensor>(
                        std::get<2>(op_res).impl())
                        ->value());
-  res[3].push_back(std::static_pointer_cast<primitive::LazyTensor>(
-                       std::get<3>(op_res).impl())
-                       ->value());
-  res[4].push_back(std::static_pointer_cast<primitive::LazyTensor>(
-                       std::get<4>(op_res).impl())
-                       ->value());
+  if (std::get<3>(op_res).initialized()) {
+    res[3].push_back(std::static_pointer_cast<primitive::LazyTensor>(
+                         std::get<3>(op_res).impl())
+                         ->value());
+  } else {
+    pir::Value saved_mean;
+    res[3].push_back(saved_mean);
+  }
+  if (std::get<4>(op_res).initialized()) {
+    res[4].push_back(std::static_pointer_cast<primitive::LazyTensor>(
+                         std::get<4>(op_res).impl())
+                         ->value());
+  } else {
+    pir::Value saved_var;
+    res[4].push_back(saved_var);
+  }
   pir::Value reserve_space;
   res[5].push_back(reserve_space);
 
@@ -180,12 +190,23 @@ std::vector<std::vector<pir::Value>> BatchNorm_Op::Decomp(pir::Operation* op) {
   res[2].push_back(std::static_pointer_cast<primitive::LazyTensor>(
                        std::get<2>(op_res).impl())
                        ->value());
-  res[3].push_back(std::static_pointer_cast<primitive::LazyTensor>(
-                       std::get<3>(op_res).impl())
-                       ->value());
-  res[4].push_back(std::static_pointer_cast<primitive::LazyTensor>(
-                       std::get<4>(op_res).impl())
-                       ->value());
+  if (std::get<3>(op_res).initialized()) {
+    res[3].push_back(std::static_pointer_cast<primitive::LazyTensor>(
+                         std::get<3>(op_res).impl())
+                         ->value());
+  } else {
+    pir::Value saved_mean;
+    res[3].push_back(saved_mean);
+  }
+  if (std::get<4>(op_res).initialized()) {
+    res[4].push_back(std::static_pointer_cast<primitive::LazyTensor>(
+                         std::get<4>(op_res).impl())
+                         ->value());
+  } else {
+    pir::Value saved_var;
+    res[4].push_back(saved_var);
+  }
+
   pir::Value reserve_space;
   res[5].push_back(reserve_space);
 

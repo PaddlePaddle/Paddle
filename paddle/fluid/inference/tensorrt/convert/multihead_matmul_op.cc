@@ -16,9 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/transformer_input_output_convert_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class MultiheadMatMulOpConverter : public OpConverter {
  public:
@@ -960,8 +958,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(multihead_matmul, MultiheadMatMulOpConverter);

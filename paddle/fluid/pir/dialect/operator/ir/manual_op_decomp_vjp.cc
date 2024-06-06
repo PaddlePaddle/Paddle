@@ -61,7 +61,7 @@ std::vector<std::vector<pir::Value>> StackGradOp::DecompVjp(
     auto stop_gradients_attr = op->attribute(kAttrStopGradients)
                                    .dyn_cast<pir::ArrayAttribute>()
                                    .AsVector();
-    for (size_t i = 0; i < stop_gradients[0].size(); ++i) {
+    for (size_t i = 0; i < stop_gradients_attr.size(); ++i) {
       stop_gradients[0].push_back(
           stop_gradients_attr[i].dyn_cast<pir::BoolAttribute>().data());
     }
@@ -144,24 +144,31 @@ std::vector<std::vector<pir::Value>> ConcatGradOp::DecompVjp(
                     .dyn_cast<paddle::dialect::ScalarAttribute>()
                     .data();
 
-  VLOG(6) << "Decomp call concat_grad's backward composite rule prepare";
+  VLOG(4) << "Decomp call concat_grad's backward composite rule prepare";
 
   std::vector<std::vector<bool>> stop_gradients(op->results().size());
-  if (combine_op_obj_x->HasAttribute(kAttrStopGradients)) {
-    auto stop_gradients_attr = op->attribute(kAttrStopGradients)
-                                   .dyn_cast<pir::ArrayAttribute>()
-                                   .AsVector();
-    for (size_t i = 0; i < stop_gradients[0].size(); ++i) {
-      stop_gradients[0].push_back(
-          stop_gradients_attr[i].dyn_cast<pir::BoolAttribute>().data());
+  auto splitop = op->results()[0].first_use().owner();
+
+  if (splitop->HasAttribute("current_bwd_op_stop_gradients")) {
+    auto stop_gradients_attr =
+        splitop->attribute("current_bwd_op_stop_gradients")
+            .dyn_cast<pir::ArrayAttribute>()
+            .AsVector();
+    for (size_t i = 0; i < stop_gradients_attr.size(); ++i) {
+      auto stop_gradients_attr_j =
+          stop_gradients_attr[i].dyn_cast<pir::ArrayAttribute>().AsVector();
+      for (size_t j = 0; j < stop_gradients_attr_j.size(); ++j) {
+        stop_gradients[0].push_back(
+            stop_gradients_attr_j[j].dyn_cast<pir::BoolAttribute>().data());
+      }
     }
 
-    VLOG(4) << " stop_gradients is set ";
+    VLOG(4) << " op stop_gradients is set ";
   } else {
     std::vector<bool> x_grad_stop_gradient(combine_op_obj_x.inputs().size(),
                                            false);
     stop_gradients[0] = x_grad_stop_gradient;
-    VLOG(4) << " stop_gradients is not set ";
+    VLOG(4) << " op stop_gradients is not set ";
   }
 
   std::vector<std::vector<paddle::Tensor>> tensor_res;
@@ -179,6 +186,7 @@ std::vector<std::vector<pir::Value>> ConcatGradOp::DecompVjp(
 
   paddle::primitive::details::concat_grad<primitive::LazyTensor>(
       x, out_grad, axis, x_grad);
+  VLOG(4) << "Call Pir Decomposed backward op concat_grad end";
   std::vector<std::vector<pir::Value>> res(tensor_res.size());
 
   for (size_t i = 0; i < tensor_res.size(); ++i) {

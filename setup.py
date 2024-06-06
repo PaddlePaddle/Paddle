@@ -1061,6 +1061,12 @@ def get_package_data_and_package_dir():
             ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
         ]
         shutil.copy(env_dict.get("PHI_LIB"), libs_path)
+        if env_dict.get("PHI_KERNEL_GPU_LIB"):
+            package_data['paddle.libs'] += [
+                ('libphi_kernel_gpu' if os.name != 'nt' else 'phi_kernel_gpu')
+                + ext_suffix
+            ]
+            shutil.copy(env_dict.get("PHI_KERNEL_GPU_LIB"), libs_path)
 
     if env_dict.get("WITH_SHARED_IR") == "ON":
         package_data['paddle.libs'] += [
@@ -1796,6 +1802,25 @@ def check_submodules():
             sys.exit(1)
 
 
+def generate_tensor_stub(paddle_binary_dir, paddle_source_dir):
+    print('-' * 2, 'Generate stub file tensor.pyi ... ')
+    script_path = paddle_source_dir + '/tools/'
+    sys.path.append(script_path)
+    import gen_tensor_stub
+
+    gen_tensor_stub.generate_stub_file(
+        input_file=paddle_source_dir
+        + '/python/paddle/tensor/tensor.prototype.pyi',
+        output_file=paddle_binary_dir + '/python/paddle/tensor/tensor.pyi',
+    )
+
+    shutil.copy(
+        paddle_binary_dir + '/python/paddle/tensor/tensor.pyi',
+        paddle_source_dir + '/python/paddle/tensor/tensor.pyi',
+    )
+    print('-' * 2, 'End Generate stub file tensor.pyi ... ')
+
+
 def main():
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
@@ -1874,6 +1899,9 @@ def main():
             headers,
             package_data['paddle.libs'],
         )
+
+    # generate stub file `tensor.pyi`
+    generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
 
     setup(
         name=package_name,
