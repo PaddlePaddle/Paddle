@@ -39,6 +39,7 @@ class XPUTestSquareOp(XPUOpTestWrapper):
             self.op_type = "square"
             self.place = paddle.XPUPlace(0)
             self.inputs = {}
+            self.init_shape()
             self.init_data()
             if self.dtype == np.uint16:
                 self.outputs = {
@@ -52,8 +53,10 @@ class XPUTestSquareOp(XPUOpTestWrapper):
             self.__class__.no_need_check_grad = False
             self.__class__.op_type = self.dtype
 
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 10, 10)
+
+        def init_data(self):
             if self.dtype == np.uint16:
                 x = np.random.random(self.shape).astype('float32')
                 self.inputs = {'X': convert_float_to_uint16(x)}
@@ -76,23 +79,23 @@ class XPUTestSquareOp(XPUOpTestWrapper):
                 )
 
     class TestSquareOp1(TestSquareOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (8, 16, 8)
 
     class TestSquareOp2(TestSquareOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (8, 16)
 
     class TestSquareOp3(TestSquareOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 8, 16)
 
     class TestSquareOp4(TestSquareOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 8, 8)
 
     class TestSquareOp5(TestSquareOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 8, 16)
 
 

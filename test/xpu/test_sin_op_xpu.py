@@ -39,6 +39,7 @@ class XPUTestSinOp(XPUOpTestWrapper):
             self.op_type = "sin"
             self.place = paddle.XPUPlace(0)
             self.inputs = {}
+            self.init_shape()
             self.init_data()
             if self.dtype == np.uint16:
                 self.outputs = {
@@ -52,8 +53,10 @@ class XPUTestSinOp(XPUOpTestWrapper):
             self.__class__.no_need_check_grad = False
             self.__class__.op_type = self.dtype
 
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 10, 10)
+
+        def init_data(self):
             if self.dtype == np.uint16:
                 x = np.random.random(self.shape).astype('float32')
                 self.inputs = {'X': convert_float_to_uint16(x)}
@@ -76,23 +79,23 @@ class XPUTestSinOp(XPUOpTestWrapper):
                 )
 
     class TestSinOp1(TestSinOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (8, 16, 8)
 
     class TestSinOp2(TestSinOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (8, 16)
 
     class TestSinOp3(TestSinOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 8, 16)
 
     class TestSinOp4(TestSinOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 8, 8)
 
     class TestSinOp5(TestSinOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 8, 16)
 
 

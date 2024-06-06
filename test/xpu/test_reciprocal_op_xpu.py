@@ -38,6 +38,7 @@ class XPUTestReciprocalOp(XPUOpTestWrapper):
             self.op_type = "reciprocal"
             self.place = paddle.XPUPlace(0)
             self.inputs = {}
+            self.init_shape()
             self.init_data()
             self.outputs = {'Out': np.reciprocal(self.inputs['X'])}
 
@@ -46,8 +47,10 @@ class XPUTestReciprocalOp(XPUOpTestWrapper):
             self.__class__.no_need_check_grad = False
             self.__class__.op_type = self.dtype
 
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 10, 10)
+
+        def init_data(self):
             input = np.random.random(self.shape).astype("float32")
             self.inputs['X'] = input
 
@@ -64,23 +67,23 @@ class XPUTestReciprocalOp(XPUOpTestWrapper):
                 )
 
     class TestReciprocalOp1(TestReciprocalOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (8, 16, 8)
 
     class TestReciprocalOp2(TestReciprocalOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (8, 16)
 
     class TestReciprocalOp3(TestReciprocalOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 8, 16)
 
     class TestReciprocalOp4(TestReciprocalOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 8, 8)
 
     class TestReciprocalOp5(TestReciprocalOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 8, 16)
 
 

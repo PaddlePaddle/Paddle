@@ -38,6 +38,7 @@ class XPUTestRsqrtOp(XPUOpTestWrapper):
             self.op_type = "rsqrt"
             self.place = paddle.XPUPlace(0)
             self.inputs = {}
+            self.init_shape()
             self.init_data()
             self.outputs = {'Out': np.reciprocal(np.sqrt(self.inputs['X']))}
 
@@ -46,8 +47,10 @@ class XPUTestRsqrtOp(XPUOpTestWrapper):
             self.__class__.no_need_check_grad = False
             self.__class__.op_type = self.dtype
 
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 10, 10)
+
+        def init_data(self):
             input = np.random.random(self.shape).astype("float32")
             self.inputs['X'] = input
 
@@ -64,23 +67,23 @@ class XPUTestRsqrtOp(XPUOpTestWrapper):
                 )
 
     class TestRsqrtOp1(TestRsqrtOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (8, 16, 8)
 
     class TestRsqrtOp2(TestRsqrtOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (8, 16)
 
     class TestRsqrtOp3(TestRsqrtOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 8, 16)
 
     class TestRsqrtOp4(TestRsqrtOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 8, 8)
 
     class TestRsqrtOp5(TestRsqrtOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 8, 16)
 
 
