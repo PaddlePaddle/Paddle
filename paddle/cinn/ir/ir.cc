@@ -61,8 +61,11 @@ void BinaryNodeVerify(const Expr &a, const Expr &b, absl::string_view ir_name) {
   CHECK(a.defined());
   CHECK(b.defined());
   TryElevateInt32ToInt64({a, b});
-  CHECK_EQ(a.type(), b.type())
-      << "The operands' types of the node [" << ir_name << "] don't match";
+  PADDLE_ENFORCE_EQ(
+      a.type(),
+      b.type(),
+      phi::errors::InvalidArgument(
+          "The operands' types of the node [%s] don't match", ir_name));
 }
 
 void Add::Verify() const { BinaryNodeVerify(a(), b(), "Add"); }
@@ -164,7 +167,11 @@ Expr And::Make(Expr a, Expr b) {
 
 void And::Verify() const {
   BinaryNodeVerify(a(), b(), "And");
-  CHECK_EQ(a().type(), type_of<bool>());
+  PADDLE_ENFORCE_EQ(
+      a().type(),
+      type_of<bool>(),
+      phi::errors::InvalidArgument(
+          "The type of the operands of the node [And] should be bool"));
 }
 
 Expr Or::Make(Expr a, Expr b) {
@@ -174,7 +181,11 @@ Expr Or::Make(Expr a, Expr b) {
 
 void Or::Verify() const {
   BinaryNodeVerify(a(), b(), "Or");
-  CHECK_EQ(a().type(), type_of<bool>());
+  PADDLE_ENFORCE_EQ(
+      a().type(),
+      type_of<bool>(),
+      phi::errors::InvalidArgument(
+          "The type of the operands of the node [Or] should be bool"));
 }
 
 Type Or::type() const { return type_; }
@@ -184,7 +195,13 @@ Expr Not::Make(Expr v) {
   return Expr(node);
 }
 
-void Not::Verify() const { CHECK_EQ(v().type(), type_of<bool>()); }
+void Not::Verify() const {
+  PADDLE_ENFORCE_EQ(
+      v().type(),
+      type_of<bool>(),
+      phi::errors::InvalidArgument(
+          "The type of the operand of the node [Not] should be bool"));
+}
 
 Type Not::type() const { return type_; }
 
@@ -205,7 +222,11 @@ void Let::Verify() const {
   // The default value(contained in body) is not required.
   if (body.defined()) {
     TryElevateInt32ToInt64({symbol, body});
-    CHECK_EQ(symbol.type(), body.type());
+    PADDLE_ENFORCE_EQ(
+        symbol.type(),
+        body.type(),
+        phi::errors::InvalidArgument("The type of the symbol and the body of "
+                                     "the node [Let] should be the same"));
   }
 }
 
@@ -336,7 +357,11 @@ Expr ScheduleBlockRealize::Make(const std::vector<Expr> &iter_values,
 void ScheduleBlockRealize::Verify() const {
   auto *schedule_block_ptr = schedule_block.As<ScheduleBlock>();
   CHECK(schedule_block_ptr);
-  CHECK_EQ(schedule_block_ptr->iter_vars.size(), iter_values.size());
+  PADDLE_ENFORCE_EQ(
+      schedule_block_ptr->iter_vars.size(),
+      iter_values.size(),
+      phi::errors::InvalidArgument(
+          "The size of iter_values should be equal to the size of iter_vars"));
 }
 std::vector<Expr *> ScheduleBlockRealize::expr_fields() {
   std::vector<Expr *> res;

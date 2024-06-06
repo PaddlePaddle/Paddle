@@ -230,11 +230,17 @@ struct ExprNode : public IrNode {
   std::vector<Expr>& operands() { return IrNode::operands; }
 
   Expr& operand(int i) {
-    CHECK_LT(i, operands().size());
+    PADDLE_ENFORCE_LT(
+        i,
+        operands().size(),
+        phi::errors::InvalidArgument("The index %d is out of range", i));
     return operands()[i];
   }
   const Expr& operand(int i) const {
-    CHECK_LT(i, operands().size());
+    PADDLE_ENFORCE_LT(
+        i,
+        operands().size(),
+        phi::errors::InvalidArgument("The index %d is out of range", i));
     return operands()[i];
   }
 
