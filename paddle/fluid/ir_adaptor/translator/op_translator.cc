@@ -1045,7 +1045,7 @@ struct CastOpTranscriber : public OpTranscriber {
       const OpDesc& op_desc) override {
     auto& attribute_translator = AttributeTranslator::instance();
     pir::AttributeMap attribute_map = {};
-    const OpAttributeInfo info = op_attr_infos[0];
+    const OpAttributeInfo& info = op_attr_infos[0];
 
     std::string legacy_attr_name("out_dtype");
 

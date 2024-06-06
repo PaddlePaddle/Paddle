@@ -52,8 +52,7 @@
 
 namespace py = pybind11;  // NOLINT
 
-namespace pybind11 {
-namespace detail {
+namespace pybind11::detail {
 
 // Note: use same enum number of float16 in numpy.
 // import numpy as np
@@ -79,11 +78,9 @@ struct npy_format_descriptor<phi::dtype::float16> {
   static constexpr auto name = _("float16");
 };
 
-}  // namespace detail
-}  // namespace pybind11
+}  // namespace pybind11::detail
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 using paddle::AnalysisPredictor;
 using paddle::NativeConfig;
 using paddle::NativePaddlePredictor;
@@ -1345,5 +1342,4 @@ void BindInternalUtils(py::module *m) {
                   });
 }
 }  // namespace
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

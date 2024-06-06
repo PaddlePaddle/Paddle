@@ -68,6 +68,18 @@ std::string Predicate2String(ir::Expr predicate) {
   return ss.str();
 }
 
+static std::string CurTailFnName(const std::string &origin_fn_name) {
+  const int MaxStrLength = 16383;
+  if (origin_fn_name.length() <= MaxStrLength) {
+    return origin_fn_name;
+  }
+  VLOG(6) << "Funtion name too long. Curtail and concat hash.";
+  const std::string new_fn_name =
+      origin_fn_name.substr(0, MaxStrLength) +
+      std::to_string(std::hash<std::string>()(origin_fn_name));
+  return new_fn_name;
+}
+
 std::string
 detail::CollectBucketStrategyHostFunctionVisitor::GenDeviceKernelName(
     const std::string &fn_name, ir::Expr predicate) {
@@ -80,7 +92,10 @@ detail::CollectBucketStrategyHostFunctionVisitor::GenDeviceKernelName(
     pos = cond_str.find("-", pos + replacement.length());
   }
   VLOG(3) << "predicate string: " << cond_str;
-  return fn_name + "__COND_" + cond_str + "__kernel";
+  // NOTE(chenxi67): The kernel name is too long to be supported in cuda12.3 so
+  // we need to curtail it.
+  const std::string new_fn_name = CurTailFnName(fn_name);
+  return new_fn_name + "__COND_" + cond_str + "__kernel";
 }
 
 void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(

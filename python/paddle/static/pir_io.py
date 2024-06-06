@@ -90,18 +90,18 @@ def set_var(name, ndarray):
     p = t._place()
     if p.is_cpu_place():
         place = paddle.base.CPUPlace()
-    # elif p.is_cuda_pinned_place():
-    #     place = paddle.base.CUDAPinnedPlace()
-    # elif p.is_xpu_place():
-    #     p = paddle.base.core.Place()
-    #     p.set_place(t._place())
-    #     place = paddle.base.XPUPlace(p.xpu_device_id())
-    # elif p.is_custom_place():
-    #     p = paddle.base.core.Place()
-    #     p.set_place(t._place())
-    #     place = paddle.base.CustomPlace(
-    #         paddle.device.get_device().split(':')[0], p.custom_device_id()
-    #     )
+    elif p.is_cuda_pinned_place():
+        place = paddle.base.CUDAPinnedPlace()
+    elif p.is_xpu_place():
+        p = paddle.base.core.Place()
+        p.set_place(t._place())
+        place = paddle.base.XPUPlace(p.xpu_device_id())
+    elif p.is_custom_place():
+        p = paddle.base.core.Place()
+        p.set_place(t._place())
+        place = paddle.base.CustomPlace(
+            paddle.device.get_device().split(':')[0], p.custom_device_id()
+        )
     else:
         p = paddle.base.core.Place()
         p.set_place(t._place())
@@ -638,8 +638,8 @@ def load_pir(program, model_path, executor=None, var_list=None):
         model_prefix = model_prefix[:-9]
     elif model_prefix.endswith(".pdopt"):
         model_prefix = model_prefix[:-6]
-    elif model_prefix.endswith(".pdmodel"):
-        model_prefix = model_prefix[:-8]
+    elif model_prefix.endswith(".json"):
+        model_prefix = model_prefix[:-5]
 
     parameter_file_name = model_prefix + ".pdparams"
 
@@ -683,7 +683,7 @@ def load_pir(program, model_path, executor=None, var_list=None):
 
 
 @static_only
-def save_pir_inference_model(
+def save_inference_model_pir(
     path_prefix, feed_vars, fetch_vars, executor, **kwargs
 ):
     """
@@ -758,7 +758,7 @@ def save_pir_inference_model(
 
 
 @static_only
-def load_pir_inference_model(path_prefix, executor, **kwargs):
+def load_inference_model_pir(path_prefix, executor, **kwargs):
     """
 
     Load inference model from a given path. By this API, you can get the model
