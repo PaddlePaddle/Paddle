@@ -899,7 +899,8 @@ template <typename T>
 void sqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     // This calculation is important for resnet.
-    auto x_grad_tmp = (0.5 / out) * out_grad;
+    auto factor = full_scalar<T>(0.5, out.dtype());
+    auto x_grad_tmp = (factor / out) * out_grad;
     set_output<T>(x_grad_tmp, x_grad);
   }
 }
@@ -908,7 +909,8 @@ template <typename T>
 void rsqrt_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
     // This calculation is important for resnet.
-    auto x_grad_tmp = -0.5 * out * out * out * out_grad;
+    auto factor = full_scalar<T>(-0.5, out.dtype());
+    auto x_grad_tmp = factor * out * out * out * out_grad;
     set_output<T>(x_grad_tmp, x_grad);
   }
 }
@@ -929,7 +931,8 @@ void silu_grad(const Tensor& x,
       auto res = out_grad_cast * sigmoid<T>(x_cast) * (1.0 + x_cast - out_cast);
       set_output<T>(cast<T>(res, org_dtype), x_grad);
     } else {
-      auto res = out_grad * sigmoid<T>(x) * (1.0 + x - out);
+      auto one = full_scalar<T>(1.0, x.dtype());
+      auto res = out_grad * sigmoid<T>(x) * (one + x - out);
       set_output<T>(res, x_grad);
     }
   }
@@ -1483,13 +1486,20 @@ void slice_grad(const Tensor& input,
       paddings.push_back(offsets[i]);
       paddings.push_back((in_dims[i] - out_dims[i]) - offsets[i]);
     }
+    Tensor reshape_out_grad;
+    if (out_grad.shape().size() == 0) {
+      reshape_out_grad = full<T>({1}, 1, input.dtype());
+    } else {
+      reshape_out_grad = out_grad;
+    }
+
     if (decrease_size > 0 &&
         (decrease_size != static_cast<size_t>(in_dims.size()))) {
       auto out_tmp =
-          pad<T>(reshape<T>(out_grad, origin_out_shape), paddings, 0.0);
+          pad<T>(reshape<T>(reshape_out_grad, origin_out_shape), paddings, 0.0);
       set_output<T>(out_tmp, input_grad);
     } else {
-      auto out_tmp = pad<T>(out_grad, paddings, 0.0);
+      auto out_tmp = pad<T>(reshape_out_grad, paddings, 0.0);
       set_output<T>(out_tmp, input_grad);
     }
   }
