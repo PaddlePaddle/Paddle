@@ -14,4 +14,9 @@
 
 import paddle
 
+# A fake Value class for type hinting.
 class Value(paddle.Tensor): ...
+
+# TODO(typing-group): Add Value specific methods.
+# TODO(typing-group): Add Program, Block, and other classes.
+# Refer to pir.cc for the full list of classes.
