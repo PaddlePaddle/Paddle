@@ -363,7 +363,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : top_k_grad
+    func : topk_v1_grad
     data_type : out_grad
 
 - backward_op : tril_triu_grad

@@ -348,14 +348,14 @@ void TopkKernel(const Context& dev_ctx,
 #undef FIXED_BLOCK_DIM
 
 template <typename T, typename Context>
-void Top_kKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 const Scalar& k_scalar,
-                 int axis,
-                 bool largest,
-                 bool sorted,
-                 DenseTensor* out,
-                 DenseTensor* indices) {
+void TopkV1Kernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const Scalar& k_scalar,
+                  int axis,
+                  bool largest,
+                  bool sorted,
+                  DenseTensor* out,
+                  DenseTensor* indices) {
   TopkKernel<T, Context>(
       dev_ctx, x, k_scalar, axis, largest, sorted, out, indices);
 }
@@ -374,10 +374,10 @@ PD_REGISTER_KERNEL(topk,
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }
 
-PD_REGISTER_KERNEL(top_k,
+PD_REGISTER_KERNEL(topk_v1,
                    GPU,
                    ALL_LAYOUT,
-                   phi::Top_kKernel,
+                   phi::TopkV1Kernel,
                    float,
                    double,
                    int,

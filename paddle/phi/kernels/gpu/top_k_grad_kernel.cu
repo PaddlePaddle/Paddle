@@ -80,15 +80,15 @@ void TopkGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void Top_kGradKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& indices,
-                     const DenseTensor& out_grad,
-                     const Scalar& k_scalar,
-                     int axis,
-                     bool largest UNUSED,
-                     bool sorted UNUSED,
-                     DenseTensor* x_grad) {
+void TopkV1GradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& indices,
+                      const DenseTensor& out_grad,
+                      const Scalar& k_scalar,
+                      int axis,
+                      bool largest UNUSED,
+                      bool sorted UNUSED,
+                      DenseTensor* x_grad) {
   TopkGradKernel<T, Context>(
       dev_ctx, x, indices, out_grad, k_scalar, axis, largest, sorted, x_grad);
 }
@@ -105,10 +105,10 @@ PD_REGISTER_KERNEL(topk_grad,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(top_k_grad,
+PD_REGISTER_KERNEL(topk_v1_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::Top_kGradKernel,
+                   phi::TopkV1GradKernel,
                    float,
                    double,
                    int,

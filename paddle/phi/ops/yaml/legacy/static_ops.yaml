@@ -705,7 +705,7 @@
   infer_meta :
     func : TopKInferMeta
   kernel :
-    func : top_k
+    func : topk_v1
     data_type : x
   backward : topk_v1_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface

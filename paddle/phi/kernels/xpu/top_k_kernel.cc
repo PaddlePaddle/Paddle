@@ -193,14 +193,14 @@ void TopkKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void Top_kKernel(const Context& dev_ctx,
-                 const DenseTensor& x,
-                 const Scalar& k_scalar,
-                 int axis,
-                 bool largest,
-                 bool sorted,
-                 DenseTensor* out,
-                 DenseTensor* indices) {
+void TopkV1Kernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const Scalar& k_scalar,
+                  int axis,
+                  bool largest,
+                  bool sorted,
+                  DenseTensor* out,
+                  DenseTensor* indices) {
   TopkKernel<T, Context>(
       dev_ctx, x, k_scalar, axis, largest, sorted, out, indices);
 }
@@ -212,6 +212,6 @@ PD_REGISTER_KERNEL(
 }
 
 PD_REGISTER_KERNEL(
-    top_k, XPU, ALL_LAYOUT, phi::Top_kKernel, float, phi::dtype::float16) {
+    topk_v1, XPU, ALL_LAYOUT, phi::TopkV1Kernel, float, phi::dtype::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }
