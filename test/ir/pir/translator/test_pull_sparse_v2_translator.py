@@ -17,31 +17,33 @@ import unittest
 import test_op_translator
 
 import paddle
+from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
 
 paddle.pir_utils._switch_to_old_ir_()
 
 
-class TestPullBoxSparseOpTranslator(
+class TestPullSparseV2OpTranslator(
     test_op_translator.TestOpWithBackwardTranslator
 ):
+    def setUp(self):
+        self.place = core.Place()
+        self.place.set_place(paddle.CPUPlace())
+        self.new_scope = paddle.static.Scope()
+        self.main_program = paddle.static.Program()
+        self.forward_op_type = "pull_sparse_v2"
+        self.backward_op_type = "push_sparse_v2"
+
     def append_op(self):
-        self.forward_op_type = "pull_box_sparse"
-        self.backward_op_type = "push_box_sparse"
-        ids = paddle.ones(shape=(1, 1), dtype='float32')
-        w = paddle.ones(shape=(1, 1), dtype='float32')
-        out = paddle.ones(shape=(1, 1), dtype='float32')
-        attrs = {
-            'is_sparse': False,
-            'is_distributed': False,
-            'size': 1,
-        }
-        forward_helper = LayerHelper(self.forward_op_type)
-        forward_helper.append_op(
-            type=self.forward_op_type,
-            inputs={"W": w, "Ids": [ids]},
+        self.op_type = "pull_sparse_v2"
+        ids = paddle.ones(shape=(1,), dtype='int64')
+        w = paddle.ones(shape=(1,), dtype='int64')
+        out = paddle.ones(shape=(1,), dtype='int64')
+        helper = LayerHelper(self.op_type)
+        helper.append_op(
+            type=self.op_type,
+            inputs={"Ids": [ids], "W": [w]},
             outputs={"Out": [out]},
-            attrs=attrs,
         )
         return out
 

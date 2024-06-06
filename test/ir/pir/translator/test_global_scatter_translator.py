@@ -22,25 +22,35 @@ from paddle.base.layer_helper import LayerHelper
 paddle.pir_utils._switch_to_old_ir_()
 
 
-class TestPullBoxSparseOpTranslator(
+class TestGlobalScatterOpTranslator(
     test_op_translator.TestOpWithBackwardTranslator
 ):
     def append_op(self):
-        self.forward_op_type = "pull_box_sparse"
-        self.backward_op_type = "push_box_sparse"
-        ids = paddle.ones(shape=(1, 1), dtype='float32')
-        w = paddle.ones(shape=(1, 1), dtype='float32')
-        out = paddle.ones(shape=(1, 1), dtype='float32')
-        attrs = {
-            'is_sparse': False,
-            'is_distributed': False,
-            'size': 1,
-        }
-        forward_helper = LayerHelper(self.forward_op_type)
-        forward_helper.append_op(
+        self.forward_op_type = "global_scatter"
+        self.backward_op_type = "global_gather"
+        x = paddle.ones(
+            shape=(
+                1,
+                1,
+            ),
+            dtype='int64',
+        )
+        local_count = paddle.ones(shape=(1,), dtype='int64')
+        global_count = paddle.ones(shape=(1,), dtype='int64')
+        x.stop_gradient = False
+        local_count.stop_gradient = False
+        global_count.stop_gradient = False
+        out = paddle.ones(shape=(1,), dtype='int64')
+        attrs = {'ring_id': 0, 'use_calc_stream': False}
+        helper = LayerHelper(self.forward_op_type)
+        helper.append_op(
             type=self.forward_op_type,
-            inputs={"W": w, "Ids": [ids]},
-            outputs={"Out": [out]},
+            inputs={
+                "X": x,
+                'local_count': local_count,
+                'global_count': global_count,
+            },
+            outputs={"Out": out},
             attrs=attrs,
         )
         return out

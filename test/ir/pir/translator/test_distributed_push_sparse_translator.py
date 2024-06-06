@@ -14,36 +14,44 @@
 
 import unittest
 
+import numpy as np
 import test_op_translator
 
 import paddle
+from paddle.base.framework import (
+    convert_np_dtype_to_dtype_,
+)
 from paddle.base.layer_helper import LayerHelper
 
 paddle.pir_utils._switch_to_old_ir_()
 
 
-class TestPullBoxSparseOpTranslator(
-    test_op_translator.TestOpWithBackwardTranslator
+class TestDistributedPushSparseOpTranslator(
+    test_op_translator.TestOpTranslator
 ):
     def append_op(self):
-        self.forward_op_type = "pull_box_sparse"
-        self.backward_op_type = "push_box_sparse"
+        self.op_type = "distributed_push_sparse"
         ids = paddle.ones(shape=(1, 1), dtype='float32')
-        w = paddle.ones(shape=(1, 1), dtype='float32')
-        out = paddle.ones(shape=(1, 1), dtype='float32')
+        shows = paddle.ones(shape=(1, 1), dtype='float32')
+        clicks = paddle.ones(shape=(1, 1), dtype='float32')
+        output = paddle.ones(shape=(1, 1), dtype='float32')
         attrs = {
-            'is_sparse': False,
+            'table_id': 0,
+            'size': 8,
             'is_distributed': False,
-            'size': 1,
+            'push_sparse_version': 'push_sparse',
+            'padding_idx': -1,
+            'dtype': convert_np_dtype_to_dtype_(np.float32),
+            'is_test': False,
+            'use_cvm_op': False,
         }
-        forward_helper = LayerHelper(self.forward_op_type)
-        forward_helper.append_op(
-            type=self.forward_op_type,
-            inputs={"W": w, "Ids": [ids]},
-            outputs={"Out": [out]},
+        helper = LayerHelper(self.op_type)
+        helper.append_op(
+            type=self.op_type,
+            inputs={"Ids": [ids], "Shows": shows, "Clicks": clicks},
+            outputs={"Outputs": [output]},
             attrs=attrs,
         )
-        return out
 
     def test_translator(self):
         self.check()

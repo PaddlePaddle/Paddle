@@ -14,36 +14,37 @@
 
 import unittest
 
+import numpy as np
 import test_op_translator
 
 import paddle
+from paddle.base.framework import (
+    convert_np_dtype_to_dtype_,
+)
 from paddle.base.layer_helper import LayerHelper
 
 paddle.pir_utils._switch_to_old_ir_()
 
 
-class TestPullBoxSparseOpTranslator(
-    test_op_translator.TestOpWithBackwardTranslator
-):
+class TestPartialRecvOpTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
-        self.forward_op_type = "pull_box_sparse"
-        self.backward_op_type = "push_box_sparse"
-        ids = paddle.ones(shape=(1, 1), dtype='float32')
-        w = paddle.ones(shape=(1, 1), dtype='float32')
+        self.op_type = "partial_recv"
         out = paddle.ones(shape=(1, 1), dtype='float32')
         attrs = {
-            'is_sparse': False,
-            'is_distributed': False,
-            'size': 1,
+            'ring_id': 0,
+            'peer': 0,
+            'dtype': convert_np_dtype_to_dtype_(np.float32),
+            'out_shape': out.shape,
+            'use_calc_stream': False,
+            'num': 1,
+            'id': 0,
         }
-        forward_helper = LayerHelper(self.forward_op_type)
-        forward_helper.append_op(
-            type=self.forward_op_type,
-            inputs={"W": w, "Ids": [ids]},
-            outputs={"Out": [out]},
+        helper = LayerHelper(self.op_type)
+        helper.append_op(
+            type=self.op_type,
+            outputs={"Out": out},
             attrs=attrs,
         )
-        return out
 
     def test_translator(self):
         self.check()
