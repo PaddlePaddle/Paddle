@@ -330,6 +330,9 @@ struct PirToPyCodeConverterHelper {
           "):");
       IStrings return_lambda{ret_lambda_declare};
       PushBackIndented(&return_lambda, block_body);
+      if (block_body.empty()) {
+        return_lambda.push_back(Indent("pass"));
+      }
       return return_lambda;
     };
     std::string free_vars_as_args = ConvertFreeVarsAsArgs(block);

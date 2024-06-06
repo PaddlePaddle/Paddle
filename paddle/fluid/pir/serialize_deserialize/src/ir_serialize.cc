@@ -149,7 +149,54 @@ Json ProgramWriter::WriteValue(const pir::Value& value) {
   return var_json;
 }
 
+#define ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE(attr_name)   \
+  static_cast<int32_t>(op.attributes()                      \
+                           .at(attr_name)                   \
+                           .dyn_cast<pir::ArrayAttribute>() \
+                           .at(0)                           \
+                           .dyn_cast<pir::BoolAttribute>()  \
+                           .data())
+Json ProgramWriter::WriteParameterOP(const pir::Operation& op) {
+  // attr_name ; type
+  // is_distributed; array(bool)
+  // is_parameter; array(bool)
+  // need_clip; array(bool)
+  // parameter_name; string
+  // persistable; array(bool)
+  // stop_gradient; array(bool)
+  // trainable; array(bool)
+  Json op_json = Json::object();
+  op_json[ID] = PARAMETEROP;
+  // serialize opoperands
+  VLOG(4) << "Begin write Operation " << op.name() << ".";
+  op_json[OPRESULTS] = WriteValue(op.result(0));
+  Json attrs_json = Json::array();
+  attrs_json.emplace_back(
+      ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE("is_distributed"));
+  attrs_json.emplace_back(
+      ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE("is_parameter"));
+  attrs_json.emplace_back(ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE("need_clip"));
+  attrs_json.emplace_back(op.attributes()
+                              .at("parameter_name")
+                              .dyn_cast<pir::StrAttribute>()
+                              .AsString());
+  op_json[ATTRS] = attrs_json;
+  Json other_attrs_json = Json::array();
+  other_attrs_json.emplace_back(
+      ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE("persistable"));
+  other_attrs_json.emplace_back(
+      ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE("stop_gradient"));
+  other_attrs_json.emplace_back(
+      ONE_BOOL_ARRAY_ATTRIBUTE_CAST_TEMPLATE("trainable"));
+  if (trainable_) {
+    op_json[OPRESULTS_ATTRS] = other_attrs_json;
+  }
+  return op_json;
+}
 Json ProgramWriter::WriteOp(const pir::Operation& op) {
+  if (op.isa<pir::ParameterOp>()) {
+    return WriteParameterOP(op);
+  }
   Json op_json = Json::object();
   op_json[ID] = op.name();
   // serialize opoperands
