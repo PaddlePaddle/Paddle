@@ -76,6 +76,9 @@ class ProgramWriter {
   Json WriteAttribute(const std::string& op_attr_name,
                       const pir::Attribute& attr);
   Json WriteType(const pir::Type& type);
+
+  // special op for optimize json file size
+  Json WriteParameterOP(const pir::Operation& op);
 };
 
 }  // namespace pir

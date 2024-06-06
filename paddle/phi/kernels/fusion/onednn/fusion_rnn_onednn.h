@@ -1,24 +1,24 @@
-/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/core/kernel_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
+namespace fusion {
 
 using phi::funcs::CreateKey;
 using phi::funcs::OneDNNGetDataType;
@@ -28,8 +28,7 @@ using OneDNNMemoryFormat = dnnl::memory::format_tag;
 template <typename T, typename T_alg, typename T_out = T>
 class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
  public:
-  RNNMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
-                   const phi::OneDNNContext& dev_ctx,
+  RNNMKLDNNHandler(const phi::OneDNNContext& dev_ctx,
                    const dnnl::engine onednn_engine UNUSED,
                    phi::Place cpu_place,
                    const phi::DenseTensor* input UNUSED,
@@ -41,7 +40,10 @@ class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
                    const int64_t IC,
                    const int64_t OC,
                    const int64_t G,
-                   const std::string& unique_name)
+                   const std::string& unique_name,
+                   float scale_data,
+                   float shift_data,
+                   std::vector<float> scale_weights)
       : phi::funcs::OneDNNHandlerT<T, T_alg>(
             dev_ctx,
             dev_ctx.GetEngine(),
@@ -62,9 +64,6 @@ class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
 
     if (is_INT8) {
       // Int8 attributes
-      const float scale_data = ctx.Attr<float>("Scale_data");
-      const float shift_data = ctx.Attr<float>("Shift_data");
-      const auto scale_weights = ctx.Attr<std::vector<float>>("Scale_weights");
 
       const int weights_scale_mask =
           0 +
@@ -237,5 +236,5 @@ class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
   std::string memory_key_;
   dnnl::primitive_attr attr_;
 };
-}  // namespace operators
-}  // namespace paddle
+}  // namespace fusion
+}  // namespace phi
