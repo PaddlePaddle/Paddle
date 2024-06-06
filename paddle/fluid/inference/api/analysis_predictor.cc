@@ -930,7 +930,7 @@ bool AnalysisPredictor::PrepareExecutor() {
       }
 
       if (config_.cinn_enabled()) {
-        VLOG(2) << "[CINN] Begin ApplyCinnPass";
+        VLOG(4) << "[CINN] Begin ApplyCinnPass";
         cinn::dialect::ir::ApplyCinnPass(pir_program_.get(), CreatePassMgr);
       }
 #endif
