@@ -76,12 +76,10 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'set_vocab',
         'strides',
         'to',
-        'to_dense',
         'to_sparse_coo',
         'to_sparse_csr',
         'tolist',
         'value',
-        'values',
         'zero_',
     ]
 )
@@ -120,6 +118,8 @@ STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'optimize_attr',
         'regularizer',
         'trainable',
+        'is_sparse_coo_tensor_type',
+        'is_sparse_csr_tensor_type',
     ]
 )
 
