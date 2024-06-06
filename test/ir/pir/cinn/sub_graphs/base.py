@@ -75,14 +75,14 @@ class TestBase(unittest.TestCase):
             inputs.append(temp_tensor)
         inputs = tuple(inputs)
         outs = net(*inputs)
-        return outs,inputs
+        return outs, inputs
 
     def test_ast_prim_cinn(self):
         if not self.net:
             return
-        st_out,st_inputs = self.train(self.net, to_static=True)
+        st_out, st_inputs = self.train(self.net, to_static=True)
         self.set_flags()
-        cinn_out,cinn_inputs = self.train(
+        cinn_out, cinn_inputs = self.train(
             self.net,
             to_static=True,
             with_prim=self.with_prim,
