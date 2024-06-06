@@ -176,10 +176,17 @@ Json serializeAttrToJson<paddle::dialect::PlaceAttribute>(
 }
 
 Json writeType(const pir::Type& type) {
+  Json type_json = Json::object();
+  if (!type) {
+    type_json[ID] = NULL_TYPE;
+    return type_json;
+  }
   if (type.dialect().name() == pir::BuiltinDialect::name()) {
+    VLOG(6) << "write BuiltinType ... ";
     return AttrTypeWriter::WriteBuiltInType(type);
   } else if (type.dialect().name() ==
              paddle::dialect::OperatorDialect::name()) {
+    VLOG(6) << "write PaddleOperatorType ... ";
     return AttrTypeWriter::WritePaddleOperatorType(type);
   } else {
     PADDLE_ENFORCE(
@@ -187,23 +194,25 @@ Json writeType(const pir::Type& type) {
   }
   VLOG(8) << "Finish write Type ... ";
 
-  return Json::object();
+  return type_json;
 }
 
 SERIALIZE_ATTR_TO_JSON(pir::TypeAttribute, writeType(attr.data()));
 
 Json writeAttr(const pir::Attribute& attr) {
   if (attr.dialect().name() == pir::BuiltinDialect::name()) {
+    VLOG(8) << "write BuiltinAttr ... ";
     return AttrTypeWriter::WriteBuiltInAttr(attr);
   } else if (attr.dialect().name() ==
              paddle::dialect::OperatorDialect::name()) {
+    VLOG(8) << "write PaddleOperatorAttr ... ";
     return AttrTypeWriter::WritePaddleOperatorAttr(attr);
   } else {
     PADDLE_ENFORCE(
         false, phi::errors::InvalidArgument("Unknown Attr %s when write attr"));
   }
 
-  VLOG(8) << "Finish write& attr ... ";
+  VLOG(8) << "Finish write attr ... ";
 
   return Json::object();
 }
@@ -358,9 +367,6 @@ Json AttrTypeWriter::WriteBuiltInType(const pir::Type& type) {
 
     content.push_back(type_.offset());
     type_json[DATA] = content;
-    return type_json;
-  } else if (!type) {
-    type_json[ID] = NULL_TYPE;
     return type_json;
   } else {
     PADDLE_ENFORCE(false,
