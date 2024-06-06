@@ -11,6 +11,8 @@ if(WITH_TESTING)
     set_tests_properties(test_custom_relu_op_jit PROPERTIES TIMEOUT 180)
     set_tests_properties(test_custom_relu_model PROPERTIES TIMEOUT 180)
     set_tests_properties(test_context_pool PROPERTIES TIMEOUT 180)
+    py_test(test_custom_cast_op_jit SRCS test_custom_cast_op_jit.py)
+    set_tests_properties(test_custom_cast_op_jit PROPERTIES TIMEOUT 180)
   endif()
 
   if(NOT WIN32)

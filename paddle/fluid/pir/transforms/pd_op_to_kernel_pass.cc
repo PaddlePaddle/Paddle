@@ -62,8 +62,7 @@ COMMON_DECLARE_bool(use_mkldnn);
 COMMON_DECLARE_bool(print_ir);
 // COMMON_DECLARE_string(pir_onednn_kernel_blacklist);
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
                                     pir::Type op_type,
@@ -3189,5 +3188,4 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
 
   return program;
 }
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

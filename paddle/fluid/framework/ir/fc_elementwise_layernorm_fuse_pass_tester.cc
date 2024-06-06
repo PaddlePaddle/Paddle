@@ -17,9 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fc_elementwise_layernorm_fuse_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 TEST(FCElementwiseLayerNormFusePass, basic) {
   // inputs                           operator            output
@@ -72,8 +70,6 @@ TEST(FCElementwiseLayerNormFusePass, basic) {
                         num_fused_nodes_after));
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(fc_elementwise_layernorm_fuse_pass);

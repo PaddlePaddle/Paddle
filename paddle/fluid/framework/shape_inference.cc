@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 std::vector<DDim> InferShapeContext::GetReaderDims(
     const std::string &name) const {
@@ -45,5 +44,4 @@ void InferShapeContext::SetReaderDims(const std::string &name,
   return this->SetRepeatedDims(arg_names[0], dims);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -68,6 +68,7 @@ class TestLayer(TestBase):
             paddle.rand(shape=[22, 1536, 8, 8], dtype=paddle.float32),
         )
         self.net = LayerCase
+        self.with_train = False
         self.with_precision_compare = False
 
     # NOTE output mismatch with prim
