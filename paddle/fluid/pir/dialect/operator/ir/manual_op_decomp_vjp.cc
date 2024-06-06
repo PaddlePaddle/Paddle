@@ -219,13 +219,14 @@ std::vector<std::vector<pir::Value>> SliceGradOp::DecompVjp(
   Tensor out_grad(std::make_shared<primitive::LazyTensor>(op_obj.out_grad()));
 
   VLOG(6) << "Decomp prepare attributes of slice_grad";
-  auto array_list =
+  auto array_list_axes =
       op->attribute("axes").dyn_cast<pir::ArrayAttribute>().AsVector();
   std::vector<int64_t> axes;
-  if (array_list.size() > 0) {
-    if (array_list[0].isa<pir::Int64Attribute>()) {
-      for (size_t i = 0; i < array_list.size(); ++i) {
-        axes.push_back(array_list[i].dyn_cast<pir::Int64Attribute>().data());
+  if (array_list_axes.size() > 0) {
+    if (array_list_axes[0].isa<pir::Int64Attribute>()) {
+      for (size_t i = 0; i < array_list_axes.size(); ++i) {
+        axes.push_back(
+            array_list_axes[i].dyn_cast<pir::Int64Attribute>().data());
       }
 
     } else {
@@ -264,14 +265,14 @@ std::vector<std::vector<pir::Value>> SliceGradOp::DecompVjp(
   IntArray ends = phi::IntArray(
       paddle::dialect::GetInt64Vector(ends_define_op->attribute("value")));
 
-  auto array_list =
+  auto array_list_infer_flags =
       op->attribute("infer_flags").dyn_cast<pir::ArrayAttribute>().AsVector();
   std::vector<int64_t> infer_flags;
-  if (array_list.size() > 0) {
-    if (array_list[0].isa<pir::Int64Attribute>()) {
-      for (size_t i = 0; i < array_list.size(); ++i) {
+  if (array_list_infer_flags.size() > 0) {
+    if (array_list_infer_flags[0].isa<pir::Int64Attribute>()) {
+      for (size_t i = 0; i < array_list_infer_flags.size(); ++i) {
         infer_flags.push_back(
-            array_list[i].dyn_cast<pir::Int64Attribute>().data());
+            array_list_infer_flags[i].dyn_cast<pir::Int64Attribute>().data());
       }
 
     } else {
@@ -279,14 +280,14 @@ std::vector<std::vector<pir::Value>> SliceGradOp::DecompVjp(
           "attr is not vector of pir::Int64Attribute "));
     }
   }
-  auto array_list =
+  auto array_list_decrease_axis =
       op->attribute("decrease_axis").dyn_cast<pir::ArrayAttribute>().AsVector();
   std::vector<int64_t> decrease_axis;
-  if (array_list.size() > 0) {
-    if (array_list[0].isa<pir::Int64Attribute>()) {
-      for (size_t i = 0; i < array_list.size(); ++i) {
+  if (array_list_decrease_axis.size() > 0) {
+    if (array_list_decrease_axis[0].isa<pir::Int64Attribute>()) {
+      for (size_t i = 0; i < array_list_decrease_axis.size(); ++i) {
         decrease_axis.push_back(
-            array_list[i].dyn_cast<pir::Int64Attribute>().data());
+            array_list_decrease_axis[i].dyn_cast<pir::Int64Attribute>().data());
       }
 
     } else {
