@@ -144,12 +144,34 @@ void TopkGradKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void Top_kGradKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& indices,
+                     const DenseTensor& out_grad,
+                     const Scalar& k_scalar,
+                     int axis,
+                     bool largest UNUSED,
+                     bool sorted UNUSED,
+                     DenseTensor* x_grad) {
+  TopkGradKernel<T, Context>(
+      dev_ctx, x, indices, out_grad, k_scalar, axis, largest, sorted, x_grad);
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(topk_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::TopkGradKernel,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t) {}
+
+PD_REGISTER_KERNEL(top_k_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::Top_kGradKernel,
                    float,
                    double,
                    int32_t,

@@ -347,12 +347,37 @@ void TopkKernel(const Context& dev_ctx,
 #undef FIXED_BLOCK_DIM_BASE
 #undef FIXED_BLOCK_DIM
 
+template <typename T, typename Context>
+void Top_kKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 const Scalar& k_scalar,
+                 int axis,
+                 bool largest,
+                 bool sorted,
+                 DenseTensor* out,
+                 DenseTensor* indices) {
+  TopkKernel<T, Context>(
+      dev_ctx, x, k_scalar, axis, largest, sorted, out, indices);
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(topk,
                    GPU,
                    ALL_LAYOUT,
                    phi::TopkKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}
+
+PD_REGISTER_KERNEL(top_k,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::Top_kKernel,
                    float,
                    double,
                    int,
