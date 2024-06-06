@@ -320,7 +320,7 @@ struct ShapeSignatureGenerator {
     std::optional<ConstrainedSymbolNamesList> constrained_sym_list =
         GetConstrainedSymbolNamesList(op_shape_analysis);
     if (!constrained_sym_list.has_value()) return;
-    VisitSymbolsBindings(constrained_sym_list, [&](const auto& syms_and_dims) {
+    VisitSymbolsBindings(*constrained_sym_list, [&](const auto& syms_and_dims) {
       VisitSymbolBindings(syms_and_dims, {}, DoEachSymbolBinding);
     });
   }
@@ -581,7 +581,7 @@ void CheckByInferMeta(pir::Operation* op,
     }
     VLOG(0) << "check constraints success for " << op->name();
   } catch (common::enforce::EnforceNotMet error) {
-    LOG(ERROR) << "check constraints error for " << op->name()
+    LOG(ERROR) << "check constraints error for " << op->name() << ", "
                << error.error_str();
   }
   EraseTempOp(op_list);
