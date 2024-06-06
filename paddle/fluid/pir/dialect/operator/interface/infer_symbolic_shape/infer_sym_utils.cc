@@ -108,10 +108,6 @@ symbol::ShapeOrDataDimExprs CreateShapeOrDataForXShape(
     return out_dims;
   };
   const auto &x_dims = x_dim_exprs.shape();
-  if (x_dim_exprs.data().has_value()) {
-    return symbol::TensorShapeOrDataDimExprs(
-        InsertZeros(x_dims), InsertZeros(x_dim_exprs.data().value()));
-  }
   return symbol::TensorShapeOrDataDimExprs(InsertZeros(x_dims));
 }
 
