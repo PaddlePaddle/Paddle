@@ -354,7 +354,9 @@ class PipelineVirtualPipelinePass(PipelinePassBase):
                         input_arg_names = op.input_arg_names
                         for input_name in input_arg_names:
                             if input_name in param_to_comm_op:
-                                insert_op_ids.append(max(0, idx - 1))
+                                # NOTE(lizhiyu): The number that we insert 'broadcast' before the operator using the parameter
+                                #               may be different in different case.
+                                insert_op_ids.append(max(0, idx - 3))
                                 insert_ops.append(param_to_comm_op[input_name])
                                 del param_to_comm_op[input_name]
                     for op_id, origin_op in zip(
