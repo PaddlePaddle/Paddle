@@ -63,7 +63,7 @@ class TestOneHotOp_dims(OpTest):
         self.python_out_sig = ['Out']
         depth = 10
         depth_np = np.array(10).astype('int32')
-        x_shape = [4, 1, 3, 3]
+        x_shape = [5, 10, 7, 3]
         x = [np.random.randint(0, depth - 1) for i in range(np.prod(x_shape))]
         x = np.array(x).astype('int32').reshape(x_shape)
 
