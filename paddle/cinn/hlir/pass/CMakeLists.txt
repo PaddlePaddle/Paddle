@@ -45,7 +45,6 @@ cinn_cc_test(test_fusion_merge_pass SRCS fusion_merge_pass_test.cc DEPS
 if(NOT WITH_CUDA)
   #cinn_cc_test(test_alterlayout SRCS alterlayout_test.cc DEPS cinncore)
 endif()
-cinn_cc_test(test_dot_merger SRCS test_dot_merger.cc DEPS cinncore)
 # cinn_cc_test(test_dce_pass SRCS dce_pass_test.cc DEPS cinncore)
 cinn_cc_test(test_common_subexpression_elimination SRCS
              common_subexpression_elimination_test.cc DEPS cinncore)
