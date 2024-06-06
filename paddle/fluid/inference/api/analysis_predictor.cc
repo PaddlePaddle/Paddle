@@ -935,15 +935,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   LOG(INFO) << "======= pir optimization completed =======";
 }
 
-bool AnalysisPredictor::PreparePirProgram() {
-  if (pir_program_) {
-    PADDLE_FATAL("pir_program_ must be nullptr");
-  } else {
-    pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
-  }
-
-  pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
-
+bool AnalysisPredictor::LoadPirParameters() {
   std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
   int feed_idx = 0;
   for (auto op : pir_program_->block()->ops()) {
@@ -1016,6 +1008,21 @@ bool AnalysisPredictor::PreparePirProgram() {
   CreateFeedFetchVar(sub_scope_);
   pir::LoadCombineFunction(
       config_.params_file(), param_names, &tensor_out, false, place_);
+  return true;
+}
+
+bool AnalysisPredictor::PreparePirProgram() {
+  if (pir_program_) {
+    PADDLE_FATAL("pir_program_ must be nullptr");
+  } else {
+    pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
+  }
+
+  pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
+
+  if (!LoadPirParameters()) {
+    return false;
+  }
   OptimizeInferencePirProgram();
   return true;
 }

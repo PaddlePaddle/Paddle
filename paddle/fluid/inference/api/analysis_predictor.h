@@ -392,6 +392,13 @@ class AnalysisPredictor : public PaddlePredictor {
   bool LoadParameters();
 
   ///
+  /// \brief Load model parameters.
+  ///
+  /// \return Whether the function executed successfully
+  ///
+  bool LoadPirParameters();
+
+  ///
   /// \brief Prepare input data, only used in Run()
   ///
   /// \param[in] input_datas input tensors
