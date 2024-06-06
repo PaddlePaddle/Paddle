@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
+from eager_op_test import convert_float_to_uint16, convert_uint16_to_float
 from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
 )
-from op_test import convert_float_to_uint16, convert_uint16_to_float
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -39,6 +39,7 @@ class XPUTestCosOp(XPUOpTestWrapper):
             self.op_type = "cos"
             self.place = paddle.XPUPlace(0)
             self.inputs = {}
+            self.init_shape()
             self.init_data()
             if self.dtype == np.uint16:
                 self.outputs = {
@@ -52,8 +53,10 @@ class XPUTestCosOp(XPUOpTestWrapper):
             self.__class__.no_need_check_grad = False
             self.__class__.op_type = self.dtype
 
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 10, 10)
+
+        def init_data(self):
             if self.dtype == np.uint16:
                 x = np.random.random(self.shape).astype('float32')
                 self.inputs = {'X': convert_float_to_uint16(x)}
@@ -61,7 +64,6 @@ class XPUTestCosOp(XPUOpTestWrapper):
                 self.inputs = {
                     'X': np.random.random(self.shape).astype(self.dtype)
                 }
-            self.inputs['X'] = input
 
         def init_dtype(self):
             self.dtype = self.in_type
@@ -76,23 +78,23 @@ class XPUTestCosOp(XPUOpTestWrapper):
                 )
 
     class TestCosOp1(TestCosOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (8, 16, 8)
 
     class TestCosOp2(TestCosOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (8, 16)
 
     class TestCosOp3(TestCosOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 8, 16)
 
     class TestCosOp4(TestCosOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 8, 8)
 
     class TestCosOp5(TestCosOp):
-        def init_data(self):
+        def init_shape(self):
             self.shape = (4, 8, 16)
 
 

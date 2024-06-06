@@ -51,8 +51,8 @@ class XPUTestRsqrtOp(XPUOpTestWrapper):
             self.shape = (4, 10, 10)
 
         def init_data(self):
-            input = np.random.random(self.shape).astype("float32")
-            self.inputs['X'] = input
+            x = np.random.random(self.shape).astype("float32")
+            self.inputs['X'] = x
 
         def init_dtype(self):
             self.dtype = self.in_type
