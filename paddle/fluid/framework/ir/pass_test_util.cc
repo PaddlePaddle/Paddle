@@ -28,10 +28,7 @@
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace test {
+namespace paddle::framework::ir::test {
 
 OpDesc* CreateOp(ProgramDesc* prog,
                  const std::string& op_type_name,
@@ -236,7 +233,4 @@ OpDesc* GetOp(const BlockDesc& block_desc,
   return nullptr;
 }
 
-}  // namespace test
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir::test

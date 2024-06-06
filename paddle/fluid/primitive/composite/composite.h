@@ -436,8 +436,10 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     return std::make_tuple(
         y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space);
   } else {
+    Tensor batch_mean_none;
+    Tensor inv_std_none;
     return std::make_tuple(
-        y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space);
+        y, run_mean_, run_var_, batch_mean_none, inv_std_none, reserve_space);
   }
 }
 
