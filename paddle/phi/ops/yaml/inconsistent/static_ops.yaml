@@ -951,6 +951,17 @@
      func: match_matrix_tensor
   backward: match_matrix_tensor_grad
 
+- op: moving_average_abs_max_scale
+  args: (Tensor x, Tensor in_accum, Tensor in_state, float moving_rate=0.9f, bool is_test=false)
+  output: Tensor(out), Tensor(out_scale), Tensor(out_state), Tensor(out_accum)
+  infer_meta:
+    func: MovingAverageAbsMaxScaleInferMeta
+  kernel:
+    func: moving_average_abs_max_scale
+    data_type: x
+  optional : in_accum, in_state, out, out_state, out_accum
+  backward : moving_average_abs_max_scale_grad
+
 - op: nce
   args: (Tensor input, Tensor label, Tensor weight, Tensor bias, Tensor sample_weight, Tensor custom_dist_probs, Tensor custom_dist_alias, Tensor custom_dist_alias_probs, int num_total_classes, int[] custom_neg_classes={}, int num_neg_samples=10, int sampler=0, int seed=0, bool is_sparse=false, bool remote_prefetch=false, bool is_test=false)
   output: Tensor(cost), Tensor(sample_logits), Tensor(sample_labels)
