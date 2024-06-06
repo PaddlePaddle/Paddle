@@ -137,7 +137,7 @@ with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
 with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
 
-__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc']
+__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
@@ -275,8 +275,22 @@ def cudnn():
     """
     return cudnn_version
 
+def xpu():
+    """Get xpu version of paddle package. The API is deprecated now, please use xpu_xhpc() instead.
+
+    Returns:
+        string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
+    Examples:
+        .. code-block:: python
+            >>> import paddle
+            >>> paddle.version.xpu()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '20230114'
+    """
+    return xpu_xhpc_version
+
 def xpu_xre():
-    """Get xpu version of paddle package.
+    """Get xpu xre version of paddle package.
 
     Returns:
         string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
