@@ -37,7 +37,9 @@
 COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
 #endif
 
+#ifdef PADDLE_WITH_CINN
 COMMON_DECLARE_bool(use_cinn);
+#endif
 
 namespace paddle {
 struct MkldnnQuantizerConfig;
@@ -1555,7 +1557,11 @@ void AnalysisConfig::EnableCINN() {
 }
 
 bool AnalysisConfig::cinn_enabled() const {
-  return use_cinn_ || FLAGS_use_cinn;
+  bool is_enabled = use_cinn_;
+#ifdef PADDLE_WITH_CINN
+  is_enabled = is_enabled || FLAGS_use_cinn;
+#endif
+  return is_enabled;
 }
 
 void AnalysisConfig::EnableCustomPasses(const std::vector<std::string> &passes,
