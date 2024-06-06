@@ -111,23 +111,20 @@ struct ShapeSignatureGenerator {
                          const ShapeList& output_shapes)>;
 
   void Generate(const DoEachShapeSignatureT& DoEachShapeSignature) {
-    auto infer_symbolic_shape_interface =
-        op->dyn_cast<pir::InferSymbolicShapeInterface>();
-    if (!infer_symbolic_shape_interface) return;
     auto op_shape_analysis = MakeOpShapeAnalysis(op, GraphDimExprs4Value);
     const std::unordered_set<symbol::DimExpr>& symbols =
         GetAllSymbols(*op, op_shape_analysis);
     VisitInputSymbolBinding(
         op_shape_analysis, [&](const SymbolBindings& bindings) {
-          VLOG(0) << "SymbolBindings";
+          VLOG(4) << "SymbolBindings";
           for (auto pair : bindings) {
-            VLOG(0) << pair.first << " : " << pair.second;
+            VLOG(4) << pair.first << " : " << pair.second;
           }
           const auto& substitute_pattern =
               GetSubstitutePattern(bindings, symbols, op_shape_analysis);
-          VLOG(0) << "substitute_pattern: size=" << substitute_pattern.size();
+          VLOG(4) << "substitute_pattern: size=" << substitute_pattern.size();
           for (auto pair : substitute_pattern) {
-            VLOG(0) << pair.first << " : " << pair.second;
+            VLOG(4) << pair.first << " : " << pair.second;
           }
           const auto& [input_shapes, input_datas] =
               GetInputs(*op, op_shape_analysis, substitute_pattern);
@@ -257,9 +254,9 @@ struct ShapeSignatureGenerator {
           substitute_pattern) {
     ShapeList shape_list;
     DataList data_list;
-    VLOG(0) << "GetInputShapes: ";
+    VLOG(4) << "GetInputShapes: ";
     for (std::size_t i = 0; i < op.num_operands(); ++i) {
-      VLOG(0) << "  ShapeOrData:"
+      VLOG(4) << "  ShapeOrData:"
               << op_shape_analysis->GetShapeOrDataForValue(
                      op.operand_source(i));
       const symbol::ShapeOrDataDimExprs& shape_or_data =
@@ -271,8 +268,8 @@ struct ShapeSignatureGenerator {
       shape_list.emplace_back(*shape);
       data_list.emplace_back(*data);
     }
-    VLOG(0) << "  shape_list: " << shape_list;
-    VLOG(0) << "  data_list: " << data_list;
+    VLOG(4) << "  shape_list: " << shape_list;
+    VLOG(4) << "  data_list: " << data_list;
     return std::make_pair(shape_list, data_list);
   }
 
@@ -282,9 +279,9 @@ struct ShapeSignatureGenerator {
       const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
           substitute_pattern) {
     ShapeList shape_list;
-    VLOG(0) << "GetOutputShapes: ";
+    VLOG(4) << "GetOutputShapes: ";
     for (std::size_t i = 0; i < op.num_results(); ++i) {
-      VLOG(0) << "  ShapeOrData:"
+      VLOG(4) << "  ShapeOrData:"
               << op_shape_analysis->GetShapeOrDataForValue(op.result(i));
       const symbol::ShapeOrDataDimExprs& shape_or_data =
           op_shape_analysis->GetShapeOrDataForValue(op.result(i));
@@ -293,7 +290,7 @@ struct ShapeSignatureGenerator {
       if (!shape.has_value() || shape->empty()) return ShapeList();
       shape_list.emplace_back(*shape);
     }
-    VLOG(0) << "  shape_list: " << shape_list;
+    VLOG(4) << "  shape_list: " << shape_list;
     return shape_list;
   }
 
@@ -408,7 +405,7 @@ struct ShapeSignatureGenerator {
     ConstrainedSymbolNamesList cstr_list;
     bool all_string = true;
     const auto& cstr_manager = op_shape_analysis->constraints_manager();
-    VLOG(0) << "constraints:" << cstr_manager;
+    VLOG(4) << "constraints:" << cstr_manager;
     std::function<void(const std::vector<symbol::DimExpr>&)> GetEquals =
         [&](const auto& clusters) {
           CstrEqSymbolNames equals;
@@ -542,14 +539,14 @@ void CheckByInferMeta(pir::Operation* op,
                       const std::vector<std::vector<int64_t>>& output_shapes) {
   std::vector<pir::Operation*> op_list;
   std::vector<std::vector<int64_t>> infer_meta_result;
-  VLOG(0) << "input_shapes     : " << input_shapes;
-  VLOG(0) << "input_datas      : " << input_datas;
-  VLOG(0) << "output_shapes    : " << output_shapes;
+  VLOG(4) << "input_shapes     : " << input_shapes;
+  VLOG(4) << "input_datas      : " << input_datas;
+  VLOG(4) << "output_shapes    : " << output_shapes;
 
   try {
     DoInferMeta(
         input_shapes, input_datas, builder, op, &op_list, &infer_meta_result);
-    VLOG(0) << "infer_meta_result: " << infer_meta_result;
+    VLOG(4) << "infer_meta_result: " << infer_meta_result;
     PADDLE_ENFORCE_EQ(
         infer_meta_result.size(),
         output_shapes.size(),
@@ -579,7 +576,7 @@ void CheckByInferMeta(pir::Operation* op,
                                            op->name()));
       }
     }
-    VLOG(0) << "check constraints success for " << op->name();
+    VLOG(4) << "check constraints success for " << op->name();
   } catch (common::enforce::EnforceNotMet error) {
     LOG(ERROR) << "check constraints error for " << op->name() << ", "
                << error.error_str();
@@ -602,7 +599,10 @@ void CheckOpDimExprConstraints(pir::Operation* op,
 void CheckProgramDimExprConstraints(
     pir::Program* program, const DimExprs4ValueT& GraphDimExprs4Value) {
   WalkLeafOp(program, [&](pir::Operation* op) {
-    VLOG(0) << "CheckProgramDimExprConstraints for op: " << op->name();
+    auto infer_symbolic_shape_interface =
+        op->dyn_cast<pir::InferSymbolicShapeInterface>();
+    if (!infer_symbolic_shape_interface) return;
+    VLOG(4) << "CheckProgramDimExprConstraints for op: " << op->name();
     CheckOpDimExprConstraints(op, GraphDimExprs4Value);
   });
 }
