@@ -177,7 +177,7 @@ std::vector<ExprPromise> InitExprPromiseImpl(const ReduceTreePattern& pattern,
   // TODO(@wuzhanfei) this is temporary
   // now we do not support anchor fusion for reduce op,
   // so, this is ok currently. but need to be redesigned later
-  return InitExprPromiseImpl(pattern.GetRootPattern(), anchor);
+  return {ExprPromise(anchor, pattern.name())};
 }
 
 template <typename PATTERN>
@@ -213,9 +213,10 @@ TrivialPattern RecoverAnchorPatternToTrivial(
                         "size is 1 (exact %d)",
                         anchor_pattern.anchor_state.promise.size()));
 
-  return TrivialPattern(anchor_pattern.ops(),
-                        anchor_pattern.anchor().defining_op(),
-                        anchor_pattern.tracker_);
+  return TrivialPattern(
+      anchor_pattern.ops(),
+      anchor_pattern.anchor().defining_op(),
+      std::make_shared<FusionTracker>(anchor_pattern.tracker_));
 }
 
 AnchorState GetAnchorState(const AnchorPattern& pattern) {
@@ -431,7 +432,11 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
 }
 
 void SetReturnInstr(const StmtPattern& s) {
-  std::visit([](const auto& impl) { impl.set_return(); }, s.variant());
+  std::visit(
+      [](const auto& impl) {
+        impl.tracker_->append(std::make_shared<ReturnInstr>(impl.name()));
+      },
+      s.variant());
 }
 
 }  // namespace cinn::fusion

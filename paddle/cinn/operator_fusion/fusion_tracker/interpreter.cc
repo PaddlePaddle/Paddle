@@ -21,8 +21,8 @@
 
 namespace cinn::fusion {
 
-void RunRenameInstr(const std::shared_ptr<RenameInstr>& instr,
-                    FusionInterpreter* interpreter) {
+void RunCopyInstr(const std::shared_ptr<CopyInstr>& instr,
+                  FusionInterpreter* interpreter) {
   interpreter->scope[instr->new_name_] =
       interpreter->scope[instr->origin_name_];
   interpreter->scope.erase(instr->origin_name_);
@@ -84,15 +84,14 @@ void RunTrivialLoopAlignInstr(
   auto downstream_op = std::get<TrivialOp>(
       interpreter->scope[instr->downstream_]->fusion_ops.front());
   ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
-  new_pattern->fusion_ops.emplace(
+  new_pattern->fusion_ops.emplace_back(
       cinn::hlir::framework::pir::trivial_fusion_detail::SinkTrivialLoopAlign(
-          downstream_op, upstream_op, instr->fake_reduce_iter_idx_););
+          downstream_op, upstream_op, instr->fake_reduce_iter_idx_));
   interpreter->scope[instr->result_] = new_pattern;
 }
 
-void RunAnchorTransformAndReturnInstr(
-    const std::shared_ptr<AnchorTransformAndReturnInstr>& instr,
-    FusionInterpreter* interpreter) {
+void RunAnchorTransformInstr(const std::shared_ptr<AnchorTransformInstr>& instr,
+                             FusionInterpreter* interpreter) {
   PADDLE_ENFORCE_EQ(interpreter->scope[instr->target_]->fusion_ops.size(), 1);
   ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
 
@@ -122,8 +121,8 @@ void RunReturnInstr(const std::shared_ptr<ReturnInstr>& instr,
 std::vector<ir::Expr> FusionInterpreter::Run() {
   for (auto instr : tracker->instructions_) {
     switch (instr->type()) {
-      case T_Rename:
-        RunRenameInstr(dynamic_cast_instr_with_err<RenameInstr>(instr), this);
+      case T_Copy:
+        RunCopyInstr(dynamic_cast_instr_with_err<CopyInstr>(instr), this);
         break;
       case T_Combine:
         RunCombineInstr(dynamic_cast_instr_with_err<CombineInstr>(instr), this);
@@ -140,10 +139,9 @@ std::vector<ir::Expr> FusionInterpreter::Run() {
         RunTmpTransformInstr(
             dynamic_cast_instr_with_err<TmpTransformInstr>(instr), this);
         break;
-      case T_AnchorTransformAndReturn:
-        RunAnchorTransformAndReturnInstr(
-            dynamic_cast_instr_with_err<AnchorTransformAndReturnInstr>(instr),
-            this);
+      case T_AnchorTransform:
+        RunAnchorTransformInstr(
+            dynamic_cast_instr_with_err<AnchorTransformInstr>(instr), this);
         break;
       case T_Return:
         RunReturnInstr(dynamic_cast_instr_with_err<ReturnInstr>(instr), this);

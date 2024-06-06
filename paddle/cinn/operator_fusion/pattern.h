@@ -33,6 +33,7 @@ struct PatternContent {
 };
 
 struct StmtPattern;
+std::string GetPatternName(const StmtPattern& s);
 
 struct TrivialPattern {
   explicit TrivialPattern(const std::vector<pir::Operation*>& ops,
@@ -55,8 +56,7 @@ struct TrivialPattern {
   std::string name_;
 
   FusionTrackerPtr tracker_;
-
-  void set_return() { tracker_->append(make_shared<ReturnInstr>(name_)); }
+  void update_tracker() {}
 };
 
 struct ReducePattern {
@@ -78,8 +78,7 @@ struct ReducePattern {
   std::string name_;
 
   FusionTrackerPtr tracker_;
-
-  void set_return() { tracker_->append(std::make_shared<ReturnInstr>(name_)); }
+  void update_tracker() {}
 };
 
 struct ReduceTreePattern {
@@ -118,19 +117,20 @@ struct ReduceTreePattern {
 
   FusionTrackerPtr tracker_;
 
-  void set_return() {
-    std::vector<std::string> names({GetRootPattern().name()});
-    const auto hook = [tracker = tracker_, &names](const std::string& up,
-                                                   const std::string& down) {
-      tracker->append(std::make_shared<TmpTransformInstr>(up, down, up));
-      names.emplace_back(std::move(std::string(up)));
+  void update_tracker() {
+    std::vector<std::string> tmp_names({GetRootPattern().name()});
+    int count = 0;
+    const auto hook = [tracker = tracker_, &tmp_names, &count](
+                          const std::string& up, const std::string& down) {
+      std::string tmp_name = "tmp_" + std::to_string(count++);
+      tracker->append(std::make_shared<TmpTransformInstr>(up, down, tmp_name));
+      tmp_names.emplace_back(tmp_name);
     };
     recursive_call(hook);
 
-    for (auto it = names.end() - 1; it > names.begin(); it--) {
-      tracker_->append(std::make_shared<ReturnInstr>(*it));
-    }
+    tracker_->append(std::make_shared<CombineInstr>(tmp_names, name()));
   }
+
   using Hook = std::function<void(const std::string&, const std::string&)>;
   void recursive_call(const Hook& hook) {
     for (auto child : childs_) {
@@ -167,8 +167,9 @@ struct ReduceTreePlusTrivialPattern {
   std::string name_;
 
   FusionTrackerPtr tracker_;
-  void set_return() {
-    std::vector<std::string> names(
+
+  void update_tracker() {
+    std::vector<std::string> tmp_names(
         {sink_trivial.name(), tree.GetRootPattern().name()});
     tracker_->append(
         std::make_shared<TmpTransformInstr>(tree.GetRootPattern().name(),
@@ -176,13 +177,16 @@ struct ReduceTreePlusTrivialPattern {
                                             tree.GetRootPattern().name(),
                                             fake_reduce_iter_idx));
 
-    const auto hook =
-        [tracker = tracker_, &names, fake_reduce = fake_reduce_iter_idx](
-            const std::string& up, const std::string& down) {
-          tracker->append(
-              std::make_shared<TmpTransformInstr>(up, down, up, fake_reduce));
-          names.emplace_back(std::move(std::string(up)));
-        };
+    int count = 0;
+    const auto hook = [tracker = tracker_,
+                       &tmp_names,
+                       fake_reduce = fake_reduce_iter_idx,
+                       &count](const std::string& up, const std::string& down) {
+      std::string tmp_name = "tmp_" + std::to_string(count++);
+      tracker->append(
+          std::make_shared<TmpTransformInstr>(up, down, tmp_name, fake_reduce));
+      tmp_names.emplace_back(tmp_name);
+    };
 
     tree.recursive_call(hook);
 
@@ -192,9 +196,7 @@ struct ReduceTreePlusTrivialPattern {
                                                 sink_trivial.name(),
                                                 fake_reduce_iter_idx));
 
-    for (auto it = names.end() - 1; it > names.begin(); it--) {
-      tracker_->append(std::make_shared<ReturnInstr>(*it));
-    }
+    tracker_->append(std::make_shared<CombineInstr>(tmp_names, name()));
   }
 };
 
@@ -243,11 +245,16 @@ struct AnchorPattern {
   std::string name_;
 
   FusionTrackerPtr tracker_;
-  void set_return() {
-    for (auto p : anchor_state.promise) {
-      tracker_->append(std::make_shared<AnchorTransformAndReturnInstr>(
-          p.name_, p.transform_route));
+  void update_tracker() {
+    std::vector<std::string> tmp_names;
+    for (int i = 0; i < anchor_state.promise.size(); i++) {
+      auto promise = anchor_state.promise[i];
+      std::string tmp_name = "tmp_" + std::to_string(i);
+      tmp_names.emplace_back(tmp_name);
+      tracker_->append(std::make_shared<AnchorTransformInstr>(
+          promise.name_, tmp_name, promise.transform_route));
     }
+    tracker_->append(std::make_shared<CombineInstr>(tmp_names, name()));
   }
 
  private:
@@ -286,11 +293,21 @@ struct HorizontalFusionPattern {
   }
   std::string name() const { return name_; }
   std::string name_;
+  void update_tracker() {
+    std::vector<std::string> tmp_names;
+    for (int i = 0; i < padding_patterns_.size(); i++) {
+      auto padding_pattern = padding_patterns_[i];
+      std::string tmp_name = "tmp_" + std::to_string(i);
+      tmp_names.emplace_back(tmp_name);
+      tracker_->append(std::make_shared<PaddingInstr>(
+          GetPatternName(padding_pattern.pattern),
+          tmp_name,
+          padding_pattern.padding_pos));
+    }
+    tracker_->append(std::make_shared<CombineInstr>(tmp_names, name()));
+  }
 
   FusionTrackerPtr tracker_;
-  void set_return() {
-    // TODO(@wuzhanfei)
-  }
 };
 
 struct UnsupportPattern {
@@ -310,7 +327,7 @@ struct UnsupportPattern {
   std::string name_;
 
   FusionTrackerPtr tracker_;
-  void set_return() { tracker_->append(make_shared<ReturnInstr>(name_)); }
+  void update_tracker() {}
 };
 
 using StmtPatternBase = std::variant<TrivialPattern,
@@ -381,4 +398,8 @@ std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A) {
   return all_input_values;
 }
 
+void PatternUpdateTracker(const StmtPattern& A) {
+  return std::visit([](const auto& impl) { impl.update_tracker(); },
+                    s.variant());
+}
 }  // namespace cinn::fusion

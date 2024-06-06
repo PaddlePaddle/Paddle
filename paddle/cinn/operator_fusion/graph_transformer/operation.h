@@ -49,7 +49,7 @@ struct MergeTrivialPatternOperation {
                 << upstream->DebugStr() << "\ndownstream "
                 << downstream->DebugStr() << "\nmerged "
                 << merged_node->DebugStr();
-        merged_node->UpdateTracker(make_shared<TrivialInlineInstr>(
+        merged_node->AppendInstr(std::make_shared<TrivialInlineInstr>(
             upstream->name(), downstream->name(), merged_node->name()));
       } else {
         upstream->AddNodeToDownstream(downstream);
@@ -76,6 +76,7 @@ struct MergeReduceTreeOperation {
     VLOG(4) << "MergeReduceTreeOperation: \nupstream " << node->DebugStr()
             << "\ndownstream " << downstream->DebugStr() << "\nmerged "
             << merged_node->DebugStr();
+    merged_node->UpdateTracker();
     return merged_node;
   }
 };
@@ -107,6 +108,7 @@ struct MergeReduceTreeAndTrivialOperation {
     VLOG(4) << "MergeReduceTreeAndTrivialOperation: \nupstream "
             << node->DebugStr() << "\ndownstream " << downstream->DebugStr()
             << "\nmerged " << merged_node->DebugStr();
+    merged_node->UpdateTracker();
     return merged_node;
   }
 };
@@ -115,10 +117,11 @@ struct LiftReduceToReduceTreeOperation {
   PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
     auto origin_name = node->name();
     const auto& reduce_pattern = std::get<ReducePattern>(node->stmt_pattern());
-    node->set_stmt_pattern(
-        ReduceTreePattern({}, reduce_pattern, reduce_pattern.tracker_));
-    node->UpdateTracker(
-        std::make_shared<RenameInstr>(origin_name, node->name()));
+    node->set_stmt_pattern(ReduceTreePattern(
+        {},
+        reduce_pattern,
+        std::make_shared<FusionTracker>(reduce_pattern.tracker_)));
+    node->AppendInstr(std::make_shared<CopyInstr>(origin_name, node->name()));
     return node;
   }
 };
@@ -129,9 +132,9 @@ struct LiftToHorizontalFusionPatternOperation {
     node->set_stmt_pattern(HorizontalFusionPattern(
         {typename HorizontalFusionPattern::PaddingStmtPattern(
             node->stmt_pattern(), {})},
-        GetFusionTracker(node->stmt_pattern())));
-    node->UpdateTracker(
-        std::make_shared<RenameInstr>(origin_name, node->name()));
+        std::make_shared<FusionTracker>(
+            GetFusionTracker(node->stmt_pattern()))));
+    node->AppendInstr(std::make_shared<CopyInstr>(origin_name, node->name()));
     return node;
   }
 };
@@ -152,7 +155,8 @@ struct LiftToAnchorPatternOperation {
         ops,
         anchor,
         AnchorState(InitExprPromise(node->stmt_pattern(), anchor)),
-        GetFusionTracker(node->stmt_pattern())));
+        std::make_shared<FusionTracker>(
+            GetFusionTracker(node->stmt_pattern()))));
     return node;
   }
 };
@@ -189,13 +193,16 @@ struct FuseUpstreamAnchorOperation {
     auto merged_node = graph->MergeNode(upstream, downstream, merge_pattern_fn);
     graph->RemoveNode(upstream);
     graph->RemoveNode(downstream);
-    VLOG(4)
-        << "upstream anchor: "
-        << std::get<AnchorPattern>(upstream->stmt_pattern()).anchor().impl()
-        << ", downstream anchor: "
-        << std::get<AnchorPattern>(downstream->stmt_pattern()).anchor().impl()
-        << ", merged node anchor: "
-        << std::get<AnchorPattern>(merged_node->stmt_pattern()).anchor().impl();
+    merged_node->UpdateTracker();
+    // VLOG(4)
+    //     << "upstream anchor: "
+    //     << std::get<AnchorPattern>(upstream->stmt_pattern()).anchor().impl()
+    //     << ", downstream anchor: "
+    //     <<
+    //     std::get<AnchorPattern>(downstream->stmt_pattern()).anchor().impl()
+    //     << ", merged node anchor: "
+    //     <<
+    //     std::get<AnchorPattern>(merged_node->stmt_pattern()).anchor().impl();
     return merged_node;
   }
 };
@@ -233,13 +240,16 @@ struct FuseDownstreamAnchorOperation {
     auto merged_node = graph->MergeNode(upstream, downstream, merge_pattern_fn);
     graph->RemoveNode(upstream);
     graph->RemoveNode(downstream);
-    VLOG(4)
-        << "upstream anchor: "
-        << std::get<AnchorPattern>(upstream->stmt_pattern()).anchor().impl()
-        << ", downstream anchor: "
-        << std::get<AnchorPattern>(downstream->stmt_pattern()).anchor().impl()
-        << ", merged node anchor: "
-        << std::get<AnchorPattern>(merged_node->stmt_pattern()).anchor().impl();
+    merged_node->UpdateTracker();
+    // VLOG(4)
+    //     << "upstream anchor: "
+    //     << std::get<AnchorPattern>(upstream->stmt_pattern()).anchor().impl()
+    //     << ", downstream anchor: "
+    //     <<
+    //     std::get<AnchorPattern>(downstream->stmt_pattern()).anchor().impl()
+    //     << ", merged node anchor: "
+    //     <<
+    //     std::get<AnchorPattern>(merged_node->stmt_pattern()).anchor().impl();
     return merged_node;
   }
 };
@@ -249,8 +259,8 @@ struct SplitRecomputeOperation {
     auto origin_name = upstream->name();
     upstream->set_stmt_pattern(RecoverAnchorPatternToTrivial(
         std::get<AnchorPattern>(upstream->stmt_pattern())));
-    upstream->UpdateTracker(
-        std::make_shared<RenameInstr>(origin_name, upstream->name()));
+    upstream->AppendInstr(
+        std::make_shared<CopyInstr>(origin_name, upstream->name()));
     MergeTrivialPatternOperation()(graph, upstream);
   }
 };
@@ -279,6 +289,7 @@ struct HorizontalFusionOperation {
             << j->DebugStr() << "\nmerged " << merged_node->DebugStr();
     graph->RemoveNode(i);
     graph->RemoveNode(j);
+    merged_node->UpdateTracker();
     return merged_node;
   }
 };

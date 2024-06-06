@@ -18,14 +18,15 @@
 namespace cinn::fusion {
 
 enum InstructionType {
-  T_Rename,
+  T_Copy,
   T_Combine,
   T_Return,
   T_InitPattern,
   T_TrivialInline,
   T_TmpTransform,
   T_TrivialLoopAlign,
-  T_AnchorTransformAndReturn,
+  T_AnchorTransform,
+  T_Padding
 };
 
 struct FusionInstruction {
@@ -34,10 +35,10 @@ struct FusionInstruction {
 
 using FusionInstrPtr = std::shared_ptr<FusionInstruction>;
 
-struct RenameInstr : public FusionInstruction {
-  RenameInstr(const std::string& origin_name, const std::string& new_name)
+struct CopyInstr : public FusionInstruction {
+  CopyInstr(const std::string& origin_name, const std::string& new_name)
       : origin_name_(origin_name), new_name_(new_name) {}
-  virtual InstructionType type() { return T_Rename; }
+  virtual InstructionType type() { return T_Copy; }
   std::string origin_name_;
   std::string new_name_;
 };
@@ -109,18 +110,34 @@ struct TrivialLoopAlignInstr : public FusionInstruction {
   std::vector<size_t> fake_reduce_iter_idx_;
 };
 
-struct AnchorTransformAndReturnInstr : public FusionInstruction {
-  AnchorTransformAndReturnInstr(const std::string& target,
-                                const AnchorTransformRoute& transform_route)
-      : target_(target), transform_route_(transform_route) {}
-  virtual InstructionType type() { return T_AnchorTransformAndReturn; }
+struct AnchorTransformInstr : public FusionInstruction {
+  AnchorTransformInstr(const std::string& target,
+                       const std::string& result,
+                       const AnchorTransformRoute& transform_route)
+      : target_(target), result_(result), transform_route_(transform_route) {}
+  virtual InstructionType type() { return T_AnchorTransform; }
   std::string target_;
+  std::string result_;
   AnchorTransformRoute transform_route_;
+};
+
+struct PaddingInstr : public FusionInstruction {
+  AnchorTransformInstr(const std::string& target,
+                       const std::string& result,
+                       const std::vector<int>& padding_pos)
+      : target_(target), result_(result), padding_pos_(padding_pos) {}
+  virtual InstructionType type() { return T_Padding; }
+  std::string target_;
+  std::string result_;
+  std::vector<int> padding_pos_;
 };
 
 struct FusionTracker {
   using FusionTrackerPtr = std::shared_ptr<FusionTracker>;
   FusionTracker() = default;
+  explicit FusionTracker(const FusionTrackerPtr& other) {
+    ExtendVector(&instructions_, other->instructions_);
+  }
   FusionTracker(const FusionTrackerPtr& up, const FusionTrackerPtr& down) {
     ExtendVector(&instructions_, up->instructions_);
     ExtendVector(&instructions_, down->instructions_);
