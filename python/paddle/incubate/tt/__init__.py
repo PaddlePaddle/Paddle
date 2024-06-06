@@ -18,6 +18,7 @@ try:
     from .triton_ops import (
         adaptive_layer_norm,
         fused_adaLN_scale_residual,
+        rms_norm,
         weight_only_int8,
     )
 
@@ -25,6 +26,7 @@ try:
         "weight_only_int8",
         "adaptive_layer_norm",
         "fused_adaLN_scale_residual",
+        "rms_norm",
     ]
 except:
     print("import triton_ops failed")
