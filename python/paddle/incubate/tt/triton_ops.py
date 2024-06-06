@@ -1050,25 +1050,35 @@ def rms_norm_kernel(
     M,
     N,
     epsilon,
+    BLOCK_SIZE_M: tl.constexpr,
     N_npo2: tl.constexpr,
 ):
     row = tl.program_id(axis=0)
-    x_ptr += row * N
-    y_ptr += row * N
+    x_ptr += row * N * BLOCK_SIZE_M
+    y_ptr += row * N * BLOCK_SIZE_M
 
-    all_offs = tl.arange(0, N_npo2)
-    all_mask = all_offs < N
+    offs_am = tl.arange(0, BLOCK_SIZE_M)
+    offs_an = tl.arange(0, N_npo2)
+
     # compute var
-    x_eles = tl.load(x_ptr + all_offs, mask=all_mask, other=0.0).to(tl.float32)
-    var = tl.sum(x_eles * x_eles, axis=0) / N
-    resi_hat = x_eles / tl.sqrt(var + epsilon)
+    all_offs = offs_am[:, None] * N + offs_an[None, :]
+
+    x_eles = tl.load(x_ptr + all_offs, mask=offs_an[None, :] < N, other=0.0).to(
+        tl.float32
+    )
+    var = tl.sum(x_eles * x_eles, axis=1) / N
+
+    resi_hat = x_eles / tl.sqrt(var[:, None] + epsilon)
+
     if weight_ptr is not None:
-        weights = tl.load(weight_ptr + all_offs, mask=all_mask, other=0.0)
+        weights = tl.load(weight_ptr + offs_an, mask=offs_an < N, other=0.0)
         resi_hat = resi_hat * weights
+
     if bias_ptr is not None:
-        bias = tl.load(bias_ptr + all_offs, mask=all_mask, other=0.0)
+        bias = tl.load(bias_ptr + offs_an, mask=offs_an < N, other=0.0)
         resi_hat = resi_hat + bias
-    tl.store(y_ptr + all_offs, resi_hat, mask=all_mask)
+
+    tl.store(y_ptr + all_offs, resi_hat, mask=offs_an[None, :] < N)
 
 
 rms_norm_template = (
@@ -1150,6 +1160,7 @@ def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
     M = x.shape[0] * x.shape[1] * x.shape[2]
     N = x.shape[3]
     N_npo2 = triton.next_power_of_2(N)
+    BLOCK_SIZE_M = 4
 
     # if in_dynamic_or_pir_mode():
     #     y = paddle.empty_like(x)
@@ -1161,6 +1172,7 @@ def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
     #         M,
     #         N,
     #         epsilon,
+    #         BLOCK_SIZE_M
     #         N_npo2=N_npo2,
     #     )
     #     return y
@@ -1216,14 +1228,15 @@ def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
         # ahead of time compile command.
         aot_template = (
             f"""{python_path}   {compile_file} {py_script_file}   -n rms_norm_kernel -o {generated_dir}/{op_name}_kernel --out-name {op_name}_kernel  """
-            + """ -s "{address_hint} {value_hint}  {N_npo2}"   \
-                             -g "M, 1, 1" \
+            + """ -s "{address_hint} {value_hint} {BLOCK_SIZE_M}, {N_npo2}"   \
+                             -g "(M+{BLOCK_SIZE_M}-1)/{BLOCK_SIZE_M}, 1, 1" \
                        """
         )
 
         codegen_command = aot_template.format(
             address_hint=address_hint,
             value_hint=value_hint,
+            BLOCK_SIZE_M=BLOCK_SIZE_M,
             N_npo2=N_npo2,
         )
         print(codegen_command)
