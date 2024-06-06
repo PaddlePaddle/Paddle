@@ -68,15 +68,19 @@ class TestBase(unittest.TestCase):
             net.train()
         else:
             net.eval()
-        outs = net(*self.inputs)
-        return outs
+        inputs = []
+        for tensor in self.inputs:
+            inputs.append(paddle.clone(tensor))
+        inputs = tuple(inputs)
+        outs = net(*inputs)
+        return outs,inputs
 
     def test_ast_prim_cinn(self):
         if not self.net:
             return
-        st_out = self.train(self.net, to_static=True)
+        st_out,st_inputs = self.train(self.net, to_static=True)
         self.set_flags()
-        cinn_out = self.train(
+        cinn_out,cinn_inputs = self.train(
             self.net,
             to_static=True,
             with_prim=self.with_prim,
@@ -93,15 +97,15 @@ class TestBase(unittest.TestCase):
             st_loss = st_out.mean()
             st_loss.backward()
             st_grad = []
-            for i in range(len(self.inputs)):
-                if self.inputs[i].dtype != paddle.int64:
-                    st_grad.append(self.inputs[i].grad.numpy().copy())
+            for i in range(len(st_inputs)):
+                if st_inputs[i].dtype != paddle.int64:
+                    st_grad.append(st_inputs[i].grad.numpy().copy())
             cinn_loss = cinn_out.mean()
             cinn_loss.backward()
             cinn_grad = []
-            for i in range(len(self.inputs)):
-                if self.inputs[i].dtype != paddle.int64:
-                    cinn_grad.append(self.inputs[i].grad.numpy().copy())
+            for i in range(len(cinn_inputs)):
+                if cinn_inputs[i].dtype != paddle.int64:
+                    cinn_grad.append(cinn_inputs[i].grad.numpy().copy())
             for i in range(len(cinn_grad)):
                 np.testing.assert_allclose(
                     st_grad[i], cinn_grad[i], atol=self.train_atol
