@@ -24,7 +24,7 @@ import numpy as np
 import paddle
 from paddle.framework import core
 
-from ....infer_meta import MetaInfo
+from ....infer_meta import MetaInfo, SymbolicInt
 from ....symbolic.statement_ir import Symbol
 from ....utils import (
     ENV_SOT_ALLOW_DYNAMIC_SHAPE,
@@ -51,6 +51,7 @@ from ..tracker import (
     DanglingTracker,
     DummyTracker,
     GetAttrTracker,
+    GetItemTracker,
     GetIterTracker,
     GlobalTracker,
     SymbolicOperationTracker,
@@ -344,9 +345,9 @@ class TensorVariable(VariableBase):
         ]
 
     def __len__(self):
-        if self.meta.shape[0] == -1:
+        if isinstance(self.meta.shape[0], SymbolicInt):
             raise BreakGraphError(
-                "length of tensor variable with first dimension == -1"
+                "length of tensor variable with first dimension is dynamic shape causes graph break."
             )
         return self.meta.shape[0]
 
@@ -496,7 +497,7 @@ class TensorVariable(VariableBase):
         if len(self.meta.shape) == 0:
             raise InnerError("len() of a 0-D tensor is wrong")
         first_dim = self.meta.shape[0]
-        if first_dim == -1:
+        if isinstance(first_dim, SymbolicInt):
             raise BreakGraphError(
                 "Getting len() for a dynamic shape tensor causes graph break."
             )
@@ -606,14 +607,14 @@ class SymbolicVariable(VariableBase):
 
     def __init__(
         self,
-        value: int | None | MetaInfo,
+        value: int | SymbolicInt | MetaInfo,
         graph: FunctionGraph,
         tracker: Tracker,
     ):
         super().__init__(graph, tracker)
         self.var_name = self.var_name_generator.next()
         if isinstance(value, MetaInfo):
-            self.value = None
+            self.value = SymbolicInt()
             self.meta = value
         else:
             self.value = value
@@ -638,6 +639,8 @@ class SymbolicVariable(VariableBase):
 
     def get_py_type(self):
         # TODO(zrr1999): not need to use value to get type
+        if isinstance(self.value, SymbolicInt):
+            return int
         return super().get_py_type()
 
     def get_symbol(self) -> Symbol:
@@ -701,10 +704,42 @@ class SymbolicVariable(VariableBase):
                 return False
         return False
 
+    @staticmethod
+    def find_tensor_shape_source(dim_tracker: Tracker):
+        from .container import ListVariable
+
+        if not isinstance(dim_tracker, GetItemTracker):
+            return None
+        if not isinstance(dim_tracker.container, ListVariable):
+            return None
+        if not isinstance(dim_tracker.container.tracker, GetAttrTracker):
+            return None
+        if dim_tracker.container.tracker.attr != "shape":
+            return None
+        if not isinstance(dim_tracker.container.tracker.obj, TensorVariable):
+            return None
+        tensor_var = dim_tracker.container.tracker.obj
+        shape_idx = dim_tracker.key
+        return tensor_var, shape_idx
+
     @VariableFactory.register_from_value(successor="ConstantVariable")
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
             return None
+        if isinstance(value, SymbolicInt):
+            tensor_shape_source_result = (
+                SymbolicVariable.find_tensor_shape_source(tracker)
+            )
+            assert tensor_shape_source_result is not None
+            tensor_var, shape_idx = tensor_shape_source_result
+            tensor_call_shape_var = graph.call_paddle_api(
+                paddle.shape, tensor_var
+            )
+            return graph.call_symbolic_method(
+                "__getitem__",
+                tensor_call_shape_var,
+                ConstantVariable.wrap_literal(shape_idx, graph),
+            )
         if not isinstance(value, int):
             return None
         if not tracker.is_traceable():
