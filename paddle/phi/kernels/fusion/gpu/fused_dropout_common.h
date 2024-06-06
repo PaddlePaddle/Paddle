@@ -29,6 +29,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 
 #ifdef PADDLE_WITH_HIP

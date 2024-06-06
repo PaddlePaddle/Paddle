@@ -22,6 +22,7 @@ from typing import List, Tuple
 from ...profiler import EventGuard, event_register
 from ...psdb import NO_FALLBACK_CODES
 from ...utils import (
+    ENV_SOT_ALLOW_DYNAMIC_SHAPE,
     BreakGraphError,
     FallbackError,
     InnerError,
@@ -55,10 +56,16 @@ class OpcodeExecutorCache(metaclass=Singleton):
     MAX_CACHE_SIZE = 20
     cache: dict[types.CodeType, GuardedFunctions]
     translate_count: int
+    code_symbolic_inputs: dict[types.CodeType, dict[str, dict[int, int]]]
 
     def __init__(self):
         self.cache = {}
         self.translate_count = 0
+        self.code_symbolic_inputs = {}
+
+    def get_symbolic_inputs(self, code: types.CodeType):
+        self.code_symbolic_inputs.setdefault(code, {})
+        return self.code_symbolic_inputs[code]
 
     def clear(self):
         """
@@ -66,6 +73,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
         """
         self.cache.clear()
         self.translate_count = 0
+        self.code_symbolic_inputs.clear()
 
     def __call__(self, frame: types.FrameType, **kwargs) -> CustomCode:
         code: types.CodeType = frame.f_code
@@ -128,6 +136,10 @@ class OpcodeExecutorCache(metaclass=Singleton):
         guarded_fns.append((new_custom_code, guard_fn))
         return new_custom_code
 
+    def before_translate_hook(self, frame: types.FrameType):
+        if not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
+            return
+
     def translate(
         self, frame: types.FrameType, **kwargs
     ) -> tuple[CustomCode, Guard]:
@@ -140,7 +152,7 @@ class OpcodeExecutorCache(metaclass=Singleton):
         Returns:
             tuple[CustomCode, Guard]: The cache getter function and a guarded function for the translated code object.
         """
-        code: types.CodeType = frame.f_code
+        self.before_translate_hook(frame)
         self.translate_count += 1
         custom_new_code, guard_fn = start_translate(frame, **kwargs)
         return custom_new_code, guard_fn
@@ -178,7 +190,10 @@ class OpcodeExecutorCache(metaclass=Singleton):
         return inner
 
 
-def start_translate(frame: types.FrameType, **kwargs) -> GuardedFunction:
+def start_translate(
+    frame: types.FrameType,
+    **kwargs,
+) -> GuardedFunction:
     """
     Starts the translation process for the given frame and returns the translated code object and its guard function, or None if translation fails.
 

@@ -1055,7 +1055,8 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::INT64,
                      phi::DataType::BOOL,
                      phi::DataType::FLOAT64,
-                     phi::DataType::FLOAT32})},
+                     phi::DataType::FLOAT32,
+                     phi::DataType::FLOAT16})},
       {"tile_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"transpose2_grad",
        XPUKernelSet({phi::DataType::FLOAT32,
@@ -1152,6 +1153,8 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT32})},
       {"warpctc_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"warpctc", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"weight_only_linear_xpu",
+       XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::BFLOAT16})},
       {"where_index",
        XPUKernelSet({phi::DataType::INT32,
                      phi::DataType::BOOL,
@@ -1177,6 +1180,8 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
       {"randint", XPUKernelSet({phi::DataType::INT32, phi::DataType::INT64})},
+      {"rms_norm",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"group_norm", XPUKernelSet({phi::DataType::FLOAT32})},
       {"group_norm_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"meshgrid",
@@ -1244,6 +1249,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
       {"sequence_unpad_xpu",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
+      {"block_multihead_attention_xpu", XPUKernelSet({phi::DataType::FLOAT16})},
   };
 
   return s_xpu2_kernels;

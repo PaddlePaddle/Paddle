@@ -114,22 +114,37 @@ void StaticShapeGroupScheduler::Schedule() {
       &StaticShapeGroupScheduler::IsKeepGraphDependency);
   DoLoopAlignment();
   DoComputeInline();
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  OptimizeReduction();
+        OptimizeReduction();
 #endif
+      });
   DoHorizontalLoopFusion();
   DoVerticalLoopFusion();
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  BindCudaAxis();
-  AllocateStorage();
+        BindCudaAxis();
+        AllocateStorage();
 #endif
+      });
 }
 
 void StaticShapeGroupScheduler::MapExprSchedule() {
   DoComputeInline();
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  AllocateStorage();
+        AllocateStorage();
 #endif
+      });
 }
 
 std::vector<std::pair<SymbolicPredicate, ir::Expr>>

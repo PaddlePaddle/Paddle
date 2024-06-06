@@ -120,9 +120,7 @@ OpSupportedInfos(const std::string& place,
 }
 
 AutoCastGuard::AutoCastGuard(std::shared_ptr<AmpAttrs> state, AmpLevel level)
-    : state_(state) {
-  pre_amp_level_ = state_->GetAmpLevel();
-
+    : state_(state), pre_amp_level_(state_->GetAmpLevel()) {
   if (pre_amp_level_ != level) {
     state_->SetAmpLevel(level);
   }
@@ -237,7 +235,7 @@ thread_local phi::DataType AmpAttrs::amp_dtype_ = phi::DataType::FLOAT32;
 
 AmpAttrs::AmpAttrs() {}
 
-AmpAttrs::~AmpAttrs() = default;
+// AmpAttrs::~AmpAttrs() = default;
 
 bool AmpAttrs::GetUsePromote() const { return use_promote_; }
 

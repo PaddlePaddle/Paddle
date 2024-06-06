@@ -30,7 +30,7 @@ SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
   // Step0: Verify input args based on split logic
   auto x_shape = common::vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
-  auto x_dist_attr_src = x.dist_attr();
+  const auto& x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
       x_ndim,
@@ -108,7 +108,7 @@ SpmdInfo SplitWithNumInferSpmdReverse(
   int out_ndim = static_cast<int>(common::vectorize(outs[0]->dims()).size());
   auto x_shape = common::vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
-  auto x_dist_attr = x.dist_attr();
+  const auto& x_dist_attr = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr.dims_mapping();
   PADDLE_ENFORCE_EQ(nouts,
                     num,
@@ -227,6 +227,7 @@ SpmdInfo SplitWithNumInferSpmdDynamic(const DistMetaTensor& x,
   SpmdInfo ret;
   ret.first = tmp.first;
   std::vector<TensorDistAttr> out_dist_attrs;
+  out_dist_attrs.reserve(tmp.second.size());
   for (const auto& out : tmp.second) {
     out_dist_attrs.push_back(PADDLE_GET_CONST(TensorDistAttr, out));
   }

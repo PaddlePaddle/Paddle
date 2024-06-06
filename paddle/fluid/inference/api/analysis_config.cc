@@ -50,7 +50,7 @@ AnalysisConfig::AnalysisConfig() {
 }
 
 PassStrategy *AnalysisConfig::pass_builder() const {
-  if (!pass_builder_.get()) {
+  if (!pass_builder_) {
     if (use_gpu_) {
       LOG(INFO) << "Create GPU IR passes";
       pass_builder_ = std::make_unique<GpuPassStrategy>();

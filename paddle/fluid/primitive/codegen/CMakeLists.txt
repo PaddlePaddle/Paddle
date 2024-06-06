@@ -1,35 +1,23 @@
-set(parsed_yaml_path
-    "${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops")
+set(parsed_yaml_path ${PADDLE_BINARY_DIR}/paddle/phi/ops/yaml)
 set(fwd_path ${parsed_yaml_path}/ops.parsed.yaml)
-set(rev_path ${parsed_yaml_path}/backward_ops.parsed.yaml)
-set(fwd_pd_op_path
-    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/ops.parsed.yaml
-)
+set(rev_path ${parsed_yaml_path}/backward.parsed.yaml)
+set(fwd_pd_op_path ${parsed_yaml_path}/inconsistent/static_ops.parsed.yaml)
 set(update_fwd_pd_op_path
-    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/update_ops.parsed.yaml
-)
-set(rev_pd_op_path
-    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/ops_backward.parsed.yaml
-)
-set(fused_op_path
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_ops.parsed.yaml
-)
-set(fused_rev_op_path
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
-)
+    ${parsed_yaml_path}/inconsistent/update_ops.parsed.yaml)
+set(rev_pd_op_path ${parsed_yaml_path}/inconsistent/static_backward.parsed.yaml)
+set(fused_op_path ${parsed_yaml_path}/fused_ops.parsed.yaml)
+set(fused_rev_op_path ${parsed_yaml_path}/fused_backward.parsed.yaml)
 
-set(sparse_op_path
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/sparse_ops.parsed.yaml
-)
-set(sparse_rev_op_path
-    ${PADDLE_BINARY_DIR}/paddle/fluid/operators/generator/parsed_ops/sparse_backward.parsed.yaml
-)
-set(prim_path "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/primitive.yaml")
+set(sparse_op_path ${parsed_yaml_path}/sparse_ops.parsed.yaml)
+set(sparse_rev_op_path ${parsed_yaml_path}/sparse_backward.parsed.yaml)
+set(prim_path ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/primitive.yaml)
 set(templates_dir
-    "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/templates/")
-set(compat_path "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml")
-set(destination_dir "${PADDLE_BINARY_DIR}/paddle/fluid/primitive/")
-set(scripts "${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/gen.py")
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/templates/)
+set(compat_path ${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml)
+set(destination_dir ${PADDLE_BINARY_DIR}/paddle/fluid/primitive/)
+set(decomp_vjp_destination_dir
+    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/op_decomp_vjp.cc)
+set(scripts ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/gen.py)
 
 message("Automatic code generation for paddle/fluid/primitive")
 execute_process(
@@ -42,6 +30,7 @@ execute_process(
     ${fused_rev_op_path} --sparse_op_path ${sparse_op_path} --sparse_rev_op_path
     ${sparse_rev_op_path} --templates_dir ${templates_dir} --compat_path
     ${compat_path} --destination_dir ${destination_dir}
+    --decomp_vjp_destination_dir ${decomp_vjp_destination_dir}
   RESULT_VARIABLE _result)
 if(${_result})
   message(

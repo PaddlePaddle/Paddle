@@ -35,7 +35,11 @@ class FusedAllReduceSplitPattern : public paddle::drr::DrrPatternBase {
     const auto &c_allreduce_sum_ =
         pat.Op(paddle::dialect::CAllreduceSum_Op::name(),
                {{"ring_id", pat.Attr("ring_id")},
-                {"use_calc_stream", pat.Attr("use_calc_stream")}});
+                {"use_calc_stream", pat.Attr("use_calc_stream")},
+                {"execution_stream", pat.Attr("execution_stream")},
+                {"force_record_event", pat.Attr("force_record_event")},
+                {"event_to_record", pat.Attr("event_to_record")},
+                {"events_to_wait", pat.Attr("events_to_wait")}});
     const auto &assign = pat.Op(paddle::dialect::AssignOp::name());
     const auto &full = pat.Op(paddle::dialect::FullOp::name());
     const auto &split_with_num = pat.Op(paddle::dialect::SplitWithNumOp::name(),
@@ -74,7 +78,11 @@ class FusedAllReduceSplitPattern : public paddle::drr::DrrPatternBase {
         res.Op(paddle::dialect::CReducescatterOp::name(),
                {{"ring_id", pat.Attr("ring_id")},
                 {"nranks", pat.Attr("num")},
-                {"use_calc_stream", pat.Attr("use_calc_stream")}});
+                {"use_calc_stream", pat.Attr("use_calc_stream")}},
+               {{"execution_stream", pat.Attr("execution_stream")},
+                {"force_record_event", pat.Attr("force_record_event")},
+                {"event_to_record", pat.Attr("event_to_record")},
+                {"events_to_wait", pat.Attr("events_to_wait")}});
 
     c_reducescatter({&res.Tensor("input_grad_partial")}, {&res.Tensor("out")});
   }

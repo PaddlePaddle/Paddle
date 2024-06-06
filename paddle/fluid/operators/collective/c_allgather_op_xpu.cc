@@ -93,7 +93,7 @@ class CAllGatherOpXPUKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       stream = static_cast<phi::XPUContext*>(dev_ctx)->x_context()->xpu_stream;
     }
 

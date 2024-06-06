@@ -17,9 +17,7 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 void FusedBroadcastOpHandle::RunImpl() {
   platform::RecordEvent record_event(
@@ -58,6 +56,4 @@ void FusedBroadcastOpHandle::RunImpl() {
 
 std::string FusedBroadcastOpHandle::Name() const { return "fused_broadcast"; }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

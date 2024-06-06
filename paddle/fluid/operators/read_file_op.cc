@@ -24,8 +24,7 @@
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/nullary.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class ReadFileOp : public framework::OperatorWithKernel {
  public:
@@ -50,8 +49,7 @@ This operator read a file.
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 
