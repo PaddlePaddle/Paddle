@@ -605,6 +605,7 @@ bool ReshapeOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const symbol::ShapeOrDataDimExprs &shape_dim_expr =
       infer_context->GetShapeOrDataForValue(op->operand_source(1));
+
   const auto &GetProduct = [&](const auto &dim_exprs, const auto &Filter) {
     symbol::DimExpr product{1};
     for (const auto &dim_expr : dim_exprs) {
@@ -630,7 +631,8 @@ bool ReshapeOpInferSymbolicShape(
   };
 
   const std::vector<symbol::DimExpr> out_dims = [&] {
-    const auto &original_shape = x_dim_expr.shape();
+    const auto &original_shape =
+        infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
 
     const auto &numel =
         GetProduct(original_shape, [](const auto &) { return true; });
@@ -651,17 +653,6 @@ bool ReshapeOpInferSymbolicShape(
       out_dims.emplace_back(out_dim_expr);
     }
 
-    auto HasMinusOne = [](const ExprVec &shape) {
-      for (const auto &dim_expr : shape) {
-        if (dim_expr.isa<int64_t>() &&
-            dim_expr.dyn_cast<int64_t>() == static_cast<int64_t>(-1))
-          return true;
-      }
-      return false;
-    };
-    if (!HasMinusOne(target_shape)) {
-      infer_context->AddEqualCstr(numel, product_exclude_minus_one);
-    }
     return out_dims;
   }();
 
