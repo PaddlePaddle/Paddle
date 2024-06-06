@@ -38,8 +38,7 @@ using paddle::dialect::DistDenseTensorType;
 
 COMMON_DECLARE_bool(print_ir);
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 pir::Type CastToLocalType(pir::Type type) {
   if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
@@ -164,5 +163,4 @@ void DistToDensePass(pir::Program* prog) {
   }
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

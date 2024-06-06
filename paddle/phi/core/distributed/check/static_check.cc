@@ -21,8 +21,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 void CommStaticCheck::CheckRank(int rank, int world_size) {
   PADDLE_ENFORCE_GE(rank,
@@ -163,5 +162,4 @@ void CommStaticCheck::GatherLikeShape(const phi::DenseTensor& out_tensor,
              place);
 }
 
-}  //  namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

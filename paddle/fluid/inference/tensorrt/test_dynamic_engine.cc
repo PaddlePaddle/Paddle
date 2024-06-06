@@ -29,9 +29,7 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 
 using float16 = phi::dtype::float16;
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
  public:
@@ -1049,6 +1047,4 @@ TEST_F(TensorRTDynamicShapeGNTest, test_trt_dynamic_shape_groupnorm) {
 }
 */
 #endif
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
