@@ -43,9 +43,11 @@ namespace pir {
 #define BLOCKOPS "ops"
 
 // operation's key:
+// input
 // which is json array with opoperand json object(ID)
 #define OPOPERANDS "I"
 
+// output
 // which is json array with value json object(ID and TYPE_TYPE)
 #define OPRESULTS "O"
 
@@ -68,4 +70,8 @@ namespace pir {
 
 // NULL_TYPE
 #define NULL_TYPE "NULL"
+
+// special op compress
+
+#define PARAMETEROP "p"
 }  // namespace pir

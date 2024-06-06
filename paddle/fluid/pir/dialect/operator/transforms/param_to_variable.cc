@@ -21,8 +21,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 std::shared_ptr<paddle::framework::Variable>
 ParameterConvertInterface::ParameterToVariable(pir::Parameter *parameter) {
   if (parameter->type().isa<DenseTensorType>()) {
@@ -79,7 +78,6 @@ std::unique_ptr<pir::Parameter> ParameterConvertInterface::VariableToParameter(
   }
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ParameterConvertInterface)

@@ -16,9 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/memory_block.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace memory {
-namespace detail {
+namespace paddle::memory::detail {
 
 MetadataCache::MetadataCache(bool uses_gpu) : uses_gpu_(uses_gpu) {}
 
@@ -64,6 +62,4 @@ void MetadataCache::Invalidate(MemoryBlock* block) {
   }
 }
 
-}  // namespace detail
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::detail
