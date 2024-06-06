@@ -412,7 +412,13 @@ cc_library(
 cc_library(
   op_registry
   SRCS op_registry.cc
-  DEPS op_proto_maker op_info operator ops_extra_info glog proto_desc)
+  DEPS op_proto_maker
+       op_info
+       operator
+       ops_extra_info
+       glog
+       proto_desc
+       proto_desc_base)
 
 cc_library(
   op_call_stack

@@ -114,8 +114,7 @@ cc_library(
        fluid_memory
        framework_proto
        op_dialect
-       op_dialect_vjp
-       op_registry)
+       op_dialect_vjp)
 
 #fluid_memory depends on device_context, here add deps individually for
 # avoiding cycle dependencies
