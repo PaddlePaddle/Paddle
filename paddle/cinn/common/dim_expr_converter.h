@@ -15,7 +15,7 @@
 #pragma once
 
 #include <memory.h>
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 

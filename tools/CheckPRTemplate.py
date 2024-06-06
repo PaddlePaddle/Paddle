@@ -79,7 +79,7 @@ def parameter_accuracy(body):
             for i in value:
                 i = i.strip().lower()
                 if i not in test_list_lower:
-                    single_mess += '%s.' % i
+                    single_mess += f'{i}.'
             if len(single_mess) != 0:
                 message += f'{key} should be in {test_list}. but now is [{single_mess}].'
     return message

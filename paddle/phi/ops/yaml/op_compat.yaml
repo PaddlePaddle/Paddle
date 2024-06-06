@@ -1112,6 +1112,12 @@
     num_columns :
       support_tensor : true
 
+- op : fake_channel_wise_dequantize_max_abs
+  inputs :
+    {x : X, scales : Scales}
+  outputs :
+    out : Out
+
 - op : fake_channel_wise_quantize_abs_max
   inputs :
     x : X
@@ -1776,11 +1782,6 @@
     variance : Variance
   attrs:
     data_format: data_layout
-
-- op : gru
-  backward : gru_grad
-  extra :
-    attrs : [bool is_test = false]
 
 - op : gumbel_softmax
   inputs :
@@ -3913,6 +3914,20 @@
   outputs:
     viterbi_path: ViterbiPath
 
+- op: cross_entropy
+  backward: cross_entropy_grad
+  inputs:
+    {x : X, label : Label}
+  outputs:
+    out : Y
+
+- op: cross_entropy2
+  backward: cross_entropy_grad2
+  inputs:
+    {x : X, label : Label}
+  outputs:
+    {out : Y, x_shape : XShape, match_x : MatchX}
+
 - op: ctc_align
   inputs:
     {input : Input, input_length : InputLength}
@@ -4013,11 +4028,25 @@
   outputs:
     {out: Out}
 
+- op: fused_elemwise_activation
+  backward: fused_elemwise_activation_grad
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    {out : Out, intermediate_out : IntermediateOut}
+
 - op: fused_elemwise_add_activation
   backward: fused_elemwise_add_activation_grad
   inputs :
     {x: X, y: Y}
   outputs :
+    {out : Out, intermediate_out : IntermediateOut}
+
+- op: fused_elemwise_add_activation
+  backward: fused_elemwise_add_activation_grad
+  inputs:
+    {x : X, y : Y}
+  outputs:
     {out : Out, intermediate_out : IntermediateOut}
 
 - op: fused_matmul
@@ -4047,6 +4076,12 @@
   outputs :
     {slimmed_x : SlimmedX, cls_inds : CLSInds}
 
+- op: fusion_group
+  inputs:
+    inputs : Inputs
+  outputs:
+    outs : Outs
+
 - op: fusion_seqpool_cvm_concat
   inputs:
     {x : X, cvm : CVM}
@@ -4068,6 +4103,23 @@
     x : X
   outputs :
     out : Out
+
+- op: gru
+  backward: gru_grad
+  inputs:
+    {input : Input, h0 : H0, weight : Weight, bias : Bias}
+  outputs:
+    {batch_gate : BatchGate, batch_reset_hidden_prev : BatchResetHiddenPrev, batch_hidden : BatchHidden, hidden : Hidden}
+  extra :
+    attrs : [bool is_test = false]
+    outputs : [batch_gate, batch_reset_hidden_prev, batch_hidden]
+
+- op: gru_unit
+  backward: gru_unit_grad
+  inputs:
+    {input : Input, hidden_prev : HiddenPrev, weight : Weight, bias : Bias}
+  outputs:
+    {gate : Gate, reset_hidden_prev : ResetHiddenPrev, hidden : Hidden}
 
 - op: identity_loss
   inputs :
@@ -4096,6 +4148,15 @@
     {start: Start, stop: Stop, num: Num, base: Base}
   outputs:
     {out: Out}
+
+- op: lstm
+  backward: lstm_grad
+  inputs:
+    {input : Input, h0 : H0, c0 : C0, weight : Weight, bias : Bias}
+  outputs:
+    {hidden : Hidden, cell : Cell, batch_gate : BatchGate, batch_cell_pre_act : BatchCellPreAct}
+  extra:
+    outputs: [batch_gate, batch_cell_pre_act]
 
 - op: lu
   backward: lu_grad
@@ -4163,7 +4224,14 @@
   inputs:
     {gate_idx: GateIdx, expert_count: ExpertCount}
   outputs:
-    new_gate_idx: NewGateIdx
+    out_gate_idx: NewGateIdx
+
+- op: pyramid_hash
+  backward: pyramid_hash_grad
+  inputs:
+    {x : X, w : W, white_list : WhiteList, black_list : BlackList}
+  outputs:
+    {out : Out, drop_pos : DropPos, x_temp_out : X_Temp_Out}
 
 - op: random_routing
   inputs:
@@ -4179,6 +4247,15 @@
     {input_help : InputHelp, out : Out, ins_rank: InsRank}
   attrs:
     {max_rank : MaxRank, max_size : MaxSize}
+
+- op: rank_attention
+  backward: rank_attention_grad
+  inputs:
+    {x : X, rank_offset : RankOffset, rank_param : RankParam}
+  attrs:
+    {max_rank : MaxRank, max_size : MaxSize}
+  outputs:
+    {input_help : InputHelp, out : Out, ins_rank : InsRank}
 
 - op: read_from_array
   inputs:
@@ -4202,10 +4279,21 @@
     {x: X}
   outputs:
     {out: Out, noise: Noise}
+  extra:
+    outputs: [noise]
 
 - op: send_v2
   inputs :
     x : X
+
+- op: sequence_conv
+  backward: sequence_conv_grad
+  inputs:
+    {x : X, padding_data : PaddingData, filter : Filter}
+  attrs:
+    {padding_trainable : paddingTrainable, context_length : contextLength, context_start : contextStart, context_stride : contextStride}
+  outputs:
+    out : Out
 
 - op: set_value
   backward: set_value_grad
@@ -4296,6 +4384,12 @@
   inputs :
     x : X
   outputs :
+    out : Out
+
+- op: transfer_layout
+  inputs:
+    x : X
+  outputs:
     out : Out
 
 - op: uniform_random_batch_size_like

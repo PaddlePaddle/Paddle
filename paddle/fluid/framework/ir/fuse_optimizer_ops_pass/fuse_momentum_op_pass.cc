@@ -21,9 +21,7 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Node;
 
@@ -113,8 +111,6 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
   }
 };
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(fuse_momentum_op_pass, paddle::framework::ir::FuseMomentumOpPass);

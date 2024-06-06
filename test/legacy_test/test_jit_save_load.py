@@ -329,7 +329,6 @@ def train(layer, input_size=784, label_size=1):
     for data in train_loader():
         img, label = data
         label.stop_gradient = True
-
         cost = layer(img)
 
         loss = paddle.nn.functional.cross_entropy(
@@ -396,6 +395,8 @@ class TestJitSaveLoad(unittest.TestCase):
     @test_with_dygraph_pir
     def test_save_load(self):
         # train and save model
+        if not paddle.framework.use_pir_api():
+            return
         train_layer = self.train_and_save_model()
         # load model
         loaded_layer = paddle.jit.load(self.model_path)
@@ -496,6 +497,7 @@ class TestSaveLoadWithNonLexicographicalOrderDict(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_output_same_order(self):
         x = paddle.to_tensor(np.random.random((4, 8)).astype('float32'))
 
@@ -1712,6 +1714,7 @@ class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_with_dygraph_pir
     def test_save_load_finetune_load(self):
         model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_load_save_without_running/model"
@@ -1788,7 +1791,6 @@ class LayerLoadFinetune(paddle.nn.Layer):
         return y
 
 
-'''
 class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
     def setUp(self):
         # enable dygraph mode
@@ -1798,8 +1800,10 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    #@test_with_dygraph_pir
+    @test_with_dygraph_pir
     def test_save_load_finetune_load(self):
+        if not paddle.framework.use_pir_api():
+            return
         model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_load_finetune_load/model"
         )
@@ -1830,7 +1834,6 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
 
         self.assertTrue(float((result_00 - result_10).abs().max()) < 1e-5)
         self.assertTrue(float((result_01 - result_11).abs().max()) < 1e-5)
-'''
 
 
 # NOTE(weixin): When there are multiple test functions in an

@@ -20,7 +20,7 @@
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
 #include "paddle/cinn/frontend/var_type_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace science_mappers {
@@ -29,9 +29,15 @@ using cinn::utils::ShapeType;
 
 void ConcatOpMapper(const paddle::cpp::OpDesc& op_desc,
                     const OpMapperContext& ctx) {
-  CHECK_GE(op_desc.Input("XS").size(), 1UL);
+  PADDLE_ENFORCE_GE(op_desc.Input("XS").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The input of concat op must be at least 1"));
   auto x_names = op_desc.Input("XS");
-  CHECK_EQ(op_desc.Output("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of concat op must be 1"));
   auto out_name = op_desc.Output("Y").front();
 
   Variable out;
@@ -57,19 +63,31 @@ void ConcatOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void SplitOpMapper(const paddle::cpp::OpDesc& op_desc,
                    const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of split op must be 1"));
   auto x_name = op_desc.Input("X").front();
-  CHECK_GE(op_desc.Output("YS").size(), 1UL);
+  PADDLE_ENFORCE_GE(op_desc.Output("YS").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The output of split op must be at least 1"));
   auto out_name = op_desc.Output("YS");
 
-  CHECK(op_desc.HasAttr("num_or_sections"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("num_or_sections"),
+      true,
+      phi::errors::InvalidArgument(
+          "The split_p operator should has 'num_or_sections' attribute."));
   auto num_or_sections =
       utils::ToShapeType(utils::GetAttrOrDefault<std::vector<int64_t>>(
           op_desc, "num_or_sections"));
 
-  CHECK(!num_or_sections.empty())
-      << "The Split op cannot found [num_or_sections] attribute!  ! Please "
-         "check.";
+  PADDLE_ENFORCE_EQ(!num_or_sections.empty(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The Split op cannot found [num_or_sections] "
+                        "attribute!  ! Please check."));
 
   auto axis =
       utils::ToDimType(utils::GetAttrOrDefault<int64_t>(op_desc, "axis", 0));
@@ -78,10 +96,13 @@ void SplitOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto x_shape = x->shape;
   if (num_or_sections.size() == 1U) {
-    CHECK_EQ(x_shape[axis] % num_or_sections[0], 0)
-        << "If the attribute 'num_or_sections' is a number, it should be "
-           "divisible by the "
-           "axis's dimension of inputs A ! Please check.";
+    PADDLE_ENFORCE_EQ(
+        x_shape[axis] % num_or_sections[0],
+        0,
+        phi::errors::InvalidArgument(
+            "If the attribute 'num_or_sections' is a number, it should be "
+            "divisible by the "
+            "axis's dimension of inputs A ! Please check."));
   } else {
     cinn::utils::DimType sec_sum = 0;
     bool has_neg = false;
@@ -100,10 +121,12 @@ void SplitOpMapper(const paddle::cpp::OpDesc& op_desc,
             "at most one '-1' ! Please check."));
       }
     }
-    CHECK(!has_neg && sec_sum == x_shape[axis])
-        << "The sum of attr sections should be equal with the axis's dimension "
-           "value of "
-           "inputs A in Split ! Please check.";
+    PADDLE_ENFORCE_EQ(!has_neg && sec_sum == x_shape[axis],
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The sum of attr sections should be equal with the "
+                          "axis's dimension "
+                          "value of inputs A in Split ! Please check."));
   }
 
   VLOG(4) << "Split " << x_name << " with shape ("
@@ -113,9 +136,12 @@ void SplitOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto out = ctx.Builder()->Split(x, num_or_sections, axis);
 
-  CHECK_EQ(out.size(), out_name.size())
-      << "The Split op should has " << out_name.size() << " output, but only "
-      << out.size();
+  PADDLE_ENFORCE_EQ(out.size(),
+                    out_name.size(),
+                    phi::errors::InvalidArgument(
+                        "The Split op should has %d output, but only %d",
+                        out_name.size(),
+                        out.size()));
 
   for (int i = 0; i < out.size(); ++i) {
     ctx.AddVar(out_name[i], out[i]);
@@ -125,7 +151,10 @@ void SplitOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void ReshapeOpMapper(const paddle::cpp::OpDesc& op_desc,
                      const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of reshape op must be 1"));
   auto x_name = op_desc.Input("X").front();
 
   auto shape = utils::ToShapeType(
@@ -139,7 +168,10 @@ void ReshapeOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto out = ctx.Builder()->Reshape(x, shape);
 
-  CHECK_EQ(op_desc.Output("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of reshape op must be 1"));
   auto out_name = op_desc.Output("Y").front();
   ctx.AddVar(out_name, out);
   ctx.AddVarModelToProgram(out_name, out->id);
@@ -147,14 +179,23 @@ void ReshapeOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void TransposeOpMapper(const paddle::cpp::OpDesc& op_desc,
                        const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of transpose op must be 1"));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Output("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of transpose op must be 1"));
   auto out_name = op_desc.Output("Y").front();
 
   auto x = ctx.GetVar(x_name);
 
-  CHECK(x->shape.size() == 2) << "Now transpose_p only support 2-dim matrix.";
+  PADDLE_ENFORCE_EQ(x->shape.size() == 2,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Now transpose_p only support 2-dim matrix."));
   VLOG(4) << "Transpose " << x_name << " with shape ("
           << cinn::utils::Join(x->shape, ",") << ").";
 
@@ -166,21 +207,43 @@ void TransposeOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void SliceSelectOpMapper(const paddle::cpp::OpDesc& op_desc,
                          const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of slice_select op must be 1"));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Output("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of slice_select op must be 1"));
   auto out_name = op_desc.Output("Y").front();
 
-  CHECK(op_desc.HasAttr("starts"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("starts"),
+      true,
+      phi::errors::InvalidArgument(
+          "The slice_select_p operator should has 'starts' attribute."));
   auto starts = utils::ToShapeType(
       utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "starts"));
-  CHECK(op_desc.HasAttr("ends"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("ends"),
+      true,
+      phi::errors::InvalidArgument(
+          "The slice_select_p operator should has 'ends' attribute."));
   auto ends = utils::ToShapeType(
       utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "ends"));
-  CHECK(op_desc.HasAttr("axis"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("axis"),
+      true,
+      phi::errors::InvalidArgument(
+          "The slice_select_p operator should has 'axis' attribute."));
   auto axes = utils::ToShapeType(
       utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "axis"));
-  CHECK(op_desc.HasAttr("strides"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("strides"),
+      true,
+      phi::errors::InvalidArgument(
+          "The slice_select_p operator should has 'strides' attribute."));
   auto strides = utils::ToShapeType(
       utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "strides"));
 
@@ -201,23 +264,48 @@ void SliceSelectOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void SliceAssignOpMapper(const paddle::cpp::OpDesc& op_desc,
                          const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of slice_assign op must be 1"));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Input("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of slice_assign op must be 1"));
   auto y_name = op_desc.Input("Y").front();
-  CHECK_EQ(op_desc.Output("Z").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Z").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of slice_assign op must be 1"));
   auto out_name = op_desc.Output("Z").front();
 
-  CHECK(op_desc.HasAttr("starts"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("starts"),
+      true,
+      phi::errors::InvalidArgument(
+          "The slice_assign_p operator should has 'starts' attribute."));
   auto starts = utils::ToShapeType(
       utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "starts"));
-  CHECK(op_desc.HasAttr("ends"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("ends"),
+      true,
+      phi::errors::InvalidArgument(
+          "The slice_assign_p operator should has 'ends' attribute."));
   auto ends = utils::ToShapeType(
       utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "ends"));
-  CHECK(op_desc.HasAttr("axis"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("axis"),
+      true,
+      phi::errors::InvalidArgument(
+          "The slice_assign_p operator should has 'axis' attribute."));
   auto axes = utils::ToShapeType(
       utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "axis"));
-  CHECK(op_desc.HasAttr("strides"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("strides"),
+      true,
+      phi::errors::InvalidArgument(
+          "The slice_assign_p operator should has 'strides' attribute."));
   auto strides = utils::ToShapeType(
       utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "strides"));
 
@@ -245,9 +333,15 @@ void SliceAssignOpMapper(const paddle::cpp::OpDesc& op_desc,
 void ReduceOpMapper(const paddle::cpp::OpDesc& op_desc,
                     const OpMapperContext& ctx,
                     const std::string& reduce_type) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of reduce op must be 1"));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Output("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of reduce op must be 1"));
   auto out_name = op_desc.Output("Y").front();
 
   auto axis = utils::ToShapeType(
@@ -298,11 +392,20 @@ EXPAND_REDUCE_OPMAPPER(Any)
 
 void GatherOpMapper(const paddle::cpp::OpDesc& op_desc,
                     const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of gather op must be 1"));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Input("IndexTensor").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("IndexTensor").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of gather op must be 1"));
   auto index_name = op_desc.Input("IndexTensor").front();
-  CHECK_EQ(op_desc.Output("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of gather op must be 1"));
   auto out_name = op_desc.Output("Y").front();
 
   auto axis =
@@ -324,13 +427,25 @@ void GatherOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void IndexAssignOpMapper(const paddle::cpp::OpDesc& op_desc,
                          const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of index_assign op must be 1"));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Input("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of index_assign op must be 1"));
   auto updates_name = op_desc.Input("Y").front();
-  CHECK_EQ(op_desc.Input("IndexTensor").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("IndexTensor").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of index_assign op must be 1"));
   auto index_name = op_desc.Input("IndexTensor").front();
-  CHECK_EQ(op_desc.Output("Z").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Z").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of index_assign op must be 1"));
   auto out_name = op_desc.Output("Z").front();
 
   auto axis =
@@ -353,13 +468,25 @@ void IndexAssignOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void ScatterAddOpMapper(const paddle::cpp::OpDesc& op_desc,
                         const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of scatter_add op must be 1"));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Input("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of scatter_add op must be 1"));
   auto updates_name = op_desc.Input("Y").front();
-  CHECK_EQ(op_desc.Input("IndexTensor").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("IndexTensor").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of scatter_add op must be 1"));
   auto index_name = op_desc.Input("IndexTensor").front();
-  CHECK_EQ(op_desc.Output("Z").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Z").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of scatter_add op must be 1"));
   auto out_name = op_desc.Output("Z").front();
 
   auto axis =
@@ -382,13 +509,25 @@ void ScatterAddOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void SelectOpMapper(const paddle::cpp::OpDesc& op_desc,
                     const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("Condition").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Condition").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of select op must be 1"));
   auto cond_name = op_desc.Input("Condition").front();
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of select op must be 1"));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Input("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of select op must be 1"));
   auto y_name = op_desc.Input("Y").front();
-  CHECK_EQ(op_desc.Output("Z").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Z").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of select op must be 1"));
   auto out_name = op_desc.Output("Z").front();
 
   VLOG(4) << cond_name << " ? " << x_name << " : " << y_name;
@@ -404,9 +543,15 @@ void SelectOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void CastOpMapper(const paddle::cpp::OpDesc& op_desc,
                   const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of cast op must be 1"));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Output("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of cast op must be 1"));
   auto out_name = op_desc.Output("Y").front();
 
   auto x = ctx.GetVar(x_name);
