@@ -4245,7 +4245,7 @@
   no_need_buffer : input
 
 - op : thresholded_relu
-  args : (Tensor x, float threshold = 1.0)
+  args : (Tensor x, float threshold = 1.0, float value = 0.0)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta

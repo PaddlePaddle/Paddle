@@ -458,6 +458,17 @@ void BindProgram(py::module *m) {
              SetProgramInt64Attr(self, "random_seed", random_seed);
            })
       .def_property_readonly(
+          "num_blocks",
+          [](const std::shared_ptr<Program> &self) {
+            size_t num_blocks = 0;
+            auto top_level_op = self->module_op();
+            for (size_t i = 0; i < top_level_op->num_regions(); ++i) {
+              auto &region = top_level_op->region(i);
+              num_blocks += region.size();
+            }
+            return num_blocks;
+          })
+      .def_property_readonly(
           "blocks",
           [](const std::shared_ptr<Program> &self) {
             // Note: We only return global block currently.
