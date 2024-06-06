@@ -23,7 +23,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -219,16 +218,12 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto &capture_mode = ctx.Attr<std::string>("cuda_graph_capture_mode");
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    auto is_test = ctx.Attr<bool>("is_test");
-#endif
     if (capture_mode.empty()) {
-      // ComputeImpl(ctx, is_test, false);
       return;
     }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    // auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
+    auto is_test = ctx.Attr<bool>("is_test");
     PADDLE_ENFORCE_EQ(
         ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
@@ -244,20 +239,6 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     inner_graphs.resize(std::max<size_t>(3, inner_graphs.size()));
     size_t graph_idx = is_test ? 0 : 1;
     if (inner_graphs[graph_idx].get() == nullptr) {
-      /* int64_t pool_id;
-      if (inner_graphs[1 - graph_idx].get() != nullptr) {
-        pool_id = inner_graphs[1 - graph_idx]->PoolID();
-      } else {
-        pool_id = ctx.Attr<int64_t>("cuda_graph_pool_id");
-      } */
-
-      /* framework::PEAndGraphPair pe_and_graph;
-      auto callable = [this, is_test, &pe_and_graph](
-                          const framework::ExecutionContext &exe_ctx) {
-        pe_and_graph = ComputeImpl(exe_ctx, is_test, true);
-      };
-      inner_graphs[graph_idx] = CaptureCUDAGraph(
-          callable, ctx, {"X"}, {"Out", "DOut"}, mode, pool_id); */
       VLOG(10) << "Capture Forward CUDA Graph";
     } else {
       VLOG(10) << "Run Forward CUDA Graph directly";
@@ -278,12 +259,10 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto &capture_mode = ctx.Attr<std::string>("cuda_graph_capture_mode");
     if (capture_mode.empty()) {
-      // ComputeImpl(ctx, false);
       return;
     }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    // auto mode = details::StringToCUDAGraphCaptureMode(capture_mode);
     PADDLE_ENFORCE_EQ(
         ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
@@ -300,21 +279,6 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
             ->GetMutable<std::vector<std::unique_ptr<CUDAGraphWithInOuts>>>());
     const size_t graph_idx = 2;
     if (inner_graphs[graph_idx].get() == nullptr) {
-      /* framework::PEAndGraphPair pe_and_graph;
-      auto callable =
-          [this, &pe_and_graph](const framework::ExecutionContext &exe_ctx) {
-            pe_and_graph = ComputeImpl(exe_ctx, true);
-          };
-      int64_t pool_id = inner_graphs[0].get() != nullptr
-                            ? inner_graphs[0]->PoolID()
-                            : inner_graphs[1]->PoolID();
-      inner_graphs[graph_idx] =
-          CaptureCUDAGraph(callable,
-                           ctx,
-                           {framework::GradVarName("Out")},
-                           {framework::GradVarName("X")},
-                           mode,
-                           pool_id); */
       VLOG(10) << "Capture Backward CUDA Graph";
     } else {
       ExecuteCUDAGraph(ctx,

@@ -38,42 +38,6 @@ class ProgramDesc;
 
 namespace paddle::framework::details {
 
-static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
-  framework::ExecutionStrategy execution_strategy;
-
-  auto device_type = platform::Place2DeviceType(place);
-  switch (device_type) {
-    case platform::DeviceType::CPU: {
-      execution_strategy.num_threads_ = 2;
-      break;
-    }
-    case platform::DeviceType::CUDA: {  // NOLINT
-      // NOTE: According experiments, one thread is faster in
-      // most model training.
-      execution_strategy.num_threads_ = 1;
-      break;
-    }
-    case platform::DeviceType::XPU: {
-      execution_strategy.num_threads_ = 1;
-      break;
-    }
-    case platform::DeviceType::IPU: {
-      execution_strategy.num_threads_ = 1;
-      break;
-    }
-    case platform::DeviceType::CUSTOM_DEVICE: {
-      execution_strategy.num_threads_ = 1;
-      break;
-    }
-    default:
-      PADDLE_THROW(platform::errors::Unavailable("Unsupported Device type %d.",
-                                                 device_type));
-  }
-  execution_strategy.use_device_ = device_type;
-
-  return execution_strategy;
-}
-
 void AppendSkipDeletionVars(const std::vector<std::string> &append_vars,
                             std::set<std::string> *all_vars) {
   for (auto &var : append_vars) {

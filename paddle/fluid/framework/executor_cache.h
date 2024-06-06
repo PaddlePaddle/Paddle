@@ -24,8 +24,8 @@
 #include <vector>
 
 #include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/utils/string/string_helper.h"
 
