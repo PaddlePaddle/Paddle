@@ -198,7 +198,9 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
     return WriteParameterOP(op);
   }
   Json op_json = Json::object();
-  op_json[ID] = op.name();
+  auto op_name = op.name();
+  GetCompressOpName(op_name);
+  op_json[ID] = op_name;
   // serialize opoperands
   VLOG(4) << "Begin write Operation " << op.name() << ".";
   Json operands_json = Json::array();

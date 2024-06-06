@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-
+#include "glog/logging.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
 namespace pir {
 /**
  * IMPORTANT!!!
@@ -74,4 +76,23 @@ namespace pir {
 // special op compress
 
 #define PARAMETEROP "p"
+
+std::pair<std::string, std::string> getContentSplitByDot(
+    const std::string& str);
+
+class DialectIdMap {
+ private:
+  std::unordered_map<std::string, std::string> CompressDialect;
+  std::unordered_map<std::string, std::string> DecompressDialect;
+
+ public:
+  static DialectIdMap* Instance();
+  DialectIdMap();
+  void insert(const std::string& key, const std::string& value);
+
+  std::string GetCompressDialectId(const std::string& name);
+
+  std::string GetDecompressDialectId(const std::string& id);
+};
+
 }  // namespace pir

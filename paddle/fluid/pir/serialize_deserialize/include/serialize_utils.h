@@ -18,19 +18,23 @@
 #include <string>
 #include <vector>
 
-#include "glog/logging.h"
-
 #include "paddle/common/layout.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/third_party.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
-#include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/builtin_type.h"
 
 namespace pir {
+
+void GetCompressOpName(std::string* op_name) {
+  std::pair<std::string, std::string> name = getContentSplitByDot(*op_name);
+  *op_name = pir::DialectIdMap::Instance()->GetCompressDialectId(name.first) +
+             "." + name.second;
+  return;
+}
+
 class AttrTypeWriter {
  public:
   static Json WriteBuiltInAttr(const pir::Attribute& attr);
@@ -62,7 +66,7 @@ class AttrTypeWriter {
 template <typename T>
 Json serializeTypeToJson(const T& type) {
   Json json_obj;
-  json_obj[ID] = type.name();
+  json_obj[ID] = type.dialect().name() + "." + type.name();
   return json_obj;
 }
 
@@ -86,18 +90,18 @@ Json serializeTypeToJson(const T& type) {
 template <typename T>
 Json serializeAttrToJson(const T& attr) {
   Json json_obj;
-  json_obj[ID] = attr.name();
+  json_obj[ID] = attr.dialect().name() + "." + attr.name();
   json_obj[DATA] = attr.data();
   return json_obj;
 }
 
-#define SERIALIZE_ATTR_TO_JSON(type, data)           \
-  template <>                                        \
-  Json serializeAttrToJson<type>(const type& attr) { \
-    Json json_obj;                                   \
-    json_obj[ID] = attr.name();                      \
-    json_obj[DATA] = data;                           \
-    return json_obj;                                 \
+#define SERIALIZE_ATTR_TO_JSON(type, data)                    \
+  template <>                                                 \
+  Json serializeAttrToJson<type>(const type& attr) {          \
+    Json json_obj;                                            \
+    json_obj[ID] = attr.dialect().name() + "." + attr.name(); \
+    json_obj[DATA] = data;                                    \
+    return json_obj;                                          \
   }
 
 SERIALIZE_ATTR_TO_JSON(pir::StrAttribute, attr.AsString());
@@ -116,7 +120,7 @@ template <>
 Json serializeAttrToJson<paddle::dialect::ScalarAttribute>(
     const paddle::dialect::ScalarAttribute& attr) {
   Json json_obj;
-  json_obj[ID] = attr.name();
+  json_obj[ID] = attr.dialect().name() + "." + attr.name();
 
   Json content = Json::array();
   auto scalar = attr.data();
@@ -165,7 +169,7 @@ template <>
 Json serializeAttrToJson<paddle::dialect::PlaceAttribute>(
     const paddle::dialect::PlaceAttribute& attr) {
   Json json_obj;
-  json_obj[ID] = attr.name();
+  json_obj[ID] = attr.dialect().name() + "." + attr.name();
   Json content = Json::array();
   auto place = attr.data();
   content.push_back(static_cast<int8_t>(place.GetType()));
