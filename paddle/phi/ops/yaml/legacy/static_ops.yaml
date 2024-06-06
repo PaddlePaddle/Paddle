@@ -781,14 +781,3 @@
     data_type: x
     param : [x, indices, ksize, strides, paddings,output_size, data_format]
   backward: unpool_grad
-
-- op: moving_average_abs_max_scale
-  args: (Tensor x, Tensor in_accum, Tensor in_state, float moving_rate=0.9f, bool is_test=false)
-  output: Tensor(out), Tensor(out_scale), Tensor(out_state), Tensor(out_accum)
-  infer_meta:
-    func: MovingAverageAbsMaxScaleInferMeta
-  kernel:
-    func: moving_average_abs_max_scale
-    data_type: x
-  optional : in_accum, in_state, out, out_state, out_accum
-  backward : moving_average_abs_max_scale_grad
