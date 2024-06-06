@@ -158,10 +158,6 @@ if(WITH_TESTING)
     add_subdirectory(distributed_passes)
   endif()
 
-  if(NOT WIN32 OR NOT WITH_GPU)
-    add_subdirectory(fft)
-  endif()
-
 endif()
 
 set_pir_tests_properties()
