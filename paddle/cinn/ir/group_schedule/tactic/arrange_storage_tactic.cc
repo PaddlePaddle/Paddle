@@ -85,11 +85,14 @@ std::tuple<CudaAxisSpace, CudaAxisSpace> GetCudaAxisSpace(
                                   IntSet{Expr(0), Expr(0)},
                                   IntSet{Expr(0), Expr(0)},
                                   CudaAxisType::kCudaThread};
-  CHECK_GT(var2for_map.count(block_name), 0);
+  PADDLE_ENFORCE_GT(var2for_map.count(block_name),
+                    0,
+                    phi::errors::InvalidArgument("block_name not found"));
   for (const auto& var2for : var2for_map.at(block_name)) {
     const Expr& for_expr = var2for.second;
     const ir::For* for_node = for_expr.As<ir::For>();
-    CHECK_NOTNULL(for_node);
+    PADDLE_ENFORCE_NOT_NULL(
+        for_node, phi::errors::InvalidArgument("for_node is nullptr"));
     IntSet interval{
         for_node->min,
         common::AutoSimplify(for_node->min + for_node->extent - Expr(1))};
