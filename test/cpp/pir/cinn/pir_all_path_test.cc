@@ -69,7 +69,7 @@ static void RunAndCheckResult(::pir::Program* program,
   stage_1_pm.AddPass(pir::CreateDeadCodeEliminationPass());
   stage_1_pm.AddPass(pir::CreateBuildCinnPass());
   stage_1_pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
-  stage_1_pm.EnableIRPrinting();
+
   CHECK_EQ(stage_1_pm.Run(program), true);
 
   pir::PassManager stage_2_pm(ctx);
@@ -78,7 +78,7 @@ static void RunAndCheckResult(::pir::Program* program,
   // (@xiongkun) we remove yield store in new fusion strategy.
   stage_2_pm.AddPass(pir::CreateDeadCodeEliminationPass());
   stage_2_pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
-  stage_2_pm.EnableIRPrinting();
+
   CHECK_EQ(stage_2_pm.Run(program), true);
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
