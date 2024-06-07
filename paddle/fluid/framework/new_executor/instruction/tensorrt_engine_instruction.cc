@@ -289,7 +289,7 @@ void TensorRTEngineInstruction::BindInputTensor(
     const std::string &input_name,
     const phi::DenseTensor &input_tensor,
     const Scope &scope,
-    const std::vector<void *> &buffers,
+    std::vector<void *> &buffers,
     int *runtime_batch) {
   if (input_name == "") {
     return;
@@ -321,7 +321,7 @@ void TensorRTEngineInstruction::BindInputTensor(
   if (!(input_tensor.place().GetType() == phi::AllocationType::GPU)) {
     phi::DenseTensor out;
     phi::Copy(*dev_ctx_, input_tensor, dev_place, false, &out);
-    input_tensor.ShareDataWith(out);
+    const_cast<phi::DenseTensor &>(input_tensor).ShareDataWith(out);
   }
   auto input_shape = common::vectorize<int64_t>(input_tensor.dims());
 
@@ -446,7 +446,8 @@ void TensorRTEngineInstruction::BindInputTensor(
                         static_cast<int>(indata_type)));
   LOG(INFO) << "======come into tensorrt instruction8====";
   if (input_tensor.dtype() == phi::DataType::FLOAT32) {
-    buffers[bind_index] = static_cast<void *>(input_tensor.data<float>());
+    buffers[bind_index] =
+        static_cast<void *>(const_cast<float *>(input_tensor.data<float>()));
   } else if (input_tensor.dtype() == phi::DataType::FLOAT64) {
     std::string x_t = input_name + "_cast_to_FP32";
     if (scope.FindVar(x_t) == nullptr) {
@@ -472,12 +473,15 @@ void TensorRTEngineInstruction::BindInputTensor(
                            phi::DataType::INT32);
     buffers[bind_index] = static_cast<void *>(int32_tensor->data<int32_t>());
   } else if (input_tensor.dtype() == phi::DataType::INT32) {
-    buffers[bind_index] = static_cast<void *>(input_tensor.data<int32_t>());
+    buffers[bind_index] = static_cast<void *>(
+        const_cast<int32_t *>(input_tensor.data<int32_t>()));
   } else if (input_tensor.dtype() == phi::DataType::FLOAT16) {
-    buffers[bind_index] = static_cast<void *>(input_tensor.data<float16>());
+    buffers[bind_index] = static_cast<void *>(
+        const_cast<float16 *>(input_tensor.data<float16>()));
 #if IS_TRT_VERSION_GE(8400)
   } else if (input_tensor.dtype() == phi::DataType::BOOL) {
-    buffers[bind_index] = static_cast<void *>(input_tensor.data<bool>());
+    buffers[bind_index] =
+        static_cast<void *>(const_cast<bool *>(input_tensor.data<bool>()));
 #endif
   } else {
     PADDLE_THROW(
@@ -490,7 +494,7 @@ void TensorRTEngineInstruction::BindOutputTensor(
     std::string output_name,
     phi::DenseTensor *output_tensor,
     int output_index,
-    const std::vector<void *> &buffers,
+    std::vector<void *> &buffers,
     int *runtime_batch) {
   auto dev_place = dev_ctx_->GetPlace();
   int binding_offset = 0;

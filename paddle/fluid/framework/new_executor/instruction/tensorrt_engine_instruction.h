@@ -47,12 +47,12 @@ class TensorRTEngineInstruction : public InstructionBase {
   void BindInputTensor(const std::string& input_name,
                        const phi::DenseTensor& input_tensor,
                        const Scope& scope,
-                       const std::vector<void*>& buffers,
+                       std::vector<void*>& buffers,  // NOLINT
                        int* runtime_batch);
   void BindOutputTensor(std::string output_name,
                         phi::DenseTensor* output_tensor,
                         int output_index,
-                        const std::vector<void*>& buffers,
+                        std::vector<void*>& buffers,  // NOLINT
                         int* runtime_batch);
   paddle::inference::tensorrt::TensorRTEngine* trt_engine_;  // not owned
   int32_t max_batch_size_;
