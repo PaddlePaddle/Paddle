@@ -17,6 +17,7 @@
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 
 namespace paddle::dialect {
+using paddle::dialect::details::CreateShapeOrDataForXShape;
 
 bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
@@ -584,19 +585,6 @@ bool RepeatInterleaveOpInferSymbolicShape(
           symbol::TensorShapeOrDataDimExprs(out_sym_shape)});
 
   return true;
-}
-
-symbol::ShapeOrDataDimExprs CreateShapeOrDataForXShape(
-    const symbol::ShapeOrDataDimExprs &x_shape) {
-  const std::vector<symbol::DimExpr> result = [&] {
-    std::vector<symbol::DimExpr> new_x_dims;
-    new_x_dims.reserve(x_shape.shape().size() + 1);
-    new_x_dims.push_back(symbol::DimExpr{0});
-    new_x_dims.insert(
-        new_x_dims.end(), x_shape.shape().begin(), x_shape.shape().end());
-    return new_x_dims;
-  }();
-  return symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(result)};
 }
 
 bool ReshapeOpInferSymbolicShape(
