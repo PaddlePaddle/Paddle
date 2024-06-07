@@ -217,6 +217,7 @@ template <typename T, typename DeviceContext>
 class RunProgramOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    PADDLE_THROW(phi::errors::InvalidArgument("Not supported yet!"));
     const auto &capture_mode = ctx.Attr<std::string>("cuda_graph_capture_mode");
     if (capture_mode.empty()) {
       return;
@@ -257,6 +258,7 @@ template <typename T, typename DeviceContext>
 class RunProgramGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    PADDLE_THROW(phi::errors::InvalidArgument("Not supported yet!"));
     const auto &capture_mode = ctx.Attr<std::string>("cuda_graph_capture_mode");
     if (capture_mode.empty()) {
       return;
