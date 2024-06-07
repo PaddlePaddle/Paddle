@@ -47,8 +47,7 @@ using paddle::framework::ir::NodeComp;
 using paddle::framework::ir::TopologySortOperations;
 using pybind11::return_value_policy;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 void BindGraph(py::module *m) {
   m->def("graph_safe_remove_nodes",
          [](Graph *graph, const std::unordered_set<const Node *> &nodes) {
@@ -229,7 +228,7 @@ void BindNode(py::module *m) {
 
 class PYBIND11_HIDDEN PassAttrGetterSetterRegistry {
  private:
-  PassAttrGetterSetterRegistry() = default;
+  PassAttrGetterSetterRegistry() : getter_setter_map_() {}
   DISABLE_COPY_AND_ASSIGN(PassAttrGetterSetterRegistry);
 
   using Getter = std::function<py::object(const framework::ir::Pass & /*pass*/,
@@ -408,5 +407,4 @@ void BindPass(py::module *m) {
          });
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

@@ -12,6 +12,10 @@ set(EAGER_GENERATOR_DEPS
     imperative_profiler
     imperative_flag)
 
+if(WITH_CINN)
+  list(REMOVE_ITEM EAGER_GENERATOR_DEPS imperative_flag)
+endif()
+
 if(WITH_CUSTOM_DEVICE)
   set(EAGER_GENERATOR_DEPS ${EAGER_GENERATOR_DEPS}
                            custom_device_common_op_registry)

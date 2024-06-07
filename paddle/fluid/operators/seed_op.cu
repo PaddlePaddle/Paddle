@@ -29,8 +29,7 @@ class GPUSeedKernel : public framework::OpKernel<T> {
     auto force_cpu = context.Attr<bool>("force_cpu");
     bool cpu_place = force_cpu || context.GetPlace() == phi::CPUPlace();
     if (cpu_place) {
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(phi::CPUPlace());
       out->mutable_data<T>(phi::CPUPlace());
       phi::funcs::SetConstant<phi::CPUContext, T> functor;

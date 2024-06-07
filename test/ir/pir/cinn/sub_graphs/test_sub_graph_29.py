@@ -15,9 +15,9 @@
 # repo: PaddleClas
 # model: ppcls^configs^ImageNet^Xception^Xception65_deeplab
 # api:paddle.nn.functional.common.dropout||api:paddle.nn.functional.pooling.adaptive_avg_pool2d||api:paddle.tensor.manipulation.squeeze||api:paddle.nn.functional.common.linear
-import unittest
+from base import *  # noqa: F403
 
-import paddle
+from paddle.static import InputSpec
 
 
 class LayerCase(paddle.nn.Layer):
@@ -54,38 +54,22 @@ class LayerCase(paddle.nn.Layer):
         return var_4
 
 
-class TestLayer(unittest.TestCase):
-    def setUp(self):
+class TestLayer(TestBase):
+    def init(self):
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            )
+        ]
         self.inputs = (
             paddle.rand(shape=[10, 2048, 10, 10], dtype=paddle.float32),
         )
-        self.net = LayerCase()
-
-    def train(self, net, to_static, with_prim=False, with_cinn=False):
-        if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
-            if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
-            else:
-                net = paddle.jit.to_static(net, full_graph=True)
-        paddle.seed(123)
-        outs = net(*self.inputs)
-        return outs
-
-    def test_ast_prim_cinn(self):
-        st_out = self.train(self.net, to_static=True)
-        cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=True
-        )
-        # TODO(Aurelius84): Dropout has random behaivor, so we can't use assert_allclose
-        # for st, cinn in zip(
-        #     paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
-        # ):
-        #     np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
+        self.net = LayerCase
+        self.with_train = False
+        self.with_precision_compare = False
 
 
 if __name__ == '__main__':

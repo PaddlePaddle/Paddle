@@ -23,8 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/cuda_stream.h"
 #endif
 
-namespace paddle {
-namespace experimental {
+namespace paddle::experimental {
 
 void DeviceContextPool::SyncDeviceContext(const Place& place) {
   if (!phi::DeviceContextPool::IsInitialized()) {
@@ -64,8 +63,7 @@ phi::DeviceContext* DeviceContextPool::GetMutable(const Place& place) {
   return const_cast<phi::DeviceContext*>(Get(place));  // NOLINT
 }
 
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace paddle::experimental
 
 namespace paddle {
 

@@ -34,8 +34,6 @@ class VisibleDeprecationWarning(UserWarning):
     See more details from https://peps.python.org/pep-0565/
     """
 
-    ...
-
 
 def deprecated(update_to="", since="", reason="", level=0):
     """Decorate a function to signify its deprecation.

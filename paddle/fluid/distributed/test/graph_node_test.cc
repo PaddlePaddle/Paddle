@@ -225,7 +225,7 @@ void testFeatureNodeSerializeFloat64() {
 // void testCache();
 void testGraphToBuffer();
 
-const char* edges[] = {"37\t45\t0.34",
+const char* edges[] = {"37\t45\t0.34",  // NOLINT
                        "37\t145\t0.31",
                        "37\t112\t0.21",
                        "96\t48\t1.4",
@@ -239,7 +239,7 @@ const char* edges[] = {"37\t45\t0.34",
                        "97\t111\t0.21"};  // NOLINT
 char edge_file_name[] = "edges.txt";      // NOLINT
 
-const char* nodes[] = {"user\t37\ta 0.34\tb 13 14\tc hello\td abc",
+const char* nodes[] = {"user\t37\ta 0.34\tb 13 14\tc hello\td abc",  // NOLINT
                        "user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd",
                        "user\t59\ta 0.11\tb 11 14",
                        "user\t97\ta 0.11\tb 12 11",
