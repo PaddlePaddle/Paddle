@@ -15,7 +15,7 @@
 import logging
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.framework import _create_tensor
 from paddle.base.log_helper import get_logger
@@ -470,20 +470,30 @@ class MovingAverageAbsMaxScale(Layer):
                     self._scale, op=paddle.distributed.ReduceOp.MAX
                 )
 
+            scale = self._scale if self.training else None
             state = self._state if self.training else None
             accum = self._accum if self.training else None
 
-            out, _, _, _ = _legacy_C_ops.moving_average_abs_max_scale(
+            (
+                out,
+                out_scale,
+                out_state,
+                out_accum,
+            ) = _C_ops.moving_average_abs_max_scale(
                 input,
                 accum,
                 state,
-                quant_out,
-                self._scale,
-                state,
-                accum,
-                *attrs,
+                self._moving_rate,
+                not self.training,
             )
-            return out
+            _C_ops.assign_out_(out, quant_out)
+            if out_scale._is_initialized():
+                _C_ops.assign_out_(out_scale, scale)
+            if state:
+                _C_ops.assign_out_(out_state, state)
+            if accum:
+                _C_ops.assign_out_(out_accum, accum)
+            return quant_out
 
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'MovingAverageAbsMaxScale'
