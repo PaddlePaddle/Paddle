@@ -130,6 +130,8 @@ class PerformanceReporter {
 
   static TimeDuration Mean(const std::vector<TimeDuration>& records);
 
+  static TimeDuration PreciseMean(const std::vector<TimeDuration>& records);
+
   static TimeDuration Max(const std::vector<TimeDuration>& records);
 
   static TimeDuration Min(const std::vector<TimeDuration>& records);

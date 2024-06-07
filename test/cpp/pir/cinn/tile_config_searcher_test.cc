@@ -33,6 +33,18 @@
 
 COMMON_DECLARE_bool(print_ir);
 
+std::vector<std::vector<int64_t>> shapes = {
+    {1, 1, 4096},
+    {1, 13, 4096},
+    {128 * 12, 128, 128},
+    {128, 128, 768},      // 3
+    {2048, 32, 128},      // 4
+    {2048, 8, 96},        // 5
+    {13 * 2048, 32, 128}  // 6
+};
+auto shape = shapes[1];
+int shape0 = shape[0], shape1 = shape[1], shape2 = shape[2];
+
 std::shared_ptr<::pir::Program> BuildReduceSumProgram() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -41,7 +53,7 @@ std::shared_ptr<::pir::Program> BuildReduceSumProgram() {
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
   const float value_one = 1.0;
-  const std::vector<int64_t> shape = {1, 13, 4096};
+  const std::vector<int64_t> shape = {shape0, shape1, shape2};
   auto x = builder
                .Build<paddle::dialect::DataOp>(
                    "x", shape, phi::DataType::FLOAT32, phi::GPUPlace())
@@ -59,21 +71,21 @@ TEST(ConfigSearcher, TestReduceDemo) {
   constexpr int kMaxThreadsPerBlock = 1024;
 
   // Step 1: Construct pir::Program.
-  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   std::shared_ptr<::pir::Program> program = BuildReduceSumProgram();
-
+  program->Print(std::cout);
   // Step 2: Switch schedule config manager mode.
   auto& schedule_config_manager = cinn::ir::ScheduleConfigManager::Instance();
-  schedule_config_manager.SetPolicy("custom");
+  schedule_config_manager.SetPolicy("default");
 
   // Step 3: Construct iter space and objective function.
   cinn::ir::BucketInfo bucket_info;
-  int s_dimension_lower = 13;
-  int s_dimension_upper = 13;
+  int s_dimension_lower = shape0 * shape1;
+  int s_dimension_upper = shape0 * shape1;
   auto s_dimension_type = "S";
   auto s_dimension_is_dynamic = false;
-  int r_dimension_lower = 4096;
-  int r_dimension_upper = 4096;
+  int r_dimension_lower = shape2;
+  int r_dimension_upper = shape2;
   auto r_dimension_type = "R";
   auto r_dimension_is_dynamic = false;
 
@@ -95,7 +107,8 @@ TEST(ConfigSearcher, TestReduceDemo) {
           program.get(), bucket_info);
 
   // Step 4: Construct config candidate range and constraints.
-  std::vector<std::pair<int, int>> candidate_range{{1, 32}, {1, 1024}, {1, 13}};
+  std::vector<std::pair<int, int>> candidate_range{
+      {1, 32}, {1, 1024}, {1, 256}};
   std::vector<cinn::ir::search::ConstraintFunc> constraints;
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
@@ -105,6 +118,23 @@ TEST(ConfigSearcher, TestReduceDemo) {
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
         return candidate[0] * kThreadsPerWarp <= kMaxThreadsPerBlock;
       });
+  constraints.emplace_back(
+      [](const cinn::ir::search::CandidateType& candidate) -> bool {
+        return candidate[0] * kThreadsPerWarp >= candidate[1];
+      });
+  constraints.emplace_back(
+      [](const cinn::ir::search::CandidateType& candidate) -> bool {
+        return candidate[0] * kThreadsPerWarp % candidate[1] == 0;
+      });
+  constraints.emplace_back(
+      [&](const cinn::ir::search::CandidateType& candidate) -> bool {
+        return candidate[0] * 32 / candidate[1] * candidate[2] <=
+               s_dimension_lower;
+      });
+  constraints.emplace_back(
+      [](const cinn::ir::search::CandidateType& candidate) -> bool {
+        return candidate[2] % 8 == 0;
+      });
 
   // Step 5: Construct searcher and search.
   cinn::ir::search::ScheduleConfigSearcher searcher(
@@ -113,4 +143,12 @@ TEST(ConfigSearcher, TestReduceDemo) {
   LOG(INFO) << "min score = " << search_res.first;
   LOG(INFO) << "best candidate: "
             << cinn::utils::Join<int>(search_res.second, ", ");
+
+  // Step 6: Save the config to the file.
+  cinn::ir::ScheduleConfig::TileConfig tile_config{
+      search_res.second[0], search_res.second[1], search_res.second[2]};
+
+  cinn::ir::FileTileConfigDatabase file_database;
+  file_database.AddConfig(
+      cinn::common::DefaultTarget(), bucket_info, tile_config, -1);
 }

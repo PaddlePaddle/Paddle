@@ -100,10 +100,6 @@ void Measurer::Run(const std::unordered_map<std::string, std::vector<int64_t>>&
 
   common::PerformanceStatistician& ps =
       common::PerformanceStatistician::Instance();
-  int num_warp_up = 10;
-  for (int i = 0; i < num_warp_up; ++i) {
-    executor_->Run(input_names, input_tensors, true);
-  }
   for (int i = 0; i < repeat; ++i) {
     ps.Start(execute_label_ + "\n" + intput_shape_label);
     executor_->Run(input_names, input_tensors, true);
@@ -120,21 +116,26 @@ MeasureResult Measurer::Result() const {
       ::common::PerformanceReporter::ExtractDuration(ps.Record(compile_label_));
   auto total_execute_durations = ::common::PerformanceReporter::ExtractDuration(
       ps.RecordWithSubLabel(execute_label_));
+  auto kernel_record = ps.Record(FLAGS_cinn_kernel_execution_label);
   auto kernel_execute_durations =
-      ::common::PerformanceReporter::ExtractDuration(
-          ps.Record(FLAGS_cinn_kernel_execution_label));
+      ::common::PerformanceReporter::ExtractDuration(kernel_record);
 
   auto compile_time = ::common::PerformanceReporter::Mean(compile_durations);
   auto avg_total_execute_time =
       ::common::PerformanceReporter::Mean(total_execute_durations);
-  VLOG(3)
-      << "min time "
-      << ::common::PerformanceReporter::Min(kernel_execute_durations).count();
-  VLOG(3)
-      << "max time "
-      << ::common::PerformanceReporter::Max(kernel_execute_durations).count();
+  // VLOG(3)
+  //     << "min time "
+  //     <<
+  //     ::common::PerformanceReporter::Min(kernel_execute_durations).count();
+  // VLOG(3)
+  //     << "max time "
+  //     <<
+  //     ::common::PerformanceReporter::Max(kernel_execute_durations).count();
+  std::string record_strs =
+      ::common::PerformanceReporter::Report(kernel_record);
+  VLOG(3) << " report: " << record_strs;
   auto avg_kernel_execute_time =
-      ::common::PerformanceReporter::Mean(kernel_execute_durations);
+      ::common::PerformanceReporter::PreciseMean(kernel_execute_durations);
 
   result.compile_time = compile_time;
   result.avg_total_execute_time = avg_total_execute_time;
