@@ -1140,6 +1140,7 @@ set_pir_tests_properties()
 set_tests_properties(test_nadam_op PROPERTIES TIMEOUT 100)
 set_tests_properties(test_radam_op PROPERTIES TIMEOUT 100)
 set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
+set_tests_properties(test_sparse_mask_as_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bicubic_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_op_depthwise_conv
