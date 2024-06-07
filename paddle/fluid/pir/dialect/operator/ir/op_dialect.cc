@@ -36,6 +36,7 @@
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
 #endif
+#include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
 
 namespace paddle {
 namespace dialect {
@@ -1058,8 +1059,28 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
                                verify_func,
                                verify_func);
 }
+
+TensorRTOpDialect::TensorRTOpDialect(pir::IrContext* context)
+    : pir::Dialect(name(), context, pir::TypeId::get<TensorRTOpDialect>()) {
+  RegisterOps<TensorRTEngineOp>();
+}
+
+void TensorRTOpDialect::PrintType(pir::Type type, std::ostream& os) const {
+  PrintTypeImpl(type, os);
+}
+
+void TensorRTOpDialect::PrintAttribute(pir::Attribute attr,
+                                       std::ostream& os) const {
+  PrintAttributeImpl(attr, os);
+}
+
+pir::OpPrintFn TensorRTOpDialect::PrintOperation(pir::Operation* op) const {
+  return nullptr;
+}
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OperatorDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomOpDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::TensorRTOpDialect)

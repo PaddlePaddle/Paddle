@@ -24,7 +24,9 @@ set(standalone_executor_deps
     garbage_collector
     executor_gc_helper
     device_event_base
-    framework_proto)
+    framework_proto
+    tensorrt_engine
+    pir_transforms)
 
 if(WITH_CINN)
   set(standalone_executor_deps

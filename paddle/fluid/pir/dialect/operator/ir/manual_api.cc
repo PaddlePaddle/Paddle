@@ -18,6 +18,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/parameter.h"
 namespace paddle {
@@ -290,6 +291,33 @@ pir::Value array_pop(pir::Value input, int index) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "pop only supports DenseTensorArrayType."));
   }
+}
+
+pir::Value tensorrt_engine(
+    const pir::Value& x,
+    void* engine,
+    int max_batch_size,
+    int64_t workspace_size,
+    bool allow_build_at_runtime,
+    std::vector<std::string> input_names,
+    std::vector<std::string> output_names,
+    std::vector<int> origin_output_rank,
+    std::vector<phi::DataType> origin_outputs_dtype,
+    const std::vector<paddle::dialect::IrTensor>& outs_meta) {
+  paddle::dialect::TensorRTEngineOp tensorrt_engine_op =
+      ApiBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::TensorRTEngineOp>(x,
+                                                     engine,
+                                                     max_batch_size,
+                                                     workspace_size,
+                                                     allow_build_at_runtime,
+                                                     input_names,
+                                                     output_names,
+                                                     origin_output_rank,
+                                                     origin_outputs_dtype,
+                                                     outs_meta);
+  return tensorrt_engine_op.result(0);
 }
 
 }  // namespace dialect

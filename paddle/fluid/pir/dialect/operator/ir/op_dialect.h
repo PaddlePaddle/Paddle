@@ -32,7 +32,7 @@ class TEST_API OperatorDialect : public pir::Dialect {
   pir::Attribute ParseAttribute(pir::IrParser& parser) override;  // NOLINT
 
   void PrintType(pir::Type type, std::ostream& os) const override;
-  void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
+  void PrintAttribute(pir::Attribute attr, std::ostream& os) const override;
 
   pir::OpPrintFn PrintOperation(pir::Operation* op) const override;  // NOLINT
 
@@ -43,6 +43,11 @@ class TEST_API OperatorDialect : public pir::Dialect {
 inline bool IsCustomOp(pir::Operation* op) {
   std::string op_name = op->name();
   return op_name.find("custom_op") != op_name.npos;
+}
+
+inline bool IsTensorRTOp(pir::Operation* op) {
+  std::string op_name = op->name();
+  return op_name.find("trt_op") != op_name.npos;
 }
 
 class CustomOpDialect : public pir::Dialect {
@@ -70,8 +75,24 @@ class CustomOpDialect : public pir::Dialect {
   std::vector<const char*> op_names_;
 };
 
+class TensorRTOpDialect : public pir::Dialect {
+ public:
+  explicit TensorRTOpDialect(pir::IrContext* context);
+
+  static const char* name() { return "trt_op"; }
+
+  void PrintType(pir::Type type,
+                 std::ostream& os) const override;  // 用于打印type有关信息
+  void PrintAttribute(pir::Attribute type, std::ostream& os)
+      const override;  // 用于打印attribute有关信息
+
+  pir::OpPrintFn PrintOperation(
+      pir::Operation* op) const override;  // 用于打印operation有关信息
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::OperatorDialect)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CustomOpDialect)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::TensorRTOpDialect)

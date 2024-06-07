@@ -63,6 +63,7 @@
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/tensorrt_engine_instruction.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
@@ -846,9 +847,12 @@ void PirInterpreter::BuildInstruction() {
       vec_instruction_base_.emplace_back(
           std::make_unique<CustomKernelInstruction>(
               op_idx++, place_, &op, *(value_exe_info_.get())));
+    } else if (op.dialect()->name() == "trt_op") {
+      CREATE_INSTR(TensorRTEngineInstruction);
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Now only support pd_kernel and cinn dialect."));
+          "Now only support pd_kernel, onednn_kernel, custom_kernel, trt_op "
+          "and cinn dialect."));
     }
   }
 }
