@@ -42,12 +42,12 @@ class TestFoldReshardPass(unittest.TestCase):
         reshard_op_num = 0
 
         for op in main_program.global_block().ops:
-            if op.name() == "dist.reshard":
+            if op.name() == "dist_op.reshard":
                 reshard_op_num += 1
         self.assertEqual(reshard_op_num, 2)
         fold_reshard_pass(main_program)
         reshard_op_num = 0
         for op in main_program.global_block().ops:
-            if op.name() == "dist.reshard":
+            if op.name() == "dist_op.reshard":
                 reshard_op_num += 1
         self.assertEqual(reshard_op_num, 1)

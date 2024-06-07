@@ -106,12 +106,15 @@ def fold_reshard_pass(dist_program):
         if input not in value_dict:
             value_dict[input] = [(result.type(), result)]
             continue
+        no_find = True
         for type, val in value_dict[input]:
             if type == result.type():
-                result.replace_all_uses_with(input)
+                result.replace_all_uses_with(val)
                 del_ops.append(op)
-                continue
-        value_dict[input].append((result.type(), result))
+                no_find = False
+                break
+        if no_find:
+            value_dict[input].append((result.type(), result))
     for op in del_ops:
         op.erase()
 
