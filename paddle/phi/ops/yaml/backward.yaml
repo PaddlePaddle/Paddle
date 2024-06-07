@@ -2689,6 +2689,7 @@
     func: sequence_pool_grad
     data_type: out_grad
   optional: max_index
+  no_need_buffer: x
 
 - backward_op : set_value_with_tensor_grad
   forward: set_value_with_tensor (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes) -> Tensor(out)
