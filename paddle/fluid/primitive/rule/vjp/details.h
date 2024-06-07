@@ -110,7 +110,7 @@ void divide_grad(const Tensor& x,
     auto dy_res = -(x / (y * y)) * out_grad;
     bool is_reduce = false;
     if (has_dynamic_shape(y.shape())) {
-      is_reduce = equal<T>(shape<T>(y), shape<T>(out_grad));
+      is_reduce = equal<T>(shape<T>(y), shape<T>(out_grad)).all().to<bool>();
     } else {
       is_reduce = out_grad.dims() != y.dims();
     }
@@ -132,7 +132,7 @@ void divide_grad(const Tensor& x,
     auto dx_res = one_tensor / y * out_grad;
     bool is_reduce = false;
     if (has_dynamic_shape(x.shape())) {
-      is_reduce = equal<T>(shape<T>(x), shape<T>(out_grad));
+      is_reduce = equal<T>(shape<T>(x), shape<T>(out_grad)).all().to<bool>();
     } else {
       is_reduce = out_grad.dims() != x.dims();
     }
@@ -566,7 +566,7 @@ void add_grad(const Tensor& x,
   if (dy) {
     bool is_reduce = false;
     if (has_dynamic_shape(y.shape())) {
-      is_reduce = equal<T>(shape<T>(y), shape<T>(out_grad));
+      is_reduce = equal<T>(shape<T>(y), shape<T>(out_grad)).all().to<bool>();
     } else {
       is_reduce = out_grad.dims() != y.dims();
     }
@@ -580,7 +580,7 @@ void add_grad(const Tensor& x,
   if (dx) {
     bool is_reduce = false;
     if (has_dynamic_shape(x.shape())) {
-      is_reduce = equal<T>(shape<T>(x), shape<T>(out_grad));
+      is_reduce = equal<T>(shape<T>(x), shape<T>(out_grad)).all().to<bool>();
     } else {
       is_reduce = out_grad.dims() != x.dims();
     }
@@ -603,7 +603,7 @@ void subtract_grad(const Tensor& x,
   if (dy) {
     bool is_reduce = false;
     if (has_dynamic_shape(y.shape())) {
-      is_reduce = equal<T>(shape<T>(y), shape<T>(out_grad));
+      is_reduce = equal<T>(shape<T>(y), shape<T>(out_grad)).all().to<bool>();
     } else {
       is_reduce = out_grad.dims() != y.dims();
     }
@@ -618,7 +618,7 @@ void subtract_grad(const Tensor& x,
   if (dx) {
     bool is_reduce = false;
     if (has_dynamic_shape(x.shape())) {
-      is_reduce = equal<T>(shape<T>(x), shape<T>(out_grad));
+      is_reduce = equal<T>(shape<T>(x), shape<T>(out_grad)).all().to<bool>();
     } else {
       is_reduce = out_grad.dims() != x.dims();
     }
@@ -641,7 +641,7 @@ void multiply_grad(const Tensor& x,
   if (x_grad) {
     bool is_reduce = false;
     if (has_dynamic_shape(x.shape())) {
-      is_reduce = equal<T>(shape<T>(x), shape<T>(out_grad));
+      is_reduce = equal<T>(shape<T>(x), shape<T>(out_grad)).all().to<bool>();
     } else {
       is_reduce = out_grad.dims() != x.dims();
     }
@@ -656,7 +656,7 @@ void multiply_grad(const Tensor& x,
   if (y_grad) {
     bool is_reduce = false;
     if (has_dynamic_shape(y.shape())) {
-      is_reduce = equal<T>(shape<T>(y), shape<T>(out_grad));
+      is_reduce = equal<T>(shape<T>(y), shape<T>(out_grad)).all().to<bool>();
     } else {
       is_reduce = out_grad.dims() != y.dims();
     }
