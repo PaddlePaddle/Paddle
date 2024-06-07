@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# We type-check the `Example` codes from docstring.
+# We type-check the `Example` codes from docstring, like:
+# 1. checking from input `apis`
+# > python type_checking.py paddle.abs paddle.abs_ paddle.sin
+# 2. checking from spec, with increment api
+# > python type_checking.py
+# 3. checking from spec, with full apis
+# > python type_checking.py --full-test
+# `--full-test` and `apis` should not be set at the same time.
 
 from __future__ import annotations
 
@@ -180,6 +187,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description='run Sample Code Type Checking'
     )
+
     parser.add_argument('--debug', dest='debug', action="store_true")
     parser.add_argument(
         '--logf', dest='logf', type=str, default=None, help='file for logging'
@@ -198,7 +206,10 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help='cache dir for mypy',
     )
-    parser.add_argument('--full-test', dest='full_test', action="store_true")
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('apis', nargs='*', type=str, default=[])
+    group.add_argument('--full-test', dest='full_test', action="store_true")
 
     args = parser.parse_args()
     return args
@@ -249,7 +260,9 @@ def run_type_checker(
     logger.info(">>> Get docstring from api ...")
     filter_api = lambda api_name: 'libpaddle' in api_name
     docstrings_to_test, whl_error = get_docstring(
-        full_test=args.full_test, filter_api=filter_api
+        full_test=args.full_test,
+        filter_api=filter_api,
+        apis=tuple((api, api) for api in args.apis),
     )
 
     logger.info(">>> Running type checker ...")
