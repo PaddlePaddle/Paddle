@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/ir_base.h"
-
 #include <sstream>
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/common.h"

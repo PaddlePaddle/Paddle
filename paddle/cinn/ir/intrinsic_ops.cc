@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/intrinsic_ops.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::ir {
 
 const char* IntrinsicOp::type_info() const { return IrNode::type_info(); }

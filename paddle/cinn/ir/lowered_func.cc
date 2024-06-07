@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/lowered_func.h"
-
 #include <algorithm>
 #include <iostream>
 #include <memory>
@@ -21,6 +20,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "paddle/common/enforce.h"
 
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"

@@ -25,7 +25,7 @@
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/external_func_names.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 

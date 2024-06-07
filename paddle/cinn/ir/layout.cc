@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/layout.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 

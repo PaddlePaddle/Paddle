@@ -17,7 +17,6 @@
 #include <map>
 #include <string>
 #include <vector>
-
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -26,6 +25,7 @@
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
 
 namespace cinn {

@@ -25,7 +25,7 @@
 #include "paddle/cinn/common/object.h"
 #include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/common/type.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 
 namespace ir {

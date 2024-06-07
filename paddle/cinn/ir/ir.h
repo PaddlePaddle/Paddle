@@ -18,13 +18,13 @@
 #pragma once
 
 #include <absl/types/variant.h>
-
 #include <algorithm>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
+#include "paddle/common/enforce.h"
 
 #include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/common/type.h"

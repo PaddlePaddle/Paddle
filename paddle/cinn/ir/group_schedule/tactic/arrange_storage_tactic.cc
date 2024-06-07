@@ -20,7 +20,7 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 

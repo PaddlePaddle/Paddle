@@ -306,7 +306,10 @@ Expr StScheduleImpl::CacheWrite(const Expr& block,
     }
   }
 
-  CHECK_EQ(find_cache_block.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      find_cache_block.size(),
+      1U,
+      phi::errors::InvalidArgument("Size of find_cache_block is not 1!"));
 
   return *find_cache_block.begin();
 }
@@ -326,8 +329,11 @@ void StScheduleImpl::SetBuffer(Expr& block,
   CHECK(block.As<ir::ScheduleBlockRealize>());
   auto find_tensor = ir::ir_utils::CollectIRNodesWithoutTensor(
       block, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
-  CHECK_EQ(find_tensor.size(), 1U)
-      << "One block should only have one Store node!(except for root block)";
+  PADDLE_ENFORCE_EQ(
+      find_tensor.size(),
+      1U,
+      phi::errors::InvalidArgument(
+          "One block should only have one Store node!(except for root block)"));
   auto& tensor = (*find_tensor.begin()).As<ir::Store>()->tensor;
   tensor.as_tensor_ref()->WithBuffer(
       memory_type, "_" + tensor.as_tensor_ref()->name + "_temp_buffer");

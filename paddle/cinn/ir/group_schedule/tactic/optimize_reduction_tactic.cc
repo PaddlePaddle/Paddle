@@ -15,7 +15,7 @@
 #include "paddle/cinn/ir/group_schedule/tactic/optimize_reduction_tactic.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 

@@ -190,7 +190,10 @@ void StScheduleImpl::Parallel(const Expr& loop) {
 }
 
 void StScheduleImpl::Vectorize(const Expr& loop, int factor) {
-  CHECK_GT(factor, 0) << "vectorize factor should be more than 0";
+  PADDLE_ENFORCE_GT(
+      factor,
+      0,
+      phi::errors::InvalidArgument("vectorize factor should be more than 0"));
   MutateForType(loop, ForType::Vectorized, factor);
 }
 
