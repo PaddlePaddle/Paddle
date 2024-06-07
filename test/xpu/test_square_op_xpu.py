@@ -34,6 +34,7 @@ class XPUTestSquareOp(XPUOpTestWrapper):
 
     class TestSquareOp(XPUOpTest):
         def setUp(self):
+            self.python_api = paddle.square
             self.init_dtype()
             self.set_xpu()
             self.op_type = "square"
