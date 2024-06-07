@@ -58,13 +58,17 @@ class Cauchy(distribution.Distribution):
     def __init__(self, loc, scale, name=None):
         self.name = name if name is not None else 'Cauchy'
 
-        if not isinstance(loc, (numbers.Real, framework.Variable)):
+        if not isinstance(
+            loc, (numbers.Real, framework.Variable, paddle.pir.Value)
+        ):
             raise TypeError(
-                f"Expected type of loc is Real|Variable, but got {type(loc)}"
+                f"Expected type of loc is Real|Variable|Value, but got {type(loc)}"
             )
-        if not isinstance(scale, (numbers.Real, framework.Variable)):
+        if not isinstance(
+            scale, (numbers.Real, framework.Variable, paddle.pir.Value)
+        ):
             raise TypeError(
-                f"Expected type of scale is Real|Variable, but got {type(scale)}"
+                f"Expected type of scale is Real|Variable|Value, but got {type(scale)}"
             )
 
         if isinstance(loc, numbers.Real):
@@ -188,7 +192,10 @@ class Cauchy(distribution.Distribution):
         """
         name = name if name is not None else (self.name + '_rsample')
 
-        if not isinstance(shape, (np.ndarray, framework.Variable, list, tuple)):
+        if not isinstance(
+            shape,
+            (np.ndarray, framework.Variable, paddle.pir.Value, list, tuple),
+        ):
             raise TypeError(
                 f"Expected type of shape is Sequence[int], but got {type(shape)}"
             )

@@ -62,3 +62,7 @@ class TestExponentialFamily(unittest.TestCase):
                 paddle.distribution.ExponentialFamily.entropy(
                     mock.DummyExpFamily(0.5, 0.5)
                 )
+
+
+if __name__ == '__main__':
+    unittest.main()

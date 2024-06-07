@@ -451,17 +451,17 @@ class BernoulliTestError(unittest.TestCase):
 
             # `logits, value = paddle.broadcast_tensors([self.logits, value])`
             # raise ValueError in dygraph, raise TypeError in static.
-            with self.assertRaises(TypeError):
+            with self.assertRaises((TypeError, ValueError)):
                 [_] = self.executor.run(
                     self.program, feed={}, fetch_list=[rv.cdf(value)]
                 )
 
-            with self.assertRaises(TypeError):
+            with self.assertRaises((TypeError, ValueError)):
                 [_] = self.executor.run(
                     self.program, feed={}, fetch_list=[rv.log_prob(value)]
                 )
 
-            with self.assertRaises(TypeError):
+            with self.assertRaises((TypeError, ValueError)):
                 [_] = self.executor.run(
                     self.program, feed={}, fetch_list=[rv.prob(value)]
                 )
