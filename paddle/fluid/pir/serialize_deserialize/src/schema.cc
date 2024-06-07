@@ -33,6 +33,7 @@ DialectIdMap::DialectIdMap() {
   insert(pir::BuiltinDialect::name(), "0");
   insert(paddle::dialect::OperatorDialect::name(), "1");
   insert(pir::ControlFlowDialect::name(), "2");
+  insert(paddle::dialect::CustomOpDialect::name(), "3");
 }
 void DialectIdMap::insert(const std::string& key, const std::string& value) {
   CompressDialect[key] = value;
