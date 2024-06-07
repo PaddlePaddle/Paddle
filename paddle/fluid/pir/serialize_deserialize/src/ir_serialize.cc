@@ -135,11 +135,11 @@ Json ProgramWriter::WriteValue(const pir::Value& value) {
   Json var_json;
   if (value) {
     value_id_map[value] = value_id_;
-    var_json[ID] = value_id_;
+    var_json[VALUE_ID] = value_id_;
     VLOG(6) << "Finish write value " << value_id_ << ".";
     value_id_++;
   } else {
-    var_json[ID] = 0;  // NULL_TYPE
+    var_json[VALUE_ID] = 0;  // NULL_TYPE
     VLOG(6) << "Finish write NULL_TYPE value.";
   }
 
@@ -198,7 +198,9 @@ Json ProgramWriter::WriteOp(const pir::Operation& op) {
     return WriteParameterOP(op);
   }
   Json op_json = Json::object();
-  op_json[ID] = op.name();
+  auto op_name = op.name();
+  GetCompressOpName(&op_name);
+  op_json[ID] = op_name;
   // serialize opoperands
   VLOG(4) << "Begin write Operation " << op.name() << ".";
   Json operands_json = Json::array();
@@ -242,10 +244,10 @@ Json ProgramWriter::WriteOpOperand(const pir::OpOperand& op_operand) {
   Json operand_json = Json::object();
   if (op_operand.source()) {
     int64_t id = value_id_map[op_operand.source()];
-    operand_json[ID] = id;
+    operand_json[VALUE_ID] = id;
     VLOG(6) << "Finish write OpOperand " << id << ".";
   } else {
-    operand_json[ID] = 0;  // NULL_VALUE
+    operand_json[VALUE_ID] = 0;  // NULL_VALUE
     VLOG(6) << "Finish write NULL_VALUE OpOperand.";
   }
 
