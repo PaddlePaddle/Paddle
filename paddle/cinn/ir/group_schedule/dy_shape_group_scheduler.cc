@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/dy_shape_group_scheduler.h"
-#include "paddle/cinn/ir/group_schedule/config/filedatabase.h"
 
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/group_schedule/config/database.h"

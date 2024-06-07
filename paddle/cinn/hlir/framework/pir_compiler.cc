@@ -77,6 +77,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
           << groups.size() << " and compiles with " << thread_size;
   auto tile_config_database = std::make_shared<FileTileConfigDatabase>();
   auto& schedule_config_manager = ScheduleConfigManager::Instance();
+  schedule_config_manager.SetPolicy("optimal");
   schedule_config_manager.AddConfigDatabase("optimal", tile_config_database);
   if (task_size > 0) {
     auto worker_fn = [&](int index) {
