@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import convert_float_to_uint16, convert_uint16_to_float
 from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -42,9 +42,8 @@ class XPUTestCosOp(XPUOpTestWrapper):
             self.init_shape()
             self.init_data()
             if self.dtype == np.uint16:
-                self.outputs = {
-                    'Out': np.cos(convert_uint16_to_float(self.inputs['X']))
-                }
+                x_float32 = convert_uint16_to_float(self.inputs['X'])
+                self.outputs = {'Out': np.cos(x_float32)}
             else:
                 self.outputs = {'Out': np.cos(self.inputs['X'])}
 
@@ -59,7 +58,8 @@ class XPUTestCosOp(XPUOpTestWrapper):
         def init_data(self):
             if self.dtype == np.uint16:
                 x = np.random.random(self.shape).astype('float32')
-                self.inputs = {'X': convert_float_to_uint16(x)}
+                x = convert_float_to_uint16(x)
+                self.inputs = {'X': x}
             else:
                 self.inputs = {
                     'X': np.random.random(self.shape).astype(self.dtype)
