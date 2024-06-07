@@ -14,6 +14,7 @@
 
 import re
 import sys
+import unittest
 
 import numpy as np
 from op_test import OpTest
@@ -311,3 +312,7 @@ class TestFFTR2COp(OpTest):
             ["X"],
             "Out",
         )
+
+
+if __name__ == "__main__":
+    unittest.main()
