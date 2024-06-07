@@ -803,7 +803,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   // optimized_model_path_ = GetOptimizedModelPath();
   // optimized_model_ = optimized_model_path_ + "/" + "_optimized.json";
 
-  LOG(INFO) << "optimized_model_ " << optimized_model_;
+  LOG(INFO) << "optimized_model_ " << optimized_model_name_;
   LOG(INFO) << "config_.use_optimized_model" << config_.use_optimized_model_;
 
   LOG(INFO) << "optimized_model存在";
@@ -923,13 +923,22 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   }
   basic_pass_pm.Run(pir_program_.get());
 
+  std::cout << "pass优化后的pir_program_" << *pir_program_;
   LOG(INFO) << "config_.use_optimized_model_" << config_.use_optimized_model_;
-  if (config_.save_optimized_model_) {
-    if (!FileExists(optimized_model_)) {
-      pir::WriteModule(*pir_program_, optimized_model_, 1, true, false, true);
-      LOG(INFO) << "保存optimized.json";
-    }
+
+  if (config_.save_optimized_model_ && !FileExists(optimized_model_name_)) {
+    pir::WriteModule(
+        *pir_program_, optimized_model_name_, 1, true, false, true);
+    LOG(INFO) << "保存optimized.json";
   }
+  optimized_params_ = optimized_model_path_ + "/" + "_optimized.pdiparams";
+  LoadPirParameters();
+
+  // // 应该先loadProgram，再保存
+  // if(config_.save_optimized_model_&& !FileExists(optimized_params))
+  // {
+
+  // }
   //----------------------------------------------------------------------------------------------//
 
   pir_program_ =
@@ -953,31 +962,11 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   LOG(INFO) << "======= pir optimization completed =======";
 }
 
-bool AnalysisPredictor::PreparePirProgram() {
-  CHECK_EQ(pir_program_, nullptr);
-
-  pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
-
-  optimized_model_path_ = GetOptimizedModelPath();
-  optimized_model_ = optimized_model_path_ + "/" + "_optimized.json";
-  LOG(INFO) << "optimized_model_" << optimized_model_;
-  LOG(INFO) << "config_.use_optimized_model_" << config_.use_optimized_model_;
-
-  if (FileExists(optimized_model_)) {
-    if (config_.use_optimized_model_) {
-      pir::ReadModule(optimized_model_, pir_program_.get(), 1 /*pir_version*/);
-      LOG(INFO) << "加载了优化后的json模型";
-      std::cout << "加载了优化后的 pir_program " << *pir_program_ << std::endl;
-    }
-  } else {
-    LOG(INFO) << "加载了未优化的json模型";
-    pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
-  }
-
+bool AnalysisPredictor::LoadPirParameters() {
   std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
   int feed_idx = 0;
   for (auto op : pir_program_->block()->ops()) {
-    // put pd-op.data and pd-op.fetch into idx2feeds and idx2feeds
+    // put pd-op.data and pd-op.fetch into idx2feeds and idx2fetches
     if (op->isa<paddle::dialect::FetchOp>()) {
       int idx = op->attribute("col").dyn_cast<pir::Int32Attribute>().data();
       if (fetches_.size() <= static_cast<size_t>(idx)) {
@@ -1051,50 +1040,50 @@ bool AnalysisPredictor::PreparePirProgram() {
       LOG(INFO) << "Variable already exists: " << param_names[i].c_str();
     }
     auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
-    LOG(INFO) << "Tensor value for " << param_names[i] << " is ";
-    // << *tensor_temp;
+    LOG(INFO) << "Tensor value for " << param_names[i] << " is "
+              << *tensor_temp;
     tensor_out.push_back(tensor_temp);
   }
 
-  if (config_.save_optimized_model_) {
-    optimized_params_ = optimized_model_path_ + "/" + "_optimized.pdiparams";
-    LOG(INFO) << "optimized_params " << optimized_params_;
-    std::vector<const phi::DenseTensor *> const_tensor_out(tensor_out.begin(),
-                                                           tensor_out.end());
-    if (!FileExists(optimized_params_)) {
-      LOG(INFO) << "const_tensor_out的个数" << const_tensor_out.size();
-      LOG(INFO) << "param_names的个数 " << param_names.size();
-      pir::SaveCombineFunction(
-          const_tensor_out, param_names, optimized_params_, true, false, true);
-      // Check if the contents of constr_tensor_out and tensor_out are the same
-      for (size_t i = 0; i < tensor_out.size(); ++i) {
-        LOG(INFO) << "tensor_out[" << i << "] address: " << tensor_out[i];
-        LOG(INFO) << "const_tensor_out[" << i
-                  << "] address: " << const_tensor_out[i];
-        PADDLE_ENFORCE_EQ(tensor_out[i],
-                          const_tensor_out[i],
-                          platform::errors::PreconditionNotMet(
-                              "tensor_out and const_tensor_out do not match"));
-      }
-    }
-    LOG(INFO) << "pir::SaveCombineFunction后";
-  }
-
   CreateFeedFetchVar(sub_scope_);
-  if (FileExists(optimized_params_)) {
-    if (!config_.use_optimized_model_) {
-      LOG(INFO) << "param_names个数" << param_names.size();
-      LOG(INFO) << "tensor_out的个数" << tensor_out.size();
-      pir::LoadCombineFunction(
-          optimized_params_, param_names, &tensor_out, false, place_);
-    }
+  if (config_.use_optimized_model_ && FileExists(optimized_params_)) {
+    LOG(INFO) << "读取了优化后的pdiparams";
   } else {
+    LOG(INFO) << "读取了没优化的pdiparams";
     pir::LoadCombineFunction(
         config_.params_file(), param_names, &tensor_out, false, place_);
   }
 
   std::cout << "pir_program LoadCombineFunction后" << *pir_program_
             << std::endl;
+
+  return true;
+}
+
+bool AnalysisPredictor::PreparePirProgram() {
+  CHECK_EQ(pir_program_, nullptr);
+
+  pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
+
+  optimized_model_path_ = GetOptimizedModelPath();
+  optimized_model_name_ = optimized_model_path_ + "/" + "_optimized.json";
+  LOG(INFO) << "optimized_model_" << optimized_model_name_;
+  LOG(INFO) << "config_.use_optimized_model_" << config_.use_optimized_model_;
+
+  if (FileExists(optimized_model_name_) && config_.use_optimized_model_) {
+    LOG(INFO) << "加载了优化后的json模型";
+    pir::ReadModule(
+        optimized_model_name_, pir_program_.get(), 1 /*pir_version*/);
+    std::cout << "加载了优化后的 pir_program " << *pir_program_ << std::endl;
+
+  } else {
+    LOG(INFO) << "加载了未优化的json模型";
+    pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
+  }
+  if (!LoadPirParameters()) {
+    return false;
+  }
+
   OptimizeInferencePirProgram();
 
   return true;

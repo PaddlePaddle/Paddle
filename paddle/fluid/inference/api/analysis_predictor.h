@@ -358,6 +358,8 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return Whether the function executed successfully
   ///
   bool PreparePirProgram();
+
+  void GetPirParameters(std::string param_file);
   ///
   /// \brief Prepare scope environment, each predictor has its own scope
   ///
@@ -390,6 +392,13 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return Whether the function executed successfully
   ///
   bool LoadParameters();
+
+  ///
+  /// \brief Load model parameters.
+  ///
+  /// \return Whether the function executed successfully
+  ///
+  bool LoadPirParameters();
 
   ///
   /// \brief Prepare input data, only used in Run()
@@ -572,7 +581,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::shared_ptr<framework::ProgramDesc> inference_program_;
   std::shared_ptr<pir::Program> pir_program_;
   bool load_pir_model_{false};
-  std::string optimized_model_;
+  std::string optimized_model_name_;
   std::string optimized_model_path_;
   std::string optimized_params_;
   std::vector<framework::OpDesc *> feeds_;

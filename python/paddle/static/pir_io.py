@@ -608,6 +608,7 @@ def save_pir(program, model_path, protocol=4, **configs):
     with open(model_path + ".pdopt", 'wb') as f:
         pickle.dump(opt_dict, f, protocol=protocol)
 
+    print("program", program)
     # save program
     paddle.core.serialize_pir_program(
         program, model_path + ".json", 1, True, False, True
