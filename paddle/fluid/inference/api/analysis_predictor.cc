@@ -932,7 +932,89 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     LOG(INFO) << "保存optimized.json";
   }
   optimized_params_ = optimized_model_path_ + "/" + "_optimized.pdiparams";
-  LoadPirParameters();
+
+  std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
+  int feed_idx = 0;
+  for (auto op : pir_program_->block()->ops()) {
+    // put pd-op.data and pd-op.fetch into idx2feeds and idx2fetches
+    if (op->isa<paddle::dialect::FetchOp>()) {
+      int idx = op->attribute("col").dyn_cast<pir::Int32Attribute>().data();
+      if (fetches_.size() <= static_cast<size_t>(idx)) {
+        fetches_.resize(idx + 1);
+        std::string fetch_name =
+            op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+        idx2fetches_[idx] = fetch_name;
+      }
+    } else if (op->isa<paddle::dialect::DataOp>() ||
+               op->isa<paddle::dialect::FeedOp>()) {
+      std::string data_name =
+          op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+      idx2feeds_[feed_idx] = data_name;
+      feed_idx++;
+    }
+    for (auto var : op->results()) {
+      std::string var_name;
+      auto is_persistable =
+          var.attribute<pir::BoolAttribute>(kAttrIsPersistable);
+      if (is_persistable && is_persistable.data()) {
+        if (auto param_op = var.defining_op<::pir::ParameterOp>()) {
+          var_name = param_op.param_name();
+          LOG(INFO) << "var_name " << var_name;
+          param_name_var_pairs.emplace_back(var_name, var);
+        } else if (auto data_op = var.defining_op<paddle::dialect::DataOp>()) {
+          var_name = data_op.attribute<pir::StrAttribute>("name").AsString();
+          LOG(INFO) << "var_name " << var_name;
+          param_name_var_pairs.emplace_back(var_name, var);
+        }
+      }
+    }
+  }
+
+  std::sort(param_name_var_pairs.begin(),
+            param_name_var_pairs.end(),
+            [](const std::pair<std::string, pir::Value> &a,
+               const std::pair<std::string, pir::Value> &b) {
+              return a.first < b.first;
+            });
+
+  std::vector<std::string> param_names;
+  std::vector<pir::Value> vars;
+  for (const auto &pair : param_name_var_pairs) {
+    param_names.emplace_back(pair.first);
+    vars.emplace_back(pair.second);
+  }
+
+  size_t len = vars.size();
+  std::vector<phi::DenseTensor *> tensor_out;
+  for (size_t i = 0; i < len; ++i) {
+    auto *var = sub_scope_->FindVar(param_names[i]);
+    pir::Value value = vars[i];
+    if (var == nullptr) {
+      LOG(INFO) << "Variable not found, creating new variable: "
+                << param_names[i].c_str();
+      var = sub_scope_->Var(param_names[i]);
+      auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+      tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
+      LOG(INFO) << "Resized tensor for variable: " << param_names[i]
+                << " to shape: "
+                << common::make_ddim(pir::GetShapeFromValue(value));
+      LOG(INFO) << "Found variable: " << param_names[i]
+                << " with type: " << var->Type();
+      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+      const phi::DeviceContext *dev_ctx = nullptr;
+      dev_ctx = pool.Get(place_);
+      pir::Type type_ = pir::GetDataTypeFromValue(value);
+      phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
+      dev_ctx->Alloc(tensor_temp, type_data);
+    } else {
+      LOG(INFO) << "Variable already exists: " << param_names[i].c_str();
+    }
+    auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+    LOG(INFO) << "Tensor value for " << param_names[i] << " is "
+              << *tensor_temp;
+    tensor_out.push_back(tensor_temp);
+  }
+  CreateFeedFetchVar(sub_scope_);
 
   // // 应该先loadProgram，再保存
   // if(config_.save_optimized_model_&& !FileExists(optimized_params))
@@ -962,7 +1044,26 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   LOG(INFO) << "======= pir optimization completed =======";
 }
 
-bool AnalysisPredictor::LoadPirParameters() {
+bool AnalysisPredictor::PreparePirProgram() {
+  CHECK_EQ(pir_program_, nullptr);
+
+  pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
+
+  optimized_model_path_ = GetOptimizedModelPath();
+  optimized_model_name_ = optimized_model_path_ + "/" + "_optimized.json";
+  LOG(INFO) << "optimized_model_" << optimized_model_name_;
+  LOG(INFO) << "config_.use_optimized_model_" << config_.use_optimized_model_;
+
+  if (FileExists(optimized_model_name_) && config_.use_optimized_model_) {
+    LOG(INFO) << "加载了优化后的json模型";
+    pir::ReadModule(
+        optimized_model_name_, pir_program_.get(), 1 /*pir_version*/);
+    std::cout << "加载了优化后的 pir_program " << *pir_program_ << std::endl;
+
+  } else {
+    LOG(INFO) << "加载了未优化的json模型";
+    pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
+  }
   std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
   int feed_idx = 0;
   for (auto op : pir_program_->block()->ops()) {
@@ -1056,33 +1157,6 @@ bool AnalysisPredictor::LoadPirParameters() {
 
   std::cout << "pir_program LoadCombineFunction后" << *pir_program_
             << std::endl;
-
-  return true;
-}
-
-bool AnalysisPredictor::PreparePirProgram() {
-  CHECK_EQ(pir_program_, nullptr);
-
-  pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
-
-  optimized_model_path_ = GetOptimizedModelPath();
-  optimized_model_name_ = optimized_model_path_ + "/" + "_optimized.json";
-  LOG(INFO) << "optimized_model_" << optimized_model_name_;
-  LOG(INFO) << "config_.use_optimized_model_" << config_.use_optimized_model_;
-
-  if (FileExists(optimized_model_name_) && config_.use_optimized_model_) {
-    LOG(INFO) << "加载了优化后的json模型";
-    pir::ReadModule(
-        optimized_model_name_, pir_program_.get(), 1 /*pir_version*/);
-    std::cout << "加载了优化后的 pir_program " << *pir_program_ << std::endl;
-
-  } else {
-    LOG(INFO) << "加载了未优化的json模型";
-    pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
-  }
-  if (!LoadPirParameters()) {
-    return false;
-  }
 
   OptimizeInferencePirProgram();
 
