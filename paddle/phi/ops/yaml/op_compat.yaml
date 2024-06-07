@@ -2399,6 +2399,7 @@
     {param_out : ParamOut, velocity_out : VelocityOut, master_param_out : MasterParamOut}
 
 - op : moving_average_abs_max_scale
+  backward : moving_average_abs_max_scale_grad
   inputs :
     {x : X, in_accum : InAccum, in_state : InState}
   outputs :
