@@ -4972,7 +4972,6 @@ void TopkV1InferMeta(const MetaTensor& x,
                      MetaTensor* indices,
                      MetaConfig config) {
   const auto& input_dims = x.dims();
-  const int& dim_size = input_dims.size();
 
   int k = k_scalar.to<int>();
   if (k_scalar.FromTensor()) {
@@ -5000,6 +4999,7 @@ void TopkV1InferMeta(const MetaTensor& x,
   indices->share_lod(x);
   indices->set_dtype(DataType::INT64);
 }
+
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out) {
   int dim1 = axis1;
