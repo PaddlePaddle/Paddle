@@ -560,7 +560,7 @@ void add_grad(const Tensor& x,
   if (dx) {
     if (out_grad.dims() != x.dims()) {
       auto dx_tmp = reduce_as<T>(out_grad, x);
-      dx_tmp = reshape<T>(dx_tmp, x.s hape());
+      dx_tmp = reshape<T>(dx_tmp, x.shape());
       set_output<T>(dx_tmp, dx);
     } else {
       by_pass<T>(out_grad, dx);
