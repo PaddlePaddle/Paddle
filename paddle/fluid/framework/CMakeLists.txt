@@ -883,12 +883,6 @@ target_link_libraries(
   pylayer_op_helper)
 
 cc_library(
-  parallel_executor
-  SRCS parallel_executor.cc
-  DEPS ssa_graph_executor graph build_strategy collective_helper
-       variable_helper)
-
-cc_library(
   compiled_program
   SRCS compiled_program.cc
   DEPS graph build_strategy)
