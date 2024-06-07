@@ -4028,11 +4028,25 @@
   outputs:
     {out: Out}
 
+- op: fused_elemwise_activation
+  backward: fused_elemwise_activation_grad
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    {out : Out, intermediate_out : IntermediateOut}
+
 - op: fused_elemwise_add_activation
   backward: fused_elemwise_add_activation_grad
   inputs :
     {x: X, y: Y}
   outputs :
+    {out : Out, intermediate_out : IntermediateOut}
+
+- op: fused_elemwise_add_activation
+  backward: fused_elemwise_add_activation_grad
+  inputs:
+    {x : X, y : Y}
+  outputs:
     {out : Out, intermediate_out : IntermediateOut}
 
 - op: fused_matmul
@@ -4210,7 +4224,7 @@
   inputs:
     {gate_idx: GateIdx, expert_count: ExpertCount}
   outputs:
-    new_gate_idx: NewGateIdx
+    out_gate_idx: NewGateIdx
 
 - op: pyramid_hash
   backward: pyramid_hash_grad
