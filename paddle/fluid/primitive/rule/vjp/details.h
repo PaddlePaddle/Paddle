@@ -108,18 +108,8 @@ void divide_grad(const Tensor& x,
   if (dy) {
     // dy = -(x/y^2) * dout
     auto dy_res = -(x / (y * y)) * out_grad;
-    bool is_reduce = false;
-    if (has_dynamic_shape(y.shape())) {
-      is_reduce = equal<T>(shape<T>(y), shape<T>(out_grad)).all().to<bool>();
-    } else {
-      is_reduce = out_grad.dims() != y.dims();
-    }
-    if (is_reduce) {
-      auto dy_tmp = reduce_as<T>(dy_res, y);
-      set_output<T>(dy_tmp, dy);
-    } else {
-      set_output<T>(dy_res, dy);
-    }
+    auto dy_tmp = reduce_as<T>(dy_res, y);
+    set_output<T>(dy_tmp, dy);
   }  // indicate we will compute dy
   if (dx) {
     // dx = (1/y) * dout
@@ -130,19 +120,9 @@ void divide_grad(const Tensor& x,
       one_tensor = full<T>(y.shape(), 1.0, y.dtype());
     }
     auto dx_res = one_tensor / y * out_grad;
-    bool is_reduce = false;
-    if (has_dynamic_shape(x.shape())) {
-      is_reduce = equal<T>(shape<T>(x), shape<T>(out_grad)).all().to<bool>();
-    } else {
-      is_reduce = out_grad.dims() != x.dims();
-    }
-    if (is_reduce) {
-      auto dx_tmp = reduce_as<T>(dx_res, x);
-      set_output<T>(dx_tmp, dx);
-    } else {
-      set_output<T>(dx_res, dx);
-    }
-  }  // indicate we will compute dx
+    auto dx_tmp = reduce_as<T>(dx_res, x);
+    set_output<T>(dx_tmp, dx);
+}  // indicate we will compute dx
 }
 
 template <typename T>
@@ -564,32 +544,12 @@ void add_grad(const Tensor& x,
               Tensor* dx,
               Tensor* dy) {
   if (dy) {
-    bool is_reduce = false;
-    if (has_dynamic_shape(y.shape())) {
-      is_reduce = equal<T>(shape<T>(y), shape<T>(out_grad)).all().to<bool>();
-    } else {
-      is_reduce = out_grad.dims() != y.dims();
-    }
-    if (is_reduce) {
-      auto dy_tmp = reduce_as<T>(out_grad, y);
-      set_output<T>(dy_tmp, dy);
-    } else {
-      by_pass<T>(out_grad, dy);
-    }
+    auto dy_tmp = reduce_as<T>(out_grad, y);
+    set_output<T>(dy_tmp, dy);
   }
   if (dx) {
-    bool is_reduce = false;
-    if (has_dynamic_shape(x.shape())) {
-      is_reduce = equal<T>(shape<T>(x), shape<T>(out_grad)).all().to<bool>();
-    } else {
-      is_reduce = out_grad.dims() != x.dims();
-    }
-    if (is_reduce) {
-      auto dx_tmp = reduce_as<T>(out_grad, x);
-      set_output<T>(dx_tmp, dx);
-    } else {
-      by_pass<T>(out_grad, dx);
-    }
+    auto dx_tmp = reduce_as<T>(out_grad, x);
+    set_output<T>(dx_tmp, dx);
   }
 }
 
@@ -601,33 +561,13 @@ void subtract_grad(const Tensor& x,
                    Tensor* dx,
                    Tensor* dy) {
   if (dy) {
-    bool is_reduce = false;
-    if (has_dynamic_shape(y.shape())) {
-      is_reduce = equal<T>(shape<T>(y), shape<T>(out_grad)).all().to<bool>();
-    } else {
-      is_reduce = out_grad.dims() != y.dims();
-    }
     auto scale_out_grad = scale<T>(out_grad, -1.0, 0.0, true);
-    if (is_reduce) {
-      auto dy_tmp = reduce_as<T>(out_grad, y);
-      set_output<T>(dy_tmp, dy);
-    } else {
-      by_pass<T>(scale_out_grad, dy);
-    }
+    auto dy_tmp = reduce_as<T>(scale_out_grad, y);
+    set_output<T>(dy_tmp, dy);
   }
   if (dx) {
-    bool is_reduce = false;
-    if (has_dynamic_shape(x.shape())) {
-      is_reduce = equal<T>(shape<T>(x), shape<T>(out_grad)).all().to<bool>();
-    } else {
-      is_reduce = out_grad.dims() != x.dims();
-    }
-    if (is_reduce) {
-      auto dx_tmp = reduce_as<T>(out_grad, x);
-      set_output<T>(dx_tmp, dx);
-    } else {
-      by_pass<T>(out_grad, dx);
-    }
+    auto dx_tmp = reduce_as<T>(out_grad, x);
+    set_output<T>(dx_tmp, dx);
   }
 }
 
@@ -639,34 +579,14 @@ void multiply_grad(const Tensor& x,
                    Tensor* x_grad,
                    Tensor* y_grad) {
   if (x_grad) {
-    bool is_reduce = false;
-    if (has_dynamic_shape(x.shape())) {
-      is_reduce = equal<T>(shape<T>(x), shape<T>(out_grad)).all().to<bool>();
-    } else {
-      is_reduce = out_grad.dims() != x.dims();
-    }
     auto x_grad_unreduce = out_grad * y;
-    if (is_reduce) {
-      auto x_grad_reduced = reduce_as<T>(x_grad_unreduce, x);
-      set_output<T>(x_grad_reduced, x_grad);
-    } else {
-      set_output<T>(x_grad_unreduce, x_grad);
-    }
+    auto x_grad_reduced = reduce_as<T>(x_grad_unreduce, x);
+    set_output<T>(x_grad_reduced, x_grad);
   }
   if (y_grad) {
-    bool is_reduce = false;
-    if (has_dynamic_shape(y.shape())) {
-      is_reduce = equal<T>(shape<T>(y), shape<T>(out_grad)).all().to<bool>();
-    } else {
-      is_reduce = out_grad.dims() != y.dims();
-    }
     auto y_grad_unreduce = out_grad * x;
-    if (is_reduce) {
-      auto y_grad_reduced = reduce_as<T>(y_grad_unreduce, y);
-      set_output<T>(y_grad_reduced, y_grad);
-    } else {
-      set_output<T>(y_grad_unreduce, y_grad);
-    }
+    auto y_grad_reduced = reduce_as<T>(y_grad_unreduce, y);
+    set_output<T>(y_grad_reduced, y_grad);
   }
 }
 
