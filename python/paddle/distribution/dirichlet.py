@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+
 import paddle
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
@@ -69,7 +71,8 @@ class Dirichlet(exponential_family.ExponentialFamily):
     """
 
     def __init__(self, concentration):
-        if concentration.dim() < 1:
+        if concentration.dim() < 1 or math.prod(concentration.shape) < 1:
+            # 0-dim tensor or 0-sized tensor is invalid
             raise ValueError(
                 "`concentration` parameter must be at least one dimensional"
             )
