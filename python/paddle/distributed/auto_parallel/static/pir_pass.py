@@ -168,6 +168,10 @@ def remove_unuseful_comm_op_pass(program):
             if process_group.nranks == 1:
                 op.result(0).replace_all_uses_with(op.operand_source(0))
                 op.erase()
+        if op.name() == "pd_op.share_data_":
+            if op.operand_source(0).has_one_use():
+                op.result(0).replace_all_uses_with(op.operand_source(0))
+                op.erase()
 
 
 # In sequence_parallel, we need to transpose hidden_states

@@ -154,41 +154,83 @@ void sum_grad(const Tensor& x,
   if (!x_grad) {
     return;
   }
-  std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+
   int64_t axis_size = axis.size();
-  int64_t x_dim_size = x_dim.size();
+  int64_t x_dim_size = x.dims().size();
+  auto x_grad_tmp = Tensor();
   reduce_all = false;
   if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
     reduce_all = true;
   } else {
     reduce_all = false;
   }
-  auto x_grad_tmp = Tensor();
-  if (x_dim_size == 1) {
-    x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
-  } else {
-    if (!keepdim) {
-      auto axis_ = std::vector<int64_t>();
-      if (reduce_all) {
-        for (int64_t i = 0; i < x_dim_size; i++) {
-          axis_.push_back(i);
-        }
-      } else {
-        axis_ = axis.GetData();
-        for (int64_t i = 0; i < axis_size; i++) {
-          if (axis[i] < 0) {
-            axis_[i] = axis[i] + x_dim_size;
+  if (has_dynamic_shape(x.shape())) {
+    Tensor x_shape = shape<T>(x);
+    if (x_dim_size == 1) {
+      x_grad_tmp = backend::expand<T>(out_grad, x_shape);
+    } else {
+      if (!keepdim) {
+        auto axis_ = std::vector<int64_t>();
+        if (reduce_all) {
+          for (int64_t i = 0; i < x_dim_size; i++) {
+            axis_.push_back(i);
+          }
+        } else {
+          axis_ = axis.GetData();
+          for (int64_t i = 0; i < axis_size; i++) {
+            if (axis[i] < 0) {
+              axis_[i] = axis[i] + x_dim_size;
+            }
           }
         }
+        Tensor out_grad_shape = shape<T>(out_grad);
+        size_t total_shape_size = out_grad.shape().size() + axis_.size();
+        std::vector<Tensor> result_shape;
+        size_t j = 0, k = 0;
+        Tensor ones = full<T>({1}, 1, x_shape.dtype());
+        for (size_t i = 0; i < total_shape_size; i++) {
+          if (j < axis_.size() && axis_[j] == int64_t(i)) {
+            result_shape.push_back(ones);
+            j++;
+          } else {
+            result_shape.push_back(slice<T>(
+                out_grad_shape, {0}, {int64_t(k)}, {int64_t(k) + 1}, {1}, {}));
+            k++;
+          }
+        }
+        auto out_grad_ = backend::reshape<T>(out_grad, concat<T>(result_shape));
+        x_grad_tmp = backend::expand<T>(out_grad_, x_shape);
+      } else {
+        x_grad_tmp = backend::expand<T>(out_grad, x_shape);
       }
-      auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
-      auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
-      x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
-    } else {
+    }
+  } else {
+    std::vector<int64_t> x_dim = common::vectorize<int64_t>(x.dims());
+    if (x_dim_size == 1) {
       x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+    } else {
+      if (!keepdim) {
+        auto axis_ = std::vector<int64_t>();
+        if (reduce_all) {
+          for (int64_t i = 0; i < x_dim_size; i++) {
+            axis_.push_back(i);
+          }
+        } else {
+          axis_ = axis.GetData();
+          for (int64_t i = 0; i < axis_size; i++) {
+            if (axis[i] < 0) {
+              axis_[i] = axis[i] + x_dim_size;
+            }
+          }
+        }
+        auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+        auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+        x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
+      } else {
+        x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
+      }
     }
   }
-
   set_output<T>(x_grad_tmp, x_grad);
 }
 
