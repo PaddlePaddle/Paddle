@@ -17,17 +17,17 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "paddle/phi/backends/dynload/mudnn.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/utils/flags.h"
 
 #define CUDNN_BN_MIN_EPSILON 1e-05
 
-DECLARE_bool(cudnn_deterministic);
+PD_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 namespace backends {
@@ -35,6 +35,10 @@ namespace gpu {
 
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
+
+#define MUDNN_SOFTMAX_MODE_INSTANCE 0
+
+#define MUDNN_SOFTMAX_MODE_CHANNEL 1
 
 enum class DataLayout {  // Not use
   kNHWC,
@@ -180,8 +184,9 @@ class ScopedTensorDescriptor {
         dynload::Tensor::Format::NCHW,
         phi::errors::InvalidArgument("format should ONLY be NCHW in MUDNN."));
 
-    desc_.SetNdInfo(
-        static_cast<int>(dims_with_group.size()), dims_with_group.data(), strides.data());
+    desc_.SetNdInfo(static_cast<int>(dims_with_group.size()),
+                    dims_with_group.data(),
+                    strides.data());
     desc_.SetType(type);
     desc_.SetFormat(format);
 
@@ -223,7 +228,8 @@ class ScopedTensorDescriptor {
     std::vector<int64_t> dims_64(dim.begin(), dim.end());
     std::vector<int64_t> stride_64(dim.begin(), dim.end());
     desc_.SetType(mudnn_type);
-    desc_.SetNdInfo(static_cast<int>(dims_64.size()), dims_64.data(), stride_64.data());
+    desc_.SetNdInfo(
+        static_cast<int>(dims_64.size()), dims_64.data(), stride_64.data());
     return desc_;
   }
 
@@ -302,6 +308,15 @@ class ScopedSoftmaxDescriptor {
   dynload::Softmax desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedSoftmaxDescriptor);
 };
+
+static void Coalesce1ToLastDims(std::vector<int>& tensor_dims) {
+  const int ndims = tensor_dims.size();
+  if (ndims < 3) return;
+  for (int i = ndims - 1; i > 1; --i) {
+    tensor_dims[i - 1] *= tensor_dims[i];
+    tensor_dims[i] = 1;
+  }
+}
 
 static void InternalMemFree(void* ptr) {
   if (!ptr) {

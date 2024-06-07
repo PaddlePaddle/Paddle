@@ -26,7 +26,7 @@ PD_DECLARE_int64(cudnn_exhaustive_search_times);
 
 namespace phi {
 
-#ifdef PADDLE_WITH_HIP
+#if defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_MUSA)
 static constexpr size_t kNUM_CUDNN_FWD_ALGS = 1;
 static constexpr size_t kNUM_CUDNN_BWD_FILTER_ALGS = 1;
 static constexpr size_t kNUM_CUDNN_BWD_DATA_ALGS = 1;

@@ -45,6 +45,11 @@ struct GeluWithApproximateFunctor {
   }
 };
 
+// Avoid find symbol of normcdff(__host__) in crt/math_functions.h
+#ifdef PADDLE_WITH_MUSA
+static inline HOSTDEVICE float normcdf(float __a) { return normcdff(__a); }
+#endif
+
 template <typename T>
 struct GeluWithoutApproximateFunctor {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;

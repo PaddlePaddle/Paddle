@@ -109,6 +109,38 @@ def query_rocm_smi(query=None, index=None, dtype=None, mem=32150):
     return ret
 
 
+def query_musa_smi(query=None, index=None, dtype=None):
+    if not has_musa_smi():
+        return []
+    cmd = "mthreads-gmi --query"
+
+    cmd += " | grep -E 'Used|Free|Total|Gpu' | awk -F ': *' '/Used|Free|Total|Gpu/ \
+            { values[(NR-1)%4+1] = $2 } NR%4 == 0 \
+            { print values[4], values[1], values[2], values[3] }'"
+    if not isinstance(dtype, list) or len(dtype) != len(query):
+        dtype = [str] * len(query)
+    output = subprocess.check_output(cmd, shell=True, timeout=3)
+    lines = output.strip().decode("utf-8").split(os.linesep)
+    if isinstance(index, list) and len(index) > 0:
+        lines = [lines[int(idx)] for idx in index]
+    ret = []
+    for idx, line in enumerate(lines):
+        info = Info()
+        line = line.split()
+        line = [
+            idx if index is None else index[idx],
+            line[0][:-1],
+            line[1][:-3],
+            line[2][:-3],
+            line[3][:-3],
+            time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+        ]
+        for k, v, d in zip(query, line, dtype):
+            setattr(info, k.replace(".", "_"), d(v))
+        ret.append(info)
+    return ret
+
+
 def get_gpu_info(index=None):
     q = "index,uuid,driver_version,name,gpu_serial,display_active,display_mode".split(
         ","
@@ -158,6 +190,10 @@ def has_nvidia_smi():
 
 def has_rocm_smi():
     return shutil.which("rocm-smi")
+
+
+def has_musa_smi():
+    return shutil.which("mthreads-gmi")
 
 
 if __name__ == '__main__':
