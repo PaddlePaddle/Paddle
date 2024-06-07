@@ -53,7 +53,7 @@ TimeDuration PerformanceReporter::Sum(
 TimeDuration PerformanceReporter::Mean(
     const std::vector<TimeDuration>& records) {
   if (records.empty()) return TimeDuration::zero();
-  return Sum(records) / records.size();
+  return Sum(records) / (records.size());
 }
 
 TimeDuration PerformanceReporter::Max(
@@ -77,23 +77,46 @@ std::vector<TimeDuration> PerformanceReporter::TopK(
   return top_k;
 }
 
+TimeDuration PerformanceReporter::PreciseMean(
+    const std::vector<TimeDuration>& durations) {
+  int top_count = durations.size();
+  auto top_k = TopK(durations, top_count);
+  auto avg_time = std::accumulate(
+      top_k.begin() + 10, top_k.end() - 10, TimeDuration::zero());
+  return avg_time / (top_count - 20);
+}
+
 std::string PerformanceReporter::Report(
     const std::vector<TimePointInfo>& records) {
   if (records.empty()) return "[No Record]";
   std::stringstream ss;
   std::string unit = "us";
   auto durations = ExtractDuration(records);
+  int top_count = durations.size();
   auto total_time = std::chrono::duration_cast<TimeDuration>(Sum(durations));
   auto mean_time = std::chrono::duration_cast<TimeDuration>(Mean(durations));
   auto max_time = std::chrono::duration_cast<TimeDuration>(Max(durations));
   auto min_time = std::chrono::duration_cast<TimeDuration>(Min(durations));
-  int top_count = 10;
   auto top_k = TopK(durations, top_count);
+  auto avg_time =
+      std::accumulate(
+          top_k.begin() + 10, top_k.end() - 10, TimeDuration::zero()) /
+      (top_count - 20);
   ss << "Call Count = " << durations.size()
+     << "\t MEAN Time = " << top_k[60].count() << unit
+     << "\t average Time = " << avg_time.count() << unit
      << "\t Total Time = " << total_time.count() << unit
      << "\t Mean Time = " << mean_time.count() << unit
      << "\t Max Time = " << max_time.count() << unit
      << "\t Min Time = " << min_time.count() << unit << "\n";
+
+  ss << "Normal Distribution: " << top_count << ": [";
+  for (size_t i = 0; i < durations.size(); ++i) {
+    ss << i + 1 << ": "
+       << std::chrono::duration_cast<TimeDuration>(durations[i]).count() << unit
+       << "  ";
+  }
+  ss << "]\n";
   ss << "Top " << top_count << ": [";
   for (size_t i = 0; i < top_k.size(); ++i) {
     ss << i + 1 << ": "
@@ -101,6 +124,7 @@ std::string PerformanceReporter::Report(
        << "  ";
   }
   ss << "]\n";
+
   return ss.str();
 }
 
