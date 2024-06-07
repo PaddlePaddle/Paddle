@@ -43,7 +43,7 @@ class WeightedSamplingTrailObjectiveFunc : public BaseObjectiveFunc {
                                      const BucketInfo& bucket_info,
                                      double sampling_prob = 1.0,
                                      int max_sampling_times = 65536,
-                                     int repeats = 120);
+                                     int repeats = 80);
 
   ScoreType operator()(const CandidateType& candidate) override;
 
