@@ -2678,6 +2678,17 @@
   backward : logsumexp_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : lp_pool2d
+  args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : Pool2DInferMeta
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+  kernel :
+    func : lp_pool2d
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm, norm_type]
+  backward : lp_pool2d_grad
+
 - op : lstm
   args: (Tensor input, Tensor h0, Tensor c0, Tensor weight, Tensor bias, bool use_peepholes
     = true, bool is_reverse = false, bool is_test = false, str gate_activation = "sigmoid",
