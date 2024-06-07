@@ -26,12 +26,16 @@ BucketInfo::BucketInfo(int sp_lower_bound,
                        int rb_upper_bound,
                        bool sp_is_dynamic = false,
                        bool rb_is_dynamic = false) {
-  BucketInfo::Dimension sp_dimension(
-      sp_lower_bound, sp_upper_bound, "S", sp_is_dynamic);
-  BucketInfo::Dimension rb_dimension(
-      rb_lower_bound, rb_upper_bound, "R", rb_is_dynamic);
-  this->space.push_back(sp_dimension);
-  this->space.push_back(rb_dimension);
+  if (sp_is_dynamic || sp_lower_bound != 1 || sp_upper_bound != 1) {
+    BucketInfo::Dimension sp_dimension(
+        sp_lower_bound, sp_upper_bound, "S", sp_is_dynamic);
+    this->space.push_back(sp_dimension);
+  }
+  if (rb_is_dynamic || rb_lower_bound != 1 || rb_upper_bound != 1) {
+    BucketInfo::Dimension rb_dimension(
+        rb_lower_bound, rb_upper_bound, "R", rb_is_dynamic);
+    this->space.push_back(rb_dimension);
+  }
 }
 
 bool BucketInfo::operator==(const BucketInfo& other) const {

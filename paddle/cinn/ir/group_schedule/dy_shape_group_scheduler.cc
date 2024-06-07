@@ -283,6 +283,7 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
   for (int64_t i = 0; i < info.memory_consistent_order_space.size(); ++i) {
     std::string iter_type = info.memory_consistent_order_space[i].first;
     ir::Expr extent = info.memory_consistent_order_space[i].second;
+    if (extent.is_constant() && extent.get_constant() == 1) continue;
     if (info.memory_consistent_order_homogeneous_merged_space.empty() ||
         info.memory_consistent_order_homogeneous_merged_space.back().first !=
             iter_type) {
