@@ -15,7 +15,7 @@
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/schedule/factorize_reduction.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
-
+#include "paddle/common/enforce.h"
 /** \brief A macro that guards the beginning of each implementation of schedule
  */
 #define CINN_IR_SCHEDULE_BEGIN() try {

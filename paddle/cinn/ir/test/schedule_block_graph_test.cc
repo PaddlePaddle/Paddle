@@ -19,7 +19,7 @@
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
-
+#include "paddle/common/enforce.h"
 PD_DECLARE_bool(cinn_new_group_scheduler);
 
 namespace cinn {

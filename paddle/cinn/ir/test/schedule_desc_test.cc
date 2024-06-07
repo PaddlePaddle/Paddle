@@ -25,7 +25,7 @@
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/cinn/utils/type_defs.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 

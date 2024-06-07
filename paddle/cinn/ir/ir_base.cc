@@ -23,7 +23,6 @@
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/common/enforce.h"
-
 namespace cinn {
 namespace ir {
 
