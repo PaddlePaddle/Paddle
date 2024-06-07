@@ -146,7 +146,7 @@ def _get_reduce_axis_with_tensor(axis, x):
     return reduce_all, axis
 
 
-def log(x, name=None):
+def log(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
     r"""
     Calculates the natural log of the given input Tensor, element-wise.
 
