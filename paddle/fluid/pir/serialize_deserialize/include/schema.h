@@ -15,6 +15,7 @@
 #include "glog/logging.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
 namespace pir {
 /**
  * IMPORTANT!!!
@@ -25,8 +26,8 @@ namespace pir {
 
 // all IR structure's identifier (region, block, op, attr, type value etc)
 // which can be string , int64_t etc.
-#define ID "id"
-
+#define ID "#"
+#define VALUE_ID "%"
 // program's key:
 #define REGIONS "regions"
 

@@ -32,6 +32,7 @@ DialectIdMap* DialectIdMap::Instance() {
 DialectIdMap::DialectIdMap() {
   insert(pir::BuiltinDialect::name(), "0");
   insert(paddle::dialect::OperatorDialect::name(), "1");
+  insert(pir::ControlFlowDialect::name(), "2");
 }
 void DialectIdMap::insert(const std::string& key, const std::string& value) {
   CompressDialect[key] = value;
@@ -44,7 +45,7 @@ std::string DialectIdMap::GetCompressDialectId(const std::string& name) {
   } else {
     VLOG(0) << "can't find dialect " << name
             << "'s compress id, return original dialectname, it's better to "
-               "insert compress id in init func";
+               "insert compress id in DialectIdMap() func";
     return name;
   }
   return "";
