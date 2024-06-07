@@ -25,8 +25,6 @@ from op_test_xpu import XPUOpTest
 
 import paddle
 
-paddle.enable_static()
-
 
 class XPUTestElementwisePowOp(XPUOpTestWrapper):
     def __init__(self):
@@ -58,17 +56,12 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
         def test_check_output(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
-                self.check_output_with_place(place, check_dygraph=False)
+                self.check_output_with_place(place)
 
         def test_check_grad(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
-                self.check_grad_with_place(
-                    place,
-                    ['X', 'Y'],
-                    'Out',
-                    check_dygraph=False,
-                )
+                self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
     class TestElementwisePowOp_big_shape_1(TestElementwisePowOp):
         def compute_input_output(self):

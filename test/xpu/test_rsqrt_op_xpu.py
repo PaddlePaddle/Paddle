@@ -62,9 +62,7 @@ class XPUTestRsqrtOp(XPUOpTestWrapper):
 
         def test_check_grad(self):
             if core.is_compiled_with_xpu():
-                self.check_grad_with_place(
-                    self.place, ['X'], 'Out', check_dygraph=True
-                )
+                self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class TestRsqrtOp1(TestRsqrtOp):
         def init_shape(self):

@@ -62,9 +62,7 @@ class XPUTestReciprocalOp(XPUOpTestWrapper):
 
         def test_check_grad(self):
             if core.is_compiled_with_xpu():
-                self.check_grad_with_place(
-                    self.place, ['X'], 'Out', check_dygraph=True
-                )
+                self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class TestReciprocalOp1(TestReciprocalOp):
         def init_shape(self):
