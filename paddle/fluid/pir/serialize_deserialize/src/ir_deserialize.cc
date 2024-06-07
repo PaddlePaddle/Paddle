@@ -147,7 +147,7 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
   if (op_name == PARAMETEROP) {
     return ReadParameterOp(op_json);
   }
-  GetDecompressOpName(op_name);
+  GetDecompressOpName(&op_name);
   VLOG(4) << "Read op_name = " << op_name << ".";
   // deserialize opoperands (find value)
   Json& operands_json = op_json->at(OPOPERANDS);
