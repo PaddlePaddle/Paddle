@@ -20,7 +20,7 @@ namespace phi {
 template <typename T, typename Context>
 void XPULogsumexpKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const std::vector<int64_t>& axis,
+                        const std::vector<int>& axis,
                         bool keepdim,
                         bool reduce_all,
                         DenseTensor* out) {

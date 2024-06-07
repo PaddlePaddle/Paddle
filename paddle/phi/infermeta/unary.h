@@ -362,7 +362,7 @@ void KthvalueInferMeta(const MetaTensor& x,
 void LogicalNotInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void LogsumexpInferMeta(const MetaTensor& input,
-                        const std::vector<int64_t>& axis,
+                        const std::vector<int>& axis,
                         bool keepdim,
                         bool reduce_all,
                         MetaTensor* out);
