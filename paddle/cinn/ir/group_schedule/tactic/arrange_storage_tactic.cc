@@ -323,7 +323,11 @@ std::optional<CudaAxisType> AnalyzeCrossType(const VarToForMap& var2for_map,
       analyzer::GetIterValuesOfAccess(store, store_block);
   std::vector<ir::Expr> iter_values_of_load =
       analyzer::GetIterValuesOfAccess(load, load_block);
-  CHECK_EQ(iter_values_of_load.size(), iter_values_of_store.size());
+  PADDLE_ENFORCE_EQ(iter_values_of_load.size(),
+                    iter_values_of_store.size(),
+                    phi::errors::InvalidArgument(
+                        "The number of iter values of store and load should be "
+                        "the same"));
 
   for (int i = 0; i < iter_values_of_load.size(); ++i) {
     IntSet block_store_range = Evaluate(iter_values_of_store[i],
