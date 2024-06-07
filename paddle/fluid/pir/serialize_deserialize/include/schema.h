@@ -81,10 +81,6 @@ std::pair<std::string, std::string> getContentSplitByDot(
     const std::string& str);
 
 class DialectIdMap {
- private:
-  std::unordered_map<std::string, std::string> CompressDialect;
-  std::unordered_map<std::string, std::string> DecompressDialect;
-
  public:
   static DialectIdMap* Instance();
   DialectIdMap();
@@ -93,6 +89,10 @@ class DialectIdMap {
   std::string GetCompressDialectId(const std::string& name);
 
   std::string GetDecompressDialectId(const std::string& id);
+
+ private:
+  std::unordered_map<std::string, std::string> CompressDialect;
+  std::unordered_map<std::string, std::string> DecompressDialect;
 };
 
 }  // namespace pir

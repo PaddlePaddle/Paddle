@@ -27,6 +27,9 @@
 #include "paddle/pir/include/core/builtin_type.h"
 
 namespace pir {
+#define COMPRESS_DIALECT_NAME(attr_template)           \
+  pir::DialectIdMap::Instance()->GetCompressDialectId( \
+      (attr_template).dialect().name())
 
 void GetCompressOpName(std::string* op_name) {
   std::pair<std::string, std::string> name = getContentSplitByDot(*op_name);
@@ -66,7 +69,7 @@ class AttrTypeWriter {
 template <typename T>
 Json serializeTypeToJson(const T& type) {
   Json json_obj;
-  json_obj[ID] = type.dialect().name() + "." + type.name();
+  json_obj[ID] = COMPRESS_DIALECT_NAME(type) + "." + type.name();
   return json_obj;
 }
 
@@ -90,18 +93,18 @@ Json serializeTypeToJson(const T& type) {
 template <typename T>
 Json serializeAttrToJson(const T& attr) {
   Json json_obj;
-  json_obj[ID] = attr.dialect().name() + "." + attr.name();
+  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
   json_obj[DATA] = attr.data();
   return json_obj;
 }
 
-#define SERIALIZE_ATTR_TO_JSON(type, data)                    \
-  template <>                                                 \
-  Json serializeAttrToJson<type>(const type& attr) {          \
-    Json json_obj;                                            \
-    json_obj[ID] = attr.dialect().name() + "." + attr.name(); \
-    json_obj[DATA] = data;                                    \
-    return json_obj;                                          \
+#define SERIALIZE_ATTR_TO_JSON(type, data)                          \
+  template <>                                                       \
+  Json serializeAttrToJson<type>(const type& attr) {                \
+    Json json_obj;                                                  \
+    json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name(); \
+    json_obj[DATA] = data;                                          \
+    return json_obj;                                                \
   }
 
 SERIALIZE_ATTR_TO_JSON(pir::StrAttribute, attr.AsString());
@@ -120,7 +123,7 @@ template <>
 Json serializeAttrToJson<paddle::dialect::ScalarAttribute>(
     const paddle::dialect::ScalarAttribute& attr) {
   Json json_obj;
-  json_obj[ID] = attr.dialect().name() + "." + attr.name();
+  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
 
   Json content = Json::array();
   auto scalar = attr.data();
@@ -169,7 +172,7 @@ template <>
 Json serializeAttrToJson<paddle::dialect::PlaceAttribute>(
     const paddle::dialect::PlaceAttribute& attr) {
   Json json_obj;
-  json_obj[ID] = attr.dialect().name() + "." + attr.name();
+  json_obj[ID] = COMPRESS_DIALECT_NAME(attr) + "." + attr.name();
   Json content = Json::array();
   auto place = attr.data();
   content.push_back(static_cast<int8_t>(place.GetType()));
@@ -254,7 +257,7 @@ Json AttrTypeWriter::WriteBuiltInAttr(const pir::Attribute& attr) {
     for (size_t i = 0; i < attr_.size(); i++) {
       val.push_back(writeAttr(attr_.at(i)));
     }
-    attr_json[ID] = attr_.name();
+    attr_json[ID] = COMPRESS_DIALECT_NAME(attr_) + "." + attr_.name();
     attr_json[DATA] = val;
     return attr_json;
   } else if (attr.isa<pir::TypeAttribute>()) {
@@ -344,7 +347,7 @@ Json AttrTypeWriter::WriteBuiltInType(const pir::Type& type) {
   } else if (type.isa<pir::VectorType>()) {
     VLOG(8) << "Write VectorType ... ";
     auto type_ = type.dyn_cast<pir::VectorType>();
-    type_json[ID] = type_.name();
+    type_json[ID] = COMPRESS_DIALECT_NAME(type_) + "." + type_.name();
     Json content = Json::array();
     for (auto type_x : type_.data()) {
       content.push_back(writeType(type_x));
@@ -355,7 +358,7 @@ Json AttrTypeWriter::WriteBuiltInType(const pir::Type& type) {
     VLOG(8) << "Write DenseTensorType ... ";
     auto type_ = type.dyn_cast<pir::DenseTensorType>();
 
-    type_json[ID] = type_.name();
+    type_json[ID] = COMPRESS_DIALECT_NAME(type_) + "." + type_.name();
     Json content = Json::array();
     content.push_back(writeType(type_.dtype()));
 

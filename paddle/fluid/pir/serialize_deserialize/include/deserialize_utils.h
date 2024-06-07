@@ -27,10 +27,12 @@
 #include "paddle/pir/include/core/builtin_type.h"
 
 namespace pir {
+#define DECOMPRESS_DIALECT_ID(name) \
+  pir::DialectIdMap::Instance()->GetDecompressDialectId(name)
+
 void GetDecompressOpName(std::string* op_name) {
   std::pair<std::string, std::string> name = getContentSplitByDot(*op_name);
-  *op_name = pir::DialectIdMap::Instance()->GetDecompressDialectId(name.first) +
-             "." + name.second;
+  *op_name = DECOMPRESS_DIALECT_ID(name.first) + "." + name.second;
   return;
 }
 
@@ -179,11 +181,10 @@ pir::Type parseType(Json* type_json) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   std::pair<std::string, std::string> name = getContentSplitByDot(type_name);
 
-  if (pir::DialectIdMap::Instance()->GetDecompressDialectId(name.first) ==
-      pir::BuiltinDialect::name()) {
+  if (DECOMPRESS_DIALECT_ID(name.first) == pir::BuiltinDialect::name()) {
     return AttrTypeReader::ReadBuiltInType(name.second, type_json, ctx);
-  } else if (pir::DialectIdMap::Instance()->GetDecompressDialectId(
-                 name.first) == paddle::dialect::OperatorDialect::name()) {
+  } else if (DECOMPRESS_DIALECT_ID(name.first) ==
+             paddle::dialect::OperatorDialect::name()) {
     return AttrTypeReader::ReadPaddleOperatorType(name.second, type_json, ctx);
   } else {
     PADDLE_ENFORCE(
@@ -209,11 +210,10 @@ pir::Attribute parseAttr(Json* attr_json) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   std::pair<std::string, std::string> name = getContentSplitByDot(attr_name);
 
-  if (pir::DialectIdMap::Instance()->GetDecompressDialectId(name.first) ==
-      pir::BuiltinDialect::name()) {
+  if (DECOMPRESS_DIALECT_ID(name.first) == pir::BuiltinDialect::name()) {
     return AttrTypeReader::ReadBuiltInAttr(name.second, attr_json, ctx);
-  } else if (pir::DialectIdMap::Instance()->GetDecompressDialectId(
-                 name.first) == paddle::dialect::OperatorDialect::name()) {
+  } else if (DECOMPRESS_DIALECT_ID(name.first) ==
+             paddle::dialect::OperatorDialect::name()) {
     return AttrTypeReader::ReadPaddleOperatorAttr(name.second, attr_json, ctx);
   } else {
     PADDLE_ENFORCE(
