@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,36 +14,41 @@
 
 import unittest
 
+import numpy as np
 import test_op_translator
 
 import paddle
+from paddle.base.framework import (
+    convert_np_dtype_to_dtype_,
+)
 from paddle.base.layer_helper import LayerHelper
 
 paddle.pir_utils._switch_to_old_ir_()
 
 
-class TestPullBoxSparseOpTranslator(
-    test_op_translator.TestOpWithBackwardTranslator
+class TestDistributedLookupTableOpTranslator(
+    test_op_translator.TestOpTranslator
 ):
     def append_op(self):
-        self.forward_op_type = "pull_box_sparse"
-        self.backward_op_type = "push_box_sparse"
+        self.op_type = "distributed_lookup_table"
         ids = paddle.ones(shape=(1, 1), dtype='float32')
         w = paddle.ones(shape=(1, 1), dtype='float32')
         out = paddle.ones(shape=(1, 1), dtype='float32')
         attrs = {
-            'is_sparse': False,
+            'table_id': 0,
             'is_distributed': False,
-            'size': 1,
+            'lookup_table_version': 'lookup_table',
+            'padding_idx': -1,
+            'dtype': convert_np_dtype_to_dtype_(np.float32),
+            'is_test': False,
         }
-        forward_helper = LayerHelper(self.forward_op_type)
-        forward_helper.append_op(
-            type=self.forward_op_type,
-            inputs={"W": w, "Ids": [ids]},
-            outputs={"Out": [out]},
+        helper = LayerHelper(self.op_type)
+        helper.append_op(
+            type=self.op_type,
+            inputs={"Ids": [ids], "W": w},
+            outputs={"Outputs": [out]},
             attrs=attrs,
         )
-        return out
 
     def test_translator(self):
         self.check()

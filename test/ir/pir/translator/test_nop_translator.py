@@ -22,28 +22,17 @@ from paddle.base.layer_helper import LayerHelper
 paddle.pir_utils._switch_to_old_ir_()
 
 
-class TestPullBoxSparseOpTranslator(
-    test_op_translator.TestOpWithBackwardTranslator
-):
+class TestNopTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
-        self.forward_op_type = "pull_box_sparse"
-        self.backward_op_type = "push_box_sparse"
-        ids = paddle.ones(shape=(1, 1), dtype='float32')
-        w = paddle.ones(shape=(1, 1), dtype='float32')
-        out = paddle.ones(shape=(1, 1), dtype='float32')
-        attrs = {
-            'is_sparse': False,
-            'is_distributed': False,
-            'size': 1,
-        }
-        forward_helper = LayerHelper(self.forward_op_type)
-        forward_helper.append_op(
-            type=self.forward_op_type,
-            inputs={"W": w, "Ids": [ids]},
-            outputs={"Out": [out]},
-            attrs=attrs,
+        self.op_type = "nop"
+        x = paddle.ones(shape=(1,), dtype='float32')
+        out = paddle.ones(shape=(1,), dtype='float32')
+        helper = LayerHelper(self.op_type)
+        helper.append_op(
+            type=self.op_type,
+            inputs={"X": x},
+            outputs={"Out": out},
         )
-        return out
 
     def test_translator(self):
         self.check()

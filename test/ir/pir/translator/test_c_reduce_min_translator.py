@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,28 +22,19 @@ from paddle.base.layer_helper import LayerHelper
 paddle.pir_utils._switch_to_old_ir_()
 
 
-class TestPullBoxSparseOpTranslator(
-    test_op_translator.TestOpWithBackwardTranslator
-):
+class TestCReduceMinOpTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
-        self.forward_op_type = "pull_box_sparse"
-        self.backward_op_type = "push_box_sparse"
-        ids = paddle.ones(shape=(1, 1), dtype='float32')
-        w = paddle.ones(shape=(1, 1), dtype='float32')
-        out = paddle.ones(shape=(1, 1), dtype='float32')
-        attrs = {
-            'is_sparse': False,
-            'is_distributed': False,
-            'size': 1,
-        }
-        forward_helper = LayerHelper(self.forward_op_type)
-        forward_helper.append_op(
-            type=self.forward_op_type,
-            inputs={"W": w, "Ids": [ids]},
-            outputs={"Out": [out]},
+        self.op_type = "c_reduce_min"
+        x = paddle.ones(shape=(100, 2, 3), dtype='float32')
+        y = paddle.ones(shape=(100, 2, 3), dtype='float32')
+        attrs = {'ring_id': 0, 'root_id': 0, 'use_calc_stream': False}
+        helper = LayerHelper(self.op_type)
+        helper.append_op(
+            type=self.op_type,
+            inputs={"X": x},
+            outputs={"Out": y},
             attrs=attrs,
         )
-        return out
 
     def test_translator(self):
         self.check()

@@ -22,28 +22,29 @@ from paddle.base.layer_helper import LayerHelper
 paddle.pir_utils._switch_to_old_ir_()
 
 
-class TestPullBoxSparseOpTranslator(
-    test_op_translator.TestOpWithBackwardTranslator
-):
+class TestRandomRoutingOpTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):
-        self.forward_op_type = "pull_box_sparse"
-        self.backward_op_type = "push_box_sparse"
-        ids = paddle.ones(shape=(1, 1), dtype='float32')
-        w = paddle.ones(shape=(1, 1), dtype='float32')
-        out = paddle.ones(shape=(1, 1), dtype='float32')
+        self.op_type = "random_routing"
+        topk_idx = paddle.ones(shape=(200, 2), dtype='int64')
+        prob = paddle.ones(shape=(200, 2), dtype='float32')
+        topk_value = paddle.ones(shape=(200, 2), dtype='float32')
+        out = paddle.ones(shape=(200, 2), dtype='int64')
         attrs = {
-            'is_sparse': False,
-            'is_distributed': False,
-            'size': 1,
+            'prob': prob,
+            'topk_value': topk_value,
+            'topk_idx': topk_idx,
         }
-        forward_helper = LayerHelper(self.forward_op_type)
-        forward_helper.append_op(
-            type=self.forward_op_type,
-            inputs={"W": w, "Ids": [ids]},
-            outputs={"Out": [out]},
+        helper = LayerHelper(self.op_type)
+        helper.append_op(
+            type=self.op_type,
+            inputs={
+                "Prob": prob,
+                "TopK_Value": topk_value,
+                "TopK_Idx": topk_idx,
+            },
+            outputs={"Out": out},
             attrs=attrs,
         )
-        return out
 
     def test_translator(self):
         self.check()
