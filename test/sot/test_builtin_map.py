@@ -24,11 +24,11 @@ from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import strict_mode_guard
 
 
-def double_num(num: float | int):
+def double_num(num: float):
     return num * 2
 
 
-def double_num_with_breakgraph(num: float | int):
+def double_num_with_breakgraph(num: float):
     sot.psdb.breakgraph()
     return num * 2
 
