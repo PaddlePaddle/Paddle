@@ -196,13 +196,9 @@ template <typename T, typename Context>
 void TopkV1Kernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const Scalar& k_scalar,
-                  int axis,
-                  bool largest,
-                  bool sorted,
                   DenseTensor* out,
                   DenseTensor* indices) {
-  TopkKernel<T, Context>(
-      dev_ctx, x, k_scalar, axis, largest, sorted, out, indices);
+  TopkKernel<T, Context>(dev_ctx, x, k_scalar, -1, true, true, out, indices);
 }
 }  // namespace phi
 

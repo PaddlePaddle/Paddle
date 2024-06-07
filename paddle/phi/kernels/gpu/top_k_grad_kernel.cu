@@ -85,12 +85,9 @@ void TopkV1GradKernel(const Context& dev_ctx,
                       const DenseTensor& indices,
                       const DenseTensor& out_grad,
                       const Scalar& k_scalar,
-                      int axis,
-                      bool largest UNUSED,
-                      bool sorted UNUSED,
                       DenseTensor* x_grad) {
   TopkGradKernel<T, Context>(
-      dev_ctx, x, indices, out_grad, k_scalar, axis, largest, sorted, x_grad);
+      dev_ctx, x, indices, out_grad, k_scalar, -1, true, true, x_grad);
 }
 }  // namespace phi
 

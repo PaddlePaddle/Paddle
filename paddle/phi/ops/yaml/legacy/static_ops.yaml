@@ -700,10 +700,10 @@
   backward : swish_grad
 
 - op : topk_v1
-  args : (Tensor x, Scalar(int) k = 1, int axis = -1, bool largest = true, bool sorted = true)
+  args : (Tensor x, Scalar(int) k = 1)
   output : Tensor(out), Tensor(indices)
   infer_meta :
-    func : TopKInferMeta
+    func : TopkV1InferMeta
   kernel :
     func : topk_v1
     data_type : x
