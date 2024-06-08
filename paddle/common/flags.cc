@@ -1616,6 +1616,11 @@ PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
                          "Whether to apply shape_optimization pass "
                          "to infer symbolic shape");
 
+PHI_DEFINE_EXPORTED_int64(
+    pir_broadcast_tree_limit,
+    32,
+    "Maximum number of broadcast nodes allowed in a tree");
+
 PHI_DEFINE_EXPORTED_string(
     nvidia_package_dir,  // NOLINT
     "",

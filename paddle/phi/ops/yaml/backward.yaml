@@ -1826,6 +1826,17 @@
   kernel :
     func : logsumexp_grad
 
+- backward_op : lp_pool2d_grad
+  forward : lp_pool2d(Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, float norm_type)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : lp_pool2d_grad
+    param : [x, out, out_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm, norm_type]
+
 - backward_op : lstm_grad
   forward: lstm (Tensor input, Tensor h0, Tensor c0, Tensor weight, Tensor bias, bool use_peepholes
     = true, bool is_reverse = false, bool is_test = false, str gate_activation = "sigmoid",
