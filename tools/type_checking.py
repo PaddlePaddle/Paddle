@@ -262,7 +262,7 @@ def run_type_checker(
     docstrings_to_test, whl_error = get_docstring(
         full_test=args.full_test,
         filter_api=filter_api,
-        apis=tuple((api, api) for api in args.apis),
+        apis=[(api, api) for api in args.apis],
     )
 
     logger.info(">>> Running type checker ...")

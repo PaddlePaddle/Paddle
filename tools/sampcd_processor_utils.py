@@ -598,7 +598,7 @@ def get_test_capacity(run_on_device="cpu"):
 def get_docstring(
     full_test: bool = False,
     filter_api: typing.Callable[[str], bool] | None = None,
-    apis: tuple[tuple[str, str], ...] | None = None,
+    apis: list[tuple[str, str]] | None = None,
 ):
     '''
     this function will get the docstring for test.
