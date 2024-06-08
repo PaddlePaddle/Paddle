@@ -24,9 +24,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/utils/string/string_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 static std::string kSep(1, static_cast<char>(1));  // NOLINT
 
@@ -269,8 +267,6 @@ class FixOpRunOrderPass : public Pass {
   }
 };
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(fix_op_run_order_pass, paddle::framework::ir::FixOpRunOrderPass);

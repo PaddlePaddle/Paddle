@@ -67,14 +67,15 @@ InferSymbolicShapeContext::GetShapeOrDataForValue(Value val) const {
   return value_id_to_shape_or_data_.at(val.impl()->id());
 }
 
-void InferSymbolicShapeContext::SetStaticShapeForValue(Value val) {
+void InferSymbolicShapeContext::SetSymbolForValueByStaticShape(Value val) {
   const auto& value_type = val.type();
   if (!val || !value_type) {
-    PADDLE_THROW(
-        phi::errors::Fatal("Set static shape for null value is FOBBIDEN!"));
+    LOG(WARNING) << "Risk on SetSymbolForValueByStaticShape for null value";
+    return;
   }
   if (!IsStaticShape(val)) {
-    LOG(WARNING) << "Risk on SetStaticShapeForValue for contain_unknown_dim";
+    LOG(WARNING)
+        << "Risk on SetSymbolForValueByStaticShape for contain_unknown_dim";
   }
   const auto& GetStaticShapeForDenseTensorType =
       [&](DenseTensorType type_info) -> symbol::TensorShapeOrDataDimExprs {
@@ -289,8 +290,8 @@ const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
   return context_.GetNextSymName();
 }
 
-void ShapeConstraintIRAnalysis::SetStaticShapeForValue(Value val) {
-  context_.SetStaticShapeForValue(val);
+void ShapeConstraintIRAnalysis::SetSymbolForValueByStaticShape(Value val) {
+  context_.SetSymbolForValueByStaticShape(val);
 }
 
 void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
@@ -319,7 +320,7 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
         for (auto& operand : GetRealOperandSource(op)) {
           if (operand.impl() && !context_.HasShapeOrDataForValue(operand)) {
             if (!operand.defining_op()) {
-              SetStaticShapeForValue(operand);
+              SetSymbolForValueByStaticShape(operand);
             } else {
               Visit(operand.defining_op());
             }
@@ -334,7 +335,7 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
     for (auto& operand : GetRealOperandSource(op)) {
       if (operand.impl() && !context_.HasShapeOrDataForValue(operand)) {
         if (!operand.defining_op()) {
-          SetStaticShapeForValue(operand);
+          SetSymbolForValueByStaticShape(operand);
         } else {
           has_prev_op = true;
         }
@@ -379,22 +380,23 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
     if (infer_symbolic_shape_interface) {
       infer_symbolic_shape_interface.InferSymbolicShape(&context_);
       for (auto& result_value : op->results()) {
-        if (result_value && (!context_.HasShapeOrDataForValue(result_value))) {
+        if (!result_value || !result_value.type()) {
+          continue;
+        }
+        if (!context_.HasShapeOrDataForValue(result_value)) {
           PADDLE_THROW(phi::errors::Fatal(op->name() +
                                           " HAS ERROR on InferSymbolicShape!"));
         }
       }
     } else {
-      // TODO(Hongqing-work): throw it after the shape analysis reconstruct
-      // is done.
-      // PADDLE_THROW(phi::errors::Unimplemented(
-      //     val.defining_op()->name() +
-      //     " DOES NOT have InferSymbolicShapeInterface!"));
       LOG(WARNING) << op->name()
                    << " DOES NOT have InferSymbolicShapeInterface!";
       for (auto& result_value : op->results()) {
-        if (result_value && (!context_.HasShapeOrDataForValue(result_value))) {
-          SetStaticShapeForValue(result_value);
+        if (!result_value || !result_value.type()) {
+          continue;
+        }
+        if (!context_.HasShapeOrDataForValue(result_value)) {
+          SetSymbolForValueByStaticShape(result_value);
         }
       }
     }
@@ -412,7 +414,7 @@ ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
   if (!context_.HasShapeOrDataForValue(val)) {
     // backtrack to infer shape from defining op
     if (!val.defining_op()) {
-      SetStaticShapeForValue(val);
+      SetSymbolForValueByStaticShape(val);
     } else {
       VLOG(3) << "InferShapeOrDataForValue,  defining_op: "
               << val.defining_op()->name();
