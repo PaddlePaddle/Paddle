@@ -8153,7 +8153,7 @@ def _get_paddle_place(place):
 
     # XPU
     available_xpu_place = re.match(r"xpu:\d+", place)
-    if available_xpu_place:
+    if available_xpu_place or place == "xpu":
         if not core.is_compiled_with_xpu():
             raise ValueError(
                 f"The device should not be {available_xpu_place.group()}, since PaddlePaddle is "
