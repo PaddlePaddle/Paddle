@@ -113,7 +113,7 @@ class XPUOpTest(OpTest):
             # We disable bfloat16 amp for XPU2 but we still allow bfloat16 unittests for XPU2.
             if (
                 not core.is_bfloat16_supported(place)
-                or not core.get_xpu_device_version(place.get_device_id())
+                and not core.get_xpu_device_version(place.get_device_id())
                 == core.XPUVersion.XPU2
             ):
                 return
@@ -203,7 +203,7 @@ class XPUOpTest(OpTest):
             # We disable bfloat16 amp for XPU2 but we still allow bfloat16 unittests for XPU2.
             if (
                 not core.is_bfloat16_supported(place)
-                or not core.get_xpu_device_version(place.get_device_id())
+                and not core.get_xpu_device_version(place.get_device_id())
                 == core.XPUVersion.XPU2
             ):
                 return
