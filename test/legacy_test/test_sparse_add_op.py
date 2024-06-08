@@ -1,4 +1,4 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,25 +13,19 @@
 # limitations under the License.
 
 import unittest
-from operator import __add__, __mul__, __sub__, __truediv__
+from operator import __add__
 
 import numpy as np
 
 import paddle
 from paddle import sparse
 
-op_list = [__add__, __sub__, __mul__, __truediv__]
+op_list = [__add__]
 
 
 def get_actual_res(x, y, op):
     if op == __add__:
         res = paddle.sparse.add(x, y)
-    elif op == __sub__:
-        res = paddle.sparse.subtract(x, y)
-    elif op == __mul__:
-        res = paddle.sparse.multiply(x, y)
-    elif op == __truediv__:
-        res = paddle.sparse.divide(x, y)
     else:
         raise ValueError("unsupported op")
     return res
@@ -42,7 +36,7 @@ def mask_to_zero(x, mask):
     return x
 
 
-class TestSparseElementWiseAPI(unittest.TestCase):
+class TestSparseAddAPI(unittest.TestCase):
     """
     test paddle.sparse.add, subtract, multiply, divide
     """
@@ -85,19 +79,18 @@ class TestSparseElementWiseAPI(unittest.TestCase):
                 rtol=1e-05,
                 equal_nan=True,
             )
-            if not (op == __truediv__ and dtype in ['int32', 'int64']):
-                np.testing.assert_allclose(
-                    mask_to_zero(dense_x.grad.numpy(), mask_x),
-                    csr_x.grad.to_dense().numpy(),
-                    rtol=1e-05,
-                    equal_nan=True,
-                )
-                np.testing.assert_allclose(
-                    mask_to_zero(dense_y.grad.numpy(), mask_y),
-                    csr_y.grad.to_dense().numpy(),
-                    rtol=1e-05,
-                    equal_nan=True,
-                )
+            np.testing.assert_allclose(
+                mask_to_zero(dense_x.grad.numpy(), mask_x),
+                csr_x.grad.to_dense().numpy(),
+                rtol=1e-05,
+                equal_nan=True,
+            )
+            np.testing.assert_allclose(
+                mask_to_zero(dense_y.grad.numpy(), mask_y),
+                csr_y.grad.to_dense().numpy(),
+                rtol=1e-05,
+                equal_nan=True,
+            )
 
     def func_test_coo(self, op):
         for sparse_dim in range(len(self.coo_shape) - 1, len(self.coo_shape)):
