@@ -188,8 +188,8 @@ class TestSupportedTypeInfo(unittest.TestCase):
 
     @unittest.skipIf(
         not core.is_compiled_with_xpu()
-        or not core.get_xpu_device_version(0) >= core.XPUVersion.XPU3,
-        "run test when xpu's compute capability >= xpu3.",
+        or not core.get_xpu_device_version(0) >= core.XPUVersion.XPU2,
+        "run test when xpu's compute capability >= xpu2.",
     )
     def test_xpu_fp16_supported(self):
         res = paddle.amp.is_float16_supported()
