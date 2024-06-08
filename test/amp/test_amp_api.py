@@ -33,6 +33,11 @@ from paddle.static import amp
     and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
 class TestAutoCast(AmpTestBase):
     def init_net(self):
         self._conv = paddle.nn.Conv2D(
@@ -92,6 +97,11 @@ class SimpleConvNet(nn.Layer):
     core.is_compiled_with_cuda()
     and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
 )
 class TestStaticDecorate(AmpTestBase):
     def check_results(
@@ -178,6 +188,11 @@ class TestStaticDecorate(AmpTestBase):
     and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
 class TestGradScaler(AmpTestBase):
     def test_amp_grad_scaler(self):
         model = paddle.nn.Conv2D(3, 2, 3)
@@ -261,6 +276,11 @@ class TestGradScaler(AmpTestBase):
     core.is_compiled_with_cuda()
     and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
 )
 class TestFp16Guard(AmpTestBase):
     def test_fp16_guard(self):
@@ -347,6 +367,11 @@ class TestFp16Guard(AmpTestBase):
             and len(paddle.static.cuda_places()) > 0
         ):
             run_example_code()
+        elif (
+            paddle.is_compiled_with_xpu()
+            and len(paddle.static.xpu_places()) > 0
+        ):
+            run_example_code()
         paddle.disable_static()
 
 
@@ -373,6 +398,11 @@ class SimpleModelIncludeSetValue(nn.Layer):
     core.is_compiled_with_cuda()
     and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
 )
 class TestDy2STWithSetValue(AmpTestBase):
     def test_op_called_as_expected(self):

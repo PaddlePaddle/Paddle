@@ -95,7 +95,12 @@ class TestPirAMPProgram(unittest.TestCase):
                 if op.name() == 'pd_op.cast':
                     cast_op_count += 1
             np.testing.assert_equal(cast_op_count, 3)
-            place = paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            elif core.is_compiled_with_xpu():
+                place = paddle.device.XPUPlace(0)
+            else:
+                raise ValueError("Only support CUDA or XPU Place.")
             exe = paddle.static.Executor(place)
             exe.run(startup)
             result = exe.run(

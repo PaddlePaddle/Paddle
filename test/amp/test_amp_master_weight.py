@@ -48,6 +48,11 @@ class SimpleNet(paddle.nn.Layer):
     and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
 class TestMasterWeight(AmpTestBase):
     def run_dygraph(self, dtype, level, use_promote, max_iters, x_data):
         losses = []

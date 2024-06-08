@@ -31,6 +31,11 @@ from paddle.static import amp
     and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
 class TestStaticAmpPromoteStats(AmpTestBase):
     def check_promote_results(
         self, use_amp, dtype, level, use_promote, expected_op_calls, debug_info
@@ -127,6 +132,11 @@ class TestStaticAmpPromoteStats(AmpTestBase):
     and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
 class TestEagerAmpPromoteStats(AmpTestBase):
     def check_promote_results(
         self, dtype, level, use_promote, expected_op_calls, debug_info
@@ -204,6 +214,11 @@ class TestEagerAmpPromoteStats(AmpTestBase):
     core.is_compiled_with_cuda()
     and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
 )
 class TestPirAmpPromoteStats(AmpTestBase):
     def check_promote_results(
@@ -308,6 +323,11 @@ class TestPirAmpPromoteStats(AmpTestBase):
     and not paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
 )
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
 class TestEagerAmpPromoteSimple(AmpTestBase):
     def setUp(self):
         self._conv = paddle.nn.Conv2D(
@@ -348,6 +368,11 @@ class TestEagerAmpPromoteSimple(AmpTestBase):
     core.is_compiled_with_cuda()
     and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
 )
 class TestPirAmpPromoteSimple(AmpTestBase):
     def init_net(self):
