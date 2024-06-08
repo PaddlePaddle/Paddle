@@ -31,6 +31,7 @@ void ReduceAsKernel(const Context& dev_ctx,
   if (reduce_dim.size() != 0) {
     phi::SumKernel<T, Context>(dev_ctx, x, reduce_dim, out->type(), false, out);
   } else {
+    dev_ctx.template Alloc<T>(out);
     phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   }
 }
