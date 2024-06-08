@@ -122,7 +122,7 @@ void divide_grad(const Tensor& x,
     auto dx_res = one_tensor / y * out_grad;
     auto dx_tmp = reduce_as<T>(dx_res, x);
     set_output<T>(dx_tmp, dx);
-}  // indicate we will compute dx
+  }  // indicate we will compute dx
 }
 
 template <typename T>

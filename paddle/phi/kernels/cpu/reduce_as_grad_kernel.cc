@@ -30,15 +30,9 @@ void ReduceAsGradKernel(const Context& dev_ctx,
                         DenseTensor* x_grad) {
   auto reduce_dim = phi::funcs::GetReduceDims(x, target);
   if (reduce_dim.size() != 0) {
-    ReduceGradKernel<Context, T, funcs::SumGradFunctor, true>(dev_ctx,
-                                                              x,
-                                                              paddle::none,
-                                                              out_grad,
-                                                              reduce_dim,
-                                                              false,
-                                                              false,
-                                                              x_grad);
-  }else{
+    ReduceGradKernel<Context, T, funcs::SumGradFunctor, true>(
+        dev_ctx, x, paddle::none, out_grad, reduce_dim, false, false, x_grad);
+  } else {
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   }
 }
