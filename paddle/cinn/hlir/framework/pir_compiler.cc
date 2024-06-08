@@ -77,6 +77,8 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     auto worker_fn = [&](int index) {
       CompilationTask task(&group_compilation_contexts[index]);
       compilation_results[index] = task();
+      // Triggering llvm compilation in thread
+      compilation_results[index]->GetKernelInfo();
     };
     utils::parallel_run(worker_fn,
                         utils::SequenceDispatcher(0, task_size),

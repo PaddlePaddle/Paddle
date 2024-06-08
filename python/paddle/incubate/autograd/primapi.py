@@ -72,13 +72,17 @@ def forward_grad(outputs, inputs, grad_inputs=None):
             'operators, use enable_prim to turn it on.'
         )
 
-    if not isinstance(outputs, (framework.Variable, typing.Sequence)):
+    if not isinstance(
+        outputs, (framework.Variable, typing.Sequence, paddle.pir.Value)
+    ):
         raise TypeError(
             f'Expected outputs is Tensor|Sequence[Tensor], '
             f'but got {type(outputs)}.'
         )
 
-    if not isinstance(inputs, (framework.Variable, typing.Sequence)):
+    if not isinstance(
+        inputs, (framework.Variable, typing.Sequence, paddle.pir.Value)
+    ):
         raise TypeError(
             f'Expected inputs is Tensor|Sequence[Tensor], '
             f'but got {type(inputs)}.'
@@ -101,7 +105,11 @@ def forward_grad(outputs, inputs, grad_inputs=None):
     ad = primx.Transform(ys[0].block)
     _, ys_dot = ad.linearize(xs, ys, xs_dot)
 
-    return ys_dot[0] if isinstance(outputs, framework.Variable) else ys_dot
+    return (
+        ys_dot[0]
+        if isinstance(outputs, (framework.Variable, paddle.pir.Value))
+        else ys_dot
+    )
 
 
 @framework.static_only
@@ -155,7 +163,7 @@ def grad(outputs, inputs, grad_outputs=None):
         # The follow code snippet fixes the problem by return the first element
         # of grad_inputs when the inputs is a single Tensor.
         if (
-            isinstance(inputs, framework.Variable)
+            isinstance(inputs, (framework.Variable, paddle.pir.Value))
             and isinstance(grad_inputs, typing.Sequence)
             and len(grad_inputs) > 0
         ):
@@ -163,13 +171,17 @@ def grad(outputs, inputs, grad_outputs=None):
         else:
             return grad_inputs
 
-    if not isinstance(outputs, (framework.Variable, typing.Sequence)):
+    if not isinstance(
+        outputs, (framework.Variable, typing.Sequence, paddle.pir.Value)
+    ):
         raise TypeError(
             f'Expected outputs is Tensor|Sequence[Tensor], '
             f'but got {type(outputs)}.'
         )
 
-    if not isinstance(inputs, (framework.Variable, typing.Sequence)):
+    if not isinstance(
+        inputs, (framework.Variable, typing.Sequence, paddle.pir.Value)
+    ):
         raise TypeError(
             f'Expected inputs is Tensor|Sequence[Tensor], '
             f'but got {type(inputs)}.'
@@ -213,7 +225,11 @@ def grad(outputs, inputs, grad_outputs=None):
     ad.erase_ops(sorted(op_indexes))
     ad.erase_dots(xs_dot)
 
-    return xs_bar[0] if isinstance(inputs, framework.Variable) else xs_bar
+    return (
+        xs_bar[0]
+        if isinstance(inputs, (framework.Variable, paddle.pir.Value))
+        else xs_bar
+    )
 
 
 @framework.static_only
