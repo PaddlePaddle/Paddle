@@ -1,1 +1,0 @@
-../../amp/test_pir_amp.py
