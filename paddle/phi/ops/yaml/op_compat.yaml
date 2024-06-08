@@ -2895,14 +2895,6 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : repeat_interleave
-  inputs :
-    x : X
-  outputs :
-    out : Out
-  attrs :
-    repeats : Repeats
-
-- op : repeat_interleave
   backward : repeat_interleave_grad
   inputs :
     x : X

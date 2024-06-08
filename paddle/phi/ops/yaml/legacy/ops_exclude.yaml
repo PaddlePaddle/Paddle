@@ -71,7 +71,6 @@
 - randint
 - randperm
 - read_file
-- repeat_interleave_with_tensor_index
 - rnn
 - sequence_mask
 - set_value_with_tensor
