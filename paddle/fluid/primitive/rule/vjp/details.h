@@ -383,8 +383,11 @@ void reduce_as_grad(const Tensor& x,
         axis_[i] += x_dim_size;
       }
     }
-    auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
-    auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+    Tensor out_grad_ = out_grad;
+    if (out_grad.shape().size() != x.shape().size()) {
+      auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+      out_grad_ = reshape<T>(out_grad, out_grad_shape);
+    }
     x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
   }
 
