@@ -885,7 +885,14 @@ target_link_libraries(
 cc_library(
   compiled_program
   SRCS compiled_program.cc
-  DEPS graph build_strategy)
+  DEPS graph
+       build_strategy
+       reference_count_pass
+       eager_deletion_pass
+       buffer_shared_inplace_op_pass
+       buffer_shared_cross_op_memory_reuse_pass
+       inplace_addto_op_pass
+       set_reader_device_info_utils)
 
 cc_library(
   executor_cache

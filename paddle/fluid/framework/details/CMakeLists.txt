@@ -106,11 +106,6 @@ set(SSA_GRAPH_EXECUTOR_DEPS
     profiler
     selected_rows_utils)
 
-cc_library(
-  ssa_graph_executor
-  SRCS ${ssa_graph_executor_srcs}
-  DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
-
 set(IR_PASS_DEPS
     graph_viz_pass
     multi_devices_graph_pass
