@@ -49,18 +49,16 @@ TEST(ConfigSearcher, TestReduceDemo) {
   auto r_dimension_type = "R";
   auto r_dimension_is_dynamic = true;
 
-  bucket_info.space.push_back(cinn::ir::BucketInfo::Dimension{
-      s_dimension_lower,
-      s_dimension_upper,
-      s_dimension_type,
-      s_dimension_is_dynamic,
-      std::vector<double>(s_dimension_upper - s_dimension_lower + 1, 1.0)});
-  bucket_info.space.push_back(cinn::ir::BucketInfo::Dimension{
-      r_dimension_lower,
-      r_dimension_upper,
-      r_dimension_type,
-      r_dimension_is_dynamic,
-      std::vector<double>(r_dimension_upper - r_dimension_lower + 1, 1.0)});
+  bucket_info.space.push_back(
+      cinn::ir::BucketInfo::Dimension{s_dimension_lower,
+                                      s_dimension_upper,
+                                      s_dimension_type,
+                                      s_dimension_is_dynamic});
+  bucket_info.space.push_back(
+      cinn::ir::BucketInfo::Dimension{r_dimension_lower,
+                                      r_dimension_upper,
+                                      r_dimension_type,
+                                      r_dimension_is_dynamic});
 
   cinn::ir::ScheduleConfig::TileConfig tile_config;
   tile_config.spatial_inner_num = 9;

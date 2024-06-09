@@ -61,7 +61,6 @@ struct BucketInfo {
     int upper_bound;
     std::string iter_type;
     bool is_dynamic;
-    std::vector<double> weights;
     Dimension()
         : lower_bound(0),
           upper_bound(INT_MAX),
@@ -72,16 +71,6 @@ struct BucketInfo {
           upper_bound(upper),
           iter_type(iter_type),
           is_dynamic(is_dynamic) {}
-    Dimension(int low,
-              int upper,
-              std::string iter_type,
-              bool is_dynamic,
-              std::vector<double> weights)
-        : lower_bound(low),
-          upper_bound(upper),
-          iter_type(iter_type),
-          is_dynamic(is_dynamic),
-          weights(weights) {}
   };
   std::vector<Dimension> space;
 
