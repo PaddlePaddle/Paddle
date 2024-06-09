@@ -80,7 +80,9 @@ class TestReduceAsOp(OpTest):
     def calc_output(self):
         if len(self.attrs['dim']) != 0:
             if 1 in self.shape_y:
-                self.out = self.x.sum(axis=tuple(self.attrs['dim']), keepdims=True)
+                self.out = self.x.sum(
+                    axis=tuple(self.attrs['dim']), keepdims=True
+                )
             else:
                 self.out = self.x.sum(axis=tuple(self.attrs['dim']))
         else:
@@ -164,6 +166,7 @@ class TestReduceAsOp14(TestReduceAsOp):
 
     def init_attrs(self):
         self.attrs = {'dim': []}
+
 
 class TestReduceAsOp15(TestReduceAsOp):
     def init_shape(self):
