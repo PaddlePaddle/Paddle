@@ -33,6 +33,7 @@ void ReduceAsGradKernel(const Context& dev_ctx,
     ReduceGradKernel<Context, T, funcs::SumGradFunctor, true>(
         dev_ctx, x, paddle::none, out_grad, reduce_dim, false, false, x_grad);
   } else {
+    dev_ctx.template Alloc<T>(x_grad);
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   }
 }

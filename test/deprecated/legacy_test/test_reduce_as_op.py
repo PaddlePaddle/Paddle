@@ -78,7 +78,10 @@ class TestReduceAsOp(OpTest):
         pass
 
     def calc_output(self):
-        self.out = self.x.sum(axis=tuple(self.attrs['dim']))
+        if len(self.attrs['dim']) != 0:
+            self.out = self.x.sum(axis=tuple(self.attrs['dim']))
+        else:
+            self.out = self.x
 
     def test_check_output(self):
         self.check_output(check_pir=True)
