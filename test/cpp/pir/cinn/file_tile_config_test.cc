@@ -87,7 +87,8 @@ TEST(ConfigSearcher, TestReduceDemo) {
                 << " 's upper_bound is: " << it.first.space[i].upper_bound;
       auto dimension_lower = i == 0 ? s_dimension_lower : r_dimension_lower;
       auto dimension_upper = i == 0 ? s_dimension_upper : r_dimension_upper;
-      // TODO(xia zichao): remove check
+      // TODO(xia zichao): remove check because the pieces of read data are more
+      // than the written data.
       PADDLE_ENFORCE_EQ(it.first.space[i].lower_bound,
                         dimension_lower,
                         ::common::errors::InvalidArgument(
