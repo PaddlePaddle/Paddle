@@ -154,6 +154,15 @@ class TestReduceAsOp13(TestReduceAsOp):
         self.attrs = {'dim': [0, 1]}
 
 
+class TestReduceAsOp14(TestReduceAsOp):
+    def init_shape(self):
+        self.shape_x = [10, 10, 6]
+        self.shape_y = [10, 10, 6]
+
+    def init_attrs(self):
+        self.attrs = {'dim': []}
+
+
 class TestReduceAsDynamicShape(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
