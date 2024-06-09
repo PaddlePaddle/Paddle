@@ -37,14 +37,9 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
       repeats_(repeats) {
   double weighted_space_size = 1.0;
   for (const auto& dim : bucket_info_.space) {
-    PADDLE_ENFORCE_EQ(dim.upper_bound - dim.lower_bound + 1,
-                      dim.weights.size(),
-                      ::common::errors::InvalidArgument(
-                          "The number of weights does not match the difference "
-                          "between the upper and lower bound"));
-
-    double weights_sum =
-        std::accumulate(dim.weights.begin(), dim.weights.end(), 0.0);
+    auto weights =
+        std::vector<double>(dim.upper_bound - dim.lower_bound + 1, 1.0);
+    double weights_sum = std::accumulate(weights.begin(), weights.end(), 0.0);
     weighted_space_size *= weights_sum;
   }
   sampling_times_ =
