@@ -43,11 +43,11 @@ TEST(ConfigSearcher, TestReduceDemo) {
   int s_dimension_lower = 13;
   int s_dimension_upper = 13;
   auto s_dimension_type = "S";
-  auto s_dimension_is_dynamic = false;
+  auto s_dimension_is_dynamic = true;
   int r_dimension_lower = 4096;
   int r_dimension_upper = 4096;
   auto r_dimension_type = "R";
-  auto r_dimension_is_dynamic = false;
+  auto r_dimension_is_dynamic = true;
 
   bucket_info.space.push_back(cinn::ir::BucketInfo::Dimension{
       s_dimension_lower,
@@ -67,9 +67,11 @@ TEST(ConfigSearcher, TestReduceDemo) {
   tile_config.warp_num = 14;
   tile_config.tree_reduce_num = 512;
   std::vector<std::pair<std::string, std::string>> iter_space_type = {
-      std::make_pair(s_dimension_type, "static"),
-      std::make_pair(r_dimension_type, "static")};
-  // Step 2: Add to json/Read from json
+      std::make_pair(s_dimension_type,
+                     s_dimension_is_dynamic == true ? "dynamic" : "static"),
+      std::make_pair(r_dimension_type,
+                     r_dimension_is_dynamic == true ? "dynamic" : "static")};
+  // Step 2: Add to json / Read from json
   cinn::ir::FileTileConfigDatabase file_database;
   file_database.AddConfig(
       cinn::common::DefaultTarget(), bucket_info, tile_config, 2);
@@ -85,6 +87,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
                 << " 's upper_bound is: " << it.first.space[i].upper_bound;
       auto dimension_lower = i == 0 ? s_dimension_lower : r_dimension_lower;
       auto dimension_upper = i == 0 ? s_dimension_upper : r_dimension_upper;
+      // TODO(xia zichao): remove check
       PADDLE_ENFORCE_EQ(it.first.space[i].lower_bound,
                         dimension_lower,
                         ::common::errors::InvalidArgument(
