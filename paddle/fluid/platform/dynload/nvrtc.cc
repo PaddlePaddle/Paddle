@@ -16,9 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/nvrtc.h"
 
-namespace paddle {
-namespace platform {
-namespace dynload {
+namespace paddle::platform::dynload {
 
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
@@ -26,6 +24,4 @@ NVRTC_ROUTINE_EACH(DEFINE_WRAP);
 
 bool HasNVRTC() { return phi::dynload::HasNVRTC(); }
 
-}  // namespace dynload
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform::dynload

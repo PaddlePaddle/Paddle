@@ -16,9 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/plugin/preln_residual_bias_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 using half = paddle::platform::float16;
 class PrelnResidualBiasOpConverter : public OpConverter {
@@ -105,9 +103,7 @@ class PrelnResidualBiasOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(fused_bias_dropout_residual_layer_norm,
                           PrelnResidualBiasOpConverter);

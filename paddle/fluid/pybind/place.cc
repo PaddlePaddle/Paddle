@@ -181,8 +181,7 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 PyTypeObject *g_place_pytype = nullptr;
 PyTypeObject *g_customplace_pytype = nullptr;
 PyTypeObject *g_cudaplace_pytype = nullptr;
@@ -680,5 +679,4 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("__str__", string::to_string<const platform::Place &>);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

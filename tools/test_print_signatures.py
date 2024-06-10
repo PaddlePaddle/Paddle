@@ -25,7 +25,7 @@ import functools
 import hashlib
 import unittest
 
-from print_signatures import is_primitive, md5
+from print_signatures import md5
 
 
 def func_example(param_a, param_b):
@@ -60,27 +60,6 @@ class Test_all_in_print_signatures(unittest.TestCase):
         algo.update(func_example.__doc__.encode('utf-8'))
         digest = algo.hexdigest()
         self.assertEqual(digest, md5(func_example.__doc__))
-
-
-class Test_is_primitive(unittest.TestCase):
-    def test_single(self):
-        self.assertTrue(is_primitive(2))
-        self.assertTrue(is_primitive(2.1))
-        self.assertTrue(is_primitive("2.1.1"))
-        self.assertFalse(is_primitive(b"hello paddle"))
-        self.assertFalse(is_primitive(1j))
-        self.assertTrue(is_primitive(True))
-
-    def test_collection(self):
-        self.assertTrue(is_primitive([]))
-        self.assertTrue(is_primitive(()))
-        self.assertTrue(is_primitive(set()))
-        self.assertTrue(is_primitive([1, 2]))
-        self.assertTrue(is_primitive((1.1, 2.2)))
-        self.assertTrue(is_primitive({1, 2.3}))
-        self.assertFalse(is_primitive(range(3)))
-        self.assertFalse(is_primitive({}))
-        self.assertFalse(is_primitive([1, 1j]))
 
 
 if __name__ == '__main__':

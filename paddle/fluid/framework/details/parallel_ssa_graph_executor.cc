@@ -20,9 +20,7 @@
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 static std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
     ir::Graph *graph, size_t place_num) {
@@ -332,6 +330,4 @@ FetchResultType ParallelSSAGraphExecutor::Run(
   }
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details
