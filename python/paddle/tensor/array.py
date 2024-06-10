@@ -14,6 +14,8 @@
 
 # Define functions about array.
 
+from typing import Any, Sequence, TypeVar, overload
+
 import paddle
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
@@ -22,9 +24,20 @@ from ..common_ops_import import Variable
 from ..framework import LayerHelper, core, in_dynamic_mode
 
 __all__ = []
+T = TypeVar("T")
 
 
-def array_length(array):
+@overload
+def array_length(array: list[Any]) -> int:
+    ...
+
+
+@overload
+def array_length(array: paddle.Tensor) -> paddle.Tensor:
+    ...
+
+
+def array_length(array: list[Any] | paddle.Tensor) -> int | paddle.Tensor:
     """
     This OP is used to get the length of the input array.
 
@@ -83,7 +96,19 @@ def array_length(array):
         return tmp
 
 
-def array_read(array, i):
+@overload
+def array_read(array: list[T], i: paddle.Tensor) -> T:
+    ...
+
+
+@overload
+def array_read(array: paddle.Tensor, i: paddle.Tensor) -> paddle.Tensor:
+    ...
+
+
+def array_read(
+    array: list[T] | paddle.Tensor, i: paddle.Tensor
+) -> T | paddle.Tensor:
     """
     This OP is used to read data at the specified position from the input array.
 
@@ -161,7 +186,30 @@ def array_read(array, i):
         return out
 
 
-def array_write(x, i, array=None):
+@overload
+def array_write(
+    x: paddle.Tensor, i: paddle.Tensor, array: None = None
+) -> list[Any] | paddle.Tensor:
+    ...
+
+
+@overload
+def array_write(x: paddle.Tensor, i: paddle.Tensor, array: list[T]) -> list[T]:
+    ...
+
+
+@overload
+def array_write(
+    x: paddle.Tensor, i: paddle.Tensor, array: paddle.Tensor
+) -> paddle.Tensor:
+    ...
+
+
+def array_write(
+    x: paddle.Tensor,
+    i: paddle.Tensor,
+    array: list[T] | paddle.Tensor | None = None,
+) -> list[T] | paddle.Tensor:
     """
     This OP writes the input ``x`` into the i-th position of the ``array`` returns the modified array.
     If ``array`` is none, a new array will be created and returned.
@@ -258,7 +306,11 @@ def array_write(x, i, array=None):
         return array
 
 
-def create_array(dtype, initialized_list=None):
+# TODO: dtype
+def create_array(
+    dtype: str,
+    initialized_list: Sequence[paddle.Tensor] | None = None,
+) -> paddle.Tensor | list[paddle.Tensor]:
     """
     This OP creates an array. It is used as the input of :ref:`api_paddle_tensor_array_array_read` and
     :ref:`api_paddle_tensor_array_array_write`.
@@ -314,7 +366,7 @@ def create_array(dtype, initialized_list=None):
         return out
     else:
         helper = LayerHelper("array", **locals())
-        tensor_array = helper.create_variable(
+        tensor_array: paddle.Tensor = helper.create_variable(
             name=f"{helper.name}.out",
             type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
             dtype=dtype,
