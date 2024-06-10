@@ -35,7 +35,7 @@
 #include "paddle/cinn/utils/multi_threading.h"
 #include "paddle/cinn/utils/sized_multi_set.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 PD_DECLARE_bool(auto_schedule_use_cost_model);
 
 namespace cinn {
@@ -175,9 +175,11 @@ SearchState EvolutionarySearch::CrossOver(const SearchState& state1,
   std::vector<ir::Expr> mother_exprs =
       state2->ir_schedule.GetModule().GetExprs();
 
-  CHECK_EQ(father_exprs.size(), mother_exprs.size())
-      << "CrossOver ModuleExpr in EvolutionarySearch must have same number of "
-         "AST";
+  PADDLE_ENFORCE_EQ(father_exprs.size(),
+                    mother_exprs.size(),
+                    phi::errors::InvalidArgument(
+                        "CrossOver ModuleExpr in EvolutionarySearch must have "
+                        "same number of AST"));
 
   for (size_t i = 0; i < father_exprs.size(); ++i) {
     if (utils::SampleUniformInt(0, 2, &rand_seed_) == 0) {
@@ -200,10 +202,15 @@ SearchState EvolutionarySearch::CrossOver(const SearchState& state1,
 
 SearchState EvolutionarySearch::Mutate(
     const SearchState& state, utils::LinearRandomEngine::StateType* rand_seed) {
-  CHECK_GT(weighted_mutators_.size(), 0)
-      << "There is no mutate rule can be applied.";
+  PADDLE_ENFORCE_GT(
+      weighted_mutators_.size(),
+      0,
+      phi::errors::InvalidArgument("There is no mutate rule can be applied."));
   double accu_weight = (weighted_mutators_.rbegin())->first;
-  CHECK_GT(accu_weight, 0) << "The accumulate weight must be greater than 0.";
+  PADDLE_ENFORCE_GT(accu_weight,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The accumulate weight must be greater than 0."));
   // sample a mutate rule
   double sample_weight = utils::SampleUniformDouble(0, accu_weight, rand_seed);
   auto sampled_iter = weighted_mutators_.upper_bound(sample_weight);

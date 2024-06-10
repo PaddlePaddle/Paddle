@@ -63,6 +63,10 @@ set(ABSL_LIB_NAMES
     raw_hash_set)
 set(ABSL_LIBS "")
 
+if(WITH_ROCM)
+  list(APPEND ABSL_LIB_NAMES strings_internal raw_logging_internal)
+endif()
+
 add_library(absl STATIC IMPORTED GLOBAL)
 set_property(TARGET absl PROPERTY IMPORTED_LOCATION
                                   ${ABSL_INSTALL_DIR}/lib/libabsl_base.a)
