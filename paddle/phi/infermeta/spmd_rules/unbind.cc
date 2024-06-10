@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/spmd_rule_macro_define.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -171,6 +170,7 @@ SpmdInfo UnbindInferSpmdDynamic(const DistMetaTensor& x, int axis) {
   SpmdInfo ret;
   ret.first = tmp.first;
   std::vector<TensorDistAttr> out_dist_attrs;
+  out_dist_attrs.reserve(tmp.second.size());
   for (const auto& out : tmp.second) {
     out_dist_attrs.push_back(PADDLE_GET_CONST(TensorDistAttr, out));
   }
@@ -178,5 +178,4 @@ SpmdInfo UnbindInferSpmdDynamic(const DistMetaTensor& x, int axis) {
   return ret;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

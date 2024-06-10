@@ -15,7 +15,7 @@
 #include "paddle/cinn/backends/modular.h"
 
 #include "paddle/cinn/ir/ir_visitor.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace backends {
 
@@ -104,8 +104,14 @@ class ModularEvaluator : public ir::IRVisitorRequireReImpl<ModularEntry> {
   }
 
   static int gcd(int a, int b) {
-    CHECK_GE(a, 0);
-    CHECK_GE(b, 0);
+    PADDLE_ENFORCE_GE(
+        a,
+        0,
+        phi::errors::InvalidArgument("a should be greater than or equal to 0"));
+    PADDLE_ENFORCE_GE(
+        b,
+        0,
+        phi::errors::InvalidArgument("b should be greater than or equal to 0"));
     if (a < b) std::swap(a, b);
     if (b == 0) return a;
 

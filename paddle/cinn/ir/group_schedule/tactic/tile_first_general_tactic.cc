@@ -20,9 +20,6 @@
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 
-PD_DECLARE_bool(support_reduce_stride_read);
-PD_DECLARE_bool(support_trivial_stride_read);
-
 namespace cinn {
 namespace ir {
 
