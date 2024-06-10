@@ -25,8 +25,7 @@
 
 using namespace std;  // NOLINT
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 ::paddle::distributed::PSParameter load_from_prototxt(
     const std::string& filename) {
@@ -134,5 +133,4 @@ int PSCore::StopServer() {
   return 0;
 }
 ::paddle::distributed::PSParameter* PSCore::GetParam() { return &_ps_param; }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

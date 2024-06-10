@@ -68,8 +68,7 @@ PADDLE_DEFINE_EXPORTED_uint64(cuda_memory_async_pool_realease_threshold,
                               "Amount of reserved memory in bytes to hold onto "
                               "before trying to release memory back to the OS");
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 void GpuMemoryUsage(size_t *available, size_t *total) {
   size_t actual_available, actual_total;
@@ -719,5 +718,4 @@ void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream) {
   phi::backends::gpu::GpuMemsetAsync(dst, value, count, stream);
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform
