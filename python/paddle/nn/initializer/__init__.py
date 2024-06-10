@@ -18,7 +18,7 @@ from .assign import (
     Assign,
     NumpyArrayInitializer,  # noqa: F401
 )
-from .Bilinear import Bilinear
+from .bilinear import Bilinear
 from .constant import (
     Constant,
     ConstantInitializer,  # noqa: F401

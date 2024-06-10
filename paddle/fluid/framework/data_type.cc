@@ -24,8 +24,7 @@ using float16 = paddle::platform::float16;
 using bfloat16 = paddle::platform::bfloat16;
 using pstring = phi::dtype::pstring;
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 struct DataTypeMap {
   std::unordered_map<std::type_index, proto::VarType::Type> cpp_to_proto_;
@@ -163,5 +162,4 @@ proto::VarType::Type PromoteTypesIfComplexExists(
   return promote_types_table[type_an][type_bn];
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

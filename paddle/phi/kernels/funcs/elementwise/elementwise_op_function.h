@@ -1165,7 +1165,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
                                             UseIntermediateOut,
                                             BcastY,
                                             SameShapeOfIntermediateOutAndOut>(
-          dev_ctx,
+          reinterpret_cast<const phi::GPUContext &>(dev_ctx),
           x_data,
           y_data,
           intermediate_out == nullptr ? nullptr : intermediate_out->data<T>(),
@@ -1214,7 +1214,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
                                             UseIntermediateOut,
                                             BcastY,
                                             SameShapeOfIntermediateOutAndOut>(
-          dev_ctx.stream(),
+          reinterpret_cast<const phi::GPUContext &>(dev_ctx).stream(),
           x_data,
           y_data,
           intermediate_out == nullptr ? nullptr : intermediate_out->data<T>(),

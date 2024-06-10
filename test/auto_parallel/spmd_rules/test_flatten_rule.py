@@ -38,7 +38,7 @@ class TestFlattenSPMDRule(unittest.TestCase):
 
     def test_flatten_infer_forward(self):
         # shape: [8, 16, 8, 24] --> [8, 16 * 8, 24]
-        # dims_mapping: [0, -1, -1, 1] --> [0, -1, -1, 1] [ 0, -1, 1]
+        # dims_mapping: [0, -1, -1, 1] --> [0, -1, -1, 1], ([0, -1, 1], [-1, 0, -1, -1, 1] // xshape)
         self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1, 1])
         self.attrs['start_axis'] = 1
         self.attrs['stop_axis'] = 2
@@ -51,14 +51,17 @@ class TestFlattenSPMDRule(unittest.TestCase):
         infered_output_dist_attrs = result_dist_attrs[1]
 
         self.assertEqual(len(infered_input_dist_attrs), 1)
-        self.assertEqual(len(infered_output_dist_attrs), 1)
+        self.assertEqual(len(infered_output_dist_attrs), 2)
         self.assertEqual(
             infered_input_dist_attrs[0].dims_mapping, [0, -1, -1, 1]
         )
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, 1])
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [-1, 0, -1, -1, 1]
+        )
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8, 24]
-        # dims_mapping: [-1, 0, -1, 1] --> [-1, 0, -1, 1] [ -1, 0, 1]
+        # dims_mapping: [-1, 0, -1, 1] --> [-1, 0, -1, 1] ([ -1, 0, 1], [-1, -1, 0, -1, 1] // xshape)
         self.x_dist_tensor_spec.set_dims_mapping([-1, 0, -1, 1])
         self.attrs['start_axis'] = 1
         self.attrs['stop_axis'] = 2
@@ -74,9 +77,12 @@ class TestFlattenSPMDRule(unittest.TestCase):
             infered_input_dist_attrs[0].dims_mapping, [-1, 0, -1, 1]
         )
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0, 1])
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [-1, -1, 0, -1, 1]
+        )
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8, 24]
-        # dims_mapping: [-1, -1, 1, 0] --> [-1, -1, -1, 0] [ -1, -1, 0]
+        # dims_mapping: [-1, -1, 1, 0] --> [-1, -1, -1, 0] ([ -1, -1, 0], [-1, -1, -1, -1, 0] // xshape)
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1, 1, 0])
         self.attrs['start_axis'] = 1
         self.attrs['stop_axis'] = 2
@@ -92,9 +98,12 @@ class TestFlattenSPMDRule(unittest.TestCase):
             infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1, 0]
         )
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, -1, 0])
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [-1, -1, -1, -1, 0]
+        )
 
         # shape: [8, 16, 8, 24] --> [8 * 16 * 8 * 24]
-        # dims_mapping: [-1, 0, 1, -1] --> [-1, -1, -1, -1] [ -1]
+        # dims_mapping: [-1, 0, 1, -1] --> [-1, -1, -1, -1] ([ -1], [-1, -1, -1, -1, -1] // xshape)
         self.x_dist_tensor_spec.set_dims_mapping([-1, 0, 1, -1])
         self.attrs['start_axis'] = 0
         self.attrs['stop_axis'] = -1
@@ -110,9 +119,12 @@ class TestFlattenSPMDRule(unittest.TestCase):
             infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
         )
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1])
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [-1, -1, -1, -1, -1]
+        )
 
         # shape: [8, 16, 8, 24] --> [8 * 16 * 8 * 24]
-        # dims_mapping: [0, -1, -1, 1] --> [0, -1, -1, -1] [ 0]
+        # dims_mapping: [0, -1, -1, 1] --> [0, -1, -1, -1] ([ 0], [-1, 0, -1, -1, -1] // xshape)
         self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1, 1])
         self.attrs['start_axis'] = 0
         self.attrs['stop_axis'] = -1
@@ -128,9 +140,12 @@ class TestFlattenSPMDRule(unittest.TestCase):
             infered_input_dist_attrs[0].dims_mapping, [0, -1, -1, -1]
         )
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0])
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [-1, 0, -1, -1, -1]
+        )
 
         # shape: [8, 16, 8, 24] --> [8 * 16 * 8 * 24]
-        # dims_mapping: [1, 0, -1, -1] --> [1, -1, -1, -1] [ 1]
+        # dims_mapping: [1, 0, -1, -1] --> [1, -1, -1, -1] ([ 1], [-1, 1, -1, -1, -1] // xshape)
         self.x_dist_tensor_spec.set_dims_mapping([1, 0, -1, -1])
         self.attrs['start_axis'] = 0
         self.attrs['stop_axis'] = -1
@@ -146,9 +161,12 @@ class TestFlattenSPMDRule(unittest.TestCase):
             infered_input_dist_attrs[0].dims_mapping, [1, -1, -1, -1]
         )
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [1])
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [-1, 1, -1, -1, -1]
+        )
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24]
-        # dims_mapping: [-1, -1, 0, 1] --> [-1, -1, -1, -1] [-1, -1]
+        # dims_mapping: [-1, -1, 0, 1] --> [-1, -1, -1, -1] ([-1, -1], [-1, -1, -1, -1, -1] // xshape)
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1, 0, 1])
         self.attrs['start_axis'] = 1
         self.attrs['stop_axis'] = -1
@@ -164,9 +182,12 @@ class TestFlattenSPMDRule(unittest.TestCase):
             infered_input_dist_attrs[0].dims_mapping, [-1, -1, -1, -1]
         )
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, -1])
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [-1, -1, -1, -1, -1]
+        )
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24]
-        # dims_mapping: [-1, 0, -1, 1] --> [-1, 0, -1, -1] [-1, 0]
+        # dims_mapping: [-1, 0, -1, 1] --> [-1, 0, -1, -1] ([-1, 0], [-1, -1, 0, -1, -1] // xshape)
         self.x_dist_tensor_spec.set_dims_mapping([-1, 0, -1, 1])
         self.attrs['start_axis'] = 1
         self.attrs['stop_axis'] = -1
@@ -182,9 +203,12 @@ class TestFlattenSPMDRule(unittest.TestCase):
             infered_input_dist_attrs[0].dims_mapping, [-1, 0, -1, -1]
         )
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [-1, 0])
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [-1, -1, 0, -1, -1]
+        )
 
         # shape: [8, 16, 8, 24] --> [8, 16 * 8 * 24]
-        # dims_mapping: [0, 1, -1, -1] --> [0, 1, -1, -1] [0, 1]
+        # dims_mapping: [0, 1, -1, -1] --> [0, 1, -1, -1] ([0, 1], [-1, 0, 1, -1, -1] // xshape)
         self.x_dist_tensor_spec.set_dims_mapping([0, 1, -1, -1])
         self.attrs['start_axis'] = 1
         self.attrs['stop_axis'] = -1
@@ -200,6 +224,9 @@ class TestFlattenSPMDRule(unittest.TestCase):
             infered_input_dist_attrs[0].dims_mapping, [0, 1, -1, -1]
         )
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, 1])
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [-1, 0, 1, -1, -1]
+        )
 
     def test_flatten_infer_backward(self):
         process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
