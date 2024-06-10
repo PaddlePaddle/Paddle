@@ -54,6 +54,11 @@ class TestMultiplyApi(unittest.TestCase):
         res = paddle.multiply(x, y)
         return res.numpy()
 
+    def _run_dynamic_graph_python_number_case(self, x, y):
+        paddle.disable_static()
+        res = paddle.multiply(x, y)
+        return res.numpy()
+
     def test_multiply(self):
         np.random.seed(7)
 
@@ -105,6 +110,38 @@ class TestMultiplyApi(unittest.TestCase):
         res = self._run_dynamic_graph_case(x_data, y_data)
         np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
+        # test dynamic computation graph: python number
+        x_data = int(np.random.randn())
+        y_data = np.random.randn()
+        res = self._run_dynamic_graph_python_number_case(x_data, y_data)
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
+
+        # test dynamic computation graph: python number
+        x_data = np.random.randn()
+        y_data = int(np.random.randn())
+        res = self._run_dynamic_graph_python_number_case(x_data, y_data)
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
+
+        # test dynamic computation graph: python number
+        x_data = np.random.randn()
+        y_data = np.random.randn()
+        res = self._run_dynamic_graph_python_number_case(x_data, y_data)
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
+
+        # test dynamic computation graph: python number
+        x_data = np.random.randn()
+        y_data = np.random.randn()
+        y = paddle.to_tensor(y_data)
+        res = self._run_dynamic_graph_python_number_case(x_data, y)
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
+
+        # test dynamic computation graph: python number
+        x_data = np.random.randn()
+        y_data = np.random.randn()
+        x = paddle.to_tensor(x_data)
+        res = self._run_dynamic_graph_python_number_case(x, y_data)
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
+
 
 class TestMultiplyError(unittest.TestCase):
     def test_errors(self):
@@ -150,35 +187,6 @@ class TestMultiplyError(unittest.TestCase):
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
         self.assertRaises(TypeError, paddle.multiply, x, y)
-
-        # test dynamic computation graph: dtype must be Tensor type
-        x_data = np.random.randn(200).astype(np.int64)
-        y_data = np.random.randn(200).astype(np.float64)
-        y = paddle.to_tensor(y_data)
-        self.assertRaises(ValueError, paddle.multiply, x_data, y)
-
-        # test dynamic computation graph: dtype must be Tensor type
-        x_data = np.random.randn(200).astype(np.int64)
-        y_data = np.random.randn(200).astype(np.float64)
-        x = paddle.to_tensor(x_data)
-        self.assertRaises(ValueError, paddle.multiply, x, y_data)
-
-        # test dynamic computation graph: dtype must be Tensor type
-        x_data = np.random.randn(200).astype(np.float32)
-        y_data = np.random.randn(200).astype(np.float32)
-        x = paddle.to_tensor(x_data)
-        self.assertRaises(ValueError, paddle.multiply, x, y_data)
-
-        # test dynamic computation graph: dtype must be Tensor type
-        x_data = np.random.randn(200).astype(np.float32)
-        y_data = np.random.randn(200).astype(np.float32)
-        x = paddle.to_tensor(x_data)
-        self.assertRaises(ValueError, paddle.multiply, x_data, y)
-
-        # test dynamic computation graph: dtype must be Tensor type
-        x_data = np.random.randn(200).astype(np.float32)
-        y_data = np.random.randn(200).astype(np.float32)
-        self.assertRaises(ValueError, paddle.multiply, x_data, y_data)
 
 
 class TestMultiplyInplaceApi(TestMultiplyApi):
