@@ -43,6 +43,7 @@ bool IsWarpReduce(const ScheduleConfig& config) {
       [&](const ir::NoneReduceMethod&) { return false; },
       [&](const ir::WarpReduceMethod&) { return true; },
       [&](const ir::BlockReduceMethod&) { return false; },
+      [&](const ir::DiscreteReduceMethod&) { return false; },
   };
   return std::visit(MatchWarpReduce, config.tile_config.reduce_method);
 }
@@ -72,6 +73,8 @@ class TileFirstGeneralTactic final : public ScheduleTactic {
 
  private:
   void MergeFlattenAxis(ir::IRSchedule* sch, const std::string& block_id);
+  void MergeDiscreteFlattenAxis(ir::IRSchedule* sch,
+                                const std::string& block_id);
   void MergeReduceAxis(ir::IRSchedule* sch, const std::string& block_id);
   void SplitSptialInner(ir::IRSchedule* sch, const std::string& block_id);
   void SplitReduceInner(ir::IRSchedule* sch, const std::string& block_id);
@@ -85,6 +88,8 @@ class TileFirstGeneralTactic final : public ScheduleTactic {
 
  private:
   ScheduleContext* context_;
+  std::vector<int32_t> vec_spatial_axis_first_;
+  std::vector<int32_t> vec_spatial_axis_last_;
   std::vector<int32_t> vec_flatten_axis_;
   std::vector<int32_t> vec_reduce_axis_;
   int reduce_current_axis_{0};
@@ -105,8 +110,28 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
   for (int32_t i = 0; i < context_->config.base_info->data_rank; ++i) {
     if (i >= reduce_start_idx) {
       vec_reduce_axis_.push_back(i);
+      // VLOG(-1) << "DEBUG vec_reduce_axis_.push_back = " << i;
     } else {
       vec_flatten_axis_.push_back(i);
+      // VLOG(-1) << "DEBUG vec_flatten_axis_.push_back = " << i;
+    }
+  }
+  if (context_->config.base_info->raw_reduce_axis.size() == 0) {
+    return;
+  }
+  VLOG(-1) << "DEBUG reduce_start_idx = " << reduce_start_idx;
+  VLOG(-1) << "DEBUG data_rank = " << context_->config.base_info->data_rank;
+  VLOG(-1) << "DEBUG raw_reduce_axis size = "
+           << context_->config.base_info->raw_reduce_axis.size();
+  vec_spatial_axis_first_.clear();
+  vec_spatial_axis_last_.clear();
+  for (int32_t i = 0; i < reduce_start_idx; ++i) {
+    if (i < context_->config.base_info->raw_reduce_axis.front()) {
+      vec_spatial_axis_first_.push_back(i);
+      VLOG(-1) << "DEBUG vec_spatial_axis_first_.push_back = " << i;
+    } else {
+      vec_spatial_axis_last_.push_back(i);
+      VLOG(-1) << "DEBUG vec_spatial_axis_last_.push_back = " << i;
     }
   }
 }
@@ -120,39 +145,40 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   }
   if (ir::IsReduceInitTensorName(block_id)) return;
   MergeReduceAxis(sch, block_id);
-  VLOG(6) << "After MergeReduceAxis on block: [" << block_id
-          << "], loop nest:\n"
-          << sch->GetLoops(block_id)[0];
-  MergeFlattenAxis(sch, block_id);
-  VLOG(6) << "After MergeFlattenAxis on block: [" << block_id
-          << "], loop nest:\n"
-          << sch->GetLoops(block_id)[0];
+  VLOG(-1) << "After MergeReduceAxis on block: [" << block_id
+           << "], loop nest:\n"
+           << sch->GetLoops(block_id)[0];
+  MergeDiscreteFlattenAxis(sch, block_id);
+  VLOG(-1) << "After MergeDiscreteFlattenAxis on block: [" << block_id
+           << "], loop nest:\n"
+           << sch->GetLoops(block_id)[0];
   SplitSptialInner(sch, block_id);
-  VLOG(6) << "After SplitSptialInner on block: [" << block_id
-          << "], loop nest:\n"
-          << sch->GetLoops(block_id)[0];
+  VLOG(-1) << "After SplitSptialInner on block: [" << block_id
+           << "], loop nest:\n"
+           << sch->GetLoops(block_id)[0];
   SplitReduceInner(sch, block_id);
-  VLOG(6) << "After SplitReduceInner on block: [" << block_id
-          << "], loop nest:\n"
-          << sch->GetLoops(block_id)[0];
-  ReorderFlattenInnerWithReduceAxis(sch, block_id);
-  VLOG(6) << "After ReorderFlattenInnerWithReduceAxis on block: [" << block_id
-          << "], loop nest:\n"
-          << sch->GetLoops(block_id)[0];
-  SplitWarpNumber(sch, block_id);
-  VLOG(6) << "After SplitWarpNumber on block: [" << block_id
-          << "], loop nest:\n"
-          << sch->GetLoops(block_id)[0];
+  VLOG(-1) << "After SplitReduceInner on block: [" << block_id
+           << "], loop nest:\n"
+           << sch->GetLoops(block_id)[0];
+  // ReorderFlattenInnerWithReduceAxis(sch, block_id);
+  // VLOG(6) << "After ReorderFlattenInnerWithReduceAxis on block: [" <<
+  // block_id
+  // << "], loop nest:\n"
+  // << sch->GetLoops(block_id)[0];
+  // SplitWarpNumber(sch, block_id);
+  // VLOG(6) << "After SplitWarpNumber on block: [" << block_id
+  //         << "], loop nest:\n"
+  //         << sch->GetLoops(block_id)[0];
   BindCudaInfo(sch, block_id);
-  VLOG(6) << "After BindCudaInfo on block: [" << block_id << "], loop nest:\n"
-          << sch->GetLoops(block_id)[0];
+  VLOG(-1) << "After BindCudaInfo on block: [" << block_id << "], loop nest:\n"
+           << sch->GetLoops(block_id)[0];
   VariableTypeAssignment(sch, block_id);
-  VLOG(6) << "After VariableTypeAssignment on block: [" << block_id
-          << "], loop nest:\n"
-          << sch->GetLoops(block_id)[0];
-  Unroll(sch, block_id);
-  VLOG(6) << "After Unroll on block: [" << block_id << "], loop nest:\n"
-          << sch->GetLoops(block_id)[0];
+  VLOG(-1) << "After VariableTypeAssignment on block: [" << block_id
+           << "], loop nest:\n"
+           << sch->GetLoops(block_id)[0];
+  // Unroll(sch, block_id);
+  // VLOG(-1) << "After Unroll on block: [" << block_id << "], loop nest:\n"
+  // << sch->GetLoops(block_id)[0];
   SetReduceType(sch, block_id);
 }
 
@@ -263,6 +289,16 @@ void TileFirstGeneralTactic::MergeFlattenAxis(ir::IRSchedule* sch,
   }
 }
 
+void TileFirstGeneralTactic::MergeDiscreteFlattenAxis(
+    ir::IRSchedule* sch, const std::string& block_id) {
+  if (vec_spatial_axis_first_.size() >= 2) {
+    sch->Fuse(block_id, vec_spatial_axis_first_);
+  }
+  if (vec_spatial_axis_last_.size() >= 2) {
+    sch->Fuse(block_id, vec_spatial_axis_last_);
+  }
+}
+
 void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
                                              const std::string& block_id) {
   std::vector<ir::Expr> loops = sch->GetLoops(block_id);
@@ -286,60 +322,28 @@ void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::SplitSptialInner(ir::IRSchedule* sch,
                                               const std::string& block_id) {
-  if (IsInnerThreadSpatialLoopGT(context_->config, 1)) {
-    if (FLAGS_support_trivial_stride_read) {
-      auto loops = sch->GetLoops(block_id);
-      std::vector<int> split_factors{
-          static_cast<int>(context_->config.tile_config.spatial_inner_num), -1};
-      sch->Split(loops[0], split_factors);
-      loops = sch->GetLoops(block_id);
-      sch->Reorder({loops[1], loops[0]});
-    } else {
-      auto loops = sch->GetLoops(block_id);
-      auto split_loops = sch->Split(
-          loops[0],
-          std::vector<int>(
-              {-1,
-               static_cast<int>(
-                   context_->config.tile_config.spatial_inner_num)}));
-    }
+  auto loops = sch->GetLoops(block_id);
+  if (loops.size() == 3) {
+    auto split_loops = sch->Split(loops[1], std::vector<int>({-1, 32}));
+    sch->Fuse(block_id, std::vector<int>{0, 1});
+  } else if (loops.size() == 2) {
+    auto split_loops = sch->Split(loops[0], std::vector<int>({-1, 32}));
   }
 }
 
 void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
                                               const std::string& block_id) {
-  if (!HasReduceAxis(context_->config)) return;
+  // if (!HasReduceAxis(context_->config)) return;
 
   auto loops = sch->GetLoops(block_id);
-  auto reduce_loop = loops[reduce_current_axis_].As<ir::For>();
+  sch->Split(loops[2], std::vector<int>{16, -1});
+  VLOG(-1) << "Doing Split ReduceInner on block: [" << block_id
+           << "], loop nest:\n"
+           << sch->GetLoops(block_id)[0];
 
-  if (FLAGS_support_reduce_stride_read) {
-    if (context_->config.base_info->reduce_numel <= 256) {
-      std::vector<int> split_factors{
-          -1, static_cast<int>(context_->config.tile_config.tree_reduce_num)};
-      sch->Split(loops[reduce_current_axis_], split_factors);
-      loops = sch->GetLoops(block_id);
-      sch->Reorder(
-          {loops[reduce_current_axis_ + 1], loops[reduce_current_axis_]});
-    } else {
-      // split warp num first
-      std::vector<int> split_factors{
-          static_cast<int>(context_->config.tile_config.warp_num), -1, 32};
-      sch->Split(loops[reduce_current_axis_], split_factors);
-      loops = sch->GetLoops(block_id);
-      sch->Reorder(
-          {loops[reduce_current_axis_ + 2], loops[reduce_current_axis_ + 1]});
-      loops = sch->GetLoops(block_id);
-      sch->Fuse({loops[reduce_current_axis_], loops[reduce_current_axis_ + 1]});
-    }
-  } else {
-    std::vector<int> split_factors{
-        static_cast<int>(context_->config.tile_config.tree_reduce_num), -1};
-    sch->Split(loops[reduce_current_axis_], split_factors);
-  }
   loops = sch->GetLoops(block_id);
   if (IsReduceBlock(context_->config, block_id)) {
-    sch->FactorizeReduction(loops[reduce_current_axis_],
+    sch->FactorizeReduction(loops[2],
                             0,
                             /* with_write_back_block_init = */ false);
   }
@@ -468,7 +472,7 @@ void TileFirstGeneralTactic::SetReduceType(ir::IRSchedule* sch,
     auto block = sch->GetBlock(block_id)
                      .As<ir::ScheduleBlockRealize>()
                      ->schedule_block.As<ir::ScheduleBlock>();
-    block->reduce_method = context_->config.tile_config.reduce_method;
+    block->reduce_method = cinn::ir::DiscreteReduceMethod();
   }
 }
 
@@ -481,12 +485,8 @@ void TileFirstGeneralTactic::BindCudaInfo(ir::IRSchedule* sch,
 
   const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
     sch->Bind(loops[0], "blockIdx.x");
-    if (IsWarpReduce(context_->config)) {
-      sch->Bind(loops[1], "threadIdx.y");
-      sch->Bind(loops[2], "threadIdx.x");
-    } else {
-      sch->Bind(loops[1], "threadIdx.x");
-    }
+    sch->Bind(loops[1], "threadIdx.x");
+    sch->Bind(loops[2], "threadIdx.y");
   };
 
   DoBind(sch->GetLoops(block_id));
