@@ -66,22 +66,22 @@ TEST(ConfigSearcher, TestReduceDemo) {
   schedule_config_manager.SetPolicy("custom");
 
   // Step 3: Construct iter space and objective function.
-  cinn::ir::search::IterSpace iter_space;
-  iter_space.space.push_back(cinn::ir::search::IterSpace::Dimension{
-      33,
-      128,
-      "S",
-      /* is_dynamic = */ true,
-      std::vector<double>(128 - 32, 1.0)});
-  iter_space.space.push_back(
-      cinn::ir::search::IterSpace::Dimension{1024,
-                                             1024,
-                                             "R",
-                                             /* is_dynamic = */ false,
-                                             std::vector<double>(1, 1.0)});
+  cinn::ir::BucketInfo bucket_info;
+  bucket_info.space.push_back(
+      cinn::ir::BucketInfo::Dimension{33,
+                                      128,
+                                      "S",
+                                      /* is_dynamic = */ true,
+                                      std::vector<double>(128 - 32, 1.0)});
+  bucket_info.space.push_back(
+      cinn::ir::BucketInfo::Dimension{1024,
+                                      1024,
+                                      "R",
+                                      /* is_dynamic = */ false,
+                                      std::vector<double>(1, 1.0)});
   std::unique_ptr<cinn::ir::search::BaseObjectiveFunc> obj_func =
       std::make_unique<cinn::ir::search::WeightedSamplingTrailObjectiveFunc>(
-          program.get(), iter_space);
+          program.get(), bucket_info);
 
   // Step 4: Construct config candidate range and constraints.
   std::vector<std::pair<int, int>> candidate_range{

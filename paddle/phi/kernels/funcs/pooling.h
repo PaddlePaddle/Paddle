@@ -69,6 +69,27 @@ class AvgPool {
 };
 
 template <class T>
+class LPPool {
+  using MT = typename dtype::MPTypeTrait<T>::Type;
+  MT intermediate_res;
+  float norm_type;
+
+ public:
+  HOSTDEVICE inline void setNormType(float ntype) { norm_type = ntype; }
+  DEVICE inline T initial() {
+    intermediate_res = static_cast<MT>(0.0f);
+    return static_cast<T>(0);
+  }
+  DEVICE inline void compute(const T& x, T* y UNUSED) {
+    intermediate_res += static_cast<MT>(powf(x, norm_type));
+  }
+
+  DEVICE inline void finalize(const T& pool_field UNUSED, T* y) {
+    *y = static_cast<T>(powf(intermediate_res, 1.0 / norm_type));
+  }
+};
+
+template <class T>
 class MaxPoolGrad {
  public:
   static constexpr bool use_x = true;
@@ -85,6 +106,21 @@ class AvgPoolGrad {
   HOSTDEVICE inline void compute(
       const T& x UNUSED, const T& y UNUSED, const T& dy, T scale, T* dx) {
     *dx += (scale * dy);
+  }
+};
+
+template <class T>
+class LPPoolGrad {
+  float norm_type;
+
+ public:
+  static constexpr bool use_x = true;
+  HOSTDEVICE inline void setNormType(float ntype) { norm_type = ntype; }
+  HOSTDEVICE inline void compute(
+      const T& x, const T& y, const T& dy, T scale UNUSED, T* dx) {
+    *dx += static_cast<T>(static_cast<double>(dy) *
+                          powf(static_cast<double>(x) / static_cast<double>(y),
+                               norm_type - 1.0f));
   }
 };
 

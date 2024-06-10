@@ -564,6 +564,7 @@ SpmdInfo FusedRopeGradInferSpmd(const DistMetaTensor& sin,
                                           time_major);
   std::vector<ArgDistAttr> dist_attrs;
   std::vector<int> order = {3, 4, 5, 0, 1, 2};
+  dist_attrs.reserve(order.size());
   for (int ind : order) {
     dist_attrs.emplace_back(spmd_info.first[ind]);
   }
