@@ -81,7 +81,7 @@ class TestReshardSToR:
                 std_ops,
             )
         elif self._shard == 1:
-            np.testing.assert_equal(main_program.num_ops(), 10)
+            np.testing.assert_equal(main_program.num_ops(), 8)
             std_ops = [
                 'builtin.parameter',
                 'pd_op.data',
@@ -89,9 +89,7 @@ class TestReshardSToR:
                 'pd_op.c_allgather',
                 'pd_op.full',
                 'pd_op.split_with_num',
-                'builtin.split',
                 'pd_op.full',
-                'builtin.combine',
                 'pd_op.concat',
             ]
 
