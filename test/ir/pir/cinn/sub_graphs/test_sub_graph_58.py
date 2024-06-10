@@ -34,7 +34,8 @@ class LayerCase(paddle.nn.Layer):
 
     def forward(
         self,
-        var_0,  # (shape: [1, 96, 32, 32], dtype: paddle.float32, stop_gradient: False)
+        # (shape: [1, 96, 32, 32], dtype: paddle.float32, stop_gradient: False)
+        var_0,
     ):
         var_1 = paddle.nn.functional.conv._conv_nd(
             var_0,
@@ -70,5 +71,5 @@ class TestLayer(TestBase):
         self.net = LayerCase
 
 
-# if __name__ == '__main__':
-#     unittest.main()
+if __name__ == '__main__':
+    unittest.main()
