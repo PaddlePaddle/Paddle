@@ -50,8 +50,10 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
   const auto Sample = [&]() -> std::vector<int64_t> {
     std::vector<int64_t> samples;
     for (BucketInfo::Dimension dim : bucket_info_.space) {
-      int sampled = utils::SampleDiscreteFromDistribution<double>(dim.weights,
-                                                                  &rand_seed_);
+      auto weights =
+          std::vector<double>(dim.upper_bound - dim.lower_bound + 1, 1.0);
+      int sampled =
+          utils::SampleDiscreteFromDistribution<double>(weights, &rand_seed_);
       samples.push_back(static_cast<int64_t>(sampled) + dim.lower_bound);
     }
     return samples;
