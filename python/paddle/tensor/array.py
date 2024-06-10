@@ -17,6 +17,7 @@
 from typing import Any, Sequence, TypeVar, overload
 
 import paddle
+from paddle import _typing
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..base.framework import in_pir_mode
@@ -293,7 +294,7 @@ def array_write(
                     "array should be tensor array variable in array_write Op"
                 )
         if array is None:
-            array = helper.create_variable(
+            array: paddle.Tensor = helper.create_variable(
                 name=f"{helper.name}.out",
                 type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
                 dtype=x.dtype,
@@ -306,9 +307,8 @@ def array_write(
         return array
 
 
-# TODO: dtype
 def create_array(
-    dtype: str,
+    dtype: _typing.DTypeLike,
     initialized_list: Sequence[paddle.Tensor] | None = None,
 ) -> paddle.Tensor | list[paddle.Tensor]:
     """
