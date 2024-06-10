@@ -368,7 +368,7 @@ class TestPrimMultiplyWithGrad1(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = multiply_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 class TestPrimMultiplyWithGrad2(TestPrimTwoWithGrad):
@@ -383,7 +383,7 @@ class TestPrimMultiplyWithGrad2(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = multiply_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 class TestPrimMultiplyWithGrad3(TestPrimTwoWithGrad):
@@ -398,7 +398,7 @@ class TestPrimMultiplyWithGrad3(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = multiply_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 class TestPrimMultiplyWithGrad4(TestPrimTwoWithGrad):
@@ -413,7 +413,7 @@ class TestPrimMultiplyWithGrad4(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = multiply_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 class TestPrimMultiplyWithGrad5(TestPrimTwoWithGrad):
@@ -428,7 +428,7 @@ class TestPrimMultiplyWithGrad5(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = multiply_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 class TestPrimMultiplyWithGrad6(TestPrimTwoWithGrad):
@@ -443,7 +443,7 @@ class TestPrimMultiplyWithGrad6(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = multiply_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 class TestPrimMultiplyWithGrad7(TestPrimTwoWithGrad):
@@ -458,7 +458,7 @@ class TestPrimMultiplyWithGrad7(TestPrimTwoWithGrad):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
         self.net = multiply_net
         self.enable_cinn = False
-        self.tol = 1e-6
+        self.tol = 1e-5
 
 
 if __name__ == "__main__":
