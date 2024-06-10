@@ -133,6 +133,7 @@ class MypyChecker(TypeChecker):
         self, test_results: list[TestResult], whl_error: list[str]
     ) -> None:
         is_fail = False
+        failed_apis = []
 
         logger.warning("----------------Check results--------------------")
 
@@ -150,6 +151,7 @@ class MypyChecker(TypeChecker):
             logger.warning(
                 "3. run 'python tools/print_signatures.py paddle > paddle/fluid/API.spec'."
             )
+
             for test_result in test_results:
                 if test_result.fail:
                     logger.error(
@@ -157,24 +159,31 @@ class MypyChecker(TypeChecker):
                         test_result.api_name,
                     )
                     logger.error(test_result.msg)
-            log_exit(1)
+                    failed_apis.append(test_result.api_name)
+
+            is_fail = True
 
         else:
             for test_result in test_results:
                 if test_result.fail:
                     is_fail = True
-
                     logger.error(test_result.api_name)
                     logger.error(test_result.msg)
+                    failed_apis.append(test_result.api_name)
 
                 else:
                     logger.debug(test_result.api_name)
                     logger.debug(test_result.msg)
 
-            if is_fail:
-                logger.error(">>> Mistakes found in type checking!")
-                logger.error(">>> Please recheck the type annotations.")
-                log_exit(1)
+        if is_fail:
+            logger.error(">>> Mistakes found in type checking!")
+            logger.error(
+                ">>> Please recheck the type annotations. Run `tools/type_checking.py` to check the typing issues:"
+            )
+            logger.error("> python type_checking.py " + " ".join(failed_apis))
+            logger.error("----------------End of the Check--------------------")
+
+            log_exit(1)
 
         logger.warning(">>> Type checking is successful!")
         logger.warning("----------------End of the Check--------------------")
