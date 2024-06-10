@@ -195,7 +195,9 @@ def array_write(
 
 
 @overload
-def array_write(x: paddle.Tensor, i: paddle.Tensor, array: list[T]) -> list[T]:
+def array_write(
+    x: paddle.Tensor, i: paddle.Tensor, array: list[paddle.Tensor]
+) -> list[paddle.Tensor]:
     ...
 
 
@@ -209,8 +211,8 @@ def array_write(
 def array_write(
     x: paddle.Tensor,
     i: paddle.Tensor,
-    array: list[T] | paddle.Tensor | None = None,
-) -> list[T] | paddle.Tensor:
+    array: list[paddle.Tensor] | paddle.Tensor | None = None,
+) -> list[paddle.Tensor] | paddle.Tensor:
     """
     This OP writes the input ``x`` into the i-th position of the ``array`` returns the modified array.
     If ``array`` is none, a new array will be created and returned.
@@ -294,7 +296,7 @@ def array_write(
                     "array should be tensor array variable in array_write Op"
                 )
         if array is None:
-            array: paddle.Tensor = helper.create_variable(
+            array = helper.create_variable(
                 name=f"{helper.name}.out",
                 type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
                 dtype=x.dtype,
