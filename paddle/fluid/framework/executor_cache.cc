@@ -32,16 +32,11 @@ DECLARE_FILE_SYMBOLS(print_statistics);
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
 COMMON_DECLARE_bool(print_ir);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class ProgramDesc;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-
-namespace details {
+namespace paddle::framework::details {
 
 static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
   framework::ExecutionStrategy execution_strategy;
@@ -208,7 +203,8 @@ std::set<std::string> ParseSafeEagerDeletionSkipVarsSet(
   VLOG(1) << "Found skip_eager_delete_vars: " << skip_eager_delete_vars.size();
   return skip_eager_delete_vars;
 }
-}  // namespace details
+}  // namespace paddle::framework::details
+namespace paddle::framework {
 
 // C++11 removes the need for manual locking. Concurrent execution shall wait if
 // a static local variable is already being initialized.
@@ -588,5 +584,4 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
   return res;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

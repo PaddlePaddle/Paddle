@@ -193,7 +193,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_imperative_qat_amp)
   list(REMOVE_ITEM TEST_OPS test_weight_only_linear)
   list(REMOVE_ITEM TEST_OPS test_llm_int8_linear)
-  list(REMOVE_ITEM TEST_OPS test_quant_aware)
+  list(REMOVE_ITEM TEST_OPS test_quant_aware_deprecated)
   list(REMOVE_ITEM TEST_OPS test_quant_post_quant_aware)
   list(REMOVE_ITEM TEST_OPS test_quant_aware_user_defined)
   list(REMOVE_ITEM TEST_OPS test_quant_amp)
@@ -236,14 +236,14 @@ list(REMOVE_ITEM TEST_OPS test_filter_pruning)
 # fix
 if(WIN32)
   set(SINGLE_CARD_TEST_OPS
-      test_user_defined_quantization
-      test_quantization_scale_pass
-      test_quantization_pass
-      test_moving_average_abs_max_scale_op
+      test_user_defined_quantization_deprecated
+      test_quantization_scale_pass_deprecated
+      test_quantization_pass_deprecated
+      test_moving_average_abs_max_scale_op_deprecated
       test_imperative_qat_channelwise
       test_imperative_qat
       test_imperative_out_scale
-      test_graph)
+      test_graph_deprecated)
   list(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
   foreach(src ${SINGLE_CARD_TEST_OPS})
     py_test(${src} SRCS ${src}.py ENVS CUDA_VISIBLE_DEVICES=0)
@@ -260,16 +260,17 @@ if(NOT WIN32)
                                                                         120)
   set_tests_properties(test_weight_quantization_mobilenetv1 PROPERTIES TIMEOUT
                                                                        120)
-  set_tests_properties(test_quant_aware PROPERTIES TIMEOUT 200)
+  set_tests_properties(test_quant_aware_deprecated PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant_post_quant_aware PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant_aware_user_defined PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant_amp PROPERTIES TIMEOUT 200)
 endif()
 
-set_tests_properties(test_graph PROPERTIES TIMEOUT 120)
-set_tests_properties(test_quantization_pass PROPERTIES TIMEOUT 120)
+set_tests_properties(test_graph_deprecated PROPERTIES TIMEOUT 120)
+set_tests_properties(test_quantization_pass_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_qat_channelwise PROPERTIES TIMEOUT 200)
-set_tests_properties(test_user_defined_quantization PROPERTIES TIMEOUT 200)
+set_tests_properties(test_user_defined_quantization_deprecated
+                     PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_fuse PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_out_scale PROPERTIES TIMEOUT 200)
@@ -279,3 +280,6 @@ if(APPLE)
                                                                         300)
   set_tests_properties(test_imperative_skip_op PROPERTIES TIMEOUT 300)
 endif()
+
+set_tests_properties(test_quantization_scale_pass_deprecated PROPERTIES TIMEOUT
+                                                                        100)

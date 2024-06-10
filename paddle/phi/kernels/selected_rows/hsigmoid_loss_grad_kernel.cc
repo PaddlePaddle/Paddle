@@ -21,8 +21,7 @@
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/cpu/hsigmoid_loss_grad.h"
 
-namespace phi {
-namespace sr {
+namespace phi::sr {
 
 static std::vector<int64_t> PathToRows(const DenseTensor& path) {
   std::set<int64_t> rows;
@@ -80,8 +79,7 @@ void HSigmoidLossGradKernel(const Context& ctx,
                                      w_grad);
 }
 
-}  // namespace sr
-}  // namespace phi
+}  // namespace phi::sr
 
 PD_REGISTER_KERNEL(hsigmoid_loss_grad_sr,
                    CPU,
