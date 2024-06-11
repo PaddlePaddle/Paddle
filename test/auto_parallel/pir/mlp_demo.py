@@ -22,7 +22,7 @@ import paddle.distributed as dist
 from paddle import nn
 
 BATCH_SIZE = 4
-BATCH_NUM = 40
+BATCH_NUM = 10
 IMAGE_SIZE = 16
 CLASS_NUM = 8
 np.random.seed(2024)
@@ -144,7 +144,9 @@ class TestMLPPipelineParallel(unittest.TestCase):
             learning_rate=0.1, parameters=pp_layer.parameters()
         )
         loss_fn = nn.MSELoss()
-        loader = create_data_loader()
+        loader = create_data_loader(
+            BATCH_SIZE, BATCH_NUM, IMAGE_SIZE, CLASS_NUM
+        )
         dist_loader = dist.shard_dataloader(loader, meshes=[mesh1, mesh2])
         dist_model = dist.to_static(pp_layer, dist_loader, loss_fn, opt)
         dist_model.train()
@@ -152,7 +154,9 @@ class TestMLPPipelineParallel(unittest.TestCase):
 
         for batch_id, (image, label) in enumerate(dist_loader()):
             loss = dist_model(image, label)
+            print(batch_id, loss)
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # unittest.main()
+    TestMLPPipelineParallel().test_to_static_program()

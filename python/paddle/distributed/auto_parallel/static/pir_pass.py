@@ -277,3 +277,110 @@ def eliminate_transpose_by_reshape(program):
                 transpose_var.replace_all_uses_with(reshape_var)
                 op.erase()
     return program
+
+
+def split_program_pass(main_program, last_fwd_op, last_bwd_op):
+    fwd_program = main_program.clone()
+    bwd_program = main_program.clone()
+    opt_program = main_program.clone()
+
+    ops = main_program.global_block().ops
+    fwd_ops = fwd_program.global_block().ops
+    bwd_ops = bwd_program.global_block().ops
+    opt_ops = opt_program.global_block().ops
+    opt_block = opt_program.global_block()
+    bwd_block = bwd_program.global_block()
+    num_ops = len(ops)
+    region = "opt"
+    for i in range(num_ops - 1, -1, -1):
+        if ops[i] == last_bwd_op:
+            region = "bwd"
+        if ops[i] == last_fwd_op:
+            region = "fwd"
+
+        if region == "opt":
+            fwd_ops[i].erase()
+            bwd_ops[i].erase()
+        elif region == "bwd":
+            fwd_ops[i].erase()
+            # in optimize program, both forward and backward ops should be removed
+            for idx in range(opt_ops[i].num_results()):
+                # if this op's output is used, create the persistable
+                # var to be used in other programs.
+                result_in_opt = opt_ops[i].result(idx)
+                if result_in_opt.use_empty() is False:
+                    name = (
+                        "var_" + str(i) + "_" + ops[i].name() + "_" + str(idx)
+                    )
+                    paddle.pir.set_insertion_point_after(bwd_ops[i])
+                    paddle._C_ops.set_persistable_value(
+                        bwd_ops[i].result(idx), name
+                    )
+                    bwd_ops[i].result(idx).persistable = True
+                    print(
+                        "op:",
+                        bwd_ops[i],
+                        " result:",
+                        bwd_ops[i].result(idx),
+                        " persistable:",
+                        bwd_ops[i].result(idx).persistable,
+                    )
+                    new_result_var_in_opt = opt_block.add_kwarg(
+                        name, result_in_opt.type()
+                    )
+                    new_result_var_in_opt.persistable = True
+                    opt_ops[i].result(idx).replace_all_uses_with(
+                        new_result_var_in_opt
+                    )
+            opt_ops[i].erase()
+        else:
+            # in backward program, only the forward ops should be removed
+            for idx in range(opt_ops[i].num_results()):
+                # if this op's output is used, create the persistable
+                # var to be used in other programs.
+                result_in_opt = opt_ops[i].result(idx)
+                result_in_bwd = bwd_ops[i].result(idx)
+                if (
+                    result_in_opt.use_empty() is False
+                    or result_in_bwd.use_empty() is False
+                ):
+                    if (
+                        fwd_ops[i].name() == "pd_op.data"
+                        or fwd_ops[i].name() == "builtin.parameter"
+                    ):
+                        name = fwd_ops[i].result(idx).name
+                        fwd_ops[i].result(idx).persistable = True
+                    else:
+                        name = (
+                            "var_"
+                            + str(i)
+                            + "_"
+                            + ops[i].name()
+                            + "_"
+                            + str(idx)
+                        )
+                        paddle.pir.set_insertion_point_after(fwd_ops[i])
+                        paddle._C_ops.set_persistable_value(
+                            fwd_ops[i].result(idx), name
+                        )
+                        fwd_ops[i].result(idx).persistable = True
+                if result_in_opt.use_empty() is False:
+                    new_result_var_in_opt = opt_block.add_kwarg(
+                        name, result_in_opt.type()
+                    )
+                    new_result_var_in_opt.persistable = True
+                    opt_ops[i].result(idx).replace_all_uses_with(
+                        new_result_var_in_opt
+                    )
+                if result_in_bwd.use_empty() is False:
+                    new_result_var_in_bwd = bwd_block.add_kwarg(
+                        name, result_in_bwd.type()
+                    )
+                    new_result_var_in_bwd.persistable = True
+                    bwd_ops[i].result(idx).replace_all_uses_with(
+                        new_result_var_in_bwd
+                    )
+            opt_ops[i].erase()
+            bwd_ops[i].erase()
+
+    return fwd_program, bwd_program, opt_program

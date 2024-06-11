@@ -3083,6 +3083,10 @@ void ProcessBlock(
       new_arg.set_type(
           AllocatedDenseTensorType::get(ctx, phi::Place(), dense_tensor_type));
     }
+    auto attrs = arg.dyn_cast<pir::BlockArgument>().attributes();
+    for (auto it = attrs.begin(); it != attrs.end(); it++) {
+      new_arg.set_attribute(it->first, it->second);
+    }
   }
   if (platform::is_gpu_place(place)) {
     for (auto& [keyword, arg] : block->kwargs()) {
