@@ -20,6 +20,7 @@ from op_test import OpTest, convert_uint16_to_float, paddle_static_guard
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 from paddle.tensor import random
 
 
@@ -383,6 +384,73 @@ class TestStandardNormalDtype(unittest.TestCase):
             test_default_fp16()
         test_default_fp64()
         test_default_fp32()
+
+    def test_complex_dtype(self):
+        def test_complex64():
+            out = paddle.tensor.random.standard_normal(
+                [2, 3], dtype='complex64'
+            )
+            self.assertEqual(out.dtype, paddle.complex64)
+
+        def test_complex128():
+            out = paddle.tensor.random.standard_normal(
+                [2, 3], dtype='complex128'
+            )
+            self.assertEqual(out.dtype, paddle.complex128)
+
+        if paddle.is_compiled_with_cuda():
+            paddle.set_device('gpu')
+            test_complex64()
+            test_complex128()
+        paddle.set_device('cpu')
+        test_complex64()
+        test_complex128()
+
+
+class TestComplexRandnAPI(unittest.TestCase):
+    def test_dygraph(self):
+        place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+        paddle.disable_static(place)
+        for dtype in ['complex64', 'complex128']:
+            out = paddle.randn([5000, 2], dtype=dtype)
+            mean = out.numpy().mean()
+            np.testing.assert_allclose(mean, 0.0 + 0.0j, rtol=0.2, atol=0.2)
+            var = out.numpy().var()
+            var_real = out.numpy().real.var()
+            var_imag = out.numpy().imag.var()
+            np.testing.assert_allclose(var, 1.0, rtol=0.2, atol=0.2)
+            np.testing.assert_allclose(var_real, 0.5, rtol=0.2, atol=0.2)
+            np.testing.assert_allclose(var_imag, 0.5, rtol=0.2, atol=0.2)
+        paddle.enable_static()
+
+    @test_with_pir_api
+    def test_static(self):
+        place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+        paddle.enable_static()
+        for dtype in ['complex64', 'complex128']:
+            main_program = paddle.static.Program()
+            with paddle.static.program_guard(main_program):
+                out = paddle.randn([5000, 2], dtype=dtype)
+                exe = paddle.static.Executor(place)
+                ret = exe.run(fetch_list=[out])
+
+            mean = ret[0].numpy().mean()
+            np.testing.assert_allclose(mean, 0.0 + 0.0j, rtol=0.2, atol=0.2)
+            var = ret[0].numpy().var()
+            var_real = ret[0].numpy().real.var()
+            var_imag = ret[0].numpy().imag.var()
+            np.testing.assert_allclose(var, 1.0, rtol=0.2, atol=0.2)
+            np.testing.assert_allclose(var_real, 0.5, rtol=0.2, atol=0.2)
+            np.testing.assert_allclose(var_imag, 0.5, rtol=0.2, atol=0.2)
+        paddle.disable_static()
 
 
 class TestRandomValue(unittest.TestCase):

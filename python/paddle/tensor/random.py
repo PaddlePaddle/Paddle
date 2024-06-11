@@ -766,7 +766,7 @@ def standard_normal(shape, dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype (str|np.dtype, optional): The data type of the output Tensor.
-            Supported data types: float32, float64.
+            Supported data types: float32, float64, complex64, complex128.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
         name (str, optional): Name for the operation (optional, default is None).
@@ -817,8 +817,21 @@ def standard_normal(shape, dtype=None, name=None):
              [ 1.52022707, -0.83830303,  0.05261501]])
             >>> # doctest: -SKIP
 
+            >>> # example 4: attr dtype is complex64.
+            >>> paddle.seed(200)
+            >>> shape_tensor = paddle.to_tensor([2, 3])
+            >>> out4 = paddle.standard_normal(shape_tensor, dtype='complex64')
+            >>> print(out4)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 0.01182475, -0.44895259, -1.79227340],
+             [ 1.52022707, -0.83830303,  0.05261501]])
     """
-    return gaussian(shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name)
+    if dtype in ['complex64', 'complex128']:
+        return gaussian(
+            shape=shape, mean=(0.0 + 0.0j), std=1.0, dtype=dtype, name=name
+        )
+    else:
+        return gaussian(shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name)
 
 
 def randn(shape, dtype=None, name=None):
@@ -832,7 +845,7 @@ def randn(shape, dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype (str|np.dtype, optional): The data type of the output Tensor.
-            Supported data types: float32, float64.
+            Supported data types: float32, float64, complex64, complex128.
             Default is None, use global default dtype (see ``get_default_dtype``
             for details).
         name (str, optional): Name for the operation (optional, default is None).
@@ -881,6 +894,15 @@ def randn(shape, dtype=None, name=None):
             [[ 0.57575506, -1.60349274, -0.27124876],
              [ 1.08381045,  0.81270242, -0.26763600]])
             >>> # doctest: -SKIP
+
+            >>> # example 4: attr dtype is complex64.
+            >>> paddle.seed(200)
+            >>> shape_tensor = paddle.to_tensor([2, 3])
+            >>> out4 = paddle.randn(shape_tensor, dtype='complex64')
+            >>> print(out4)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 0.57575506, -1.60349274, -0.27124876],
+             [ 1.08381045,  0.81270242, -0.26763600]])
     """
     return standard_normal(shape, dtype, name)
 
@@ -947,6 +969,17 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.48646951, 0.00815189, 3.74022293])
             >>> # doctest: -SKIP
+
+            >>> paddle.seed(200)
+            >>> out4 = paddle.normal(mean=1+1j, shape=[2, 3])
+            >>> print(out4)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.85107994, -0.85490644, -1.35941815],
+             [-0.55500370,  0.20964541,  2.24193954]])
+
+            >>> mean_tensor = paddle.to_tensor([1+1j, 2+2j, 3+3j])
+            >>> out5 = paddle.normal(mean=mean_tensor)
+            >>> print(out5)
     """
     if not in_dynamic_mode():
         check_type(
