@@ -57,14 +57,6 @@ class XPUTestScaleOp(XPUOpTestWrapper):
                 }
 
         def set_output(self):
-            '''
-            if "float16" == self.in_type:
-                output = self.inputs['X'] * np.float16(self.attrs['scale'])
-            elif "int64" == self.in_type:
-                output = self.inputs['X'] * np.int64(self.attrs['scale'])
-            else:
-                output = self.inputs['X'] * np.float32(self.attrs['scale'])
-            '''
             if self.dtype == np.uint16:
                 output = (
                     convert_uint16_to_float(self.inputs['X'])
@@ -77,14 +69,6 @@ class XPUTestScaleOp(XPUOpTestWrapper):
 
         def init_dtype(self):
             self.dtype = self.in_type
-            '''
-            if "float16" == self.in_type:
-                self.dtype = np.float16
-            elif "float32" == self.in_type:
-                self.dtype = np.float32
-            elif "int64" == self.in_type:
-                self.dtype = np.int64
-            '''
 
         def set_attrs(self):
             self.attrs = {'scale': -2.3}
