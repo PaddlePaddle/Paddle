@@ -710,6 +710,12 @@ package_data['paddle.libs']= []
 if('${WITH_SHARED_PHI}' == 'ON'):
     package_data['paddle.libs'] += [('libphi' if os.name != 'nt' else 'phi') + ext_name]
     shutil.copy('${PHI_LIB}', libs_path)
+    if('${PHI_KERNEL_GPU_LIB}'):
+        package_data['paddle.libs'] += [
+            ('libphi_kernel_gpu' if os.name != 'nt' else 'phi_kernel_gpu')
+            + ext_name
+        ]
+        shutil.copy('${PHI_KERNEL_GPU_LIB}', libs_path)
 
 if('${WITH_SHARED_IR}' == 'ON'):
     package_data['paddle.libs'] += [('libpir' if os.name != 'nt' else 'pir') + ext_name]
