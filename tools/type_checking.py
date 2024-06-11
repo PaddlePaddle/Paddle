@@ -25,10 +25,11 @@ from __future__ import annotations
 
 import argparse
 import doctest
+import multiprocessing
 import pathlib
 import re
+import signal
 from abc import abstractmethod
-from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -180,7 +181,9 @@ class MypyChecker(TypeChecker):
             logger.error(
                 ">>> Please recheck the type annotations. Run `tools/type_checking.py` to check the typing issues:"
             )
-            logger.error("> python type_checking.py " + " ".join(failed_apis))
+            logger.error(
+                "> python tools/type_checking.py " + " ".join(failed_apis)
+            )
             logger.error("----------------End of the Check--------------------")
 
             log_exit(1)
@@ -234,7 +237,6 @@ def get_test_results(
     )
     google_style = _test_style == 'google'
 
-    api_names = []
     codeblocks = []
     for api_name, raw_docstring in docstrings_to_test.items():
         # we may extract more than one codeblocks from docsting.
@@ -244,14 +246,26 @@ def get_test_results(
             codeblock_name = codeblock['name']
             codeblock_id = codeblock['id']
 
-            api_names.append(f'{api_name}:{codeblock_name or codeblock_id}')
-            codeblocks.append(codeblock['codes'])
+            codeblocks.append(
+                (
+                    f'{api_name}:{codeblock_name or codeblock_id}',
+                    codeblock['codes'],
+                )
+            )
+
+    # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
+    # ctrl+c interrupt handler
+    def init_worker():
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     test_results = []
-    with ProcessPoolExecutor() as exe:
-        test_results = exe.map(
-            type_checker.run, api_names, codeblocks, timeout=600
-        )
+    pool = multiprocessing.Pool(initializer=init_worker)
+    try:
+        test_results = pool.starmap(type_checker.run, codeblocks)
+
+    except KeyboardInterrupt:
+        pool.terminate()
+        pool.join()
 
     return list(test_results)
 
