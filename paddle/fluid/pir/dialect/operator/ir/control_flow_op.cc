@@ -39,9 +39,8 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
 
 using pir::TuplePopOp;
 using pir::TuplePushOp;
-constexpr char kStopGradientAttrName[] = "stop_gradient";
-namespace paddle {
-namespace dialect {
+constexpr char kStopGradientAttrName[] = "stop_gradient";  // NOLINT
+namespace paddle::dialect {
 
 void IfOp::Build(pir::Builder &builder,             // NOLINT
                  pir::OperationArgument &argument,  // NOLINT
@@ -826,8 +825,8 @@ void HasElementsOp::VerifySig() {
                         "The type of cf.has_elements' output is not correct."));
 }
 
-const char *AssertOp::attributes_name[1] = {"summarize"};
-const char AssertOp::ERROR_INFO_ATTR_NAME[] = "error_info";
+const char *AssertOp::attributes_name[1] = {"summarize"};    // NOLINT
+const char AssertOp::ERROR_INFO_ATTR_NAME[] = "error_info";  // NOLINT
 
 void AssertOp::Build(pir::Builder &builder,             // NOLINT
                      pir::OperationArgument &argument,  // NOLINT
@@ -1198,8 +1197,7 @@ void SelectOutputOp::VerifySig() {
   VLOG(4) << "End Verifying for: AssignArray_Op.";
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)

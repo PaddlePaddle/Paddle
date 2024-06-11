@@ -56,12 +56,7 @@ class GroupOpGenerateShapeOpsPattern
         .GetShapeOrDataDimExprs =
             [&](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
           return shape_analysis.GetShapeOrDataForValue(value);
-        },
-        .SetShapeOrDataDimExprs =
-            [&](pir::Value value,
-                const symbol::ShapeOrDataDimExprs& dim_exprs) {
-              shape_analysis.SetShapeOrDataForValue(value, dim_exprs);
-            }};
+        }};
     return MoveGenerateShapeOpsToPrologue(
         ctx, group_op.block(), dim_exprs_accessor);
   }
@@ -82,12 +77,7 @@ class MoveGenerateShapeOpsToProloguePass : public pir::Pass {
         .GetShapeOrDataDimExprs =
             [&](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
           return shape_analysis.GetShapeOrDataForValue(value);
-        },
-        .SetShapeOrDataDimExprs =
-            [&](pir::Value value,
-                const symbol::ShapeOrDataDimExprs& dim_exprs) {
-              shape_analysis.SetShapeOrDataForValue(value, dim_exprs);
-            }};
+        }};
     MoveGenerateShapeOpsToPrologue(ctx, group_op.block(), dim_exprs_accessor);
   }
 

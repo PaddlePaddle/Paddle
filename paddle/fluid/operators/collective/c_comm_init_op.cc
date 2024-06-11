@@ -42,14 +42,11 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CCommInitOp : public framework::OperatorBase {
  public:
@@ -118,7 +115,8 @@ class CCommInitOp : public framework::OperatorBase {
       int nranks = Attr<int>("nranks");
       int rid = Attr<int>("ring_id");
 
-      int device_id = place.device;
+      int device_id =
+          static_cast<int>(static_cast<unsigned char>(place.device));
       if (Attr<int>("device_id") >= 0) {
         device_id = Attr<int>("device_id");
       }
@@ -182,8 +180,7 @@ Initialize collective communication context within this trainer
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

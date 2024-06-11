@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdaGradSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, StdAdaGradSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdamSGDRule);
@@ -181,6 +180,16 @@ TEST(downpour_feature_value_accessor_test, test_update) {
     std::vector<float> embed_g2sum;
     std::vector<float> embedx_w;
     std::vector<float> embedx_g2sum;
+    DownpourSparseValueTest()
+        : slot(0),
+          unseen_days(0),
+          delta_score(0),
+          show(0),
+          click(0),
+          embed_w(0),
+          embed_g2sum(),
+          embedx_w(),
+          embedx_g2sum() {}
 
     void to_array(float* ptr, size_t dim) {
       ptr[0] = slot;
@@ -210,6 +219,8 @@ TEST(downpour_feature_value_accessor_test, test_update) {
     float click;
     float embed_g;
     std::vector<float> embedx_g;
+    DownpourSparsePushValueTest()
+        : slot(0), show(0), click(0), embed_g(0), embedx_g() {}
   };
   std::vector<float*> exp_value;
   for (auto i = 0u; i < item_size; ++i) {
@@ -303,5 +314,4 @@ TEST(downpour_feature_value_accessor_test, test_string_related) {
     ASSERT_FLOAT_EQ(value[i], 0);
   }
 }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

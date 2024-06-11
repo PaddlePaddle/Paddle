@@ -42,8 +42,7 @@
 #define gpuFree cudaFree
 #endif
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 void NCCLDynamicCheck::CheckDataType(const phi::DenseTensor& tensor,
                                      int64_t dtype) {
   PADDLE_ENFORCE_EQ(
@@ -197,5 +196,4 @@ void NCCLDynamicCheck::CheckGatherShape(
     }
   }
 }
-}  //  namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

@@ -19,7 +19,7 @@
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/frontend/decomposer/test_helper.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
-
+#include "paddle/common/enforce.h"
 PD_DECLARE_bool(cinn_new_group_scheduler);
 
 namespace cinn {
@@ -36,7 +36,10 @@ void Compile(NetBuilder* net_builder) {
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
+  PADDLE_ENFORCE_EQ(
+      graph->fusion_groups.size(),
+      1,
+      phi::errors::InvalidArgument("The number of fusion groups should be 1"));
 
   auto& dtype_dict =
       graph->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>(
@@ -51,7 +54,10 @@ void Compile(NetBuilder* net_builder) {
         op_lowerer.Lower(fusion_group,
                          /* apply_op_schedule = */ true,
                          /* apply_group_schedule = */ false);
-    CHECK_EQ(lowered_funcs.size(), 1);
+    PADDLE_ENFORCE_EQ(lowered_funcs.size(),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The number of lowered funcs should be 1"));
     VLOG(1) << "without group schedule, lowered_func: "
             << lowered_funcs.front();
 
@@ -59,7 +65,10 @@ void Compile(NetBuilder* net_builder) {
     lowered_funcs = op_lowerer.Lower(fusion_group,
                                      /* apply_op_schedule = */ true,
                                      /* apply_group_schedule = */ true);
-    CHECK_EQ(lowered_funcs.size(), 1);
+    PADDLE_ENFORCE_EQ(lowered_funcs.size(),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The number of lowered funcs should be 1"));
     VLOG(1) << "after group schedule, lowered_func: " << lowered_funcs.front();
   }
 }

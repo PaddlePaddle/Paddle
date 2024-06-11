@@ -15,7 +15,7 @@
 
 #include <fstream>
 #include "paddle/common/enforce.h"
-#include "paddle/fluid/pir/serialize_deserialize/include/third_part.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/third_party.h"
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/program.h"
 
@@ -47,6 +47,8 @@ class ProgramReader {
                                       Json* operesult_attrs_json);
   pir::Attribute ReadAttribute(Json* attr_json);
   pir::Type ReadType(Json* type_json);
+
+  pir::Operation* ReadParameterOp(Json* op_json);
 };
 
 }  // namespace pir

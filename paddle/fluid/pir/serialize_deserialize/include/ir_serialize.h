@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-#include "paddle/fluid/pir/serialize_deserialize/include/third_part.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/third_party.h"
 #include "paddle/pir/include/core/program.h"
 
 namespace pir {
@@ -60,7 +60,7 @@ class ProgramWriter {
 
   Json WriteProgram(const pir::Program* program);
   Json WriteRegion(const pir::Region* region, const std::string& region_name);
-  Json WriteBlock(const pir::Block* block, const std::string& block_name);
+  Json WriteBlock(pir::Block* block, const std::string& block_name);
   Json WriteOp(const pir::Operation& op);
   Json WriteBlockArg(const pir::Value& value);
   Json WriteValue(const pir::Value& value);
@@ -76,6 +76,9 @@ class ProgramWriter {
   Json WriteAttribute(const std::string& op_attr_name,
                       const pir::Attribute& attr);
   Json WriteType(const pir::Type& type);
+
+  // special op for optimize json file size
+  Json WriteParameterOP(const pir::Operation& op);
 };
 
 }  // namespace pir
