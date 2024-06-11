@@ -152,8 +152,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
                                  const ir::ReduceMethod& method) {
     std::visit(cinn::adt::match{
                    [&](const ir::NoneReduceMethod&) {
-                     LOG(FATAL) << "Unsupported reduce method";
-                     return;
+                     ReplaceByContinuousReduceExternCall<OpT>(store, false);
                    },
                    [&](const ir::WarpReduceMethod&) {
                      ReplaceByContinuousReduceExternCall<OpT>(store, true);
