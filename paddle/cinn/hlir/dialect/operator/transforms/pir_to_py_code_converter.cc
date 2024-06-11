@@ -225,10 +225,23 @@ struct PirToPyCodeConverterHelper {
 
   std::vector<pir::Value> GetFreeVars(const pir::Block& block) {
     std::vector<pir::Value> inputs;
+    const auto IsBlockPositionalArg = [&](pir::Value value) {
+      const auto& args = block.args();
+      return std::find(args.begin(), args.end(), value) != args.end();
+    };
+    const auto IsBlockKeywardArg = [&](pir::Value value) {
+      const auto& kwargs = block.kwargs();
+      for (const auto& [_, kwarg] : kwargs) {
+        if (kwarg == value) return true;
+      }
+      return false;
+    };
     for (const auto& value : GetUsedExternalValue(block)) {
       if (!value) continue;
       if (std::find(inputs.begin(), inputs.end(), value) != inputs.end())
         continue;
+      if (IsBlockPositionalArg(value)) continue;
+      if (IsBlockKeywardArg(value)) continue;
       inputs.push_back(value);
     }
     return inputs;
