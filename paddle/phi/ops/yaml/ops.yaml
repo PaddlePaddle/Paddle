@@ -4264,6 +4264,8 @@
   kernel :
     func : tile
   backward : tile_grad
+  data_transform :
+    skip_transform : repeat_times
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : top_p_sampling
