@@ -123,17 +123,9 @@ MeasureResult Measurer::Result() const {
   auto compile_time = ::common::PerformanceReporter::Mean(compile_durations);
   auto avg_total_execute_time =
       ::common::PerformanceReporter::Mean(total_execute_durations);
-  // VLOG(3)
-  //     << "min time "
-  //     <<
-  //     ::common::PerformanceReporter::Min(kernel_execute_durations).count();
-  // VLOG(3)
-  //     << "max time "
-  //     <<
-  //     ::common::PerformanceReporter::Max(kernel_execute_durations).count();
   std::string record_strs =
       ::common::PerformanceReporter::Report(kernel_record);
-  VLOG(3) << " report: " << record_strs;
+  VLOG(6) << " report: " << record_strs;
   auto avg_kernel_execute_time =
       ::common::PerformanceReporter::PreciseMean(kernel_execute_durations);
 

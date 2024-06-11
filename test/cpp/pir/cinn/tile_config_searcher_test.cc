@@ -71,12 +71,10 @@ TEST(ConfigSearcher, TestReduceDemo) {
   constexpr int kMaxThreadsPerBlock = 1024;
 
   // Step 1: Construct pir::Program.
-  //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   std::shared_ptr<::pir::Program> program = BuildReduceSumProgram();
-  program->Print(std::cout);
   // Step 2: Switch schedule config manager mode.
   auto& schedule_config_manager = cinn::ir::ScheduleConfigManager::Instance();
-  schedule_config_manager.SetPolicy("default");
+  schedule_config_manager.SetPolicy("custom");
 
   // Step 3: Construct iter space and objective function.
   cinn::ir::BucketInfo bucket_info;
