@@ -1474,7 +1474,7 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
 def _feature_alpha_dropout_impl(
     x: paddle.Tensor,
     feature_dropout: bool,
-    p: float | int,
+    p: float,
     training: bool = True,
     name: str | None = None,
 ) -> paddle.Tensor:
@@ -1533,7 +1533,7 @@ def _feature_alpha_dropout_impl(
 
 def alpha_dropout(
     x: paddle.Tensor,
-    p: float | int = 0.5,
+    p: float = 0.5,
     training: bool = True,
     name: str | None = None,
 ) -> paddle.Tensor:
@@ -1576,7 +1576,7 @@ def alpha_dropout(
 
 def feature_alpha_dropout(
     x: paddle.Tensor,
-    p: float | int = 0.5,
+    p: float = 0.5,
     training: bool = True,
     name: str | None = None,
 ) -> paddle.Tensor:
