@@ -109,26 +109,18 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
   for (int32_t i = 0; i < context_->config.base_info->data_rank; ++i) {
     if (i >= reduce_start_idx) {
       vec_reduce_axis_.push_back(i);
-      VLOG(-1) << "DEBUG vec_reduce_axis_.push_back = " << i;
     } else {
       vec_flatten_axis_.push_back(i);
-      VLOG(-1) << "DEBUG vec_flatten_axis_.push_back = " << i;
     }
   }
   vec_spatial_axis_first_.clear();
   vec_spatial_axis_last_.clear();
   if (!context_->config.base_info->raw_reduce_axis.empty()) {
-    VLOG(-1) << "DEBUG reduce_start_idx = " << reduce_start_idx;
-    VLOG(-1) << "DEBUG data_rank = " << context_->config.base_info->data_rank;
-    VLOG(-1) << "DEBUG raw_reduce_axis size = "
-             << context_->config.base_info->raw_reduce_axis.size();
     for (int32_t i = 0; i < reduce_start_idx; ++i) {
       if (i < context_->config.base_info->raw_reduce_axis.front()) {
         vec_spatial_axis_first_.push_back(i);
-        VLOG(-1) << "DEBUG vec_spatial_axis_first_.push_back = " << i;
       } else {
         vec_spatial_axis_last_.push_back(i);
-        VLOG(-1) << "DEBUG vec_spatial_axis_last_.push_back = " << i;
       }
     }
   }
@@ -143,40 +135,28 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   }
   if (ir::IsReduceInitTensorName(block_id)) return;
   MergeReduceAxis(sch, block_id);
-  VLOG(-1) << "After MergeReduceAxis on block: [" << block_id
-           << "], loop nest:\n"
-           << sch->GetLoops(block_id)[0];
+  VLOG(6) << "After MergeReduceAxis on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   MergeDiscreteFlattenAxis(sch, block_id);
-  VLOG(-1) << "After MergeDiscreteFlattenAxis on block: [" << block_id
-           << "], loop nest:\n"
-           << sch->GetLoops(block_id)[0];
+  VLOG(6) << "After MergeDiscreteFlattenAxis on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   SplitSptialInner(sch, block_id);
-  VLOG(-1) << "After SplitSptialInner on block: [" << block_id
-           << "], loop nest:\n"
-           << sch->GetLoops(block_id)[0];
+  VLOG(6) << "After SplitSptialInner on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   SplitReduceInner(sch, block_id);
-  VLOG(-1) << "After SplitReduceInner on block: [" << block_id
-           << "], loop nest:\n"
-           << sch->GetLoops(block_id)[0];
-  // ReorderFlattenInnerWithReduceAxis(sch, block_id);
-  // VLOG(6) << "After ReorderFlattenInnerWithReduceAxis on block: [" <<
-  // block_id
-  // << "], loop nest:\n"
-  // << sch->GetLoops(block_id)[0];
-  // SplitWarpNumber(sch, block_id);
-  // VLOG(6) << "After SplitWarpNumber on block: [" << block_id
-  //         << "], loop nest:\n"
-  //         << sch->GetLoops(block_id)[0];
+  VLOG(6) << "After SplitReduceInner on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   BindCudaInfo(sch, block_id);
-  VLOG(-1) << "After BindCudaInfo on block: [" << block_id << "], loop nest:\n"
-           << sch->GetLoops(block_id)[0];
+  VLOG(6) << "After BindCudaInfo on block: [" << block_id << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   VariableTypeAssignment(sch, block_id);
-  VLOG(-1) << "After VariableTypeAssignment on block: [" << block_id
-           << "], loop nest:\n"
-           << sch->GetLoops(block_id)[0];
-  // Unroll(sch, block_id);
-  // VLOG(-1) << "After Unroll on block: [" << block_id << "], loop nest:\n"
-  // << sch->GetLoops(block_id)[0];
+  VLOG(6) << "After VariableTypeAssignment on block: [" << block_id
+          << "], loop nest:\n"
+          << sch->GetLoops(block_id)[0];
   SetDiscreteReduceType(sch, block_id);
 }
 
@@ -333,9 +313,6 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
                                               const std::string& block_id) {
   auto loops = sch->GetLoops(block_id);
   sch->Split(loops[2], std::vector<int>{16, -1});
-  VLOG(-1) << "Doing Split ReduceInner on block: [" << block_id
-           << "], loop nest:\n"
-           << sch->GetLoops(block_id)[0];
 
   loops = sch->GetLoops(block_id);
   if (IsReduceBlock(context_->config, block_id)) {
