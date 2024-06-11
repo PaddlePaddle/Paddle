@@ -136,10 +136,10 @@ struct CachedDimExprToValueConverter {
           ->Build<paddle::dialect::FlattenOp>(value, 0, dims.size() - 1)
           .out();
     };
-    if (tensor_dim.value.type()
-            .dyn_cast<paddle::dialect::DenseTensorType>()
-            .dims()
-            .size() == 0) {
+    const auto& ddim = tensor_dim.value.type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>()
+                           .dims();
+    if (ddim.size() == 0 || (ddim.size() == 1 && ddim[0] == 1)) {
       return CastToInt64IfNeed(tensor_dim.value);
     }
     return CastToInt64IfNeed(rewriter

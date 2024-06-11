@@ -17,9 +17,7 @@ limitations under the License. */
 #ifndef UNUSED
 #define UNUSED __attribute__((unused))
 #endif
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void AddVarToScope(Scope* param_scope,
                    const std::string& name,
@@ -711,9 +709,7 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass,
               "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass"));
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(fused_multi_transformer_encoder_pass);
 USE_PASS(fused_multi_transformer_encoder_fuse_qkv_pass);

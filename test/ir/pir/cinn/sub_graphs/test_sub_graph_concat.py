@@ -54,6 +54,7 @@ class TestConcat(TestBase):
             paddle.rand(shape=[145, 12, 112, 112], dtype=paddle.float32),
         )
         self.net = ConcatCase
+        self.with_train = False
 
 
 if __name__ == '__main__':

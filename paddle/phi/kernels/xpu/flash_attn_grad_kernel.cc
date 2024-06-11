@@ -17,9 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#ifdef PADDLE_WITH_XPU_XHPC
 #include "xfa/flash_api.h"
-#endif
 
 namespace phi {
 
@@ -38,8 +36,6 @@ void FlashAttnGradKernel(const Context& ctx,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
-#ifdef PADDLE_WITH_XPU_XHPC
-
   ctx.template Alloc<T>(dq);
   ctx.template Alloc<T>(dk);
   ctx.template Alloc<T>(dv);
@@ -74,7 +70,7 @@ void FlashAttnGradKernel(const Context& ctx,
   const float* bias_data = nullptr;
   int64_t fa_layout = AttnQKVLayout_t::ATTN_BLHD;
   if (attn_mask.get_ptr() != nullptr) {
-    const auto& mask_dims = attn_mask.dims();
+    const auto& mask_dims = attn_mask->dims();
     if (mask_dims.size() == 3 || (mask_dims[1] == 1 && mask_dims.size() == 4)) {
       fa_layout |= AttnQKVLayout_t::BIAS_BLL;
     } else {
@@ -172,10 +168,6 @@ void FlashAttnGradKernel(const Context& ctx,
       fa_layout                                   // qkv_layout
   );
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_bwd");
-#else
-  PADDLE_THROW(phi::errors::PreconditionNotMet(
-      "re-compile using -DWITH_XPU_XHPC=ON to use FlashAttnGradKernel"));
-#endif
 }
 
 }  // namespace phi

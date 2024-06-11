@@ -18,8 +18,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 TaskLoopThread::TaskLoopThread() : start_(false), loop_(nullptr) {}
 
@@ -56,5 +55,4 @@ void TaskLoopThread::Loop() {
   loop_ = nullptr;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed
