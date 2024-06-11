@@ -18,7 +18,7 @@
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/schedule_desc.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace auto_schedule {
 
@@ -29,7 +29,10 @@ int ExtractNumThreads(const ir::IRSchedule& ir_schedule,
     if (step.type == "Bind" &&
         step.attrs.find("thread_axis") != step.attrs.end() &&
         absl::get<std::string>(step.attrs.at("thread_axis")) == bind_axis) {
-      CHECK_EQ(step.inputs.at("loop").size(), 1);
+      PADDLE_ENFORCE_EQ(step.inputs.at("loop").size(),
+                        1,
+                        phi::errors::InvalidArgument(
+                            "The loop size of bind step should be 1"));
       return step.inputs.at("loop")[0].As<ir::For>()->extent.as_int32();
     }
   }

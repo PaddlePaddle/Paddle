@@ -74,7 +74,6 @@
 - repeat_interleave
 - repeat_interleave_with_tensor_index
 - rnn
-- rrelu
 - sequence_mask
 - set_value_with_tensor
 - slice

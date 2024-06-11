@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define functions to get create a tensor
+from __future__ import annotations
 
 import math
 import re
@@ -21,6 +21,12 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle._typing import (
+    DTypeLike,
+    NestedNumbericSequence,
+    PlaceLike,
+    TensorLike,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -719,7 +725,12 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
     return output
 
 
-def to_tensor(data, dtype=None, place=None, stop_gradient=True):
+def to_tensor(
+    data: TensorLike | NestedNumbericSequence,
+    dtype: DTypeLike | None = None,
+    place: PlaceLike | None = None,
+    stop_gradient: bool = True,
+) -> paddle.Tensor:
     r"""
     Constructs a ``paddle.Tensor`` from ``data`` ,
     which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor.
@@ -1644,7 +1655,7 @@ def meshgrid(*args, **kwargs):
 
     Args:
         *args(Tensor|list of Tensor) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,),
-            (N2,),..., (Nk,). Support data types: ``float64``, ``float16``, ``float32``, ``int32``, ``int64``.
+            (N2,),..., (Nk,). Support data types: ``float64``, ``bfloat16``, ``float16``, ``float32``, ``int32``, ``int64``, ``complex64``, ``complex128``.
         **kwargs (optional): Currently, only accept name in **kwargs
             The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -1686,7 +1697,16 @@ def meshgrid(*args, **kwargs):
             check_dtype(
                 input_.dtype,
                 'create data type',
-                ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                [
+                    'uint16',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'complex64',
+                    'complex128',
+                ],
                 'meshgrid',
             )
 

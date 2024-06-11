@@ -20,9 +20,6 @@
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 
-PD_DECLARE_bool(support_reduce_stride_read);
-PD_DECLARE_bool(support_trivial_stride_read);
-
 namespace cinn {
 namespace ir {
 
@@ -287,22 +284,13 @@ void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
 void TileFirstGeneralTactic::SplitSptialInner(ir::IRSchedule* sch,
                                               const std::string& block_id) {
   if (IsInnerThreadSpatialLoopGT(context_->config, 1)) {
-    if (FLAGS_support_trivial_stride_read) {
-      auto loops = sch->GetLoops(block_id);
-      std::vector<int> split_factors{
-          static_cast<int>(context_->config.tile_config.spatial_inner_num), -1};
-      sch->Split(loops[0], split_factors);
-      loops = sch->GetLoops(block_id);
-      sch->Reorder({loops[1], loops[0]});
-    } else {
-      auto loops = sch->GetLoops(block_id);
-      auto split_loops = sch->Split(
-          loops[0],
-          std::vector<int>(
-              {-1,
-               static_cast<int>(
-                   context_->config.tile_config.spatial_inner_num)}));
-    }
+    auto loops = sch->GetLoops(block_id);
+    auto split_loops =
+        sch->Split(loops[0],
+                   std::vector<int>(
+                       {-1,
+                        static_cast<int>(
+                            context_->config.tile_config.spatial_inner_num)}));
   }
 }
 
@@ -313,30 +301,9 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
   auto loops = sch->GetLoops(block_id);
   auto reduce_loop = loops[reduce_current_axis_].As<ir::For>();
 
-  if (FLAGS_support_reduce_stride_read) {
-    if (context_->config.base_info->reduce_numel <= 256) {
-      std::vector<int> split_factors{
-          -1, static_cast<int>(context_->config.tile_config.tree_reduce_num)};
-      sch->Split(loops[reduce_current_axis_], split_factors);
-      loops = sch->GetLoops(block_id);
-      sch->Reorder(
-          {loops[reduce_current_axis_ + 1], loops[reduce_current_axis_]});
-    } else {
-      // split warp num first
-      std::vector<int> split_factors{
-          static_cast<int>(context_->config.tile_config.warp_num), -1, 32};
-      sch->Split(loops[reduce_current_axis_], split_factors);
-      loops = sch->GetLoops(block_id);
-      sch->Reorder(
-          {loops[reduce_current_axis_ + 2], loops[reduce_current_axis_ + 1]});
-      loops = sch->GetLoops(block_id);
-      sch->Fuse({loops[reduce_current_axis_], loops[reduce_current_axis_ + 1]});
-    }
-  } else {
-    std::vector<int> split_factors{
-        static_cast<int>(context_->config.tile_config.tree_reduce_num), -1};
-    sch->Split(loops[reduce_current_axis_], split_factors);
-  }
+  std::vector<int> split_factors{
+      static_cast<int>(context_->config.tile_config.tree_reduce_num), -1};
+  sch->Split(loops[reduce_current_axis_], split_factors);
   loops = sch->GetLoops(block_id);
   if (IsReduceBlock(context_->config, block_id)) {
     sch->FactorizeReduction(loops[reduce_current_axis_],

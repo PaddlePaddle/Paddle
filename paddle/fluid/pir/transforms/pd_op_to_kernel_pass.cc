@@ -62,8 +62,7 @@ COMMON_DECLARE_bool(use_mkldnn);
 COMMON_DECLARE_bool(print_ir);
 // COMMON_DECLARE_string(pir_onednn_kernel_blacklist);
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 pir::Type ConvertOpTypeToKernelType(pir::IrContext* ctx,
                                     pir::Type op_type,
@@ -2951,7 +2950,7 @@ pir::Operation* OneDNNOp2PdOp(pir::Operation* op_item,
                              op_item_inner_output_types,
                              op_info);
   op_item->ReplaceAllUsesWith(op_item_inner->results());
-  for (auto iter = block->begin(); iter != block->end(); ++iter) {
+  for (auto iter = block->begin(); iter != block->end(); ++iter) {  // NOLINT
     if (*iter == *op_item) {
       block->Assign(iter, op_item_inner);
       break;
@@ -2987,7 +2986,7 @@ pir::Operation* PdOp2OneDNNOp(pir::Operation* op_item,
                                op_item_inner_output_types,
                                op_info);
     op_item->ReplaceAllUsesWith(op_item_inner->results());
-    for (auto iter = block->begin(); iter != block->end(); ++iter) {
+    for (auto iter = block->begin(); iter != block->end(); ++iter) {  // NOLINT
       if (*iter == *op_item) {
         block->Assign(iter, op_item_inner);
         break;
@@ -3189,5 +3188,4 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
 
   return program;
 }
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

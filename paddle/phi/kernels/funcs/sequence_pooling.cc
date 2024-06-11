@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 template <typename T,
           int MajorType = Eigen::RowMajor,
@@ -498,5 +497,4 @@ template class SequencePoolFunctor<phi::CPUContext, double>;
 template class SequencePoolGradFunctor<phi::CPUContext, float>;
 template class SequencePoolGradFunctor<phi::CPUContext, double>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

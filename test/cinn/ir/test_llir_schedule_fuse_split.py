@@ -158,7 +158,7 @@ def test_fuse_dynamic():
                             i_j_k_fused % 128,
                         ],
                     )
-                    Y[i1, j1, k1] = 2.0 * X[i1, j1, k1]
+                    Y[i1, j1, k1] = X[i1, j1, k1] * 2.0
 
     assert str(origin.elementwise_fuse_assign_loop) == str(
         expected.elementwise_fuse_assign_loop
