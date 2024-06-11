@@ -2656,7 +2656,7 @@
   backward : logsigmoid_grad
 
 - op : logspace
-  args : (Tensor start, Tensor stop, Tensor num, Tensor base, DataType dtype, Place place=CPUPlace())
+  args : (Tensor start, Tensor stop, Tensor num, Tensor base, DataType dtype)
   output : Tensor(out)
   infer_meta:
     func : LogspaceInferMeta
@@ -2665,7 +2665,6 @@
     func : logspace
     param : [start, stop, num, base, dtype]
     data_type : dtype
-    backend : place
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : logsumexp
