@@ -44,7 +44,7 @@ class ScheduleConfigManager {
   std::string policy_ = "default";
 };
 
-static void CreateTileConfigManager();
+static void InitScheduleConfig();
 
 }  // namespace ir
 }  // namespace cinn

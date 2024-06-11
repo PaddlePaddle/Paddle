@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/ir/group_schedule/config/manager.h"
+#include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 #include "paddle/cinn/ir/group_schedule/config/file_database.h"
 
 PD_DECLARE_bool(cinn_use_best_tile_config);
@@ -60,7 +60,7 @@ void ScheduleConfigManager::SetPolicy(const std::string& policy) {
   policy_ = policy;
 }
 
-static void CreateTileConfigManager() {
+static void InitScheduleConfig() {
   std::shared_ptr<cinn::ir::TileConfigDatabase> tile_config_database =
       std::make_shared<cinn::ir::FileTileConfigDatabase>();
   auto& schedule_config_manager = cinn::ir::ScheduleConfigManager::Instance();
