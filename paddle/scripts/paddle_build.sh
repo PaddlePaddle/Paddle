@@ -3770,8 +3770,9 @@ function clang-tidy_check() {
     cd ${PADDLE_ROOT}
     for file in ${diff_files}
     do
-        echo "正在检测的文件路径为：${PADDLE_ROOT}/${file}"
-        python ./tools/codestyle/clang-tidy.py -p=build -j=10 \
+        pwd
+        echo "Current checking file: ${PADDLE_ROOT}/${file}"
+        python ${PADDLE_ROOT}/tools/codestyle/clang-tidy.py -p=build -j=10 \
         -clang-tidy-binary=clang-tidy \
         -extra-arg=-Wno-unknown-warning-option \
         -extra-arg=-Wno-pessimizing-move \
