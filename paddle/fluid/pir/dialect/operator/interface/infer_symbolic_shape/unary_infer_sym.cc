@@ -972,6 +972,11 @@ bool TopkOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool TopkV1OpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  return TopkOpInferSymbolicShape(op, infer_context);
+}
+
 bool TransposeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   std::vector<pir::Attribute> perm =

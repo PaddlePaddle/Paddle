@@ -15,7 +15,7 @@
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
-
+#include "paddle/common/enforce.h"
 /** \brief A macro that guards the beginning of each implementation of schedule
  */
 #define CINN_IR_SCHEDULE_BEGIN() try {
@@ -117,7 +117,11 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   root = this->GetRootBlock(this_block);
   loops = GetLoopsOfExpr(this_loop, root);
 
-  CHECK_LE(loops.size(), block_loops.size());
+  PADDLE_ENFORCE_LE(
+      loops.size(),
+      block_loops.size(),
+      phi::errors::InvalidArgument("The size of loops should be less than or "
+                                   "equal to the size of block_loops."));
 
   std::vector<Var> replaced_var;
   std::vector<Expr> substitute_expr;
@@ -361,14 +365,23 @@ void StScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   root = this->GetRootBlock(this_block);
   loops = GetLoopsOfExpr(this_loop, root);
 
-  CHECK_LE(loops.size(), block_loops.size());
+  PADDLE_ENFORCE_LE(
+      loops.size(),
+      block_loops.size(),
+      phi::errors::InvalidArgument("The size of loops should be less than or "
+                                   "equal to the size of block_loops."));
 
   std::vector<Var> replaced_var;
   std::vector<Expr> substitute_expr;
   for (int i = 0; i < loops.size(); ++i) {
     VLOG(3) << i << "-th loop is:\n " << loops[i];
     VLOG(3) << i << "-th block_loop:\n" << block_loops[i];
-    CHECK_EQ(GetLoopExtent(loops[i]), GetLoopExtent(block_loops[i]));
+    PADDLE_ENFORCE_EQ(
+        GetLoopExtent(loops[i]),
+        GetLoopExtent(block_loops[i]),
+        phi::errors::InvalidArgument(
+            "Extent of loop in Expr Param(loop) and extent of loop in Expr "
+            "Param(block) should be equal correspondingly."));
     if (block_loops[i].As<ir::For>()->bind_info().valid() &&
         !loops[i].As<ir::For>()->bind_info().valid()) {
       loops[i].As<ir::For>()->set_bind_info(

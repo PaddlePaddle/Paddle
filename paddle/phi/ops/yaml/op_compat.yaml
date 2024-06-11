@@ -3575,6 +3575,17 @@
       data_type : int
       tensor_name : K
 
+- op : topk_v1 (top_k)
+  backward : topk_v1_grad (top_k_grad)
+  inputs :
+    x : X
+  outputs :
+    {out : Out, indices : Indices}
+  scalar :
+    k :
+      data_type : int
+      tensor_name : K
+
 - op : trace
   inputs :
     x : Input
@@ -4294,6 +4305,15 @@
     {padding_trainable : paddingTrainable, context_length : contextLength, context_start : contextStart, context_stride : contextStride}
   outputs:
     out : Out
+
+- op: sequence_pool
+  backward: sequence_pool_grad
+  inputs:
+    x : X
+  outputs:
+    {out : Out, max_index : MaxIndex}
+  extra:
+    attrs: [bool is_test = false]
 
 - op: set_value
   backward: set_value_grad
