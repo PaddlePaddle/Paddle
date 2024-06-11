@@ -1531,7 +1531,12 @@ def _feature_alpha_dropout_impl(
         return x
 
 
-def alpha_dropout(x, p=0.5, training=True, name=None):
+def alpha_dropout(
+    x: paddle.Tensor,
+    p: float | int = 0.5,
+    training: bool = True,
+    name: str | None = None,
+) -> paddle.Tensor:
     """
     Alpha Dropout is a type of Dropout that maintains the self-normalizing property.
     For an input with zero mean and unit standard deviation, the output of Alpha Dropout
@@ -1539,13 +1544,13 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
     Alpha Dropout fits well to SELU activate function by randomly setting activations to the negative saturation value.
 
     Args:
-        x (Tensor): The input tensor. The data type is float16, float32 or float64.
-        p (float | int): Probability of setting units to zero. Default 0.5.
-        training (bool): A flag indicating whether it is in train phrase or not. Default True.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        x (Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64.
+        p (float | int, optional): Probability of setting units to zero. Default 0.5.
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default True.
+        name (str | None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        A Tensor representing the dropout, has same shape and data type as `x`.
+        Tensor: A Tensor representing the dropout, has same shape and data type as `x`.
 
     Examples:
         .. code-block:: python
@@ -1569,7 +1574,45 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
     )
 
 
-def feature_alpha_dropout(x, p=0.5, training=True, name=None):
+def feature_alpha_dropout(
+    x: paddle.Tensor,
+    p: float | int = 0.5,
+    training: bool = True,
+    name: str | None = None,
+) -> paddle.Tensor:
+    """
+    A channel is a feature map, Feature Alpha Dropout randomly masks out entire channels.
+    Alpha Dropout is a type of Dropout that maintains the self-normalizing property.
+    For an input with zero mean and unit standard deviation, the output of Alpha Dropout
+    maintains the original mean and standard deviation of the input.
+    Alpha Dropout fits well to SELU activate function by randomly setting activations to the negative saturation value.
+
+    Args:
+        x (Tensor): The input tensor. The data type is bfloat16, float16, float32 or float64.
+        p (float | int, optional): Probability of setting units to zero. Default 0.5.
+        training (bool, optional): A flag indicating whether it is in train phrase or not. Default True.
+        name (str | None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A Tensor representing the dropout, has same shape and data type as `x`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(1)
+            >>> x = paddle.to_tensor([[-1, 1], [-1, 1]]).astype(paddle.float32)
+            >>> y_train = paddle.nn.functional.feature_alpha_dropout(x, 0.5)
+            >>> y_test = paddle.nn.functional.feature_alpha_dropout(x, 0.5, training=False)
+            >>> print(y_train)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.77919382,  1.66559887],
+            [-0.10721093, -0.77919382]])
+            >>> print(y_test)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-1.,  1.],
+            [-1.,  1.]])
+    """
     return _feature_alpha_dropout_impl(
         x, feature_dropout=True, p=p, training=training, name=name
     )

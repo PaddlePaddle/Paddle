@@ -964,8 +964,8 @@ class AlphaDropout(Layer):
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float | int): Probability of setting units to zero. Default: 0.5
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        p (float | int, optional): Probability of setting units to zero. Default: 0.5
+        name (str | None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: N-D tensor.
@@ -1000,6 +1000,65 @@ class AlphaDropout(Layer):
 
     def forward(self, input):
         out = F.alpha_dropout(
+            input, p=self.p, training=self.training, name=self.name
+        )
+        return out
+
+    def extra_repr(self):
+        name_str = f', name={self.name}' if self.name else ''
+        return f'p={self.p}{name_str}'
+
+
+class FeatureAlphaDropout(Layer):
+    """
+    A channel is a feature map, Feature Alpha Dropout randomly masks out entire channels.
+    Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
+    zero mean and unit standard deviation, the output of Alpha Dropout maintains the original mean and
+    standard deviation of the input. Alpha Dropout fits well to SELU activate function by randomly setting
+    activations to the negative saturation value.
+
+    For more information, please refer to:
+    `Self-Normalizing Neural Networks <https://arxiv.org/abs/1706.02515>`_
+
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+
+    Parameters:
+        p (float | int, optional): Probability of setting units to zero. Default: 0.5
+        name (str | None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: N-D tensor.
+        - output: N-D tensor, the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(2023)
+
+            >>> x = paddle.to_tensor([[-1, 1], [-1, 1]], dtype="float32")
+            >>> m = paddle.nn.FeatureAlphaDropout(p=0.5)
+            >>> y_train = m(x)
+            >>> print(y_train)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.10721093,  1.66559887],
+             [-0.77919382,  1.66559887]])
+
+            >>> m.eval()  # switch the model to test phase
+            >>> y_test = m(x)
+            >>> print(y_test)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-1.,  1.],
+             [-1.,  1.]])
+    """
+
+    def __init__(self, p=0.5, name=None):
+        super().__init__()
+        self.p = p
+        self.name = name
+
+    def forward(self, input):
+        out = F.feature_alpha_dropout(
             input, p=self.p, training=self.training, name=self.name
         )
         return out
@@ -1596,9 +1655,11 @@ class Embedding(Layer):
         padding_idx = (
             -1
             if padding_idx is None
-            else padding_idx
-            if padding_idx >= 0
-            else (num_embeddings + padding_idx)
+            else (
+                padding_idx
+                if padding_idx >= 0
+                else (num_embeddings + padding_idx)
+            )
         )
 
         if padding_idx >= num_embeddings or padding_idx < -num_embeddings:
