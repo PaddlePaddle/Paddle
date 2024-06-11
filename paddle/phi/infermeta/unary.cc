@@ -4363,6 +4363,19 @@ void SequenceMaskScalarInferMeta(const MetaTensor& x,
   y->set_dtype(out_dtype);
 }
 
+void SequencePoolInferMeta(const MetaTensor& x,
+                           bool is_test,
+                           const std::string& pooltype,
+                           float pad_value,
+                           MetaTensor* out,
+                           MetaTensor* max_index,
+                           MetaConfig config) {
+  out->set_dims(x.dims());
+  if (pooltype == "MAX") {
+    max_index->set_dims(x.dims());
+  }
+}
+
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims({1});
   out->set_dtype(x.dtype());
