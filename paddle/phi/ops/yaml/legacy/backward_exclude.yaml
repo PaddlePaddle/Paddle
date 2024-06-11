@@ -20,8 +20,6 @@
 - hsigmoid_loss_grad
 - logsumexp_grad
 - max_grad
-- mean_double_grad
-- mean_grad
 - mish_grad
 - norm_grad
 - pad_double_grad

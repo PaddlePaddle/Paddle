@@ -56,7 +56,6 @@
 - matrix_rank
 - matrix_rank_tol
 - max
-- mean
 - memcpy_d2h
 - memcpy_h2d
 - mish

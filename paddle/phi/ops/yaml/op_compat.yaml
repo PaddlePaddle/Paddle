@@ -2292,7 +2292,7 @@
     out : Out
 
 - op : mean (reduce_mean)
-  backward : mean_grad (reduce_mean_grad)
+  backward : mean_grad (reduce_mean_grad), mean_double_grad (reduce_mean_grad_grad)
   inputs :
     x : X
   outputs :
@@ -2301,6 +2301,7 @@
     {axis : dim, keepdim : keep_dim}
   extra :
     attrs : [bool use_mkldnn = false]
+  manual_signature : [mean, mean_grad]
 
 - op : mean_all (mean)
   backward : mean_all_grad (mean_grad)
