@@ -26,8 +26,7 @@
 
 namespace py = pybind11;
 
-namespace pybind11 {
-namespace detail {
+namespace pybind11::detail {
 template <typename Key,
           typename Value,
           typename Hash,
@@ -37,15 +36,13 @@ struct type_caster<paddle::flat_hash_map<Key, Value, Hash, Equal, Alloc>>
     : map_caster<paddle::flat_hash_map<Key, Value, Hash, Equal, Alloc>,
                  Key,
                  Value> {};
-}  // namespace detail
-}  // namespace pybind11
+}  // namespace pybind11::detail
 
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::ProcessMeshAttribute;
 using paddle::dialect::TensorDistAttribute;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 void BindOperationDistAttribute(py::module *m) {
   py::class_<OperationDistAttribute, pir::Attribute> dist_attr(
@@ -150,5 +147,4 @@ void BindDistApi(pybind11::module *module) {
   BindOpsFunction(&ops_modules);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

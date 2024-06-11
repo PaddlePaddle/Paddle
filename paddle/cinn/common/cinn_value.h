@@ -23,7 +23,7 @@
 #include "paddle/cinn/common/object.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
-
+#include "paddle/common/enforce.h"
 struct cinn_buffer_t;
 
 namespace cinn {
@@ -97,12 +97,18 @@ struct CINNValuePack : public Shared<_CINNValuePack_> {
   bool empty() const { return (*operator->()).empty(); }
 
   CINNValue& back() {
-    CHECK_GT((*operator->()).size(), 0);
+    PADDLE_ENFORCE_GT((*operator->()).size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of the array should greater than 0."));
     return (*operator->())[size() - 1];
   }
 
   const CINNValue& back() const {
-    CHECK_GT((*operator->()).size(), 0);
+    PADDLE_ENFORCE_GT((*operator->()).size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of the array should greater than 0."));
     return (*operator->())[size() - 1];
   }
 
