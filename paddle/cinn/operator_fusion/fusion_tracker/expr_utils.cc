@@ -128,13 +128,13 @@ std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs) {
 }
 
 /// Start: Tmp Transform Operation for ReduceTree
-std::vector<FusionOp> ReduceTransformRecursive(
+std::vector<FusibleOp> ReduceTransformRecursive(
     ReduceOp reduce_op,
     const ReduceTreePattern<BackendStage>& reduce_tree_pattern,
     const std::vector<size_t>& fake_reduce_iter_idx = {}) {
-  FusionOp root_op = reduce_op;
+  FusibleOp root_op = reduce_op;
   VLOG(4) << "ReduceTransformRecursive: " << *_GetFuncBodyPointer(root_op);
-  std::vector<FusionOp> result;
+  std::vector<FusibleOp> result;
   for (const auto& child_tree : reduce_tree_pattern.childs()) {
     const auto& child_reduce_op = child_tree.GetRootPattern().reduce_op;
     auto transformed_nodes = cinn::hlir::framework::pir::trivial_fusion_detail::
@@ -151,13 +151,13 @@ std::vector<FusionOp> ReduceTransformRecursive(
   return result;
 }
 
-std::vector<FusionOp> ReduceTreeTrivialTransformRecursive(
+std::vector<FusibleOp> ReduceTreeTrivialTransformRecursive(
     TrivialOp trivial_op,
     const ReduceTreePlusTrivialPattern<BackendStage>& rt_pattern) {
-  FusionOp root_op = trivial_op;
+  FusibleOp root_op = trivial_op;
   VLOG(4) << "ReduceTrivialTransformRecursive: "
           << *_GetFuncBodyPointer(root_op);
-  std::vector<FusionOp> result;
+  std::vector<FusibleOp> result;
 
   const auto& child_tree = rt_pattern.tree;
   const auto& child_reduce_op = child_tree.GetRootPattern().reduce_op;
@@ -203,7 +203,7 @@ static std::vector<ir::Var> GetAllForIters(const ir::Expr& expr) {
 }
 
 ir::Expr UnSqueezeExpr(const ir::Expr& expr,
-                       const std::vector<int> padding_vec) {
+                       const std::vector<int>& padding_vec) {
   using cinn::hlir::framework::pir::trivial_fusion_detail::AppendBound;
   using cinn::hlir::framework::pir::trivial_fusion_detail::ExprSetFinderUtils::
       ChildFors;
@@ -259,25 +259,23 @@ ir::Expr UnSqueezeExpr(const ir::Expr& expr,
   return result;
 }
 
+std::vector<FusibleOp> DoPadding(const FusibleOp& fusion_op,
+                                 const std::vector<int>& padding_pos) {
+  using cinn::hlir::framework::pir::trivial_fusion_detail::IsReduceBody;
+  std::vector<FusibleOp> results;
+  auto expr_vec = std::visit(FusibleOp2Expr(), fusion_op);
+  for (auto expr : expr_vec) {
+    auto squeezed = UnSqueezeExpr(expr, padding_pos);
+    if (IsReduceBody(expr)) {
+      results.emplace_back(ReduceOp(squeezed));
+    } else {
+      results.emplace_back(TrivialOp(squeezed));
+    }
+  }
+  return results;
+}
+
 struct IrExprGetter {
-  std::vector<ir::Expr> operator()(
-      const ReduceTreePattern<BackendStage>& pattern) {
-    const auto& fusion_op =
-        ReduceTransformRecursive(pattern.GetRootPattern().reduce_op, pattern);
-    std::function<std::vector<ir::Expr>(const FusionOp& f)> func =
-        [](const FusionOp& op) { return std::visit(FusionOp2Expr(), op); };
-    return VectorFlatMap(fusion_op, func);
-  }
-
-  std::vector<ir::Expr> operator()(
-      const ReduceTreePlusTrivialPattern<BackendStage>& pattern) {
-    std::function<std::vector<ir::Expr>(const FusionOp& f)> func =
-        [](const FusionOp& op) { return std::visit(FusionOp2Expr(), op); };
-    const auto& fusion_ops = ReduceTreeTrivialTransformRecursive(
-        pattern.sink_trivial.trivial_op, pattern);
-    return VectorFlatMap(fusion_ops, func);
-  }
-
   std::vector<ir::Expr> operator()(
       const HorizontalFusionPattern<BackendStage>& pattern) {
     std::vector<ir::Expr> result;

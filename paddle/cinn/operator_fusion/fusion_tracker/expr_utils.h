@@ -19,9 +19,9 @@ namespace cinn::fusion {
 
 using TrivialOp = cinn::hlir::framework::pir::trivial_fusion_detail::TrivialOp;
 using ReduceOp = cinn::hlir::framework::pir::trivial_fusion_detail::ReduceOp;
-using FusionOp = std::variant<ReduceOp, TrivialOp>;
+using FusibleOp = cinn::hlir::framework::pir::trivial_fusion_detail::FusibleOp;
 
-struct FusionOp2Expr {
+struct FusibleOp2Expr {
   std::vector<ir::Expr> operator()(const TrivialOp& op) {
     return {op.GetFuncBody()};
   }
@@ -49,5 +49,7 @@ struct ApplyTransform {
 };
 
 std::vector<ir::Expr> TopoSort(const std::vector<ir::Expr>& op_exprs);
+std::vector<FusibleOp> DoPadding(const FusibleOp& fusion_op,
+                                 const std::vector<int>& padding_pos);
 
 }  // namespace cinn::fusion

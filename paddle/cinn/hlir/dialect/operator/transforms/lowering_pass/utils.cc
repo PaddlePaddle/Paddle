@@ -111,7 +111,8 @@ OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
     }
   }
 
-  auto group = std::make_shared<OpLoweringGroup>(ops);
+  auto group = std::make_shared<OpLoweringGroup>(
+      ops, fusion_op_ptr->attribute("fusion_tracker"));
 
   if (fusion_op.attributes().count("group_info")) {
     auto attr = fusion_op.attribute("group_info")

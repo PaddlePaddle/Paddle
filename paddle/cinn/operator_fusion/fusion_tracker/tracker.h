@@ -122,9 +122,9 @@ struct AnchorTransformInstr : public FusionInstruction {
 };
 
 struct PaddingInstr : public FusionInstruction {
-  AnchorTransformInstr(const std::string& target,
-                       const std::string& result,
-                       const std::vector<int>& padding_pos)
+  PaddingInstr(const std::string& target,
+               const std::string& result,
+               const std::vector<int>& padding_pos)
       : target_(target), result_(result), padding_pos_(padding_pos) {}
   virtual InstructionType type() { return T_Padding; }
   std::string target_;

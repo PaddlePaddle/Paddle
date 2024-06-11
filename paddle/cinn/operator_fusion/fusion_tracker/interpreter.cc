@@ -37,7 +37,8 @@ void RunCombineInstr(const std::shared_ptr<CombineInstr>& instr,
 void RunInitPatternInstr(const std::shared_ptr<InitPatternInstr>& instr,
                          FusionInterpreter* interpreter) {
   ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
-  new_pattern->fusion_ops.emplace_back((interpreter->lowered_expr)[instr->op_]);
+  new_pattern->fusion_ops.emplace_back(
+      (interpreter->initialized_lowered_op)[instr->op_]);
   interpreter->scope[instr->result_] = new_pattern;
 }
 
@@ -66,7 +67,7 @@ void RunTmpTransformInstr(const std::shared_ptr<TmpTransformInstr>& instr,
   auto downstream_op =
       interpreter->scope[instr->downstream_]->fusion_ops.front();
   ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
-  new_pattern->fusion_ops.emplace(
+  new_pattern->fusion_ops.emplace_back(
       cinn::hlir::framework::pir::trivial_fusion_detail::
           TransformReduceLoopRange(
               upstream_op, &downstream_op, instr->fake_reduce_iter_idx_););
@@ -103,16 +104,32 @@ void RunAnchorTransformInstr(const std::shared_ptr<AnchorTransformInstr>& instr,
     return target;
   };
 
-  auto exprs = do_transform(std::visit(
-      FusionOp2Expr(), interpreter->scope[instr->target_]->fusion_ops.front()));
-  interpreter.ret_expr.insert(
-      interpreter.ret_expr.end(), exprs.begin(), exprs.end());
+  auto candidate_exprs = std::visit(
+      FusibleOp2Expr(), interpreter->scope[instr->target_]->fusion_ops.front());
+  for (auto expr : candidate_exprs) {
+    auto transformed_expr = do_transform(expr);
+    if (IsReduceBody(transformed_expr)) {
+      new_pattern->fusion_ops.emplace_back(ReduceOp(transformed_expr));
+    } else {
+      new_pattern->fusion_ops.emplace_back(TrivialOp(transformed_expr));
+    }
+  }
+  interpreter->scope[instr->result_] = new_pattern;
+}
+
+void RunPaddingInstr(const std::shared_ptr<PaddingInstr>& instr,
+                     FusionInterpreter* interpreter) {
+  ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
+  for (auto fusion_op : interpreter->scope[instr->target_]->fusion_ops) {
+    new_pattern->Extend(DoPadding(fusion_op, instr->padding_pos_));
+  }
+  interpreter->scope[instr->result_] = new_pattern;
 }
 
 void RunReturnInstr(const std::shared_ptr<ReturnInstr>& instr,
                     FusionInterpreter* interpreter) {
   for (auto fusion_op : interpreter->scope[instr->target_]->fusion_ops) {
-    auto exprs = std::visit(FusionOp2Expr(), fusion_op);
+    auto exprs = std::visit(FusibleOp2Expr(), fusion_op);
     interpreter->ret_expr.insert(
         interpreter->ret_expr.end(), exprs.begin(), exprs.end());
   }
@@ -142,6 +159,9 @@ std::vector<ir::Expr> FusionInterpreter::Run() {
       case T_AnchorTransform:
         RunAnchorTransformInstr(
             dynamic_cast_instr_with_err<AnchorTransformInstr>(instr), this);
+        break;
+      case T_Padding:
+        RunPaddingInstr(dynamic_cast_instr_with_err<PaddingInstr>(instr), this);
         break;
       case T_Return:
         RunReturnInstr(dynamic_cast_instr_with_err<ReturnInstr>(instr), this);

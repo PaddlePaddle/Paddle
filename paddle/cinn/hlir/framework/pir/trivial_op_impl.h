@@ -182,7 +182,7 @@ FusionGroupInfo GetFusionGroupInfo(
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& ops,
     const std::vector<ir::Expr>& op_compute_bodies,
-    const std::vector<::pir::Value>& outputs);
+    FusionTrackerPtr fusion_tracker_ptr);
 
 }  // namespace pir
 }  // namespace framework

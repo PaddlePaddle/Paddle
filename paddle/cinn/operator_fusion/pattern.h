@@ -56,7 +56,7 @@ struct TrivialPattern {
   std::string name_;
 
   FusionTrackerPtr tracker_;
-  void update_tracker() {}
+  void update_tracker() const {}
 };
 
 struct ReducePattern {
@@ -78,7 +78,7 @@ struct ReducePattern {
   std::string name_;
 
   FusionTrackerPtr tracker_;
-  void update_tracker() {}
+  void update_tracker() const {}
 };
 
 struct ReduceTreePattern {
@@ -117,7 +117,7 @@ struct ReduceTreePattern {
 
   FusionTrackerPtr tracker_;
 
-  void update_tracker() {
+  void update_tracker() const {
     std::vector<std::string> tmp_names({GetRootPattern().name()});
     int count = 0;
     const auto hook = [tracker = tracker_, &tmp_names, &count](
@@ -168,7 +168,7 @@ struct ReduceTreePlusTrivialPattern {
 
   FusionTrackerPtr tracker_;
 
-  void update_tracker() {
+  void update_tracker() const {
     std::vector<std::string> tmp_names(
         {sink_trivial.name(), tree.GetRootPattern().name()});
     tracker_->append(
@@ -245,7 +245,7 @@ struct AnchorPattern {
   std::string name_;
 
   FusionTrackerPtr tracker_;
-  void update_tracker() {
+  void update_tracker() const {
     std::vector<std::string> tmp_names;
     for (int i = 0; i < anchor_state.promise.size(); i++) {
       auto promise = anchor_state.promise[i];
@@ -293,7 +293,7 @@ struct HorizontalFusionPattern {
   }
   std::string name() const { return name_; }
   std::string name_;
-  void update_tracker() {
+  void update_tracker() const {
     std::vector<std::string> tmp_names;
     for (int i = 0; i < padding_patterns_.size(); i++) {
       auto padding_pattern = padding_patterns_[i];
@@ -327,7 +327,7 @@ struct UnsupportPattern {
   std::string name_;
 
   FusionTrackerPtr tracker_;
-  void update_tracker() {}
+  void update_tracker() const {}
 };
 
 using StmtPatternBase = std::variant<TrivialPattern,
@@ -398,8 +398,8 @@ std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A) {
   return all_input_values;
 }
 
-void PatternUpdateTracker(const StmtPattern& A) {
+void PatternUpdateTracker(const StmtPattern& pattern) {
   return std::visit([](const auto& impl) { impl.update_tracker(); },
-                    s.variant());
+                    pattern.variant());
 }
 }  // namespace cinn::fusion

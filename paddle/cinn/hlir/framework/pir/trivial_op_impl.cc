@@ -592,7 +592,7 @@ std::vector<ir::Var> GetAllForIters(const ir::Expr& expr) {
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& original_ops,
     const std::vector<ir::Expr>& op_compute_bodies,
-    const std::vector<::pir::Value>& outputs) {
+    FusionTrackerPtr fusion_tracker_ptr) {
   PADDLE_ENFORCE(FLAGS_group_schedule_tiling_first,
                  ::common::errors::PreconditionNotMet(
                      "TrivialFusion must be used with tiling first, set "
@@ -605,19 +605,18 @@ std::vector<ir::Expr> OperationFusion(
         return true;
       });
 
-  std::vector<cinn::fusion::BackendContent> contents;
+  const std::unordered_map<pir::Operation*, trivial_fusion_detail::FusibleOp>
+      initialized_lowered_op;
   for (int i = 0; i < ops.size(); i++) {
-    contents.emplace_back(ops[i], op_compute_bodies[i]);
+    initialized_lowered_op[ops[i]] = IsReduceBody(op_compute_bodies[i])
+                                         ? ReduceOp(op_compute_bodies[i])
+                                         : TrivialOp(op_compute_bodies[i]);
   }
-  const auto& fusion_nodes =
-      cinn::fusion::ClusterOps<cinn::fusion::BackendStage>(contents, outputs);
 
-  PADDLE_ENFORCE_EQ(fusion_nodes.size(),
-                    1,
-                    ::common::errors::Unimplemented(
-                        "Only support one fusion node in backend now."));
+  auto interpreter =
+      FusionInterpreter(fusion_tracker_ptr, initialized_lowered_op);
+  auto output = interpreter.Run();
 
-  const auto& output = GetExprFromPattern(fusion_nodes[0]->stmt_pattern());
   VLOG(4) << "Fusion Result: output size is " << output.size();
   for (const auto& expr : output) {
     VLOG(4) << expr;
@@ -631,15 +630,9 @@ FusionGroupInfo GetFusionGroupInfo(
   using trivial_fusion_detail::GetAllForIters;
   using trivial_fusion_detail::ReduceOp;
   using trivial_fusion_detail::ComposeUtils::ConcatVector;
-  using trivial_fusion_detail::ExprSetFinderUtils::ChildScheduleBlockRealizes;
-  using trivial_fusion_detail::ExprSetFinderUtils::ScheduleBlockRealizeIsInit;
+  using trivial_fusion_detail::IsReduceBody
 
-  FusionGroupInfo group_info = FusionGroupInfo();
-
-  const auto IsReduceBody = [](const ir::Expr& expr_body) {
-    return !(ChildScheduleBlockRealizes * ScheduleBlockRealizeIsInit)(expr_body)
-                .empty();
-  };
+      FusionGroupInfo group_info = FusionGroupInfo();
 
   for (const auto& body : op_compute_bodies) {
     if (IsReduceBody(body)) {

@@ -23,9 +23,12 @@ namespace cinn::fusion {
 
 struct ScopeElement {
   ScopeElement() = default;
-  explicit ScopeElement(const std::vector<FusionOp> fusion_ops)
+  explicit ScopeElement(const std::vector<FusibleOp> fusion_ops)
       : fusion_ops(fusion_ops) {}
-  std::vector<FusionOp> fusion_ops;
+  std::vector<FusibleOp> fusion_ops;
+  void Extend(const std::vector<FusibleOp>& other) {
+    fusion_ops.insert(fusion_ops.end(), other.begin(), other.end());
+  }
 };
 using ScopeElementPtr = std::shared_ptr<ScopeElement>;
 
@@ -36,12 +39,12 @@ ScopeElementPtr CombineScopeElement(const ScopeElementPtr& a,
 }
 
 struct FusionInterpreter {
-  FusionInterpreter(
-      const FusionTrackerPtr& tracker,
-      const std::unordered_map<pir::Operation*, FusionOp>& lowered_expr)
-      : tracker(tracker), lowered_expr(lowered_expr) {}
+  FusionInterpreter(const FusionTrackerPtr& tracker,
+                    const std::unordered_map<pir::Operation*, FusibleOp>&
+                        initialized_lowered_op)
+      : tracker(tracker), initialized_lowered_op(initialized_lowered_op) {}
 
-  std::unordered_map<pir::Operation*, FusionOp> lowered_expr;
+  std::unordered_map<pir::Operation*, FusibleOp> initialized_lowered_op;
   std::unordered_map<std::string, ScopeElementPtr> scope;
   FusionTrackerPtr tracker;
 
