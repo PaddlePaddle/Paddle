@@ -39,7 +39,7 @@ def array_length(array: paddle.Tensor) -> paddle.Tensor:
     ...
 
 
-def array_length(array: list[Any] | paddle.Tensor) -> int | paddle.Tensor:
+def array_length(array):
     """
     This OP is used to get the length of the input array.
 
@@ -108,9 +108,7 @@ def array_read(array: paddle.Tensor, i: paddle.Tensor) -> paddle.Tensor:
     ...
 
 
-def array_read(
-    array: list[T] | paddle.Tensor, i: paddle.Tensor
-) -> T | paddle.Tensor:
+def array_read(array, i):
     """
     This OP is used to read data at the specified position from the input array.
 
@@ -210,10 +208,10 @@ def array_write(
 
 
 def array_write(
-    x: paddle.Tensor,
-    i: paddle.Tensor,
-    array: list[paddle.Tensor] | paddle.Tensor | None = None,
-) -> list[paddle.Tensor] | paddle.Tensor:
+    x,
+    i,
+    array=None,
+):
     """
     This OP writes the input ``x`` into the i-th position of the ``array`` returns the modified array.
     If ``array`` is none, a new array will be created and returned.
