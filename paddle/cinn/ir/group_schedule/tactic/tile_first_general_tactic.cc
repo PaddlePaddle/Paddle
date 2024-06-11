@@ -44,11 +44,11 @@ bool IsWarpReduce(const ScheduleConfig& config) {
   return std::visit(MatchWarpReduce, config.tile_config.reduce_method);
 }
 
-bool UseReduceTile(const ScheduleConfig& config) {
+bool UseContinuousDataTile(const ScheduleConfig& config) {
   const auto& raw_reduce_axis = config.base_info->raw_reduce_axis;
   const auto raw_data_rank = config.base_info->raw_data_rank;
   if (raw_reduce_axis.empty()) {
-    return false;
+    return true;
   }
   for (size_t i = 1; i < raw_reduce_axis.size(); i++) {
     if (raw_reduce_axis[i] != raw_reduce_axis[i - 1] + 1) {
@@ -63,7 +63,8 @@ class TileFirstGeneralTactic final : public ScheduleTactic {
   void Init(ScheduleContext* context) override;
 
   void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
-  void ApplyReduceTile(ir::IRSchedule* sch, const std::string& block_id);
+  void ApplyContinuousDataTile(ir::IRSchedule* sch,
+                               const std::string& block_id);
 
   std::string TacticName() const override { return "TileFirstGeneralTactic"; }
 
@@ -110,9 +111,9 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
 
 void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
                                    const std::string& block_id) {
-  if (UseReduceTile(context_->config)) {
-    VLOG(4) << "Using ApplyReduceTile";
-    ApplyReduceTile(sch, block_id);
+  if (UseContinuousDataTile(context_->config)) {
+    VLOG(4) << "Using ApplyContinuousDataTile";
+    ApplyContinuousDataTile(sch, block_id);
     return;
   }
   if (ir::IsReduceInitTensorName(block_id)) return;
@@ -153,20 +154,20 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   SetReduceType(sch, block_id);
 }
 
-void TileFirstGeneralTactic::ApplyReduceTile(ir::IRSchedule* sch,
-                                             const std::string& block_id) {
+void TileFirstGeneralTactic::ApplyContinuousDataTile(
+    ir::IRSchedule* sch, const std::string& block_id) {
   if (ir::IsReduceInitTensorName(block_id)) return;
 
   const auto sp_thread = context_->config.tile_config.warp_num * 32 /
                          context_->config.tile_config.tree_reduce_num;
   const auto sp_loop = context_->config.tile_config.spatial_inner_num;
   const auto rd_thread = context_->config.tile_config.tree_reduce_num;
-  VLOG(4) << "ApplyReduceTile sp_thread=" << sp_thread;
-  VLOG(4) << "ApplyReduceTile sp_loop=" << sp_loop;
-  VLOG(4) << "ApplyReduceTile rd_thread=" << rd_thread;
-  VLOG(4) << "ApplyReduceTile vec_flatten_axis: "
+  VLOG(4) << "ApplyContinuousDataTile sp_thread=" << sp_thread;
+  VLOG(4) << "ApplyContinuousDataTile sp_loop=" << sp_loop;
+  VLOG(4) << "ApplyContinuousDataTile rd_thread=" << rd_thread;
+  VLOG(4) << "ApplyContinuousDataTile vec_flatten_axis: "
           << utils::Join(vec_flatten_axis_, ", ");
-  VLOG(4) << "ApplyReduceTile vec_reduce_axis: "
+  VLOG(4) << "ApplyContinuousDataTile vec_reduce_axis: "
           << utils::Join(vec_reduce_axis_, ", ");
 
   // Merge reduce axes
