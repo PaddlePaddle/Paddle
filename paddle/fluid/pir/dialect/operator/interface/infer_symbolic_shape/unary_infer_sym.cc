@@ -370,7 +370,7 @@ bool LogcumsumexpOpInferSymbolicShape(
 bool LogsumexpOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   bool keepdim = GetBoolAttr(op, "keepdim");
-  std::vector<int> axis_in = details::GetVectorAttr(op, "axis");
+  std::vector<int> axis_in = details::GetVectorAttr<int>(op, "axis");
   std::vector<int64_t> axis;
   axis.reserve(axis_in.size());
   std::for_each(axis_in.begin(), axis_in.end(), [&axis](const int &t) {
