@@ -74,7 +74,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
   const size_t thread_size = GetThreadNum(task_size);
   VLOG(5) << "Found " << task_size << " new groups parsed from "
           << groups.size() << " and compiles with " << thread_size;
-  CreateTileConfigManager();
+  cinn::ir::CreateTileConfigManager();
   if (task_size > 0) {
     auto worker_fn = [&](int index) {
       CompilationTask task(&group_compilation_contexts[index]);
