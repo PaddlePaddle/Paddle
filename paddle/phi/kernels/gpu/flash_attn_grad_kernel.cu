@@ -234,7 +234,7 @@ void FlashAttnUnpaddedGradBaseKernel(
     DenseTensor* dk,
     DenseTensor* dv,
     bool varlen_padded) {
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
   // q,k,v [total_*, num_heads, head_dim]
   auto dims = q.dims();
 
@@ -255,25 +255,42 @@ void FlashAttnUnpaddedGradBaseKernel(
     kdq = &dq_tmp;
   }
 
+#ifdef PADDLE_WITH_HIP
+  std::initializer_list<int64_t> dk_dv_input_shape = {
+      total_k, num_heads, head_size};
+#endif
+
   std::initializer_list<int64_t> dk_dv_shape = {
       total_k, num_heads_k, num_heads / num_heads_k, head_size};
 
   DenseTensor *kdk = dk, *kdv = dv;
   DenseTensor dk_tmp;
   if (!dk || !is_mha) {
+#ifdef PADDLE_WITH_HIP
+    dk_tmp.Resize(dk_dv_input_shape);
+#else
     dk_tmp.Resize(dk_dv_shape);
+#endif
     ctx.template Alloc<T>(&dk_tmp);
     kdk = &dk_tmp;
   }
 
   DenseTensor dv_tmp;
   if (!dv || !is_mha) {
+#ifdef PADDLE_WITH_HIP
+    dv_tmp.Resize(dk_dv_input_shape);
+#else
     dv_tmp.Resize(dk_dv_shape);
+#endif
     ctx.template Alloc<T>(&dv_tmp);
     kdv = &dv_tmp;
   }
 
+#ifdef PADDLE_WITH_HIP
+  const hipStream_t stream = ctx.stream();
+#else
   const cudaStream_t stream = ctx.stream();
+#endif
 
   int num_splits = get_num_split();
 
@@ -303,7 +320,43 @@ void FlashAttnUnpaddedGradBaseKernel(
 
   VLOG(10) << "FlashAttn bwd seed: " << params.seed
            << ", offset: " << params.offset;
-
+#ifdef PADDLE_WITH_HIP
+  bool succ = phi::dynload::flash_attn_varlen_bwd(
+      dout.data(),
+      q.data(),
+      k.data(),
+      v.data(),
+      out.data(),
+      params.softmax_d.data(),
+      softmax_lse.data(),
+      cu_seqlens_q.data<int32_t>(),
+      cu_seqlens_k.data<int32_t>(),
+      params.rng_state.data(),
+      kdq->data(),
+      kdk->data(),
+      kdv->data(),
+      params.dq_accum.data(),
+      params.batch_size,
+      params.max_seqlen_q,
+      params.max_seqlen_k,
+      params.seqlen_q_rounded,
+      params.seqlen_k_rounded,
+      params.num_heads,
+      params.num_heads_k,
+      params.head_size,
+      params.head_size_rounded,
+      params.dropout,
+      params.softmax_scale,
+      1.0f / params.softmax_scale,
+      params.causal,
+      params.is_bf16,
+      num_splits,
+      stream,
+      params.seed,
+      params.offset,
+      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
+      params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
+#else
   bool succ = phi::dynload::flash_attn_varlen_bwd(
       dout.data(),
       q.data(),
@@ -364,19 +417,36 @@ void FlashAttnUnpaddedGradBaseKernel(
       max_seqlen_k * kdv->strides()[0],
       max_seqlen_q * dout.strides()[0],
       varlen_padded);
+#endif
   CheckFlashAttnStatus(succ);
   if (!is_mha) {
     if (dk) {
+#ifdef PADDLE_WITH_HIP
+      if (dk->meta().is_contiguous())
+        phi::SumKernel<T, Context>(
+            ctx, dk_tmp.Resize(dk_dv_shape), {2}, dk->type(), false, dk);
+      else
+        kvReduceForGQA<T, Context>(ctx, dk_tmp.Resize(dk_dv_shape), dk);
+#else
       if (dk->meta().is_contiguous())
         phi::SumKernel<T, Context>(ctx, dk_tmp, {2}, dk->type(), false, dk);
       else
         kvReduceForGQA<T, Context>(ctx, dk_tmp, dk);
+#endif
     }
     if (dv) {
+#ifdef PADDLE_WITH_HIP
+      if (dv->meta().is_contiguous())
+        phi::SumKernel<T, Context>(
+            ctx, dv_tmp.Resize(dk_dv_shape), {2}, dv->type(), false, dv);
+      else
+        kvReduceForGQA<T, Context>(ctx, dv_tmp.Resize(dk_dv_shape), dv);
+#else
       if (dv->meta().is_contiguous())
         phi::SumKernel<T, Context>(ctx, dv_tmp, {2}, dv->type(), false, dv);
       else
         kvReduceForGQA<T, Context>(ctx, dv_tmp, dv);
+#endif
     }
   }
 #else
@@ -404,7 +474,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  DenseTensor* dq,
                                  DenseTensor* dk,
                                  DenseTensor* dv) {
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
   if (dq) {
     ctx.template Alloc<T>(dq);
   }
@@ -493,7 +563,7 @@ void FlashAttnVarlenQKVPackedGradKernel(
     bool causal,
     bool varlen_padded,
     DenseTensor* dqkv) {
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
   // q,k,v [total_*, num_heads, head_dim]
   const auto head_groupnum = qkv.dims()[1];  // nheads/nheads_k + 1 + 1
   DenseTensor q, k, v;
@@ -559,7 +629,7 @@ void FlashAttnGradBaseKernel(
     DenseTensor* dq,
     DenseTensor* dk,
     DenseTensor* dv) {
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
 
@@ -572,6 +642,11 @@ void FlashAttnGradBaseKernel(
   const int64_t num_heads_k = k.dims()[2];
 
   bool is_mha = (num_heads == num_heads_k);
+
+#ifdef PADDLE_WITH_HIP
+  std::initializer_list<int64_t> dk_dv_input_shape = {
+      batch_size, seqlen_k, num_heads, head_size};
+#endif
 
   std::initializer_list<int64_t> dk_dv_shape = {
       batch_size, seqlen_k, num_heads_k, num_heads / num_heads_k, head_size};
@@ -586,19 +661,31 @@ void FlashAttnGradBaseKernel(
   DenseTensor *kdk = dk, *kdv = dv;
   DenseTensor dk_tmp;
   if (!dk || !is_mha) {
+#ifdef PADDLE_WITH_HIP
+    dk_tmp.Resize(dk_dv_input_shape);
+#else
     dk_tmp.Resize(dk_dv_shape);
+#endif
     ctx.template Alloc<T>(&dk_tmp);
     kdk = &dk_tmp;
   }
 
   DenseTensor dv_tmp;
   if (!dv || !is_mha) {
+#ifdef PADDLE_WITH_HIP
+    dv_tmp.Resize(dk_dv_input_shape);
+#else
     dv_tmp.Resize(dk_dv_shape);
+#endif
     ctx.template Alloc<T>(&dv_tmp);
     kdv = &dv_tmp;
   }
 
+#ifdef PADDLE_WITH_HIP
+  const hipStream_t stream = ctx.stream();
+#else
   const cudaStream_t stream = ctx.stream();
+#endif
 
   // TODO(umiswing): add shape check
   PADDLE_ENFORCE_EQ(
@@ -640,6 +727,41 @@ void FlashAttnGradBaseKernel(
 
   int num_splits = get_num_split();
 
+#ifdef PADDLE_WITH_HIP
+  bool succ = phi::dynload::flash_attn_bwd(
+      dout.data(),
+      q.data(),
+      k.data(),
+      v.data(),
+      out.data(),
+      params.softmax_d.data(),
+      softmax_lse.data(),
+      params.rng_state.data(),
+      kdq->data(),
+      kdk->data(),
+      kdv->data(),
+      params.dq_accum.data(),
+      params.batch_size,
+      params.max_seqlen_q,
+      params.max_seqlen_k,
+      params.seqlen_q_rounded,
+      params.seqlen_k_rounded,
+      params.num_heads,
+      params.num_heads_k,
+      params.head_size,
+      params.head_size_rounded,
+      params.dropout,
+      params.softmax_scale,
+      softmax_unscale,
+      params.causal,
+      params.is_bf16,
+      num_splits,
+      stream,
+      params.seed,
+      params.offset,
+      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
+      params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
+#else
   bool succ = phi::dynload::flash_attn_bwd(
       dout.data(),
       q.data(),
@@ -704,20 +826,37 @@ void FlashAttnGradBaseKernel(
       kdk->strides()[0],
       kdv->strides()[0],
       dout.strides()[0]);
+#endif
   CheckFlashAttnStatus(succ);
   if (!is_mha) {
     if (dk) {
+#ifdef PADDLE_WITH_HIP
+      if (dk->meta().is_contiguous())
+        phi::SumKernel<T, Context>(
+            ctx, dk_tmp.Resize(dk_dv_shape), {3}, dk->type(), false, dk);
+      else
+        kvReduceBatchedForGQA<T, Context>(ctx, dk_tmp.Resize(dk_dv_shape), dk);
+#else
       if (dk->meta().is_contiguous())
         phi::SumKernel<T, Context>(ctx, dk_tmp, {3}, dk->type(), false, dk);
       else
         kvReduceBatchedForGQA<T, Context>(ctx, dk_tmp, dk);
+#endif
     }
 
     if (dv) {
+#ifdef PADDLE_WITH_HIP
+      if (dv->meta().is_contiguous())
+        phi::SumKernel<T, Context>(
+            ctx, dv_tmp.Resize(dk_dv_shape), {3}, dv->type(), false, dv);
+      else
+        kvReduceBatchedForGQA<T, Context>(ctx, dv_tmp.Resize(dk_dv_shape), dv);
+#else
       if (dv->meta().is_contiguous())
         phi::SumKernel<T, Context>(ctx, dv_tmp, {3}, dv->type(), false, dv);
       else
         kvReduceBatchedForGQA<T, Context>(ctx, dv_tmp, dv);
+#endif
     }
   }
 #else
@@ -779,7 +918,7 @@ void FlashAttnQKVPackedGradKernel(
     float dropout,
     bool causal,
     DenseTensor* dqkv) {
-#ifdef PADDLE_WITH_FLASHATTN
+#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
   // qkv [batchsize, seqlen, nheads/nheads_k+2, nheads_k, head_dim]
   const auto head_groupnum = qkv.dims()[2];  // nheads/nheads_k + 1 + 1
   DenseTensor q, k, v;

@@ -3953,13 +3953,19 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
         phi::errors::InvalidArgument("The scale tensor of dequantize op must "
                                      "be 1D in per-channel mode, but got[%d]",
                                      scale.dims().size()));
-    PADDLE_ENFORCE_EQ(dim_scale[0],
-                      x.dims()[0],
-                      phi::errors::InvalidArgument(
-                          "The scale tensor's shape must be equal to the x "
-                          "tensor's shape, but got [%d] not equal to [%d]",
-                          scale.dims()[0],
-                          x.dims()[0]));
+#ifdef PADDLE_WITH_HIP
+    if (algo == "weight_only_int8") {
+#endif
+      PADDLE_ENFORCE_EQ(dim_scale[0],
+                        x.dims()[0],
+                        phi::errors::InvalidArgument(
+                            "The scale tensor's shape must be equal to the x "
+                            "tensor's shape, but got [%d] not equal to [%d]",
+                            scale.dims()[0],
+                            x.dims()[0]));
+#ifdef PADDLE_WITH_HIP
+    }
+#endif
   } else /* groupwise dequantization */ {
     PADDLE_ENFORCE_EQ(
         dim_scale.size(),
@@ -3967,18 +3973,29 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
         phi::errors::InvalidArgument("The scale tensor of dequantize op must "
                                      "be 2D in group-wise mode, but got[%d]",
                                      scale.dims().size()));
-    PADDLE_ENFORCE_EQ(
-        dim_scale[0],
-        (x.dims()[1] + (group_size - 1)) / group_size,
-        errors::InvalidArgument("The input(weight_scale) dim[0] must be equal "
-                                "to (Input(weight).dim[1] + (group_size -1))"
-                                " / group_size"
-                                "But receive %d and %d",
-                                dim_scale[0],
-                                (x.dims()[1] + (group_size - 1)) / group_size));
+#ifdef PADDLE_WITH_HIP
+    if (algo == "weight_only_int8") {
+#endif
+      PADDLE_ENFORCE_EQ(dim_scale[0],
+                        (x.dims()[1] + (group_size - 1)) / group_size,
+                        errors::InvalidArgument(
+                            "The input(weight_scale) dim[0] must be equal "
+                            "to (Input(weight).dim[1] + (group_size -1))"
+                            " / group_size"
+                            "But receive %d and %d",
+                            dim_scale[0],
+                            (x.dims()[1] + (group_size - 1)) / group_size));
+#ifdef PADDLE_WITH_HIP
+    }
+#endif
   }
   int n = static_cast<int>(x.dims()[1]);
   int k = static_cast<int>(x.dims()[0]);
+#ifdef PADDLE_WITH_HIP
+  if (algo == "weight_only_int4") {
+    k *= 2;
+  }
+#endif
   out->set_dims(common::make_ddim({n, k}));
   out->set_dtype(out_dtype);
 }
