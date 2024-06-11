@@ -3782,6 +3782,16 @@
     func: sequence_mask_scalar
     data_type : x
 
+- op : sequence_pool
+  args: (Tensor x, bool is_test=false, str pooltype = "AVERAGE", float pad_value = 0.0)
+  output: Tensor (out), Tensor (max_index)
+  infer_meta:
+    func: SequencePoolInferMeta
+  kernel:
+    func: sequence_pool
+  intermediate: max_index
+  backward: sequence_pool_grad
+
 - op : set_value_with_tensor
   args : (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
   output : Tensor(out)
