@@ -17,7 +17,6 @@
 #include <string>
 #include <vector>
 
-#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_inline.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
@@ -50,15 +49,15 @@ void ComputeInlineTactic::Apply(ir::IRSchedule* sch,
   // if (IsProhibitScheduleExternCallBlock(node->Block())) {
   //    return;
   // }
-  auto_schedule::AutoInline inliner(target_, output_names_);
-  VLOG(6) << "try ComputeInline on: " << block_id
-          << ", before ComputeInline, func body: "
-          << sch->GetModule().GetExprs().front();
-  ir::Expr schedule_block = sch->GetBlock(block_id);
-  inliner.Apply(sch, schedule_block);
-  VLOG(6) << "try ComputeInline on: " << block_id
-          << ", after ComputeInline, func body: "
-          << sch->GetModule().GetExprs().front();
+  // auto_schedule::AutoInline inliner(target_, output_names_);
+  // VLOG(6) << "try ComputeInline on: " << block_id
+  //         << ", before ComputeInline, func body: "
+  //         << sch->GetModule().GetExprs().front();
+  // ir::Expr schedule_block = sch->GetBlock(block_id);
+  // inliner.Apply(sch, schedule_block);
+  // VLOG(6) << "try ComputeInline on: " << block_id
+  //         << ", after ComputeInline, func body: "
+  //         << sch->GetModule().GetExprs().front();
 }
 
 std::unique_ptr<ScheduleTactic> CreateComputeInlineTactic() {
