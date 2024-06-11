@@ -699,6 +699,17 @@
     func : swish
   backward : swish_grad
 
+- op : topk_v1
+  args : (Tensor x, Scalar(int) k = 1)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : TopkV1InferMeta
+  kernel :
+    func : topk_v1
+    data_type : x
+  backward : topk_v1_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : transfer_layout
   args: (Tensor x, int src_layout = -1, int dst_layout=-1)
   output: Tensor (out)

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+from paddle.autograd.backward_utils import ValueDict
 
 from .process_group import get_process_group
 from .reshard_funcs.base_reshard_func import (
@@ -90,8 +91,37 @@ def apply_partition_pass(program):
                 reshard_var.get_defining_op().operand(0).set_source(var)
 
 
-def apply_reshard_pass(program):
-    for op in program.global_block().ops:
+def fold_reshard_pass(dist_program):
+    del_ops = []
+    value_dict = ValueDict()
+    for op in dist_program.global_block().ops:
+        if op.name() != 'dist_op.reshard':
+            continue
+        input = op.operand_source(0)
+        result = op.result(0)
+        if input.type() == result.type():
+            result.replace_all_uses_with(input)
+            del_ops.append(op)
+            continue
+        if input not in value_dict:
+            value_dict[input] = [(result.type(), result)]
+            continue
+        no_find = True
+        for type, val in value_dict[input]:
+            if type == result.type():
+                result.replace_all_uses_with(val)
+                del_ops.append(op)
+                no_find = False
+                break
+        if no_find:
+            value_dict[input].append((result.type(), result))
+    for op in del_ops:
+        op.erase()
+
+
+def apply_reshard_pass(dist_program):
+    fold_reshard_pass(dist_program)
+    for op in dist_program.global_block().ops:
         if op.name() == 'dist_op.reshard':
             var = op.operand_source(0)
             op_dist_attr = op.dist_attr
