@@ -22,12 +22,12 @@
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace inference {
+namespace paddle::inference {
 
 extern void ReadBinaryFile(const std::string &filename, std::string *contents);
 
-namespace analysis {
+}  // namespace paddle::inference
+namespace paddle::inference::analysis {
 
 void IrGraphBuildPass::RunImpl(Argument *argument) {
   if (!argument->scope_valid()) {
@@ -130,6 +130,4 @@ std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
 
 std::string IrGraphBuildPass::repr() const { return "ir_graph_build_pass"; }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

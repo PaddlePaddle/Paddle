@@ -127,10 +127,9 @@ SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
     MakeSqueezeDimTransWithoutAxis(x_shape, &out_shape, &trans);
   } else {
     std::vector<int64_t> axis_copy(axis);
-    for (int64_t i = 0, n = static_cast<int64_t>(axis_copy.size()); i < n;
-         i++) {
-      if (axis_copy[i] < 0) {
-        axis_copy[i] += x_ndim;
+    for (auto& v : axis_copy) {
+      if (v < 0) {
+        v += x_ndim;
       }
     }
     MakeSqueezeDimTransWithAxis(x_shape, &out_shape, axis_copy, &trans);
@@ -202,10 +201,9 @@ SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
     MakeSqueezeDimTransReverseWithoutAxis(x_shape, &trans);
   } else {
     std::vector<int64_t> axis_copy(axis);
-    for (int64_t i = 0, n = static_cast<int64_t>(axis_copy.size()); i < n;
-         i++) {
-      if (axis_copy[i] < 0) {
-        axis_copy[i] += x_ndim;
+    for (auto& v : axis_copy) {
+      if (v < 0) {
+        v += x_ndim;
       }
     }
     MakeSqueezeDimTransReverseWithAxis(x_shape, out_shape, axis_copy, &trans);
