@@ -20,7 +20,7 @@
 
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/runtime/flags.h"
-
+#include "paddle/common/enforce.h"
 PD_DECLARE_bool(verbose_function_register);
 
 namespace cinn {
@@ -42,13 +42,22 @@ bool FunctionProto::Match(const ir::Call *op) const {
 }
 
 void FunctionProto::AssertMatch(const ir::Call *op) const {
-  CHECK_EQ(name, op->name);
-  CHECK_EQ(ret_type, op->type())
-      << "function proto " << name << " check failed";
-  CHECK_EQ(op->read_args.size(), readonly_arg_types.size())
-      << "function proto " << name << " check failed";
-  CHECK_EQ(op->write_args.size(), mutable_arg_types.size())
-      << "function proto " << name << " check failed";
+  PADDLE_ENFORCE_EQ(
+      name,
+      op->name,
+      phi::errors::InvalidArgument("function proto's op name check failed"));
+  PADDLE_ENFORCE_EQ(
+      ret_type,
+      op->type(),
+      phi::errors::InvalidArgument("function proto's op type check failed"));
+  PADDLE_ENFORCE_EQ(op->read_args.size(),
+                    readonly_arg_types.size(),
+                    phi::errors::InvalidArgument(
+                        "function proto's readonly arg types check failed"));
+  PADDLE_ENFORCE_EQ(op->write_args.size(),
+                    mutable_arg_types.size(),
+                    phi::errors::InvalidArgument(
+                        "function proto's mutable arg types check failed"));
 
   auto get_type = [](Expr u) {
     if (u.as_tensor() || u.as_buffer()) {
@@ -61,14 +70,21 @@ void FunctionProto::AssertMatch(const ir::Call *op) const {
     if (readonly_arg_types[i] == type_of<cinn_buffer_t *>()) {
       if (!op->read_args[i].as_tensor()) continue;
     } else {
-      CHECK_EQ(get_type(op->read_args[i]), readonly_arg_types[i]);
+      PADDLE_ENFORCE_EQ(
+          get_type(op->read_args[i]),
+          readonly_arg_types[i],
+          phi::errors::InvalidArgument(
+              "function proto's readonly arg types check failed"));
     }
   }
   for (int i = 0; i < op->write_args.size(); i++) {
     if (mutable_arg_types[i] == type_of<cinn_buffer_t *>()) {
       if (!op->write_args[i].as_tensor()) continue;
     } else {
-      CHECK_EQ(get_type(op->write_args[i]), mutable_arg_types[i]);
+      PADDLE_ENFORCE_EQ(get_type(op->write_args[i]),
+                        mutable_arg_types[i],
+                        phi::errors::InvalidArgument(
+                            "function proto's mutable arg types check failed"));
     }
   }
 }
@@ -86,7 +102,10 @@ void FunctionProto::CheckValid() {
 
 FunctionProto::shape_inference_t FunctionProto::ShapeFollowNthArgument(int n) {
   return [=](const std::vector<Expr> &args, int value_offset) {
-    CHECK_LT(n, args.size());
+    PADDLE_ENFORCE_LT(
+        n,
+        args.size(),
+        phi::errors::InvalidArgument("The argument index is out of range"));
     auto x = args[n].as_tensor();
     CHECK(x);
     return x->shape;

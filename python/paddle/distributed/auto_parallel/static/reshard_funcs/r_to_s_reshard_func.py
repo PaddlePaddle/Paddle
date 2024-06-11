@@ -50,6 +50,19 @@ class RToSReshardFunction(ReshardFunction):
         if curr_global_rank in mesh.process_ids:
             total_nums = src_value.shape[split_axis]
             num_of_pieces = mesh.shape[mesh_axis]
+            if num_of_pieces == 1:
+                dst_value = paddle._C_ops.share_data_(src_value)
+                share_data_op = dst_value.get_defining_op()
+                # set dist type and dist attr
+                dst_value.set_type(dst_type)
+                share_data_op.dist_attr = (
+                    paddle.base.libpaddle.pir.create_op_dist_attribute(
+                        src_dist_attr.process_mesh,
+                        [src_dist_attr],
+                        [dst_dist_attr],
+                    )
+                )
+                return dst_value
             piece_len = (total_nums + num_of_pieces - 1) // num_of_pieces
             rank_relative = mesh.process_ids.index(curr_global_rank)
             start = rank_relative * piece_len
@@ -59,15 +72,17 @@ class RToSReshardFunction(ReshardFunction):
 
             out_value = paddle.slice(src_value, [split_axis], [start], [end])
 
-            out_value.set_type(src_value.type())
-            out_value.update_dist_attr(dst_dist_attr)
+            out_value.set_type(dst_type)
             out_value.get_defining_op().dist_attr = (
                 paddle.base.libpaddle.pir.create_op_dist_attribute(
                     mesh, [src_dist_attr], [dst_dist_attr]
                 )
             )
             return out_value
-        return None
+        # fake var will be removed in remove_other_rank_op_pass.
+        fake_var = paddle._C_ops.reshard_v2(src_value, dst_dist_attr)
+        fake_var.set_type(dst_type)
+        return fake_var
 
 
 class RToSReshardFunctionCrossMesh(ReshardFunction):

@@ -6,8 +6,6 @@ endif()
 register_operators(
   EXCLUDES
   fused_bn_activation_op
-  fusion_group_op
-  fusion_lstm_op
   fused_attention_op
   fused_transformer_op
   fused_feedforward_op
@@ -17,8 +15,6 @@ register_operators(
   fused_gemm_epilogue_op
   fused_gate_attention_op
   resnet_basic_block_op)
-
-op_library(fusion_lstm_op)
 
 if(WITH_XPU)
   op_library(resnet_basic_block_op)
@@ -37,10 +33,6 @@ if(WITH_GPU OR WITH_ROCM)
   # HIP not support cudnnTransformTensor
   # HIP not support cudnnConvolutionBiasActivationForward
   op_library(fused_gate_attention_op)
-  # fusion_group
-  if(NOT APPLE AND NOT WIN32)
-    op_library(fusion_group_op)
-  endif()
   # fused_dropout
   # only support CUDA
   if(NOT WITH_ROCM)

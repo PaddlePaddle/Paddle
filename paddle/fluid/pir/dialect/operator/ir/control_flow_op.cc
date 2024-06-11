@@ -40,8 +40,7 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp, paddle::dialect::HasElementsOp,
 using pir::TuplePopOp;
 using pir::TuplePushOp;
 constexpr char kStopGradientAttrName[] = "stop_gradient";  // NOLINT
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 void IfOp::Build(pir::Builder &builder,             // NOLINT
                  pir::OperationArgument &argument,  // NOLINT
@@ -1198,8 +1197,7 @@ void SelectOutputOp::VerifySig() {
   VLOG(4) << "End Verifying for: AssignArray_Op.";
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)

@@ -16,8 +16,7 @@
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class SparseMomentumOpInferVarType : public framework::VarTypeInference {
  public:
@@ -107,8 +106,7 @@ $$
 )DOC");
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

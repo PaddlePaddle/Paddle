@@ -167,6 +167,18 @@ void CudnnLSTMGradInferMeta(
     MetaTensor* init_c_grad,
     std::vector<MetaTensor*> weight_list_grad);
 
+void LSTMGradInferMeta(const MetaTensor& input,
+                       const MetaTensor& h0,
+                       const MetaTensor& c0,
+                       const MetaTensor& weight,
+                       const MetaTensor& bias,
+                       MetaTensor* input_grad,
+                       MetaTensor* h0_grad,
+                       MetaTensor* c0_grad,
+                       MetaTensor* weight_grad,
+                       MetaTensor* bias_grad,
+                       MetaConfig config = MetaConfig());
+
 void DeformableConvGradInferMeta(const MetaTensor& x,
                                  const MetaTensor& offset,
                                  const MetaTensor& filter,

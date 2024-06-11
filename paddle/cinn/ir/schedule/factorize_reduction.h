@@ -24,7 +24,7 @@
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/error.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 
@@ -64,7 +64,9 @@ class ReduceBlockCreater {
         is_rf_block_(is_rf_block) {
     const ScheduleBlockRealize* block_real =
         original_block_.As<ir::ScheduleBlockRealize>();
-    CHECK_NOTNULL(block_real);
+    PADDLE_ENFORCE_NOT_NULL(block_real,
+                            phi::errors::InvalidArgument(
+                                "The block is not a ScheduleBlockRealize"));
     num_block_iters_ = block_real->iter_values.size();
   }
 
