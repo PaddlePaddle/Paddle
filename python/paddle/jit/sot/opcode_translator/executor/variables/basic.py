@@ -625,7 +625,7 @@ class SymbolicVariable(VariableBase):
 
     def get_py_value(self, allow_tensor=False):
         self.need_guard_value = True
-        if self.value is None:
+        if isinstance(self.value, SymbolicInt):
             assert isinstance(
                 self.tracker, SymbolicOperationTracker
             ), f"self.value is None, but tracker is not SymbolicOperationTracker. tracker: {self.tracker}"
