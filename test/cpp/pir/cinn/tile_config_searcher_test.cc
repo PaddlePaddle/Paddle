@@ -18,8 +18,8 @@
 #include <sstream>
 
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
-#include "paddle/cinn/ir/group_schedule/config/database.h"
 #include "paddle/cinn/ir/group_schedule/config/file_database.h"
+#include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 #include "paddle/cinn/ir/group_schedule/search/config_searcher.h"
 #include "paddle/cinn/ir/group_schedule/search/measurer.h"
 #include "paddle/cinn/utils/string.h"
