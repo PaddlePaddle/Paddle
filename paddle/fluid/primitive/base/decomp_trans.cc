@@ -475,7 +475,8 @@ void DecompProgram::decomp_block(
         auto item = orig_outs[i];
         if (item.use_count() == 1) {
           auto next_op = item.first_use().owner();
-          if (next_op->name() == "builtin.split") {
+          if (next_op->name() == "builtin.split" ||
+              next_op->name() == "builtin.slice") {
             is_next_builtin_split = true;
 
             check_decomp_outputs(
