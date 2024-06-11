@@ -3093,7 +3093,8 @@ __inline__ __device__ T WarpReduceAbsMax(T val, unsigned lane_mask) {
 #ifdef PADDLE_WITH_HIP
     val = MaxFunc<T>()(val, __shfl_xor(val, mask, WARP_SIZE_TMP));
 #else
-    val = MaxFunc<T>()(val, __shfl_xor_sync(lane_mask, val, mask, WARP_SIZE_TMP));
+    val =
+        MaxFunc<T>()(val, __shfl_xor_sync(lane_mask, val, mask, WARP_SIZE_TMP));
 #endif
   }
   return val;

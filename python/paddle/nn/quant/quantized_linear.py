@@ -26,7 +26,9 @@ from paddle.framework import (
 def _get_arch_info():
     # Get SMVersion from device.
     cuda_version = paddle.version.cuda()
-    if (cuda_version is not None and cuda_version != 'False') or paddle.is_compiled_with_rocm():
+    if (
+        cuda_version is not None and cuda_version != 'False'
+    ) or paddle.is_compiled_with_rocm():
         major, minor = get_device_capability()
         arch = int(major * 10 + minor)
         return arch
