@@ -44,7 +44,7 @@
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 PD_DECLARE_int32(cinn_error_message_level);
 
 namespace cinn {
@@ -136,7 +136,10 @@ bool BaseInliner::UpdateAndCheckIndexVars(const std::vector<Expr>& indices,
 }
 
 void BaseInliner::SetIndexSubstitution(const std::vector<Expr>& indices) {
-  CHECK_EQ(indices.size(), idx_vars_.size());
+  PADDLE_ENFORCE_EQ(indices.size(),
+                    idx_vars_.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of indices should be equal to idx_vars_"));
   int n = idx_vars_.size();
   idx_sub_var_.reserve(n);
   idx_sub_expr_.reserve(n);
@@ -248,7 +251,10 @@ Expr ReverseComputeInliner::ReplaceInlinedTensor(Expr* load) {
 
 Expr ReverseComputeInliner::ReplaceTargetTensor(Expr* store) {
   auto indices = inlined_load_.As<ir::Load>()->indices;
-  CHECK_EQ(indices.size(), idx_vars_.size());
+  PADDLE_ENFORCE_EQ(indices.size(),
+                    idx_vars_.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of indices should be equal to idx_vars_"));
   size_t n = idx_vars_.size();
   idx_sub_var_.reserve(n);
   idx_sub_expr_.reserve(n);
@@ -395,9 +401,15 @@ std::vector<Expr> IRSchedule::Split(const std::string& block_name,
                                     const std::vector<int>& factors) {
   std::vector<Expr> all_loops = this->GetLoops(block_name);
   Expr loop_expr;
-  CHECK_LT(loop_index, (int)all_loops.size())
-      << "The loop index in Split should be less than total loop's number.";
-  CHECK_GE(loop_index, 0) << "The loop index in Split should be >= 0.";
+  PADDLE_ENFORCE_LT(loop_index,
+                    (int)all_loops.size(),
+                    phi::errors::InvalidArgument(
+                        "The loop index in Split should be less than total "
+                        "loop's number."));
+  PADDLE_ENFORCE_GE(
+      loop_index,
+      0,
+      phi::errors::InvalidArgument("The loop index in Split should be >= 0."));
   loop_expr = all_loops[loop_index];
 
   return this->Split(loop_expr, factors);
