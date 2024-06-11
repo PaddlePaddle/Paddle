@@ -322,7 +322,7 @@ def main():
         help='number of tidy instances to be run in parallel.',
     )
     parser.add_argument(
-        'files',
+        '-files',
         nargs='*',
         default=None,
         help='files to be processed (regex on path)',

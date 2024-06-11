@@ -3772,7 +3772,7 @@ function clang-tidy_check() {
     do
         pwd
         echo "Current checking file: ${PADDLE_ROOT}/${file}"
-        python ${PADDLE_ROOT}/tools/codestyle/clang-tidy.py -p=build -j=10 \
+        python ./tools/codestyle/clang-tidy.py -p=build -j=10 \
         -clang-tidy-binary=clang-tidy \
         -extra-arg=-Wno-unknown-warning-option \
         -extra-arg=-Wno-pessimizing-move \
@@ -3796,7 +3796,7 @@ function clang-tidy_check() {
         -extra-arg=-Wno-overloaded-virtual  \
         -extra-arg=-Wno-defaulted-function-deleted  \
         -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor  \
-        -extra-arg=-Wno-return-type-c-linkage -p ${PADDLE_ROOT}/${file}
+        -extra-arg=-Wno-return-type-c-linkage -p ${PADDLE_ROOT}/build -files ${PADDLE_ROOT}/${file}
         check_error=$?
         if [ ${check_error} != 0 ];then
             break
