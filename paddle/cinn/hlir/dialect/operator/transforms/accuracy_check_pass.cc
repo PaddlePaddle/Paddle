@@ -34,6 +34,10 @@
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 namespace cinn::dialect::ir {
 
+static constexpr double rtol = 1e-3;  // relative tolerance for accuracy check
+static constexpr double atol = 1e-3;  // relative tolerance for accuracy check
+static constexpr bool equal_nan = false;  // whether to consider NaN as equal
+
 class AddAccuracyCheckPattern
     : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
@@ -61,7 +65,9 @@ class AddAccuracyCheckPattern
             fusion_op.result(i),
             ir_mapping.Lookup(op->operand_source(i)),
             fn_name,
-            i);
+            rtol,
+            atol,
+            equal_nan);
       }
     };
 
