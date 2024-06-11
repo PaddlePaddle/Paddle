@@ -823,9 +823,13 @@ def standard_normal(shape, dtype=None, name=None):
             >>> shape_tensor = paddle.to_tensor([2, 3])
             >>> out4 = paddle.standard_normal(shape_tensor, dtype='complex64')
             >>> print(out4)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[ 0.01182475, -0.44895259, -1.79227340],
-             [ 1.52022707, -0.83830303,  0.05261501]])
+            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[ (0.1375531256198883+0.0932074561715126j) ,
+               (0.7955012917518616-0.41801896691322327j),
+              (-0.6730020642280579-0.09163688868284225j)],
+             [ (0.17453041672706604-0.9002832770347595j),
+               (0.16270922124385834-1.3086302280426025j),
+               (0.9428746104240417+0.06869460642337799j)]])
     """
     if convert_dtype(dtype) in ['complex64', 'complex128']:
         return gaussian(
@@ -901,9 +905,13 @@ def randn(shape, dtype=None, name=None):
             >>> shape_tensor = paddle.to_tensor([2, 3])
             >>> out4 = paddle.randn(shape_tensor, dtype='complex64')
             >>> print(out4)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[ 0.57575506, -1.60349274, -0.27124876],
-             [ 1.08381045,  0.81270242, -0.26763600]])
+            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[ (0.1375531256198883+0.0932074561715126j) ,
+               (0.7955012917518616-0.41801896691322327j),
+              (-0.6730020642280579-0.09163688868284225j)],
+             [ (0.17453041672706604-0.9002832770347595j),
+               (0.16270922124385834-1.3086302280426025j),
+               (0.9428746104240417+0.06869460642337799j)]])
     """
     return standard_normal(shape, dtype, name)
 
@@ -974,9 +982,13 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             >>> paddle.seed(200)
             >>> out4 = paddle.normal(mean=1+1j, shape=[2, 3])
             >>> print(out4)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[-0.85107994, -0.85490644, -1.35941815],
-             [-0.55500370,  0.20964541,  2.24193954]])
+            Tensor(shape=[2, 3], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[(1.137553095817566+1.0932074785232544j)  ,
+              (1.7955012321472168+0.5819810628890991j) ,
+              (0.32699793577194214+0.9083631038665771j)],
+             [(1.1745303869247437+0.09971672296524048j),
+              (1.1627092361450195-0.30863022804260254j),
+              (1.9428746700286865+1.0686945915222168j) ]])
 
             >>> mean_tensor = paddle.to_tensor([1+1j, 2+2j, 3+3j])
             >>> out5 = paddle.normal(mean=mean_tensor)
