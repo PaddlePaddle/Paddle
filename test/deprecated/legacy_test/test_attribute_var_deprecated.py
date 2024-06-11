@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 import paddle.inference as paddle_infer
-from paddle.base.framework import Program, program_guard
+from paddle.framework import in_pir_mode
 
 paddle.enable_static()
 
@@ -41,9 +41,16 @@ class UnittestBase(unittest.TestCase):
         return type(self).__name__
 
     def infer_prog(self):
-        config = paddle_infer.Config(
-            self.save_path + '.pdmodel', self.save_path + '.pdiparams'
-        )
+        if in_pir_mode():
+            config = paddle_infer.Config(
+                self.save_path + '.json', self.save_path + '.pdiparams'
+            )
+            config.enable_new_ir()
+            config.enable_new_executor()
+        else:
+            config = paddle_infer.Config(
+                self.save_path + '.pdmodel', self.save_path + '.pdiparams'
+            )
         config.disable_mkldnn()
         predictor = paddle_infer.create_predictor(config)
         input_names = predictor.get_input_names()
@@ -72,9 +79,9 @@ class TestDropout(UnittestBase):
         self.save_path = os.path.join(self.temp_dir.name, 'dropout')
 
     def test_static(self):
-        main_prog = Program()
-        startup_prog = Program()
-        with program_guard(main_prog, startup_prog):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(10, 10)
             x = paddle.randn(self.shapes[0])
             x.stop_gradient = False
@@ -85,6 +92,7 @@ class TestDropout(UnittestBase):
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
             # test _to_string
+            print(str(main_prog))
             self.assertTrue("Var[" in str(main_prog))
 
             exe = paddle.static.Executor()
