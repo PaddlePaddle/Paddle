@@ -23,7 +23,7 @@ def _switch_to_pir_():
     paddle.base.framework.global_var._use_pir_api_ = True
     paddle.framework.set_flags({"FLAGS_enable_pir_in_executor": True})
     paddle.pir.register_paddle_dialect()
-    # TODO find a better place to init the registion of dist dialect.
+    # TODO find a better place to init the registration of dist dialect.
     paddle.pir.register_dist_dialect()
 
     paddle.base.Program = paddle.pir.Program

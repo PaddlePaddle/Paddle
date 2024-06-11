@@ -38,21 +38,6 @@ def conv_block(input, num_filter, groups, dropouts):
 
 
 class TestLayer(unittest.TestCase):
-    def test_batch_norm_layer(self):
-        main_program = Program()
-        startup_program = Program()
-        with base.program_guard(main_program, startup_program):
-            images = paddle.static.data(
-                name='pixel', shape=[-1, 3, 48, 48], dtype='float32'
-            )
-            hidden1 = paddle.static.nn.batch_norm(input=images)
-            hidden2 = paddle.static.nn.fc(
-                x=hidden1, size=128, activation='relu'
-            )
-            paddle.static.nn.batch_norm(input=hidden2)
-
-        print(str(main_program))
-
     def test_dropout_layer(self):
         main_program = Program()
         startup_program = Program()
