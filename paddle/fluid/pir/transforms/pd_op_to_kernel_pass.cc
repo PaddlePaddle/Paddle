@@ -2950,7 +2950,7 @@ pir::Operation* OneDNNOp2PdOp(pir::Operation* op_item,
                              op_item_inner_output_types,
                              op_info);
   op_item->ReplaceAllUsesWith(op_item_inner->results());
-  for (auto iter = block->begin(); iter != block->end(); ++iter) {
+  for (auto iter = block->begin(); iter != block->end(); ++iter) {  // NOLINT
     if (*iter == *op_item) {
       block->Assign(iter, op_item_inner);
       break;
@@ -2986,7 +2986,7 @@ pir::Operation* PdOp2OneDNNOp(pir::Operation* op_item,
                                op_item_inner_output_types,
                                op_info);
     op_item->ReplaceAllUsesWith(op_item_inner->results());
-    for (auto iter = block->begin(); iter != block->end(); ++iter) {
+    for (auto iter = block->begin(); iter != block->end(); ++iter) {  // NOLINT
       if (*iter == *op_item) {
         block->Assign(iter, op_item_inner);
         break;
