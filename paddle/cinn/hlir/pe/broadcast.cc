@@ -23,6 +23,7 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
 PD_DECLARE_bool(cinn_bucket_compile);
 
@@ -50,11 +51,16 @@ void GetBroadcastShape(const std::vector<Expr>& shape1,
 
   if (axis.defined()) {
     int axis_val = axis.as_int32();
-    CHECK_GE(axis_val, -1) << "wrong axis: " << axis_val << std::endl;
+    PADDLE_ENFORCE_GE(axis_val,
+                      -1,
+                      phi::errors::InvalidArgument(
+                          "axis should be equal or greater than -1."));
     if (shape1.size() >= shape2.size()) {
-      CHECK_LE(axis_val, static_cast<int>(shape1.size() - shape2.size()))
-          << "wrong axis: " << axis_val
-          << " is not <= " << shape1.size() - shape2.size() << std::endl;
+      PADDLE_ENFORCE_LE(axis_val,
+                        static_cast<int>(shape1.size() - shape2.size()),
+                        phi::errors::InvalidArgument(
+                            "The axis_val should be less than or equal to "
+                            "shape1.size() - shape2.size()."));
       if (axis_val >= 0) {
         *axis_offset = shape1.size() - shape2.size() - axis_val;
         for (int i = 1; i <= *axis_offset; ++i) {
@@ -69,9 +75,11 @@ void GetBroadcastShape(const std::vector<Expr>& shape1,
         }
       }
     } else {
-      CHECK_LE(axis_val, static_cast<int>(shape2.size() - shape1.size()))
-          << "wrong axis: " << axis_val
-          << " is not <= " << shape2.size() - shape1.size() << std::endl;
+      PADDLE_ENFORCE_LE(axis_val,
+                        static_cast<int>(shape2.size() - shape1.size()),
+                        phi::errors::InvalidArgument(
+                            "The axis_val should be less than or equal to "
+                            "shape2.size() - shape1.size()."));
       if (axis_val >= 0) {
         *axis_offset = shape2.size() - shape1.size() - axis_val;
         for (int i = 1; i <= *axis_offset; ++i) {
@@ -211,7 +219,11 @@ void GetBroadcastIndice(const std::vector<Expr>& indice,
   if (broadcast_indice1->empty() && broadcast_indice2->empty()) {
     int flag_size = broadcast_flags1.size();
     int i;
-    CHECK_GE(indice.size(), flag_size);
+    PADDLE_ENFORCE_GE(
+        indice.size(),
+        flag_size,
+        phi::errors::InvalidArgument(
+            "indice size should be greater than or equal to flag size."));
     for (i = 0; i < flag_size; i++) {
       if (broadcast_flags1[flag_size - 1 - i]) {
         // broadcast indices are added from left to right
@@ -341,17 +353,26 @@ Tensor BroadcastTo(const Tensor& A,
                    const std::vector<int>& broadcast_axes,
                    const std::string& out_name) {
   auto A_shape = A->shape;
-  CHECK_EQ(A_shape.size(), broadcast_axes.size())
-      << "broadcast_axes's size should be same with the input shape's size";
-  CHECK_GE(out_shape.size(), broadcast_axes.size())
-      << "broadcast_axes's size should be no more than out_shape's size";
+  PADDLE_ENFORCE_EQ(
+      A_shape.size(),
+      broadcast_axes.size(),
+      phi::errors::InvalidArgument(
+          "broadcast_axes's size should be same with the input shape's size"));
+  PADDLE_ENFORCE_GE(
+      out_shape.size(),
+      broadcast_axes.size(),
+      phi::errors::InvalidArgument("broadcast_axes's size should be less than "
+                                   "or equal to out_shape's size"));
   auto axes = broadcast_axes;
   for (auto& axis : axes) {
     // if axis < 0, plus out_shape.size
     if (axis < 0) {
       axis = out_shape.size() + axis;
     }
-    CHECK_LT(axis, out_shape.size());
+    PADDLE_ENFORCE_LT(axis,
+                      out_shape.size(),
+                      phi::errors::InvalidArgument(
+                          "axis should be less than out_shape's size"));
   }
   std::sort(axes.begin(), axes.end());
 

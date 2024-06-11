@@ -54,8 +54,7 @@ option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
 option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
 option(WITH_XPU_PLUGIN "Compile PaddlePaddle with BAIDU XPU plugin" OFF)
-option(WITH_XPU_XHPC "Compile PaddlePaddle with BAIDU XPU-HPC library"
-       ${WITH_XPU})
+option(WITH_XPU_XRE5 "Compile PaddlePaddle with BAIDU XPU XRE 5" OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
@@ -91,14 +90,17 @@ endif()
 if(WITH_GPU AND WITH_XPU_XFT)
   message(FATAL_ERROR "Error when compile GPU and XPU-XFT at the same time")
 endif()
-if(WITH_GPU AND WITH_XPU_XHPC)
-  message(FATAL_ERROR "Error when compile GPU and XPU-HPC at the same time")
+if(WITH_GPU AND WITH_XPU_XRE5)
+  message(FATAL_ERROR "Error when compile GPU and XPU-XRE5 at the same time")
 endif()
 if(WITH_GPU AND WITH_ROCM)
   message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
 endif()
 
 if(WITH_GPU AND NOT APPLE)
+  if(WITH_PIP_CUDA_LIBRARIES AND CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    add_definitions(-DPADDLE_WITH_PIP_CUDA_LIBRARIES)
+  endif()
   #(Note risemeup1): The cudart dynamic library libcudart.so is used by set CUDA_USE_STATIC_CUDA_RUNTIME and CMAKE_CUDA_FLAGS
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL
                                             "x86_64")
@@ -107,8 +109,8 @@ if(WITH_GPU AND NOT APPLE)
         CACHE BOOL "" FORCE)
     set(CMAKE_CUDA_FLAGS "--cudart shared")
     if(WITH_PIP_CUDA_LIBRARIES)
-      #(Note risemeup1): Flag 'WITH_PIP_CUDA_LIBRARIES' will be used in dynamic_loader.cc to search for CUDA-related .so files through the Python libraries provided by NVIDIA.
-      add_definitions(-DWITH_PIP_CUDA_LIBRARIES)
+      #(Note risemeup1): Flag 'PADDLE_WITH_PIP_CUDA_LIBRARIES' will be used in dynamic_loader.cc to search for CUDA-related .so files through the Python libraries provided by NVIDIA.
+      add_definitions(-DPADDLE_WITH_PIP_CUDA_LIBRARIES)
     endif()
   endif()
   enable_language(CUDA)
@@ -465,12 +467,12 @@ if(NOT WITH_XPU AND WITH_XPU_BKCL)
       CACHE STRING "Disable BKCL when compiling without XPU" FORCE)
 endif()
 
-if(NOT WITH_XPU AND WITH_XPU_XHPC)
-  message(
-    WARNING "Disable XHPC when compiling without XPU. Force WITH_XPU_XHPC=OFF.")
-  set(WITH_XPU_XHPC
+if(NOT WITH_XPU AND WITH_XPU_XRE5)
+  message((WARNING
+           "Disable XRE5 when compiling without XPU. Force WITH_XPU_XRE5=OFF"))
+  set(WITH_XPU_XRE5
       OFF
-      CACHE STRING "Disable XHPC when compiling without XPU" FORCE)
+      CACHE STRING "Disable XRE5 when compiling without XPU" FORCE)
 endif()
 
 if(WITH_NCCL)

@@ -22,7 +22,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace auto_schedule {
 
@@ -97,8 +97,9 @@ RuleApplyType AutoUnroll::Init(ir::IRSchedule* ir_schedule) {
 }
 
 void AutoUnroll::Apply(int index) {
-  CHECK_LT(index, applicable_schedule_blocks_.size())
-      << "invalid apply index:" << index;
+  PADDLE_ENFORCE_LT(index,
+                    applicable_schedule_blocks_.size(),
+                    phi::errors::InvalidArgument("Index is out of range."));
   auto applied_block = applicable_schedule_blocks_.at(index);
   int max_step = auto_unroll_options[std::rand() % auto_unroll_options.size()];
   ir_schedule_->Annotate(

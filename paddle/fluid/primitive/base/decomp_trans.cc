@@ -41,7 +41,8 @@ std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
                                                           "pd_op.unsqueeze",
                                                           "pd_op.flatten",
                                                           "pd_op.batch_norm",
-                                                          "pd_op.batch_norm_"};
+                                                          "pd_op.batch_norm_",
+                                                          "pd_op.dropout"};
 //
 std::unordered_set<std::string> dynamic_shape_blacklist = {
     "pd_op.squeeze",
@@ -474,7 +475,8 @@ void DecompProgram::decomp_block(
         auto item = orig_outs[i];
         if (item.use_count() == 1) {
           auto next_op = item.first_use().owner();
-          if (next_op->name() == "builtin.split") {
+          if (next_op->name() == "builtin.split" ||
+              next_op->name() == "builtin.slice") {
             is_next_builtin_split = true;
 
             check_decomp_outputs(
