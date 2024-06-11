@@ -25,7 +25,7 @@
 #include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
 
@@ -222,7 +222,10 @@ class GiNaCToExprVisitor : public GiNaC::symbol::visitor,
 
     auto* intv = cur.As<IntImm>();
     CHECK(intv);
-    CHECK_EQ(intv->value, -1);
+    PADDLE_ENFORCE_EQ(
+        intv->value,
+        -1,
+        phi::errors::InvalidArgument("The power value should be -1."));
 
     cur = Div::Make(Expr(1), a);
   }
@@ -296,9 +299,12 @@ std::tuple<Expr, bool /*positive*/> Solve(Expr lhs, Expr rhs, Var var) {
   ginac::lst vars{symbol};
   ginac::ex res = ginac::lsolve(eqs, vars);
 
-  CHECK_EQ(res.nops(), 1);
+  PADDLE_ENFORCE_EQ(
+      res.nops(), 1, phi::errors::InvalidArgument("The res npos should be 1."));
   auto item = res.op(0);
-  CHECK_EQ(item.nops(), 2);
+  PADDLE_ENFORCE_EQ(item.nops(),
+                    2,
+                    phi::errors::InvalidArgument("The item npos should be 2."));
   Expr value = converter.GinacToExpr(item.op(1));
 
   // tell the symbol

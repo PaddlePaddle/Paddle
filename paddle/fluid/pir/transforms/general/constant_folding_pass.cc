@@ -77,7 +77,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     // 1. Some ops do not need to be processed
     if (op->HasTrait<pir::SideEffectTrait>() ||
         op->isa<pir::ConstantTensorOp>() || op->isa<pir::ParameterOp>() ||
-        op->isa<paddle::dialect::FeedOp>()) {
+        op->isa<paddle::dialect::FeedOp>() ||
+        op->isa<paddle::dialect::DataOp>()) {
       return false;
     }
 

@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
-
+#include "glog/logging.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
 namespace pir {
 /**
  * IMPORTANT!!!
@@ -23,8 +26,8 @@ namespace pir {
 
 // all IR structure's identifier (region, block, op, attr, type value etc)
 // which can be string , int64_t etc.
-#define ID "id"
-
+#define ID "#"
+#define VALUE_ID "%"
 // program's key:
 #define REGIONS "regions"
 
@@ -43,9 +46,11 @@ namespace pir {
 #define BLOCKOPS "ops"
 
 // operation's key:
+// input
 // which is json array with opoperand json object(ID)
 #define OPOPERANDS "I"
 
+// output
 // which is json array with value json object(ID and TYPE_TYPE)
 #define OPRESULTS "O"
 
@@ -68,4 +73,27 @@ namespace pir {
 
 // NULL_TYPE
 #define NULL_TYPE "NULL"
+
+// special op compress
+
+#define PARAMETEROP "p"
+
+std::pair<std::string, std::string> getContentSplitByDot(
+    const std::string& str);
+
+class DialectIdMap {
+ public:
+  static DialectIdMap* Instance();
+  DialectIdMap();
+  void insert(const std::string& key, const std::string& value);
+
+  std::string GetCompressDialectId(const std::string& name);
+
+  std::string GetDecompressDialectId(const std::string& id);
+
+ private:
+  std::unordered_map<std::string, std::string> CompressDialect;
+  std::unordered_map<std::string, std::string> DecompressDialect;
+};
+
 }  // namespace pir

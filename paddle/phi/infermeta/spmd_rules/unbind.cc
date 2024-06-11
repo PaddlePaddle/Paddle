@@ -170,6 +170,7 @@ SpmdInfo UnbindInferSpmdDynamic(const DistMetaTensor& x, int axis) {
   SpmdInfo ret;
   ret.first = tmp.first;
   std::vector<TensorDistAttr> out_dist_attrs;
+  out_dist_attrs.reserve(tmp.second.size());
   for (const auto& out : tmp.second) {
     out_dist_attrs.push_back(PADDLE_GET_CONST(TensorDistAttr, out));
   }

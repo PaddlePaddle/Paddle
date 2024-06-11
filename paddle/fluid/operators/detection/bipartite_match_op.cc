@@ -15,8 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class BipartiteMatchOp : public framework::OperatorWithKernel {
  public:
@@ -308,8 +307,7 @@ If Tensor, the height of ColToRowMatchIndices is 1.
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
