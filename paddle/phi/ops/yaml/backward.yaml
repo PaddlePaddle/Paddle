@@ -2689,6 +2689,19 @@
     data_type: out_grad
   optional: padding_data
 
+- backward_op : sequence_pool_grad
+  forward: sequence_pool(Tensor x, bool is_test = false, str pooltype = "AVERAGE", float pad_value = 0.0) -> Tensor (out), Tensor (max_index)
+  args: (Tensor x, Tensor max_index, Tensor out_grad, bool is_test, str pooltype, float pad_value)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: sequence_pool_grad
+    data_type: out_grad
+  optional: max_index
+  no_need_buffer: x
+
 - backward_op : set_value_with_tensor_grad
   forward: set_value_with_tensor (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes) -> Tensor(out)
   args : (Tensor values,Tensor out_grad, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
