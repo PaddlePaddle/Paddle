@@ -4306,6 +4306,15 @@
   outputs:
     out : Out
 
+- op: sequence_pool
+  backward: sequence_pool_grad
+  inputs:
+    x : X
+  outputs:
+    {out : Out, max_index : MaxIndex}
+  extra:
+    attrs: [bool is_test = false]
+
 - op: set_value
   backward: set_value_grad
   inputs:
