@@ -76,7 +76,6 @@
 - rnn
 - sequence_mask
 - set_value_with_tensor
-- slice
 - split
 - split_with_num
 - strided_slice
