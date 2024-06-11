@@ -1041,7 +1041,7 @@ pir::Value apply(Value self, py::object func) {
   if (res == Py_None) {
     return self;
   }
-  auto out = CastPyArg2Value(res, "", 0);
+  auto out = CastPyArg2Value(res, "", 0, false);
   Py_DECREF(py_func);
   Py_DECREF(res);
   return out;
