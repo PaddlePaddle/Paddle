@@ -31,6 +31,7 @@ from ..base.data_feeder import (
     check_shape,
     check_type,
     check_variable_and_dtype,
+    convert_dtype,
 )
 from ..framework import (
     LayerHelper,
@@ -826,7 +827,7 @@ def standard_normal(shape, dtype=None, name=None):
             [[ 0.01182475, -0.44895259, -1.79227340],
              [ 1.52022707, -0.83830303,  0.05261501]])
     """
-    if dtype in ['complex64', 'complex128']:
+    if convert_dtype(dtype) in ['complex64', 'complex128']:
         return gaussian(
             shape=shape, mean=(0.0 + 0.0j), std=1.0, dtype=dtype, name=name
         )
