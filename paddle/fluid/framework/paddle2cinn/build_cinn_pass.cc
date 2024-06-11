@@ -26,7 +26,6 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/cinn/frontend/op_mapper_registry.h"
-#include "paddle/cinn/frontend/op_mappers/use_op_mappers.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/io/save_runtime_graph.h"
 #include "paddle/fluid/framework/ir/graph.h"

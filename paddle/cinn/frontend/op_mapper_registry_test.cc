@@ -18,7 +18,6 @@
 
 #include <typeinfo>
 
-#include "paddle/cinn/frontend/op_mappers/use_op_mappers.h"
 #include "paddle/cinn/utils/registry.h"
 
 namespace cinn {
