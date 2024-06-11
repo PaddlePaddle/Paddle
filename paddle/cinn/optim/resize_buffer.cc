@@ -265,11 +265,8 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
       return;
     }
 
-    const std::string& buffer_name = load->tensor.as_tensor_ref()->buffer->name;
-    if (buffer_name_to_shape_.count(buffer_name) > 0) {
-      load->tensor.as_tensor_ref()->shape =
-          buffer_name_to_shape_.at(buffer_name);
-    }
+    ir::Tensor tensor = load->tensor.as_tensor_ref();
+    ResizeTensor(&tensor);
 
     // For the moment, align the load tensor indices with the tensor shape using
     // the trick method. A better way would be to modify the FlattenLoop

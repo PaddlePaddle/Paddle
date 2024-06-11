@@ -22,9 +22,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 ConvBiasFusePass::ConvBiasFusePass() {
   AddOpCompat(OpCompat("conv2d"))
@@ -445,9 +443,7 @@ void ConvBiasFusePass::FuseConvBias(ir::Graph* graph,
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 REGISTER_PASS(conv_bias_onednn_fuse_pass,
               paddle::framework::ir::ConvBiasFusePass);
 REGISTER_PASS_CAPABILITY(conv_bias_onednn_fuse_pass)

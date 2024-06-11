@@ -14,9 +14,7 @@
 
 #include "paddle/fluid/framework/ir/quantize_helper.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void SaveQuantInfoInTheGraph(
     ir::Graph* graph,
@@ -74,6 +72,4 @@ std::vector<float> GetScaleVecValueForNode(
   return var_quant_scales->at(node->Name());
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

@@ -78,7 +78,15 @@ class TestReduceAsOp(OpTest):
         pass
 
     def calc_output(self):
-        self.out = self.x.sum(axis=tuple(self.attrs['dim']))
+        if len(self.attrs['dim']) != 0:
+            if 1 in self.shape_y:
+                self.out = self.x.sum(
+                    axis=tuple(self.attrs['dim']), keepdims=True
+                )
+            else:
+                self.out = self.x.sum(axis=tuple(self.attrs['dim']))
+        else:
+            self.out = self.x
 
     def test_check_output(self):
         self.check_output(check_pir=True)
@@ -149,6 +157,24 @@ class TestReduceAsOp13(TestReduceAsOp):
 
     def init_attrs(self):
         self.attrs = {'dim': [0, 1]}
+
+
+class TestReduceAsOp14(TestReduceAsOp):
+    def init_shape(self):
+        self.shape_x = [10, 10, 6]
+        self.shape_y = [10, 10, 6]
+
+    def init_attrs(self):
+        self.attrs = {'dim': []}
+
+
+class TestReduceAsOp15(TestReduceAsOp):
+    def init_shape(self):
+        self.shape_x = [10, 10, 6, 6]
+        self.shape_y = [1, 10, 1, 1]
+
+    def init_attrs(self):
+        self.attrs = {'dim': [0, 2, 3]}
 
 
 class TestReduceAsDynamicShape(unittest.TestCase):
