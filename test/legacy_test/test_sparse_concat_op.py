@@ -44,6 +44,7 @@ class TestSparseUnary(unittest.TestCase):
     ):
         x = self.generate_data(dtype, shape[0])
         y = self.generate_data(dtype, shape[1])
+        z = self.generate_data(dtype, shape[2])
 
         # --- check sparse coo with dense --- #
         dense_x = x['origin'] * x['mask']
@@ -58,10 +59,16 @@ class TestSparseUnary(unittest.TestCase):
         sp_y.stop_gradient = False
         dense_y.stop_gradient = False
 
-        sp_out = paddle.sparse.concat((sp_x, sp_y), axis)
+        dense_z = z['origin'] * z['mask']
+
+        sp_z = self.to_sparse(dense_z, format)
+        sp_z.stop_gradient = False
+        dense_z.stop_gradient = False
+
+        sp_out = paddle.sparse.concat((sp_x, sp_y, sp_z), axis)
         sp_out.backward()
 
-        dense_out = paddle.concat((dense_x, dense_y), axis)
+        dense_out = paddle.concat((dense_x, dense_y, dense_z), axis)
         dense_out.backward()
 
         # compare forward
@@ -81,21 +88,35 @@ class TestSparseUnary(unittest.TestCase):
         )
 
     def compare_with_dense(self, shape, axis, format, dtype='float64'):
+        self.check_result(format, shape, axis, dtype)
+
+    def test_sparse_concat(self):
         for device in devices:
             if device == 'cpu' or (
                 device == 'gpu' and paddle.is_compiled_with_cuda()
             ):
                 paddle.device.set_device(device)
-                self.check_result(format, shape, axis, dtype)
-
-    def test_sparse_concat(self):
-        self.compare_with_dense([[3, 4, 5], [3, 5, 5]], 1, 'coo', 'float64')
-        self.compare_with_dense([[3, 4, 5], [3, 4, 6]], 2, 'coo', 'float64')
-        self.compare_with_dense([[5, 6], [6, 6]], 0, 'csr', 'float64')
-        self.compare_with_dense([[6, 7], [6, 8]], 1, 'csr', 'float64')
-        self.compare_with_dense([[3, 5, 6], [4, 5, 6]], 0, 'csr', 'float64')
-        self.compare_with_dense([[3, 4, 5], [3, 5, 5]], 1, 'csr', 'float64')
-        self.compare_with_dense([[3, 4, 5], [3, 4, 6]], 2, 'csr', 'float64')
+                self.compare_with_dense(
+                    [[4, 8, 16], [4, 5, 16], [4, 12, 16]], 1, 'coo', 'float64'
+                )
+                self.compare_with_dense(
+                    [[4, 8, 15], [4, 8, 16], [4, 8, 8]], 2, 'coo', 'float64'
+                )
+                self.compare_with_dense(
+                    [[8, 16], [16, 16], [24, 16]], 0, 'csr', 'float64'
+                )
+                self.compare_with_dense(
+                    [[6, 8], [6, 16], [6, 8]], 1, 'csr', 'float64'
+                )
+                self.compare_with_dense(
+                    [[4, 8, 16], [4, 8, 16], [8, 8, 16]], 0, 'csr', 'float64'
+                )
+                self.compare_with_dense(
+                    [[4, 16, 8], [4, 8, 8], [4, 24, 8]], 1, 'csr', 'float64'
+                )
+                self.compare_with_dense(
+                    [[4, 8, 16], [4, 8, 24], [4, 8, 8]], 2, 'csr', 'float64'
+                )
 
 
 if __name__ == "__main__":
