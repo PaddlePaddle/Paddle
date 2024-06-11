@@ -19,7 +19,9 @@ import paddle.nn.functional as F
 from paddle.nn import Conv2D, Linear, ReLU, Sequential
 from paddle.quantization import QuantConfig
 from paddle.quantization.base_quanter import BaseQuanter
-from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+
+# from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+from paddle.quantization.observers import AbsmaxObserver
 
 
 class LeNetDygraph(paddle.nn.Layer):
@@ -53,7 +55,7 @@ class LeNetDygraph(paddle.nn.Layer):
 class TestQuantConfig(unittest.TestCase):
     def setUp(self):
         self.model = LeNetDygraph()
-        self.quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
+        self.quanter = AbsmaxObserver()
 
     def test_global_config(self):
         self.q_config = QuantConfig(

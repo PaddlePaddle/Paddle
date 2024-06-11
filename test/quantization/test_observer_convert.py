@@ -19,7 +19,10 @@ import unittest
 import paddle
 from paddle.nn import Linear, Sequential
 from paddle.quantization import PTQ, QuantConfig
-from paddle.quantization.observers import GroupWiseWeightObserver
+from paddle.quantization.observers import (
+    AbsmaxObserver,
+    GroupWiseWeightObserver,
+)
 
 
 class LinearDygraph(paddle.nn.Layer):
@@ -42,7 +45,7 @@ class TestPTQGroupWise(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def _get_model_for_ptq(self):
+    def _get_model_for_ptq_groupwise(self):
         observer = GroupWiseWeightObserver(quant_bits=4, group_size=128)
         model = LinearDygraph()
         model.eval()
@@ -53,8 +56,28 @@ class TestPTQGroupWise(unittest.TestCase):
         out = model(inputs)
         return quant_model, ptq
 
+    def _get_model_for_ptq_absmax(self):
+        observer = AbsmaxObserver(quant_bits=8)
+        model = LinearDygraph()
+        model.eval()
+        q_config = QuantConfig(activation=observer, weight=observer)
+        ptq = PTQ(q_config)
+        quant_model = ptq.quantize(model)
+        inputs = paddle.rand([128, 128], dtype="float32")
+        out = model(inputs)
+        return quant_model, ptq
+
     def test_quantize(self):
-        ptq_model, ptq = self._get_model_for_ptq()
+        ptq_model, ptq = self._get_model_for_ptq_groupwise()
+        inputs = paddle.rand([128, 128], dtype="float32")
+        out = ptq_model(inputs)
+        self.assertIsNotNone(out)
+        converted_model = ptq.convert(ptq_model)
+        out = converted_model(inputs)
+        self.assertIsNotNone(out)
+
+    def test_quantize_absmax(self):
+        ptq_model, ptq = self._get_model_for_ptq_absmax()
         inputs = paddle.rand([128, 128], dtype="float32")
         out = ptq_model(inputs)
         self.assertIsNotNone(out)
