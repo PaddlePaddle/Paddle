@@ -319,6 +319,98 @@ def standard_gamma(x, name=None):
         return out
 
 
+def log_normal(mean=1.0, std=2.0, shape=None, name=None):
+    r"""
+    Returns a Tensor filled with random values sampled from a Log Normal
+    Distribution, with ``mean``, ``std``.
+    The Log Normal Distribution is defined as follows
+
+    .. math::
+
+        f(x) = \frac{1}{x\sigma\sqrt{2\pi}}e^{-\frac{(\ln{x}-\mu)^2}{2\sigma^2}}
+
+    Args:
+        mean (float|Tensor, optional): The mean of the output Tensor's underlying normal distribution.
+            If ``mean`` is float, all elements of the output Tensor share the same mean.
+            If ``mean`` is a Tensor(data type supports float32, float64), it has per-element means.
+            Default is 1.0
+        std (float|Tensor, optional): The standard deviation of the output Tensor's underlying normal distribution.
+            If ``std`` is float, all elements of the output Tensor share the same standard deviation.
+            If ``std`` is a Tensor(data type supports float32, float64), it has per-element standard deviations.
+            Defaule is 2.0
+        shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
+            If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
+            If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list. If ``mean`` or ``std``
+            is a Tensor, the shape of the output Tensor is the same as ``mean`` or ``std`` , attr ``shape`` is ignored.
+            Default is None
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor filled with random values sampled from a log normal distribution with the underlying normal distribution's ``mean`` and ``std`` .
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(200)
+
+            >>> out1 = paddle.log_normal(shape=[2, 3])
+            >>> print(out1)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[4.01107359 , 3.53824377 , 25.79078865],
+             [0.83332109 , 0.40513405 , 2.09763741 ]])
+
+            >>> mean_tensor = paddle.to_tensor([1.0, 2.0, 3.0])
+            >>> out2 = paddle.log_normal(mean=mean_tensor)
+            >>> print(out2)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [4.45330524 , 0.57903880 , 31.82369995])
+
+            >>> std_tensor = paddle.to_tensor([1.0, 2.0, 3.0])
+            >>> out3 = paddle.log_normal(mean=mean_tensor, std=std_tensor)
+            >>> print(out3)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [10.31321430, 8.97369766 , 35.76752090])
+    """
+    normal_sample = paddle.normal(mean=mean, std=std, shape=shape, name=name)
+    return paddle.exp(normal_sample)
+
+
+@dygraph_only
+def log_normal_(x, mean=1.0, std=2.0, name=None):
+    r"""
+    This inplace version of api ``log_normal``, which returns a Tensor filled
+    with random values sampled from a log normal distribution. The output Tensor will
+    be inplaced with input ``x``. Please refer to :ref:`api_paddle_log_normal`.
+
+    Args:
+        x (Tensor): The input tensor to be filled with random values.
+        mean (float|int, optional): Mean of the output tensor, default is 1.0.
+        std (float|int, optional): Standard deviation of the output tensor, default
+            is 2.0.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A Tensor filled with random values sampled from a log normal distribution with the underlying normal distribution's ``mean`` and ``std`` .
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(200)
+            >>> x = paddle.randn([3, 4])
+            >>> x.log_normal_()
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[3.99360156 , 0.11746082 , 12.14813519, 4.74383831 ],
+             [0.36592522 , 0.09426476 , 31.81549835, 0.61839998 ],
+             [1.33314908 , 12.31954002, 36.44527435, 1.69572163 ]])
+    """
+    return normal_(x, mean=mean, std=std).exp_()
+
+
 def multinomial(x, num_samples=1, replacement=False, name=None):
     """
     Returns a Tensor filled with random values sampled from a Multinomical
