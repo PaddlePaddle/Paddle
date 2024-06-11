@@ -11,15 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+
+from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 
 import paddle
 from paddle.base.data_feeder import check_type, convert_dtype
 
 from ..framework import core
 
-__all__ = []
+__all__: list = []
 
 
 class PrintOptions:
@@ -34,20 +38,20 @@ DEFAULT_PRINT_OPTIONS = PrintOptions()
 
 
 def set_printoptions(
-    precision=None,
-    threshold=None,
-    edgeitems=None,
-    sci_mode=None,
-    linewidth=None,
-):
+    precision: int | None = None,
+    threshold: int | None = None,
+    edgeitems: int | None = None,
+    sci_mode: bool | None = None,
+    linewidth: int | None = None,
+) -> None:
     """Set the printing options for Tensor.
 
     Args:
-        precision (int, optional): Number of digits of the floating number, default 8.
-        threshold (int, optional): Total number of elements printed, default 1000.
-        edgeitems (int, optional): Number of elements in summary at the beginning and ending of each dimension, default 3.
-        sci_mode (bool, optional): Format the floating number with scientific notation or not, default False.
-        linewidth (int, optional): Number of characters each line, default 80.
+        precision (int|None, optional): Number of digits of the floating number, default 8.
+        threshold (int|None, optional): Total number of elements printed, default 1000.
+        edgeitems (int|None, optional): Number of elements in summary at the beginning and ending of each dimension, default 3.
+        sci_mode (bool|None, optional): Format the floating number with scientific notation or not, default False.
+        linewidth (int|None, optional): Number of characters each line, default 80.
 
 
     Returns:
@@ -96,7 +100,7 @@ def set_printoptions(
     core.set_printoptions(**kwargs)
 
 
-def _to_summary(var):
+def _to_summary(var: npt.NDArray[Any]) -> npt.NDArray[Any]:
     edgeitems = DEFAULT_PRINT_OPTIONS.edgeitems
 
     # Handle tensor of shape contains 0, like [0, 2], [3, 0, 3]
@@ -160,16 +164,22 @@ def _get_max_width(var):
     return max_width, signed
 
 
-def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
+def _format_tensor(
+    var: npt.NDArray[Any],
+    summary: bool,
+    indent: int = 0,
+    max_width: int = 0,
+    signed: bool = False,
+) -> str:
     """
     Format a tensor
 
     Args:
         var(Tensor): The tensor to be formatted.
         summary(bool): Do summary or not. If true, some elements will not be printed, and be replaced with "...".
-        indent(int): The indent of each line.
-        max_width(int): The max width of each elements in var.
-        signed(bool): Print +/- or not.
+        indent(int, optional): The indent of each line.
+        max_width(int, optional): The max width of each elements in var.
+        signed(bool, optional): Print +/- or not.
     """
     edgeitems = DEFAULT_PRINT_OPTIONS.edgeitems
     linewidth = DEFAULT_PRINT_OPTIONS.linewidth
@@ -205,7 +215,7 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
         s = (',\n' + ' ' * (indent + 1)).join(
             [', '.join(line) for line in lines]
         )
-        return '[' + s + ']'
+        return f'[{s}]'
     else:
         # recursively handle all dimensions
         if summary and var.shape[0] > 2 * edgeitems:
@@ -235,7 +245,7 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
         )
 
 
-def to_string(var, prefix='Tensor'):
+def to_string(var: paddle.Tensor, prefix: str = 'Tensor') -> str:
     indent = len(prefix) + 1
 
     dtype = convert_dtype(var.dtype)
@@ -250,7 +260,7 @@ def to_string(var, prefix='Tensor'):
 
     if var.dtype == paddle.bfloat16:
         var = var.astype('float32')
-    np_var = var.numpy(False)
+    np_var: npt.NDArray[Any] = var.numpy(False)
 
     if len(var.shape) == 0:
         size = 0
@@ -280,12 +290,12 @@ def to_string(var, prefix='Tensor'):
     )
 
 
-def _format_dense_tensor(tensor, indent):
+def _format_dense_tensor(tensor: paddle.Tensor, indent: int) -> str:
     if tensor.dtype == paddle.bfloat16:
         tensor = tensor.astype('float32')
 
     # TODO(zhouwei): will remove 0-D Tensor.numpy() hack
-    np_tensor = tensor.numpy(False)
+    np_tensor: npt.NDArray[Any] = tensor.numpy(False)
 
     if len(tensor.shape) == 0:
         size = 0
@@ -306,12 +316,14 @@ def _format_dense_tensor(tensor, indent):
     return data
 
 
-def sparse_tensor_to_string(tensor, prefix='Tensor'):
+def sparse_tensor_to_string(
+    tensor: paddle.Tensor, prefix: str = 'Tensor'
+) -> str:
     indent = len(prefix) + 1
     if tensor.is_sparse_coo():
         _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, \n{indent}{indices}, \n{indent}{values})"
-        indices_tensor = tensor.indices()
-        values_tensor = tensor.values()
+        indices_tensor: paddle.Tensor = tensor.indices()
+        values_tensor: paddle.Tensor = tensor.values()
         indices_data = 'indices=' + _format_dense_tensor(
             indices_tensor, indent + len('indices=')
         )
@@ -356,7 +368,7 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
         )
 
 
-def dist_tensor_to_string(tensor, prefix='Tensor'):
+def dist_tensor_to_string(tensor: paddle.Tensor, prefix: str = 'Tensor') -> str:
     # TODO(dev): Complete tensor will be printed after reshard
     # is ready.
     indent = len(prefix) + 1
@@ -392,7 +404,7 @@ def dist_tensor_to_string(tensor, prefix='Tensor'):
         )
 
 
-def tensor_to_string(tensor, prefix='Tensor'):
+def tensor_to_string(tensor: paddle.Tensor, prefix: str = 'Tensor') -> str:
     indent = len(prefix) + 1
 
     dtype = convert_dtype(tensor.dtype)
