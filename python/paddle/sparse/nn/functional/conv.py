@@ -239,7 +239,7 @@ def _conv3d_igemm(
     stride = convert_to_list(stride, dims, 'stride')
     dilation = convert_to_list(dilation, dims, 'dilation')
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         pre_bias = _C_ops.sparse_conv3d_implicit_gemm(
             x,
             weight,
