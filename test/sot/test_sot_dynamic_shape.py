@@ -25,7 +25,7 @@ import paddle
 from paddle.jit.sot.utils import with_allow_dynamic_shape_guard
 
 
-def foo(x):
+def dynamic_shape_input_func1(x):
     s = x.shape[0]
     return x + s
 
@@ -84,6 +84,20 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                     dynamic_int_input_func3, paddle.randn([3, 4, 5]), i
                 )
                 self.assertEqual(ctx.translate_count, i + 1)
+
+    def test_dynamic_shape_input_cache_hit_case1(self):
+        with with_allow_dynamic_shape_guard(
+            True
+        ), test_instruction_translator_cache_context() as ctx:
+            self.assert_results(
+                dynamic_shape_input_func1, paddle.randn([1, 4, 5])
+            )
+            self.assertEqual(ctx.translate_count, 1)
+            for i in range(2, 6):
+                self.assert_results(
+                    dynamic_shape_input_func1, paddle.randn([i, 4, 5])
+                )
+                self.assertEqual(ctx.translate_count, 2)
 
 
 if __name__ == '__main__':

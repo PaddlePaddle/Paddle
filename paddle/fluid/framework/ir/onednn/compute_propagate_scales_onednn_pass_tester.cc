@@ -19,9 +19,7 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/phi/common/place.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 const std::array<float, 10> positive_and_negative_values = {-0.0482659,
                                                             -0.0102493,
@@ -347,6 +345,4 @@ TEST_F(ComputePropagateScalesMkldnnPassTest, update_relu_output_scales) {
       BuildConv2dReluProgramDesc(), &var_quant_scales, {"conv_out"});
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
