@@ -8,4 +8,5 @@ foreach(src ${TEST_OPS})
   py_test(${src} SRCS ${src}.py)
 endforeach()
 
-set_tests_properties(test_image_classification_fp16 PROPERTIES TIMEOUT 120)
+set_tests_properties(test_image_classification_fp16_deprecated
+                     PROPERTIES TIMEOUT 120)

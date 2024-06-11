@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
+#include "paddle/phi/kernels/funcs/fused_elemwise_activation_functor.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 
 namespace phi {
@@ -4564,6 +4565,122 @@ void FusedTokenPruneInferMeta(const MetaTensor& attn,
   cls_inds->set_dims({bsz, slim_seq_len});
   slimmed_x->set_dtype(x.dtype());
   cls_inds->set_dtype(DataType::INT64);
+}
+
+void FusedElemwiseActivationInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const std::vector<std::string>& functor_list,
+    int axis,
+    float scale,
+    bool save_intermediate_out,
+    MetaTensor* out,
+    MetaTensor* intermediate_out,
+    MetaConfig config) {
+  const auto& x_dim = x.dims();
+  const auto& y_dim = y.dims();
+
+  // Whether the shape of Y is a continuous subsequence of X,
+  // For more information please refer to the op's introduction.
+  bool bcast_y = phi::funcs::IsBcastY(x_dim, y_dim);
+
+  const auto& out_dim = bcast_y ? x_dim : y_dim;
+  const auto& out_lod = bcast_y ? x : y;
+  auto out_dtype = bcast_y ? x.dtype() : y.dtype();
+
+  if (save_intermediate_out) {
+    PADDLE_ENFORCE_EQ(
+        intermediate_out->initialized(),
+        true,
+        phi::errors::InvalidArgument(
+            "Output(IntermediateOut) of FusedElemwiseActivationOp "
+            "should not be null."));
+
+    if (phi::funcs::IsUnaryCompound(functor_list)) {
+      // for Unary(Binary(X, Y)), the shape and lod of out and
+      // intermediate_out are the same.
+      intermediate_out->set_dims(out_dim);
+      // set the lod of intermediate_out
+      intermediate_out->share_lod(out_lod);
+      intermediate_out->set_dtype(out_dtype);
+    } else {
+      // for Binary(X, Unary(Y)), the shape and lod of Y and
+      // intermediate_out are the same.
+      intermediate_out->set_dims(y_dim);
+      // set the lod of intermediate_out
+      intermediate_out->share_lod(y);
+      intermediate_out->set_dtype(y.dtype());
+    }
+  }
+  out->set_dims(out_dim);
+  out->share_lod(out_lod);
+  out->set_dtype(out_dtype);
+}
+
+void FusedElemwiseActivationGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const MetaTensor& out,
+    const MetaTensor& intermediate_out,
+    const MetaTensor& out_grad,
+    const std::vector<std::string>& functor_list,
+    int axis,
+    float scale,
+    bool save_intermediate_out,
+    MetaTensor* x_grad,
+    MetaTensor* y_grad,
+    MetaConfig config) {
+  PADDLE_ENFORCE_EQ(
+      out_grad.initialized(),
+      true,
+      phi::errors::InvalidArgument("Input(Out@Grad) should not be null."));
+
+  if (save_intermediate_out) {
+    PADDLE_ENFORCE_EQ(intermediate_out.initialized(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Input(IntermediateOut) should not be null."));
+  } else {
+    if (!phi::funcs::InputXCanBeAbsent(functor_list)) {
+      PADDLE_ENFORCE_EQ(
+          x.initialized(),
+          true,
+          phi::errors::InvalidArgument("Input(X) should not be null."));
+    }
+  }
+
+  if (x_grad != nullptr) {
+    if (x.initialized()) {
+      x_grad->set_dims(x.dims());
+      x_grad->share_lod(x);
+      x_grad->set_dtype(x.dtype());
+    } else {
+      // Currently, only when Binary is elementwise_add or elementwise_sub,
+      // the "X" could be absent.
+      PADDLE_ENFORCE_EQ(
+          phi::funcs::InputXCanBeAbsent(functor_list),
+          true,
+          phi::errors::InvalidArgument(
+              "Only when BinaryFunctor is elementwise_add, the 'X' "
+              "could be absent."));
+
+      // Node: If "X" is absence, the shape of Y should be a continuous
+      // subsequence of X, otherwise, we could not infer the shape of dx.
+      x_grad->set_dims(out_grad.dims());
+      x_grad->share_lod(out_grad);
+      x_grad->set_dtype(out_grad.dtype());
+    }
+  }
+
+  if (y_grad != nullptr) {
+    PADDLE_ENFORCE_EQ(
+        y.initialized(),
+        true,
+        phi::errors::InvalidArgument("Input(Y) should not be null."));
+    y_grad->set_dims(y.dims());
+    y_grad->share_lod(y);
+    y_grad->set_dtype(y.dtype());
+  }
 }
 
 }  // namespace phi

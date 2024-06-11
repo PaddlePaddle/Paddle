@@ -1453,6 +1453,10 @@ PHI_DEFINE_EXPORTED_bool(logging_trunc_pir_py_code,
                          "whether truncate the logging files under directory "
                          "FLAGS_logging_pir_py_code_dir");
 
+PHI_DEFINE_EXPORTED_bool(logging_pir_py_code_dump_symbolic_dims,
+                         false,
+                         "whether dump symbolic dims into pir py code.");
+
 /**
  * Using PIR API in Python
  * Name: enable_pir_api
@@ -1611,6 +1615,11 @@ PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
                          false,
                          "Whether to apply shape_optimization pass "
                          "to infer symbolic shape");
+
+PHI_DEFINE_EXPORTED_int64(
+    pir_broadcast_tree_limit,
+    32,
+    "Maximum number of broadcast nodes allowed in a tree");
 
 PHI_DEFINE_EXPORTED_string(
     nvidia_package_dir,  // NOLINT

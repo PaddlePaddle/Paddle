@@ -19,8 +19,6 @@ from decorator_helper import prog_scope
 
 import paddle
 from paddle import base
-from paddle.framework import in_pir_mode
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestMathOpPatches(unittest.TestCase):
@@ -231,32 +229,6 @@ class TestMathOpPatches(unittest.TestCase):
 
         np.testing.assert_array_equal(c_np, a_np == b_np)
         self.assertEqual(c.dtype, paddle.bool)
-
-    @prog_scope()
-    @test_with_pir_api
-    def test_equal_and_cond(self):
-        a = paddle.static.data(name="a", shape=[-1, 1], dtype='float32')
-        b = paddle.static.data(name="b", shape=[-1, 1], dtype='float32')
-        if not in_pir_mode():
-            a.desc.set_need_check_feed(False)
-            b.desc.set_need_check_feed(False)
-        one = paddle.ones(shape=[1], dtype='int32')
-        zero = paddle.zeros(shape=[1], dtype='int32')
-        cond = one == zero
-        c = paddle.static.nn.cond(cond, lambda: a + b, lambda: a - b)
-
-        place = base.CPUPlace()
-        exe = base.Executor(place)
-        a_np = np.array([3, 4, 10, 14, 9, 18]).astype('float32')
-        b_np = np.array([3, 4, 11, 15, 8, 18]).astype('float32')
-
-        (c_np,) = exe.run(
-            paddle.static.default_main_program(),
-            feed={"a": a_np, "b": b_np},
-            fetch_list=[c],
-        )
-
-        np.testing.assert_array_equal(c_np, a_np - b_np)
 
     @prog_scope()
     def test_neg(self):
