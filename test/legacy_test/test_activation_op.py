@@ -1937,7 +1937,7 @@ class TestRsqrt_Complex64(TestRsqrt):
                     np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
                     x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
                     y = paddle.rsqrt(x)
-                    x_expect = np.rsqrt(np_x)
+                    x_expect = 1.0 / np.sqrt(np_x)
                     np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
 
     def test_grad_grad(self):
