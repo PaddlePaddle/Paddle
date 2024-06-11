@@ -12,7 +12,6 @@ set(paddle2cinn_deps
     cinn_launch_context
     proto_desc
     auto_parallel_proto
-    cinn_framework_proto
     schedule_desc_proto
     tile_config_proto
     auto_schedule_proto

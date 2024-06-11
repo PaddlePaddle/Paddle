@@ -156,7 +156,6 @@ cinn_cc_library(
   DEPS
   glog
   ${llvm_libs}
-  cinn_framework_proto
   param_proto
   auto_schedule_proto
   schedule_desc_proto
@@ -217,7 +216,6 @@ function(gen_cinncore LINKTYPE)
     DEPS
     glog
     ${llvm_libs}
-    cinn_framework_proto
     param_proto
     auto_schedule_proto
     schedule_desc_proto
