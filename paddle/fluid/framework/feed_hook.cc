@@ -72,7 +72,6 @@ void VisitFeedName(const pir::Program& program,
 
 std::optional<std::vector<int64_t>> GetTensorData(
     const phi::DenseTensor& tensor) {
-  phi::DataType dtype = tensor.dtype();
   constexpr int kLimit = 64;
   if (tensor.numel() > kLimit) return std::nullopt;
   if (tensor.dtype() == phi::DataType::INT64) {
