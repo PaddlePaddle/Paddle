@@ -279,9 +279,9 @@ struct AccuracyCheckFunctor<phi::GPUContext, T> {
 
     DenseTensor out_cpu;
     phi::Copy(dev_ctx, *output, phi::CPUPlace(), true, &out_cpu);
-    out_data = out_cpu.mutable_data<bool>(phi::CPUPlace());
+    auto data_ptr = out_cpu.data<bool>();
 
-    PADDLE_ENFORCE_EQ(*out_data,
+    PADDLE_ENFORCE_EQ(*data_ptr,
                       true,
                       phi::errors::PreconditionNotMet(
                           "Accuracy check failed, kernel name %s", fn_name));
