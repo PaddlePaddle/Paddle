@@ -831,7 +831,10 @@ def standard_normal(shape, dtype=None, name=None):
                (0.16270922124385834-1.3086302280426025j),
                (0.9428746104240417+0.06869460642337799j)]])
     """
-    if convert_dtype(dtype) in ['complex64', 'complex128']:
+    if dtype is not None and convert_dtype(dtype) in [
+        'complex64',
+        'complex128',
+    ]:
         return gaussian(
             shape=shape, mean=(0.0 + 0.0j), std=1.0, dtype=dtype, name=name
         )
