@@ -53,7 +53,7 @@ TimeDuration PerformanceReporter::Sum(
 TimeDuration PerformanceReporter::Mean(
     const std::vector<TimeDuration>& records) {
   if (records.empty()) return TimeDuration::zero();
-  return Sum(records) / (records.size());
+  return Sum(records) / records.size();
 }
 
 TimeDuration PerformanceReporter::Max(
@@ -80,10 +80,13 @@ std::vector<TimeDuration> PerformanceReporter::TopK(
 TimeDuration PerformanceReporter::PreciseMean(
     const std::vector<TimeDuration>& durations) {
   int top_count = durations.size();
+  if (top_count == 0) return TimeDuration::zero();
   auto top_k = TopK(durations, top_count);
-  auto avg_time = std::accumulate(
-      top_k.begin() + 10, top_k.end() - 10, TimeDuration::zero());
-  return avg_time / (top_count - 20);
+  int remove_num = top_count / 10;
+  auto avg_time = std::accumulate(top_k.begin() + remove_num,
+                                  top_k.end() - remove_num,
+                                  TimeDuration::zero());
+  return avg_time / (top_count - 2 * remove_num);
 }
 
 std::string PerformanceReporter::Report(
@@ -93,24 +96,24 @@ std::string PerformanceReporter::Report(
   std::string unit = "us";
   auto durations = ExtractDuration(records);
   int top_count = durations.size();
+  int remove_num = top_count / 10;
   auto total_time = std::chrono::duration_cast<TimeDuration>(Sum(durations));
   auto mean_time = std::chrono::duration_cast<TimeDuration>(Mean(durations));
   auto max_time = std::chrono::duration_cast<TimeDuration>(Max(durations));
   auto min_time = std::chrono::duration_cast<TimeDuration>(Min(durations));
   auto top_k = TopK(durations, top_count);
-  auto avg_time =
-      std::accumulate(
-          top_k.begin() + 10, top_k.end() - 10, TimeDuration::zero()) /
-      (top_count - 20);
+  auto avg_time = std::accumulate(top_k.begin() + remove_num,
+                                  top_k.end() - remove_num,
+                                  TimeDuration::zero()) /
+                  (top_count - 2 * remove_num);
   ss << "Call Count = " << durations.size()
-     << "\t MEAN Time = " << top_k[60].count() << unit
      << "\t average Time = " << avg_time.count() << unit
      << "\t Total Time = " << total_time.count() << unit
      << "\t Mean Time = " << mean_time.count() << unit
      << "\t Max Time = " << max_time.count() << unit
      << "\t Min Time = " << min_time.count() << unit << "\n";
 
-  ss << "Normal Distribution: " << top_count << ": [";
+  ss << "Records " << top_count << ": [";
   for (size_t i = 0; i < durations.size(); ++i) {
     ss << i + 1 << ": "
        << std::chrono::duration_cast<TimeDuration>(durations[i]).count() << unit
