@@ -81,6 +81,7 @@ class TileFirstGeneralTactic final : public ScheduleTactic {
   void Unroll(ir::IRSchedule* sch, const std::string& block_id);
   void VariableTypeAssignment(ir::IRSchedule* sch, const std::string& block_id);
   void SetReduceType(ir::IRSchedule* sch, const std::string& block_id);
+  void SetDiscreteReduceType(ir::IRSchedule* sch, const std::string& block_id);
   void BindCudaInfo(ir::IRSchedule* sch, const std::string& block_id);
 
  private:
@@ -107,28 +108,27 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
   for (int32_t i = 0; i < context_->config.base_info->data_rank; ++i) {
     if (i >= reduce_start_idx) {
       vec_reduce_axis_.push_back(i);
-      // VLOG(-1) << "DEBUG vec_reduce_axis_.push_back = " << i;
+      VLOG(-1) << "DEBUG vec_reduce_axis_.push_back = " << i;
     } else {
       vec_flatten_axis_.push_back(i);
-      // VLOG(-1) << "DEBUG vec_flatten_axis_.push_back = " << i;
+      VLOG(-1) << "DEBUG vec_flatten_axis_.push_back = " << i;
     }
   }
-  if (context_->config.base_info->raw_reduce_axis.size() == 0) {
-    return;
-  }
-  VLOG(-1) << "DEBUG reduce_start_idx = " << reduce_start_idx;
-  VLOG(-1) << "DEBUG data_rank = " << context_->config.base_info->data_rank;
-  VLOG(-1) << "DEBUG raw_reduce_axis size = "
-           << context_->config.base_info->raw_reduce_axis.size();
   vec_spatial_axis_first_.clear();
   vec_spatial_axis_last_.clear();
-  for (int32_t i = 0; i < reduce_start_idx; ++i) {
-    if (i < context_->config.base_info->raw_reduce_axis.front()) {
-      vec_spatial_axis_first_.push_back(i);
-      VLOG(-1) << "DEBUG vec_spatial_axis_first_.push_back = " << i;
-    } else {
-      vec_spatial_axis_last_.push_back(i);
-      VLOG(-1) << "DEBUG vec_spatial_axis_last_.push_back = " << i;
+  if (!context_->config.base_info->raw_reduce_axis.empty()) {
+    VLOG(-1) << "DEBUG reduce_start_idx = " << reduce_start_idx;
+    VLOG(-1) << "DEBUG data_rank = " << context_->config.base_info->data_rank;
+    VLOG(-1) << "DEBUG raw_reduce_axis size = "
+             << context_->config.base_info->raw_reduce_axis.size();
+    for (int32_t i = 0; i < reduce_start_idx; ++i) {
+      if (i < context_->config.base_info->raw_reduce_axis.front()) {
+        vec_spatial_axis_first_.push_back(i);
+        VLOG(-1) << "DEBUG vec_spatial_axis_first_.push_back = " << i;
+      } else {
+        vec_spatial_axis_last_.push_back(i);
+        VLOG(-1) << "DEBUG vec_spatial_axis_last_.push_back = " << i;
+      }
     }
   }
 }
@@ -176,7 +176,7 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   // Unroll(sch, block_id);
   // VLOG(-1) << "After Unroll on block: [" << block_id << "], loop nest:\n"
   // << sch->GetLoops(block_id)[0];
-  SetReduceType(sch, block_id);
+  SetDiscreteReduceType(sch, block_id);
 }
 
 void TileFirstGeneralTactic::ApplyReduceTile(ir::IRSchedule* sch,
@@ -330,8 +330,6 @@ void TileFirstGeneralTactic::SplitSptialInner(ir::IRSchedule* sch,
 
 void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
                                               const std::string& block_id) {
-  // if (!HasReduceAxis(context_->config)) return;
-
   auto loops = sch->GetLoops(block_id);
   sch->Split(loops[2], std::vector<int>{16, -1});
   VLOG(-1) << "Doing Split ReduceInner on block: [" << block_id
@@ -469,6 +467,16 @@ void TileFirstGeneralTactic::SetReduceType(ir::IRSchedule* sch,
     auto block = sch->GetBlock(block_id)
                      .As<ir::ScheduleBlockRealize>()
                      ->schedule_block.As<ir::ScheduleBlock>();
+    block->reduce_method = context_->config.tile_config.reduce_method;
+  }
+}
+
+void TileFirstGeneralTactic::SetDiscreteReduceType(
+    ir::IRSchedule* sch, const std::string& block_id) {
+  if (IsReduceBlock(context_->config, block_id)) {
+    auto block = sch->GetBlock(block_id)
+                     .As<ir::ScheduleBlockRealize>()
+                     ->schedule_block.As<ir::ScheduleBlock>();
     block->reduce_method = cinn::ir::DiscreteReduceMethod();
   }
 }
@@ -476,9 +484,6 @@ void TileFirstGeneralTactic::SetReduceType(ir::IRSchedule* sch,
 void TileFirstGeneralTactic::BindCudaInfo(ir::IRSchedule* sch,
                                           const std::string& block_id) {
   auto loops = sch->GetLoops(block_id);
-  if (loops.size() == 1 || context_->config.base_info->is_reduce_all) {
-    sch->Split(loops[0], std::vector<int>({1, -1}));
-  }
 
   const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
     sch->Bind(loops[0], "blockIdx.x");
@@ -491,9 +496,6 @@ void TileFirstGeneralTactic::BindCudaInfo(ir::IRSchedule* sch,
   if (IsReduceBlock(context_->config, block_id) &&
       sch->HasBlock(block_id + "_rf")) {
     auto loops = sch->GetLoops(block_id + "_rf");
-    if (context_->config.base_info->is_reduce_all) {
-      sch->Split(loops[0], std::vector<int>({1, -1}));
-    }
     DoBind(sch->GetLoops(block_id + "_rf"));
   }
 }
