@@ -13,8 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
-#include "paddle/cinn/ir/group_schedule/config/database.h"
-#include "paddle/cinn/ir/group_schedule/config/file_database.h"
+#include "paddle/cinn/ir/group_schedule/config/manager.h"
 
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/utils/multi_threading.h"
