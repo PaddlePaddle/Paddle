@@ -12,41 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/ir/group_schedule/config/database.h"
+#include "paddle/cinn/ir/group_schedule/config/manager.h"
+#include "paddle/cinn/ir/group_schedule/config/file_database.h"
 
 PD_DECLARE_bool(cinn_use_best_tile_config);
 
 namespace cinn {
 namespace ir {
-
-void NaiveTileConfigDatabase::AddConfig(
-    const common::Target& target,
-    const BucketInfo& bucket_info,
-    const ScheduleConfig::TileConfig& config,
-    int priority) {
-  IterSpaceType iter_space_type = [&] {
-    std::vector<std::pair<std::string, std::string>> res;
-    for (const auto& dim : bucket_info.space) {
-      res.emplace_back(dim.iter_type, (dim.is_dynamic ? "dynamic" : "static"));
-    }
-    return res;
-  }();
-  config_map_[iter_space_type][bucket_info] = config;
-}
-
-TileConfigMap NaiveTileConfigDatabase::GetConfigs(
-    const common::Target& target, const IterSpaceType& iter_space_type) const {
-  if (config_map_.count(iter_space_type) == 0) {
-    std::stringstream ss;
-    ss << "[";
-    for (const auto& item : iter_space_type) {
-      ss << "[" << item.first << ", " << item.second << "], ";
-    }
-    ss << "]";
-    return {};
-  }
-  return config_map_.at(iter_space_type);
-}
 
 ScheduleConfigManager& ScheduleConfigManager::Instance() {
   static ScheduleConfigManager schedule_config_manager;

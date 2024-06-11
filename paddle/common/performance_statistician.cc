@@ -77,7 +77,7 @@ std::vector<TimeDuration> PerformanceReporter::TopK(
   return top_k;
 }
 
-TimeDuration PerformanceReporter::PreciseMean(
+TimeDuration PerformanceReporter::TrimMean(
     const std::vector<TimeDuration>& durations) {
   int top_count = durations.size();
   if (top_count == 0) return TimeDuration::zero();
@@ -99,17 +99,15 @@ std::string PerformanceReporter::Report(
   int remove_num = top_count / 10;
   auto total_time = std::chrono::duration_cast<TimeDuration>(Sum(durations));
   auto mean_time = std::chrono::duration_cast<TimeDuration>(Mean(durations));
+  auto trim_mean_time =
+      std::chrono::duration_cast<TimeDuration>(TrimMean(durations));
   auto max_time = std::chrono::duration_cast<TimeDuration>(Max(durations));
   auto min_time = std::chrono::duration_cast<TimeDuration>(Min(durations));
   auto top_k = TopK(durations, top_count);
-  auto avg_time = std::accumulate(top_k.begin() + remove_num,
-                                  top_k.end() - remove_num,
-                                  TimeDuration::zero()) /
-                  (top_count - 2 * remove_num);
   ss << "Call Count = " << durations.size()
-     << "\t average Time = " << avg_time.count() << unit
      << "\t Total Time = " << total_time.count() << unit
      << "\t Mean Time = " << mean_time.count() << unit
+     << "\t TrimMean Time = " << trim_mean_time.count() << unit
      << "\t Max Time = " << max_time.count() << unit
      << "\t Min Time = " << min_time.count() << unit << "\n";
 

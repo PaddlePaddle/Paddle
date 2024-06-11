@@ -28,7 +28,8 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
     const BucketInfo& bucket_info,
     double sampling_prob,
     int max_sampling_times,
-    int repeats)
+    int repeats,
+    std::vector<std::vector<double>> weights)
     : program_(program),
       bucket_info_(bucket_info),
       measurer_(program),
@@ -36,10 +37,34 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
       max_sampling_times_(max_sampling_times),
       repeats_(repeats) {
   double weighted_space_size = 1.0;
+  if (weights.size() == 0) {
+    for (int i = 0; i < bucket_info_.space.size(); i++) {
+      auto weight =
+          std::vector<double>(bucket_info_.space[i].upper_bound -
+                                  bucket_info_.space[i].lower_bound + 1,
+                              1.0);
+      double weights_sum = std::accumulate(weight.begin(), weight.end(), 0.0);
+      weighted_space_size *= weights_sum;
+      weights_.push_back(weight);
+    }
+  } else {
+    for (int i = 0; i < bucket_info_.space.size(); i++) {
+      PADDLE_ENFORCE_EQ(
+          bucket_info_.space[i].upper_bound -
+              bucket_info_.space[i].lower_bound + 1,
+          weights[i].size(),
+          ::common::errors::InvalidArgument(
+              "The number of weights does not match the difference "
+              "between the upper and lower bound"));
+      double weights_sum =
+          std::accumulate(weights[i].begin(), weights[i].end(), 0.0);
+      weighted_space_size *= weights_sum;
+      weights_.push_back(weights[i]);
+    }
+  }
   for (const auto& dim : bucket_info_.space) {
-    auto weights =
-        std::vector<double>(dim.upper_bound - dim.lower_bound + 1, 1.0);
-    double weights_sum = std::accumulate(weights.begin(), weights.end(), 0.0);
+    std::vector<double> weight;
+    double weights_sum = std::accumulate(weight.begin(), weight.end(), 0.0);
     weighted_space_size *= weights_sum;
   }
   sampling_times_ =
@@ -49,11 +74,10 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
   // Generate Sampling Inputs
   const auto Sample = [&]() -> std::vector<int64_t> {
     std::vector<int64_t> samples;
-    for (BucketInfo::Dimension dim : bucket_info_.space) {
-      auto weights =
-          std::vector<double>(dim.upper_bound - dim.lower_bound + 1, 1.0);
-      int sampled =
-          utils::SampleDiscreteFromDistribution<double>(weights, &rand_seed_);
+    for (int i = 0; i < bucket_info_.space.size(); i++) {
+      BucketInfo::Dimension dim = bucket_info_.space[i];
+      int sampled = utils::SampleDiscreteFromDistribution<double>(weights_[i],
+                                                                  &rand_seed_);
       samples.push_back(static_cast<int64_t>(sampled) + dim.lower_bound);
     }
     return samples;

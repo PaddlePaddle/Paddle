@@ -42,7 +42,7 @@ std::vector<std::vector<int64_t>> shapes = {
     {2048, 8, 96},        // 5
     {13 * 2048, 32, 128}  // 6
 };
-auto shape = shapes[1];
+auto shape = shapes[0];
 int shape0 = shape[0], shape1 = shape[1], shape2 = shape[2];
 
 std::shared_ptr<::pir::Program> BuildReduceSumProgram() {
@@ -129,7 +129,11 @@ TEST(ConfigSearcher, TestReduceDemo) {
       });
   constraints.emplace_back(
       [](const cinn::ir::search::CandidateType& candidate) -> bool {
-        return candidate[2] % 8 == 0;
+        return candidate[2] < 8 || candidate[2] % 8 == 0;
+      });
+  constraints.emplace_back(
+      [&](const cinn::ir::search::CandidateType& candidate) -> bool {
+        return candidate[1] <= r_dimension_upper;
       });
 
   // Step 5: Construct searcher and search.

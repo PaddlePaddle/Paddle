@@ -127,7 +127,7 @@ MeasureResult Measurer::Result() const {
       ::common::PerformanceReporter::Report(kernel_record);
   VLOG(6) << " report: " << record_strs;
   auto avg_kernel_execute_time =
-      ::common::PerformanceReporter::PreciseMean(kernel_execute_durations);
+      ::common::PerformanceReporter::TrimMean(kernel_execute_durations);
 
   result.compile_time = compile_time;
   result.avg_total_execute_time = avg_total_execute_time;
