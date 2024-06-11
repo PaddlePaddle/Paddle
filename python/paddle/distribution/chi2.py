@@ -23,7 +23,7 @@ __all__ = ["Chi2"]
 class Chi2(Gamma):
     r"""
     Creates a Chi-squared distribution parameterized by shape parameter.
-    This is exactly equivalent to Gamma(concentration=0.5*df, rate=0.5)
+    This is exactly equivalent to Gamma(concentration=0.5*df, rate=0.5), :ref:`api_paddle_distribution_Gamma`.
 
     Args:
         df (float or Tensor): shape parameter of the distribution
