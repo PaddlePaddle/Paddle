@@ -124,7 +124,7 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
                         typeid(input.impl().get()).name()));
   auto dev_ctx = phi::distributed::GetDistTensorDeviceContext(
       static_cast<phi::distributed::DistTensor*>(input.impl().get()));
-  auto input_tensor_impl = input.impl();
+  const auto& input_tensor_impl = input.impl();
   std::shared_ptr<phi::distributed::DistTensor> dist_out_ptr = nullptr;
   if (input_tensor_impl) {
     phi::distributed::DistTensor* dist_tensor =
@@ -152,7 +152,7 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
     }
 
     if (dist_tensor->dist_attr() != dist_attr) {
-      auto tensor_name = (input.name() == "" ? "None" : input.name());
+      auto tensor_name = (input.name().empty() ? "None" : input.name());
       VLOG(4) << "Reshard func: tensor(" << tensor_name << ") "
               << paddle::experimental::ReshardDebugInfo(*dist_tensor,
                                                         dist_attr);

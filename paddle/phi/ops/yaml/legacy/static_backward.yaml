@@ -355,6 +355,17 @@
     func : swish_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : topk_v1_grad
+  forward : topk_v1 (Tensor x, Scalar k) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : topk_v1_grad
+    data_type : out_grad
+
 - backward_op : tril_triu_grad
   forward : tril_triu (Tensor x, int diagonal = 0, bool lower = false)  -> Tensor(out)
   args : (Tensor out_grad, int diagonal, bool lower)
@@ -364,6 +375,26 @@
       param : [out_grad]
   kernel:
     func : tril_triu_grad
+
+- backward_op: cross_entropy_grad
+  forward: cross_entropy (Tensor x, Tensor label, bool soft_label = false, int ignore_index = -100) -> Tensor (out)
+  args: (Tensor x, Tensor label, Tensor out_grad, bool soft_label = false, int ignore_index = -100)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: CrossEntropyGradInferMeta
+  kernel:
+    func: cross_entropy_grad
+    data_type: out_grad
+
+- backward_op: cross_entropy_grad2
+  forward: cross_entropy2 (Tensor x, Tensor label, int ignore_index = -100) -> Tensor (out), Tensor (x_shape), Tensor (match_x)
+  args: (Tensor x_shape, Tensor label, Tensor match_x, Tensor out_grad, int ignore_index = -100)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: CrossEntropyGrad2InferMeta
+  kernel:
+    func: cross_entropy_grad2
+    data_type: x_shape
 
 - backward_op: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, str unpooling_type, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW") -> Tensor(out)

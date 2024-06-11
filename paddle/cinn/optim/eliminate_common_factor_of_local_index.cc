@@ -357,10 +357,10 @@ void EliminateCommonFactorHelper(ir::Expr* expr) {
 }
 
 void EliminateCommonFactorOfLocalIndex(ir::Expr* expr) {
-  VLOG(2) << "Before EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
+  VLOG(4) << "Before EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
   EliminateCommonFactorHelper<Gcd>(expr);
   EliminateCommonFactorHelper<Offset>(expr);
-  VLOG(2) << "After EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
+  VLOG(4) << "After EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
 }
 
 }  // namespace optim

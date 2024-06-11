@@ -122,9 +122,6 @@ class TestFusedMultiTransformerOp(OpTest):
         self.activation = getattr(F, self.act_method)
 
     def config(self):
-        # for debug
-        self.debug = False
-
         self.x_type = np.float32
         self.attn_mask_type = np.float64
         # self.attn_mask_type = np.bool_
@@ -393,11 +390,6 @@ class TestFusedMultiTransformerOp(OpTest):
                 cache_v = paddle.squeeze(cache_v, axis=0)
                 # [B, n_head, cache_seq_len + seq_len, head_dim]
                 # out_seq_len = cache_seq_len + seq_len
-                if self.debug:
-                    print('q out is')
-                    print(q_out[0, 0, :, :])
-                    print('cache k out seq=128')
-                    print(k_out[0, 0, :, :])
                 if self.gen_cache_kv:
                     cache_kvs.append((k_out, v_out))
                 else:
@@ -416,23 +408,13 @@ class TestFusedMultiTransformerOp(OpTest):
             qk_out = paddle.matmul(x=q_out, y=k_out, transpose_y=True)
             qk_out = paddle.scale(qk_out, scale=self.head_dim**-0.5)
 
-            if self.debug:
-                print('qk out is')
-                print(qk_out[0][0][0])
-
             if attn_mask is not None:
                 attn_mask = _convert_attention_mask(attn_mask, qk_out.dtype)
                 attn_mask_out = qk_out + attn_mask
-                if self.debug:
-                    print('attn mask out is')
-                    print(attn_mask_out[0][0][0])
                 softmax_out = F.softmax(attn_mask_out)
             else:
                 softmax_out = F.softmax(qk_out)
 
-            if self.debug:
-                print('softmax out is')
-                print(softmax_out[0][0][0])
             if self.dropout_prob:
                 dropout_out = F.dropout(
                     softmax_out,
@@ -447,9 +429,6 @@ class TestFusedMultiTransformerOp(OpTest):
                 qktv_out = tensor.matmul(softmax_out, v_out)
 
             fmha_out = tensor.transpose(qktv_out, perm=[0, 2, 1, 3])
-            if self.debug:
-                print('fmha out is')
-                print(fmha_out[0][0][0])
             out_linear_in = tensor.reshape(
                 x=fmha_out, shape=[0, 0, fmha_out.shape[2] * fmha_out.shape[3]]
             )
@@ -1081,17 +1060,6 @@ class TestFusedMultiTransformerOp(OpTest):
             elems = 8 if self.x_type is np.float16 else 4
             v_elems = head_dim // elems
 
-            if self.debug:
-                print("cache_k out timestep=128")
-                print(
-                    cache_kv_out[0].reshape(
-                        [2, bsz, num_head, v_elems, max_seq_len, elems]
-                    )[0, 0, 0, :, self.cache_length, :]
-                )
-
-                print("cache_v out timestep=128")
-                print(cache_kv_out[0][1, 0, 0, self.cache_length, :])
-
             if self.remove_padding and not self.gen_cache_kv:
                 # test decoder
                 final_out_ref, cache_kvs = final_out_ref
@@ -1518,17 +1486,6 @@ class TestFusedMultiTransformerOp(OpTest):
             head_dim = s[4]
             elems = 8 if self.x_type is np.float16 else 4
             v_elems = head_dim // elems
-
-            if self.debug:
-                print("cache_k out timestep=128")
-                print(
-                    cache_kv_out[0].reshape(
-                        [2, bsz, num_head, v_elems, max_seq_len, elems]
-                    )[0, 0, 0, :, self.cache_length, :]
-                )
-
-                print("cache_v out timestep=128")
-                print(cache_kv_out[0][1, 0, 0, self.cache_length, :])
 
             if self.remove_padding and not self.gen_cache_kv:
                 # test decoder

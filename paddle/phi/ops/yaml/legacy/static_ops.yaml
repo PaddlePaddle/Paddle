@@ -134,6 +134,26 @@
     param : [x, filter, bias, strides, paddings, output_padding, output_size, padding_algorithm, groups, dilations, data_format]
     data_type : x
 
+- op : cross_entropy
+  args: (Tensor x, Tensor label, bool soft_label = false, int ignore_index = -100)
+  output: Tensor (out)
+  infer_meta:
+    func: CrossEntropyInferMeta
+  kernel:
+    func: cross_entropy
+    data_type: x
+  backward: cross_entropy_grad
+
+- op : cross_entropy2
+  args: (Tensor x, Tensor label, int ignore_index = -100)
+  output: Tensor (out), Tensor (x_shape), Tensor (match_x)
+  infer_meta:
+    func: CrossEntropy2InferMeta
+  kernel:
+    func: cross_entropy2
+    data_type: x
+  backward: cross_entropy_grad2
+
 - op : decode_jpeg
   args : (Tensor x, str mode = "unchanged")
   output : Tensor(out)
@@ -678,6 +698,25 @@
   kernel :
     func : swish
   backward : swish_grad
+
+- op : topk_v1
+  args : (Tensor x, Scalar(int) k = 1)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : TopkV1InferMeta
+  kernel :
+    func : topk_v1
+    data_type : x
+  backward : topk_v1_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : transfer_layout
+  args: (Tensor x, int src_layout = -1, int dst_layout=-1)
+  output: Tensor (out)
+  infer_meta:
+    func: TransferLayoutInferMeta
+  kernel:
+    func: transfer_layout
 
 - op : tril_indices
   args : (int rows = 0, int cols = 0, int offset = 0, DataType dtype = DataType::INT64)
