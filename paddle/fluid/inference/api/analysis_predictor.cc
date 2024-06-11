@@ -984,30 +984,43 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
 bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
   std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
   int feed_idx = 0;
+  int fetch_idx = 0;
   LOG(INFO) << "LoadPirParameters的第三行";
   PrintScopeVariables(*sub_scope_);
 
   for (auto op : pir_program_->block()->ops()) {
     // put pd-op.data and pd-op.fetch into idx2feeds and idx2fetches
+    LOG(INFO) << "op.name " << op->name();
     if (op->isa<paddle::dialect::FetchOp>()) {
       int idx = op->attribute("col").dyn_cast<pir::Int32Attribute>().data();
       if (fetches_.size() <= static_cast<size_t>(idx)) {
         fetches_.resize(idx + 1);
         std::string fetch_name =
             op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+        LOG(INFO) << "fetch_name " << fetch_name;
         idx2fetches_[idx] = fetch_name;
       }
     } else if (op->isa<paddle::dialect::DataOp>() ||
                op->isa<paddle::dialect::FeedOp>()) {
       std::string data_name =
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
+      LOG(INFO) << "data_name " << data_name;
       idx2feeds_[feed_idx] = data_name;
       feed_idx++;
+    } else if (op->isa<pir::ShadowOutputOp>()) {
+      auto shadow_name = op->attributes()
+                             .at("output_name")
+                             .dyn_cast<pir::StrAttribute>()
+                             .AsString();
+      LOG(INFO) << "ShadowOutputOp的var_name " << shadow_name;
+      idx2fetches_[fetch_idx] = shadow_name;
+      fetch_idx++;
     }
     for (auto var : op->results()) {
       std::string var_name;
       auto is_persistable =
           var.attribute<pir::BoolAttribute>(kAttrIsPersistable);
+
       if (is_persistable && is_persistable.data()) {
         if (auto param_op = var.defining_op<::pir::ParameterOp>()) {
           var_name = param_op.param_name();
@@ -1015,6 +1028,11 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
           param_name_var_pairs.emplace_back(var_name, var);
         } else if (auto data_op = var.defining_op<paddle::dialect::DataOp>()) {
           var_name = data_op.attribute<pir::StrAttribute>("name").AsString();
+          LOG(INFO) << "var_name " << var_name;
+          param_name_var_pairs.emplace_back(var_name, var);
+        } else if (auto const_op = var.defining_op<pir::ConstantTensorOp>()) {
+          LOG(INFO) << "发现builton.constant op了";
+          var_name = const_op.tensor_name();
           LOG(INFO) << "var_name " << var_name;
           param_name_var_pairs.emplace_back(var_name, var);
         }
@@ -1065,6 +1083,7 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
     LOG(INFO) << "Tensor value for " << param_names[i] << " is "
               << *tensor_temp;
     tensor_out.push_back(tensor_temp);
+    LOG(INFO) << "tensor_out的个数" << tensor_out.size();
   }
   LOG(INFO) << "LoadPirParameters中";
   LOG(INFO) << "sub_scope_的指针" << sub_scope_;
@@ -1080,22 +1099,18 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
   if (save_optimized && config_.save_optimized_model_ &&
       !FileExists(optimized_params_)) {
     LOG(INFO) << "save_optimized_";
-    param_names_ = param_names;
-    tensor_out_ = tensor_out;
 
     LOG(INFO) << "optimized_params " << optimized_params_;
-    std::vector<const phi::DenseTensor *> const_tensor_out(tensor_out_.begin(),
-                                                           tensor_out_.end());
+    std::vector<const phi::DenseTensor *> const_tensor_out(tensor_out.begin(),
+                                                           tensor_out.end());
     LOG(INFO) << "const_tensor_out的个数" << const_tensor_out.size();
-    LOG(INFO) << "param_names的个数 " << param_names_.size();
-
     // 打印 param_names_ 的值
-    for (const auto &param_name : param_names_) {
+    for (const auto &param_name : param_names) {
       LOG(INFO) << "param_name: " << param_name;
     }
 
     pir::SaveCombineFunction(
-        const_tensor_out, param_names_, optimized_params_, true, false, true);
+        const_tensor_out, param_names, optimized_params_, true, false, true);
 
     // Check if the contents of const_tensor_out and tensor_out are the same
   }
@@ -1108,7 +1123,7 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
     }
     LOG(INFO) << "准备读取优化后的pdiparams";
     pir::LoadCombineFunction(
-        optimized_params_, param_names_, &tensor_out_, false, place_);
+        optimized_params_, param_names, &tensor_out, false, place_);
     LOG(INFO) << "读取了优化后的pdiparams";
   } else {
     for (const auto &param_name : param_names) {

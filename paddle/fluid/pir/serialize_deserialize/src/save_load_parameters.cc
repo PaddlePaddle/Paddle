@@ -210,9 +210,9 @@ void LoadCombineFunction(const std::string& file_path,
   const phi::DeviceContext* dev_ctx = GetDeviceContext(*(out->at(0)), place);
   for (size_t i = 0; i < names.size(); i++) {
     auto tensor = out->at(i);
-    auto dims = tensor->dims();
+    // auto dims = tensor->dims();
     paddle::framework::DeserializeFromStream(fin, tensor, *dev_ctx);
-    LOG(INFO) << "Tensor_2 " << names[i] << " dimensions: " << dims;
+    LOG(INFO) << "Tensor_2 " << names[i];
     // 获取并记录张量的维度信息
     auto in_dtype = tensor->dtype();
     auto out_dtype = load_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;

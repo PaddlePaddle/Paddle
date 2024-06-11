@@ -2264,6 +2264,12 @@ std::vector<pir::Type> BuildOutputs(
   auto args_def = phi_kernel.args_def();
   auto output_defs = args_def.output_defs();
 
+  // Log the number of results and output definitions
+  LOG(INFO) << "Operation name: " << op_item->name();
+  LOG(INFO) << "Kernel function: " << kernel_fn_str;
+  LOG(INFO) << "Number of operation results: " << op_item->num_results();
+  LOG(INFO) << "Number of kernel output definitions: " << output_defs.size();
+
   if (!UnchangeOutputOps.count(op_item->name()) &&
       !IsLegacyOp(op_item->name())) {
     PADDLE_ENFORCE_EQ(
