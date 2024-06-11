@@ -400,7 +400,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \return Whether the function executed successfully
   ///
-  bool LoadPirParameters();
+  bool LoadPirParameters(bool save_optimized = false);
 
   ///
   /// \brief Prepare input data, only used in Run()
@@ -592,6 +592,8 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
+  std::vector<std::string> param_names_;
+  std::vector<phi::DenseTensor *> tensor_out_;
 
   phi::DataType model_precision_{phi::DataType::FLOAT32};
 

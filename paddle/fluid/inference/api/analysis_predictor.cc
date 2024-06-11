@@ -948,12 +948,11 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
         *pir_program_, optimized_model_name_, 1, true, false, true);
     LOG(INFO) << "保存optimized.json";
   }
-  optimized_params_ = optimized_model_path_ + "/" + "_optimized.pdiparams";
   LOG(INFO) << "在pass里面打印下sub_scope的变量值";
   PrintScopeVariables(*sub_scope_);
   LOG(INFO) << "sub_scope_的指针" << sub_scope_;
 
-  LoadPirParameters();
+  LoadPirParameters(true);
   // // 应该先loadProgram，再保存
   // if(config_.save_optimized_model_&& !FileExists(optimized_params))
   // {
@@ -982,7 +981,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   LOG(INFO) << "======= pir optimization completed =======";
 }
 
-bool AnalysisPredictor::LoadPirParameters() {
+bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
   std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
   int feed_idx = 0;
   LOG(INFO) << "LoadPirParameters的第三行";
@@ -1071,10 +1070,50 @@ bool AnalysisPredictor::LoadPirParameters() {
   LOG(INFO) << "sub_scope_的指针" << sub_scope_;
   PrintScopeVariables(*sub_scope_);
 
+  for (const auto &name : param_names) {
+    LOG(INFO) << "老的param_name: " << name;
+  }
   CreateFeedFetchVar(sub_scope_);
+
+  optimized_params_ = optimized_model_path_ + "/" + "_optimized.pdiparams";
+  LOG(INFO) << "optimized_params_存在吗" << FileExists(optimized_params_);
+  if (save_optimized && config_.save_optimized_model_ &&
+      !FileExists(optimized_params_)) {
+    LOG(INFO) << "save_optimized_";
+    param_names_ = param_names;
+    tensor_out_ = tensor_out;
+
+    LOG(INFO) << "optimized_params " << optimized_params_;
+    std::vector<const phi::DenseTensor *> const_tensor_out(tensor_out_.begin(),
+                                                           tensor_out_.end());
+    LOG(INFO) << "const_tensor_out的个数" << const_tensor_out.size();
+    LOG(INFO) << "param_names的个数 " << param_names_.size();
+
+    // 打印 param_names_ 的值
+    for (const auto &param_name : param_names_) {
+      LOG(INFO) << "param_name: " << param_name;
+    }
+
+    pir::SaveCombineFunction(
+        const_tensor_out, param_names_, optimized_params_, true, false, true);
+
+    // Check if the contents of const_tensor_out and tensor_out are the same
+  }
+  LOG(INFO) << "optimized_params_" << optimized_params_;
+
   if (config_.use_optimized_model_ && FileExists(optimized_params_)) {
+    LOG(INFO) << "param_names的大小" << param_names.size();
+    for (const auto &param_name : param_names) {
+      LOG(INFO) << "原来的param_name " << param_name;
+    }
+    LOG(INFO) << "准备读取优化后的pdiparams";
+    pir::LoadCombineFunction(
+        optimized_params_, param_names_, &tensor_out_, false, place_);
     LOG(INFO) << "读取了优化后的pdiparams";
   } else {
+    for (const auto &param_name : param_names) {
+      LOG(INFO) << "原来的config_.params_file()中的param_name " << param_name;
+    }
     LOG(INFO) << "读取了没优化的pdiparams";
     pir::LoadCombineFunction(
         config_.params_file(), param_names, &tensor_out, false, place_);
