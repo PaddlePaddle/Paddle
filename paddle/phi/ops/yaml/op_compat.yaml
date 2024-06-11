@@ -3575,6 +3575,17 @@
       data_type : int
       tensor_name : K
 
+- op : topk_v1 (top_k)
+  backward : topk_v1_grad (top_k_grad)
+  inputs :
+    x : X
+  outputs :
+    {out : Out, indices : Indices}
+  scalar :
+    k :
+      data_type : int
+      tensor_name : K
+
 - op : trace
   inputs :
     x : Input
