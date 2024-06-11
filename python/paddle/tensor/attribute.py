@@ -122,6 +122,8 @@ def shape(input):
                 'complex64',
                 'complex128',
                 'uint16',
+                'float8_e4m3fn',
+                'float8_e5m2',
             ],
             'shape',
         )

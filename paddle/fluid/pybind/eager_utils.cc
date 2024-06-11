@@ -102,6 +102,10 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
       return pybind11::detail::NPY_COMPLEX128;
     case phi::DataType::PSTRING:
       return pybind11::detail::npy_api::NPY_UNICODE_;
+    case phi::DataType::FLOAT8_E4M3FN:
+      return pybind11::detail::npy_api::NPY_BYTE_;
+    case phi::DataType::FLOAT8_E5M2:
+      return pybind11::detail::npy_api::NPY_BYTE_;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Unknow phi::DataType, the int value = %d.",
