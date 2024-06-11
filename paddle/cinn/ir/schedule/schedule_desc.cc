@@ -23,7 +23,7 @@
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 
@@ -94,7 +94,9 @@ class PackedStepContext {
 
   // get the idx-th input whose signature is Expr
   Expr InputAt(size_t idx) const {
-    CHECK_LT(idx, input_range_.size()) << "idx overranges";
+    PADDLE_ENFORCE_LT(idx,
+                      input_range_.size(),
+                      phi::errors::InvalidArgument("idx overranges"));
     const auto& range = input_range_.at(idx);
     CHECK(range.second - range.first == 1) << "not single param";
     return inputs_[range.first];
@@ -102,7 +104,9 @@ class PackedStepContext {
 
   // get the idx-th input whose signature is `std::vector<Expr>`
   std::vector<Expr> InputsAt(size_t idx) const {
-    CHECK_LT(idx, input_range_.size()) << "idx overranges";
+    PADDLE_ENFORCE_LT(idx,
+                      input_range_.size(),
+                      phi::errors::InvalidArgument("idx overranges"));
     const auto& range = input_range_.at(idx);
     std::vector<Expr> results;
     for (size_t s = range.first; s < range.second; ++s) {
@@ -754,8 +758,9 @@ std::vector<Expr> ScheduleDesc::ReplayWithProto(
 
     PackedStepContext context(step, step_kind, sch);
     step.outputs = step_kind->Apply(&context);
-    CHECK_EQ(step_proto.outputs().size(), step.outputs.size())
-        << "Output size not matched";
+    PADDLE_ENFORCE_EQ(step_proto.outputs().size(),
+                      step.outputs.size(),
+                      phi::errors::InvalidArgument("Output size not matched"));
     for (size_t i = 0; i < step.outputs.size(); ++i) {
       name2expr[step_proto.outputs(i)] = step.outputs.at(i);
     }

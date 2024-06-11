@@ -42,6 +42,7 @@ class TestPrimMode(unittest.TestCase):
             y1 = paddle.cos(y)
             y3 = paddle.matmul(x1, y1)
             tmp1 = paddle.concat((x1, y1, y3))
+            tmp1 = paddle.slice(tmp1, axes=[1], starts=[0], ends=[2])
             tmp2 = paddle.mean(tmp1)
             sum_out = paddle.sin(tmp2)
             gradients = grad(sum_out, (x, y))
