@@ -27,7 +27,8 @@ class Chi2(Gamma):
 
     Args:
         df (float or Tensor): shape parameter of the distribution
-    Example::
+
+    Example:
         .. code-block:: python
 
             >>> import paddle
