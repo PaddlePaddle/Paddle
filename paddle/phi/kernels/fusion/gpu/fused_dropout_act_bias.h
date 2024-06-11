@@ -34,13 +34,6 @@ struct LayerNormParamTypeGeluFunctor {
   }
 };
 
-template <typename T>
-struct FastGeluFunctor {
-  inline __device__ T operator()(const T x) const {
-    return phi::GeluFwd<T, true>(x);
-  }
-};
-
 /**
  *@brief the gelu grad functor
  */
