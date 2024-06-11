@@ -69,8 +69,6 @@ FP_DTYPE_ABBRS = {
     core.DataType.FLOAT64: "float64",
     core.DataType.FLOAT32: "float32",
     core.DataType.FLOAT16: "float16",
-    core.DataType.FP8_E4M3FN: "float8_e4m3fn",
-    core.DataType.FP8_E5M2: "float8_e5m2",
 }
 
 CP_DTYPE_ABBRS = {
