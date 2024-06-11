@@ -355,6 +355,17 @@
     func : swish_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : topk_v1_grad
+  forward : topk_v1 (Tensor x, Scalar k) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, Scalar k)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : topk_v1_grad
+    data_type : out_grad
+
 - backward_op : tril_triu_grad
   forward : tril_triu (Tensor x, int diagonal = 0, bool lower = false)  -> Tensor(out)
   args : (Tensor out_grad, int diagonal, bool lower)

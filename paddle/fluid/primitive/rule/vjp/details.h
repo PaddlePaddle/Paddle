@@ -366,32 +366,28 @@ void reduce_as_grad(const Tensor& x,
   std::vector<int64_t> axis = common::vectorize<int64_t>(
       get_reduce_dims_from_out(x.dims(), target.dims()));
   int64_t axis_size = axis.size();
-  int64_t x_dim_size = x_dim.size();
-  bool reduce_all = false;
-  if (reduce_all || axis_size == 0 || axis_size == x_dim_size) {
-    reduce_all = true;
-  } else {
-    reduce_all = false;
+  if (axis_size == 0) {
+    by_pass<T>(out_grad, x_grad);
+    return;
   }
+  int64_t x_dim_size = x_dim.size();
+
   auto x_grad_tmp = Tensor();
   if (x_dim_size == 1) {
     x_grad_tmp = expand<T>(out_grad, IntArray(x_dim));
   } else {
     auto axis_ = std::vector<int64_t>();
-    if (reduce_all) {
-      for (int64_t i = 0; i < x_dim_size; i++) {
-        axis_.push_back(i);
-      }
-    } else {
-      for (int64_t i = 0; i < axis_size; i++) {
-        axis_.push_back(axis[i]);
-        if (axis[i] < 0) {
-          axis_[i] += x_dim_size;
-        }
+    for (int64_t i = 0; i < axis_size; i++) {
+      axis_.push_back(axis[i]);
+      if (axis[i] < 0) {
+        axis_[i] += x_dim_size;
       }
     }
-    auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
-    auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+    Tensor out_grad_ = out_grad;
+    if (out_grad.shape().size() != x.shape().size()) {
+      auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+      out_grad_ = reshape<T>(out_grad, out_grad_shape);
+    }
     x_grad_tmp = expand<T>(out_grad_, IntArray(x_dim));
   }
 
