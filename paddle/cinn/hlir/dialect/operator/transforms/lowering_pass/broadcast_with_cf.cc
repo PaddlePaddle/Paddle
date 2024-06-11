@@ -233,17 +233,24 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
                                                   &rhs_symbol_bindings);
   CHECK(success);
 
+  auto out_type = paddle::dialect::DenseTensorType::get(
+      builder.ir_context(),
+      pir::Int64Type::get(builder.ir_context()),
+      ::common::make_ddim({1}));
+
   auto lhs_value =
       builder
           .Build<cinn::dialect::GenerateShapeOp>(lhs_minimal_inputs,
                                                  lhs_output_dim_expr_attrs,
-                                                 lhs_symbol_bindings)
+                                                 lhs_symbol_bindings,
+                                                 out_type)
           .out();
   auto rhs_value =
       builder
           .Build<cinn::dialect::GenerateShapeOp>(rhs_minimal_inputs,
                                                  rhs_output_dim_expr_attrs,
-                                                 rhs_symbol_bindings)
+                                                 rhs_symbol_bindings,
+                                                 out_type)
           .out();
 
   auto const_one = builder
@@ -435,9 +442,11 @@ std::shared_ptr<BroadcastTree> ConstructBroadcastTree(
     const cinn::common::BroadcastLeaf& leaves) {
   VLOG(6) << "before constructed. broadcast-leaf: \n"
           << ToTxtString(cinn::common::BroadcastTree(leaves));
+  int num_of_leaves = 0;
   auto broadcast_tree = std::make_shared<cinn::common::BroadcastTree>(
-      cinn::common::ConstructBroadcastTree(
-          cinn::common::BroadcastLeaf(leaves)));
+      cinn::common::ConstructBroadcastTree(cinn::common::BroadcastLeaf(leaves),
+                                           &num_of_leaves));
+  VLOG(4) << "num of broadcast tree leaves:" << num_of_leaves;
   VLOG(4) << "broadcast-tree: \n" << ToTxtString(*broadcast_tree);
   return broadcast_tree;
 }

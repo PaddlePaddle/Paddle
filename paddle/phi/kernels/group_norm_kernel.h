@@ -67,6 +67,8 @@ struct GroupNormNDHWCParams {
   T const* srcX;
   // The input buffer. Layout NDHWC.
   T const* srcY;
+  // The input buffer. Layout NDHWC.
+  T const* srcR = nullptr;
   // The gamma scaling factor.
   void const* gamma;
   // The beta term to add in GN.
@@ -87,7 +89,8 @@ struct GroupNormNDHWCParams {
   int32_t groups;
   // Do we apply the Silu activation function?
   bool withSilu;
-
+  //
+  bool y_same_with_x = false;
   // Precomputed values and parameters to control the execution of the kernels.
 
   // The number of activations per instance (d * h * w) and the number of

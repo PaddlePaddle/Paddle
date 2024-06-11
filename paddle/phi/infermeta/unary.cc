@@ -4966,6 +4966,40 @@ void TopKInferMeta(const MetaTensor& x,
   indices->set_dtype(DataType::INT64);
 }
 
+void TopkV1InferMeta(const MetaTensor& x,
+                     const Scalar& k_scalar,
+                     MetaTensor* out,
+                     MetaTensor* indices,
+                     MetaConfig config) {
+  const auto& input_dims = x.dims();
+
+  int k = k_scalar.to<int>();
+  if (k_scalar.FromTensor()) {
+    k = -1;
+  } else {
+    PADDLE_ENFORCE_EQ(k >= 1,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "the attribute of k in the topk must >= 1 or be a "
+                          "Tensor, but received %d .",
+                          k));
+  }
+
+  PADDLE_ENFORCE_GE(
+      input_dims.size(),
+      0,
+      phi::errors::InvalidArgument("input of topk must have >= 0d shape"));
+
+  phi::DDim dims = input_dims;
+  dims[dims.size() - 1] = k;
+  out->set_dims(dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+  indices->set_dims(dims);
+  indices->share_lod(x);
+  indices->set_dtype(DataType::INT64);
+}
+
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out) {
   int dim1 = axis1;

@@ -18,8 +18,7 @@
 #include "paddle/phi/core/enforce.h"
 
 #include "paddle/fluid/jit/function_utils.h"
-namespace paddle {
-namespace jit {
+namespace paddle::jit {
 
 Argument::Argument(const std::string& name, bool is_out)
     : name_(name), is_output_(is_out) {}
@@ -96,5 +95,4 @@ void FunctionInfo::RemoveDescFeedFetch() {
   utils::RemoveFeedFetch(program_desc_.get());
 }
 
-}  // namespace jit
-}  // namespace paddle
+}  // namespace paddle::jit

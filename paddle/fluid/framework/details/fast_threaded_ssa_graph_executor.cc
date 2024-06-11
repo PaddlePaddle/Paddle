@@ -26,9 +26,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy,
@@ -390,6 +388,4 @@ bool FastThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
   }
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details
