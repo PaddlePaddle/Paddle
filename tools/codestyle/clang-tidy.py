@@ -324,7 +324,7 @@ def main():
     parser.add_argument(
         'files',
         nargs='*',
-        default=['.*'],
+        default=None,
         help='files to be processed (regex on path)',
     )
     parser.add_argument('-fix', action='store_true', help='apply fix-its')
@@ -410,7 +410,9 @@ def main():
         tmpdir = tempfile.mkdtemp()
 
     # Build up a big regexy filter from all command line arguments.
-    file_name_re = re.compile('|'.join(args.files))
+    file_name_re = None  # 初始化为 None
+    if args.files:
+        file_name_re = re.compile('|'.join(args.files))
 
     return_code = 0
     try:
@@ -429,7 +431,7 @@ def main():
 
         # Fill the queue with files.
         for name in files:
-            if file_name_re.search(name):
+            if args.build_path is None or file_name_re is None or file_name_re.search(name):
                 task_queue.put(name)
 
         # Wait for all threads to be done.
