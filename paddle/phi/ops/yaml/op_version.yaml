@@ -486,6 +486,14 @@
           comment : A flag to indicate whether to do softmax
           default : "true"
 
+- op : thresholded_relu
+  version :
+    - checkpoint : Upgrade thresholded_relu, add a new attribute [value]
+      action :
+        - add_attr : value
+          comment : The threshold value of thresholded_relu.
+          default : 0.0
+
 - op : trace
   version :
     - checkpoint : Upgrade trace add a new attribute [axis2]
