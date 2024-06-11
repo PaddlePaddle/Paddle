@@ -26,16 +26,11 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 struct CastWritePattern : public PatternBase {
   CastWritePattern(PDPattern* pattern, const std::string& name_scope);
 
@@ -75,7 +70,8 @@ CastWritePattern::CastWritePattern(PDPattern* pattern,
   cast0->LinksFrom({cast0_in}).LinksTo({cast0_out});
   write_to_array->LinksFrom({cast0_out}).LinksTo({write_to_array_out});
 }
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 static std::vector<Node*> FindOpNodeWithInputName(
     ir::Graph* graph, const std::string& input_name) {
@@ -218,7 +214,8 @@ int DeleteCastOpPass::ApplyCastWriteReadPass(ir::Graph* graph) const {
   return found_subgraph_count;
 }
 
-namespace patterns {
+}  // namespace paddle::framework::ir
+namespace paddle::framework::ir::patterns {
 struct CastLodResetWritePattern : public PatternBase {
   CastLodResetWritePattern(PDPattern* pattern, const std::string& name_scope);
 
@@ -267,7 +264,8 @@ CastLodResetWritePattern::CastLodResetWritePattern(
   lod_reset->LinksFrom({cast0_out}).LinksTo({lod_reset_out});
   write_to_array->LinksFrom({lod_reset_out}).LinksTo({write_to_array_out});
 }
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 int DeleteCastOpPass::ApplyCastLodResetWriteReadPass(ir::Graph* graph) const {
   if (graph->SubGraphsSize() != 2) {
@@ -418,7 +416,8 @@ int DeleteCastOpPass::ApplyCastLodResetWriteReadPass(ir::Graph* graph) const {
   return found_subgraph_count;
 }
 
-namespace patterns {
+}  // namespace paddle::framework::ir
+namespace paddle::framework::ir::patterns {
 struct CastIndexSamplePattern : public PatternBase {
   CastIndexSamplePattern(PDPattern* pattern, const std::string& name_scope);
 
@@ -475,7 +474,8 @@ CastIndexSamplePattern::CastIndexSamplePattern(PDPattern* pattern,
   index_sample->LinksFrom({cast0_out}).LinksTo({index_sample_out});
   cast1->LinksFrom({index_sample_out}).LinksTo({cast1_out});
 }
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 int DeleteCastOpPass::ApplyCastIndexSamplePass(ir::Graph* graph) const {
   GraphPatternDetector gpd;
@@ -509,7 +509,8 @@ int DeleteCastOpPass::ApplyCastIndexSamplePass(ir::Graph* graph) const {
   return found_subgraph_count;
 }
 
-namespace patterns {
+}  // namespace paddle::framework::ir
+namespace paddle::framework::ir::patterns {
 struct CastScatterPattern : public PatternBase {
   CastScatterPattern(PDPattern* pattern, const std::string& name_scope);
 
@@ -587,7 +588,8 @@ CastScatterPattern::CastScatterPattern(PDPattern* pattern,
   scatter->LinksFrom({cast0_out, cast1_out}).LinksTo({scatter_out});
   cast2->LinksFrom({scatter_out}).LinksTo({cast2_out});
 }
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 int DeleteCastOpPass::ApplyCastScatterPass(ir::Graph* graph) const {
   GraphPatternDetector gpd;
@@ -625,7 +627,8 @@ int DeleteCastOpPass::ApplyCastScatterPass(ir::Graph* graph) const {
   return found_subgraph_count;
 }
 
-namespace patterns {
+}  // namespace paddle::framework::ir
+namespace paddle::framework::ir::patterns {
 struct CastLookupTablePattern : public PatternBase {
   CastLookupTablePattern(PDPattern* pattern, const std::string& name_scope);
 
@@ -666,7 +669,8 @@ CastLookupTablePattern::CastLookupTablePattern(PDPattern* pattern,
   lookup_table->LinksFrom({lookup_table_w}).LinksTo({lookup_table_out});
   cast->LinksFrom({lookup_table_out}).LinksTo({cast_out});
 }
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 int DeleteCastOpPass::ApplyCastLookupTablePass(ir::Graph* graph) const {
   GraphPatternDetector gpd;
@@ -712,7 +716,8 @@ int DeleteCastOpPass::ApplyCastLookupTablePass(ir::Graph* graph) const {
   return found_subgraph_count;
 }
 
-namespace patterns {
+}  // namespace paddle::framework::ir
+namespace paddle::framework::ir::patterns {
 struct CastPattern : public PatternBase {
   CastPattern(PDPattern* pattern, const std::string& name_scope);
 
@@ -741,7 +746,8 @@ CastPattern::CastPattern(PDPattern* pattern, const std::string& name_scope)
 
   cast->LinksFrom({cast_in}).LinksTo({cast_out});
 }
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 int DeleteCastOpPass::ApplyCastPass(ir::Graph* graph) const {
   GraphPatternDetector gpd;
@@ -826,9 +832,7 @@ void DeleteCastOpPass::ApplyImpl(ir::Graph* graph) const {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(delete_cast_op_pass, paddle::framework::ir::DeleteCastOpPass);
 

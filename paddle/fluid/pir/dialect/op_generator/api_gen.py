@@ -114,7 +114,7 @@ AMP_LOGIC_TEMPLATE = """
     }}
 """
 
-AMP_OPTIONAL_INPUTS_TEMPLATE = """if ({optional_input}) amp_values_vector.push_back({vec_optional_input});
+AMP_OPTIONAL_INPUTS_TEMPLATE = """if ({optional_input}) {{ amp_values_vector.push_back({vec_optional_input}); }}
 """
 
 AMP_NEW_INPUTS_TEMPLATE = """auto new_{input} = paddle::imperative::{cast_func}("{input}", {input}, amp_dst_dtype, op_name);

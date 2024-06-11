@@ -30,7 +30,12 @@ from paddle.optimizer.lr import LRScheduler
 from paddle.pir import Value, fake_value, is_fake_value
 
 from .logging_utils import TranslatorLogger
-from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard, cinn_is_enabled
+from .utils import (
+    RETURN_NO_VALUE_MAGIC_NUM,
+    backend_guard,
+    cinn_is_enabled,
+    cse_is_enabled,
+)
 
 __all__ = []
 
@@ -729,17 +734,6 @@ class PartialProgramLayer:
     # whole
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
-        def apply_cse(program):
-            if not paddle.get_flags(["FLAGS_enable_cse_in_dy2st"])[
-                "FLAGS_enable_cse_in_dy2st"
-            ]:
-                return
-            pm = paddle.base.libpaddle.pir.PassManager()
-            paddle.base.libpaddle.pir.common_subexpression_elimination_pass(
-                pm, program
-            )
-            pm.run(program)
-
         if is_infer_mode:
 
             def pass_fn(forward_program, backward_program):
@@ -749,7 +743,8 @@ class PartialProgramLayer:
                     pm, forward_program
                 )
                 pm.run(forward_program)
-                apply_cse(forward_program)
+                if cse_is_enabled():
+                    paddle.base.libpaddle.pir.apply_cse_pass(forward_program)
 
                 # if-else pass
                 if cinn_is_enabled(self._build_strategy, self._backend):
@@ -776,8 +771,9 @@ class PartialProgramLayer:
             self._set_grad_type(self._params, train_program)
 
             def pass_fn(forward_program, backward_program):
-                apply_cse(forward_program)
-                apply_cse(backward_program)
+                if cse_is_enabled():
+                    paddle.base.libpaddle.pir.apply_cse_pass(forward_program)
+                    paddle.base.libpaddle.pir.apply_cse_pass(backward_program)
                 if cinn_is_enabled(self._build_strategy, self._backend):
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
                     paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
@@ -793,9 +789,6 @@ class PartialProgramLayer:
     @cached_property
     def _train_program_id(self):
         program_id = paddle.utils._hash_with_id(self.train_program, self)
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
-        )
         return program_id
 
     @cached_property
@@ -1261,8 +1254,7 @@ class PartialProgramLayer:
         """
         if not isinstance(self._params, (list, tuple)):
             raise TypeError(
-                "Type of self._params in PartialProgramLayer should be list or tuple, but received %s."
-                % type(self._params)
+                f"Type of self._params in PartialProgramLayer should be list or tuple, but received {type(self._params)}."
             )
 
         param_and_buffer_names_set = set()

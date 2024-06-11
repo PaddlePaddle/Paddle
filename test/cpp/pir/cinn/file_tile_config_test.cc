@@ -39,7 +39,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
   constexpr int kMaxThreadsPerBlock = 1024;
 
   // Step 1: Construct iter space and tile config.
-  cinn::ir::search::IterSpace iter_space;
+  cinn::ir::BucketInfo bucket_info;
   int s_dimension_lower = 32;
   int s_dimension_upper = 128;
   auto s_dimension_type = "S";
@@ -49,61 +49,52 @@ TEST(ConfigSearcher, TestReduceDemo) {
   auto r_dimension_type = "R";
   auto r_dimension_is_dynamic = true;
 
-  iter_space.space.push_back(cinn::ir::search::IterSpace::Dimension{
-      s_dimension_lower,
-      s_dimension_upper,
-      s_dimension_type,
-      s_dimension_is_dynamic,
-      std::vector<double>(128 - 32, 1.0)});
-  iter_space.space.push_back(
-      cinn::ir::search::IterSpace::Dimension{r_dimension_lower,
-                                             r_dimension_upper,
-                                             r_dimension_type,
-                                             r_dimension_is_dynamic,
-                                             std::vector<double>(1, 1.0)});
-  cinn::ir::BucketInfo bucket_info;
-  bucket_info.sp_lower_bound = iter_space.space[0].lower_bound;
-  bucket_info.sp_upper_bound = iter_space.space[0].upper_bound;
-  bucket_info.rb_lower_bound = iter_space.space[1].lower_bound;
-  bucket_info.rb_upper_bound = iter_space.space[1].upper_bound;
+  bucket_info.space.push_back(
+      cinn::ir::BucketInfo::Dimension{s_dimension_lower,
+                                      s_dimension_upper,
+                                      s_dimension_type,
+                                      s_dimension_is_dynamic,
+                                      std::vector<double>(128 - 32, 1.0)});
+  bucket_info.space.push_back(
+      cinn::ir::BucketInfo::Dimension{r_dimension_lower,
+                                      r_dimension_upper,
+                                      r_dimension_type,
+                                      r_dimension_is_dynamic,
+                                      std::vector<double>(1, 1.0)});
+
   cinn::ir::ScheduleConfig::TileConfig tile_config;
   tile_config.spatial_inner_num = 32;
   tile_config.warp_num = 32;
   tile_config.tree_reduce_num = 128;
   std::vector<std::pair<std::string, std::string>> iter_space_type = {
-      std::make_pair("R", "dynamic"), std::make_pair("S", "dynamic")};
+      std::make_pair("S", "dynamic"), std::make_pair("R", "dynamic")};
   // Step 2: Add to json/Read from json
   cinn::ir::FileTileConfigDatabase file_database;
-  file_database.AddConfig(cinn::common::DefaultTarget(),
-                          iter_space_type,
-                          bucket_info,
-                          tile_config,
-                          2);
+  file_database.AddConfig(
+      cinn::common::DefaultTarget(), bucket_info, tile_config, 2);
   cinn::ir::TileConfigMap tile_config_map =
       file_database.GetConfigs(cinn::common::DefaultTarget(), iter_space_type);
   for (auto& it : tile_config_map) {
-    LOG(INFO) << "sp_lower_bound is " << it.first.sp_lower_bound;
-    LOG(INFO) << "sp_upper_bound is " << it.first.sp_upper_bound;
-    LOG(INFO) << "rb_lower_bound is " << it.first.rb_lower_bound;
-    LOG(INFO) << "rb_upper_bound is " << it.first.rb_upper_bound;
+    LOG(INFO) << "bucket info is: ";
+    auto dims = it.first.space.size();
+    for (int i = 0; i < dims; i++) {
+      LOG(INFO) << "Dimension " << i
+                << " 's lower_bound is: " << it.first.space[i].lower_bound;
+      LOG(INFO) << "Dimension " << i
+                << " 's upper_bound is: " << it.first.space[i].upper_bound;
+      auto dimension_lower = i == 0 ? s_dimension_lower : r_dimension_lower;
+      auto dimension_upper = i == 0 ? s_dimension_upper : r_dimension_upper;
+      PADDLE_ENFORCE_EQ(it.first.space[i].lower_bound,
+                        dimension_lower,
+                        ::common::errors::InvalidArgument(
+                            "GetConfigs function gets wrong dimension_lower"));
+      PADDLE_ENFORCE_EQ(it.first.space[i].upper_bound,
+                        dimension_upper,
+                        ::common::errors::InvalidArgument(
+                            "GetConfigs function gets wrong dimension_upper"));
+    }
     LOG(INFO) << "tile config is " << it.second.spatial_inner_num << " "
               << it.second.warp_num << " " << it.second.tree_reduce_num;
-    PADDLE_ENFORCE_EQ(it.first.sp_lower_bound,
-                      s_dimension_lower,
-                      ::common::errors::InvalidArgument(
-                          "GetConfigs function gets wrong s_dimension_lower"));
-    PADDLE_ENFORCE_EQ(it.first.sp_upper_bound,
-                      s_dimension_upper,
-                      ::common::errors::InvalidArgument(
-                          "GetConfigs function gets wrong s_dimension_upper"));
-    PADDLE_ENFORCE_EQ(it.first.rb_lower_bound,
-                      r_dimension_lower,
-                      ::common::errors::InvalidArgument(
-                          "GetConfigs function gets wrong r_dimension_lower"));
-    PADDLE_ENFORCE_EQ(it.first.rb_upper_bound,
-                      r_dimension_upper,
-                      ::common::errors::InvalidArgument(
-                          "GetConfigs function gets wrong r_dimension_upprt"));
     PADDLE_ENFORCE_EQ(it.second.spatial_inner_num,
                       tile_config.spatial_inner_num,
                       ::common::errors::InvalidArgument(

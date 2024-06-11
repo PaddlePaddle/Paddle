@@ -25,6 +25,7 @@
 #include "paddle/pir/include/core/program.h"
 
 COMMON_DECLARE_bool(prim_check_ops);
+COMMON_DECLARE_bool(prim_enable_dynamic);
 COMMON_DECLARE_string(prim_forward_blacklist);
 
 using paddle::dialect::DenseTensorType;
@@ -40,7 +41,8 @@ std::unordered_set<std::string> decomp_op_contain_none = {"pd_op.squeeze",
                                                           "pd_op.unsqueeze",
                                                           "pd_op.flatten",
                                                           "pd_op.batch_norm",
-                                                          "pd_op.batch_norm_"};
+                                                          "pd_op.batch_norm_",
+                                                          "pd_op.dropout"};
 //
 std::unordered_set<std::string> dynamic_shape_blacklist = {
     "pd_op.squeeze",
@@ -407,7 +409,7 @@ std::vector<pir::Operation*> DecompProgram::parse_block_ops(pir::Block* block) {
 
 void DecompProgram::decomp_program() {
   std::unordered_map<pir::Value, int> orig_vars_dict;
-  for (size_t i = 0; i < src_vars_.size(); i++) {
+  for (size_t i = 0; i < src_vars_.size(); i++) {  // NOLINT
     orig_vars_dict[src_vars_[i]] = static_cast<int>(i);
   }
   std::ostringstream orig_prog_stream;
@@ -455,8 +457,9 @@ void DecompProgram::decomp_block(
     bool enable_prim =
         has_decomp_rule(*op) && enable_decomp_by_filter(op->name());
     if (enable_prim && check_decomp_dynamic_shape(op) &&
-        dynamic_shape_blacklist.find(op->name()) !=
-            dynamic_shape_blacklist.end()) {
+        (!FLAGS_prim_enable_dynamic ||
+         dynamic_shape_blacklist.find(op->name()) !=
+             dynamic_shape_blacklist.end())) {
       enable_prim = false;
     }
     if (enable_prim) {
@@ -472,7 +475,8 @@ void DecompProgram::decomp_block(
         auto item = orig_outs[i];
         if (item.use_count() == 1) {
           auto next_op = item.first_use().owner();
-          if (next_op->name() == "builtin.split") {
+          if (next_op->name() == "builtin.split" ||
+              next_op->name() == "builtin.slice") {
             is_next_builtin_split = true;
 
             check_decomp_outputs(

@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 from functools import cached_property
+from typing import TypeVar
 
 import paddle
 from paddle.amp.auto_cast import amp_state
@@ -26,10 +28,32 @@ from paddle.utils import flatten, is_sequence
 
 from .utils import Cache, Singleton, map_if_extend, meta_str
 
+DynamicSymbolT = TypeVar("DynamicSymbolT")
+
+
+class SymbolicInt(metaclass=Singleton):
+    def __eq__(self, other) -> bool:
+        return isinstance(other, (int, SymbolicInt))
+
+    def __repr__(self) -> str:
+        return "SymbolicInt()"
+
+    def __str__(self) -> str:
+        return "SymbolicInt()"
+
 
 class MetaInfo:
     def __init__(
-        self, shape, dtype, stop_gradient, name, persistable, type, place
+        self,
+        shape,
+        dtype,
+        stop_gradient,
+        name,
+        persistable,
+        type,
+        place,
+        *,
+        dynamic_axes: list[int] | None = None,
     ):
         self.name = name
         self.persistable = persistable
@@ -38,9 +62,18 @@ class MetaInfo:
         self.shape = shape
         self.dtype = dtype
         self.stop_gradient = stop_gradient
+        self.dynamic_axes = dynamic_axes or []
+
+    def get_dynamic_shape(
+        self, dynamic_symbol: DynamicSymbolT = -1
+    ) -> list[int | DynamicSymbolT]:
+        return [
+            dim if i not in self.dynamic_axes else dynamic_symbol
+            for i, dim in enumerate(self.shape)
+        ]
 
     @staticmethod
-    def from_tensor(tensor):
+    def from_tensor(tensor, *, dynamic_axes: list[int] | None = None):
         if isinstance(tensor, paddle.pir.Value):
             name = "Value@NoName"
         else:  # For Tensor or Variable
@@ -54,6 +87,7 @@ class MetaInfo:
         )
         assert isinstance(dtype, expected_dtype_class)
 
+        # TODO(@xiongkun) remove after pir become default state.
         # We always use float32 in simulation if AMP is enabled.
         current_amp_state = amp_state()
         if (
@@ -63,7 +97,12 @@ class MetaInfo:
             and current_amp_state["dtype"] == "float16"
         ):
             dtype = paddle.float32
-        # TODO(@xiongkun) remove after pir become default state.
+        dynamic_axes = dynamic_axes or []
+        dynamic_axes = [
+            i
+            for i, dim in enumerate(tensor.shape)
+            if dim == -1 or i in dynamic_axes
+        ]
         return MetaInfo(
             list(tensor.shape),
             dtype,
@@ -72,6 +111,7 @@ class MetaInfo:
             persistable,
             tensor.type,
             tensor.place,
+            dynamic_axes=dynamic_axes,
         )
 
     def is_dynamic_shape(self):
@@ -82,12 +122,14 @@ class MetaInfo:
         return -1 in self.shape
 
     def to_input_spec(self):
+        shape = self.get_dynamic_shape(None)
         return paddle.static.InputSpec(
-            self.shape, dtype=self.dtype, stop_gradient=self.stop_gradient
+            shape, dtype=self.dtype, stop_gradient=self.stop_gradient
         )
 
     def guard_str(self):
-        return f"({self.shape}, {self.dtype}, {self.stop_gradient})"
+        shape = self.get_dynamic_shape(SymbolicInt())
+        return f"({shape}, {self.dtype}, {self.stop_gradient})"
 
     def __repr__(self):
         return meta_str(self.shape, self.dtype, self.stop_gradient)
@@ -161,20 +203,22 @@ class VariableCreator(metaclass=Singleton):
         else:
             return self.legacy_programs[1]
 
-    def create_var(self, meta):
+    def create_var(self, meta: MetaInfo):
+        shape = meta.get_dynamic_shape()
+
         if paddle.framework.use_pir_api():
             with paddle.static.program_guard(
                 self.main_program, self.startup_program
             ):
                 var = paddle.static.input.data(
                     name=self.gen_name(meta),
-                    shape=meta.shape,
+                    shape=shape,
                     dtype=convert_dtype(meta.dtype),
                 )
                 var.stop_gradient = meta.stop_gradient
         else:
             var = self.main_program.global_block().create_var(
-                shape=meta.shape,
+                shape=shape,
                 dtype=meta.dtype,
                 stop_gradient=meta.stop_gradient,
             )
@@ -193,9 +237,10 @@ class VariableCreator(metaclass=Singleton):
         with paddle.base.framework._dygraph_guard(None), UniqueNameGuard(
             self.var_name_generator
         ):
-            args, kwargs = convert_meta_to_variable(
-                args
-            ), convert_meta_to_variable(kwargs)
+            args, kwargs = (
+                convert_meta_to_variable(args),
+                convert_meta_to_variable(kwargs),
+            )
 
             with paddle.static.program_guard(
                 self.main_program, self.startup_program
@@ -225,9 +270,11 @@ def convert_meta_to_input_spec(args):
         pred=lambda x: isinstance(x, MetaInfo),
         true_fn=lambda x: x.to_input_spec(),
         # TODO(xiongkun): can x be tensor ?
-        false_fn=lambda x: paddle.static.InputSpec.from_tensor(x)
-        if isinstance(x, paddle.Tensor)
-        else x,
+        false_fn=lambda x: (
+            paddle.static.InputSpec.from_tensor(x)
+            if isinstance(x, paddle.Tensor)
+            else x
+        ),
     )
 
 

@@ -17,8 +17,7 @@
 #include <cstdint>
 #include <cstdlib>
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void* AlignedMalloc(size_t size, size_t alignment) {
   assert(alignment >= sizeof(void*) && (alignment & (alignment - 1)) == 0);
@@ -56,5 +55,4 @@ void AlignedFree(void* mem_ptr) {
 #endif
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

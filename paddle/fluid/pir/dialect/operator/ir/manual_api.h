@@ -36,7 +36,7 @@ pir::Value parameter(const std::string& name);
 
 void set_parameter(const pir::Value& parameter, const std::string& name);
 
-void updata_parameter(const pir::Value& parameter, const std::string& name);
+void update_parameter(const pir::Value& parameter, const std::string& name);
 
 void shadow_output(const pir::Value& persist_value, const std::string& name);
 
