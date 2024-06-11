@@ -36,6 +36,9 @@ BucketInfo::BucketInfo(int sp_lower_bound,
         rb_lower_bound, rb_upper_bound, "R", rb_is_dynamic);
     this->space.push_back(rb_dimension);
   }
+  if (this->space.empty()) {
+    this->space.emplace_back(1, 1, "S", /* is_dynamic = */ false);
+  }
 }
 
 bool BucketInfo::operator==(const BucketInfo& other) const {
@@ -135,7 +138,18 @@ BuildPureStaticShapeConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const common::Target& target) {
   if (base_info->spatial_numel == 1) {  // reduce all
-    if (base_info->reduce_numel <= 256) {
+    if (base_info->reduce_numel == 1) {
+      BucketInfo bucket_info{/* sp_lower_bound = */ 1,
+                             /* sp_upper_bound = */ 1,
+                             /* rb_lower_bound = */ 1,
+                             /* rb_upper_bound = */ 1};
+      ScheduleConfig::TileConfig tile_config{
+          /* warp_num = */ 1,
+          /* tree_reduce_num = */ 1,
+          /* spatial_inner_num = */ 1,
+          /* reduce_method = */ NoneReduceMethod()};
+      return {{bucket_info, tile_config}};
+    } else if (base_info->reduce_numel <= 256) {
       BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                              /* sp_upper_bound = */ 1,
                              /* rb_lower_bound = */ 1,

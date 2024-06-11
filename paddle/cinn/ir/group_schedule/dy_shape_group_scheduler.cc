@@ -295,6 +295,10 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
           extent;
     }
   }
+  if (info.memory_consistent_order_homogeneous_merged_space.empty()) {
+    info.memory_consistent_order_homogeneous_merged_space.emplace_back(
+        "S", ir::Expr(1));
+  }
 
   // init total extents
   ir::Expr sp_extent = ir::Expr(1);
