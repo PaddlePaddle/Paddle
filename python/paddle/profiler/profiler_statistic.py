@@ -1326,7 +1326,7 @@ def _build_table(
         # ----- Print Operator Summary Report ----- #
         if statistic_data.event_summary.items:
             all_row_values = []
-            name_column_width = 52
+            name_column_width = row_limit
             if thread_sep:
                 thread_items = statistic_data.event_summary.thread_items
             else:
@@ -1676,7 +1676,7 @@ def _build_table(
                 'GPU Total / Avg / Max / Min / Ratio(%)',
             ]
             # Calculate the column width
-            name_column_width = 90
+            name_column_width = row_limit
             calltime_width = 6
             gpu_data_description_width = 40
             for row_values in all_row_values:
