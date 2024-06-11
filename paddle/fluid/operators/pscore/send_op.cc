@@ -16,21 +16,18 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class InferShapeContext;
 class OpDesc;
 class Scope;
 template <typename T>
 class EmptyGradOpMaker;
-}  // namespace framework
-namespace imperative {
+}  // namespace paddle::framework
+namespace paddle::imperative {
 class OpBase;
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class SendOp : public framework::OperatorBase {
  public:
@@ -102,8 +99,7 @@ class SendOpShapeInference : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext* ctx) const override {}
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

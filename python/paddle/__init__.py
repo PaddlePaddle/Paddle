@@ -14,12 +14,16 @@
 
 import typing
 
+__is_metainfo_generated = False
 try:
     from paddle.cuda_env import *  # noqa: F403
     from paddle.version import (  # noqa: F401
         commit as __git_commit__,
         full_version as __version__,
     )
+
+    __is_metainfo_generated = True
+
 except ImportError:
     import sys
 
@@ -272,6 +276,7 @@ from .tensor.manipulation import (
     atleast_1d,
     atleast_2d,
     atleast_3d,
+    block_diag,
     broadcast_tensors,
     broadcast_to,
     cast,
@@ -433,6 +438,7 @@ from .tensor.math import (  # noqa: F401
     inner,
     inverse,
     isfinite,
+    isin,
     isinf,
     isnan,
     isneginf,
@@ -525,6 +531,8 @@ from .tensor.random import (
     bernoulli_,
     binomial,
     check_shape,
+    log_normal,
+    log_normal_,
     multinomial,
     normal,
     normal_,
@@ -577,7 +585,7 @@ if is_compiled_with_cinn():
     if os.path.exists(cuh_file):
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
-if is_compiled_with_cuda():
+if __is_metainfo_generated and is_compiled_with_cuda():
     import os
     import platform
 
@@ -587,6 +595,9 @@ if is_compiled_with_cuda():
         and paddle.version.with_pip_cuda_libraries == 'ON'
     ):
         package_dir = os.path.dirname(os.path.abspath(__file__))
+        nvidia_package_path = package_dir + "/.." + "/nvidia"
+        set_flags({"FLAGS_nvidia_package_dir": nvidia_package_path})
+
         cublas_lib_path = package_dir + "/.." + "/nvidia/cublas/lib"
         set_flags({"FLAGS_cublas_dir": cublas_lib_path})
 
@@ -608,6 +619,119 @@ if is_compiled_with_cuda():
         cupti_dir_lib_path = package_dir + "/.." + "/nvidia/cuda_cupti/lib"
         set_flags({"FLAGS_cupti_dir": cupti_dir_lib_path})
 
+    elif (
+        platform.system() == 'Windows'
+        and platform.machine() in ('x86_64', 'AMD64')
+        and paddle.version.with_pip_cuda_libraries == 'ON'
+    ):
+        package_dir = os.path.dirname(os.path.abspath(__file__))
+        win_cuda_bin_path = package_dir + "\\.." + "\\nvidia"
+        set_flags({"FLAGS_win_cuda_bin_dir": win_cuda_bin_path})
+
+        import sys
+
+        if sys.platform == 'win32':
+            pfiles_path = os.getenv('ProgramFiles', 'C:\\Program Files')
+            py_dll_path = os.path.join(sys.exec_prefix, 'Library', 'bin')
+            th_dll_path = os.path.join(os.path.dirname(__file__), 'libs')
+            site_cuda_base_path = os.path.join(
+                os.path.dirname(__file__), '..', 'nvidia'
+            )
+            site_cuda_list = [
+                "cublas",
+                "cuda_nvrtc",
+                "cuda_runtime",
+                "cudnn",
+                "cufft",
+                "curand",
+                "cusolver",
+                "cusparse",
+                "nvjitlink",
+            ]
+
+            if sys.exec_prefix != sys.base_exec_prefix:
+                base_py_dll_path = os.path.join(
+                    sys.base_exec_prefix, 'Library', 'bin'
+                )
+            else:
+                base_py_dll_path = ''
+
+            dll_paths = list(
+                filter(
+                    os.path.exists, [th_dll_path, py_dll_path, base_py_dll_path]
+                )
+            )
+            for site_cuda_package in site_cuda_list:
+                site_cuda_path = os.path.join(
+                    site_cuda_base_path, site_cuda_package, 'bin'
+                )
+                if os.path.exists(site_cuda_path):
+                    dll_paths.append(site_cuda_path)
+
+            import ctypes
+
+            kernel32 = ctypes.WinDLL('kernel32.dll', use_last_error=True)
+            with_load_library_flags = hasattr(kernel32, 'AddDllDirectory')
+            prev_error_mode = kernel32.SetErrorMode(0x0001)
+
+            kernel32.LoadLibraryW.restype = ctypes.c_void_p
+            if with_load_library_flags:
+                kernel32.LoadLibraryExW.restype = ctypes.c_void_p
+
+            for dll_path in dll_paths:
+                os.add_dll_directory(dll_path)
+
+            try:
+                ctypes.CDLL('vcruntime140.dll')
+                ctypes.CDLL('msvcp140.dll')
+                ctypes.CDLL('vcruntime140_1.dll')
+            except OSError:
+                import logging
+
+                logging.error(
+                    '''Microsoft Visual C++ Redistributable is not installed, this may lead to the DLL load failure.
+                        It can be downloaded at https://aka.ms/vs/16/release/vc_redist.x64.exe'''
+                )
+            import glob
+
+            dlls = glob.glob(os.path.join(th_dll_path, '*.dll'))
+            for site_cuda_package in site_cuda_list:
+                site_cuda_path = os.path.join(
+                    site_cuda_base_path, site_cuda_package, 'bin'
+                )
+                if os.path.exists(site_cuda_path):
+                    dlls.extend(
+                        glob.glob(os.path.join(site_cuda_path, '*.dll'))
+                    )
+            # Not load 32 bit dlls in 64 bit python.
+            dlls = [dll for dll in dlls if '32_' not in dll]
+            path_patched = False
+            for dll in dlls:
+                is_loaded = False
+                if with_load_library_flags:
+                    res = kernel32.LoadLibraryExW(dll, None, 0x00001100)
+                    last_error = ctypes.get_last_error()
+                    if res is None and last_error != 126:
+                        err = ctypes.WinError(last_error)
+                        err.strerror += f' Error loading "{dll}" or one of its dependencies.'
+                        raise err
+                    elif res is not None:
+                        is_loaded = True
+                if not is_loaded:
+                    if not path_patched:
+                        prev_path = os.environ['PATH']
+                        os.environ['PATH'] = ';'.join(
+                            dll_paths + [os.environ['PATH']]
+                        )
+                        path_patched = True
+                    res = kernel32.LoadLibraryW(dll)
+                    if path_patched:
+                        os.environ['PATH'] = prev_path
+                    if res is None:
+                        err = ctypes.WinError(ctypes.get_last_error())
+                        err.strerror += f' Error loading "{dll}" or one of its dependencies.'
+                        raise err
+            kernel32.SetErrorMode(prev_error_mode)
 
 disable_static()
 
@@ -617,6 +741,7 @@ ir_guard = IrGuard()
 ir_guard._switch_to_pir()
 
 __all__ = [
+    'block_diag',
     'iinfo',
     'finfo',
     'dtype',
@@ -692,6 +817,8 @@ __all__ = [
     'slice_scatter',
     'normal',
     'normal_',
+    'log_normal',
+    'log_normal_',
     'logsumexp',
     'full',
     'unsqueeze',
@@ -730,6 +857,7 @@ __all__ = [
     'squeeze_',
     'to_tensor',
     'gather_nd',
+    'isin',
     'isinf',
     'isneginf',
     'isposinf',

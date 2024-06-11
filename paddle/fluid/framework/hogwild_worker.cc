@@ -1320,7 +1320,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
   }
 #endif
   bool infer_out_of_ins = false;
-  while (1) {
+  while (true) {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
     if (FLAGS_gpugraph_force_device_batch_num_equal) {
@@ -1524,7 +1524,7 @@ void HogwildWorker::TrainFiles() {
   }
 #endif
   bool infer_out_of_ins = false;
-  while (1) {
+  while (true) {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
     if (FLAGS_gpugraph_force_device_batch_num_equal) {

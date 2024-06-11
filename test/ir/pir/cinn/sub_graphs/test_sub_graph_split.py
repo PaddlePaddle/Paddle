@@ -47,7 +47,8 @@ class TestSplit(TestBase):
         self.inputs = (
             paddle.rand(shape=[11, 976, 7, 7], dtype=paddle.float32),
         )
-        self.net = SplitCase()
+        self.net = SplitCase
+        self.with_train = False
 
 
 if __name__ == '__main__':

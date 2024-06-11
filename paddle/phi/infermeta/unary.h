@@ -780,6 +780,12 @@ void TopKInferMeta(const MetaTensor& x,
                    MetaTensor* indices,
                    MetaConfig config = MetaConfig());
 
+void TopkV1InferMeta(const MetaTensor& x,
+                     const Scalar& k_scalar,
+                     MetaTensor* out,
+                     MetaTensor* indices,
+                     MetaConfig config = MetaConfig());
+
 void TraceInferMeta(
     const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out);
 

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 
 import numpy as np
@@ -217,7 +219,6 @@ def _load_pir_parameter_vars(model_path, program_holder, params_filename):
     # load all vars
     assert params_filename is not None, "params_filename should not be None."
     var_file_path = os.path.join(model_path, params_filename)
-
     if os.path.exists(var_file_path):
         core.load_combine_func(
             var_file_path,
@@ -228,8 +229,7 @@ def _load_pir_parameter_vars(model_path, program_holder, params_filename):
         )
     else:
         raise ValueError(
-            "The file %s does not exist. Please check the model path."
-            % var_file_path
+            f"The file {var_file_path} does not exist. Please check the model path."
         )
 
     load_var_dict.update(other_var_dict)
@@ -328,8 +328,7 @@ def _run_dygraph(instance, input, program_holder):
     for i, value in enumerate(input):
         if not isinstance(value, (np.ndarray, core.eager.Tensor)):
             raise TypeError(
-                "The type of input in PirTranslatedLayer must be numpy array or Variable(Tensor), but received %s."
-                % type(value)
+                f"The type of input in PirTranslatedLayer must be numpy array or Variable(Tensor), but received {type(value)}."
             )
         # NOTE: In order to unify the API, firstly convert the input to Tensor
         if isinstance(value, np.ndarray):
@@ -361,8 +360,7 @@ def _run_dygraph(instance, input, program_holder):
             persistable_tensors.append(instance._buffers[dy_var_name])
         else:
             raise ValueError(
-                "The persistable variable %s does not exist in current PirTranslatedLayer."
-                % var_name
+                f"The persistable variable {var_name} does not exist in current PirTranslatedLayer."
             )
 
     from paddle.jit.dy2static.pir_partial_program import PartialProgramLayer
@@ -378,7 +376,6 @@ def _run_dygraph(instance, input, program_holder):
         parameters,
     )
     instance.layer = layer
-
     if instance._is_test:
         layer.training = False
     else:
@@ -392,9 +389,42 @@ def _run_dygraph(instance, input, program_holder):
     return instance.layer(input_tensors)
 
 
-def _run_static_graph(program_holder, trace_program):
-    paddle.base.framework.switch_main_program(trace_program)
-    return program_holder.output_vars
+def _run_static_graph(inputs, program_holder, src_program):
+    '''
+    This function is used when the pirTranslatedLayer is
+    applied for dy_to_static conversion.
+    '''
+    dst_program = paddle.static.default_main_program()
+    value_map = paddle.pir.IrMapping()
+    # Establish a mapping relationship between existing parameters
+    # and corresponding parameters in the program to be copied
+    len_dst_op = len(dst_program.global_block().ops)
+    for dst_op in dst_program.global_block().ops:
+        if dst_op.name() == "builtin.parameter":
+            for src_op in src_program.global_block().ops[:len_dst_op]:
+                if (
+                    src_op.name() == dst_op.name()
+                    and src_op.result(0).name == dst_op.result(0).name
+                ):
+                    for i in range(src_op.num_results()):
+                        value_map.add(src_op.result(i), dst_op.result(i))
+    # Establish a mapping relationship between truly inputs
+    # and corresponding inputs in the program to be copied
+    src_inputs = program_holder.input_vars
+    if len(src_inputs) != len(inputs):
+        raise ValueError(
+            f"The number of input is invalid, expected {len(src_inputs)}, but received {len(inputs)}."
+        )
+    for src_input, input_ in zip(src_inputs, inputs):
+        value_map.add(src_input, input_)
+
+    # find the insert point for copy
+    current_insert_point = paddle.pir.get_current_insertion_point()
+    current_block = current_insert_point.block()
+    src_program.copy_to_block(value_map, current_block)
+
+    output = [value_map.look_up(v) for v in program_holder.output_vars]
+    return output[0] if len(output) == 1 else output
 
 
 def _collect_current_and_parent_var(program, block_idx):
@@ -514,7 +544,11 @@ class PirTranslatedLayer(layers.Layer):
 
     """
 
-    def __init__(self, programs, persistable_vars):
+    def __init__(
+        self,
+        programs: dict[str, paddle.static.Program],
+        persistable_vars: dict[str, paddle.Tensor],
+    ):
         super().__init__()
 
         if not isinstance(programs, dict):
@@ -561,7 +595,7 @@ class PirTranslatedLayer(layers.Layer):
         # 0. dir and filename check
         model_path = os.path.normpath(model_path)
         if not os.path.isdir(model_path):
-            raise ValueError("There is no directory named '%s'" % model_path)
+            raise ValueError(f"There is no directory named '{model_path}'")
         model_filename = None
         params_filename = None
         if configs is not None:
@@ -608,7 +642,7 @@ class PirTranslatedLayer(layers.Layer):
                 return _run_dygraph(self, input, program_holder)
             else:
                 return _run_static_graph(
-                    program_holder, program_holder.infer_program
+                    input, program_holder, program_holder.infer_program
                 )
 
         __i_m_p_l__.__name__ = method_name
@@ -719,8 +753,7 @@ class PirTranslatedLayer(layers.Layer):
         program_holder = self._program_holder_dict.get(method_name, None)
         if program_holder is None:
             raise ValueError(
-                "The method `%s` does not exist in loaded PirTranslatedLayer."
-                % method_name
+                f"The method `{method_name}` does not exist in loaded PirTranslatedLayer."
             )
         return program_holder
 

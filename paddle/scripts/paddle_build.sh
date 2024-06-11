@@ -1134,7 +1134,10 @@ function check_whl_size() {
 
 function generate_upstream_develop_api_spec() {
     set -x
+    # Temporarily save some scripts from PR branch
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
+    cp ${PADDLE_ROOT}/tools/print_signatures.py /tmp
+
     mkdir -p ${PADDLE_ROOT}/build/pr_whl && mv ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl/
     pr_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
@@ -1184,17 +1187,20 @@ function generate_api_spec() {
         echo "Not supported $2"
         exit 1
     fi
+    if [ "$spec_kind" == "DEV" ]; then
+        REQUIREMENTS_PATH=/tmp/requirements.txt
+        PRINT_SIGNATURES_SCRIPT_PATH=/tmp/print_signatures.py
+    else
+        REQUIREMENTS_PATH=${PADDLE_ROOT}/python/requirements.txt
+        PRINT_SIGNATURES_SCRIPT_PATH=${PADDLE_ROOT}/tools/print_signatures.py
+    fi
 
     mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
     cd ${PADDLE_ROOT}/build/.check_api_workspace
     virtualenv -p `which python` .${spec_kind}_env
     source .${spec_kind}_env/bin/activate
+    pip install -r $REQUIREMENTS_PATH
 
-    if [ "$spec_kind" == "DEV" ]; then
-        pip install -r /tmp/requirements.txt
-    else
-        pip install -r ${PADDLE_ROOT}/python/requirements.txt
-    fi
     if [ -d "${PADDLE_ROOT}/build/python/dist/" ]; then
         pip install ${PADDLE_ROOT}/build/python/dist/*whl
     elif [ -d "${PADDLE_ROOT}/dist/" ];then
@@ -1202,7 +1208,10 @@ function generate_api_spec() {
         mkdir ${PADDLE_ROOT}/build/python/dist/ && mv  ${PADDLE_ROOT}/dist/*whl  ${PADDLE_ROOT}/build/python/dist/
     fi
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
-    python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} paddle > $spec_path
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} --show-fields="args,varargs,varkw,defaults,kwonlyargs,kwonlydefaults" paddle > ${spec_path}.api
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} --show-fields="annotations" paddle > ${spec_path}.annotations
+    python ${PRINT_SIGNATURES_SCRIPT_PATH} --show-fields="document" paddle > ${spec_path}.doc
 
     # used to log op_register data_type
     op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_TYPE_${spec_kind}.spec
@@ -1219,9 +1228,6 @@ function generate_api_spec() {
     # print api and the md5 of source code of the api.
     api_source_md5_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.source.md5
     python ${PADDLE_ROOT}/tools/count_api_without_core_ops.py -p paddle > $api_source_md5_path
-
-    awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
-    awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
 
     python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
         ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
@@ -1480,7 +1486,7 @@ function card_test() {
     if [ "${WITH_XPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
     elif [ "${WITH_ROCM}" == "ON" ];then
-        CUDA_DEVICE_COUNT=$(rocm-smi -i | grep GPU | wc -l)
+        CUDA_DEVICE_COUNT=$(rocm-smi -i | grep DCU | wc -l)
     elif [ "${WITH_IPU}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
     else
@@ -1523,13 +1529,22 @@ function card_test() {
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                if [ "$WITH_ROCM" == "ON" ];then
+                    (env HIP_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                else
+                    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                fi
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
                 (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                if [ "$WITH_ROCM" == "ON" ];then
+                    (env HIP_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                else
+                    (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" ${run_label_mode} --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                fi
+                
             fi
         fi
     done
@@ -2658,7 +2673,11 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            if [ "$WITH_ROCM" == "ON" ];then
+                env HIP_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            else
+                env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE|RUN_TYPE=HYBRID" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            fi
             ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
             if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
                 echo "========================================"
@@ -2832,7 +2851,9 @@ set +x
         rerun_ut_endTime_s=`date +%s`
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s"
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
-        cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt ${cfs_dir}/coverage/${AGILE_PULL_ID}/${AGILE_REVISION}/
+        if [ "$WITH_ROCM" != "ON" ];then
+            cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt ${cfs_dir}/coverage/${AGILE_PULL_ID}/${AGILE_REVISION}/
+        fi
         if [[ "$EXIT_CODE" != "0" ]]; then
             show_ut_retry_result
         fi
@@ -3494,7 +3515,6 @@ function build_document_preview() {
     sh /paddle/tools/document_preview.sh ${PORT}
 }
 
-
 # origin name: example
 function exec_samplecode_test() {
     if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
@@ -3508,14 +3528,83 @@ function exec_samplecode_test() {
 
     cd ${PADDLE_ROOT}/tools
     if [ "$1" = "cpu" ] ; then
-        python sampcd_processor.py --debug --mode cpu; example_error=$?
+        python sampcd_processor.py --mode cpu; example_error=$?
     elif [ "$1" = "gpu" ] ; then
         SAMPLE_CODE_EXEC_THREADS=${SAMPLE_CODE_EXEC_THREADS:-2}
-        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --debug --mode gpu; example_error=$?
+        python sampcd_processor.py --threads=${SAMPLE_CODE_EXEC_THREADS} --mode gpu; example_error=$?
     fi
     if [ "$example_error" != "0" ];then
       echo "Code instance execution failed" >&2
       exit 5
+    fi
+}
+
+function need_type_checking() {
+    set +x
+
+    # check pr title
+    TITLE_CHECK=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "typing" || true`
+
+    if [[ ${TITLE_CHECK} ]]; then
+        set -x
+        return 0
+    else
+        set -x
+        return 1
+    fi
+}
+
+function exec_type_checking() {
+    if [ -d "${PADDLE_ROOT}/build/pr_whl" ];then
+        pip install ${PADDLE_ROOT}/build/pr_whl/*.whl
+    else
+        echo "WARNING: PR wheel is not found. Use develop wheel !!!"
+        pip install ${PADDLE_ROOT}/build/python/dist/*.whl
+    fi
+
+    python -c "import paddle;print(paddle.__version__);paddle.version.show()"
+
+    cd ${PADDLE_ROOT}/tools
+    
+    # check all sample code
+    TITLE_CHECK_ALL=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "typing all" || true`
+
+    if [[ ${TITLE_CHECK_ALL} ]]; then
+        python type_checking.py --full-test; type_checking_error=$?
+    else
+        python type_checking.py; type_checking_error=$?
+    fi
+
+    if [ "$type_checking_error" != "0" ];then
+      echo "Example code type checking failed" >&2
+      exit 5
+    fi
+}
+
+
+function exec_samplecode_checking() {
+    example_info_gpu=""
+    example_code_gpu=0
+    if [ "${WITH_GPU}" == "ON" ] ; then
+        { example_info_gpu=$(exec_samplecode_test gpu 2>&1 1>&3 3>/dev/null); } 3>&1
+        example_code_gpu=$?
+    fi
+    { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
+    example_code=$?
+
+    # TODO(megemini): type_checkding should be default after type annotation been done.
+    need_type_checking
+    type_checking_status=$?
+
+    if [[ ${type_checking_status} -eq 0 ]]; then
+        { type_checking_info=$(exec_type_checking 2>&1 1>&3 3>/dev/null); } 3>&1
+        type_checking_code=$?
+    fi
+
+    summary_check_example_code_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
+
+    if [[ ${type_checking_status} -eq 0 ]]; then
+        summary_type_checking_problems $type_checking_code "$type_checking_info"
     fi
 }
 
@@ -3559,10 +3648,11 @@ function test_model_benchmark() {
     bash ${PADDLE_ROOT}/tools/test_model_benchmark.sh
 }
 
-function summary_check_problems() {
+function summary_check_example_code_problems() {
     set +x
     local example_code=$1
     local example_info=$2
+
     if [ $example_code -ne 0 ];then
         echo "==============================================================================="
         echo "*****Example code error***** Please fix the error listed in the information:"
@@ -3579,6 +3669,33 @@ function summary_check_problems() {
         echo "$example_info"
         echo "==============================================================================="
         echo "*****Example code PASS*****"
+        echo "==============================================================================="
+    fi
+    set -x
+}
+
+
+function summary_type_checking_problems() {
+    set +x
+    local type_checking_code=$1
+    local type_checking_info=$2
+
+    if [ $type_checking_code -ne 0 ];then
+        echo "==============================================================================="
+        echo "*****Example code type checking error***** Please fix the error listed in the information:"
+        echo "==============================================================================="
+        echo "$type_checking_info"
+        echo "==============================================================================="
+        echo "*****Example code type checking FAIL*****"
+        echo "==============================================================================="
+        exit $type_checking_code
+    else
+        echo "==============================================================================="
+        echo "*****Example code type checking info*****"
+        echo "==============================================================================="
+        echo "$type_checking_info"
+        echo "==============================================================================="
+        echo "*****Example code type checking PASS*****"
         echo "==============================================================================="
     fi
     set -x
@@ -3723,7 +3840,10 @@ function build_pr_and_develop() {
     fi
     mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    # Temporarily save some scripts from PR branch
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
+    cp ${PADDLE_ROOT}/tools/print_signatures.py /tmp
+
     generate_api_spec "$1" "PR"
     mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
@@ -4356,15 +4476,7 @@ function main() {
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         set +e
-        example_info_gpu=""
-        example_code_gpu=0
-        if [ "${WITH_GPU}" == "ON" ] ; then
-            { example_info_gpu=$(exec_samplecode_test gpu 2>&1 1>&3 3>/dev/null); } 3>&1
-            example_code_gpu=$?
-        fi
-        { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
-        example_code=$?
-        summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
+        exec_samplecode_checking
         assert_api_spec_approvals
         ;;
       build_and_check_cpu)
@@ -4376,15 +4488,7 @@ function main() {
         ;;
       build_and_check_gpu)
         set +e
-        example_info_gpu=""
-        example_code_gpu=0
-        if [ "${WITH_GPU}" == "ON" ] ; then
-            { example_info_gpu=$(exec_samplecode_test gpu 2>&1 1>&3 3>/dev/null); } 3>&1
-            example_code_gpu=$?
-        fi
-        { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
-        example_code=$?
-        summary_check_problems $[${example_code_gpu} + ${example_code}] "${example_info_gpu}\n${example_info}"
+        exec_samplecode_checking
         assert_api_spec_approvals
         ;;
       check_whl_size)
@@ -4489,6 +4593,9 @@ function main() {
         export FLAGS_PIR_OPTEST=True
         parallel_test true
         ;;
+      hyg_dcu_test)
+        parallel_test
+        ;;
       nv_cicheck_coverage)
         parallel_test
         nv_test
@@ -4509,10 +4616,6 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         run_brpc_test
-        ;;
-      assert_api)
-        generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
-        assert_api_spec_approvals
         ;;
       test_inference)
         PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
@@ -4542,9 +4645,6 @@ function main() {
       test_train)
         gen_fluid_lib ${parallel_number}
         test_fluid_lib_train
-        ;;
-      assert_api_approvals)
-        assert_api_spec_approvals
         ;;
       assert_file_approvals)
         assert_file_diff_approvals
@@ -4626,11 +4726,6 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         build_document_preview
-        ;;
-      api_example)
-        { example_info=$(exec_samplecode_test cpu 2>&1 1>&3 3>/dev/null); } 3>&1
-        example_code=$?
-        summary_check_problems $example_code "$example_info"
         ;;
       test_op_benchmark)
         test_op_benchmark

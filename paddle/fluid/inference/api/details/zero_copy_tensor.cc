@@ -60,11 +60,6 @@ void Tensor::Reshape(const std::vector<int> &shape) {
           "No tensor called [%s] in the runtime scope", name_));
   auto *tensor = var->GetMutable<phi::DenseTensor>();
   tensor->Resize(common::make_ddim(shape));
-#ifdef PADDLE_WITH_DNNL
-  if (tensor->layout() == phi::DataLayout::ONEDNN) {
-    tensor->set_layout(phi::DataLayout::ANY);
-  }
-#endif
 }
 
 void Tensor::ReshapeStrings(const size_t &shape) {
@@ -212,11 +207,6 @@ void Tensor::CopyFromCpu(const T *data) {
   if (place_ == PlaceType::kCPU) {
     auto *t_data = tensor->mutable_data<T>(paddle::platform::CPUPlace());
     std::memcpy(static_cast<void *>(t_data), data, ele_size);
-#ifdef PADDLE_WITH_DNNL
-    if (tensor->layout() == phi::DataLayout::ONEDNN) {
-      tensor->set_layout(phi::DataLayout::ANY);
-    }
-#endif
   } else if (place_ == PlaceType::kGPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 

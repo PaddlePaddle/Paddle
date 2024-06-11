@@ -25,7 +25,7 @@
 #include "paddle/cinn/hlir/framework/buffer.h"
 #include "paddle/cinn/hlir/framework/scope.h"
 #include "paddle/cinn/hlir/framework/tensor.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace auto_schedule {
 
@@ -76,8 +76,11 @@ static void PopulateRandomValue(const cinn::common::Type& type,
     std::generate_n(
         fmt_ptr, numel, [&engine, &dist]() { return dist(engine); });
   } else {
-    CHECK_EQ(type.bytes(), 8)
-        << "Unsupported type: " << type << ", type.bytes = " << type.bytes();
+    PADDLE_ENFORCE_EQ(
+        type.bytes(),
+        8,
+        phi::errors::Unimplemented("Unsupported type, the type.bytes is %d",
+                                   type.bytes()));
     auto* fmt_ptr = reinterpret_cast<uint8_t*>(raw_ptr);
     std::uniform_int_distribution<uint8_t> dist(
         std::numeric_limits<uint8_t>::min(),
@@ -127,7 +130,12 @@ static std::unordered_set<std::string> ParamsNeedInitWithZero(
       std::vector<int> param_idxs = kInitWithZeroParams.at(node->op()->name);
       const auto& inlinks = node->inlinks_in_order();
       for (int param_idx : param_idxs) {
-        CHECK_GT(inlinks.size(), param_idx);
+        PADDLE_ENFORCE_GT(inlinks.size(),
+                          param_idx,
+                          phi::errors::InvalidArgument(
+                              "The input size of the node is less than the "
+                              "index of the parameter that needs to be "
+                              "initialized to 0"));
         auto& edge = inlinks.at(param_idx);
         std::string param_name =
             edge->source()->as<hlir::framework::NodeData>()->id();
@@ -141,7 +149,10 @@ static std::unordered_set<std::string> ParamsNeedInitWithZero(
 }
 
 SimpleRunner::SimpleRunner(int repeat_times) : repeat_times_(repeat_times) {
-  CHECK_GT(repeat_times_, 0) << "repeat_times can't less than 0";
+  PADDLE_ENFORCE_GT(
+      repeat_times_,
+      0,
+      phi::errors::InvalidArgument("repeat_times should be greater than 0"));
 }
 
 // Prepare execution arguments of all instructions to run, a argument

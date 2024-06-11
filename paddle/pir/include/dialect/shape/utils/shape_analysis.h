@@ -42,7 +42,7 @@ class IR_API InferSymbolicShapeContext {
 
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val) const;
 
-  void SetStaticShapeForValue(Value val);
+  void SetSymbolForValueByStaticShape(Value val);
 
   void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
@@ -150,7 +150,7 @@ class IR_API ShapeConstraintIRAnalysis final
 
   friend void InferSymExprForAllValues(ModuleOp module_op);
 
-  void SetStaticShapeForValue(Value val);
+  void SetSymbolForValueByStaticShape(Value val);
 
   void InferShapeOrDataForValue(Value val);
 
