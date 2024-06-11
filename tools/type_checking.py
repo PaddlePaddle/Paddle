@@ -227,6 +227,13 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+# https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
+# ctrl+c interrupt handler
+# this should be a global function, a local function makes `pickle` fail on MacOS.
+def init_worker():
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
 def get_test_results(
     type_checker: TypeChecker, docstrings_to_test: dict[str, str]
 ) -> list[TestResult]:
@@ -252,11 +259,6 @@ def get_test_results(
                     codeblock['codes'],
                 )
             )
-
-    # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
-    # ctrl+c interrupt handler
-    def init_worker():
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     test_results = []
     pool = multiprocessing.Pool(initializer=init_worker)
