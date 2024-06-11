@@ -534,10 +534,6 @@ USE_PASS(delete_dropout_op_x_pass);
 USE_PASS(fused_attention_pass);
 USE_PASS(fuse_adamw_op_pass);
 #endif
-#ifdef PADDLE_WITH_CINN
-USE_PASS(cinn_zero_tensor_trick_pass);
-USE_PASS(build_cinn_pass);
-#endif
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(fused_feedforward_pass);
 #endif
