@@ -3959,6 +3959,7 @@ function run_setup(){
             pip install -r ${PADDLE_ROOT}/python/requirements.txt
         fi
     fi
+    pip install https://paddle-ci.cdn.bcebos.com/opencv_python-4.10.0.82-cp39-cp39-linux_x86_64.whl
 
     if [ "$SYSTEM" == "Darwin" ]; then
         WITH_DISTRIBUTE="OFF"
@@ -4494,6 +4495,7 @@ function main() {
         export FLAGS_PIR_OPTEST=True
         export ON_INFER=ON
         export COVERAGE_FILE=${PADDLE_ROOT}/build/python-coverage.data
+	pip install https://paddle-ci.cdn.bcebos.com/opencv_python-4.10.0.82-cp39-cp39-linux_x86_64.whl
         is_run_distribute_in_op_test
         parallel_test
         check_coverage
