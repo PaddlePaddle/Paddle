@@ -15,11 +15,11 @@
 #pragma once
 
 #include "paddle/cinn/ir/group_schedule/config/database.h"
-#include "paddle/cinn/ir/group_schedule/config/tileconfig_desc.pb.h"
+#include "paddle/cinn/ir/group_schedule/config/tile_config_desc.pb.h"
 namespace cinn {
 namespace ir {
 
-class FileTileConfigDatabase : TileConfigDatabase {
+class FileTileConfigDatabase final : public TileConfigDatabase {
  public:
   void AddConfig(const common::Target& target,
                  const BucketInfo& bucket_info,
@@ -30,7 +30,7 @@ class FileTileConfigDatabase : TileConfigDatabase {
 
  private:
   TileConfigMap target_config_data_;
-  bool Tofile(const common::Target& target, int priority);
+  bool ToFile(const common::Target& target, int priority);
 };
 
 }  // namespace ir

@@ -19,7 +19,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/ir/group_schedule/config/database.h"
-#include "paddle/cinn/ir/group_schedule/config/filedatabase.h"
+#include "paddle/cinn/ir/group_schedule/config/file_database.h"
 #include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
 #include "paddle/cinn/ir/group_schedule/search/config_searcher.h"
 #include "paddle/cinn/ir/group_schedule/search/measurer.h"
@@ -40,12 +40,12 @@ TEST(ConfigSearcher, TestReduceDemo) {
 
   // Step 1: Construct iter space and tile config.
   cinn::ir::BucketInfo bucket_info;
-  int s_dimension_lower = 32;
-  int s_dimension_upper = 128;
+  int s_dimension_lower = 13;
+  int s_dimension_upper = 13;
   auto s_dimension_type = "S";
   auto s_dimension_is_dynamic = true;
-  int r_dimension_lower = 1024;
-  int r_dimension_upper = 1024;
+  int r_dimension_lower = 4096;
+  int r_dimension_upper = 4096;
   auto r_dimension_type = "R";
   auto r_dimension_is_dynamic = true;
 
@@ -53,22 +53,23 @@ TEST(ConfigSearcher, TestReduceDemo) {
       cinn::ir::BucketInfo::Dimension{s_dimension_lower,
                                       s_dimension_upper,
                                       s_dimension_type,
-                                      s_dimension_is_dynamic,
-                                      std::vector<double>(128 - 32, 1.0)});
+                                      s_dimension_is_dynamic});
   bucket_info.space.push_back(
       cinn::ir::BucketInfo::Dimension{r_dimension_lower,
                                       r_dimension_upper,
                                       r_dimension_type,
-                                      r_dimension_is_dynamic,
-                                      std::vector<double>(1, 1.0)});
+                                      r_dimension_is_dynamic});
 
   cinn::ir::ScheduleConfig::TileConfig tile_config;
-  tile_config.spatial_inner_num = 32;
-  tile_config.warp_num = 32;
-  tile_config.tree_reduce_num = 128;
+  tile_config.spatial_inner_num = 9;
+  tile_config.warp_num = 14;
+  tile_config.tree_reduce_num = 512;
   std::vector<std::pair<std::string, std::string>> iter_space_type = {
-      std::make_pair("S", "dynamic"), std::make_pair("R", "dynamic")};
-  // Step 2: Add to json/Read from json
+      std::make_pair(s_dimension_type,
+                     s_dimension_is_dynamic == true ? "dynamic" : "static"),
+      std::make_pair(r_dimension_type,
+                     r_dimension_is_dynamic == true ? "dynamic" : "static")};
+  // Step 2: Add to json / Read from json
   cinn::ir::FileTileConfigDatabase file_database;
   file_database.AddConfig(
       cinn::common::DefaultTarget(), bucket_info, tile_config, 2);
@@ -84,6 +85,8 @@ TEST(ConfigSearcher, TestReduceDemo) {
                 << " 's upper_bound is: " << it.first.space[i].upper_bound;
       auto dimension_lower = i == 0 ? s_dimension_lower : r_dimension_lower;
       auto dimension_upper = i == 0 ? s_dimension_upper : r_dimension_upper;
+      // TODO(xia zichao): remove check because the pieces of read data are more
+      // than the written data.
       PADDLE_ENFORCE_EQ(it.first.space[i].lower_bound,
                         dimension_lower,
                         ::common::errors::InvalidArgument(
