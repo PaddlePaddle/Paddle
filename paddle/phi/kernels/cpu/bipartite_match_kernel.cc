@@ -211,4 +211,6 @@ PD_REGISTER_KERNEL(bipartite_match,
                    ALL_LAYOUT,
                    ops::BipartiteMatchKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+}
