@@ -101,11 +101,6 @@ struct GroupInfoAttributeStorage : public pir::AttributeStorage {
   ParamKey data_;
 };
 
-namespace cinn::fusion {
-struct FusionTracker;
-using FusionTrackerPtr = std::shared_ptr<FusionTracker>;
-}  // namespace cinn::fusion
-
 struct FusionTrackerPtrAttributeStorage : public pir::AttributeStorage {
   using ParamKey = cinn::fusion::FusionTrackerPtr;
   explicit FusionTrackerPtrAttributeStorage(const ParamKey& key) : data_(key) {}
