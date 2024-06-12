@@ -18,11 +18,33 @@
 #include "paddle/cinn/utils/multi_threading.h"
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+#endif
 
 PD_DECLARE_bool(enable_cinn_compile_cache);
 PD_DECLARE_int64(cinn_compile_thread_num);
 
 namespace cinn::hlir::framework {
+namespace {
+
+std::optional<int> GetCudaDevice() {
+#ifdef PADDLE_WITH_CUDA
+  int device_id;
+  cudaGetDevice(&device_id);
+  return std::optional<int>{device_id};
+#else
+  return std::nullopt;
+#endif
+}
+
+void SetCudaDevice(const std::optional<int>& device_id) {
+#ifdef PADDLE_WITH_CUDA
+  if (device_id.has_value()) cudaSetDevice(device_id.value());
+#endif
+}
+
+}  // namespace
 
 class CompilationContextMapper {
  public:
@@ -74,7 +96,12 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
   VLOG(5) << "Found " << task_size << " new groups parsed from "
           << groups.size() << " and compiles with " << thread_size;
   if (task_size > 0) {
+    // See
+    // https://developer.nvidia.com/blog/cuda-pro-tip-always-set-current-device-avoid-multithreading-bugs/
+    // for details.
+    const std::optional<int> device_id = GetCudaDevice();
     auto worker_fn = [&](int index) {
+      SetCudaDevice(device_id);
       CompilationTask task(&group_compilation_contexts[index]);
       compilation_results[index] = task();
       // Triggering llvm compilation in thread
