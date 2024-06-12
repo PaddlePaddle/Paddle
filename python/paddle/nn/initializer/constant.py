@@ -140,7 +140,7 @@ class Constant(ConstantInitializer):
 
     """
 
-    def __init__(self, value=0.0):
+    def __init__(self, value: float = 0.0) -> None:
         if value is None:
             raise ValueError("value must not be none.")
         super().__init__(value=value, force_cpu=False)
