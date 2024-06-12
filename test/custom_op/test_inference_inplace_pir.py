@@ -125,5 +125,6 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         pir_predictor = self.init_predictor()
         pir_output = self.get_outputs(pir_predictor)
 
+
 if __name__ == "__main__":
     unittest.main()
