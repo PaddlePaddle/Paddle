@@ -599,7 +599,7 @@ def _to_tensor_non_static(
                 return tensor.astype(convert_dtype(dtype))
         return tensor
 
-    def _handle_np_dtype(ndarray: np.ndarray, dtype: DTypeLike) -> np.ndarray:
+    def _handle_np_dtype(ndarray: npt.NDArray[Any], dtype: DTypeLike) -> npt.NDArray[Any]:
         if dtype:
             if convert_dtype(dtype) != convert_dtype(ndarray.dtype):
                 # should not ndarray.astype('uint16') directly, data bits is wrong
