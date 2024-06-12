@@ -421,7 +421,7 @@ class DataFeeder:
             for each_var in feed_list:
                 if isinstance(each_var, str):
                     each_var = program.block(0).var(each_var)
-                if not isinstance(each_var, Variable, Value):
+                if not isinstance(each_var, (Variable, Value)):
                     raise TypeError(
                         "Feed list should contain a list of variable"
                     )
