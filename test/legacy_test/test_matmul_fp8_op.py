@@ -24,10 +24,13 @@ from paddle.base import core
 E4M3_MAX_POS = 448.0
 E5M2_MAX_POS = 57344.0
 
-is_sm_supported = (
-    paddle.device.cuda.get_device_capability()[0] == 8
-    and paddle.device.cuda.get_device_capability()[1] == 9
-) or (paddle.device.cuda.get_device_capability()[0] >= 9)
+is_sm_supported = core.is_compiled_with_cuda() and (
+    (
+        paddle.device.cuda.get_device_capability()[0] == 8
+        and paddle.device.cuda.get_device_capability()[1] == 9
+    )
+    or (paddle.device.cuda.get_device_capability()[0] >= 9)
+)
 
 
 def check_fp8_support() -> bool:
@@ -41,12 +44,7 @@ def check_fp8_support() -> bool:
     # Device compute capability 8.9 or higher required for FP8 execution.
     if gpu_arch < 89:  # pre-ada
         return False
-    # TODO(Wanglongzhi2001): paddle don't support get cublasLt version for now.
-    # CublasLt version 12.1.3.x or higher required for FP8 execution on Ada.
-    # if get_cublasLt_version() < 120103:
-    #     return False,
-    # Cuda version 12.1 or higher required for FP8 execution on Ada.
-    if get_cuda_version() < 12010:
+    if get_cuda_version() < 11080:
         return False
     return True
 
@@ -63,7 +61,7 @@ def _to_fp8_saturated(x: paddle.Tensor, float8_dtype) -> paddle.Tensor:
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or not check_fp8_support(),
-    "Fp8 matmul requires CUDA >= 12.1 on Ada arch or hopper arch",
+    "Fp8 matmul requires CUDA >= 11.8 on Ada arch or hopper arch",
 )
 class TestMatmulFp8(unittest.TestCase):
     def config(self):
