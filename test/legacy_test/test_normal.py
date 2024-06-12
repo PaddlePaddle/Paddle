@@ -223,5 +223,198 @@ class TestNormalErrors(unittest.TestCase):
             self.assertRaises(TypeError, paddle.normal, shape=shape)
 
 
+class TestNormalAPIComplex(unittest.TestCase):
+    def setUp(self):
+        self.mean = 1.0 + 1.0j
+        self.std = 1.0
+        self.shape = None
+        self.repeat_num = 2000
+        self.set_attrs()
+        self.dtype = self.get_dtype()
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.base.core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+    def set_attrs(self):
+        self.shape = [8, 12]
+
+    def get_shape(self):
+        if isinstance(self.mean, np.ndarray):
+            shape = self.mean.shape
+        elif isinstance(self.std, np.ndarray):
+            shape = self.std.shape
+        else:
+            shape = self.shape
+        return list(shape)
+
+    def get_dtype(self):
+        if isinstance(self.mean, np.ndarray):
+            return self.mean.dtype
+        else:
+            return 'complex64'
+
+    def static_api(self):
+        shape = self.get_shape()
+        ret_all_shape = copy.deepcopy(shape)
+        ret_all_shape.insert(0, self.repeat_num)
+        ret_all = np.zeros(ret_all_shape, self.dtype)
+        main_program = paddle.static.Program()
+        if isinstance(self.mean, np.ndarray) and isinstance(
+            self.std, np.ndarray
+        ):
+            with paddle.static.program_guard(main_program):
+                mean = paddle.static.data(
+                    'Mean', self.mean.shape, self.mean.dtype
+                )
+                std = paddle.static.data('Std', self.std.shape, self.std.dtype)
+                out = paddle.normal(mean, std, self.shape)
+
+                exe = paddle.static.Executor(self.place)
+                for i in range(self.repeat_num):
+                    ret = exe.run(
+                        feed={
+                            'Mean': self.mean,
+                            'Std': self.std.reshape(shape),
+                        },
+                        fetch_list=[out],
+                    )
+                    ret_all[i] = ret[0]
+            return ret_all
+        elif isinstance(self.mean, np.ndarray):
+            with paddle.static.program_guard(main_program):
+                mean = paddle.static.data(
+                    'Mean', self.mean.shape, self.mean.dtype
+                )
+                out = paddle.normal(mean, self.std, self.shape)
+
+                exe = paddle.static.Executor(self.place)
+                for i in range(self.repeat_num):
+                    ret = exe.run(feed={'Mean': self.mean}, fetch_list=[out])
+                    ret_all[i] = ret[0]
+            return ret_all
+        elif isinstance(self.std, np.ndarray):
+            with paddle.static.program_guard(main_program):
+                mean = paddle.static.data('Mean', self.std.shape, 'complex128')
+                std = paddle.static.data('Std', self.std.shape, self.std.dtype)
+                out = paddle.normal(mean, std, self.shape)
+
+                exe = paddle.static.Executor(self.place)
+                for i in range(self.repeat_num):
+                    ret = exe.run(
+                        feed={
+                            'Std': self.std,
+                            'Mean': np.broadcast_to(
+                                np.array(self.mean), self.std.shape
+                            ),
+                        },
+                        fetch_list=[out],
+                    )
+                    ret_all[i] = ret[0]
+            return ret_all
+        else:
+            with paddle.static.program_guard(main_program):
+                mean = paddle.static.data('Mean', (), 'complex128')
+                out = paddle.normal(mean, self.std, self.shape)
+
+                exe = paddle.static.Executor(self.place)
+                for i in range(self.repeat_num):
+                    ret = exe.run(
+                        feed={'Mean': np.array(self.mean)},
+                        fetch_list=[out],
+                    )
+                    ret_all[i] = ret[0]
+            return ret_all
+
+    def dygraph_api(self):
+        paddle.disable_static(self.place)
+        shape = self.get_shape()
+        ret_all_shape = copy.deepcopy(shape)
+        ret_all_shape.insert(0, self.repeat_num)
+        ret_all = np.zeros(ret_all_shape, self.dtype)
+
+        mean = (
+            paddle.to_tensor(self.mean)
+            if isinstance(self.mean, np.ndarray)
+            else self.mean
+        )
+        std = (
+            paddle.to_tensor(self.std)
+            if isinstance(self.std, np.ndarray)
+            else self.std
+        )
+        for i in range(self.repeat_num):
+            out = paddle.normal(mean, std, self.shape)
+            ret_all[i] = out.numpy()
+        paddle.enable_static()
+        return ret_all
+
+    @test_with_pir_api
+    def test_api(self):
+        ret_static = self.static_api()
+        ret_dygraph = self.dygraph_api()
+        for ret in [ret_static, ret_dygraph]:
+            shape_ref = self.get_shape()
+            self.assertEqual(shape_ref, list(ret[0].shape))
+
+            mean = np.mean(ret, axis=0)
+            var = np.var(ret, axis=0)
+            var_real = np.var(ret.real, axis=0)
+            var_imag = np.var(ret.imag, axis=0)
+            mean_ref = self.mean
+            var_ref = np.power(self.std, 2)
+            np.testing.assert_allclose(mean_ref, mean, rtol=0.2, atol=0.2)
+            np.testing.assert_allclose(var_ref, var, rtol=0.2, atol=0.2)
+            np.testing.assert_allclose(
+                var_ref / 2.0, var_real, rtol=0.2, atol=0.2
+            )
+            np.testing.assert_allclose(
+                var_ref / 2.0, var_imag, rtol=0.2, atol=0.2
+            )
+
+
+class TestNormalAPIComplex_mean_is_tensor(TestNormalAPIComplex):
+    def set_attrs(self):
+        self.mean = np.vectorize(complex)(
+            np.random.uniform(-2, -1, [2, 3]), np.random.uniform(-2, -1, [2, 3])
+        )
+
+
+class TestNormalAPIComplex_std_is_tensor(TestNormalAPIComplex):
+    def set_attrs(self):
+        self.std = np.random.uniform(0.7, 1, [2, 5]).astype('float64')
+
+
+class TestNormalAPIComplex_mean_std_are_tensor(TestNormalAPIComplex):
+    def set_attrs(self):
+        self.mean = np.vectorize(complex)(
+            np.random.uniform(1, 2, [1, 100]), np.random.uniform(1, 2, [1, 100])
+        )
+        self.std = np.random.uniform(0.5, 1, [1, 100]).astype('float64')
+
+
+class TestNormalAPIComplex_mean_std_are_tensor_with_different_dtype(
+    TestNormalAPIComplex
+):
+    def set_attrs(self):
+        self.mean = np.vectorize(complex)(
+            np.random.uniform(1, 2, [100]), np.random.uniform(1, 2, [100])
+        ).astype('complex64')
+        self.std = np.random.uniform(1, 2, [100]).astype('float32')
+
+
+class TestNormalComplexErrors(unittest.TestCase):
+    @test_with_pir_api
+    def test_errors(self):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            mean = 1 + 1j
+            self.assertRaises(TypeError, paddle.normal, mean, dtype='float32')
+
+            mean = 2 + 0.5j
+            self.assertRaises(ValueError, paddle.normal, mean)
+
+
 if __name__ == "__main__":
     unittest.main()

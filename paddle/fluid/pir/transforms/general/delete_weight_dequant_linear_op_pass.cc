@@ -146,24 +146,28 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
               phi::errors::InvalidArgument("pass state has no value"));
 
           auto& quant_analysis =
-              this->pass_state_.get()->am.GetAnalysis<pir::pass::QuantAnalysis>();
+              this->pass_state_.get()
+                  ->am.GetAnalysis<pir::pass::QuantAnalysis>();
           this->pass_state_.get()
               ->preserved_analyses.Preserve<pir::pass::QuantAnalysis>();
 
-          PADDLE_ENFORCE_EQ(this->pass_state_.get()
-                                ->preserved_analyses.IsPreserved<pir::pass::QuantAnalysis>(),
-                        true,
-                        phi::errors::InvalidArgument("QuantAnalysis should be Preserved"));
+          PADDLE_ENFORCE_EQ(
+              this->pass_state_.get()
+                  ->preserved_analyses.IsPreserved<pir::pass::QuantAnalysis>(),
+              true,
+              phi::errors::InvalidArgument(
+                  "QuantAnalysis should be Preserved"));
           quant_analysis.scale_map[match_ctx.Tensor("weight")] = weight_scales;
 
-          auto& int8_analysis =
-              this->pass_state_.get()->am.GetAnalysis<pir::pass::Int8Analysis>();
+          auto& int8_analysis = this->pass_state_.get()
+                                    ->am.GetAnalysis<pir::pass::Int8Analysis>();
           this->pass_state_.get()
               ->preserved_analyses.Preserve<pir::pass::Int8Analysis>();
-          PADDLE_ENFORCE_EQ(this->pass_state_.get()
-                                ->preserved_analyses.IsPreserved<pir::pass::Int8Analysis>(),
-                        true,
-                        phi::errors::InvalidArgument("Int8Analysis should be Preserved"));
+          PADDLE_ENFORCE_EQ(
+              this->pass_state_.get()
+                  ->preserved_analyses.IsPreserved<pir::pass::Int8Analysis>(),
+              true,
+              phi::errors::InvalidArgument("Int8Analysis should be Preserved"));
 
           int8_analysis.enable_int8 = true;
         }

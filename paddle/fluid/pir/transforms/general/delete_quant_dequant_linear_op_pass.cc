@@ -113,10 +113,11 @@ class DeleteQuantDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
           this->pass_state_.get()->am.GetAnalysis<pir::pass::QuantAnalysis>();
       this->pass_state_.get()
           ->preserved_analyses.Preserve<pir::pass::QuantAnalysis>();
-      PADDLE_ENFORCE_EQ(this->pass_state_.get()
-                            ->preserved_analyses.IsPreserved<pir::pass::QuantAnalysis>(),
-                        true,
-                        phi::errors::InvalidArgument("QuantAnalysis should be Preserved"));
+      PADDLE_ENFORCE_EQ(
+          this->pass_state_.get()
+              ->preserved_analyses.IsPreserved<pir::pass::QuantAnalysis>(),
+          true,
+          phi::errors::InvalidArgument("QuantAnalysis should be 
       CHECK_EQ(this->pass_state_.get()
                    ->preserved_analyses.IsPreserved<pir::pass::QuantAnalysis>(),
                true);

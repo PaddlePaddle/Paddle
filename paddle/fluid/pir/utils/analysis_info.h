@@ -21,12 +21,14 @@
 
 namespace pir {
 namespace pass {
-// QuantAnalysis is used to transfer quantification scale information between PIR Passes
+// QuantAnalysis is used to transfer quantification scale information between
+// PIR Passes
 struct QuantAnalysis {
   std::unordered_map<pir::Value, std::vector<float>> scale_map;
 };
 
-// Int8Analysis is used to pass information between PIR Passes on whether to enable INT8 quantization
+// Int8Analysis is used to pass information between PIR Passes on whether to
+// enable INT8 quantization
 struct Int8Analysis {
   bool enable_int8;
 };

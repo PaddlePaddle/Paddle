@@ -17,8 +17,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 SpmdInfo FusedLinearParamGradAddInferSpmd(const DistMetaTensor& x,
                                           const DistMetaTensor& dout,
@@ -73,5 +72,4 @@ SpmdInfo FusedLinearParamGradAddInferSpmd(const DistMetaTensor& x,
 
 SpmdInfo FusedLinearParamGradAddInferSpmdFakeReverse() { return SpmdInfo(); }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed
