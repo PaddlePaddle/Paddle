@@ -71,11 +71,11 @@ def sparse_attention(
                         3-D tensor with shape:
                         [batch_size, num_heads, sparse_nnz].
                         The dtype should be int32.
-        key_padding_mask(Tensor, optional):The key padding mask tensor in the Attention module.
+        key_padding_mask(Tensor|None, optional):The key padding mask tensor in the Attention module.
                         2-D tensor with shape: [batch_size, seq_len].
                         The dtype can be float32 and float64.
                         A value of 0 means that the position is masked.
-        attn_mask(Tensor, optional):The attention mask tensor in the Attention module.
+        attn_mask(Tensor|None, optional):The attention mask tensor in the Attention module.
                         2-D tensor with shape: [seq_len, seq_len].
                         The dtype can be float32 and float64.
                         A value of 0 means that the position is masked.
@@ -84,7 +84,7 @@ def sparse_attention(
                         :ref:`api_guide_Name`.
 
     Returns:
-        4-D tensor with shape:
+        Tensor, 4-D tensor with shape:
         [batch_size, num_heads, seq_len, head_dim].
         The dtype can be float32 or float64.
 
