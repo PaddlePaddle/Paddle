@@ -36,6 +36,10 @@ class IR_API InferSymbolicShapeContext {
   InferSymbolicShapeContext(InferSymbolicShapeContext&&) = delete;
   void Init();
 
+  // Note: Only initialize the symbol info, the value info is not update.
+  void RegisterSymbolConstraintFromContext(
+      const InferSymbolicShapeContext& other);
+
   const std::string GetNextSymName();
 
   bool HasShapeOrDataForValue(Value val) const;
@@ -93,6 +97,9 @@ class IR_API ShapeConstraintIRAnalysis final
   ShapeConstraintIRAnalysis(const ShapeConstraintIRAnalysis&) = delete;
   ShapeConstraintIRAnalysis(ShapeConstraintIRAnalysis&&) = delete;
   void Init();
+
+  void RegisterSymbolConstraintFromShapeAnalysis(
+      const ShapeConstraintIRAnalysis& other);
 
   const std::string GetNextSymName();
 

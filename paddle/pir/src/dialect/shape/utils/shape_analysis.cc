@@ -40,6 +40,38 @@ void InferSymbolicShapeContext::Init() {
       });
 }
 
+void InferSymbolicShapeContext::RegisterSymbolConstraintFromContext(
+    const InferSymbolicShapeContext& other) {
+  PADDLE_ENFORCE_EQ(
+      next_sym_idx_,
+      0,
+      common::errors::PreconditionNotMet("next_sym_idx_ should be 0 when init "
+                                         "symbol constraint, but now get %d",
+                                         next_sym_idx_));
+  PADDLE_ENFORCE_EQ(value_id_to_shape_or_data_.size(),
+                    0,
+                    common::errors::PreconditionNotMet(
+                        "value_id_to_shape_or_data_ should be empty when init "
+                        "symbol constraint, but now get %d",
+                        value_id_to_shape_or_data_.size()));
+  next_sym_idx_ = other.next_sym_idx_;
+  // init equal constraints
+  for (const auto& kv : other.constraints_manager_.equals().GetMap()) {
+    constraints_manager_.AddEqCstr(kv.first, kv.second);
+  }
+  // init broadcastable constraints
+  for (const auto& bc_item : other.constraints_manager_.broadcastables()) {
+    constraints_manager_.AddBroadcastableCstr(bc_item.data->lhs,
+                                              bc_item.data->rhs);
+  }
+  // init gtone constraints
+  for (const auto& gt_one : other.constraints_manager_.gtones()) {
+    constraints_manager_.AddGTOneCstr(gt_one);
+  }
+
+  substitution_pattern_ = other.substitution_pattern_;
+}
+
 const std::string InferSymbolicShapeContext::GetNextSymName() {
   return "S" + std::to_string(next_sym_idx_++);
 }
@@ -285,6 +317,11 @@ void InferSymbolicShapeContext::PrintShapeOrDatas() const {
 }
 
 void ShapeConstraintIRAnalysis::Init() { context_.Init(); }
+
+void ShapeConstraintIRAnalysis::RegisterSymbolConstraintFromShapeAnalysis(
+    const ShapeConstraintIRAnalysis& other) {
+  context_.RegisterSymbolConstraintFromContext(other.context_);
+}
 
 const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
   return context_.GetNextSymName();
