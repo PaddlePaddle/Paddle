@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
-sys.path.append("../../legacy_test")
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
@@ -164,6 +162,7 @@ class TestBmmOpCaseComplex64(TestBmmOp):
         self.op_type = "bmm"
         self.python_api = paddle.tensor.bmm
         self.public_python_api = paddle.tensor.bmm
+        self.dtype = np.complex64
         X = (
             np.random.uniform(1, 5, (10, 3, 4))
             + 1j * np.random.uniform(1, 5, (10, 3, 4))
@@ -189,6 +188,7 @@ class TestBmmOpCaseComplex128(TestBmmOp):
         self.op_type = "bmm"
         self.python_api = paddle.tensor.bmm
         self.public_python_api = paddle.tensor.bmm
+        self.dtype = np.complex128
         X = (
             np.random.uniform(1, 5, (10, 3, 4))
             + 1j * np.random.uniform(1, 5, (10, 3, 4))
