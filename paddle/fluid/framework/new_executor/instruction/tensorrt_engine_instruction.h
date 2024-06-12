@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
@@ -48,6 +48,7 @@ class TensorRTEngineInstruction : public InstructionBase {
                        const phi::DenseTensor& input_tensor,
                        const Scope& scope,
                        std::vector<void*>& buffers,  // NOLINT
+                       std::vector<int>& shape_v,    // NOLINT
                        int* runtime_batch);
   void BindOutputTensor(std::string output_name,
                         phi::DenseTensor* output_tensor,
@@ -70,3 +71,4 @@ class TensorRTEngineInstruction : public InstructionBase {
 };
 }  // namespace framework
 }  // namespace paddle
+#endif

@@ -6,4 +6,6 @@ endif()
 
 add_subdirectory(analysis)
 add_subdirectory(api)
-add_subdirectory(tensorrt)
+if(WITH_TENSORRT)
+  add_subdirectory(tensorrt)
+endif()

@@ -14,6 +14,11 @@ if(NOT WITH_ONEDNN)
     ${CMAKE_CURRENT_SOURCE_DIR}/instruction/onednn/onednn_mixed_instruction.cc)
 endif()
 
+if(NOT WITH_TENSORRT)
+  list(REMOVE_ITEM standalone_executor_srcs
+       ${CMAKE_CURRENT_SOURCE_DIR}/instruction/tensorrt_engine_instruction.cc)
+endif()
+
 set(standalone_executor_deps
     pir
     program_translator
