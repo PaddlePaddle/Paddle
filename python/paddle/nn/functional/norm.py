@@ -28,6 +28,7 @@ from ...base.layer_helper import LayerHelper
 __all__ = []
 
 
+@paddle.utils.print_utils.print_args
 def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     r"""
     Normalize ``x`` along dimension ``axis`` using :math:`L_p` norm. This layer computes
@@ -296,6 +297,7 @@ def batch_norm(
         return helper.append_activation(batch_norm_out)
 
 
+@paddle.utils.print_utils.print_args
 def layer_norm(
     x, normalized_shape, weight=None, bias=None, epsilon=1e-05, name=None
 ):
@@ -639,6 +641,7 @@ def local_response_norm(
     return res
 
 
+@paddle.utils.print_utils.print_args
 def group_norm(
     x,
     num_groups,

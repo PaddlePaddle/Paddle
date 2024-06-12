@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import _C_ops
 
 from ....framework import LayerHelper, in_dynamic_or_pir_mode
 
 
+@paddle.utils.print_utils.print_args
 def swiglu(x, y=None, name=None):
     """
     This function performs SwiGLU activation to the input Tensor.

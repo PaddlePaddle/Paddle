@@ -285,6 +285,7 @@ def create_tensor(dtype, name=None, persistable=False):
     )
 
 
+@paddle.utils.print_utils.print_args
 def linspace(start, stop, num, dtype=None, name=None):
     r"""
     Return fixed number of evenly spaced values within a given interval. Note: no gradient calculation is performed.
@@ -813,6 +814,7 @@ def to_tensor(
             return _to_tensor_static(data, dtype, stop_gradient)
 
 
+@paddle.utils.print_utils.print_args
 def full_like(x, fill_value, dtype=None, name=None):
     """
 
@@ -896,6 +898,7 @@ def full_like(x, fill_value, dtype=None, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     if in_dynamic_or_pir_mode():
         place = _current_expected_place()
@@ -1164,6 +1167,7 @@ def zeros_like(x, dtype=None, name=None):
     return full_like(x=x, fill_value=0, dtype=dtype, name=name)
 
 
+@paddle.utils.print_utils.print_args
 def eye(num_rows, num_columns=None, dtype=None, name=None):
     """
 
@@ -1314,6 +1318,7 @@ def full(shape, fill_value, dtype=None, name=None):
     return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
 
 
+@paddle.utils.print_utils.print_args
 def arange(start=0, end=None, step=1, dtype=None, name=None):
     """
     Returns a 1-D Tensor with spaced values within a given interval.
@@ -1496,6 +1501,7 @@ def _tril_triu_op(helper):
     return out
 
 
+@paddle.utils.print_utils.print_args
 def tril(x, diagonal=0, name=None):
     r"""
     Returns the lower triangular part of a matrix (2-D tensor) or batch
@@ -1571,6 +1577,7 @@ def tril_(x, diagonal=0, name=None):
         return _C_ops.tril_(x, diagonal)
 
 
+@paddle.utils.print_utils.print_args
 def triu(x, diagonal=0, name=None):
     r"""
     Return the upper triangular part of a matrix (2-D tensor) or batch of matrices
@@ -2092,6 +2099,7 @@ def diag(x, offset=0, padding_value=0, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def empty(shape, dtype=None, name=None):
     """
     Returns a Tensor with uninitialized data which size is same as ``shape``.

@@ -69,6 +69,20 @@ void FusedGemmEpilogueKernel(const Context& dev_ctx,
                              const std::string& activation,
                              DenseTensor* out,
                              DenseTensor* reserve_space) {
+  std::cout << "{function_name : fused_gemm_epilogue, inputs: { "
+            << "{ x, type: <class 'paddle.Tensor'>, shape: " << x.dims()
+            << " }, "
+            << "{ y, type: <class 'paddle.Tensor'>, shape: " << y.dims()
+            << " }, "
+            << "{ bias, type: <class 'paddle.Tensor'>, shape: " << bias.dims()
+            << " }, "
+            << "}, ";
+  std::cout << "params: [ "
+            << "trans_x: " << trans_x << ", "
+            << "trans_y: " << trans_y << ", "
+            << "activation: " << activation << ", "
+            << "]}" << std::endl;
+
 #if CUDA_VERSION < 11060
   PADDLE_THROW(phi::errors::Unimplemented(
       "The fused_gemm_epilogue operator only support CUDA 11.6 "

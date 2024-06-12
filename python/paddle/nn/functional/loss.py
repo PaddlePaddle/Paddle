@@ -36,6 +36,7 @@ __all__ = []
 kIgnoreIndex = -100
 
 
+@paddle.utils.print_utils.print_args
 def dice_loss(input, label, epsilon=0.00001, name=None):
     r"""
 
@@ -165,6 +166,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
     return loss
 
 
+@paddle.utils.print_utils.print_args
 def base_softmax_with_cross_entropy(
     logits,
     label,
@@ -310,6 +312,7 @@ def base_softmax_with_cross_entropy(
         return loss
 
 
+@paddle.utils.print_utils.print_args
 def npair_loss(anchor, positive, labels, l2_reg=0.002):
     """
 
@@ -583,6 +586,7 @@ def edit_distance(
     return edit_distance_out, sequence_num
 
 
+@paddle.utils.print_utils.print_args
 def binary_cross_entropy(
     input, label, weight=None, reduction='mean', name=None
 ):
@@ -714,6 +718,7 @@ def binary_cross_entropy(
             return out
 
 
+@paddle.utils.print_utils.print_args
 def binary_cross_entropy_with_logits(
     logit, label, weight=None, reduction='mean', pos_weight=None, name=None
 ):
@@ -883,6 +888,7 @@ def binary_cross_entropy_with_logits(
         return out
 
 
+@paddle.utils.print_utils.print_args
 def hsigmoid_loss(
     input,
     label,
@@ -1159,6 +1165,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
         return paddle.sum(out)
 
 
+@paddle.utils.print_utils.print_args
 def margin_ranking_loss(
     input, other, label, margin=0.0, reduction='mean', name=None
 ):
@@ -1275,6 +1282,7 @@ def margin_ranking_loss(
             return result_out
 
 
+@paddle.utils.print_utils.print_args
 def l1_loss(input, label, reduction='mean', name=None):
     r"""
 
@@ -1376,6 +1384,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             return paddle.abs(paddle.subtract(x=input, y=label, name=name))
 
 
+@paddle.utils.print_utils.print_args
 def nll_loss(
     input, label, weight=None, ignore_index=-100, reduction='mean', name=None
 ):
@@ -1499,6 +1508,7 @@ def nll_loss(
         return out
 
 
+@paddle.utils.print_utils.print_args
 def poisson_nll_loss(
     input,
     label,
@@ -1616,7 +1626,7 @@ def poisson_nll_loss(
         loss_out = paddle.sum(loss_out)
     return loss_out
 
-
+@paddle.utils.print_utils.print_args
 def kl_div(input, label, reduction='mean', log_target=False, name=None):
     r"""
     Calculate the Kullback-Leibler divergence loss
@@ -1757,6 +1767,7 @@ def kl_div(input, label, reduction='mean', log_target=False, name=None):
         return loss
 
 
+@paddle.utils.print_utils.print_args
 def mse_loss(input, label, reduction='mean', name=None):
     r"""
     Accept input predications and label and returns the mean square error.
@@ -1832,6 +1843,7 @@ def mse_loss(input, label, reduction='mean', name=None):
         )
 
 
+@paddle.utils.print_utils.print_args
 def ctc_loss(
     log_probs,
     labels,
@@ -1980,6 +1992,7 @@ def ctc_loss(
     return loss_out
 
 
+@paddle.utils.print_utils.print_args
 def rnnt_loss(
     input,
     label,
@@ -2107,6 +2120,7 @@ def rnnt_loss(
     return loss_out
 
 
+@paddle.utils.print_utils.print_args
 def margin_cross_entropy(
     logits,
     label,
@@ -2414,6 +2428,7 @@ def margin_cross_entropy(
         'and "paddle.nn.functional.cross_entropy" is different.'
     ),
 )
+@paddle.utils.print_utils.print_args
 def softmax_with_cross_entropy(
     logits,
     label,
@@ -2518,6 +2533,7 @@ def softmax_with_cross_entropy(
     )
 
 
+@paddle.utils.print_utils.print_args
 def cross_entropy(
     input,
     label,
@@ -3105,6 +3121,7 @@ def cross_entropy(
             return out
 
 
+@paddle.utils.print_utils.print_args
 def sigmoid_focal_loss(
     logit,
     label,

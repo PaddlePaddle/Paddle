@@ -1056,6 +1056,15 @@ def einsum(equation, *operands):
                      [0.08053084, 0.80583858, 0.56031936]]])
 
     """
+    t_info = ""
+    for i in range(len(operands)):
+        t_info += "in_{id}_shape: {shape}, in_{id}_dtype: {dtype},".format(
+            id=i, shape=operands[i].shape, dtype=operands[i].dtype
+        )
+    log_msg = "function_name: {function_name}, equation: {equation}, operands: {operands}".format(
+        function_name="einsum", equation=equation, operands=t_info
+    )
+    print(log_msg)
     import os
 
     if int(os.environ.get('FLAGS_new_einsum', "1")):

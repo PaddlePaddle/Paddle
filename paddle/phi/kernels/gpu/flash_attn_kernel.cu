@@ -462,6 +462,29 @@ void FlashAttnKernel(const Context& ctx,
                      DenseTensor* softmax,
                      DenseTensor* softmax_lse,
                      DenseTensor* seed_offset) {
+  std::cout << "{function_name : flash_attn, inputs: { "
+            << "{ q, type: <class 'paddle.Tensor'>, shape: " << q.dims()
+            << " }, "
+            << "{ k, type: <class 'paddle.Tensor'>, shape: " << k.dims()
+            << " }, "
+            << "{ v, type: <class 'paddle.Tensor'>, shape: " << v.dims()
+            << " }, ";
+  if (fixed_seed_offset) {
+    std::cout << "{ fixed_seed_offset, type: <class 'paddle.Tensor'>, shape: "
+              << fixed_seed_offset->dims() << " }, ";
+  }
+  if (attn_mask) {
+    std::cout << "{ attn_mask, type: <class 'paddle.Tensor'>, shape: "
+              << attn_mask->dims() << " }, ";
+  }
+  std::cout << "}, params: [ "
+            << "dropout: " << dropout << ", "
+            << "causal: " << causal << ", "
+            << "return_softmax: " << return_softmax << ", "
+            << "is_test: " << is_test << ", "
+            << "rng_name: " << rng_name << ", "
+            << "]}" << std::endl;
+
   FlashAttnBaseKernel<T, Context>(ctx,
                                   q,
                                   k,

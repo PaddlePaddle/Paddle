@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import paddle
 from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
 
 
+@paddle.utils.print_utils.print_args
 def fused_rotary_position_embedding(
     q,
     k=None,

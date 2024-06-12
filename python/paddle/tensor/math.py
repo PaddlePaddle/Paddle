@@ -215,6 +215,7 @@ def log_(x, name=None):
         return _C_ops.log_(x)
 
 
+@paddle.utils.print_utils.print_args
 def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
     Scale operator.
@@ -464,6 +465,7 @@ def multiplex(inputs, index, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 @inplace_apis_in_dygraph_only
 def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
@@ -474,6 +476,7 @@ def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         return _C_ops.scale_(x, scale, float(bias), bias_after_scale)
 
 
+@paddle.utils.print_utils.print_args
 def pow(x, y, name=None):
     """
     Compute the power of Tensor elements. The equation is:
@@ -651,6 +654,7 @@ def _elementwise_op(helper):
     return helper.append_activation(out)
 
 
+@paddle.utils.print_utils.print_args
 def add(x, y, name=None):
     """
     Elementwise Add Operator.
@@ -709,6 +713,7 @@ def add(x, y, name=None):
         return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
+@paddle.utils.print_utils.print_args
 @inplace_apis_in_dygraph_only
 def add_(x, y, name=None):
     """
@@ -788,6 +793,7 @@ def logaddexp(x, y, name=None):
     return log_1p + maximum
 
 
+@paddle.utils.print_utils.print_args
 def subtract(x, y, name=None):
     """
     Subtract two tensors element-wise. The equation is:
@@ -866,6 +872,7 @@ def subtract_(x, y, name=None):
     return _C_ops.subtract_(x, y)
 
 
+@paddle.utils.print_utils.print_args
 def divide(x, y, name=None):
     """
     Divide two tensors element-wise. The equation is:
@@ -906,6 +913,7 @@ def divide(x, y, name=None):
         return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
+@paddle.utils.print_utils.print_args
 @inplace_apis_in_dygraph_only
 def divide_(x, y, name=None):
     r"""
@@ -1060,6 +1068,7 @@ floor_mod_.__doc__ = r"""
     """
 
 
+@paddle.utils.print_utils.print_args
 def multiply(x, y, name=None):
     """
     multiply two tensors element-wise. The equation is:
@@ -1111,6 +1120,7 @@ def multiply(x, y, name=None):
         return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
+@paddle.utils.print_utils.print_args
 @inplace_apis_in_dygraph_only
 def multiply_(x, y, name=None):
     """
@@ -1185,6 +1195,7 @@ def _divide_with_axis(x, y, axis=-1, name=None):
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+@paddle.utils.print_utils.print_args
 def maximum(x, y, name=None):
     """
     Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
@@ -1437,6 +1448,7 @@ def fmin(x, y, name=None):
         return _elementwise_op(LayerHelper('elementwise_fmin', **locals()))
 
 
+@paddle.utils.print_utils.print_args
 def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     """
     Computes the sum of tensor elements over the given dimension.
@@ -2004,6 +2016,7 @@ def count_nonzero(x, axis=None, keepdim=False, name=None):
     return paddle.sum(int_tensor, axis=axis, keepdim=keepdim, name=name)
 
 
+@paddle.utils.print_utils.print_args
 def add_n(inputs, name=None):
     """
     Sum one or more Tensor of the input.
@@ -2169,6 +2182,7 @@ def trunc_(input, name=None):
         return _C_ops.trunc_(input)
 
 
+@paddle.utils.print_utils.print_args
 def mm(input, mat2, name=None):
     """
 
@@ -2521,6 +2535,7 @@ def renorm_(x, p, axis, max_norm):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def inner(x, y, name=None):
     """
 
@@ -2595,6 +2610,7 @@ def inner(x, y, name=None):
             return out.reshape(dstshape)
 
 
+@paddle.utils.print_utils.print_args
 def outer(x, y, name=None):
     """
 
@@ -2776,6 +2792,7 @@ def inverse(x, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def max(x, axis=None, keepdim=False, name=None):
     """
 
@@ -3572,6 +3589,7 @@ def log10_(x, name=None):
         return _C_ops.log10_(x)
 
 
+@paddle.utils.print_utils.print_args
 def clip(x, min=None, max=None, name=None):
     """
     This operator clip all elements in input into the range [ min, max ] and return
@@ -4340,6 +4358,7 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def cumprod(x, dim=None, dtype=None, name=None):
     """
     Compute the cumulative product of the input tensor x along a given dimension dim.
@@ -6037,6 +6056,7 @@ def lcm_(x, y, name=None):
     return out
 
 
+@paddle.utils.print_utils.print_args
 def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
     r"""
     Computes the n-th forward difference along the given axis.
@@ -6353,6 +6373,7 @@ def heaviside(x, y, name=None):
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+@paddle.utils.print_utils.print_args
 def frac(x, name=None):
     """
     This API is used to return the fractional portion of each element in input.

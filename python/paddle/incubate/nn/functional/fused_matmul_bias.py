@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import (
@@ -21,6 +22,7 @@ from paddle.framework import (
 from paddle.tensor.linalg import matmul
 
 
+@paddle.utils.print_utils.print_args
 def fused_matmul_bias(
     x, y, bias=None, transpose_x=False, transpose_y=False, name=None
 ):
@@ -80,6 +82,7 @@ def fused_matmul_bias(
     return out
 
 
+@paddle.utils.print_utils.print_args
 def fused_linear(x, weight, bias=None, transpose_weight=False, name=None):
     """
     Fully-connected linear transformation operator. This method requires CUDA version >= 11.6.
@@ -115,6 +118,7 @@ def fused_linear(x, weight, bias=None, transpose_weight=False, name=None):
     return fused_matmul_bias(x, weight, bias, False, transpose_weight, name)
 
 
+@paddle.utils.print_utils.print_args
 def fused_linear_activation(
     x, y, bias, trans_x=False, trans_y=False, activation=None
 ):

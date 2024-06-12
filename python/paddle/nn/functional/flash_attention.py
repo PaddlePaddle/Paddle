@@ -144,6 +144,7 @@ def _select_sdp(head_dim):
     return "mem_efficient"
 
 
+@paddle.utils.print_utils.print_args
 def flash_attention(
     query,
     key,
@@ -719,6 +720,7 @@ def flash_attn_varlen_qkvpacked(
     return out, softmax if return_softmax else None
 
 
+@paddle.utils.print_utils.print_args
 def scaled_dot_product_attention(
     query,
     key,

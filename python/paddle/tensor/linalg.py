@@ -174,6 +174,7 @@ def transpose_(x, perm, name=None):
         return _C_ops.transpose_(x, perm)
 
 
+@paddle.utils.print_utils.print_args
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
     Applies matrix multiplication to two tensors. `matmul` follows
@@ -1449,6 +1450,7 @@ def cond(x, p=None, name=None):
             )
             return out
 
+    @paddle.utils.print_utils.print_args
     def svd_norm(input, porder, axis=[-1]):
         """
         NOTE:
@@ -2130,6 +2132,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def bmm(x, y, name=None):
     """
     Applies batched matrix multiplication to two tensors.
@@ -3424,6 +3427,7 @@ def eigh(x, UPLO='L', name=None):
         return out_value, out_vector
 
 
+@paddle.utils.print_utils.print_args
 def pinv(x, rcond=1e-15, hermitian=False, name=None):
     r"""
     Calculate pseudo inverse via SVD(singular value decomposition)

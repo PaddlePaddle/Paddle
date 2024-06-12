@@ -1302,6 +1302,7 @@ def bitwise_xor_(x, y, name=None):
         return _C_ops.bitwise_xor_(x, y)
 
 
+@paddle.utils.print_utils.print_args
 def bitwise_not(x, out=None, name=None):
     r"""
 
