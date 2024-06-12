@@ -59,6 +59,11 @@ PD_DEFINE_string(cinn_tile_config_filename_label,
                                "./config/"),
                  "Label used to name file of tile config database");
 
+PD_DEFINE_string(
+    cinn_use_best_tile_config,
+    StringFromEnv("FLAGS_cinn_use_best_tile_config", "optimal"),
+    "Which config does the compiler use, optimal, custom or default");
+
 PD_DEFINE_int32(cinn_parallel_compile_thread,
                 Int32FromEnv("FLAGS_cinn_parallel_compile_thread",
                              (std::thread::hardware_concurrency() >> 1)),
@@ -71,10 +76,6 @@ PD_DEFINE_bool(cinn_enable_config_search,
 PD_DEFINE_bool(cinn_use_op_fusion,
                BoolFromEnv("FLAGS_cinn_use_op_fusion", true),
                "Whether to use op fusion pass.");
-
-PD_DEFINE_bool(cinn_use_best_tile_config,
-               BoolFromEnv("FLAGS_cinn_use_best_tile_config", false),
-               "Whether to use best tile config.");
 
 PD_DEFINE_bool(general_fusion_merge_pass,
                BoolFromEnv("FLAGS_general_fusion_merge_pass", true),

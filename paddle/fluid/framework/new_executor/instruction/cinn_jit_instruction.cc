@@ -78,10 +78,10 @@ class CinnJitInstruction::FnPtrImpl {
       ps.Start(FLAGS_cinn_kernel_execution_label);
       if (is_gpu) {
         ((lower_func_ptr_g)cinn_kernel_info_.fn_ptr)(
-          static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+            static_cast<void*>(func_args_.data()), func_args_.size(), stream);
       } else {
         ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
-          static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+            static_cast<void*>(func_args_.data()), func_args_.size(), stream);
         cudaDeviceSynchronize();
         ps.End(FLAGS_cinn_kernel_execution_label);
       }
@@ -91,7 +91,7 @@ class CinnJitInstruction::FnPtrImpl {
             static_cast<void*>(func_args_.data()), func_args_.size(), stream);
       } else {
         ((lower_func_ptr_g)cinn_kernel_info_.CX86_fn_ptr)(
-          static_cast<void*>(func_args_.data()), func_args_.size(), stream);
+            static_cast<void*>(func_args_.data()), func_args_.size(), stream);
       }
     }
     VLOG(6) << "End Run: " << cinn_kernel_info_.fn_name;
@@ -214,6 +214,7 @@ void CinnJitInstruction::Run() {
 #if defined(PADDLE_WITH_CUDA)
   void* running_stream = nullptr;
   bool is_gpu = false;
+
   if (place_.GetType() == phi::AllocationType::GPU) {
     is_gpu = true;
     running_stream =
@@ -229,7 +230,7 @@ void CinnJitInstruction::Run() {
   }
 
   // 2. exexute kernel
-  fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
+  fn_ptr_impl_->Run(tensor_args_, running_stream, is_gpu);
 #else
   VLOG(0) << "Not Supported: cinn jit instruction currently does not "
              "support non-CUDA kernel";

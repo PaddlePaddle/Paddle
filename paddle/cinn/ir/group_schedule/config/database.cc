@@ -14,8 +14,6 @@
 
 #include "paddle/cinn/ir/group_schedule/config/database.h"
 
-PD_DECLARE_bool(cinn_use_best_tile_config);
-
 namespace cinn {
 namespace ir {
 
