@@ -62,10 +62,10 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
-    param : [x, dim, keep_dim]
+    param : [x, dim, keepdim]
   kernel :
     func : frobenius_norm
-    param : [x, dim, keep_dim]
+    param : [x, dim, keepdim]
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reduce_sum
@@ -73,10 +73,10 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
-    param : [x, dim, keep_dim]
+    param : [x, dim, keepdim]
   kernel :
     func : frobenius_norm
-    param : [x, dim, keep_dim]
+    param : [x, dim, keepdim]
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reshape
