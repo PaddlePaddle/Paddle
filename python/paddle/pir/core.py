@@ -317,12 +317,35 @@ def create_parameter(
     main_program = default_main_program()
     parameter_meta = ParameterMeta(shape, dtype)
 
+    def to_dist(value):
+        import paddle
+        import paddle.distributed as dist
+
+        process_mesh = kwargs['process_mesh']
+        dim_map, partial_status = dist.auto_parallel.placement_type.to_dim_map(
+            kwargs['placements'], len(shape)
+        )
+        dist_attr = paddle.base.libpaddle.pir.create_tensor_dist_attribute(
+            process_mesh, dim_map, partial_status
+        )
+        dist_type = paddle.base.libpaddle.pir.cvt_to_dist_type(
+            value.type(), dist_attr
+        )
+        value.set_type(dist_type)
+        op_dist_attr = paddle.base.libpaddle.pir.create_op_dist_attribute(
+            process_mesh, [], [dist_attr]
+        )
+        value.get_defining_op().dist_attr = op_dist_attr
+
     with program_guard(startup_program):
         initializer = kwargs['initializer']
         init_result = initializer(
             parameter_meta, startup_program.global_block()
         )
         init_result.persistable = True
+        if kwargs['placements'] is not None:
+            to_dist(init_result)
+
         set_parameter(init_result, value_name)
 
     main_program.set_parameters_from(startup_program)
@@ -330,6 +353,9 @@ def create_parameter(
         reset_insertion_point_to_start()
         param = parameter(value_name)
         param.persistable = True
+
+        if kwargs['placements'] is not None:
+            to_dist(param)
 
     param.trainable = kwargs.get('trainable', True)
     param.stop_gradient = not param.trainable
