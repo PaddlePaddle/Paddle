@@ -409,7 +409,7 @@ std::vector<pir::Operation*> DecompProgram::parse_block_ops(pir::Block* block) {
 
 void DecompProgram::decomp_program() {
   std::unordered_map<pir::Value, int> orig_vars_dict;
-  for (size_t i = 0; i < src_vars_.size(); i++) {
+  for (size_t i = 0; i < src_vars_.size(); i++) {  // NOLINT
     orig_vars_dict[src_vars_[i]] = static_cast<int>(i);
   }
   std::ostringstream orig_prog_stream;
@@ -475,7 +475,8 @@ void DecompProgram::decomp_block(
         auto item = orig_outs[i];
         if (item.use_count() == 1) {
           auto next_op = item.first_use().owner();
-          if (next_op->name() == "builtin.split") {
+          if (next_op->name() == "builtin.split" ||
+              next_op->name() == "builtin.slice") {
             is_next_builtin_split = true;
 
             check_decomp_outputs(

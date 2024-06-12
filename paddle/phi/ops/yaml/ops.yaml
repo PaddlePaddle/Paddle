@@ -2678,6 +2678,17 @@
   backward : logsumexp_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : lp_pool2d
+  args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : Pool2DInferMeta
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+  kernel :
+    func : lp_pool2d
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm, norm_type]
+  backward : lp_pool2d_grad
+
 - op : lstm
   args: (Tensor input, Tensor h0, Tensor c0, Tensor weight, Tensor bias, bool use_peepholes
     = true, bool is_reverse = false, bool is_test = false, str gate_activation = "sigmoid",
@@ -3771,6 +3782,16 @@
     func: sequence_mask_scalar
     data_type : x
 
+- op : sequence_pool
+  args: (Tensor x, bool is_test=false, str pooltype = "AVERAGE", float pad_value = 0.0)
+  output: Tensor (out), Tensor (max_index)
+  infer_meta:
+    func: SequencePoolInferMeta
+  kernel:
+    func: sequence_pool
+  intermediate: max_index
+  backward: sequence_pool_grad
+
 - op : set_value_with_tensor
   args : (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
   output : Tensor(out)
@@ -4245,7 +4266,7 @@
   no_need_buffer : input
 
 - op : thresholded_relu
-  args : (Tensor x, float threshold = 1.0)
+  args : (Tensor x, float threshold = 1.0, float value = 0.0)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
