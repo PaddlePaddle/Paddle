@@ -12,20 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+import paddle
 from paddle import _legacy_C_ops, in_dynamic_mode
 from paddle.base.layer_helper import LayerHelper
 
 
 def sparse_attention(
-    query,
-    key,
-    value,
-    sparse_csr_offset,
-    sparse_csr_columns,
-    key_padding_mask=None,
-    attn_mask=None,
-    name=None,
-):
+    query: paddle.Tensor,
+    key: paddle.Tensor,
+    value: paddle.Tensor,
+    sparse_csr_offset: paddle.Tensor,
+    sparse_csr_columns: paddle.Tensor,
+    key_padding_mask: paddle.Tensor = None,
+    attn_mask: paddle.Tensor = None,
+    name: str | None = None,
+) -> paddle.Tensor:
     r"""
     This operator sparsify the Attention matrix in Transformer module
     to achieve the effect of reducing memory consumption and computation.
@@ -76,7 +79,7 @@ def sparse_attention(
                         2-D tensor with shape: [seq_len, seq_len].
                         The dtype can be float32 and float64.
                         A value of 0 means that the position is masked.
-        name(str, optional): The default value is None. Normally there is no need for user
+        name(str|None, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
 
