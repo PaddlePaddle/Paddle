@@ -78,12 +78,11 @@ class DeleteQuantDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
           input_scale_var,
           phi::errors::InvalidArgument("Persistable var [%s] not in scope.",
                                        input_scale_name));
-      if (input_scale_dtype.isa<pir::Float16Type>() ||
-          input_scale_dtype.isa<pir::Float32Type>()) {
-        return true;
-      } else {
+      if (!input_scale_dtype.isa<pir::Float16Type>() &&
+          !input_scale_dtype.isa<pir::Float32Type>()) {
         return false;
       }
+      return true;
     });
 
     pat.AddPostProcess([this](const paddle::drr::MatchContext& match_ctx) {
@@ -93,10 +92,7 @@ class DeleteQuantDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
       auto input_scale_name =
           pir::GetParameterNameFromValue(match_ctx.Tensor("scale"));
       auto* input_scale_var = this->scope_->FindVar(input_scale_name);
-      PADDLE_ENFORCE_NOT_NULL(
-          input_scale_var,
-          phi::errors::InvalidArgument("Persistable var [%s] not in scope.",
-                                       input_scale_name));
+
       auto* input_scale_tensor =
           input_scale_var->GetMutable<phi::DenseTensor>();
       if (input_scale_dtype.isa<pir::Float16Type>()) {
@@ -114,11 +110,15 @@ class DeleteQuantDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
           phi::errors::InvalidArgument("pass state has no value"));
 
       auto& quant_analysis =
-          this->pass_state_.get()->am.GetAnalysis<pir::QuantAnalysis>();
+          this->pass_state_.get()->am.GetAnalysis<pir::pass::QuantAnalysis>();
       this->pass_state_.get()
-          ->preserved_analyses.Preserve<pir::QuantAnalysis>();
+          ->preserved_analyses.Preserve<pir::pass::QuantAnalysis>();
+      PADDLE_ENFORCE_EQ(this->pass_state_.get()
+                            ->preserved_analyses.IsPreserved<pir::pass::QuantAnalysis>(),
+                        true,
+                        phi::errors::InvalidArgument("QuantAnalysis should be Preserved"));
       CHECK_EQ(this->pass_state_.get()
-                   ->preserved_analyses.IsPreserved<pir::QuantAnalysis>(),
+                   ->preserved_analyses.IsPreserved<pir::pass::QuantAnalysis>(),
                true);
 
       quant_analysis.scale_map[match_ctx.Tensor("x")] =

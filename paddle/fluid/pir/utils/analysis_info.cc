@@ -14,5 +14,5 @@
 
 #include "paddle/fluid/pir/utils/analysis_info.h"
 
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::QuantAnalysis)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::Int8Analysis)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::pass::QuantAnalysis)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::pass::Int8Analysis)

@@ -14,25 +14,25 @@
 
 #pragma once
 
-#include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/pir/include/core/type.h"
 #include "paddle/pir/include/core/value.h"
 
 namespace pir {
-// QuantAnalysis use for Quant Dequant
+namespace pass {
+// QuantAnalysis is used to transfer quantification scale information between PIR Passes
 struct QuantAnalysis {
   std::unordered_map<pir::Value, std::vector<float>> scale_map;
 };
 
-// Int8Analysis use for  Dequant
+// Int8Analysis is used to pass information between PIR Passes on whether to enable INT8 quantization
 struct Int8Analysis {
   bool enable_int8;
 };
 
+}  // namespace pass
 }  // namespace pir
 
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::QuantAnalysis)
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::Int8Analysis)
+IR_DECLARE_EXPLICIT_TYPE_ID(pir::pass::QuantAnalysis)
+IR_DECLARE_EXPLICIT_TYPE_ID(pir::pass::Int8Analysis)

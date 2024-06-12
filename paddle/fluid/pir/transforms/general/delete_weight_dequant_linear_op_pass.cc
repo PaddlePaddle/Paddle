@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,12 +69,11 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
           weight_scale_var,
           phi::errors::InvalidArgument("Persistable var [%s] not in scope.",
                                        weight_scale_name));
-      if (weight_scale_dtype.isa<pir::Float16Type>() ||
-          weight_scale_dtype.isa<pir::Float32Type>()) {
-        return true;
-      } else {
+      if (!weight_scale_dtype.isa<pir::Float16Type>() &&
+          !weight_scale_dtype.isa<pir::Float32Type>()) {
         return false;
       }
+      return true;
     });
 
     pat.AddPostProcess([this](
@@ -99,10 +98,7 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
           auto* weight_scale_tensor =
               weight_scale_var->GetMutable<phi::DenseTensor>();
           auto weight_scale_nums = weight_scale_tensor->numel();
-          PADDLE_ENFORCE_NOT_NULL(
-              weight_scale_var,
-              phi::errors::InvalidArgument("Persistable var [%s] not in scope.",
-                                           weight_scale_name));
+
           if (quant_axis == -1) {
             PADDLE_ENFORCE_EQ(
                 weight_scale_nums,
@@ -150,21 +146,25 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
               phi::errors::InvalidArgument("pass state has no value"));
 
           auto& quant_analysis =
-              this->pass_state_.get()->am.GetAnalysis<pir::QuantAnalysis>();
+              this->pass_state_.get()->am.GetAnalysis<pir::pass::QuantAnalysis>();
           this->pass_state_.get()
-              ->preserved_analyses.Preserve<pir::QuantAnalysis>();
-          CHECK_EQ(this->pass_state_.get()
-                       ->preserved_analyses.IsPreserved<pir::QuantAnalysis>(),
-                   true);
+              ->preserved_analyses.Preserve<pir::pass::QuantAnalysis>();
+
+          PADDLE_ENFORCE_EQ(this->pass_state_.get()
+                                ->preserved_analyses.IsPreserved<pir::pass::QuantAnalysis>(),
+                        true,
+                        phi::errors::InvalidArgument("QuantAnalysis should be Preserved"));
           quant_analysis.scale_map[match_ctx.Tensor("weight")] = weight_scales;
 
           auto& int8_analysis =
-              this->pass_state_.get()->am.GetAnalysis<pir::Int8Analysis>();
+              this->pass_state_.get()->am.GetAnalysis<pir::pass::Int8Analysis>();
           this->pass_state_.get()
-              ->preserved_analyses.Preserve<pir::Int8Analysis>();
-          CHECK_EQ(this->pass_state_.get()
-                       ->preserved_analyses.IsPreserved<pir::Int8Analysis>(),
-                   true);
+              ->preserved_analyses.Preserve<pir::pass::Int8Analysis>();
+          PADDLE_ENFORCE_EQ(this->pass_state_.get()
+                                ->preserved_analyses.IsPreserved<pir::pass::Int8Analysis>(),
+                        true,
+                        phi::errors::InvalidArgument("Int8Analysis should be Preserved"));
+
           int8_analysis.enable_int8 = true;
         }
       }
