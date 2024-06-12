@@ -30,8 +30,8 @@ void AccuracyCheckKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
                          const std::string& fn_name,
-                         const Scalar& rtol,
-                         const Scalar& atol,
+                         const double rtol,
+                         const double atol,
                          bool equal_nan,
                          DenseTensor* out);
 

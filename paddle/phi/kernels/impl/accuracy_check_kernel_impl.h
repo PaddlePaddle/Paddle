@@ -294,27 +294,11 @@ void AccuracyCheckKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& y,
                          const std::string& fn_name,
-                         const Scalar& rtol,
-                         const Scalar& atol,
+                         const double rtol,
+                         const double atol,
                          bool equal_nan,
                          DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      atol.dtype(),
-      DataType::FLOAT64,
-      phi::errors::InvalidArgument("Input(Atol) type must be double"));
-
-  PADDLE_ENFORCE_EQ(
-      rtol.dtype(),
-      DataType::FLOAT64,
-      phi::errors::InvalidArgument("Input(Rtol) type must be double"));
-
-  AccuracyCheckFunctor<Context, T>()(dev_ctx,
-                                     x,
-                                     y,
-                                     fn_name,
-                                     rtol.to<double>(),
-                                     atol.to<double>(),
-                                     equal_nan,
-                                     out);
+  AccuracyCheckFunctor<Context, T>()(
+      dev_ctx, x, y, fn_name, rtol, atol, equal_nan, out);
 }
 }  // namespace phi

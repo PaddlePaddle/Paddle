@@ -661,10 +661,8 @@ class OpInfoParser:
                         'data_type'
                     ]
                     # patch for isclose and allclose
-                    if (
-                        (self.op_compat_item['op'] == "isclose")
-                        or (self.op_compat_item['op'] == "allclose")
-                        or (self.op_compat_item['op'] == "accuracy_check")
+                    if (self.op_compat_item['op'] == "isclose") or (
+                        self.op_compat_item['op'] == "allclose"
                     ):
                         data_type = "double"
                     mutable_attribute_type_list.append(
@@ -958,7 +956,7 @@ class OpInfoParser:
                 op_name = self.op_yaml_item['name']
                 attr_name = attribute_info['name']
                 if (
-                    op_name not in ["isclose", "allclose", "accuracy_check"]
+                    op_name not in ["isclose", "allclose"]
                     and self.op_compat_item is not None
                     and 'scalar' in self.op_compat_item.keys()
                     and attr_name in self.op_compat_item['scalar'].keys()

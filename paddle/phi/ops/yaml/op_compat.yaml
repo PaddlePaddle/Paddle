@@ -29,19 +29,6 @@
   outputs :
     {accuracy : Accuracy, correct : Correct, total : Total}
 
-- op : accuracy_check
-  inputs :
-    {x : Input, y : Other}
-  outputs :
-    out : Out
-  scalar :
-    rtol :
-      data_type : std::string
-      tensor_name : Rtol
-    atol :
-      data_type : std::string
-      tensor_name : Atol
-
 - op : acos
   inputs :
     x : X
