@@ -173,6 +173,9 @@ class IR_API ShapeAnalysisManager {
       tables_;
 };
 
+ShapeConstraintIRAnalysis& GetShapeConstraintIRAnalysis(
+    const pir::Program* program);
+
 #define OP_DECLARE_INFER_SYMBOLIC_SHAPE(name) \
   bool name##OpInferSymbolicShape(            \
       pir::Operation* op, pir::InferSymbolicShapeContext* infer_context);
