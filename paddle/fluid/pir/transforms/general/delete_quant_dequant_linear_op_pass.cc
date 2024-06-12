@@ -117,10 +117,7 @@ class DeleteQuantDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
           this->pass_state_.get()
               ->preserved_analyses.IsPreserved<pir::pass::QuantAnalysis>(),
           true,
-          phi::errors::InvalidArgument("QuantAnalysis should be 
-      CHECK_EQ(this->pass_state_.get()
-                   ->preserved_analyses.IsPreserved<pir::pass::QuantAnalysis>(),
-               true);
+          phi::errors::InvalidArgument("QuantAnalysis should be Preserved"));
 
       quant_analysis.scale_map[match_ctx.Tensor("x")] =
           std::vector<float>({input_scale});

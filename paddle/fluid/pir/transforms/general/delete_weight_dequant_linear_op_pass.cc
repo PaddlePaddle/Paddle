@@ -168,7 +168,6 @@ class DeleteWeightDequantLinearOpPattern : public paddle::drr::DrrPatternBase {
                   ->preserved_analyses.IsPreserved<pir::pass::Int8Analysis>(),
               true,
               phi::errors::InvalidArgument("Int8Analysis should be Preserved"));
-
           int8_analysis.enable_int8 = true;
         }
       }
