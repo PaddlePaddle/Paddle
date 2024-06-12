@@ -4333,16 +4333,16 @@ void SplitWithNumInferMeta(const MetaTensor& x,
         num,
         0,
         phi::errors::InvalidArgument("Attr(num_or_sections) should not be 0."));
-    PADDLE_ENFORCE_EQ(input_axis_dim % num,
-                      0,
-                      phi::errors::InvalidArgument(
-                          "The input's size along the split dimension "
-                          "must be evenly divisible by Attr(num_or_sections). "
-                          "But received Attr(num_or_sections) "
-                          "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
-                          num,
-                          x.dims(),
-                          axis_value));
+    // PADDLE_ENFORCE_EQ(input_axis_dim % num,
+    //                   0,
+    //                   phi::errors::InvalidArgument(
+    //                       "The input's size along the split dimension "
+    //                       "must be evenly divisible by Attr(num_or_sections).
+    //                       " "But received Attr(num_or_sections) "
+    //                       "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
+    //                       num,
+    //                       x.dims(),
+    //                       axis_value));
 
     for (int i = 0; i < num; ++i) {
       sections_vec.push_back(input_axis_dim / num);
