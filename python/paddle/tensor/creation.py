@@ -3074,13 +3074,15 @@ def cauchy_(
 
 @dygraph_only
 def geometric_(
-    x: paddle.Tensor, probs, name: str | None = None
+    x: paddle.Tensor,
+    probs: float | paddle.Tensor,
+    name: str | None = None,
 ) -> paddle.Tensor:
     """Fills the tensor with numbers drawn from the Geometric distribution.
 
     Args:
         x (Tensor): the tensor will be filled, The data type is float32 or float64.
-        probs (Real|Tensor): Probability parameter.
+        probs (float|Tensor): Probability parameter.
             The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
