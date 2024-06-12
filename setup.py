@@ -1040,10 +1040,6 @@ def get_paddle_extra_install_requirements():
         return []
 
 
-def extend_package_data(package_data, module, extend_list):
-    package_data[module] = package_data.get(module, []) + extend_list
-
-
 def get_package_data_and_package_dir():
     if os.name != 'nt':
         package_data = {
@@ -1360,11 +1356,16 @@ def get_package_data_and_package_dir():
         ext_modules = []
 
     # type hints
-    extend_package_data(package_data, "paddle", ["py.typed"])
-    extend_package_data(package_data, "paddle.framework", ["*.pyi"])
-    extend_package_data(package_data, "paddle.base", ["*.pyi"])
-    extend_package_data(package_data, "paddle.pir", ["*.pyi"])
-    extend_package_data(package_data, "paddle.tensor", ["tensor.pyi"])
+    package_data['paddle'] = package_data.get('paddle', []) + ['py.typed']
+    package_data['paddle.framework'] = package_data.get(
+        'paddle.framework', []
+    ) + ['*.pyi']
+    package_data['paddle.base'] = package_data.get('paddle.base', []) + [
+        '*.pyi'
+    ]
+    package_data['paddle.tensor'] = package_data.get('paddle.tensor', []) + [
+        'tensor.pyi'
+    ]
 
     return package_data, package_dir, ext_modules
 
