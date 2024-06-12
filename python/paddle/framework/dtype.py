@@ -113,8 +113,8 @@ def bind_datatype():
     float64 = DataType.FLOAT64
     float16 = DataType.FLOAT16
     bfloat16 = DataType.BFLOAT16
-    float8_e4m3fn = DataType.FP8_E4M3FN
-    float8_e5m2 = DataType.FP8_E5M2
+    float8_e4m3fn = DataType.FLOAT8_E4M3FN
+    float8_e5m2 = DataType.FLOAT8_E5M2
 
     complex64 = DataType.COMPLEX64
     complex128 = DataType.COMPLEX128
