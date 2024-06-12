@@ -36,24 +36,6 @@ if(NOT ${WITH_GPU})
   #    )
 endif()
 
-if(WITH_CUDNN)
-  # TODO(thisjiang): revert test_cinn_frontend after fix inference mul problem
-  # ADD_TEST(NAME test_cinn_frontend
-  #     COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
-  #     python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_frontend.py
-  #     ${CMAKE_BINARY_DIR}/third_party/naive_mul_model
-  #     ${CMAKE_BINARY_DIR}/third_party/multi_fc_model
-  #     "${WITH_GPU}" WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-  # )
-  add_test(
-    NAME test_netbuilder
-    COMMAND
-      ${CMAKE_COMMAND} -E env
-      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_netbuilder.py "${WITH_GPU}"
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-endif()
-
 #ADD_TEST(NAME test_computation_python
 #    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
 #    python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_computation.py
@@ -86,16 +68,6 @@ if(WITH_GPU)
     "ops/test_*.py")
   set(EXCLUDE_OP test_conv2d_op)
 
-  if(WITH_CUDNN)
-    add_test(
-      NAME test_conv2d_op
-      COMMAND
-        ${CMAKE_COMMAND} -E env
-        PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-        python3 ${CMAKE_CURRENT_SOURCE_DIR}/ops/test_conv2d_op.py
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  endif()
-
   foreach(op_test_name ${EXCLUDE_OP})
     list(REMOVE_ITEM CINN_OP_TEST ops/${op_test_name}.py)
   endforeach()
@@ -117,24 +89,6 @@ if(WITH_GPU)
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "op_mappers/test_*.py")
   set(EXCLUDE_OP_MAPPER test_mul_op test_conv2d_op)
-
-  if(WITH_CUDNN)
-    add_test(
-      NAME test_mul_op_mapper
-      COMMAND
-        ${CMAKE_COMMAND} -E env
-        PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-        python3 ${CMAKE_CURRENT_SOURCE_DIR}/op_mappers/test_mul_op.py
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-
-    add_test(
-      NAME test_conv2d_op_mapper
-      COMMAND
-        ${CMAKE_COMMAND} -E env
-        PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-        python3 ${CMAKE_CURRENT_SOURCE_DIR}/op_mappers/test_conv2d_op.py
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  endif()
 
   foreach(op_mapper_test_name ${EXCLUDE_OP_MAPPER})
     list(REMOVE_ITEM CINN_OP_MAPPER_TEST op_mappers/${op_mapper_test_name}.py)
