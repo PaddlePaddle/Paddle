@@ -2530,8 +2530,8 @@ def renorm(x: Tensor, p: float, axis: int, max_norm: float) -> Tensor:
         .. code-block:: python
 
             >>> import paddle
-            >>> input = [[[2.0, 2, -2], [3, 0.3, 3]],
-            ...          [[2, -8, 2],   [3.1, 3.7, 3]]]
+            >>> input = [[[2.0, 2.0, -2.0], [3.0, 0.3, 3.0]],
+            ...          [[2.0, -8.0, 2.0], [3.1, 3.7, 3.0]]]
             >>> x = paddle.to_tensor(input,dtype='float32')
             >>> y = paddle.renorm(x, 1.0, 2, 2.05)
             >>> print(y)
