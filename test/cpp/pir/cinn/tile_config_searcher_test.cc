@@ -88,6 +88,10 @@ TEST(ConfigSearcher, TestReduceDemo) {
   constexpr int kMaxThreadsPerBlock = 1024;
 
   // Define the size of the entire grid search space.
+  //   constexpr int spatial_left_bound = 32;
+  //   constexpr int spatial_right_bound = 4096;
+  //   constexpr int reduce_left_bound = 32;
+  //   constexpr int reduce_right_bound = 4096;
   constexpr int spatial_left_bound = 32;
   constexpr int spatial_right_bound = 4096;
   constexpr int reduce_left_bound = 32;
@@ -207,7 +211,8 @@ TEST(ConfigSearcher, TestReduceDemo) {
           std::move(obj_func), candidate_range, constraints);
       auto search_res = searcher.Search();
       LOG(INFO) << "spatial tile dimension left bound = " << s_dimension_lower
-                << ", reduce tile dimension left bound = " << r_dimension_lower << std::endl;
+                << ", reduce tile dimension left bound = " << r_dimension_lower
+                << std::endl;
       LOG(INFO) << "min score = " << search_res.first;
       LOG(INFO) << "best candidate: "
                 << cinn::utils::Join<int>(search_res.second, ", ");
