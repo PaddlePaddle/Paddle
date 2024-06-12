@@ -2506,6 +2506,7 @@ def split(x, num_or_sections, axis=0, name=None):
         if isinstance(dim, int):
             assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
             dim = (len(input.shape) + dim) if dim < 0 else dim
+            dim = (dim - len(input.shape)) if dim >= len(input.shape) else dim
 
         input_shape = input.shape
 

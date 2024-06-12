@@ -351,3 +351,8 @@ def load_tests(loader, tests, pattern):
             for test_class in [TestSimpleRNNCell, TestGRUCell, TestLSTMCell]:
                 suite.addTest(test_class(bias, device))
     return suite
+
+
+if __name__ == "__main__":
+    paddle.enable_static()
+    unittest.main()

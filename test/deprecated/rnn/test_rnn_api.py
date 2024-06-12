@@ -22,7 +22,6 @@ import unittest
 import numpy as np
 
 from paddle import base
-from paddle.base import framework
 
 bidirectional_list = ["bidirectional", "bidirect"]
 
@@ -91,9 +90,9 @@ class TestSimpleRNN(unittest.TestCase):
 
                 self.fetch_list = [st_out, st_last_h]
 
-                self.exe.run(framework.default_startup_program())
+                self.exe.run(paddle.static.default_startup_program())
 
-                self.main_program = framework.default_main_program()
+                self.main_program = paddle.static.default_main_program()
 
             paddle.disable_static(self.place)
 
@@ -194,9 +193,9 @@ class TestGRU(unittest.TestCase):
 
                 self.fetch_list = [st_out, st_last_h]
 
-                self.exe.run(framework.default_startup_program())
+                self.exe.run(paddle.static.default_startup_program())
 
-                self.main_program = framework.default_main_program()
+                self.main_program = paddle.static.default_main_program()
 
             paddle.disable_static(self.place)
 
@@ -306,9 +305,9 @@ class TestGRUBackward(unittest.TestCase):
                 sgd.minimize(loss)
                 self.fetch_list = [st_out, st_last_h, "pre_h@GRAD", "x@GRAD"]
 
-                self.exe.run(framework.default_startup_program())
+                self.exe.run(paddle.static.default_startup_program())
 
-                self.main_program = framework.default_main_program()
+                self.main_program = paddle.static.default_main_program()
 
             paddle.disable_static(self.place)
 
