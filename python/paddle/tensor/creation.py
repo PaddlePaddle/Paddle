@@ -102,7 +102,7 @@ def create_global_var(
                            Default: False
         force_cpu (bool, optional): Force this variable to be on CPU.
                          Default: False
-        name(str|None, optional): For detailed information, please refer to
+        name (str|None, optional): For detailed information, please refer to
            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Returns:
