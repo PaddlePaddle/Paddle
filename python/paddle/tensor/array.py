@@ -47,7 +47,7 @@ def array_length(array):
         array (list|Tensor): The input array that will be used to compute the length. In dynamic mode, ``array`` is a Python list. But in static graph mode, array is a Tensor whose VarType is LOD_TENSOR_ARRAY.
 
     Returns:
-        Tensor: 0-D Tensor with shape [], which is the length of array.
+        Tensor, 0-D Tensor with shape [], which is the length of array.
 
     Examples:
         .. code-block:: python
@@ -131,7 +131,7 @@ def array_read(array, i):
             specified read position of ``array``.
 
     Returns:
-        Tensor: A Tensor that is read at the specified position of ``array``.
+        Tensor, A Tensor that is read at the specified position of ``array``.
 
     Examples:
         .. code-block:: python
@@ -226,7 +226,7 @@ def array_write(
             But in static graph mode, array is a Tensor whose ``VarType`` is ``LOD_TENSOR_ARRAY``.
 
     Returns:
-        list|Tensor: The input ``array`` after ``x`` is written into.
+        list|Tensor, The input ``array`` after ``x`` is written into.
 
     Examples:
         .. code-block:: python
@@ -322,7 +322,7 @@ def create_array(
                     All values in initialized list should be a Tensor.
 
     Returns:
-        list|Tensor: An empty array. In dynamic mode, ``array`` is a Python list. But in static graph mode, array is a Tensor
+        list|Tensor, An empty array. In dynamic mode, ``array`` is a Python list. But in static graph mode, array is a Tensor
         whose ``VarType`` is ``LOD_TENSOR_ARRAY``.
 
     Examples:
