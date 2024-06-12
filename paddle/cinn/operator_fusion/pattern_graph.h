@@ -329,21 +329,6 @@ struct CanFuseReduceTreeAndTrivialMatcher {
 };
 
 template <typename T>
-struct HorizontalCheckMiddleOutputVar {
-  bool operator()(const PatternGraph<T>& graph,
-                  const PatternNodePtr<T>& lhs,
-                  const PatternNodePtr<T>& rhs) {
-    for (const auto& i : lhs->downstream()) {
-      if (i == rhs) return false;
-    }
-    for (const auto& i : lhs->upstream()) {
-      if (i == rhs) return false;
-    }
-    return true;
-  }
-};
-
-template <typename T>
 struct HorizontalFusionConstrain {
   bool operator()(const PatternGraph<T>& graph,
                   const PatternNodePtr<T>& lhs,
