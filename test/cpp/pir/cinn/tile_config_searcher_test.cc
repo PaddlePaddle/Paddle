@@ -93,9 +93,9 @@ TEST(ConfigSearcher, TestReduceDemo) {
   //   constexpr int reduce_left_bound = 32;
   //   constexpr int reduce_right_bound = 4096;
   constexpr int spatial_left_bound = 32;
-  constexpr int spatial_right_bound = 4096;
+  constexpr int spatial_right_bound = 32;
   constexpr int reduce_left_bound = 32;
-  constexpr int reduce_right_bound = 4096;
+  constexpr int reduce_right_bound = 32;
   constexpr bool is_spatial_dynamic = false;
   constexpr bool is_reduce_dynamic = true;
 
