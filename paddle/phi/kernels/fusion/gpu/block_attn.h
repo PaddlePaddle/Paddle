@@ -318,12 +318,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   if (tid == 0) {
     qk *= params.inv_sqrt_dh;
     qk_max = qk;
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-    if (hi == 0) {
-      printf("QK max is: %f \n", qk_max);
-      printf("QK is: %f \n", qk);
-    }
-#endif
     qk_smem[act_time_step] = qk;
   }
   __syncthreads();
@@ -389,12 +383,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
     if (ti < act_time_step && tid % THREADS_PER_KEY == 0) {
       qk_max = fmaxf(qk_max, qk);
       qk_smem[ti] = qk;
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      if (hi == 0) {
-        printf("Tid is: %d, Query matmul KCache QK max is: %f \n", ti, qk_max);
-        printf("Tid is: %d, Query matmul KCache QK is: %f \n", ti, qk);
-      }
-#endif
     }
   }
 
@@ -433,11 +421,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
   for (int ti = tid; ti <= act_time_step; ti += THREADS_PER_BLOCK) {
     convert_from_float(logits_smem[ti], qk_smem[ti] * inv_sum);
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-    if (hi == 0) {
-      printf("Tid is: %d, logits_smem is: %f \n", ti, logits_smem[ti]);
-    }
-#endif
   }
   __syncthreads();
 
@@ -807,12 +790,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
   if (lane_id == 0) {
     qk *= params.inv_sqrt_dh;
     qk_max = qk;
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-    if (hi == 0) {
-      printf("QK max is: %f \n", qk_max);
-      printf("QK is: %f \n", qk);
-    }
-#endif
     qk_smem[act_time_step * GQA_SUB_PARTITION_SIZE + warp_id] = qk;
   }
   __syncthreads();
@@ -941,11 +918,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
       convert_from_float(
           logits_smem[ti * GQA_SUB_PARTITION_SIZE + local_hi],
           qk_smem[ti * GQA_SUB_PARTITION_SIZE + local_hi] * inv_sum);
-#ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
-      if (hi == 0) {
-        printf("Tid is: %d, logits_smem is: %f \n", ti, logits_smem[ti]);
-      }
-#endif
     }
   }  // for (int local_hi
   __syncthreads();
@@ -1324,11 +1296,11 @@ template <typename T,
           int THREADS_PER_BLOCK,
           typename LoadFunc,
           typename StoreFunc>
-void dispatch_blha_impl_use_nf4(const Block_AttN_params<T> &params,
-                                const cudaStream_t &stream,
-                                LoadFunc load_func,
-                                StoreFunc store_func,
-                                const int use_cachekv_int8) {
+void dispatch_blha_impl(const Block_AttN_params<T> &params,
+                        const cudaStream_t &stream,
+                        LoadFunc load_func,
+                        StoreFunc store_func,
+                        const int use_cachekv_int8) {
   constexpr int THREADS_PER_VALUE = Dh_MAX * sizeof(T) / 16;
 
   if (use_cachekv_int8 > 0) {
@@ -1367,7 +1339,7 @@ void dispatch_blha_impl_key_and_thread(const Block_AttN_params<T> &params,
                                        LoadFunc load_func,
                                        StoreFunc store_func,
                                        const int use_cachekv_int8) {
-  dispatch_blha_impl_use_nf4<T, Dh, Dh_MAX, BlockSize, 4, 256>(
+  dispatch_blha_impl<T, Dh, Dh_MAX, BlockSize, 4, 256>(
       params, stream, load_func, store_func, use_cachekv_int8);
 }
 
@@ -2381,7 +2353,7 @@ void rotary_qk_variable(
     bool use_neox_style = false) {
   int elem_nums = token_num * 2 * head_num * dim_head;  // just q and k
   if (use_neox_style) {
-    elem_nums = token_num * head_num * dim_head;
+    elem_nums /= 2;
   }
   constexpr int PackSize = 16 / sizeof(T);
   const int pack_num = elem_nums / PackSize;
@@ -2436,7 +2408,6 @@ __global__ void GQAVariableLengthRotaryKernel(
   constexpr int HalfVecSize = VecSize / 2;
   using LoadEmbT = phi::AlignedVector<float, HalfVecSize>;
   LoadT src_vec;
-  LoadT bias_vec;
   LoadEmbT cos_emb_vec;
   LoadEmbT sin_emb_vec;
   int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -2496,6 +2467,9 @@ void gqa_rotary_qk_variable(
     bool use_neox_style = false) {
   const int elem_nums =
       token_num * (q_head_num + kv_head_num) * dim_head;  // just q and k
+  if (use_neox_style) {
+    elem_nums /= 2;
+  }
   constexpr int PackSize = 16 / sizeof(T);
   const int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
