@@ -993,7 +993,8 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
         float logit = logits_smem[ti * GQA_SUB_PARTITION_SIZE + local_hi];
         out[local_hi] = fma(logit, cast_to_float(v), out[local_hi]);
 #else
-        DataType_ logit = static_cast<DataType_>(logits_smem[ti * GQA_SUB_PARTITION_SIZE + local_hi]]);
+        DataType_ logit = static_cast<DataType_>(
+            logits_smem[ti * GQA_SUB_PARTITION_SIZE + local_hi]);
         // Update the partial sums.
         out[local_hi] = fma(logit, v, out[local_hi]);
 #endif
