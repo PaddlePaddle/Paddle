@@ -70,6 +70,7 @@ class FusionShapeOpsPattern
         rewriter.Insert(new_op);
       }
     }
+
     rewriter.EraseOp(fusion_op);
   }
 };

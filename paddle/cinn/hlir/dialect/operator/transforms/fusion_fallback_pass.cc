@@ -88,6 +88,7 @@ class FusionOpsPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
         rewriter.Insert(new_op);
       }
     }
+
     rewriter.EraseOp(fusion_op);
     return true;
   }
