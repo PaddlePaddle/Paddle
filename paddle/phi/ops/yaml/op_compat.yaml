@@ -3603,6 +3603,7 @@
   extra :
     outputs : [XShape]
     attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", str mkldnn_data_type = "float32"]
+  manual_signature : [transpose,transpose_grad]
 
 - op : triangular_solve
   backward : triangular_solve_grad

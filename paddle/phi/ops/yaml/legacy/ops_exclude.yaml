@@ -84,7 +84,6 @@
 - swish
 - sync_batch_norm_
 - trans_layout
-- transpose
 - tril
 - tril_indices
 - triu

@@ -44,8 +44,6 @@
 - swish_grad
 - sync_batch_norm_grad
 - trans_layout_grad
-- transpose_double_grad
-- transpose_grad
 - tril_grad
 - triu_grad
 - unpool_grad
