@@ -95,15 +95,21 @@ std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos);
 std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos);
 pir::Value CastPyArg2Value(PyObject* obj,
                            const std::string& op_type,
-                           size_t arg_pos);
+                           size_t arg_pos,
+                           bool dispensable = false);
 paddle::optional<pir::Value> CastPyArg2OptionalValue(PyObject* obj,
                                                      const std::string& op_type,
-                                                     size_t arg_pos);
+                                                     size_t arg_pos,
+                                                     bool dispensable = false);
 std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
                                                 const std::string& op_type,
-                                                size_t arg_pos);
+                                                size_t arg_pos,
+                                                bool dispensable = false);
 paddle::optional<std::vector<pir::Value>> CastPyArg2OptionalVectorOfValue(
-    PyObject* obj, const std::string& op_type, size_t arg_pos);
+    PyObject* obj,
+    const std::string& op_type,
+    size_t arg_pos,
+    bool dispensable = false);
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
@@ -148,7 +154,8 @@ PyObject* ToPyObject(const phi::distributed::Placements& value);
 PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
-PyObject* ToPyObject(const phi::DataType& type);
+PyObject* ToPyObject(const phi::DataType& dtype);
+PyObject* ToPyObject(const std::vector<phi::DataType>& dtypes);
 PyObject* ToPyObject(const void* value);
 PyObject* ToPyObject(const std::unordered_map<int, int>& value);
 PyObject* ToPyObject(

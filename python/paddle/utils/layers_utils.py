@@ -13,12 +13,15 @@
 # limitations under the License.
 
 import copy
+import typing
 from collections import defaultdict
 from collections.abc import Sequence
+from typing import Any, Dict, TypeVar, Union
 from uuid import uuid4
 from weakref import WeakKeyDictionary
 
 import numpy as np
+from typing_extensions import TypeGuard
 
 import paddle
 from paddle.pir.core import convert_np_dtype_to_dtype_
@@ -27,10 +30,15 @@ from ..base.data_feeder import check_dtype, convert_dtype
 from ..base.framework import (
     Block,
     Variable,
-    _current_expected_place,
     in_dygraph_mode,
 )
 from ..pir import Value
+
+_T = TypeVar("_T")
+
+Structure = Union[
+    _T, Dict[str, "Structure[_T]"], typing.Sequence["Structure[_T]"]
+]
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -103,7 +111,7 @@ def convert_to_list(value, n, name, dtype=int):
         return value_list
 
 
-def is_sequence(seq):
+def is_sequence(seq: Any) -> TypeGuard[typing.Sequence[Any]]:
     """
     Whether `seq` is an entry or nested structure
     """
@@ -141,24 +149,10 @@ def _hash_with_id(*args):
     return hash(info)
 
 
-def _sorted(dict_):
-    """
-    Returns a sorted list of the dict keys, with error if keys not sortable.
-    """
-    try:
-        return sorted(dict_.keys())
-    except TypeError:
-        raise TypeError("nest only supports dicts with sortable keys.")
-
-
 def _yield_value(iterable):
     if isinstance(iterable, dict):
-        # Iterate through dictionaries in a deterministic order by sorting the
-        # keys. Notice this means that we ignore the original order of `OrderedDict`
-        # instances. This is intentional, to avoid potential bugs caused by mixing
-        # ordered and plain dicts (e.g., flattening a dict but using a
-        # corresponding `OrderedDict` to pack it back).
-        for key in _sorted(iterable):
+        # NOTE: Keep order unchanged as python dict is ordered since python3.6
+        for key in iterable:
             yield iterable[key]
     else:
         yield from iterable
@@ -179,7 +173,7 @@ def to_sequence(nest):
         return [nest]
 
 
-def flatten(nest):
+def flatten(nest: Structure[_T]) -> typing.Sequence[_T]:
     """
         :alias_main: paddle.flatten
         :alias: paddle.flatten,paddle.tensor.flatten,paddle.tensor.manipulation.flatten
@@ -198,12 +192,7 @@ def _sequence_like(instance, args):
     Convert the sequence `args` to the same type as `instance`.
     """
     if isinstance(instance, dict):
-        # Pack dictionaries in a deterministic order by sorting the keys.
-        # Notice this means that we ignore the original order of `OrderedDict`
-        # instances. This is intentional, to avoid potential bugs caused by mixing
-        # ordered and plain dicts (e.g., flattening a dict but using a
-        # corresponding `OrderedDict` to pack it back).
-        result = dict(zip(_sorted(instance), args))
+        result = dict(zip(instance, args))
         return type(instance)((key, result[key]) for key in instance.keys())
     elif (
         isinstance(instance, tuple)
@@ -383,10 +372,7 @@ def _contain_var(list_or_tuple):
     return False
 
 
-def get_int_tensor_list(ele_list, place=None, default_dtype='int64'):
-    if place is None:
-        place = _current_expected_place()
-
+def get_int_tensor_list(ele_list, default_dtype='int64'):
     int_tensor_list = []
     for ele in ele_list:
         if isinstance(ele, paddle.pir.Value):
@@ -397,11 +383,11 @@ def get_int_tensor_list(ele_list, place=None, default_dtype='int64'):
                 ele = paddle.reshape(ele, [])
             int_tensor_list.append(ele)
         else:
-            temp_out = paddle.full(
-                [],
-                ele,
-                convert_np_dtype_to_dtype_(np.dtype(default_dtype)),
-                place,
+            temp_out = paddle.tensor.fill_constant(
+                shape=[],
+                dtype=convert_np_dtype_to_dtype_(np.dtype(default_dtype)),
+                value=ele,
+                force_cpu=True,
             )
             int_tensor_list.append(temp_out)
     return int_tensor_list

@@ -31,8 +31,7 @@
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 std::shared_ptr<gloo::transport::Device> CreateDeviceForInterface(
     const std::string& ifname) {
   gloo::transport::tcp::attr attr;
@@ -48,7 +47,7 @@ std::shared_ptr<gloo::transport::Device> CreateDeviceForHostname(
 }
 
 std::shared_ptr<gloo::transport::Device> CreateDefaultDevice() {
-  std::array<char, HOST_NAME_MAX> hostname;
+  std::array<char, HOST_NAME_MAX> hostname = {};
   auto ret = ::gethostname(hostname.data(), HOST_NAME_MAX);
   PADDLE_ENFORCE_EQ(
       ret,
@@ -106,5 +105,4 @@ void send_recv(SendRecvOptions* opts) {
   }
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

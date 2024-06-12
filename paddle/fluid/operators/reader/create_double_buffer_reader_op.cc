@@ -15,16 +15,14 @@
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
-namespace paddle {
-namespace operators {
-namespace reader {
+namespace paddle::operators::reader {
 class CreateDoubleBufferReaderOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
 
  private:
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
+               const phi::Place& dev_place) const override {
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
@@ -44,18 +42,18 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
     }
 
     auto place_str = Attr<std::string>("place");
-    platform::Place place;
+    phi::Place place;
     if (place_str == "AUTO") {
       place = dev_place;
     } else if (place_str == "PLACE(CPU)") {
-      place = platform::CPUPlace();
+      place = phi::CPUPlace();
     } else {
       place_str = place_str.substr(0, place_str.length() - 1);
       std::istringstream sin(place_str);
       sin.seekg(std::string("PLACE(GPU:").size(), std::ios::beg);  // NOLINT
       size_t num = 0;
       sin >> num;
-      place = platform::CUDAPlace(static_cast<int>(num));
+      place = phi::GPUPlace(static_cast<int>(num));
     }
 
     VLOG(10) << "Create new double buffer reader on " << place;
@@ -89,9 +87,7 @@ class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
   }
 };
 
-}  // namespace reader
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators::reader
 
 namespace ops = paddle::operators::reader;
 REGISTER_DECORATED_READER_OPERATOR(create_double_buffer_reader,

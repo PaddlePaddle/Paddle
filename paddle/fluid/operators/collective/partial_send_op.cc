@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/partial_send_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class PartialSendOp : public framework::OperatorWithKernel {
  public:
@@ -84,11 +83,9 @@ Reference: https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/p2p.h
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(partial_send,
                              ops::PartialSendOp,

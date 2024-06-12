@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class ShareDataOp : public framework::OperatorWithKernel {
  public:
@@ -58,11 +57,10 @@ Return a tensor $Out$ that shares data with the input tensor $X$ and without ten
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 REGISTER_OPERATOR(
     share_data,
     ops::ShareDataOp,

@@ -17,7 +17,7 @@
 #include <math.h>
 
 #include "paddle/common/ddim.h"
-#include "paddle/phi/kernels/funcs/algorithm.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
 namespace phi {
@@ -59,6 +59,54 @@ class GpuAndCpuSearchSortedCompute {
   static HOSTDEVICE bool IsInf(int x UNUSED) { return false; }
   static HOSTDEVICE bool IsInf(int64_t x UNUSED) { return false; }
 
+  HOSTDEVICE inline size_t LowerBound(const T1* x, size_t num, const T2& val) {
+    // @{ Group LowerBound
+    // The following code is from
+    // https://en.cppreference.com/w/cpp/algorithm/lower_bound
+    using MT1 = typename phi::dtype::MPTypeTrait<T1>::Type;
+    using MT2 = typename phi::dtype::MPTypeTrait<T2>::Type;
+    MT2 val_mt = static_cast<MT2>(val);
+
+    auto* first = x;
+    int64_t count = static_cast<int64_t>(num);
+    while (count > 0) {
+      int64_t step = (count >> 1);
+      auto* it = first + step;
+      MT1 it_mt = static_cast<MT1>(*it);
+      if (it_mt < val_mt) {
+        first = ++it;
+        count -= (step + 1);
+      } else {
+        count = step;
+      }
+    }
+    return static_cast<size_t>(first - x);
+  }
+
+  HOSTDEVICE inline size_t UpperBound(const T1* x, size_t num, const T2& val) {
+    // @{ Group UpperBound
+    // The following code is from
+    // https://en.cppreference.com/w/cpp/algorithm/upper_bound
+    using MT1 = typename phi::dtype::MPTypeTrait<T1>::Type;
+    using MT2 = typename phi::dtype::MPTypeTrait<T2>::Type;
+    MT2 val_mt = static_cast<MT2>(val);
+
+    auto* first = x;
+    int64_t count = static_cast<int64_t>(num);
+    while (count > 0) {
+      auto step = (count >> 1);
+      auto* it = first + step;
+      MT1 it_mt = static_cast<MT1>(*it);
+      if (val_mt < it_mt) {
+        count = step;
+      } else {
+        first = ++it;
+        count -= (step + 1);
+      }
+    }
+    return static_cast<size_t>(first - x);
+  }
+
   HOSTDEVICE GpuAndCpuSearchSortedCompute(const T1* sequence_data,
                                           const T2* value_data,
                                           bool right,
@@ -74,19 +122,21 @@ class GpuAndCpuSearchSortedCompute {
         seq_size_(seq_size),
         out_data_(out_data) {}
   HOSTDEVICE void operator()(int64_t idx) {
+    using MT2 = typename phi::dtype::MPTypeTrait<T2>::Type;
     const T2* value_ptr = value_data_ + idx;
+    const MT2 value_mt = static_cast<MT2>(*value_ptr);
     const T1* sequence_ptr = is_1d_boundaries_
                                  ? sequence_data_
                                  : sequence_data_ + idx / val_size_ * seq_size_;
-    if (IsInf(*value_ptr) || IsNan(*value_ptr)) {
+    if (IsInf(value_mt) || IsNan(value_mt)) {
       out_data_[idx] = seq_size_;
     } else {
       if (right_) {
-        out_data_[idx] = static_cast<OutType>(phi::funcs::UpperBound<T1, T2>(
-            sequence_ptr, seq_size_, *value_ptr));
+        out_data_[idx] = static_cast<OutType>(
+            UpperBound(sequence_ptr, seq_size_, *value_ptr));
       } else {
-        out_data_[idx] = static_cast<OutType>(phi::funcs::LowerBound<T1, T2>(
-            sequence_ptr, seq_size_, *value_ptr));
+        out_data_[idx] = static_cast<OutType>(
+            LowerBound(sequence_ptr, seq_size_, *value_ptr));
       }
     }
   }
@@ -166,11 +216,16 @@ void VisitDataTypeForSearchSorted(DataType type, Visitor visitor) {
     visitor.template apply<int>();
   } else if (type == DataType::INT64) {
     visitor.template apply<int64_t>();
+  } else if (type == DataType::FLOAT16) {
+    visitor.template apply<phi::dtype::float16>();
+  } else if (type == DataType::BFLOAT16) {
+    visitor.template apply<phi::dtype::bfloat16>();
   } else {
     PADDLE_THROW(errors::InvalidArgument(
         "The received values data type %s can not meet input requirements. "
         "Because the given values data type of searchsorted operators must be "
-        "float32, float64, int32 or int64. Please input appropriate "
+        "bfloat16, float16, float32, float64, int32 or int64. Please input "
+        "appropriate "
         "sorted_sequence again! ",
         type));
   }

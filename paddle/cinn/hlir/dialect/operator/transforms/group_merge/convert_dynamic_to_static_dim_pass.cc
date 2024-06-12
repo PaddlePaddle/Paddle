@@ -104,9 +104,6 @@ class DynamicToStaticConverter {
   }
 
   bool Convert() {
-    if (!IsSymbolFullyInfered()) {
-      return false;
-    }
     bool updated = false;
     VisitEachValue(fusion_op_, [&](pir::Value value) {
       updated |= UpdateValueShape(value);
@@ -116,16 +113,6 @@ class DynamicToStaticConverter {
   }
 
  private:
-  bool IsSymbolFullyInfered() {
-    bool is_infered = true;
-    VisitEachValue(fusion_op_, [&](pir::Value value) {
-      if (!shape_analysis_->HasShapeOrDataForValue(value)) {
-        is_infered = false;
-      }
-    });
-    return is_infered;
-  }
-
   DimExpr4SymbolName InitDimExpr4SymbolName() {
     const auto* map = GetGlobalDynamicToStaticDimMap();
     CHECK(map->has_value());
@@ -178,7 +165,6 @@ class DynamicToStaticConverter {
 
   bool UpdateValueShape(pir::Value value) {
     bool update = false;
-    CHECK(shape_analysis_->HasShapeOrDataForValue(value));
     const auto& origin_shape = GetOriginValueShape(value);
     const auto& target_shape = GetTargetValueShape(value);
     PADDLE_ENFORCE_EQ(

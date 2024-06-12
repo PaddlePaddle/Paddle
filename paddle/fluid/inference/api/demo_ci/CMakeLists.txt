@@ -159,9 +159,9 @@ if(WITH_MKL)
   if(EXISTS ${ONEDNN_PATH})
     include_directories("${ONEDNN_PATH}/include")
     if(WIN32)
-      set(MKLDNN_LIB ${ONEDNN_PATH}/lib/mkldnn.lib)
+      set(ONEDNN_LIB ${ONEDNN_PATH}/lib/mkldnn.lib)
     else()
-      set(MKLDNN_LIB ${ONEDNN_PATH}/lib/libdnnl.so.3)
+      set(ONEDNN_LIB ${ONEDNN_PATH}/lib/libdnnl.so.3)
     endif()
   endif()
 else()
@@ -200,7 +200,7 @@ if(NOT WIN32)
   set(DEPS
       ${DEPS}
       ${MATH_LIB}
-      ${MKLDNN_LIB}
+      ${ONEDNN_LIB}
       glog
       gflags
       protobuf
@@ -212,12 +212,18 @@ if(NOT WIN32)
     set(DEPS
         ${DEPS} ${PADDLE_LIB}/paddle/lib/libphi${CMAKE_SHARED_LIBRARY_SUFFIX}
         ${PADDLE_LIB}/paddle/lib/libcommon${CMAKE_SHARED_LIBRARY_SUFFIX})
+    if(WITH_GPU OR WITH_ROCM)
+      set(DEPS
+          ${DEPS}
+          ${PADDLE_LIB}/paddle/lib/libphi_kernel_gpu${CMAKE_SHARED_LIBRARY_SUFFIX}
+      )
+    endif()
   endif()
 else()
   set(DEPS
       ${DEPS}
       ${MATH_LIB}
-      ${MKLDNN_LIB}
+      ${ONEDNN_LIB}
       glog
       gflags_static
       libprotobuf

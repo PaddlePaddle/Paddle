@@ -26,23 +26,6 @@ from paddle.pir_utils import test_with_pir_api
 
 
 class TestConvDoubleGradCheck(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 4, 3, 3]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-        y = paddle.static.nn.conv2d(x, 2, 1, groups=1, bias_attr=False)
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -66,28 +49,10 @@ class TestConvDoubleGradCheck(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 
 class TestConvDoubleGradCheckTest0(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 4, 3, 3]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-        y = paddle.static.nn.conv2d(x, 2, 1, bias_attr=False)
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -111,28 +76,10 @@ class TestConvDoubleGradCheckTest0(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 
 class TestConvDoubleGradCheckTest1(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 3, 3, 3]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-        y = paddle.static.nn.conv2d(x, 2, 1, padding=1, bias_attr=False)
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -156,28 +103,10 @@ class TestConvDoubleGradCheckTest1(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 
 class TestConv3DDoubleGradCheck(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 4, 3, 4, 2]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-        y = paddle.static.nn.conv3d(x, 2, 1, bias_attr=False)
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -201,28 +130,10 @@ class TestConv3DDoubleGradCheck(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 
 class TestConv3DDoubleGradCheckTest1(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 4, 5, 3, 2]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-        y = paddle.static.nn.conv3d(x, 2, 1, padding=1, bias_attr=False)
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -246,35 +157,10 @@ class TestConv3DDoubleGradCheckTest1(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 
 class TestConv2DoubleGradCheck_AsyPadding(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 2, 3, 3]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-        y = paddle.static.nn.conv2d(
-            input=x,
-            num_filters=2,
-            filter_size=1,
-            padding=[1, 0, 0, 1],
-            bias_attr=False,
-            use_cudnn=True,
-        )
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -298,35 +184,10 @@ class TestConv2DoubleGradCheck_AsyPadding(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 
 class TestConv2DoubleGradCheck_PaddingSAME(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 2, 3, 3]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-        y = paddle.static.nn.conv2d(
-            input=x,
-            num_filters=2,
-            filter_size=1,
-            padding="SAME",
-            bias_attr=False,
-            use_cudnn=True,
-        )
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -350,35 +211,10 @@ class TestConv2DoubleGradCheck_PaddingSAME(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 
 class TestConv2DoubleGradCheck_PaddingVALID(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 2, 3, 3]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-        y = paddle.static.nn.conv2d(
-            input=x,
-            num_filters=2,
-            filter_size=1,
-            padding="VALID",
-            bias_attr=False,
-            use_cudnn=True,
-        )
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -402,37 +238,10 @@ class TestConv2DoubleGradCheck_PaddingVALID(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 
 class TestConv2DoubleGradCheck_ChannelLast(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 2, 3, 3]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-        y = paddle.static.nn.conv2d(
-            input=x,
-            num_filters=2,
-            filter_size=1,
-            padding=[1, 1],
-            bias_attr=False,
-            use_cudnn=True,
-            groups=1,
-            data_format="NHWC",
-        )
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -457,37 +266,10 @@ class TestConv2DoubleGradCheck_ChannelLast(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 
 class TestConv2DoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 2, 3, 3]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-        y = paddle.static.nn.conv2d(
-            input=x,
-            num_filters=2,
-            filter_size=1,
-            padding=[1, 0, 1, 0],
-            bias_attr=False,
-            use_cudnn=True,
-            groups=1,
-            data_format="NHWC",
-        )
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -512,35 +294,10 @@ class TestConv2DoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 
 class TestConv3DDoubleGradCheck_AsyPadding(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 2, 2, 2, 2]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-        y = paddle.static.nn.conv3d(
-            input=x,
-            num_filters=2,
-            filter_size=1,
-            padding=[1, 0, 0, 1, 1, 2],
-            bias_attr=False,
-            use_cudnn=True,
-        )
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -564,36 +321,10 @@ class TestConv3DDoubleGradCheck_AsyPadding(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 
 class TestConv3DoubleGradCheck_PaddingSAME(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 2, 2, 2, 2]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-        y = paddle.static.nn.conv3d(
-            input=x,
-            num_filters=2,
-            filter_size=1,
-            padding="SAME",
-            groups=1,
-            bias_attr=False,
-            use_cudnn=True,
-        )
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -617,35 +348,10 @@ class TestConv3DoubleGradCheck_PaddingSAME(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 
 class TestConv3DoubleGradCheck_PaddingVALID(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 2, 3, 3, 2]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-        y = paddle.static.nn.conv3d(
-            input=x,
-            num_filters=2,
-            filter_size=1,
-            padding="VALID",
-            bias_attr=False,
-            use_cudnn=True,
-        )
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -669,37 +375,10 @@ class TestConv3DoubleGradCheck_PaddingVALID(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 
 class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 2, 2, 2, 3]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-        y = paddle.static.nn.conv3d(
-            input=x,
-            num_filters=2,
-            filter_size=1,
-            padding=[1, 1, 1],
-            bias_attr=False,
-            use_cudnn=True,
-            groups=1,
-            data_format="NDHWC",
-        )
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -724,37 +403,10 @@ class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 
 class TestConv3DDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 2, 2, 2, 3]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-        y = paddle.static.nn.conv3d(
-            input=x,
-            num_filters=2,
-            filter_size=1,
-            padding=[1, 0, 1, 0, 1, 0],
-            bias_attr=False,
-            use_cudnn=True,
-            groups=1,
-            data_format="NDHWC",
-        )
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -779,35 +431,10 @@ class TestConv3DDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 
 class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
-    @prog_scope()
-    def func(self, place):
-        shape = [2, 4, 3, 3]
-        eps = 0.005
-        dtype = np.float32 if base.core.is_compiled_with_rocm() else np.float64
-        x = paddle.static.data('x', shape, dtype)
-
-        # condition of depthwise conv:
-        # use_cudnn == False
-        # groups == filters
-        # num_filters % num_channels == 0
-        y = paddle.static.nn.conv2d(
-            x, shape[1], 1, groups=shape[1], bias_attr=False, use_cudnn=False
-        )
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-
-        w = base.default_main_program().global_block().all_parameters()
-        w_arr = []
-        for p in w:
-            w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
-        gradient_checker.double_grad_check(
-            [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
-        )
-
     @test_with_pir_api
     @prog_scope()
     def func_pir(self, place):
@@ -832,7 +459,6 @@ class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for p in places:
-            self.func(p)
             self.func_pir(p)
 
 

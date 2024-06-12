@@ -15,6 +15,7 @@
 from .tensor import inverse as inv
 from .tensor.linalg import (
     cholesky,
+    cholesky_inverse,
     cholesky_solve,
     cond,
     corrcoef,
@@ -34,6 +35,7 @@ from .tensor.linalg import (
     matrix_rank,
     multi_dot,
     norm,
+    ormqr,
     pca_lowrank,
     pinv,
     qr,
@@ -47,6 +49,7 @@ from .tensor.linalg import (
 
 __all__ = [
     'cholesky',
+    'cholesky_inverse',
     'norm',
     'matrix_norm',
     'vector_norm',
@@ -76,4 +79,5 @@ __all__ = [
     'cholesky_solve',
     'triangular_solve',
     'lstsq',
+    'ormqr',
 ]

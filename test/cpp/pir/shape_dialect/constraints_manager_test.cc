@@ -21,7 +21,7 @@ namespace symbol::test {
 
 TEST(ConstraintsManager, EqualCstr) {
   ConstraintsManager cstr_mgr;
-  DimExprBuilder builder(nullptr);
+  DimExprBuilder builder;
 
   // Eq(Mul(S0,S1),Mul(S2,S3))
   DimExpr sym_expr_0 = builder.Symbol("S0");

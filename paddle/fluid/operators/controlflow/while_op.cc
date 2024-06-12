@@ -63,7 +63,7 @@ class WhileOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     PADDLE_ENFORCE_NOT_NULL(
         scope.FindVar(Input(kCondition)),
         phi::errors::NotFound("Input(Condition) of WhileOp is not found."));
@@ -87,7 +87,7 @@ class WhileOp : public framework::OperatorBase {
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
 
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
     bool is_test = Attr<bool>("is_test");
@@ -125,7 +125,7 @@ class WhileOp : public framework::OperatorBase {
         scope.FindVar(Output(kStepScopes))->GetMutable<StepScopeVar>();
 
     if (!step_scopes->empty()) {
-      platform::DeviceContextPool::Instance().Get(dev_place)->Wait();
+      phi::DeviceContextPool::Instance().Get(dev_place)->Wait();
       for (auto &s : *step_scopes) {
         if (scope.HasKid(s)) {
           scope.DeleteScope(s);
@@ -325,14 +325,14 @@ class WhileGradOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     PADDLE_ENFORCE_EQ(
         Attr<bool>("is_test"),
         false,
         phi::errors::InvalidArgument(
             "WhileGradOp is only callable when is_test is false."));
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);

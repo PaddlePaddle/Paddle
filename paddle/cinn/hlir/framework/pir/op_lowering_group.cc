@@ -74,18 +74,21 @@ std::vector<::pir::Value> OpLoweringGroup::GetGroupOutputValues() const {
   return output_values;
 }
 
-std::unordered_set<::pir::Value> OpLoweringGroup::GetInputOpValues() const {
-  std::unordered_set<::pir::Value> group_inputs;
+std::vector<::pir::Value> OpLoweringGroup::GetInputOpValues() const {
+  std::unordered_set<::pir::Value> visited_values;
+  std::vector<::pir::Value> group_inputs;
   std::unordered_set<::pir::Operation*> ops_set(this->ops_.begin(),
                                                 this->ops_.end());
 
   // count all op's input Value
-  for (auto op : ops_set) {
+  for (auto op : ops_) {
     for (auto& value : op->operands_source()) {
       if (!value || !value.type() || ops_set.count(value.defining_op()))
         continue;
+      if (visited_values.count(value)) continue;
       // if the input value owner op is not in OpSet, it's the group's input
-      group_inputs.insert(value);
+      visited_values.insert(value);
+      group_inputs.push_back(value);
     }
   }
   return group_inputs;
@@ -142,8 +145,9 @@ std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(
     ops_mapper[op] = new_op;
   }
 
+  const auto new_fn_name = this->fn_name_ + "_cloned";
   // Construct Base information for new Group
-  auto new_group = std::make_shared<OpLoweringGroup>(new_ops);
+  auto new_group = std::make_shared<OpLoweringGroup>(new_ops, new_fn_name);
   for (auto* op : this->output_ops_) {
     new_group->output_ops_.insert(ops_mapper.at(op));
   }
@@ -180,7 +184,8 @@ std::ostream& operator<<(std::ostream& os, const OpLoweringGroup& group) {
     os << "}";
   };
   ::pir::IrPrinter printer(os);
-  os << "Group " << group.group_id() << " :\n";
+  os << "Group id: " << group.group_id() << ", func_name: " << group.FuncName()
+     << "\n";
   for (auto* op : group.ops()) {
     printer.PrintOperation(op);
     PrintSymbolDims(*op);

@@ -56,7 +56,7 @@ static void BuildScopeForControlFlowOp(
   }
 }
 
-static void AssignZeroToOutsideTensor(const platform::Place &place,
+static void AssignZeroToOutsideTensor(const phi::Place &place,
                                       const framework::Scope &cur_scope,
                                       const phi::DenseTensor &input_tensor,
                                       phi::DenseTensor *outside_tensor) {
@@ -67,13 +67,13 @@ static void AssignZeroToOutsideTensor(const platform::Place &place,
   outside_tensor->Resize(input_tensor.dims());
   outside_tensor->mutable_data(place, input_tensor.dtype());
   const platform::DeviceContext *dev_ctx =
-      platform::DeviceContextPool::Instance().Get(place);
+      phi::DeviceContextPool::Instance().Get(place);
   phi::funcs::set_constant(*dev_ctx, outside_tensor, 0.0f);
   outside_tensor->set_lod(input_tensor.lod());
 }
 
 static void AssignZeroToParentScope(
-    const platform::Place &place,
+    const phi::Place &place,
     const framework::Scope &scope,
     const std::vector<std::string> &inputs,
     const std::vector<std::string> &outside_grads) {
@@ -141,7 +141,7 @@ static void AssignZeroToParentScope(
 }
 
 static void AssignLocalGradientToParentScope(
-    const platform::Place &place,
+    const phi::Place &place,
     const framework::Scope &cur_scope,
     const framework::Scope &parent_scope,
     const std::vector<std::string> &inside_grads,
@@ -166,7 +166,7 @@ static void AssignLocalGradientToParentScope(
       continue;
     }
     platform::DeviceContext *dev_ctx =
-        platform::DeviceContextPool::Instance().Get(place);
+        phi::DeviceContextPool::Instance().Get(place);
     framework::VisitVarType(*inside_var, AssignFunctor(outside_var, *dev_ctx));
   }
   // Assign zero to the grad_vars that are in outside_grads but not in

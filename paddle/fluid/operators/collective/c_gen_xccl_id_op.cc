@@ -24,8 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/device_manager.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 static void CopyXCCLIDToVar(const std::vector<phi::ccl::CCLRootId>& xccl_ids,
@@ -52,7 +51,7 @@ class CGenXCCLIdOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {}
+               const phi::Place& dev_place) const override {}
 };
 
 #else
@@ -65,7 +64,7 @@ class CGenXCCLIdOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {}
+               const phi::Place& dev_place) const override {}
 };
 
 #endif
@@ -97,8 +96,7 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

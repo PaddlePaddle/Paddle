@@ -180,6 +180,16 @@ void InferXPUContext::SetConvAutotuneInfo(std::string conv_autotune_file,
                           conv_autotune_file_writeback));
   }
 }
+void InferXPUContext::SetContextOption(const char* name, const char* value) {
+  phi::backends::xpu::XPUDeviceGuard guard(GetPlace().GetDeviceId());
+  VLOG(5) << "XPU Set Option name:" << name << " value:" << value;
+  int ret;
+  ret = x_context()->set_option(name, value);
+  PADDLE_ENFORCE_EQ(
+      ret,
+      0,
+      platform::errors::Unavailable("Failed to set XPU option %s.", name));
+}
 
 void InferXPUContext::SetFcAutotuneInfo(std::string fc_autotune_file,
                                         int fc_autotune_level,
@@ -227,7 +237,10 @@ void InferXPUContext::SetFcAutotuneInfo(std::string fc_autotune_file,
 void InferXPUContext::L3CacheAutotune() {
   if (l3_autotune_size_ == 0) return;
   if (holder_map_.empty()) {
-    l3_plan_.RunAutotune(l3_blocks_, l3_size_);
+    bool ret = l3_plan_.RunAutotune(l3_blocks_, l3_size_);
+    if (!ret) {
+      return;
+    }
     auto* plan = l3_plan_.plan();
     int8_t* cur_l3_ptr = reinterpret_cast<int8_t*>(l3_ptr_);
     for (size_t i = 0; i < l3_blocks_.size(); i++) {

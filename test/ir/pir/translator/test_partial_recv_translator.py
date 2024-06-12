@@ -23,6 +23,8 @@ from paddle.base.framework import (
 )
 from paddle.base.layer_helper import LayerHelper
 
+paddle.pir_utils._switch_to_old_ir_()
+
 
 class TestPartialRecvOpTranslator(test_op_translator.TestOpTranslator):
     def append_op(self):

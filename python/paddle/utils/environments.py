@@ -17,6 +17,8 @@ from __future__ import annotations
 import os
 from typing import Generic, TypeVar
 
+from typing_extensions import Self
+
 T = TypeVar("T")
 
 
@@ -100,7 +102,7 @@ class EnvironmentVariableGuard(Generic[T]):
         self.original_value = variable.get()
         self.variable.set(value)
 
-    def __enter__(self) -> EnvironmentVariableGuard:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:

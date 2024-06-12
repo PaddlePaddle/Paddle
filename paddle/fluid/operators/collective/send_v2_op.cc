@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/send_v2_op.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class SendOpV2 : public framework::OperatorWithKernel {
  public:
@@ -78,11 +77,9 @@ Reference: https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/p2p.h
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(send_v2, ops::SendOpV2, ops::SendOpV2Maker);
 

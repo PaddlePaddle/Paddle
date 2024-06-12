@@ -51,7 +51,7 @@ class CConcatOp : public framework::OperatorWithKernel {
                                      rank,
                                      nranks));
 
-    framework::DDim dim = ctx->GetInputDim("X");
+    phi::DDim dim = ctx->GetInputDim("X");
     dim[dim.size() - 1] = dim[dim.size() - 1] * nranks;
     if (dim[dim.size() - 1] < 0) dim[dim.size() - 1] = -1;
     ctx->SetOutputDim("Out", dim);
@@ -105,7 +105,6 @@ AllGather the tensors on different trainers and concat them along the last dimen
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(c_concat,
                   ops::CConcatOp,

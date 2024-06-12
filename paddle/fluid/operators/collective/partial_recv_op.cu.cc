@@ -150,12 +150,12 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
         comm_ctx->Recv(&recv_buf, recv_numel, peer, stream);
       } else {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::ncclRecv(out->data<T>() + offset,
-                                        recv_numel,
-                                        dtype,
-                                        peer,
-                                        comm->comm(),
-                                        stream));
+            phi::dynload::ncclRecv(out->data<T>() + offset,
+                                   recv_numel,
+                                   dtype,
+                                   peer,
+                                   comm->comm(),
+                                   stream));
       }
       VLOG(3) << "rank " << rank << " recv " << recv_numel << " from offset["
               << offset << "] from " << peer;
@@ -172,7 +172,6 @@ class PartialRecvOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(partial_recv,
                           GPU,
@@ -181,7 +180,7 @@ PD_REGISTER_STRUCT_KERNEL(partial_recv,
                           float,
                           double,
 #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-                          plat::bfloat16,
+                          phi::dtype::bfloat16,
 #endif
                           int,
                           int64_t,

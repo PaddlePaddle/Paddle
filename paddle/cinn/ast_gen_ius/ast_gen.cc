@@ -28,6 +28,10 @@ PD_DECLARE_bool(cinn_bucket_compile);
 namespace cinn {
 namespace ast_gen_ius {
 
+bool IsReduceBool(const ir::Expr& lhs, const ir::Expr& rhs) {
+  return lhs.type().is_bool() || rhs.type().is_bool();
+}
+
 ir::Expr ConvertReduceBody(ir::Expr body,
                            ir::Tensor tensor,
                            const std::vector<Expr>& axis_exprs) {
@@ -38,9 +42,17 @@ ir::Expr ConvertReduceBody(ir::Expr body,
 
   switch (reduce_node->reduce_type) {
     case ir::Reduce::kSum:
+      if (IsReduceBool(tensor(axis_exprs), reduce_node->body)) {
+        return ir::Store::Make(
+            tensor, tensor(axis_exprs) || reduce_node->body, axis_exprs);
+      }
       return ir::Store::Make(
           tensor, tensor(axis_exprs) + reduce_node->body, axis_exprs);
     case ir::Reduce::kMul:
+      if (IsReduceBool(tensor(axis_exprs), reduce_node->body)) {
+        return ir::Store::Make(
+            tensor, tensor(axis_exprs) && reduce_node->body, axis_exprs);
+      }
       return ir::Store::Make(
           tensor, tensor(axis_exprs) * reduce_node->body, axis_exprs);
     case ir::Reduce::kMax:
@@ -119,6 +131,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
       } else {
         iter_values.push_back(axis_vars[i]);
       }
+      ir::TryElevateInt32ToInt64({ir::Expr(axis_vars[i]), shape[i]});
     }
     VLOG(4) << "iter_value.size() and block_vars.size() is "
             << iter_values.size() << " " << block_vars.size();
@@ -155,6 +168,7 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
       } else {
         reduce_iter_values.push_back(axis_vars[i]);
       }
+      ir::TryElevateInt32ToInt64({ir::Expr(axis_vars[i]), shape[i]});
     }
     VLOG(4) << "ast gen: reduce body is after replace 0" << reduce_body;
     for (int i = 0; i < reduce_axis.size(); ++i) {
@@ -215,6 +229,9 @@ ir::Expr AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
         ir::ScheduleBlock::Make(
             reduce_block_vars, {}, {}, tensor->name, reduce_body));
     for (int i = static_cast<int>(reduce_axis.size()) - 1; i >= 0; --i) {
+      ir::TryElevateInt32ToInt64({reduce_axis[i],
+                                  reduce_axis[i]->lower_bound,
+                                  reduce_axis[i]->upper_bound});
       reduce_body = ir::For::Make(reduce_axis[i],
                                   reduce_axis[i]->lower_bound,
                                   reduce_axis[i]->upper_bound,

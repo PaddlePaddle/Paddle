@@ -17,9 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#ifdef PADDLE_WITH_XPU_XHPC
 #include "xfa/flash_api.h"
-#endif
 
 namespace phi {
 
@@ -38,11 +36,6 @@ void FlashAttnGradKernel(const Context& ctx,
                          DenseTensor* dq,
                          DenseTensor* dk,
                          DenseTensor* dv) {
-#ifdef PADDLE_WITH_XPU_XHPC
-  if (causal == false) {
-    PADDLE_THROW(phi::errors::Unimplemented("causal should be true"));
-  }
-
   ctx.template Alloc<T>(dq);
   ctx.template Alloc<T>(dk);
   ctx.template Alloc<T>(dv);
@@ -73,6 +66,28 @@ void FlashAttnGradKernel(const Context& ctx,
   const float* softmax_lse_data = softmax_lse.data<float>();
   const XPUType* dout_data = reinterpret_cast<const XPUType*>(dout.data<T>());
 
+  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  const float* bias_data = nullptr;
+  if (attn_mask.get_ptr() != nullptr) {
+    if (attn_mask->dtype() == phi::DataType::FLOAT32) {
+      bias_data = attn_mask->data<float>();
+    } else if (attn_mask->dtype() == phi::DataType::FLOAT16 ||
+               attn_mask->dtype() == phi::DataType::BFLOAT16) {
+      float* bias_tmp = RAII_GUARD.alloc_l3_or_gm<float>(attn_mask->numel());
+      int r = xpu::cast<XPUType, float>(
+          ctx.x_context(),
+          reinterpret_cast<const XPUType*>(attn_mask->data<T>()),
+          bias_tmp,
+          attn_mask->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      bias_data = bias_tmp;
+    } else {
+      errors::Unimplemented(
+          "Unsupported dtype for attention_mask in xpu flash attention, only "
+          "float32, float16 and "
+          "bfloat16 are supported.");
+    }
+  }
   // output
   XPUType* dq_data = reinterpret_cast<XPUType*>(dq->data<T>());
   XPUType* dk_data = reinterpret_cast<XPUType*>(dk->data<T>());
@@ -90,6 +105,9 @@ void FlashAttnGradKernel(const Context& ctx,
   api::VectorParam<int> kvlod{
       kvlod_vec.data(), static_cast<int64_t>(kvlod_vec.size()), nullptr};
 
+  // get seed offset
+  const int64_t* seed_offset_data = seed_offset.data<int64_t>();
+
   // template<typename T, typename TACCUM, typename TGEMM, typename TID = int>
   // int mha_varlen_bwd(xdnn::Context* ctx, const T* dout, const T* q, const T*
   // k, const T* v, const T* out, const TACCUM* softmax_lse, T* dq, T* dk, T*
@@ -104,30 +122,30 @@ void FlashAttnGradKernel(const Context& ctx,
   // dv_maxptr = nullptr, const float* do_maxptr = nullptr);
   int r = baidu::xpu::xfa::mha_varlen_bwd<XPUType, float, tfloat32, int>(
       ctx.x_context(),
-      dout_data,                    // dout
-      q_data,                       // q
-      k_data,                       // k
-      v_data,                       // v
-      out_data,                     // out
-      softmax_lse_data,             // softmax_lse
-      dq_data,                      // dq
-      dk_data,                      // dk
-      dv_data,                      // dv
-      qlod,                         // lod_seqlens_q
-      kvlod,                        // lod_seqlens_k
-      seqlen_q,                     // max_seqlen_q
-      seqlen_k,                     // max_seqlen_k
-      num_heads,                    // head_num
-      num_heads_k,                  // head_num_k
-      head_size,                    // head_dim
-      1.0f / std::sqrt(head_size),  // softmax_scale
-      dropout                       // p_dropout
+      dout_data,                                  // dout
+      q_data,                                     // q
+      k_data,                                     // k
+      v_data,                                     // v
+      out_data,                                   // out
+      softmax_lse_data,                           // softmax_lse
+      dq_data,                                    // dq
+      dk_data,                                    // dk
+      dv_data,                                    // dv
+      qlod,                                       // lod_seqlens_q
+      kvlod,                                      // lod_seqlens_k
+      seqlen_q,                                   // max_seqlen_q
+      seqlen_k,                                   // max_seqlen_k
+      num_heads,                                  // head_num
+      num_heads_k,                                // head_num_k
+      head_size,                                  // head_dim
+      1.0f / std::sqrt(head_size),                // softmax_scale
+      dropout,                                    // p_dropout
+      static_cast<int32_t>(seed_offset_data[0]),  // seed
+      causal,                                     // is_causal
+      nullptr,                                    // attn_mask
+      bias_data                                   // bias
   );
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "mha_varlen_bwd");
-#else
-  PADDLE_THROW(phi::errors::PreconditionNotMet(
-      "re-compile using -DWITH_XPU_XHPC=ON to use FlashAttnGradKernel"));
-#endif
 }
 
 }  // namespace phi

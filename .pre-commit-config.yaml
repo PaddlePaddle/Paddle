@@ -20,7 +20,6 @@ repos:
     -   id: sort-simple-yaml
         files: (ops|backward|op_[a-z_]+)\.yaml$
     -   id: trailing-whitespace
-        files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake|yaml|yml|hook)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists\.txt)$
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
     rev: v1.5.1
     hooks:
@@ -44,7 +43,7 @@ repos:
         name: copyright_checker
         entry: python ./tools/codestyle/copyright.py
         language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|sh)$
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|xpu|kps|py|pyi|sh)$
         exclude: |
             (?x)^(
                 paddle/utils/.*|
@@ -55,7 +54,6 @@ repos:
     rev: 23.3.0
     hooks:
     -   id: black
-        files: (.*\.(py|pyi|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
 -   repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.3.5
     hooks:

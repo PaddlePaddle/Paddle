@@ -93,6 +93,9 @@ class AllocatorFacade {
       const platform::Place& place, gpuStream_t stream);
   gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) const;
   void SetDefaultStream(const platform::CUDAPlace& place, gpuStream_t stream);
+#elif defined(PADDLE_WITH_XPU)
+  TEST_API const std::shared_ptr<Allocator>& GetAllocator(
+      const platform::Place& place, XPUStream stream);
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

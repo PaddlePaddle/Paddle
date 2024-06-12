@@ -38,7 +38,7 @@ ExprVec VecInt642Expr(const std::vector<int64_t> &int_vec) {
 }
 
 bool ReduceInferDim(pir::Operation *op,
-                    pir::ShapeConstraintIRAnalysis *shape_analysis,
+                    pir::InferSymbolicShapeContext *infer_context,
                     const std::vector<int64_t> &axis,
                     bool keep_dim,
                     bool reduce_all) {
@@ -67,10 +67,10 @@ bool ReduceInferDim(pir::Operation *op,
   reduce_all = reduce_all || full_dim || empty_dim;
 
   const symbol::ShapeOrDataDimExprs &x_shape_or_data =
-      shape_analysis->GetShapeOrDataForValue(x);
+      infer_context->GetShapeOrDataForValue(x);
   std::vector<symbol::DimExpr> input_shapes;
   if (x_shape_or_data.data() == std::nullopt ||
-      x_shape_or_data.data()->size() == 0) {
+      x_shape_or_data.data()->empty()) {
     input_shapes = x_shape_or_data.shape();
   } else {
     input_shapes = *x_shape_or_data.data();
@@ -95,28 +95,40 @@ bool ReduceInferDim(pir::Operation *op,
   symbol::ShapeOrDataDimExprs shape_data{
       symbol::TensorShapeOrDataDimExprs(shapes)};
 
-  shape_analysis->SetShapeOrDataForValue(op->result(0), shape_data);
+  infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
   return true;
 }
 
+symbol::ShapeOrDataDimExprs CreateShapeOrDataForXShape(
+    const symbol::ShapeOrDataDimExprs &x_dim_exprs) {
+  const auto InsertZeros =
+      [](const std::vector<symbol::DimExpr> &dims) -> decltype(auto) {
+    auto out_dims = dims;
+    out_dims.insert(out_dims.begin(), 0);
+    return out_dims;
+  };
+  const auto &x_dims = x_dim_exprs.shape();
+  return symbol::TensorShapeOrDataDimExprs(InsertZeros(x_dims));
+}
+
 void BuildCstrEqForTensorListAlongAxis(
-    pir::ShapeConstraintIRAnalysis *shape_analysis,
+    pir::InferSymbolicShapeContext *infer_context,
     const symbol::TensorListShapeOrDataDimExprs &shape_data_list,
     int axis) {
   for (size_t i = 1; i < shape_data_list.size(); ++i) {
-    shape_analysis->AddEqualCstr(shape_data_list[0].shape()[axis],
-                                 shape_data_list[i].shape()[axis]);
+    infer_context->AddEqualCstr(shape_data_list[0].shape()[axis],
+                                shape_data_list[i].shape()[axis]);
   }
 }
 
 void BuildCstrEqForTensorListAlongAxis(
-    pir::ShapeConstraintIRAnalysis *shape_analysis,
+    pir::InferSymbolicShapeContext *infer_context,
     const std::vector<pir::Value> &values,
     int axis) {
   for (size_t i = 1; i < values.size(); ++i) {
-    shape_analysis->AddEqualCstr(
-        shape_analysis->GetShapeOrDataForValue(values[0]).shape()[axis],
-        shape_analysis->GetShapeOrDataForValue(values[i]).shape()[axis]);
+    infer_context->AddEqualCstr(
+        infer_context->GetShapeOrDataForValue(values[0]).shape()[axis],
+        infer_context->GetShapeOrDataForValue(values[i]).shape()[axis]);
   }
 }
 

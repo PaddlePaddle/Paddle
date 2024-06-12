@@ -77,16 +77,16 @@ def convert_attr(x, attr):
 
 
 def convert_load(x):
+    # convert dygraph `PyLayer` into StaticPyLayer
+    if isinstance(x, PyLayerMeta):
+        return StaticPyLayer(x)
+
     if in_to_static_mode():
         if isinstance(x, paddle.Tensor):
             """
             TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
             """
             return _convert_into_variable(x)
-
-        # convert dygraph `PyLayer` into StaticPyLayer
-        if isinstance(x, PyLayerMeta):
-            return StaticPyLayer(x)
 
         # get the new output of the var
         if isinstance(x, Value):
@@ -615,8 +615,7 @@ def convert_len(var):
             return paddle.tensor.array_length(var)
         else:
             raise TypeError(
-                'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received %s.'
-                % type(var)
+                f'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received {type(var)}.'
             )
     elif isinstance(var, Value):
         if var.is_dense_tensor_type() or var.is_selected_row_type():

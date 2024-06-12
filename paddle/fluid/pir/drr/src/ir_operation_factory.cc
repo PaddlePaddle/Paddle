@@ -270,6 +270,24 @@ void OperationFactory::RegisterManualOpCreator() {
             inputs[0], inputs[1], inputs[2], attrs);
       });
 #endif
+
+  RegisterOperationCreator(
+      "pd_op.max",
+      [](const std::vector<pir::Value>& inputs,
+         const pir::AttributeMap& attrs,
+         pir::PatternRewriter& rewriter) {
+        if (inputs.size() == 2) {
+          PADDLE_ENFORCE_NE(attrs.find("keepdim"),
+                            attrs.end(),
+                            phi::errors::InvalidArgument(
+                                "'keepdim' Attribute is expected for MaxOp. "));
+          bool keepdim =
+              attrs.at("keepdim").dyn_cast<pir::BoolAttribute>().data();
+          return rewriter.Build<paddle::dialect::MaxOp>(
+              inputs[0], inputs[1], keepdim);
+        }
+        return rewriter.Build<paddle::dialect::MaxOp>(inputs[0], attrs);
+      });
 }
 
 pir::Attribute CreateIrAttribute(const std::any& obj) {

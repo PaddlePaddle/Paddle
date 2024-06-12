@@ -132,7 +132,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   }
 
   int last_frame_size = static_cast<int>(wh_dims.back()[0]);
-  framework::DDim out_dims({x_mat_dims[0], 2 * last_frame_size});
+  phi::DDim out_dims({x_mat_dims[0], 2 * last_frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
   ctx->ShareLoD("X", "Hidden");
 }

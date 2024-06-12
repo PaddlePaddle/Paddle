@@ -156,7 +156,7 @@ bool Tensor::is_dense_tensor() const {
   return phi::DenseTensor::classof(impl_.get());
 }
 bool Tensor::is_dist_tensor() const {
-  if (impl_.get() == nullptr) {
+  if (impl_ == nullptr) {
     return false;
   }
   return phi::distributed::DistTensor::classof(impl_.get());

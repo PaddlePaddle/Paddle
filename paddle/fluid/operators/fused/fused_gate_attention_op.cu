@@ -616,7 +616,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 #ifdef PADDLE_WITH_HIP
 PD_REGISTER_STRUCT_KERNEL(fused_gate_attention,
                           GPU,
@@ -624,14 +624,14 @@ PD_REGISTER_STRUCT_KERNEL(fused_gate_attention,
                           ops::FusedGateAttentionOpKernel,
                           float,
                           phi::dtype::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::bfloat16) {}
 PD_REGISTER_STRUCT_KERNEL(fused_gate_attention_grad,
                           GPU,
                           ALL_LAYOUT,
                           ops::FusedGateAttentionGradKernel,
                           float,
                           phi::dtype::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::bfloat16) {}
 #else
 PD_REGISTER_STRUCT_KERNEL(fused_gate_attention,
                           GPU,
@@ -640,7 +640,7 @@ PD_REGISTER_STRUCT_KERNEL(fused_gate_attention,
                           float,
                           double,
                           phi::dtype::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::bfloat16) {}
 PD_REGISTER_STRUCT_KERNEL(fused_gate_attention_grad,
                           GPU,
                           ALL_LAYOUT,
@@ -648,5 +648,5 @@ PD_REGISTER_STRUCT_KERNEL(fused_gate_attention_grad,
                           float,
                           double,
                           phi::dtype::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::bfloat16) {}
 #endif

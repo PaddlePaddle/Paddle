@@ -67,7 +67,6 @@ register_unity_group(
   deformable_conv_v1_op.cc
   deformable_psroi_pooling_op.cc
   delete_var_op.cc
-  dequantize_abs_max_op.cc
   dequantize_op.cc
   onednn/dequantize_onednn_op.cc)
 register_unity_group(
@@ -155,7 +154,6 @@ register_unity_group(
   onednn/matmul_onednn_op.cc
   max_sequence_len_op.cc
   maxout_op.cc
-  merge_lod_tensor_op.cc
   merge_selected_rows_op.cc
   meshgrid_op.cc)
 register_unity_group(
@@ -247,7 +245,6 @@ register_unity_group(
 register_unity_group(
   cc
   spectral_norm_op.cc
-  split_lod_tensor_op.cc
   split_op.cc
   split_selected_rows_op.cc
   spp_op.cc
@@ -364,8 +361,7 @@ register_unity_group(
   unzip_op.cu
   data_norm_op.cu
   deformable_conv_op.cu
-  deformable_conv_v1_op.cu
-  dequantize_abs_max_op.cu)
+  deformable_conv_v1_op.cu)
 register_unity_group(
   cu
   dgc_clip_by_norm_op.cu

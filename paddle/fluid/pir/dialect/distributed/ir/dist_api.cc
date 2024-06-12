@@ -25,15 +25,15 @@
 #include "paddle/pir/include/core/value.h"
 #include "paddle/utils/flat_hash_map.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
-pir::Value shard_tensor(const pir::Value& x,
-                        const phi::distributed::ProcessMesh& process_mesh,
-                        const std::vector<int64_t>& dims_mapping) {
+pir::Value shard_tensor(
+    const pir::Value& x,
+    const phi::distributed::ProcessMesh& process_mesh,
+    const std::vector<int64_t>& dims_mapping,
+    const flat_hash_map<int64_t, phi::ReduceType>& partial_status) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   // support amp for shard_tensor in the future
-  paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
   pir::AttributeMap attribute_map = {
       {"tensor_dist_attr",
        TensorDistAttribute::get(
@@ -63,5 +63,4 @@ pir::Value reshard(const pir::Value& x,
   return reshard_op.result(0);
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

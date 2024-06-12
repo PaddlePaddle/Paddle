@@ -33,7 +33,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import paddle
-import paddle.version as paddle_version
 
 from .. import pir
 from . import core, unique_name
@@ -58,14 +57,44 @@ CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 _global_flags_ = core.globals()
 
 SUPPORT_PROMOTION_OPS_AND_INPUTNAME = {
-    "elementwise_add": ["X", "Y"],
-    "elementwise_add_grad": ["X", "Y"],
-    "elementwise_sub": ["X", "Y"],
-    "elementwise_sub_grad": ["X", "Y"],
-    "elementwise_mul": ["X", "Y"],
-    "elementwise_mul_grad": ["X", "Y"],
-    "where": ["X", "Y"],
-    "where_grad": ["X", "Y"],
+    "elementwise_add": ['X', 'Y'],
+    "elementwise_add_grad": ['X', 'Y'],
+    "elementwise_sub": ['X', 'Y'],
+    "elementwise_sub_grad": ['X', 'Y'],
+    "elementwise_mul": ['X', 'Y'],
+    "elementwise_mul_grad": ['X', 'Y'],
+    "elementwise_div": ['X', 'Y'],
+    "elementwise_div_grad": ['X', 'Y'],
+    "elementwise_floordiv": ['X', 'Y'],
+    "elementwise_floordiv_grad": ['X', 'Y'],
+    "elementwise_pow": ['X', 'Y'],
+    "elementwise_pow_grad": ['X', 'Y'],
+    "where": ['X', 'Y'],
+    "where_grad": ['X', 'Y'],
+    "equal": ['X', 'Y'],
+    "not_equal": ['X', 'Y'],
+    "less_than": ['X', 'Y'],
+    "less_equal": ['X', 'Y'],
+    "greater_than": ['X', 'Y'],
+    "greater_equal": ['X', 'Y'],
+    "logical_and": ['X', 'Y'],
+    "logical_or": ['X', 'Y'],
+    "logical_xor": ['X', 'Y'],
+    "elementwise_fmax": ['X', 'Y'],
+    "elementwise_fmax_grad": ['X', 'Y'],
+    "elementwise_fmin": ['X', 'Y'],
+    "elementwise_fmin_grad": ['X', 'Y'],
+    "elementwise_max": ['X', 'Y'],
+    "elementwise_max_grad": ['X', 'Y'],
+    "elementwise_min": ['X', 'Y'],
+    "elementwise_min_grad": ['X', 'Y'],
+    "elementwise_mod": ['X', 'Y'],
+    "elementwise_mod_grad": ['X', 'Y'],
+    "huber_loss": ['X', 'Y'],
+    "huber_loss_grad": ['X', 'Y'],
+    "nextafter": ['x', 'y'],
+    "atan2": ['X1', 'X2'],
+    "atan2_grad": ['X1', 'X2'],
 }
 
 
@@ -543,10 +572,10 @@ def require_version(min_version, max_version=None):
             )
 
     version_installed = [
-        paddle_version.major,
-        paddle_version.minor,
-        paddle_version.patch,
-        paddle_version.rc,
+        paddle.version.major,
+        paddle.version.minor,
+        paddle.version.patch,
+        paddle.version.rc,
     ]
     zero_version = ["0", "0", "0", "0"]
 
@@ -561,13 +590,13 @@ def require_version(min_version, max_version=None):
     if version_cmp(version_installed, zero_version) == 0:
         if max_version is not None:
             warnings.warn(
-                f"PaddlePaddle version in [{min_version}, {max_version}] required, but {paddle_version.full_version} installed. "
+                f"PaddlePaddle version in [{min_version}, {max_version}] required, but {paddle.version.full_version} installed. "
                 "Maybe you are using a develop version, "
                 "please make sure the version is good with your code."
             )
         else:
             warnings.warn(
-                f"PaddlePaddle version {min_version} or higher is required, but {paddle_version.full_version} installed, "
+                f"PaddlePaddle version {min_version} or higher is required, but {paddle.version.full_version} installed, "
                 "Maybe you are using a develop version, "
                 "please make sure the version is good with your code."
             )
@@ -589,12 +618,12 @@ def require_version(min_version, max_version=None):
             or version_cmp(version_installed, min_version_to_check) < 0
         ):
             raise Exception(
-                f"VersionError: PaddlePaddle version in [{min_version}, {max_version}] required, but {paddle_version.full_version} installed."
+                f"VersionError: PaddlePaddle version in [{min_version}, {max_version}] required, but {paddle.version.full_version} installed."
             )
     else:
         if version_cmp(version_installed, min_version_to_check) < 0:
             raise Exception(
-                f"VersionError: PaddlePaddle version {min_version} or higher is required, but {paddle_version.full_version} installed, "
+                f"VersionError: PaddlePaddle version {min_version} or higher is required, but {paddle.version.full_version} installed, "
                 f"please upgrade your PaddlePaddle to {min_version} or other higher version."
             )
 
@@ -1586,6 +1615,9 @@ class Variable(metaclass=VariableMetaClass):
         self.block = block
         if name is None:
             name = self.block.program._name_generator("_generated_var")
+
+            while self.block._find_var_recursive(name) is not None:
+                name = self.block.program._name_generator("_generated_var")
 
         if dtype is not None:
             dtype = convert_to_proto_type(dtype)
@@ -3055,7 +3087,6 @@ class Operator:
         "heter_listen_and_serv",
         "c_wait_comm",
         "c_wait_compute",
-        "copy_cross_scope",
     }
 
     def __init__(
@@ -8122,16 +8153,19 @@ def _get_paddle_place(place):
 
     # XPU
     available_xpu_place = re.match(r"xpu:\d+", place)
-    if available_xpu_place:
+    if available_xpu_place or place == "xpu":
         if not core.is_compiled_with_xpu():
             raise ValueError(
                 f"The device should not be {available_xpu_place.group()}, since PaddlePaddle is "
                 "not compiled with XPU"
             )
-        place_info_list = place.split(":", 1)
-        device_id = place_info_list[1]
-        device_id = int(device_id)
-        return core.XPUPlace(device_id)
+        if place == "xpu":
+            return core.XPUPlace(0)
+        else:
+            place_info_list = place.split(":", 1)
+            device_id = place_info_list[1]
+            device_id = int(device_id)
+            return core.XPUPlace(device_id)
 
     # IPU
     available_ipu_place = re.match(r"ipu:\d+", place)
@@ -8179,8 +8213,12 @@ def dtype_to_str(in_dtype):
         return "fp32"
     elif in_dtype == paddle.float64:
         return "fp64"
+    elif in_dtype == core.VarDesc.VarType.COMPLEX64:
+        return "complex64"
+    elif in_dtype == core.VarDesc.VarType.COMPLEX128:
+        return "complex128"
     else:
-        return None
+        raise TypeError(f"got unspport data type for promotion: {in_dtype}.")
 
 
 def add_cast_for_type_promotion(op, block, idx, var_name, out_dtype):
@@ -8213,8 +8251,8 @@ def add_cast_for_type_promotion(op, block, idx, var_name, out_dtype):
 
 
 def can_skip_promote(op, device):
-    # Only GPU elementwise_add kernel supports the pattern "float + half".
-    if device != 'GPU':
+    # Only GPU/XPU elementwise_add kernel supports the pattern "float + half".
+    if device not in ['GPU', 'XPU']:
         return False
     if op.type != "elementwise_add":
         return False
@@ -8235,6 +8273,10 @@ def process_type_promotion(program):
         _current_expected_place(), core.CUDAPlace
     ):
         device = 'GPU'
+    elif core.is_compiled_with_xpu() and isinstance(
+        _current_expected_place(), core.XPUPlace
+    ):
+        device = 'XPU'
     org_program = program
     if program is None:
         program = default_main_program()
@@ -8270,7 +8312,9 @@ def process_type_promotion(program):
                     all_input_name_need_cast.append(input_arg_name)
 
             # only support promote between float
-            if core.need_type_promotion(*all_dtypes):
+            if len(all_dtypes) == 2 and core.need_type_promotion(
+                op.type, *all_dtypes
+            ):
                 common_dtype = core.get_promote_dtype(op.type, *all_dtypes)
                 for input_name_need_cast in all_input_name_need_cast:
                     var_name = op.block._var_recursive(input_name_need_cast)

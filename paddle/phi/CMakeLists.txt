@@ -32,6 +32,14 @@ if(WITH_CUSTOM_DEVICE)
   add_subdirectory(capi)
 endif()
 
+if(WIN32)
+  file(GLOB_RECURSE YAML_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ops/yaml/*.yaml")
+  set_property(
+    DIRECTORY
+    APPEND
+    PROPERTY CMAKE_CONFIGURE_DEPENDS ${YAML_FILE})
+endif()
+
 set(PHI_DEPS
     phi_profiler_proto
     auto_parallel_proto
@@ -104,6 +112,8 @@ set(PHI_SRCS
     ${infermeta_srcs}
     ${capi_srcs})
 
+set(PHI_KERNEL_GPU_SRCS ${kernels_gpu_srcs})
+
 if(WITH_SHARED_PHI)
   set(PHI_BUILD_TYPE
       SHARED
@@ -121,6 +131,7 @@ if(WITH_AVX
   set_source_files_properties(
     kernels/fusion/cpu/fused_layer_norm_avx_kernel.cc
     kernels/fusion/cpu/self_dp_attention_kernel.cc
+    kernels/fusion/cpu/rms_norm_avx_kernel.cc
     PROPERTIES COMPILE_FLAGS
                "${Wno_Maybe_Uninitialized} ${FMA_FLAG} ${AVX512F_FLAG}")
 endif()
@@ -195,6 +206,40 @@ endif()
 set(PHI_LIB
     "${CMAKE_CURRENT_BINARY_DIR}/${PHI_NAME}"
     CACHE FILEPATH "PHI Library" FORCE)
+
+# NOTE(silverling): what we are doing here is to build a library `phi_kernel_gpu`
+# that contains all GPU kernels implementation. This can allow paddle be built
+# with more CUDA archs and reduce the binary size of `phi` library.
+if(WITH_GPU OR WITH_ROCM)
+  if(WITH_GPU)
+    nv_library(
+      phi_kernel_gpu ${PHI_BUILD_TYPE}
+      SRCS ${PHI_KERNEL_GPU_SRCS}
+      DEPS ${PHI_DEPS})
+  elseif(WITH_ROCM)
+    hip_library(
+      phi_kernel_gpu ${PHI_BUILD_TYPE}
+      SRCS ${PHI_KERNEL_GPU_SRCS}
+      DEPS ${PHI_DEPS})
+  endif()
+
+  # NOTE(silverling): making library `phi` depend on `phi_kernel_gpu` (even `phi` does not use it)
+  # will make targets that depend on `phi` also automatically depend on `phi_kernel_gpu`.
+  # This will make users' life easier.
+  target_link_libraries(phi phi_kernel_gpu)
+
+  # NOTE(silverling): `phi_kernel_gpu` needs symbols from `phi`.
+  # When it's a shared library, it will work with no problem.
+  # But when it's a static library, it must be linked to `phi` at link time explicitly.
+  if(NOT WITH_SHARED_PHI)
+    target_link_libraries(phi_kernel_gpu phi)
+  endif()
+
+  string(REPLACE "phi" "phi_kernel_gpu" PHI_KERNEL_GPU_NAME ${PHI_NAME})
+  set(PHI_KERNEL_GPU_LIB
+      "${CMAKE_CURRENT_BINARY_DIR}/${PHI_KERNEL_GPU_NAME}"
+      CACHE FILEPATH "PHI Kernel GPU Library" FORCE)
+endif()
 
 if(MKL_FOUND AND WITH_ONEMKL)
   target_include_directories(phi PRIVATE ${MKL_INCLUDE})

@@ -1315,7 +1315,8 @@ TEST(Reshape, Ctor) {
   check_dim_mapping(spmd.second[0], {0, 1, -1, -1});
 
   auto out_grad = build_input({2, 1024, 4, 1024 / 4}, {-1, -1, -1, -1});
-  auto spmd_grad = ReshapeGradInferSpmd(input, out_grad);
+  auto xshape = build_input({0, 2, 1024, 1024}, {-1, 0, 1, -1});
+  auto spmd_grad = ReshapeGradInferSpmd(xshape, out_grad);
   EXPECT_EQ(spmd_grad.first.size(), static_cast<size_t>(1));
   EXPECT_EQ(spmd_grad.second.size(), static_cast<size_t>(1));
   // check_dim_mapping(spmd_grad.first[0], {0, 1, -1});
@@ -1850,6 +1851,71 @@ TEST(CumSumGradInferSpmd, Ctor) {
   EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]), std::vector<int64_t>({-1}));
   EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
             std::vector<int64_t>({-1, -1, -1}));
+}
+
+TEST(Flatten, Ctor) {
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  auto build_input = [&](const std::vector<int64_t>& shape,
+                         const std::vector<int64_t>& dim_mapping) {
+    auto t_dist_attr = TensorDistAttr();
+    t_dist_attr.set_process_mesh(process_mesh);
+    t_dist_attr.set_dims_mapping(dim_mapping);
+    t_dist_attr.set_dynamic_dims(std::vector<bool>(shape.size(), false));
+    auto input =
+        phi::distributed::DistMetaTensor(common::make_ddim(shape), t_dist_attr);
+    return input;
+  };
+
+  // [b, h/ph, w/pw, c, ph, pw]; dp
+  auto input1 = build_input({4, 16, 16, 4, 2, 2}, {0, -1, -1, -1, -1, -1});
+  // [b, h/ph, w/pw, c, ph, pw] => [b, h/ph, w/pw, hidden_size]
+  auto spmd1 = FlattenInferSpmd(input1, -3, -1);
+  EXPECT_EQ(spmd1.first.size(), static_cast<size_t>(1));
+  EXPECT_EQ(spmd1.second.size(), static_cast<size_t>(2));
+  check_dim_mapping(spmd1.first[0], {0, -1, -1, -1, -1, -1});
+  check_dim_mapping(spmd1.second[0], {0, -1, -1, -1});
+  check_dim_mapping(spmd1.second[1], {-1, 0, -1, -1, -1, -1, -1});  // x_shape
+
+  // [b, h/ph, w/pw, c, ph, pw]; dp, mp
+  auto input2 = build_input({4, 16, 16, 4, 2, 2}, {-1, 0, -1, 1, -1, -1});
+  auto spmd2 = FlattenInferSpmd(input2, 1, 4);
+  EXPECT_EQ(spmd2.first.size(), static_cast<size_t>(1));
+  EXPECT_EQ(spmd2.second.size(), static_cast<size_t>(2));
+  check_dim_mapping(spmd2.first[0], {-1, 0, -1, -1, -1, -1});
+  check_dim_mapping(spmd2.second[0], {-1, 0, -1});
+  check_dim_mapping(spmd2.second[1], {-1, -1, 0, -1, -1, -1, -1});  // x_shape
+
+  // [b, s, nh, h/nh]; dp , mp
+  auto input3 = build_input({2, 1024, 32, 32}, {0, -1, 1, -1});
+  // [b, s, nh, h/nh] => [b, s, h]
+  auto spmd3 = FlattenInferSpmd(input3, 2, 3);
+  EXPECT_EQ(spmd3.first.size(), static_cast<size_t>(1));
+  EXPECT_EQ(spmd3.second.size(), static_cast<size_t>(2));
+  check_dim_mapping(spmd3.first[0], {0, -1, 1, -1});
+  check_dim_mapping(spmd3.second[0], {0, -1, 1});
+  check_dim_mapping(spmd3.second[1], {-1, 0, -1, 1, -1});  // x_shape
+
+  // [b, c, d, h, w]; dp, mp
+  auto input4 = build_input({4, 16, 16, 4, 16}, {-1, -1, 0, 1, -1});
+  auto spmd4 = FlattenInferSpmd(input4, 1, 4);
+  EXPECT_EQ(spmd4.first.size(), static_cast<size_t>(1));
+  EXPECT_EQ(spmd4.second.size(), static_cast<size_t>(2));
+  check_dim_mapping(spmd4.first[0], {-1, -1, -1, -1, -1});
+  check_dim_mapping(spmd4.second[0], {-1, -1});
+  check_dim_mapping(spmd4.second[1], {-1, -1, -1, -1, -1, -1});  // x_shape
+
+  auto out_grad = build_input({2, 1024, 1024}, {0, -1, 1});
+  auto xshape = build_input({0, 2, 1024, 4, 1024 / 4}, {-1, 0, -1, 1, -1});
+  auto spmd_grad = FlattenGradInferSpmd(xshape, out_grad);
+  EXPECT_EQ(spmd_grad.first.size(), static_cast<size_t>(2));
+  EXPECT_EQ(spmd_grad.second.size(), static_cast<size_t>(1));
+  check_dim_mapping(spmd_grad.first[0], {-1, 0, -1, 1, -1});
+  check_dim_mapping(spmd_grad.first[1], {0, -1, 1});
+  check_dim_mapping(spmd_grad.second[0], {0, -1, 1, -1});
 }
 
 }  // namespace auto_parallel

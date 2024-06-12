@@ -64,13 +64,13 @@ void CompileGroupToJitKernelOp(
   auto op_attr_map = CompileGroupAsOpAttribute(group_list);
   VLOG(4) << "The size of group_map is : " << group_map->size();
   for (auto& [block, group] : *group_map) {
+    auto& yield_op = block->back();
+    CHECK(yield_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
     std::vector<pir::Type> output_types;
-    const auto& group_output_values = group->output_values();
+    const auto& group_output_values = yield_op.operands_source();
     for (size_t i = 0; i < group_output_values.size(); ++i) {
       output_types.push_back(group_output_values[i].type());
     }
-    auto& yield_op = block->back();
-    CHECK(yield_op.isa<pir::YieldOp>()) << "Last op of block should be yield";
     rewriter.set_insertion_point(&yield_op);
     const auto& group_inputs = GetBlockOutsideInput(group->ops());
     auto jit_kernel_op = rewriter.Build<cinn::dialect::JitKernelOp>(
@@ -202,14 +202,11 @@ void ReplaceExpandWithBroadcast(pir::IrContext* ir_context,
 
 std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
     const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
-    pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
+    const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
     const std::vector<pir::Value>& group_inputs,
     pir::Builder& builder) {  // NOLINT
   const auto& lhs_expr = broadcastable_condition->lhs;
   const auto& rhs_expr = broadcastable_condition->rhs;
-  auto ShapeOrDataDimExprs4Value = [&shape_analysis](pir::Value value) {
-    return shape_analysis.GetShapeOrDataForValue(value);
-  };
 
   std::vector<pir::Value> lhs_minimal_inputs;
   std::vector<pir::Attribute> lhs_output_dim_expr_attrs;
@@ -236,17 +233,24 @@ std::tuple<pir::Value, pir::Value, pir::Value> BroadcastableToCondValue(
                                                   &rhs_symbol_bindings);
   CHECK(success);
 
+  auto out_type = paddle::dialect::DenseTensorType::get(
+      builder.ir_context(),
+      pir::Int64Type::get(builder.ir_context()),
+      ::common::make_ddim({1}));
+
   auto lhs_value =
       builder
           .Build<cinn::dialect::GenerateShapeOp>(lhs_minimal_inputs,
                                                  lhs_output_dim_expr_attrs,
-                                                 lhs_symbol_bindings)
+                                                 lhs_symbol_bindings,
+                                                 out_type)
           .out();
   auto rhs_value =
       builder
           .Build<cinn::dialect::GenerateShapeOp>(rhs_minimal_inputs,
                                                  rhs_output_dim_expr_attrs,
-                                                 rhs_symbol_bindings)
+                                                 rhs_symbol_bindings,
+                                                 out_type)
           .out();
 
   auto const_one = builder
@@ -283,6 +287,7 @@ void SetLeafBlockByGroupView(
   }
 
   auto new_group = CloneGroup(origin_group, block, &ir_mapping);
+  new_group->SetIsBroadcastLeaf(true);
   PADDLE_ENFORCE_EQ(
       origin_group->ops().size(),
       new_group->ops().size(),
@@ -321,7 +326,7 @@ void InsertYieldOpForCondBlock(pir::Operation* cond_op,
 pir::Operation* CreateConditionBlock(
     const cinn::common::BroadcastTree& broadcast_tree,
     const OpLoweringGroupPtr& origin_group,
-    pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
+    const ShapeOrDataDimExprs4ValueT& ShapeOrDataDimExprs4Value,
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
     const std::vector<pir::Value>& group_inputs,
     const std::vector<pir::Type>& output_types,
@@ -344,7 +349,7 @@ pir::Operation* CreateConditionBlock(
             .Get<cinn::common::BroadcastBranch<cinn::common::BroadcastTree>>();
     const auto& [lhs_eq_rhs_cond, lhs_eq_one_cond, rhs_eq_one_cond] =
         BroadcastableToCondValue(
-            branch.Get<0>(), shape_analysis, group_inputs, builder);
+            branch.Get<0>(), ShapeOrDataDimExprs4Value, group_inputs, builder);
 
     // lhs == rhs
     auto lhs_eq_rhs_cond_op = builder.Build<paddle::dialect::IfOp>(
@@ -353,7 +358,7 @@ pir::Operation* CreateConditionBlock(
     builder.SetInsertionPointToBlockEnd(&lhs_eq_rhs_block);
     auto* lhs_eq_rhs_block_op = CreateConditionBlock(branch.Get<1>(),
                                                      origin_group,
-                                                     shape_analysis,
+                                                     ShapeOrDataDimExprs4Value,
                                                      value_to_dim_expr_idx,
                                                      group_inputs,
                                                      output_types,
@@ -372,7 +377,7 @@ pir::Operation* CreateConditionBlock(
     builder.SetInsertionPointToBlockEnd(&lhs_eq_one_block);
     auto* lhs_eq_one_block_op = CreateConditionBlock(branch.Get<2>(),
                                                      origin_group,
-                                                     shape_analysis,
+                                                     ShapeOrDataDimExprs4Value,
                                                      value_to_dim_expr_idx,
                                                      group_inputs,
                                                      output_types,
@@ -386,7 +391,7 @@ pir::Operation* CreateConditionBlock(
     builder.SetInsertionPointToBlockEnd(&rhs_eq_one_block);
     auto* rhs_eq_one_block_op = CreateConditionBlock(branch.Get<3>(),
                                                      origin_group,
-                                                     shape_analysis,
+                                                     ShapeOrDataDimExprs4Value,
                                                      value_to_dim_expr_idx,
                                                      group_inputs,
                                                      output_types,
@@ -437,9 +442,11 @@ std::shared_ptr<BroadcastTree> ConstructBroadcastTree(
     const cinn::common::BroadcastLeaf& leaves) {
   VLOG(6) << "before constructed. broadcast-leaf: \n"
           << ToTxtString(cinn::common::BroadcastTree(leaves));
+  int num_of_leaves = 0;
   auto broadcast_tree = std::make_shared<cinn::common::BroadcastTree>(
-      cinn::common::ConstructBroadcastTree(
-          cinn::common::BroadcastLeaf(leaves)));
+      cinn::common::ConstructBroadcastTree(cinn::common::BroadcastLeaf(leaves),
+                                           &num_of_leaves));
+  VLOG(4) << "num of broadcast tree leaves:" << num_of_leaves;
   VLOG(4) << "broadcast-tree: \n" << ToTxtString(*broadcast_tree);
   return broadcast_tree;
 }
@@ -486,17 +493,20 @@ bool NeedBroadcastWithCF(const cinn::common::BroadcastLeaf& leaves) {
 pir::Operation* CompileBroadcastTreeToConditionBlock(
     const OpLoweringGroupPtr& group,
     const BroadcastTree& broadcast_tree,
-    pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
     const std::unordered_map<pir::Value, size_t>& value_to_dim_expr_idx,
     const std::vector<pir::Value>& group_inputs,
     const std::vector<pir::Type>& output_types,
     pir::PatternRewriter& rewriter) {  // NOLINT
+  auto ShapeOrDataDimExprs4Value =
+      [&group](pir::Value value) -> const symbol::ShapeOrDataDimExprs& {
+    return group->GetShapeOrDataExprs(value);
+  };
   // 1. broadcast tree to condition op
   VLOG(4) << "broadcast tree to condition op";
   std::unordered_map<pir::Block*, OpLoweringGroupPtr> group_map;
   pir::Operation* cond_op = CreateConditionBlock(broadcast_tree,
                                                  group,
-                                                 shape_analysis,
+                                                 ShapeOrDataDimExprs4Value,
                                                  value_to_dim_expr_idx,
                                                  group_inputs,
                                                  output_types,

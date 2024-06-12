@@ -25,8 +25,7 @@ limitations under the License. */
 
 COMMON_DECLARE_bool(use_mkldnn);
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 const char ConditionalOp::kInputs[] = "Input";        // NOLINT
 const char ConditionalOp::kOutputs[] = "Out";         // NOLINT
@@ -50,7 +49,7 @@ class ConditionalBlockOp : public ConditionalOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     bool need_run = false;
     if (Attr<bool>("is_scalar_condition")) {
       // When is_scalar_condition is True, the conditional variable is a scalar,
@@ -154,7 +153,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     bool need_run = false;
     if (Attr<bool>("is_scalar_condition")) {
       auto xs = this->InputTensors(scope, ConditionalOp::kCondition);
@@ -334,8 +333,7 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conditional_block,

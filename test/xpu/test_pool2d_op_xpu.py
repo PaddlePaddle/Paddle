@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -21,6 +22,8 @@ from get_test_cover_info import (
     get_xpu_op_support_types,
 )
 from op_test_xpu import XPUOpTest
+
+sys.path.append("../deprecated/legacy_test")
 from test_pool2d_op import adaptive_end_index, adaptive_start_index
 
 import paddle
@@ -169,8 +172,8 @@ def pool2D_forward_naive(
         padding_algorithm = padding_algorithm.upper()
         if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
             raise ValueError(
-                "Unknown Attr(padding_algorithm): '%s'. "
-                "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+                f"Unknown Attr(padding_algorithm): '{str(padding_algorithm)}'. "
+                "It can only be 'SAME' or 'VALID'."
             )
 
         if padding_algorithm == "VALID":

@@ -42,14 +42,11 @@ COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CCommInitOp : public framework::OperatorBase {
  public:
@@ -60,8 +57,8 @@ class CCommInitOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
-    if (platform::is_custom_place(place)) {
+               const phi::Place& place) const override {
+    if (place.GetType() == phi::AllocationType::CUSTOM) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       auto var = scope.FindVar(Input("X"));
       PADDLE_ENFORCE_NOT_NULL(
@@ -103,11 +100,11 @@ class CCommInitOp : public framework::OperatorBase {
           "PaddlePaddle should be compiled with GPU or XPU."));
 #endif
 
-      PADDLE_ENFORCE_EQ(
-          platform::is_gpu_place(place) || platform::is_xpu_place(place),
-          true,
-          phi::errors::PreconditionNotMet(
-              "CCommInitOp can run on gpu or xpu place only."));
+      PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::GPU ||
+                            place.GetType() == phi::AllocationType::XPU,
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "CCommInitOp can run on gpu or xpu place only."));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
@@ -118,7 +115,8 @@ class CCommInitOp : public framework::OperatorBase {
       int nranks = Attr<int>("nranks");
       int rid = Attr<int>("ring_id");
 
-      int device_id = place.device;
+      int device_id =
+          static_cast<int>(static_cast<unsigned char>(place.device));
       if (Attr<int>("device_id") >= 0) {
         device_id = Attr<int>("device_id");
       }
@@ -182,8 +180,7 @@ Initialize collective communication context within this trainer
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

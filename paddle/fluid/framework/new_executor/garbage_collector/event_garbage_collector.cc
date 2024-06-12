@@ -21,11 +21,11 @@
 #include <windows.h>
 #endif  // !_WIN32
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
-    const std::vector<Instruction>& vec_instruction) {
+    const std::vector<Instruction>& vec_instruction)
+    : queue_(nullptr), gc_event_(), events_() {
   WorkQueueOptions options(/*name*/ "GarbageCollector",
                            /*num_threads*/ 1,
                            /*allow_spinning*/ true,
@@ -38,7 +38,8 @@ InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
 }
 
 InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
-    const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction) {
+    const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction)
+    : queue_(nullptr), gc_event_(), events_() {
   WorkQueueOptions options(/*name*/ "GarbageCollector",
                            /*num_threads*/ 1,
                            /*allow_spinning*/ true,
@@ -104,7 +105,33 @@ void InterpreterCoreEventGarbageCollector::Add(
             ->MoveMemoryHolder(),
         event,
         ctx);
-    var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
+  } else if (var->IsType<phi::SparseCooTensor>()) {
+    Add(var->GetMutable<phi::SparseCooTensor>()
+            ->mutable_values()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
+    Add(var->GetMutable<phi::SparseCooTensor>()
+            ->mutable_indices()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
+  } else if (var->IsType<phi::SparseCsrTensor>()) {
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_crows()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_cols()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_values()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
   } else if (var->IsType<LoDTensorArray>()) {
     auto* tensor_arr = var->GetMutable<LoDTensorArray>();
     for (auto& t : *tensor_arr) {
@@ -186,5 +213,4 @@ void InterpreterCoreEventGarbageCollector::FreeGarbages() {
   events_.clear();
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
