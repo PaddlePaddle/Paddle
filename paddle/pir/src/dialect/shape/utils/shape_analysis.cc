@@ -699,11 +699,4 @@ bool IsStaticShape(const Value& value) {
   return false;
 }
 
-pir::ShapeConstraintIRAnalysis& GetShapeConstraintIRAnalysis(
-    const pir::Program* program) {
-  ShapeAnalysisManager& shape_analysis_manager =
-      ShapeAnalysisManager::Instance();
-  return shape_analysis_manager.Get(program);
-}
-
 }  // namespace pir

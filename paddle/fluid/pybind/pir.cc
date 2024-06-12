@@ -118,9 +118,6 @@ using pir::Value;
 using pir::VectorType;
 using pybind11::return_value_policy;
 
-using pir::ShapeConstraintIRAnalysis;
-using symbol::ShapeOrDataDimExprs;
-
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
@@ -2503,33 +2500,39 @@ void BindPassManager(pybind11::module *m) {
 }
 
 void BindShapeOrDataDimExprs(pybind11::module *m) {
-  py::class_<ShapeOrDataDimExprs, std::shared_ptr<ShapeOrDataDimExprs>>
+  py::class_<symbol::ShapeOrDataDimExprs,
+             std::shared_ptr<symbol::ShapeOrDataDimExprs>>
       shape_or_data_dim_exprs(*m, "ShapeOrDataDimExprs", R"DOC(
       A class that store the shape or data of value.
     )DOC");
   shape_or_data_dim_exprs
-      .def("shape", &ShapeOrDataDimExprs::shape, return_value_policy::reference)
-      .def("data", &ShapeOrDataDimExprs::data, return_value_policy::reference);
+      .def("shape",
+           &symbol::ShapeOrDataDimExprs::shape,
+           return_value_policy::reference)
+      .def("data",
+           &symbol::ShapeOrDataDimExprs::data,
+           return_value_policy::reference);
 }
 
 void BindShapeConstraintIRAnalysis(pybind11::module *m) {
-  m->def("get_shape_constraint_ir_analysis",
-         &pir::GetShapeConstraintIRAnalysis,
-         return_value_policy::reference);
+  m->def(
+      "get_shape_constraint_ir_analysis",
+      [](const pir::Program *program) -> pir::ShapeConstraintIRAnalysis & {
+        return pir::ShapeAnalysisManager::Instance().Get(program);
+      },
+      return_value_policy::reference);
 
-  py::class_<ShapeConstraintIRAnalysis,
-             std::shared_ptr<ShapeConstraintIRAnalysis>>
+  py::class_<pir::ShapeConstraintIRAnalysis,
+             std::shared_ptr<pir::ShapeConstraintIRAnalysis>>
       shape_constraint_ir_analysis(*m, "ShapeConstraintIRAnalysis", R"DOC(
       A class that store the shape information of all operators.
     )DOC");
   shape_constraint_ir_analysis
       .def("get_shape_or_data_for_var",
-           &ShapeConstraintIRAnalysis::GetShapeOrDataForValue,
+           &pir::ShapeConstraintIRAnalysis::GetShapeOrDataForValue,
            return_value_policy::reference)
       .def("set_shape_or_data_for_var",
-           &ShapeConstraintIRAnalysis::SetShapeOrDataForValue)
-      .def("print_shape_or_data",
-           &ShapeConstraintIRAnalysis::PrintShapeOrDatas);
+           &pir::ShapeConstraintIRAnalysis::SetShapeOrDataForValue);
 }
 
 void BindPir(pybind11::module *module) {
