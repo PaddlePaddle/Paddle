@@ -28,8 +28,7 @@
 #include "paddle/fluid/framework/io/crypto/cipher_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void AESCipher::Init(const std::string& cipher_name,
                      const int& iv_size,
@@ -276,5 +275,4 @@ std::string AESCipher::DecryptFromFile(const std::string& key,
   return Decrypt(ciphertext, key);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

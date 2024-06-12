@@ -205,15 +205,6 @@ class MultivariateNormal(distribution.Distribution):
         Return:
             Tensor: indicator for positive definite matrix
         """
-        is_square = paddle.full(
-            shape=value.shape[:-2],
-            fill_value=(value.shape[-2] == value.shape[-1]),
-            dtype="bool",
-        ).all()
-        if not is_square:
-            raise ValueError(
-                "covariance_matrix or precision_matrix must be a square matrix"
-            )
         new_perm = list(range(len(value.shape)))
         new_perm[-1], new_perm[-2] = new_perm[-2], new_perm[-1]
         is_symmetric = paddle.isclose(

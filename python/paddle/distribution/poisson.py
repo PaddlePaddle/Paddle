@@ -76,10 +76,6 @@ class Poisson(distribution.Distribution):
         self.dtype = paddle.get_default_dtype()
         self.rate = self._to_tensor(rate)
 
-        if not self._check_constraint(self.rate):
-            raise ValueError(
-                'Every element of input parameter `rate` should be nonnegative.'
-            )
         if self.rate.shape == []:
             batch_shape = (1,)
         else:
@@ -98,17 +94,6 @@ class Poisson(distribution.Distribution):
         else:
             self.dtype = rate.dtype
         return rate
-
-    def _check_constraint(self, value):
-        """Check the constraint for input parameters
-
-        Args:
-            value (Tensor)
-
-        Returns:
-            bool: pass or not.
-        """
-        return (value >= 0).all()
 
     @property
     def mean(self):

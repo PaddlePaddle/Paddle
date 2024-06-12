@@ -20,8 +20,7 @@
 #include "paddle/fluid/imperative/layout_transformer.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/enforce.h"
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 LayoutAutoTune::LayoutAutoTune() {
   const auto& op_info = paddle::framework::OpInfoMap::Instance().map();
@@ -244,5 +243,4 @@ AutoTuneLayout<egr::EagerVariable>(
     paddle::framework::AttributeMap* attrs,
     const std::shared_ptr<imperative::Tracer>& tracer);
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative
