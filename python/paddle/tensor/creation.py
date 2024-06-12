@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import math
 import re
-from typing import Sequence, overload
+from typing import Any, Sequence, overload
 
 import numpy as np
+import numpy.typing as npt
 
 import paddle
 from paddle import _C_ops
@@ -94,7 +95,7 @@ def create_global_var(
     This function creates a new tensor variable with value in the global block(block 0).
 
     Args:
-        shape (ShapeLike): Shape of the variable
+        shape (list[int]|tuple[int]): Shape of the variable
         value (float): The value of the variable. The new created
                       variable will be filled with it.
         dtype (str): Data type of the variable
@@ -599,7 +600,9 @@ def _to_tensor_non_static(
                 return tensor.astype(convert_dtype(dtype))
         return tensor
 
-    def _handle_np_dtype(ndarray: npt.NDArray[Any], dtype: DTypeLike) -> npt.NDArray[Any]:
+    def _handle_np_dtype(
+        ndarray: npt.NDArray[Any], dtype: DTypeLike
+    ) -> npt.NDArray[Any]:
         if dtype:
             if convert_dtype(dtype) != convert_dtype(ndarray.dtype):
                 # should not ndarray.astype('uint16') directly, data bits is wrong
