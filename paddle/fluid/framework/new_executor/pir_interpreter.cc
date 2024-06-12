@@ -1601,6 +1601,11 @@ void PirInterpreter::TraceRunImpl() {
 
   TraceRunInstructionList(vec_instruction_base_);
   VLOG(4) << "Done TraceRunInstructionList";
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (platform::is_custom_place(place_)) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+#endif
 }
 
 void PirInterpreter::MultiThreadRunImpl() {
@@ -1615,6 +1620,11 @@ void PirInterpreter::MultiThreadRunImpl() {
   async_work_queue_ = GetWorkQueue();
   MultiThreadRunInstructionList(vec_instruction_base_);
   VLOG(4) << "Done MultiThreadRunInstructionList";
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (platform::is_custom_place(place_)) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+#endif
 }
 
 void PirInterpreter::TraceRunInstructionList(

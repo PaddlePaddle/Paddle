@@ -30,6 +30,7 @@ if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
 
   set_tests_properties(test_custom_cpu_profiler_plugin PROPERTIES TIMEOUT 120)
   set_tests_properties(test_fleet_launch_custom_device PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_custom_cpu_plugin PROPERTIES TIMEOUT 120)
 
   # cpp testing
   paddle_test(extension_header_test SRCS extension_header_test.cc DEPS phi

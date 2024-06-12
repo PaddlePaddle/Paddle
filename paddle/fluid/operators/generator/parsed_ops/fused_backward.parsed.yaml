@@ -1,0 +1,399 @@
+- name: fused_bias_dropout_residual_layer_norm_grad
+  inputs:
+  - typename: Tensor
+    name: y_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: residual
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: bias
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: ln_scale
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: ln_bias
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: ln_mean
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: ln_variance
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: bias_dropout_residual_out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: dropout_mask_out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: float, name: dropout_rate, default_value: 0.5f}
+  - {typename: bool, name: is_test, default_value: 'false'}
+  - {typename: bool, name: dropout_fix_seed, default_value: 'true'}
+  - {typename: int, name: dropout_seed, default_value: 'true'}
+  - {typename: str, name: dropout_implementation, default_value: '"downgrade_in_infer"'}
+  - {typename: float, name: ln_epsilon, default_value: 1e-5}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: residual_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: bias_grad, optional: true, intermediate: false}
+  - {typename: Tensor, name: ln_scale_grad, optional: true, intermediate: false}
+  - {typename: Tensor, name: ln_bias_grad, optional: true, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  support_tensor: []
+  traits: []
+  interfaces: []
+  kernel:
+    func: [fused_bias_dropout_residual_layer_norm_grad]
+    param: [y_grad, x, residual, bias, ln_scale, ln_bias, ln_mean, ln_variance, bias_dropout_residual_out,
+      dropout_mask_out, dropout_rate, is_test, dropout_fix_seed, dropout_seed, dropout_implementation,
+      ln_epsilon]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [y_grad]
+      to_complex_flag: [false]
+    dispatch: {fused_bias_dropout_residual_layer_norm_grad: null}
+    force_backend: null
+  infer_meta:
+    func: FusedBiasDropoutResidualLnGradInferMeta
+    param: [y_grad, x, residual, bias, ln_scale, ln_bias, ln_mean, ln_variance, bias_dropout_residual_out,
+      dropout_mask_out, dropout_rate, is_test, dropout_fix_seed, dropout_seed, dropout_implementation,
+      ln_epsilon]
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: fused_bias_dropout_residual_layer_norm
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: residual, typename: Tensor}
+    - {name: bias, typename: Tensor}
+    - {name: ln_scale, typename: Tensor}
+    - {name: ln_bias, typename: Tensor}
+    attrs:
+    - {name: dropout_rate, typename: float}
+    - {name: is_test, typename: bool}
+    - {name: dropout_fix_seed, typename: bool}
+    - {name: dropout_seed, typename: int}
+    - {name: dropout_implementation, typename: str}
+    - {name: ln_epsilon, typename: float}
+    outputs:
+    - {name: y, typename: Tensor}
+    - {name: bias_dropout_residual_out, typename: Tensor}
+    - {name: dropout_mask_out, typename: Tensor}
+    - {name: ln_mean, typename: Tensor}
+    - {name: ln_variance, typename: Tensor}
+- name: fused_dot_product_attention_grad
+  inputs:
+  - typename: Tensor
+    name: q
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: k
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: v
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: softmax_out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: rng_state
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: mask
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: float, name: scaling_factor}
+  - {typename: float, name: dropout_probability}
+  - {typename: bool, name: is_causal_masking, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: q_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: k_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: v_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  support_tensor: []
+  traits: []
+  interfaces: []
+  kernel:
+    func: [fused_dot_product_attention_grad]
+    param: [q, k, v, out, softmax_out, rng_state, mask, out_grad, scaling_factor,
+      dropout_probability, is_causal_masking]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [q]
+      to_complex_flag: [false]
+    dispatch: {fused_dot_product_attention_grad: null}
+    force_backend: null
+  infer_meta:
+    func: FusedDotProductAttentionGradInferMeta
+    param: [q, k, v]
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: fused_dot_product_attention
+    inputs:
+    - {name: q, typename: Tensor}
+    - {name: k, typename: Tensor}
+    - {name: v, typename: Tensor}
+    - {name: mask, typename: Tensor}
+    attrs:
+    - {name: scaling_factor, typename: float}
+    - {name: dropout_probability, typename: float}
+    - {name: is_training, typename: bool}
+    - {name: is_causal_masking, typename: bool}
+    outputs:
+    - {name: out, typename: Tensor}
+    - {name: softmax_out, typename: Tensor}
+    - {name: rng_state, typename: Tensor}
+- name: fused_dropout_add_grad
+  inputs:
+  - typename: Tensor
+    name: seed_offset
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: Scalar, name: p, data_type: float}
+  - {typename: bool, name: is_test}
+  - {typename: str, name: mode}
+  - {typename: bool, name: fix_seed}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: y_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  support_tensor: []
+  traits: []
+  interfaces: []
+  kernel:
+    func: [fused_dropout_add_grad]
+    param: [seed_offset, out_grad, p, is_test, mode, fix_seed]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [out_grad]
+      to_complex_flag: [false]
+    dispatch: {fused_dropout_add_grad: null}
+    force_backend: null
+  infer_meta:
+    func: FusedDropoutAddGradInferMeta
+    param: [seed_offset, out_grad]
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: fused_dropout_add
+    inputs:
+    - {name: x, typename: Tensor}
+    - {name: y, typename: Tensor}
+    - {name: seed_tensor, typename: Tensor}
+    attrs:
+    - {name: p, typename: Scalar}
+    - {name: is_test, typename: bool}
+    - {name: mode, typename: str}
+    - {name: seed, typename: int}
+    - {name: fix_seed, typename: bool}
+    outputs:
+    - {name: out, typename: Tensor}
+    - {name: seed_offset, typename: Tensor}
+- name: fused_rotary_position_embedding_grad
+  inputs:
+  - typename: Tensor
+    name: sin
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: cos
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: position_ids
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_q_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_k_grad
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_v_grad
+    optional: true
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: bool, name: use_neox_rotary_style}
+  outputs:
+  - {typename: Tensor, name: q_grad, optional: false, intermediate: false}
+  - {typename: Tensor, name: k_grad, optional: true, intermediate: false}
+  - {typename: Tensor, name: v_grad, optional: true, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  support_tensor: []
+  traits: []
+  interfaces: []
+  kernel:
+    func: [fused_rotary_position_embedding_grad]
+    param: [sin, cos, position_ids, out_q_grad, out_k_grad, out_v_grad, use_neox_rotary_style]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [out_q_grad]
+      to_complex_flag: [false]
+    dispatch: {fused_rotary_position_embedding_grad: null}
+    force_backend: null
+  infer_meta:
+    func: FusedRopeGradInferMeta
+    spmd_rule: FusedRopeGradInferSpmd
+    param: [sin, cos, position_ids, out_q_grad, out_k_grad, out_v_grad, use_neox_rotary_style]
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: fused_rotary_position_embedding
+    inputs:
+    - {name: q, typename: Tensor}
+    - {name: k, typename: Tensor}
+    - {name: v, typename: Tensor}
+    - {name: sin, typename: Tensor}
+    - {name: cos, typename: Tensor}
+    - {name: position_ids, typename: Tensor}
+    attrs:
+    - {name: use_neox_rotary_style, typename: bool}
+    outputs:
+    - {name: out_q, typename: Tensor}
+    - {name: out_k, typename: Tensor}
+    - {name: out_v, typename: Tensor}
+- name: max_pool2d_v2_grad
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: saved_idx
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  - typename: Tensor
+    name: out_grad
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: 'int[]', name: kernel_size}
+  - {typename: 'int[]', name: strides}
+  - {typename: 'int[]', name: paddings}
+  - {typename: str, name: data_format}
+  - {typename: bool, name: global_pooling}
+  - {typename: bool, name: adaptive}
+  outputs:
+  - {typename: Tensor, name: x_grad, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  support_tensor: []
+  traits: []
+  interfaces: []
+  kernel:
+    func: [max_pool2d_v2_grad]
+    param: [x, out, saved_idx, out_grad, kernel_size, strides, paddings, data_format,
+      global_pooling, adaptive]
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: {max_pool2d_v2_grad: null}
+    force_backend: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  inplace: null
+  view: null
+  backward: null
+  forward:
+    name: max_pool2d_v2
+    inputs:
+    - {name: x, typename: Tensor}
+    attrs:
+    - {name: kernel_size, typename: 'int[]'}
+    - {name: strides, typename: 'int[]'}
+    - {name: paddings, typename: 'int[]'}
+    - {name: data_format, typename: str}
+    - {name: global_pooling, typename: bool}
+    - {name: adaptive, typename: bool}
+    outputs:
+    - {name: out, typename: Tensor}
+    - {name: saved_idx, typename: Tensor}

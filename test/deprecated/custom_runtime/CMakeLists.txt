@@ -28,7 +28,6 @@ if(WITH_CUSTOM_DEVICE AND NOT WITH_GPU)
     PLUGIN_TAG=${PLUGIN_TAG}
     PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE})
 
-  set_tests_properties(test_custom_cpu_plugin PROPERTIES TIMEOUT 120)
   set_tests_properties(test_fleet_launch_custom_device PROPERTIES TIMEOUT 120)
   set_tests_properties(test_custom_cpu_to_static PROPERTIES TIMEOUT 180)
   set_tests_properties(test_custom_op_setup PROPERTIES TIMEOUT 120)

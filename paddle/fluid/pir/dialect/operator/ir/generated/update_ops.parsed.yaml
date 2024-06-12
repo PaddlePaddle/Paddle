@@ -1,0 +1,68 @@
+- name: arange
+  inputs: []
+  attrs:
+  - {typename: Scalar, name: start, data_type: float}
+  - {typename: Scalar, name: end, data_type: float}
+  - {typename: Scalar, name: step, data_type: float}
+  - {typename: DataType, name: dtype, default_value: 'DataType::FLOAT64'}
+  - {typename: Place, name: place, default_value: CPUPlace()}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  support_tensor: [start, end, step]
+  traits: []
+  interfaces: []
+  kernel:
+    func: [arange]
+    param: [start, end, step]
+    backend:
+      ordered: false
+      candidates: [place]
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [dtype]
+      to_complex_flag: [false]
+    dispatch: {arange: null}
+    force_backend: null
+  infer_meta:
+    func: ArangeInferMeta
+    param: [start, end, step, dtype]
+  inplace: null
+  view: null
+  backward: null
+- name: sequence_mask
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: Scalar(int), name: max_len, data_type: int}
+  - {typename: DataType, name: out_dtype}
+  outputs:
+  - {typename: Tensor, name: y, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  support_tensor: []
+  traits: []
+  interfaces: []
+  kernel:
+    func: [sequence_mask_scalar]
+    param: [x, max_len, out_dtype]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [x]
+      to_complex_flag: [false]
+    dispatch: {sequence_mask_scalar: null}
+    force_backend: null
+  infer_meta:
+    func: SequenceMaskScalarInferMeta
+    param: [x, max_len, out_dtype]
+  inplace: null
+  view: null
+  backward: null

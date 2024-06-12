@@ -1,0 +1,107 @@
+- name: dequantize
+  inputs:
+  - typename: Tensor
+    name: input
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: float, name: scale, default_value: '1.0'}
+  - {typename: float, name: shift, default_value: '0.0'}
+  outputs:
+  - {typename: Tensor, name: output, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  support_tensor: []
+  traits: []
+  interfaces: []
+  kernel:
+    func: [dequantize]
+    param: [input, scale, shift]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [input]
+      to_complex_flag: [false]
+    dispatch: {dequantize: null}
+    force_backend: null
+  infer_meta:
+    func: UnchangedExceptDtypeInferMeta
+    param: [input]
+  inplace: null
+  view: null
+  backward: null
+- name: quantize
+  inputs:
+  - typename: Tensor
+    name: input
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: bool, name: is_negative_input, default_value: 'false'}
+  - {typename: float, name: scale, default_value: '1.0'}
+  - {typename: float, name: shift, default_value: '0.0'}
+  - {typename: str, name: output_format, default_value: '"NHWC"'}
+  - {typename: bool, name: bfloat16, default_value: 'false'}
+  outputs:
+  - {typename: Tensor, name: output, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  support_tensor: []
+  traits: []
+  interfaces: []
+  kernel:
+    func: [quantize]
+    param: [input, is_negative_input, scale, shift, output_format, bfloat16]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [input]
+      to_complex_flag: [false]
+    dispatch: {quantize: null}
+    force_backend: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [input]
+  inplace: null
+  view: null
+  backward: null
+- name: requantize
+  inputs:
+  - typename: Tensor
+    name: input
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: float, name: scale_in, default_value: '1.0'}
+  - {typename: float, name: scale_out, default_value: '1.0'}
+  - {typename: float, name: shift_in, default_value: '1.0'}
+  - {typename: float, name: shift_out, default_value: '1.0'}
+  outputs:
+  - {typename: Tensor, name: output, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  support_tensor: []
+  traits: []
+  interfaces: []
+  kernel:
+    func: [requantize]
+    param: [input, scale_in, scale_out, shift_in, shift_out]
+    backend: null
+    layout: null
+    data_type:
+      ordered: false
+      candidates: [input]
+      to_complex_flag: [false]
+    dispatch: {requantize: null}
+    force_backend: null
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [input]
+  inplace: null
+  view: null
+  backward: null
