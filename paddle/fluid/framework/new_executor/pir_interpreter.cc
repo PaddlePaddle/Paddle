@@ -909,8 +909,10 @@ void PirInterpreter::BuildInstruction() {
       vec_instruction_base_.emplace_back(
           std::make_unique<CustomKernelInstruction>(
               op_idx++, place_, &op, *(value_exe_info_.get())));
+#ifdef PADDLE_WITH_TENSORRT
     } else if (op.dialect()->name() == "trt_op") {
       CREATE_INSTR(TensorRTEngineInstruction);
+#endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Now only support pd_kernel, onednn_kernel, custom_kernel, trt_op "

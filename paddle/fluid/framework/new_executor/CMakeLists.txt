@@ -30,7 +30,6 @@ set(standalone_executor_deps
     executor_gc_helper
     device_event_base
     framework_proto
-    tensorrt_engine
     pir_transforms)
 
 if(WITH_CINN)
@@ -43,6 +42,10 @@ if(WITH_CINN)
       device_context
       op_registry
       ${DEVICE_EVENT_LIBS})
+endif()
+
+if(WITH_TENSORRT)
+  set(standalone_executor_deps ${standalone_executor_deps} tensorrt_engine)
 endif()
 
 if(WITH_CUSTOM_DEVICE)
