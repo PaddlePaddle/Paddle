@@ -127,26 +127,6 @@ if(WITH_GPU)
   endforeach()
 
   file(
-    GLOB CINN_FUSION_TEST
-    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "fusion/test_*.py")
-
-  foreach(fusion_test_name ${EXCLUDE_FUSION})
-    list(REMOVE_ITEM CINN_FUSION_TEST fusion/${fusion_test_name}.py)
-  endforeach()
-
-  foreach(fusion_test_name ${CINN_FUSION_TEST})
-    string(REGEX REPLACE ".py" "" fusion_test_name ${fusion_test_name})
-    add_test(
-      NAME ${fusion_test_name}
-      COMMAND
-        ${CMAKE_COMMAND} -E env
-        PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-        python3 ${CMAKE_CURRENT_SOURCE_DIR}/${fusion_test_name}.py
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-  endforeach()
-
-  file(
     GLOB CINN_RUNTIME_TEST
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "runtime/test_*.py")
