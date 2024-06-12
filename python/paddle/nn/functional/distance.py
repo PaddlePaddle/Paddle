@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import annotations
 
 import paddle
 from paddle import _C_ops
@@ -23,14 +22,7 @@ from ...base.layer_helper import LayerHelper
 __all__ = []
 
 
-def pairwise_distance(
-    x: paddle.Tensor,
-    y: paddle.Tensor,
-    p: float = 2.0,
-    epsilon: float = 1e-6,
-    keepdim: bool = False,
-    name: str | None = None,
-) -> paddle.Tensor:
+def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
     r"""
 
     It computes the pairwise distance between two vectors. The
@@ -53,7 +45,7 @@ def pairwise_distance(
         keepdim (bool, optional): Whether to reserve the reduced dimension
             in the output Tensor. The result tensor is one dimension less than
             the result of ``|x-y|`` unless :attr:`keepdim` is True. Default: False.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`.
             Generally, no setting is required. Default: None.
 
     Returns:
@@ -116,9 +108,7 @@ def pairwise_distance(
         return out
 
 
-def pdist(
-    x: paddle.Tensor, p: float = 2.0, name: str | None = None
-) -> paddle.Tensor:
+def pdist(x, p=2.0, name=None):
     r'''
     Computes the p-norm distance between every pair of row vectors in the input.
 
