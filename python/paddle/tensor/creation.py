@@ -316,7 +316,7 @@ def linspace(
             or a 0-D Tensor with data type int32, int64, float32 or float64.
         num(int|Tensor): The input :attr:`num` is given num of the sequence. It is an int, \
             or a 0-D Tensor with data type int32.
-        dtype(np.dtype|str, optional): The data type of output tensor, it could be
+        dtype(str|paddle.dtype|np.dtype|None, optional): The data type of output tensor, it could be
             int32, int64, float32 and float64. Default: if None, the data type is float32.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
