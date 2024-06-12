@@ -188,6 +188,11 @@ inline T* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
 }
 
 void DenseTensor::ShareBufferWith(const DenseTensor& tensor, bool only_buffer) {
+  if (!tensor.meta().is_contiguous()) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Tensor is not contiguous, cannot call share_buffer_to on it."));
+  }
+
   holder_ = tensor.holder_;
   if (!only_buffer) {
     meta_.offset = tensor.meta().offset;
