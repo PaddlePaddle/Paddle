@@ -62,19 +62,6 @@ inline uint16_t cpu_float_to_bfloat16(float f) {
   auto iraw = bit_cast<std::array<uint16_t, 2>>(f);
   uint16_t x;
   switch (std::fpclassify(f)) {
-    case FP_SUBNORMAL: {
-      x = iraw[1];
-      auto low_bits = iraw[0];
-      if (low_bits > 0x8000) {
-        ++x;
-      } else if (low_bits == 0x8000) {
-        if ((x & 0x7F00) == 0 && ((x & 0x80) == 0 || (x & 0xFF) == 0x80) &&
-            (x & 1) != 0) {
-          ++x;
-        }
-      }
-      break;
-    }
     case FP_ZERO: {
       x = iraw[1];
       x &= 0x8000;
