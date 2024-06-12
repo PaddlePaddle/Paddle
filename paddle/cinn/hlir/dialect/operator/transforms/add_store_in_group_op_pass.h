@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,22 +14,14 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
-#include "paddle/pir/include/core/program.h"
-#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
+#include <memory>
+#include "paddle/pir/include/pass/pass.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-using GroupPtr = std::shared_ptr<Group>;
-using GroupList = std::vector<GroupPtr>;
-
-GroupList OpFusionPassInternal(
-    const std::vector<pir::Operation*>& op_list,
-    const std::vector<pir::Operation*>& output_op_list = {});
-
-GroupList GeneralFusionMergePassInternal(const GroupList& group_list);
+std::unique_ptr<pir::Pass> CreateAddStoreInGroupOpPass();
 
 }  // namespace ir
 }  // namespace dialect

@@ -1187,6 +1187,9 @@ ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,
     for (auto* op : ops) {
       for (size_t i = 0; i < op->num_operands(); ++i) {
         auto in = op->operand_source(i);
+        if (!in || !in.type()) {
+          continue;
+        }
         auto type_info = in.type().dyn_cast<paddle::dialect::DenseTensorType>();
         auto dtype = type_info.dtype();
         const auto& dims = type_info.dims();

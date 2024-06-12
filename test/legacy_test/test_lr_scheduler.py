@@ -709,7 +709,12 @@ class TestLRScheduler(unittest.TestCase):
                     feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                     fetch_list=[lr_var],
                 )
-            self.assertEqual(out, np.array(python_func(num, **kwarg)))
+            self.assertEqual(
+                out,
+                np.array(python_func(num, **kwarg))
+                .astype('float32')
+                .astype('float32'),
+            )
             scheduler.step()
             num += 1
 
@@ -720,7 +725,9 @@ class TestLRScheduler(unittest.TestCase):
                     feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                     fetch_list=[lr_var],
                 )
-            self.assertEqual(out, np.array(python_func(num, **kwarg)))
+            self.assertEqual(
+                out, np.array(python_func(num, **kwarg)).astype('float32')
+            )
             scheduler.step()
             num += 1
 
@@ -734,7 +741,7 @@ class TestLRScheduler(unittest.TestCase):
                         feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                         fetch_list=[lr_var],
                     )
-                self.assertEqual(out, np.array(python_result))
+                self.assertEqual(out, np.array(python_result).astype('float32'))
                 scheduler.step()
                 num += 1
 
@@ -747,7 +754,7 @@ class TestLRScheduler(unittest.TestCase):
                         feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                         fetch_list=[lr_var],
                     )
-                self.assertEqual(out, np.array(python_result))
+                self.assertEqual(out, np.array(python_result).astype('float32'))
                 scheduler.step()
                 num += 1
 
@@ -781,7 +788,9 @@ class TestLRScheduler(unittest.TestCase):
                         feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                         fetch_list=get_lr_var(main_prog),
                     )
-                self.assertEqual(out, np.array(python_func(num, **kwarg)))
+                self.assertEqual(
+                    out, np.array(python_func(num, **kwarg)).astype('float32')
+                )
                 scheduler.step()
                 num += 1
 
@@ -792,7 +801,9 @@ class TestLRScheduler(unittest.TestCase):
                         feed={'x': np.random.randn(3, 4, 5).astype('float32')},
                         fetch_list=get_lr_var(test_prog),
                     )
-                self.assertEqual(out, np.array(python_func(num, **kwarg)))
+                self.assertEqual(
+                    out, np.array(python_func(num, **kwarg)).astype('float32')
+                )
                 scheduler.step()
                 num += 1
 
@@ -808,7 +819,9 @@ class TestLRScheduler(unittest.TestCase):
                             },
                             fetch_list=get_lr_var(compiled_train_prog),
                         )
-                    self.assertEqual(out, np.array(python_result))
+                    self.assertEqual(
+                        out, np.array(python_result).astype('float32')
+                    )
                     scheduler.step()
                     num += 1
 
@@ -823,7 +836,9 @@ class TestLRScheduler(unittest.TestCase):
                             },
                             fetch_list=get_lr_var(compiled_test_prog),
                         )
-                    self.assertEqual(out, np.array(python_result))
+                    self.assertEqual(
+                        out, np.array(python_result).astype('float32')
+                    )
                     scheduler.step()
                     num += 1
 
@@ -1332,7 +1347,10 @@ class TestLRScheduler(unittest.TestCase):
                         fetch_list=[lr_var],
                     )
                 self.assertEqual(
-                    out, np.array(linear_warmup_lr(epoch, **params))
+                    out,
+                    np.array(linear_warmup_lr(epoch, **params)).astype(
+                        'float32'
+                    ),
                 )
                 scheduler.step()
 

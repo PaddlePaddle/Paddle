@@ -120,6 +120,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.silu",
     "pd_op.sum",
     "pd_op.mean",
+    "pd_op.add",
 ]
 
 

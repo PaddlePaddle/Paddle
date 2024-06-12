@@ -107,7 +107,15 @@ class XPUOpTest(OpTest):
                 return
 
         if self.dtype == np.uint16:
-            if not core.is_bfloat16_supported(place):
+            # `is_bfloat16_supported`` is typically used to check if the device supports bfloat16 amp.
+            # Only when XPU's compute capability >= XPU3 support bfloat16 amp.
+            # Although XPU2 supports bfloat16 computing, but XPU2's bfloat16 operators haven't been widely covered.
+            # We disable bfloat16 amp for XPU2 but we still allow bfloat16 unittests for XPU2.
+            if (
+                not core.is_bfloat16_supported(place)
+                and not core.get_xpu_device_version(place.get_device_id())
+                == core.XPUVersion.XPU2
+            ):
                 return
 
         if self.dtype == np.float16 or self.dtype == np.uint16:
@@ -189,7 +197,15 @@ class XPUOpTest(OpTest):
                 return
 
         if self.dtype == np.uint16:
-            if not core.is_bfloat16_supported(place):
+            # `is_bfloat16_supported`` is typically used to check if the device supports bfloat16 amp.
+            # Only when XPU's compute capability >= XPU3 support bfloat16 amp.
+            # Although XPU2 supports bfloat16 computing, but XPU2's bfloat16 operators haven't been widely covered.
+            # We disable bfloat16 amp for XPU2 but we still allow bfloat16 unittests for XPU2.
+            if (
+                not core.is_bfloat16_supported(place)
+                and not core.get_xpu_device_version(place.get_device_id())
+                == core.XPUVersion.XPU2
+            ):
                 return
 
         if self.dtype == np.float16 or self.dtype == np.uint16:
