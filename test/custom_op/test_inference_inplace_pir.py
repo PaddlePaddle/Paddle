@@ -124,11 +124,6 @@ class TestPredictorRunWithTensor(unittest.TestCase):
     def test_output(self):
         pir_predictor = self.init_predictor()
         pir_output = self.get_outputs(pir_predictor)
-        # predictor = self.init_predictor(False)
-        # output = self.get_outputs(predictor)
-        # np.testing.assert_allclose(
-        #     output.numpy().flatten(), pir_output.numpy().flatten()
-        # )
 
 
 if __name__ == "__main__":
