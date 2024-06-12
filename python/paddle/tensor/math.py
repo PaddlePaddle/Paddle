@@ -7748,6 +7748,7 @@ def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
         .. code-block:: python
             :name: example2
 
+            >>> import paddle
             >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
             >>> y = paddle.to_tensor([-2], dtype='float64')
             >>> res = paddle.copysign(x, y)
@@ -7758,6 +7759,7 @@ def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
         .. code-block:: python
             :name: example_zero1
 
+            >>> import paddle
             >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
             >>> y = paddle.to_tensor([0.0], dtype='float64')
             >>> out = paddle.copysign(x, y)
@@ -7768,6 +7770,7 @@ def copysign(x: Tensor, y: Tensor | float, name: str | None = None) -> Tensor:
         .. code-block:: python
             :name: example_zero2
 
+            >>> import paddle
             >>> x = paddle.to_tensor([1, 2, 3], dtype='float64')
             >>> y = paddle.to_tensor([-0.0], dtype='float64')
             >>> out = paddle.copysign(x, y)
