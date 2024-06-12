@@ -21,6 +21,7 @@ import numpy as np
 import paddle
 import paddle.inference as paddle_infer
 from paddle.framework import in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -78,6 +79,7 @@ class TestDropout(UnittestBase):
         self.shapes = [[10, 10]]
         self.save_path = os.path.join(self.temp_dir.name, 'dropout')
 
+    @test_with_pir_api
     def test_static(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -92,8 +94,8 @@ class TestDropout(UnittestBase):
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
             # test _to_string
-            print(str(main_prog))
-            self.assertTrue("Var[" in str(main_prog))
+            if not in_pir_mode():
+                self.assertTrue("Var[" in str(main_prog))
 
             exe = paddle.static.Executor()
             exe.run(startup_prog)
