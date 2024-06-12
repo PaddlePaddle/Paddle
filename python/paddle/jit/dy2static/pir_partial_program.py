@@ -748,6 +748,7 @@ class PartialProgramLayer:
 
                 # if-else pass
                 if cinn_is_enabled(self._build_strategy, self._backend):
+                    print("##### forward_program: ", forward_program)
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
                 else:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
@@ -776,6 +777,49 @@ class PartialProgramLayer:
                     paddle.base.libpaddle.pir.apply_cse_pass(backward_program)
                 if cinn_is_enabled(self._build_strategy, self._backend):
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
+                    forward_shape_analysis = paddle.base.libpaddle.pir.get_shape_constraint_ir_analysis(
+                        forward_program
+                    )
+                    backward_shape_analysis = paddle.base.libpaddle.pir.get_shape_constraint_ir_analysis(
+                        backward_program
+                    )
+                    backward_shape_analysis.register_symbol_cstr_from_shape_analysis(
+                        forward_shape_analysis
+                    )
+
+                    def share_symbol_shape_from_forward_to_backward(
+                        forward_value, backward_value
+                    ):
+                        backward_shape_analysis.set_shape_or_data_for_var(
+                            backward_value,
+                            forward_shape_analysis.get_shape_or_data_for_var(
+                                forward_value
+                            ),
+                        )
+
+                    program_name_attr = train_program.program_name_attr
+                    forward_name_value_map = {
+                        item.name: item
+                        for item in forward_program.list_vars()
+                        if item.has_name
+                    }
+                    for [kw_name, kw_value] in (
+                        backward_program.global_block().kwargs().items()
+                    ):
+                        if kw_name in program_name_attr['bo_g']:
+                            idx = program_name_attr['bo_g'].index(kw_name)
+                            forward_matched_value = forward_name_value_map[
+                                program_name_attr['fo'][idx]
+                            ]
+                        elif kw_name in forward_name_value_map:
+                            forward_matched_value = forward_name_value_map[
+                                kw_name
+                            ]
+                        else:
+                            raise Exception(f"kw_args: {kw_name} not found")
+                        share_symbol_shape_from_forward_to_backward(
+                            forward_matched_value, kw_value
+                        )
                     paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
                 else:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
