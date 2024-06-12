@@ -15,9 +15,10 @@
 import numbers
 import warnings
 from collections import OrderedDict
-from typing import Dict
+from collections.abc import Sequence
 
 import numpy as np
+from typing_extensions import TypedDict
 
 import paddle
 from paddle import nn
@@ -27,12 +28,24 @@ from paddle.static import InputSpec
 __all__ = []
 
 
+class ModelSummary(TypedDict):
+    total_params: int
+    trainable_params: int
+
+
 def summary(
     net: paddle.nn.Layer,
-    input_size: tuple | InputSpec | list[tuple | InputSpec] | None = None,
-    dtypes: str | None = None,
-    input: paddle.Tensor | None = None,
-) -> Dict:
+    input_size: int
+    | tuple[int, ...]
+    | InputSpec
+    | list[tuple[int, ...] | InputSpec]
+    | None = None,
+    dtypes: str | Sequence[str] | None = None,
+    input: paddle.Tensor
+    | Sequence[paddle.Tensor]
+    | dict[str, paddle.Tensor]
+    | None = None,
+) -> ModelSummary:
     """Prints a string summary of the network.
 
     Args:
@@ -47,7 +60,7 @@ def summary(
         input (Tensor|None, optional): If input is given, input_size and dtype will be ignored, Default: None.
 
     Returns:
-        Dict: A summary of the network including total params and total trainable params.
+        dict: A summary of the network including total params and total trainable params.
 
     Examples:
         .. code-block:: python
