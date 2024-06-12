@@ -50,7 +50,7 @@ def data(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
     lod_level: int = 0,
-) -> paddle.pir.Value:
+) -> paddle.Tensor:
     """
 
     This function creates a variable on the global block. The global variable
