@@ -14,8 +14,7 @@
 
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 void CudaProfilerInit(const std::string& output_file,
                       const std::string& output_mode,
@@ -52,5 +51,4 @@ void CudaNvtxRangePush(const std::string& name, const NvtxRangeColor color) {
 void CudaNvtxRangePop() { dynload::nvtxRangePop(); }
 #endif
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

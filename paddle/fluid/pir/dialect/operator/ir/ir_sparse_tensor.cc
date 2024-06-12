@@ -21,15 +21,11 @@ IrSparseCooTensor::IrSparseCooTensor(phi::DataType dtype,
                                      const common::DDim& dims,
                                      common::DDim non_zero_dims,
                                      common::DataLayout layout,
-                                     pir::DenseTensorType non_zero_indices,
-                                     pir::DenseTensorType non_zero_elements,
                                      bool coalesced)
     : dims_(dims),
       non_zero_dims_(non_zero_dims),
       dtype_(dtype),
       layout_(layout),
-      non_zero_indices_(non_zero_indices),
-      non_zero_elements_(non_zero_elements),
       coalesced_(coalesced) {}
 
 IrSparseCooTensor& IrSparseCooTensor::operator=(
@@ -38,8 +34,6 @@ IrSparseCooTensor& IrSparseCooTensor::operator=(
   non_zero_dims_ = std::move(other.non_zero_dims());
   dtype_ = other.dtype();
   layout_ = other.layout();
-  non_zero_indices_ = other.non_zero_indices();
-  non_zero_elements_ = other.non_zero_elements();
   coalesced_ = other.coalesced();
   return *this;
 }

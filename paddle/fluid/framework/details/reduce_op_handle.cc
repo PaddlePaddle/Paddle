@@ -26,9 +26,7 @@ PADDLE_DEFINE_EXPORTED_bool(
     false,
     "Whether to make the result of computation deterministic in CPU side.");
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 std::once_flag CollectiveContext::init_flag_;
 std::unique_ptr<CollectiveContext> CollectiveContext::context_;
@@ -318,6 +316,4 @@ std::vector<const T *> ReduceOpHandle::GetInputValues(
 }
 
 std::string ReduceOpHandle::Name() const { return "reduce"; }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

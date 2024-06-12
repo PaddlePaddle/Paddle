@@ -44,16 +44,18 @@ class OpLoweringGroup {
   OpLoweringGroup(OpLoweringGroup&&) = delete;
 
   explicit OpLoweringGroup(const std::vector<::pir::Operation*>& group_ops,
-                           FusionTrackerPtr fusion_tracker_ptr)
-      : ops_(group_ops), fusion_tracker_ptr(fusion_tracker_ptr) {
-    fn_name_ = CompatibleInfo::GroupOpsName(ops_);
-  }
+                           const std::string& fn_name FusionTrackerPtr
+                               fusion_tracker_ptr)
+      : ops_(group_ops),
+        fn_name_(fn_name),
+        fusion_tracker_ptr(fusion_tracker_ptr) {}
 
   explicit OpLoweringGroup(std::initializer_list<::pir::Operation*> group_ops,
+                           const std::string& fn_name,
                            FusionTrackerPtr fusion_tracker_ptr)
-      : ops_(group_ops), fusion_tracker_ptr(fusion_tracker_ptr) {
-    fn_name_ = CompatibleInfo::GroupOpsName(ops_);
-  }
+      : ops_(group_ops),
+        fn_name_(fn_name),
+        fusion_tracker_ptr(fusion_tracker_ptr) {}
 
   const std::string& FuncName() const { return this->fn_name_; }
   ::pir::Block* GetParentBlock() const;

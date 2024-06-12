@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import numpy as np
 
@@ -1855,7 +1856,7 @@ def t(input, name=None):
         check_variable_and_dtype(
             input,
             'input',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             'transpose',
         )
 
@@ -4415,9 +4416,11 @@ def householder_product(x, tau, name=None):
                 Q = paddle.static.setitem(
                     Q,
                     (slice(None), slice(i, None)),
-                    Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
-                    if x.dtype in [paddle.complex128, paddle.complex64]
-                    else Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i]),
+                    (
+                        Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+                        if x.dtype in [paddle.complex128, paddle.complex64]
+                        else Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+                    ),
                 )
         return Q[:, :n]
 
@@ -5134,3 +5137,66 @@ def ormqr(x, tau, y, left=True, transpose=False, name=None):
     result = matmul(Q, y) if left else matmul(y, Q)
 
     return result
+
+
+def cholesky_inverse(
+    x: paddle.Tensor, upper: bool = False, name: str | None = None
+) -> paddle.Tensor:
+    r"""
+    Using the Cholesky factor `U` to calculate the inverse matrix of a symmetric positive definite matrix, returns the matrix `inv`.
+
+    If `upper` is `False`, `U` is lower triangular matrix:
+
+    .. math::
+
+        inv = (UU^{T})^{-1}
+
+    If `upper` is `True`, `U` is upper triangular matrix:
+
+    .. math::
+
+        inv = (U^{T}U)^{-1}
+
+    Args:
+        x (Tensor): A tensor of lower or upper triangular Cholesky decompositions of symmetric matrix with shape `[N, N]`.
+            The data type of the `x` should be one of ``float32``, ``float64``.
+        upper (bool, optional): If `upper` is `False`, `x` is lower triangular matrix, or is upper triangular matrix. Default: `False`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor. Computes the inverse matrix.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # lower triangular matrix
+            >>> x = paddle.to_tensor([[3.,.0,.0], [5.,3.,.0], [-1.,1.,2.]])
+            >>> out = paddle.linalg.cholesky_inverse(x)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[ 0.61728382, -0.25925916,  0.22222219],
+             [-0.25925916,  0.13888884, -0.08333331],
+             [ 0.22222218, -0.08333331,  0.25000000]])
+
+            >>> # upper triangular matrix
+            >>> out = paddle.linalg.cholesky_inverse(x.T, upper=True)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[ 0.61728382, -0.25925916,  0.22222219],
+             [-0.25925916,  0.13888884, -0.08333331],
+             [ 0.22222218, -0.08333331,  0.25000000]])
+
+    """
+    if x.ndim != 2:
+        raise ValueError('The input tensor must be 2-dimensional')
+
+    if x.shape[0] != x.shape[1]:
+        raise ValueError('The input tensor must be square matrix')
+
+    if upper:
+        A = x.T @ x
+    else:
+        A = x @ x.T
+    return paddle.linalg.inv(A)
