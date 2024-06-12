@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define functions to get create a tensor
+from __future__ import annotations
 
 import math
 import re
@@ -21,6 +21,12 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle._typing import (
+    DTypeLike,
+    NestedNumbericSequence,
+    PlaceLike,
+    TensorLike,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -719,7 +725,12 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
     return output
 
 
-def to_tensor(data, dtype=None, place=None, stop_gradient=True):
+def to_tensor(
+    data: TensorLike | NestedNumbericSequence,
+    dtype: DTypeLike | None = None,
+    place: PlaceLike | None = None,
+    stop_gradient: bool = True,
+) -> paddle.Tensor:
     r"""
     Constructs a ``paddle.Tensor`` from ``data`` ,
     which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor.

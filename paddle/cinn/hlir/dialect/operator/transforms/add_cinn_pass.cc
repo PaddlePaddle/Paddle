@@ -28,7 +28,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/accuracy_check_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_group_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/conv2d_transpose_filter_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/convert_memory_effec_attn_to_flash_attn_pass.h"
@@ -57,6 +57,7 @@ COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(disable_dyshape_in_train);
 COMMON_DECLARE_bool(enable_cinn_accuracy_check);
 COMMON_DECLARE_bool(enable_fuse_parallel_matmul_pass);
+COMMON_DECLARE_bool(logging_pir_py_code_dump_symbolic_dims);
 PD_DECLARE_bool(group_schedule_tiling_first);
 
 namespace cinn::dialect::ir {
@@ -159,8 +160,8 @@ void ApplyDivideGroupOpToFusionOpPass(
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   if (FLAGS_group_schedule_tiling_first) {
+    pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInGroupOpPass());
     pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
-    // pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInFusionOpPass());
   } else {
     pass_manager->AddPass(
         cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
@@ -229,7 +230,7 @@ void ApplyCinnPass(::pir::Program* program,
                        CreatePassManager) {
   PirToPyCodeConverter(program)
       .file_name("original_programs.py")
-      .dump_symbolic_shape(false)
+      .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
       .SaveIfFlagEnabled();
   ApplyPdToCinnPass(program, CreatePassManager);
   ApplyCinnPreprocessPass(program, CreatePassManager);

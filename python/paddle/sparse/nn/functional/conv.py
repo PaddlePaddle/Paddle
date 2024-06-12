@@ -16,6 +16,7 @@ __all__ = []
 
 from paddle import _C_ops, in_dynamic_mode
 from paddle.base.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_or_pir_mode
 from paddle.nn.functional.conv import _update_padding_nd
 from paddle.utils import convert_to_list
 
@@ -63,7 +64,7 @@ def _conv3d(
     stride = convert_to_list(stride, dims, 'stride')
     dilation = convert_to_list(dilation, dims, 'dilation')
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         pre_bias = _C_ops.sparse_conv3d(
             x,
             weight,
@@ -152,7 +153,7 @@ def _conv2d(
     stride = convert_to_list(stride, dims, 'stride')
     dilation = convert_to_list(dilation, dims, 'dilation')
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         pre_bias = _C_ops.sparse_conv3d(
             x,
             weight,
@@ -238,7 +239,7 @@ def _conv3d_igemm(
     stride = convert_to_list(stride, dims, 'stride')
     dilation = convert_to_list(dilation, dims, 'dilation')
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         pre_bias = _C_ops.sparse_conv3d_implicit_gemm(
             x,
             weight,

@@ -262,41 +262,6 @@ class TestAdamWOp(unittest.TestCase):
         )
         assert adam.__str__() is not None
 
-    def test_adamw_op(self):
-        paddle.enable_static()
-        place = base.CPUPlace()
-        shape = [2, 3, 8, 8]
-        exe = base.Executor(place)
-        train_prog = base.Program()
-        startup = base.Program()
-        with base.program_guard(train_prog, startup):
-            with base.unique_name.guard():
-                data = paddle.static.data(name="data", shape=shape)
-                conv = paddle.static.nn.conv2d(data, 8, 3)
-                loss = paddle.mean(conv)
-
-                beta1 = paddle.static.create_global_var(
-                    shape=[1], value=0.85, dtype='float32', persistable=True
-                )
-                beta2 = paddle.static.create_global_var(
-                    shape=[1], value=0.95, dtype='float32', persistable=True
-                )
-                betas = [beta1, beta2]
-                opt = paddle.optimizer.AdamW(
-                    learning_rate=1e-5,
-                    beta1=beta1,
-                    beta2=beta2,
-                    weight_decay=0.01,
-                    epsilon=1e-8,
-                )
-                opt.minimize(loss)
-
-        exe.run(startup)
-        data_np = np.random.random(shape).astype('float32')
-        rets = exe.run(train_prog, feed={"data": data_np}, fetch_list=[loss])
-        assert rets[0] is not None
-        paddle.disable_static()
-
     def test_pir_adam_op(self):
         with paddle.pir_utils.IrGuard():
             place = base.CPUPlace()

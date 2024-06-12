@@ -20,11 +20,16 @@ from op_test import OpTest
 import paddle
 
 
+def api_wrapper(x, k):
+    return paddle._legacy_C_ops.top_k(x, "k", k)
+
+
 class TestTopkOp(OpTest):
     def setUp(self):
         self.variable_k = False
         self.set_args()
         self.op_type = "top_k"
+        self.python_api = api_wrapper
         self.dtype = np.float64
         self.check_cinn = True
         self.init_dtype()
