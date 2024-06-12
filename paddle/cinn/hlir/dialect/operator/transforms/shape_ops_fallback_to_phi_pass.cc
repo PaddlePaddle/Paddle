@@ -18,6 +18,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_to_pd_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/core/dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 namespace cinn {
 namespace dialect {
@@ -46,7 +47,30 @@ class FusionShapeOpsPattern
 
   void Rewrite(cinn::dialect::FusionOp fusion_op,
                ::pir::PatternRewriter& rewriter) const override {
-    details::FallbackFusionOpToPdOps(fusion_op, rewriter);
+    ::pir::IrMapping ir_mapping;
+    for (auto& op : *fusion_op.block()) {
+      if (op.isa<::pir::YieldOp>()) {
+        for (uint32_t i = 0; i < op.num_operands(); ++i) {
+          rewriter.ReplaceAllUsesWith(
+              fusion_op->result(i),
+              ir_mapping.Lookup<::pir::Value>(op.operand_source(i)));
+        }
+        continue;
+      }
+      for (size_t i = 0; i < op.num_operands(); ++i) {
+        if (!ir_mapping.GetMap<::pir::Value>().count(op.operand_source(i))) {
+          ir_mapping.Add(op.operand_source(i), op.operand_source(i));
+        }
+      }
+      if (op.dialect()->name() == "cinn_op") {
+        auto new_pd_op =
+            details::RewriteCinnOpToPdOp(&op, ir_mapping, rewriter);
+      } else {
+        auto* new_op = op.Clone(ir_mapping, {true, true, true});
+        rewriter.Insert(new_op);
+      }
+    }
+    rewriter.EraseOp(fusion_op);
   }
 };
 

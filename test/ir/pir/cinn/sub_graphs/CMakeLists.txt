@@ -72,6 +72,8 @@ if(WITH_GPU)
     list(REMOVE_ITEM DYNAMIC_BUILD_TESTS ${static_test})
   endforeach()
 
+  list(REMOVE_ITEM DYNAMIC_BUILD_TESTS test_fusion_fallback_pass)
+
   foreach(cinn_sub_graph_test_name ${STATIC_BUILD_TESTS})
     add_test(
       NAME ${cinn_sub_graph_test_name}
@@ -108,5 +110,22 @@ if(WITH_GPU)
   # set_tests_properties(test_sub_graph_3 PROPERTIES TIMEOUT 300)
   # set_tests_properties(test_sub_graph_54 PROPERTIES TIMEOUT 300)
   # set_tests_properties(test_sub_graph_30 PROPERTIES TIMEOUT 300)
+
+  # test fusion_fallback_pass
+  add_test(
+    NAME test_fusion_fallback_pass
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+      FLAGS_prim_enable_dynamic=1 FLAGS_cinn_new_group_scheduler=1
+      FLAGS_check_infer_symbolic=1 FLAGS_enable_pir_api=1
+      FLAGS_cinn_bucket_compile=1 FLAGS_group_schedule_tiling_first=1
+      FLAGS_cudnn_deterministic=true FLAGS_enable_fusion_fallback=1
+      ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_fusion_fallback_pass.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  set_tests_properties(test_fusion_fallback_pass PROPERTIES LABELS
+                                                            "RUN_TYPE=CINN")
+  set_tests_properties(test_fusion_fallback_pass PROPERTIES TIMEOUT 600)
 
 endif()
