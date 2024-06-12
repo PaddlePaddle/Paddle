@@ -3438,7 +3438,7 @@ def amin(
         return out
 
 
-def log1p(x, name=None):
+def log1p(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Calculates the natural log of the given input tensor, element-wise.
 
@@ -3447,7 +3447,7 @@ def log1p(x, name=None):
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, the natural log of the input Tensor computed element-wise.
@@ -3492,7 +3492,7 @@ def log1p(x, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def log1p_(x, name=None):
+def log1p_(x: Tensor, name: str | None = None) -> None:
     r"""
     Inplace version of ``log1p`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_log1p`.
@@ -3502,7 +3502,7 @@ def log1p_(x, name=None):
         return _C_ops.log1p_(x)
 
 
-def log2(x, name=None):
+def log2(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Calculates the log to the base 2 of the given input tensor, element-wise.
 
@@ -3512,7 +3512,7 @@ def log2(x, name=None):
 
     Args:
         x (Tensor): Input tensor must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
 
     Returns:
@@ -3575,7 +3575,7 @@ def log2(x, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def log2_(x, name=None):
+def log2_(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``log2`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_log2`.
@@ -3585,7 +3585,7 @@ def log2_(x, name=None):
         return _C_ops.log2_(x)
 
 
-def log10(x, name=None):
+def log10(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Calculates the log to the base 10 of the given input tensor, element-wise.
 
@@ -3658,7 +3658,7 @@ def log10(x, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def log10_(x, name=None):
+def log10_(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``log10`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_log10`.
@@ -3668,7 +3668,12 @@ def log10_(x, name=None):
         return _C_ops.log10_(x)
 
 
-def clip(x, min=None, max=None, name=None):
+def clip(
+    x: Tensor,
+    min: float | None = None,
+    max: float | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
     This operator clip all elements in input into the range [ min, max ] and return
     a resulting tensor as the following equation:
@@ -3683,7 +3688,7 @@ def clip(x, min=None, max=None, name=None):
             with shape [] and type ``int32``, ``float16``, ``float32``, ``float64``.
         max (float|int|Tensor, optional): The upper bound with type ``float``, ``int`` or a ``0-D Tensor``
             with shape [] and type ``int32``, ``float16``, ``float32``, ``float64``.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A Tensor with the same data type and data shape as input.
@@ -3784,7 +3789,12 @@ def clip(x, min=None, max=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def clip_(x, min=None, max=None, name=None):
+def clip_(
+    x: Tensor,
+    min: float | None = None,
+    max: float | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
     Inplace version of ``clip`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_clip`.
@@ -3802,7 +3812,13 @@ def clip_(x, min=None, max=None, name=None):
         return _C_ops.clip_(x, min, max)
 
 
-def trace(x, offset=0, axis1=0, axis2=1, name=None):
+def trace(
+    x: Tensor,
+    offset: int = 0,
+    axis1: int = 0,
+    axis2: int = 1,
+    name: str | None = None,
+) -> Tensor:
     """
 
     Computes the sum along diagonals of the input tensor x.
@@ -3825,7 +3841,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
         offset (int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
         axis1 (int, optional): The first axis with respect to take diagonal. Default: 0.
         axis2 (int, optional): The second axis with respect to take diagonal. Default: 1.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: the output data type is the same as input data type.
@@ -3898,7 +3914,13 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
         return out
 
 
-def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
+def diagonal(
+    x: Tensor,
+    offset: int = 0,
+    axis1: int = 0,
+    axis2: int = 1,
+    name: str | None = None,
+) -> Tensor:
     """
     Computes the diagonals of the input tensor x.
 
@@ -3917,7 +3939,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
         offset (int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
         axis1 (int, optional): The first axis with respect to take diagonal. Default: 0.
         axis2 (int, optional): The second axis with respect to take diagonal. Default: 1.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: a partial view of input tensor in specify two dimensions, the output data type is the same as input data type.
@@ -4020,7 +4042,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
         return out
 
 
-def kron(x, y, name=None):
+def kron(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Compute the Kronecker product of two tensors, a
     composite tensor made of blocks of the second tensor scaled by the
@@ -4044,7 +4066,7 @@ def kron(x, y, name=None):
     Args:
         x (Tensor): the fist operand of kron op, data type: float16, float32, float64, int32 or int64.
         y (Tensor): the second operand of kron op, data type: float16, float32, float64, int32 or int64. Its data type should be the same with x.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The output of kron, data type: float16, float32, float64, int32 or int64. Its data is the same with x.
@@ -4089,7 +4111,12 @@ def kron(x, y, name=None):
         return out
 
 
-def cumsum(x, axis=None, dtype=None, name=None):
+def cumsum(
+    x: Tensor,
+    axis: int | None = None,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
     The cumulative sum of the elements along a given axis.
 
@@ -4099,7 +4126,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
     Args:
         x (Tensor): The input tensor needed to be cumsumed.
         axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
-        dtype (str, optional): The data type of the output tensor, can be float16, float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
+        dtype (str|paddle.dtype|np.dtype|None, optional): The data type of the output tensor, can be float16, float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4164,7 +4191,12 @@ def cumsum(x, axis=None, dtype=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def cumsum_(x, axis=None, dtype=None, name=None):
+def cumsum_(
+    x: Tensor,
+    axis: int | None = None,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Inplace version of ``cumprod`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_cumprod`.
@@ -4182,7 +4214,12 @@ def cumsum_(x, axis=None, dtype=None, name=None):
         return _C_ops.cumsum_(x, axis, flatten, False, False)
 
 
-def cummax(x, axis=None, dtype='int64', name=None):
+def cummax(
+    x: Tensor,
+    axis: int | None = None,
+    dtype: DTypeLike = 'int64',
+    name: str | None = None,
+) -> tuple[Tensor, Tensor]:
     """
     The cumulative max of the elements along a given axis.
 
@@ -4192,8 +4229,8 @@ def cummax(x, axis=None, dtype='int64', name=None):
     Args:
         x (Tensor): The input tensor needed to be cummaxed.
         axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cummax over the flattened array.
-        dtype (str, optional): The data type of the indices tensor, can be int32, int64. The default value is int64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        dtype (str|paddle.dtype|np.dtype, optional): The data type of the indices tensor, can be int32, int64. The default value is int64.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         out (Tensor), The result of cummax operation. The dtype of cummax result is same with input x.
@@ -4269,7 +4306,12 @@ def cummax(x, axis=None, dtype='int64', name=None):
         return out, indices
 
 
-def cummin(x, axis=None, dtype='int64', name=None):
+def cummin(
+    x: Tensor,
+    axis: int | None = None,
+    dtype: DTypeLike = 'int64',
+    name: str | None = None,
+) -> tuple[Tensor, Tensor]:
     """
     The cumulative min of the elements along a given axis.
 
@@ -4279,7 +4321,7 @@ def cummin(x, axis=None, dtype='int64', name=None):
     Args:
         x (Tensor): The input tensor needed to be cummined.
         axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cummin over the flattened array.
-        dtype (str, optional): The data type of the indices tensor, can be int32, int64. The default value is int64.
+        dtype (str|paddle.dtype|np.dtype, optional): The data type of the indices tensor, can be int32, int64. The default value is int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4355,7 +4397,12 @@ def cummin(x, axis=None, dtype='int64', name=None):
         return out, indices
 
 
-def logcumsumexp(x, axis=None, dtype=None, name=None):
+def logcumsumexp(
+    x: Tensor,
+    axis: int | None = None,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
     The logarithm of the cumulative summation of the exponentiation of the elements along a given axis.
 
@@ -4371,8 +4418,8 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
     Args:
         x (Tensor): The input tensor.
         axis (int, optional): The dimension to do the operation along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
-        dtype (str, optional): The data type of the output tensor, can be float16, float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        dtype (str|paddle.dtype|np.dtype, optional): The data type of the output tensor, can be float16, float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, the result of logcumsumexp operator.
@@ -4436,7 +4483,12 @@ def logcumsumexp(x, axis=None, dtype=None, name=None):
         return out
 
 
-def cumprod(x, dim=None, dtype=None, name=None):
+def cumprod(
+    x: Tensor,
+    dim: int | None = None,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
     Compute the cumulative product of the input tensor x along a given dimension dim.
 
@@ -4445,12 +4497,12 @@ def cumprod(x, dim=None, dtype=None, name=None):
 
     Args:
         x (Tensor): the input tensor need to be cumproded.
-        dim (int, optional): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank),
+        dim (int|None, optional): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank),
                     where x.rank means the dimensions of the input tensor x and -1 means the last dimension.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64, complex64,
+        dtype (str|paddle.dtype|np.dtype, optional): The data type of the output tensor, can be float32, float64, int32, int64, complex64,
                     complex128. If specified, the input tensor is casted to dtype before the operation is performed.
                     This is useful for preventing data type overflows. The default value is None.
-        name (str, optional): Name for the operation (optional, default is None). For more information,
+        name (str|None, optional): Name for the operation (optional, default is None). For more information,
                     please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4529,7 +4581,12 @@ def cumprod(x, dim=None, dtype=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def cumprod_(x, dim=None, dtype=None, name=None):
+def cumprod_(
+    x: Tensor,
+    dim: int | None = None,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Inplace version of ``cumprod`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_cumprod`.
@@ -4541,14 +4598,14 @@ def cumprod_(x, dim=None, dtype=None, name=None):
         return _C_ops.cumprod_(x, dim, False, False)
 
 
-def isfinite(x, name=None):
+def isfinite(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     Return whether every element of input tensor is finite number or not.
 
     Args:
         x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         `Tensor`, the bool result which shows every element of `x` whether it is finite number or not.
@@ -4588,14 +4645,14 @@ def isfinite(x, name=None):
         return out
 
 
-def isinf(x, name=None):
+def isinf(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     Return whether every element of input tensor is `+/-INF` or not.
 
     Args:
         x (Tensor): The input tensor, it's data type should be float16, float32, float64, uint8, int8, int16, int32, int64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         `Tensor`, the bool result which shows every element of `x` whether it is `+/-INF` or not.
@@ -4636,14 +4693,14 @@ def isinf(x, name=None):
         return out
 
 
-def isnan(x, name=None):
+def isnan(x: Tensor, name: str | None = None) -> Tensor:
     """
 
     Return whether every element of input tensor is `NaN` or not.
 
     Args:
         x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         `Tensor`, the bool result which shows every element of `x` whether it is `NaN` or not.
@@ -4681,23 +4738,29 @@ def isnan(x, name=None):
         return out
 
 
-def prod(x, axis=None, keepdim=False, dtype=None, name=None):
+def prod(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
     Compute the product of tensor elements over the given axis.
 
     Args:
         x (Tensor): The input tensor, its data type should be float32, float64, int32, int64.
-        axis (int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`,
+        axis (int|list|tuple|None, optional): The axis along which the product is computed. If :attr:`None`,
             multiply all elements of `x` and return a Tensor with a single element,
             otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`,
             the axis to reduce is :math:`x.ndim + axis[i]`. Default is None.
         keepdim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result
             tensor will have one fewer dimension than the input unless `keepdim` is true. Default is False.
-        dtype (str|np.dtype, optional): The desired date type of returned tensor, can be float32, float64,
+        dtype (str|paddle.dtype|np.dtype, optional): The desired date type of returned tensor, can be float32, float64,
             int32, int64. If specified, the input tensor is casted to dtype before operator performed.
             This is very useful for avoiding data type overflows. The default value is None, the dtype
             of output is the same as input Tensor `x`.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, result of product on the specified dim of input tensor.
@@ -4782,13 +4845,13 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
         return out
 
 
-def sign(x, name=None):
+def sign(x: Tensor, name: str | None = None) -> Tensor:
     """
     Returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
 
     Args:
         x (Tensor): The input tensor. The data type can be uint8, int8, int16, int32, int64, float16, float32 or float64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The output sign tensor with identical shape and data type to the input :attr:`x`.
@@ -4831,7 +4894,7 @@ def sign(x, name=None):
         return out
 
 
-def tanh(x, name=None):
+def tanh(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Tanh Activation Operator.
 
@@ -4840,7 +4903,7 @@ def tanh(x, name=None):
 
     Args:
         x (Tensor): Input of Tanh operator, an N-D Tensor, with data type bfloat16, float32, float64 or float16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Output of Tanh operator, a Tensor with same data type and shape as input.
@@ -4871,7 +4934,7 @@ def tanh(x, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def tanh_(x, name=None):
+def tanh_(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``tanh`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tanh`.
@@ -4879,7 +4942,7 @@ def tanh_(x, name=None):
     return _C_ops.tanh_(x)
 
 
-def increment(x, value=1.0, name=None):
+def increment(x: Tensor, value: float = 1.0, name: str | None = None) -> Tensor:
     """
     The API is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
     Notice that the number of elements in :attr:`x` must be equal to 1.
@@ -4887,7 +4950,7 @@ def increment(x, value=1.0, name=None):
     Args:
         x (Tensor): A tensor that must always contain only one element, its data type supports float32, float64, int32 and int64.
         value (float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, the elementwise-incremented tensor with the same shape and data type as :attr:`x`.
@@ -4924,13 +4987,18 @@ def increment(x, value=1.0, name=None):
         return x
 
 
-def all(x, axis=None, keepdim=False, name=None):
+def all(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor:
     """
     Computes the ``logical and`` of tensor elements over the given dimension.
 
     Args:
         x (Tensor): An N-D Tensor, the input data type should be `bool`.
-        axis (int|list|tuple, optional): The dimensions along which the ``logical and`` is compute. If
+        axis (int|list|tuple|None, optional): The dimensions along which the ``logical and`` is compute. If
             :attr:`None`, and all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the
             range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
@@ -4939,7 +5007,7 @@ def all(x, axis=None, keepdim=False, name=None):
             output Tensor. The result Tensor will have one fewer dimension
             than the :attr:`x` unless :attr:`keepdim` is true, default
             value is False.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Results the ``logical and`` on the specified axis of input Tensor `x`,  it's data type is bool.
@@ -5010,13 +5078,18 @@ def all(x, axis=None, keepdim=False, name=None):
         return out
 
 
-def any(x, axis=None, keepdim=False, name=None):
+def any(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor:
     """
     Computes the ``logical or`` of tensor elements over the given dimension, and return the result.
 
     Args:
         x (Tensor): An N-D Tensor, the input data type should be `bool`.
-        axis (int|list|tuple, optional): The dimensions along which the ``logical or`` is compute. If
+        axis (int|list|tuple|None, optional): The dimensions along which the ``logical or`` is compute. If
             :attr:`None`, and all elements of :attr:`x` and return a
             Tensor with a single element, otherwise must be in the
             range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
@@ -5025,7 +5098,7 @@ def any(x, axis=None, keepdim=False, name=None):
             output Tensor. The result Tensor will have one fewer dimension
             than the :attr:`x` unless :attr:`keepdim` is true, default
             value is False.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Results the ``logical or`` on the specified axis of input Tensor `x`,  it's data type is bool.
@@ -5097,7 +5170,9 @@ def any(x, axis=None, keepdim=False, name=None):
         return out
 
 
-def broadcast_shape(x_shape, y_shape):
+def broadcast_shape(
+    x_shape: Sequence[int], y_shape: Sequence[int]
+) -> list[int]:
     """
     The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape.
 
@@ -5131,14 +5206,14 @@ def broadcast_shape(x_shape, y_shape):
     return core.broadcast_shape(x_shape, y_shape)
 
 
-def conj(x, name=None):
+def conj(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     This function computes the conjugate of the Tensor elementwisely.
 
     Args:
         x (Tensor): The input Tensor which hold the complex numbers.
             Optional data types are:float16, complex64, complex128, float32, float64, int32 or int64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         out (Tensor): The conjugate of input. The shape and data type is the same with input. If the elements of tensor is real type such as float32, float64, int32 or int64, the out is the same with input.
@@ -5189,13 +5264,13 @@ def conj(x, name=None):
         return out
 
 
-def gammaln(x, name=None):
+def gammaln(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Calculates the logarithm of the absolute value of the gamma function elementwisely.
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64, bfloat16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, The values of the logarithm of the absolute value of the gamma at the given tensor x.
@@ -5225,7 +5300,7 @@ def gammaln(x, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def gammaln_(x, name=None):
+def gammaln_(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``gammaln`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_gammaln`.
@@ -5234,7 +5309,7 @@ def gammaln_(x, name=None):
         return _C_ops.gammaln_(x)
 
 
-def digamma(x, name=None):
+def digamma(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Calculates the digamma of the given input tensor, element-wise.
 
@@ -5243,7 +5318,7 @@ def digamma(x, name=None):
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         Tensor, the digamma of the input Tensor, the shape and data type is the same with input.
 
@@ -5273,7 +5348,7 @@ def digamma(x, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def digamma_(x, name=None):
+def digamma_(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``digamma`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_digamma`.
@@ -5282,7 +5357,7 @@ def digamma_(x, name=None):
         return _C_ops.digamma_(x)
 
 
-def gammaincc(x, y, name=None):
+def gammaincc(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Computes the regularized upper incomplete gamma function.
 
@@ -5291,7 +5366,7 @@ def gammaincc(x, y, name=None):
     Args:
         x (Tensor): The non-negative argument Tensor. Must be one of the following types: float32, float64.
         y (Tensor): The positive parameter Tensor. Must be one of the following types: float32, float64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, the gammaincc of the input Tensor.
@@ -5334,7 +5409,7 @@ def gammaincc(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def gammaincc_(x, y, name=None):
+def gammaincc_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``gammaincc`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_gammaincc`.
@@ -5343,7 +5418,7 @@ def gammaincc_(x, y, name=None):
         return _C_ops.gammaincc_(x, y)
 
 
-def gammainc(x, y, name=None):
+def gammainc(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Computes the regularized lower incomplete gamma function.
 
@@ -5352,7 +5427,7 @@ def gammainc(x, y, name=None):
     Args:
         x (Tensor): The non-negative argument Tensor. Must be one of the following types: float32, float64.
         y (Tensor): The positive parameter Tensor. Must be one of the following types: float32, float64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, the gammainc of the input Tensor.
@@ -5373,7 +5448,7 @@ def gammainc(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def gammainc_(x, y, name=None):
+def gammainc_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``gammainc`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_gammainc`.
@@ -5385,7 +5460,7 @@ def gammainc_(x, y, name=None):
     )
 
 
-def lgamma(x, name=None):
+def lgamma(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Calculates the lgamma of the given input tensor, element-wise.
 
@@ -5395,7 +5470,7 @@ def lgamma(x, name=None):
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float16, float32, float64, uint16.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, the lgamma of the input Tensor, the shape and data type is the same with input.
@@ -5424,7 +5499,7 @@ def lgamma(x, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def lgamma_(x, name=None):
+def lgamma_(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     Inplace version of ``lgamma`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_lgamma`.
