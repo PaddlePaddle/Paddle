@@ -15,6 +15,7 @@
 import numbers
 import warnings
 from collections import OrderedDict
+from typing import Dict
 
 import numpy as np
 
@@ -26,19 +27,24 @@ from paddle.static import InputSpec
 __all__ = []
 
 
-def summary(net, input_size=None, dtypes=None, input=None):
+def summary(
+    net: paddle.nn.Layer,
+    input_size: tuple | InputSpec | list[tuple | InputSpec] | None = None,
+    dtypes: str | None = None,
+    input: paddle.Tensor | None = None,
+) -> Dict:
     """Prints a string summary of the network.
 
     Args:
         net (Layer): The network which must be a subinstance of Layer.
-        input_size (tuple|InputSpec|list[tuple|InputSpec], optional): Size of input tensor. if model only
+        input_size (tuple|InputSpec|list[tuple|InputSpec]|None, optional): Size of input tensor. if model only
                     have one input, input_size can be tuple or InputSpec. if model
                     have multiple input, input_size must be a list which contain
                     every input's shape. Note that input_size only dim of
                     batch_size can be None or -1. Default: None. Note that
                     input_size and input cannot be None at the same time.
-        dtypes (str, optional): If dtypes is None, 'float32' will be used, Default: None.
-        input (Tensor, optional): If input is given, input_size and dtype will be ignored, Default: None.
+        dtypes (str|None, optional): If dtypes is None, 'float32' will be used, Default: None.
+        input (Tensor|None, optional): If input is given, input_size and dtype will be ignored, Default: None.
 
     Returns:
         Dict: A summary of the network including total params and total trainable params.
