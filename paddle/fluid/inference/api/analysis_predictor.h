@@ -592,9 +592,6 @@ class AnalysisPredictor : public PaddlePredictor {
   std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
-  std::vector<std::string> param_names_;
-  std::vector<phi::DenseTensor *> tensor_out_;
-
   phi::DataType model_precision_{phi::DataType::FLOAT32};
 
 #if PADDLE_WITH_DNNL

@@ -526,6 +526,7 @@ def save_inference_model(
     """
 
     if in_pir_mode():
+        print("这是走到了save_pir_inference_model里面")
         save_pir_inference_model(
             path_prefix, feed_vars, fetch_vars, executor, **kwargs
         )

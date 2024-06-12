@@ -763,6 +763,8 @@ def save_pir_inference_model(
     # serialize and save params
     save_dirname = os.path.dirname(params_path)
     params_filename = os.path.basename(params_path)
+    print("save_dirname", save_dirname)
+    print("params_filename ", params_filename)
     save_vars_pir(
         dirname=save_dirname,
         main_program=program,

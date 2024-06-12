@@ -910,11 +910,17 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
             ir_printing_conditions, ir_printing_conditions));
   }
   pass_pm.Run(pir_program_.get());
+  
+  if (config_.save_optimized_model_ && !FileExists(optimized_model_name_)) {
+    pir::WriteModule(
+        *pir_program_, optimized_model_name_, 1, true, false, true);
+    LOG(INFO) << "保存optimized.json";
+  }
 
   // Apply some basic passes required by the framework
   ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
                                    config_.pm_opt_level_);
-
+  
   auto params_sync_among_devices_pass =
       ::pir::CreateParamsSyncAmongDevicesPass();
   params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
@@ -943,23 +949,15 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   std::cout << "pass优化后的pir_program_" << *pir_program_;
   LOG(INFO) << "config_.use_optimized_model_" << config_.use_optimized_model_;
 
-  if (config_.save_optimized_model_ && !FileExists(optimized_model_name_)) {
-    pir::WriteModule(
-        *pir_program_, optimized_model_name_, 1, true, false, true);
-    LOG(INFO) << "保存optimized.json";
-  }
+ 
   LOG(INFO) << "在pass里面打印下sub_scope的变量值";
   PrintScopeVariables(*sub_scope_);
   LOG(INFO) << "sub_scope_的指针" << sub_scope_;
-
-  LoadPirParameters(true);
-  // // 应该先loadProgram，再保存
-  // if(config_.save_optimized_model_&& !FileExists(optimized_params))
-  // {
-
-  // }
+  std::cout<<"还未经过lowerToKernelPass之前的pir_program"<<*pir_program_;
+  
+  
   //----------------------------------------------------------------------------------------------//
-
+  
   pir_program_ =
       paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
@@ -986,7 +984,7 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
   int feed_idx = 0;
   int fetch_idx = 0;
   LOG(INFO) << "LoadPirParameters的第三行";
-  PrintScopeVariables(*sub_scope_);
+  // PrintScopeVariables(*sub_scope_);
 
   for (auto op : pir_program_->block()->ops()) {
     // put pd-op.data and pd-op.fetch into idx2feeds and idx2fetches
@@ -1085,6 +1083,7 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
     tensor_out.push_back(tensor_temp);
     LOG(INFO) << "tensor_out的个数" << tensor_out.size();
   }
+  // std::cout<<"LoadPirParameters中的pir_program的"<<*pir_program_;
   LOG(INFO) << "LoadPirParameters中";
   LOG(INFO) << "sub_scope_的指针" << sub_scope_;
   PrintScopeVariables(*sub_scope_);
@@ -1108,13 +1107,20 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
     for (const auto &param_name : param_names) {
       LOG(INFO) << "param_name: " << param_name;
     }
-
+    for(size_t i=0;i<const_tensor_out.size();++i)
+    {
+      const phi::DenseTensor* tensor=const_tensor_out[i];
+      LOG(INFO)<<"param_name "<<param_names[i];
+      LOG(INFO)<<"Tensor "<<*tensor;
+      LOG(INFO)<<"Tensor place: "<<tensor->place();
+    }
     pir::SaveCombineFunction(
         const_tensor_out, param_names, optimized_params_, true, false, true);
-
+    LOG(INFO)<<"pir::SaveCombineFunction已经运行完毕";
     // Check if the contents of const_tensor_out and tensor_out are the same
   }
   LOG(INFO) << "optimized_params_" << optimized_params_;
+  
 
   if (config_.use_optimized_model_ && FileExists(optimized_params_)) {
     LOG(INFO) << "param_names的大小" << param_names.size();

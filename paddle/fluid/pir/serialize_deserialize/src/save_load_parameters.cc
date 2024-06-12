@@ -105,6 +105,16 @@ void SaveCombineFunction(const std::vector<const phi::DenseTensor*>& x,
                          bool overwrite,
                          bool save_as_fp16,
                          bool save_to_memory) {
+  LOG(INFO) << "Saving to file: " << file_path;
+  LOG(INFO) << "Number of tensors: " << x.size();
+  LOG(INFO) << "Number of names: " << names.size();
+
+  for (size_t i = 0; i < x.size(); ++i) {
+    LOG(INFO) << "Tensor " << i << "address: " << *(x[i]);
+  }
+  for (const auto& name : names) {
+    LOG(INFO) << "Tensor name: " << name;
+  }
   PADDLE_ENFORCE_EQ(
       FileExists(file_path) && !overwrite,
       false,
@@ -122,9 +132,17 @@ void SaveCombineFunction(const std::vector<const phi::DenseTensor*>& x,
                         "The number of variables to be saved is %d, expect "
                         "it to be greater than 0.",
                         x.size()));
-  const phi::DeviceContext* dev_ctx = GetDeviceContext(*(x[0]));
+  LOG(INFO) << "获取dev_ctx前面 ";
+ 
+  LOG(INFO) << "Device context type: " << typeid(*dev_ctx).name();
+  LOG(INFO) << "获取dev_ctx后面 ";
+  LOG(INFO) << "x.size()是多大" << x.size();
   for (size_t i = 0; i < x.size(); i++) {
+    const phi::DeviceContext* dev_ctx = GetDeviceContext(*(x[0]));
+    LOG(INFO) << "Saving tensor " << i;
+    LOG(INFO) << "names " << names[i];
     auto& tensor = *(x[i]);
+    LOG(INFO) << "tensor的值" << tensor;
     PADDLE_ENFORCE_EQ(
         tensor.IsInitialized(),
         true,
@@ -133,10 +151,13 @@ void SaveCombineFunction(const std::vector<const phi::DenseTensor*>& x,
     auto in_dtype = tensor.dtype();
     auto out_dtype = save_as_fp16 ? phi::DataType::FLOAT16 : in_dtype;
     if (in_dtype != out_dtype) {
+      LOG(INFO) << "Casting tensor " << i << "to dtype " << out_dtype;
       auto out = CastTensorType(dev_ctx, tensor, out_dtype);
       paddle::framework::SerializeToStream(ss, out, *dev_ctx);
     } else {
+      LOG(INFO) << "SerializeToStream前面";
       paddle::framework::SerializeToStream(ss, tensor, *dev_ctx);
+      LOG(INFO) << "SerializeToStream已经结束";
     }
   }
   MkDirRecursively(DirName(file_path).c_str());
@@ -148,6 +169,7 @@ void SaveCombineFunction(const std::vector<const phi::DenseTensor*>& x,
   fout << ss.str();
   fout.close();
   VLOG(6) << "save combine done ";
+  LOG(INFO) << "save combine done";
 }
 
 void LoadFunction(const std::string& file_path,
@@ -210,6 +232,7 @@ void LoadCombineFunction(const std::string& file_path,
   const phi::DeviceContext* dev_ctx = GetDeviceContext(*(out->at(0)), place);
   for (size_t i = 0; i < names.size(); i++) {
     auto tensor = out->at(i);
+    // LOG(INFO)<<"Loadtensor的值是多少 "<<*tensor;
     // auto dims = tensor->dims();
     paddle::framework::DeserializeFromStream(fin, tensor, *dev_ctx);
     LOG(INFO) << "Tensor_2 " << names[i];

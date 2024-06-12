@@ -562,15 +562,15 @@ class TestTensorAxis(unittest.TestCase):
             # run infer
             paddle.static.save_inference_model(self.save_path, [x], [out], exe)
             if use_pir_api():
+                print("跑的新ir")
                 config = paddle_infer.Config(
                     self.save_path + '.json', self.save_path + '.pdiparams'
                 )
                 config.enable_new_ir()
                 config.enable_new_executor()
-                # config.switch_ir_debug(True)
-                # config.enable_save_optim_model(True)
-                # config.use_optimized_model(True)
+                config.enable_save_optim_model(True)
             else:
+                print("跑的旧ir")
                 config = paddle_infer.Config(
                     self.save_path + '.pdmodel', self.save_path + '.pdiparams'
                 )
@@ -578,6 +578,7 @@ class TestTensorAxis(unittest.TestCase):
                 config.enable_use_gpu(100, 0)
             else:
                 config.disable_gpu()
+    
 
             predictor = paddle_infer.create_predictor(config)
             input_names = predictor.get_input_names()

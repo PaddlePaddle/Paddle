@@ -206,10 +206,12 @@ LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod,
 void SerializeToStream(std::ostream &os,
                        const phi::DenseTensor &tensor,
                        const platform::DeviceContext &dev_ctx) {
+  LOG(INFO) << "Entering SerializeToStream";
   {  // the 1st field, uint32_t version for DenseTensor
     os.write(
         reinterpret_cast<const char *>(&paddle::framework::kCurTensorVersion),
         sizeof(paddle::framework::kCurTensorVersion));
+    LOG(INFO) << "Tensor version:" << paddle::framework::kCurTensorVersion;
   }
   {
     // the 2st field, LoD information
@@ -226,11 +228,14 @@ void SerializeToStream(std::ostream &os,
       os.write(reinterpret_cast<const char *>(&size), sizeof(size));
       os.write(reinterpret_cast<const char *>(each.data()),
                static_cast<std::streamsize>(size));
+      LOG(INFO) << "LoD level size in bytes: " << size;
     }
   }
   // the 3st field, Tensor
+  LOG(INFO) << "About to serialize tensor data";
   paddle::framework::TensorToStream(
       os, static_cast<phi::DenseTensor>(tensor), dev_ctx);
+  LOG(INFO) << "Serialized tensor data";
 }
 
 void SerializeToStream(std::ostream &os, const phi::DenseTensor &tensor) {
