@@ -433,7 +433,7 @@ class AllocatorFacadePrivate {
     /* unique_lock_guard */ {
       std::unique_lock<std::shared_timed_mutex> lock_guard(
           cuda_allocator_mutex_);
-      InitStreamSafeCUDAAllocator(place, stream);
+      InitCUDAAllocator(place, stream);
       return cuda_allocators_[place][stream];
     }
   }
@@ -865,7 +865,7 @@ class AllocatorFacadePrivate {
     return std::make_shared<CUDAAllocator>(p);
   }
 
-  void InitStreamSafeCUDAAllocator(phi::GPUPlace p, gpuStream_t stream) {
+  void InitCUDAAllocator(phi::GPUPlace p, gpuStream_t stream) {
     PADDLE_ENFORCE_EQ(
         strategy_,
         AllocatorStrategy::kAutoGrowth,
@@ -1812,6 +1812,9 @@ void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(int64_t id) {
                         FLAGS_allocator_strategy));
   auto& allocator = cuda_graph_map_[id];
   auto& ref_cnt = cuda_graph_ref_cnt_[id];
+  ++ref_cnt;
+
+  if (FLAGS_use_cuda_malloc_async_allocator) return;
   if (allocator.get() == nullptr) {
     allocator = std::make_unique<AllocatorFacadePrivate>(
         /*allow_free_idle_chunk=*/false);
@@ -1819,7 +1822,6 @@ void AllocatorFacade::PrepareMemoryPoolForCUDAGraph(int64_t id) {
   } else {
     VLOG(10) << "Use created memory pool for CUDA Graph with memory ID " << id;
   }
-  ++ref_cnt;
 }
 
 void AllocatorFacade::RemoveMemoryPoolOfCUDAGraph(int64_t id) {
