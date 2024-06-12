@@ -58,7 +58,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (FLAGS_use_cinn || strategy.build_cinn_pass_) {
       // Note: This is a trick to support 0D-Tensor for CINN. This pass will be
       // removed in the near future.
-      AppendPass("cinn_zero_tensor_trick_pass");
       AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph");
     }
 #endif
