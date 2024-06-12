@@ -90,7 +90,7 @@ class IR_API ShapeConstraintIRAnalysis final
     : public std::enable_shared_from_this<ShapeConstraintIRAnalysis> {
  public:
   ShapeConstraintIRAnalysis() = default;
-  ShapeConstraintIRAnalysis(const ShapeConstraintIRAnalysis&) = delete;
+  // ShapeConstraintIRAnalysis(const ShapeConstraintIRAnalysis&) = delete;
   ShapeConstraintIRAnalysis(ShapeConstraintIRAnalysis&&) = delete;
   void Init();
 
@@ -172,6 +172,9 @@ class IR_API ShapeAnalysisManager {
   std::unordered_map<uint64_t, std::shared_ptr<ShapeConstraintIRAnalysis>>
       tables_;
 };
+
+ShapeConstraintIRAnalysis& GetShapeConstraintIRAnalysis(
+    const pir::Program* program);
 
 #define OP_DECLARE_INFER_SYMBOLIC_SHAPE(name) \
   bool name##OpInferSymbolicShape(            \

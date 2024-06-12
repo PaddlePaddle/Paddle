@@ -56,7 +56,7 @@ from white_list import (
 )
 
 import paddle
-from paddle import base
+from paddle import base, pir
 from paddle.autograd.ir_backward import grad as ir_grad
 from paddle.base import Scope, core, unique_name
 from paddle.base.backward import append_backward
@@ -1321,11 +1321,13 @@ class OpTest(unittest.TestCase):
                     if OpTestUtils.is_bfloat16_type(item.dtype)
                     else item.dtype
                 )
+                paddle.enable_static()
                 x = paddle.static.data(name=name, shape=item.shape, dtype=dtype)
                 x.stop_gradient = stop_gradient
                 static_inputs[name].append(x)
                 feed.update({name: item})
                 input_dict.update({name: x})
+        print(input_dict, "--input_dict", static_inputs, "--static_inputs")
         return static_inputs, attrs_outputs, input_dict, feed
 
     def _need_fetch(self, sig_name):
@@ -1610,6 +1612,98 @@ class OpTest(unittest.TestCase):
             return outs, fetch_list, feed_map, original_program, op.desc
         else:
             return outs, fetch_list
+
+    def _infer_and_compare_symbol(self, place):
+        """Don't caculate the program, only infer of value"""
+        kernel_sig = self.get_kernel_signature(place)
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            with scope_guard(Scope()):
+                # prepare inps attributes feed
+                (
+                    static_inputs,
+                    attrs,
+                    input_dict,
+                    feed,
+                ) = self.get_ir_input_attr_dict_and_feed(stop_gradient=True)
+                # prepare args
+                args = OpTestUtils.prepare_python_api_arguments(
+                    self.python_api,
+                    static_inputs,
+                    attrs,
+                    kernel_sig,
+                    target_dtype=paddle.pir.core.DataType,
+                )
+                inputs_sig, attrs_sig, outputs_sig = kernel_sig
+                if hasattr(self, "python_out_sig"):
+                    outputs_sig = self.python_out_sig
+                args = OpTestUtils.assumption_assert_and_transform(
+                    args, len(inputs_sig)
+                )
+                # ret_tuple = self.python_api(*args)
+                fetch_list = getattr(self, "fetch_list", [])
+
+                # if the fetch_list is customized by user, we use it directly.
+                # if not, fill the fetch_list by the user configured outputs in test.
+                # filter ret_tuple
+                ret_to_check = []
+                # if len(fetch_list) == 0:
+                #     if isinstance(ret_tuple, (tuple, list)):
+                #         assert len(ret_tuple) == len(outputs_sig)
+                #         for var, sig_name in zip(ret_tuple, outputs_sig):
+                #             if no_check_set is not None and var in no_check_set:
+                #                 continue
+                #             if not self._need_fetch(sig_name):
+                #                 continue
+                #             if isinstance(var, list):
+                #                 ret_to_check.append(var)
+                #                 for v in var:
+                #                     fetch_list.append(v)
+                #             else:
+                #                 ret_to_check.append(var)
+                #                 fetch_list.append(var)
+                #     elif isinstance(ret_tuple, paddle.base.libpaddle.pir.Value):
+                #         fetch_list.append(ret_tuple)
+                #         ret_to_check = ret_tuple
+                #     elif ret_tuple is None:
+                #         pass
+                #     else:
+                #         raise ValueError(
+                #             "output of python api should be Value or list of Value or tuple of Value"
+                #         )
+
+                # run the program with pass
+                pm = pir.PassManager()
+                paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
+                pm.run(program)
+
+                # compare expect & actual
+                shape_analysis = (
+                    paddle.base.libpaddle.pir.get_shape_constraint_ir_analysis(
+                        program
+                    )
+                )
+                for var in program.list_vars():
+                    shape_or_data = shape_analysis.get_shape_or_data_for_var(
+                        var
+                    )
+                    # TODO(gongshaotian): compare in c++ level
+                    # result = shape_or_data.compare()
+                    # TODO(gongshaotian): compare in python level
+                    shape_analysis.print_shape_or_data()
+                    print(
+                        "------symbol infer test------- shape_string:",
+                        "shape_string",
+                    )
+                    print(
+                        "------symbol infer test------- data_string:",
+                        "data_string",
+                    )
+
+                    # if not result:
+                    #     print("Shape or data mismatch for var: ", var.name)
+                    # else:
+                    #     print("Shape or data match for var: ", var.name)
 
     def _compare_expect_and_actual_outputs(
         self, place, fetch_list, expect_outs, actual_outs, inplace_atol=None
@@ -2032,6 +2126,7 @@ class OpTest(unittest.TestCase):
         check_pir=False,
         check_auto_parallel=False,
         check_pir_onednn=False,
+        check_symbol_infer=False,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2529,6 +2624,39 @@ class OpTest(unittest.TestCase):
                     return True
                 return super()._is_skip_name(name)
 
+        class SymbolInferChecker(Checker):
+            def check(self):
+                """return None means ok, raise Error means failed."""
+                self.init()
+                self.infer_symbol()
+                # self.compare_symbol_with_expect()
+
+            def init(self):
+                self.checker_name = "symbol infer checker"
+
+            def _decode_symbol_of_value(self, fetch_list):
+                """Decode symbol of Value"""
+                pass
+                return fetch_list
+
+            def infer_symbol(self):
+                """infer symbol from inputs to outputs"""
+                self.is_python_api_test = True
+                self.op_test._infer_and_compare_symbol(place)
+                # self.symbols = symbols
+                # self.fetch_list = self._decode_symbol_of_value(fetch_list)
+
+                # if self.op_test.is_compared_with_fp32():
+                # self.op_test.enable_cal_ref_output()
+                # ref_symbols, ref_fetch_list = self.op_test._infer_and_compare_symbol(place)
+                # self.op_test.disable_cal_ref_output()
+                # self.ref_symbols = ref_symbols
+                # self.ref_fetch_list = ref_fetch_list
+
+            def compare_symbol_with_expect():
+                print("compare symbol with expect")
+                pass
+
         # set some flags by the combination of arguments.
         if self.is_float16_op():
             self.dtype = np.float16
@@ -2661,6 +2789,15 @@ class OpTest(unittest.TestCase):
                     pir_checker = PirChecker(self, self.outputs)
                     pir_checker.check()
 
+        if check_symbol_infer:
+            if (
+                type(place) is paddle.base.libpaddle.CPUPlace
+                or type(place) is paddle.base.libpaddle.CUDAPlace
+            ):
+                with paddle.pir_utils.IrGuard():
+                    symbol_checker = SymbolInferChecker(self, self.outputs)
+                    symbol_checker.check()
+
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
         # For example, group_norm uses AtomicAdd on CUDAPlace, which do not ensure
@@ -2774,6 +2911,7 @@ class OpTest(unittest.TestCase):
         check_pir=False,
         check_auto_parallel=False,
         check_pir_onednn=False,
+        check_symbol_infer=False,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -2802,6 +2940,7 @@ class OpTest(unittest.TestCase):
                 check_pir=check_pir,
                 check_auto_parallel=check_auto_parallel,
                 check_pir_onednn=check_pir_onednn,
+                check_symbol_infer=check_symbol_infer,
             )
             if not res and only_check_prim:
                 continue

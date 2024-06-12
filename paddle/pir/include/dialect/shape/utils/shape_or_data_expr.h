@@ -121,7 +121,7 @@ using ShapeOrDataDimExprsBase =
 
 class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
  public:
-  ShapeOrDataDimExprs() = delete;
+  ShapeOrDataDimExprs();
   ShapeOrDataDimExprs(
       const TensorShapeOrDataDimExprs& tensor_dim_exprs)  // NOLINT
       : ShapeOrDataDimExprsBase(tensor_dim_exprs) {}
@@ -147,6 +147,19 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
 
   bool operator==(const ShapeOrDataDimExprs& other) const {
     return this->variant() == other.variant();
+  }
+
+  template <typename T>
+  bool compare_shape_or_data_equlity(const std::vector<T>& actual,
+                                     std::vector<DimExpr> expected) const {
+    if (actual.size() != expected.size()) return false;
+    for (int i = 0; i < actual.size(); ++i) {
+      DimExpr dim_expr = symbol::SimplifyDimExpr(expected[i]);
+      if (dim_expr == DimExpr(1)) continue;
+      if (dim_expr == DimExpr(-1) && actual[i] == -1) continue;
+      if (dim_expr == DimExpr(0) && actual[i] == 0) continue;
+    }
+    return true;
   }
 
   bool operator!=(const ShapeOrDataDimExprs& other) const {
