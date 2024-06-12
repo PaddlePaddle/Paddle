@@ -14,8 +14,7 @@
 
 import numbers
 import warnings
-from collections import OrderedDict
-from collections.abc import Sequence
+from typing import OrderedDict, Sequence
 
 import numpy as np
 from typing_extensions import TypedDict
