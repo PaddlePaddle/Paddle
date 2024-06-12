@@ -42,7 +42,9 @@ struct FusionInterpreter {
   FusionInterpreter(const FusionTrackerPtr& tracker,
                     const std::unordered_map<pir::Operation*, FusibleOp>&
                         initialized_lowered_op)
-      : tracker(tracker), initialized_lowered_op(initialized_lowered_op) {}
+      : tracker(tracker), initialized_lowered_op(initialized_lowered_op) {
+    VLOG(4) << "Create FusionInterpreter, Tracker is:\n" << tracker->DebugStr();
+  }
 
   std::unordered_map<pir::Operation*, FusibleOp> initialized_lowered_op;
   std::unordered_map<std::string, ScopeElementPtr> scope;
@@ -51,12 +53,4 @@ struct FusionInterpreter {
   std::vector<ir::Expr> ret_expr;
   std::vector<ir::Expr> Run();
 };
-
-template <typename T>
-std::shared_ptr<T> dynamic_cast_instr_with_err(FusionInstrPtr instr) {
-  auto chile_instr = std::dynamic_pointer_cast<T>(instr);
-  if (!chile_instr) PADDLE_THROW("Cast Fusion Instr Failed.");
-  return chile_instr;
-}
-
 }  // namespace cinn::fusion

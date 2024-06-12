@@ -115,6 +115,8 @@ using AnchorTransform = std::variant<UnsupportTransformPtr,
                                      DeleteDimTransformPtr>;
 using AnchorTransformRoute = std::vector<AnchorTransform>;
 
+std::string DebugStrOfAnchorTransformRoute(const AnchorTransformRoute& route);
+
 struct ExprPromise {
   explicit ExprPromise(const pir::Value& root, const std::string& name)
       : root_value(root), name_(name) {}
@@ -158,5 +160,4 @@ AnchorTransform CreateAnchorTransform(const TransformInfo& info);
 std::vector<AnchorTransform> PossibleTransform(pir::Value v);
 TransformInfo GetTransformInfo(AnchorTransform trans);
 std::string DebugStrOfAnchorTransform(const AnchorTransform& trans);
-std::string DebugStrOfAnchorTransformRoute(const AnchorTransformRoute& route);
 }  // namespace cinn::fusion

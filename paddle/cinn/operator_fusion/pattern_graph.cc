@@ -245,7 +245,6 @@ PatternGraph::PatternGraph(const std::vector<PatternContent>& contents,
           << all_pattern_nodes_.size();
 }
 
-template <typename T>
 void PatternGraph::RemoveNode(const PatternNodePtr& node) {
   VLOG(4) << "Start Remove: " << node;
   if (all_pattern_nodes_.find(node) != all_pattern_nodes_.end()) {
@@ -262,12 +261,10 @@ void PatternGraph::RemoveNode(const PatternNodePtr& node) {
   }
 }
 
-template <typename T>
 void PatternGraph::AppendNode(const PatternNodePtr& node) {
   all_pattern_nodes_.emplace(node);
 }
 
-template <typename T>
 std::string PatternGraph::GraphInfo() const {
   std::stringstream ss;
   ss << "\n========= GraphInfo ===========";
@@ -280,7 +277,6 @@ std::string PatternGraph::GraphInfo() const {
   return ss.str();
 }
 
-template <typename T>
 PatternNodePtr PatternGraph::MergeNode(const PatternNodePtr& upstream,
                                        const PatternNodePtr& downstream,
                                        MergePatternFn merge_pattern_fn) {

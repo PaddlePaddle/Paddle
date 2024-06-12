@@ -13,8 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/operator_fusion/policy/general_topo_policy.h"
-#include "paddle/cinn/operator_fusion/backend/pattern.h"
-#include "paddle/cinn/operator_fusion/frontend/pattern.h"
+#include "paddle/cinn/operator_fusion/pattern.h"
 
 namespace cinn::fusion {
 
