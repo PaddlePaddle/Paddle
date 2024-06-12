@@ -118,10 +118,6 @@ using pir::Value;
 using pir::VectorType;
 using pybind11::return_value_policy;
 
-// using pir::ShapeAnalysisManager;
-// using pir::ShapeConstraintIRAnalysis;
-// using symbol::ShapeOrDataDimExprs;
-
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
