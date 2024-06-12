@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import math
 import re
+from typing import Sequence, overload
 
 import numpy as np
 
@@ -1385,7 +1386,7 @@ def arange(
     step: float | paddle.Tensor = 1,
     dtype: DTypeLike | None = None,
     name: str | None = None,
-):
+) -> paddle.Tensor:
     """
     Returns a 1-D Tensor with spaced values within a given interval.
 
@@ -1518,7 +1519,7 @@ def arange(
         return out
 
 
-def _tril_triu_op(helper):
+def _tril_triu_op(helper: LayerHelper) -> paddle.Tensor:
     """Base op of tril_op and triu_op"""
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
@@ -1567,7 +1568,9 @@ def _tril_triu_op(helper):
     return out
 
 
-def tril(x, diagonal=0, name: str | None = None):
+def tril(
+    x: paddle.Tensor, diagonal: int = 0, name: str | None = None
+) -> paddle.Tensor:
     r"""
     Returns the lower triangular part of a matrix (2-D tensor) or batch
     of matrices :attr:`x`, the other elements of the result tensor are set
@@ -1632,7 +1635,9 @@ def tril(x, diagonal=0, name: str | None = None):
 
 
 @inplace_apis_in_dygraph_only
-def tril_(x, diagonal=0, name: str | None = None):
+def tril_(
+    x: paddle.Tensor, diagonal: int = 0, name: str | None = None
+) -> paddle.Tensor | None:
     r"""
     Inplace version of ``tril`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tril`.
@@ -1642,7 +1647,9 @@ def tril_(x, diagonal=0, name: str | None = None):
         return _C_ops.tril_(x, diagonal)
 
 
-def triu(x, diagonal=0, name: str | None = None):
+def triu(
+    x: paddle.Tensor, diagonal: int = 0, name: str | None = None
+) -> paddle.Tensor:
     r"""
     Return the upper triangular part of a matrix (2-D tensor) or batch of matrices
     :attr:`x`, the other elements of the result tensor are set to 0.
@@ -1709,7 +1716,9 @@ def triu(x, diagonal=0, name: str | None = None):
 
 
 @inplace_apis_in_dygraph_only
-def triu_(x, diagonal=0, name: str | None = None):
+def triu_(
+    x: paddle.Tensor, diagonal: int = 0, name: str | None = None
+) -> paddle.Tensor | None:
     r"""
     Inplace version of ``triu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_triu`.
@@ -1717,6 +1726,18 @@ def triu_(x, diagonal=0, name: str | None = None):
 
     if in_dynamic_mode():
         return _C_ops.triu_(x, diagonal)
+
+
+@overload
+def meshgrid(
+    args: Sequence[paddle.Tensor], name: str | None = None
+) -> paddle.Tensor:
+    ...
+
+
+@overload
+def meshgrid(*args: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
+    ...
 
 
 def meshgrid(*args, **kwargs):
@@ -1793,7 +1814,9 @@ def meshgrid(*args, **kwargs):
         return out
 
 
-def diag_embed(input, offset=0, dim1=-2, dim2=-1):
+def diag_embed(
+    input: TensorLike, offset: int = 0, dim1: int = -2, dim2: int = -1
+) -> paddle.Tensor:
     """
     Creates a tensor whose diagonals of certain 2D planes (specified by dim1 and dim2)
     are filled by ``input``. By default, a 2D plane formed by the last two dimensions
@@ -1912,7 +1935,9 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     return out
 
 
-def diagflat(x, offset=0, name: str | None = None):
+def diagflat(
+    x: paddle.Tensor, offset: int = 0, name: str | None = None
+) -> paddle.Tensor:
     """
     If ``x`` is a vector (1-D tensor), a 2-D square tensor with the elements of ``x`` as the diagonal is returned.
 
@@ -2046,7 +2071,12 @@ def diagflat(x, offset=0, name: str | None = None):
         return out2
 
 
-def diag(x, offset=0, padding_value=0, name: str | None = None):
+def diag(
+    x: paddle.Tensor,
+    offset: int = 0,
+    padding_value: int = 0,
+    name: str | None = None,
+) -> paddle.Tensor:
     """
     If ``x`` is a vector (1-D tensor), a 2-D square tensor with the elements of ``x`` as the diagonal is returned.
 
@@ -3004,7 +3034,9 @@ def polar(
 
 
 @dygraph_only
-def cauchy_(x: paddle.Tensor, loc=0, scale=1, name: str | None = None):
+def cauchy_(
+    x: paddle.Tensor, loc=0, scale=1, name: str | None = None
+) -> paddle.Tensor:
     """Fills the tensor with numbers drawn from the Cauchy distribution.
 
     Args:
@@ -3038,7 +3070,9 @@ def cauchy_(x: paddle.Tensor, loc=0, scale=1, name: str | None = None):
 
 
 @dygraph_only
-def geometric_(x: paddle.Tensor, probs, name: str | None = None):
+def geometric_(
+    x: paddle.Tensor, probs, name: str | None = None
+) -> paddle.Tensor:
     """Fills the tensor with numbers drawn from the Geometric distribution.
 
     Args:
