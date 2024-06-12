@@ -14,7 +14,7 @@ if(NOT WITH_ONEDNN)
     ${CMAKE_CURRENT_SOURCE_DIR}/instruction/onednn/onednn_mixed_instruction.cc)
 endif()
 
-if(NOT WITH_TENSORRT)
+if(NOT TENSORRT_FOUND OR NOT WITH_TENSORRT)
   list(REMOVE_ITEM standalone_executor_srcs
        ${CMAKE_CURRENT_SOURCE_DIR}/instruction/tensorrt_engine_instruction.cc)
 endif()
@@ -44,7 +44,7 @@ if(WITH_CINN)
       ${DEVICE_EVENT_LIBS})
 endif()
 
-if(WITH_TENSORRT)
+if(TENSORRT_FOUND AND WITH_TENSORRT)
   set(standalone_executor_deps ${standalone_executor_deps} tensorrt_engine)
 endif()
 
