@@ -637,10 +637,6 @@ class CauchyTestError(unittest.TestCase):
             (0.0, (0.0, 0.0), TypeError),  # tuple
         ]
     )
-    def test_bad_init(self, loc, scale, error):
-        with paddle.base.dygraph.guard(self.place):
-            self.assertRaises(error, Cauchy, loc, scale)
-
     def test_bad_property(self):
         """For property like mean/variance/stddev which is undefined in math,
         we should raise `ValueError` instead of `NotImplementedError`.

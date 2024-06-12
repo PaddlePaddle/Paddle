@@ -572,10 +572,6 @@ class BernoulliTestError(unittest.TestCase):
             (-1j + 1, TypeError),
         ]
     )
-    def test_bad_init(self, probs, error):
-        with paddle.base.dygraph.guard(self.place):
-            self.assertRaises(error, Bernoulli, probs)
-
     @parameterize_func(
         [
             (

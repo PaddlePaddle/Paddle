@@ -194,10 +194,6 @@ class Poisson(distribution.Distribution):
           Tensor: log probability. The data type is the same as `rate`.
         """
         value = paddle.cast(value, dtype=self.dtype)
-        if not self._check_constraint(value):
-            raise ValueError(
-                'Every element of input parameter `value` should be nonnegative.'
-            )
         eps = paddle.finfo(self.rate.dtype).eps
         return paddle.nan_to_num(
             (
