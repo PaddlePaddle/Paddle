@@ -159,7 +159,6 @@ void ApplyDivideGroupOpToFusionOpPass(
     const std::function<std::shared_ptr<pir::PassManager>()>&
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-
   pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInGroupOpPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
 

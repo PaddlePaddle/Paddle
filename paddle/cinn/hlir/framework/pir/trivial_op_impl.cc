@@ -603,20 +603,14 @@ std::vector<ir::Expr> OperationFusion(
                  ::common::errors::PreconditionNotMet(
                      "TrivialFusion must be used with tiling first, set "
                      "FLAGS_group_schedule_tiling_first=1"));
-  const auto& ops = trivial_fusion_detail::FilterVector(
-      original_ops, [](const ::pir::Operation* op) {
-        if (op->name() == "cinn_op.generate_shape") {
-          return false;
-        }
-        return true;
-      });
 
   const std::unordered_map<pir::Operation*, trivial_fusion_detail::FusibleOp>
       initialized_lowered_op;
   for (int i = 0; i < ops.size(); i++) {
-    initialized_lowered_op[ops[i]] = IsReduceBody(op_compute_bodies[i])
-                                         ? ReduceOp(op_compute_bodies[i])
-                                         : TrivialOp(op_compute_bodies[i]);
+    initialized_lowered_op[ops[i]] =
+        trivial_fusion_detail::IsReduceBody(op_compute_bodies[i])
+            ? ReduceOp(op_compute_bodies[i])
+            : TrivialOp(op_compute_bodies[i]);
   }
 
   auto interpreter =
