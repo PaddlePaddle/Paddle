@@ -20,6 +20,7 @@ import paddle
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.nn.clip import GradientClipBase
+from paddle.optimizer.lr import LRScheduler
 
 from ..base import core, framework
 from ..base.framework import (
@@ -137,7 +138,7 @@ class RAdam(Optimizer):
 
     def __init__(
         self,
-        learning_rate: float = 0.001,
+        learning_rate: float | LRScheduler = 0.001,
         beta1: float | paddle.Tensor = 0.9,
         beta2: float | paddle.Tensor = 0.999,
         epsilon: float = 1.0e-8,
@@ -145,7 +146,7 @@ class RAdam(Optimizer):
         weight_decay: float | paddle.Tensor | None = None,
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,
-    ):
+    ) -> Optimizer:
         if isinstance(learning_rate, (float, int)) and not 0.0 <= learning_rate:
             raise ValueError(
                 f"Invalid learning rate: {learning_rate}, expect learning_rate >= 0."

@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import warnings
 
 from paddle import _C_ops, pir
+from paddle.nn.clip import GradientClipBase
+from paddle.regularizer import WeightDecayRegularizer
 
 from ..base import framework
 from ..base.dygraph import no_grad
@@ -49,6 +53,8 @@ class SGD(Optimizer):
             some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
             :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
+        multi_precision (bool, optional): Whether to use multi-precision during weight updating. \
+            Default is false.
         name (str, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
                 :ref:`api_guide_Name` .
@@ -72,13 +78,13 @@ class SGD(Optimizer):
 
     def __init__(
         self,
-        learning_rate=0.001,
-        parameters=None,
-        weight_decay=None,
-        grad_clip=None,
-        multi_precision=False,
-        name=None,
-    ):
+        learning_rate: float = 0.001,
+        parameters: list | tuple | None = None,
+        weight_decay: float | WeightDecayRegularizer | None = None,
+        grad_clip: GradientClipBase | None = None,
+        multi_precision: bool = False,
+        name: str | None = None,
+    ) -> Optimizer:
         if learning_rate is None:
             raise ValueError("learning_rate is not set")
         super().__init__(

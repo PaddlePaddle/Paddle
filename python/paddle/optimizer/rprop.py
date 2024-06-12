@@ -14,7 +14,10 @@
 
 import warnings
 
+import paddle
 from paddle import _C_ops
+from paddle.nn.clip import GradientClipBase
+from paddle.optimizer.lr import LRScheduler
 from paddle.tensor.creation import to_tensor
 
 from ..base import framework
@@ -53,20 +56,20 @@ class Rprop(Optimizer):
        \end{aligned}
 
     Parameters:
-        learning_rate (float|Tensor|LearningRateDecay, optional): The initial learning rate used to update ``Parameter``.
-            It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
+        learning_rate (float|Tensor|LRScheduler, optional): The initial learning rate used to update ``Parameter``.
+            It can be a float value, a ``Tensor`` with a float type or a LRScheduler. The default value is 0.001.
         learning_rate_range (tuple, optional): The range of learning rate.
             Learning rate cannot be smaller than the first element of the tuple;
             learning rate cannot be larger than the second element of the tuple.
             The default value is (1e-5, 50).
-        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
+        parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
             This parameter is required in dygraph mode.
             The default value is None in static graph mode, at this time all parameters will be updated.
         etas (tuple, optional): Tuple used to update learning rate.
             The first element of the tuple is the multiplicative decrease factor;
             the second element of the tuple is the multiplicative increase factor.
             The default value is (0.5, 1.2).
-        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of some derived class of ``GradientClipBase`` .
+        grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of some derived class of ``GradientClipBase`` .
             There are three clipping strategies ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` ).
             Default None, meaning there is no gradient clipping.
         multi_precision (bool, optional): In mixed precision training scenarios based on GPU,
@@ -76,7 +79,7 @@ class Rprop(Optimizer):
             Finally, the updated FP32 type value will be converted to FP16 type first,
             and then assigned to the actual FP16 type parameters participating in the calculation.
             The default value is False.
-        name (str, optional): The default value is None. Normally there is no need for user to set this property.
+        name (str|None, optional): The default value is None. Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
     Examples:
@@ -99,14 +102,14 @@ class Rprop(Optimizer):
 
     def __init__(
         self,
-        learning_rate=0.001,
-        learning_rate_range=(1e-5, 50),
-        parameters=None,
-        etas=(0.5, 1.2),
-        grad_clip=None,
-        multi_precision=False,
-        name=None,
-    ):
+        learning_rate: float | paddle.Tensor | LRScheduler = 0.001,
+        learning_rate_range: tuple = (1e-5, 50),
+        parameters: list | tuple | None = None,
+        etas: tuple = (0.5, 1.2),
+        grad_clip: GradientClipBase | None = None,
+        multi_precision: bool = False,
+        name: str | None = None,
+    ) -> Optimizer:
         if learning_rate is None:
             raise ValueError("learning_rate is not set")
         if (
