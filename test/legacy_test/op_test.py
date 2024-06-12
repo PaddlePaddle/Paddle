@@ -1690,7 +1690,6 @@ class OpTest(unittest.TestCase):
                     # TODO(gongshaotian): compare in c++ level
                     # result = shape_or_data.compare()
                     # TODO(gongshaotian): compare in python level
-                    shape_analysis.print_shape_or_data()
                     print(
                         "------symbol infer test------- shape_string:",
                         "shape_string",

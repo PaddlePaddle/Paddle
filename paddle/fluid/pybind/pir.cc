@@ -118,6 +118,7 @@ using pir::Value;
 using pir::VectorType;
 using pybind11::return_value_policy;
 
+using pir::ShapeAnalysisManager;
 using pir::ShapeConstraintIRAnalysis;
 using symbol::ShapeOrDataDimExprs;
 
@@ -2460,9 +2461,12 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
 }
 
 void BindShapeConstraintIRAnalysis(pybind11::module *m) {
-  m->def("get_shape_constraint_ir_analysis",
-         &pir::GetShapeConstraintIRAnalysis,
-         return_value_policy::reference);
+  m->def(
+      "get_shape_constraint_ir_analysis",
+      [](const pir::Program *program) -> ShapeConstraintIRAnalysis & {
+        return ShapeAnalysisManager::Instance().Get(program);
+      },
+      return_value_policy::reference);
 
   py::class_<ShapeConstraintIRAnalysis,
              std::shared_ptr<ShapeConstraintIRAnalysis>>
@@ -2474,9 +2478,7 @@ void BindShapeConstraintIRAnalysis(pybind11::module *m) {
            &ShapeConstraintIRAnalysis::GetShapeOrDataForValue,
            return_value_policy::reference)
       .def("set_shape_or_data_for_var",
-           &ShapeConstraintIRAnalysis::SetShapeOrDataForValue)
-      .def("print_shape_or_data",
-           &ShapeConstraintIRAnalysis::PrintShapeOrDatas);
+           &ShapeConstraintIRAnalysis::SetShapeOrDataForValue);
 }
 
 void BindPassManager(pybind11::module *m) {
