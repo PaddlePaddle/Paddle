@@ -3621,6 +3621,7 @@ def gather(x, index, axis=None, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def unbind(input, axis=0):
     """
 
@@ -3809,6 +3810,7 @@ def scatter_(x, index, updates, overwrite=True, name=None):
     return _C_ops.scatter_(x, index, updates, overwrite)
 
 
+@paddle.utils.print_utils.print_args
 def scatter_nd_add(x, index, updates, name=None):
     r"""
 
@@ -4115,6 +4117,7 @@ def tile(x, repeat_times, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def expand_as(x, y, name=None):
     """
 
@@ -5516,6 +5519,7 @@ def as_real(x, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 def repeat_interleave(x, repeats, axis=None, name=None):
     """
 

@@ -330,6 +330,7 @@ def _mp_allreduce(
         return out
 
 
+@paddle.utils.print_utils.print_args
 def _c_lookup_table(table, index, start_index=0, vocab_size=-1, name=None):
     """
     Lookup table according to index.
@@ -403,6 +404,7 @@ class _Linear(Layer):
         return f'in_features={self.weight.shape[0]}, out_features={self.weight.shape[1]}, dtype={self._dtype}{name_str}'
 
 
+@paddle.utils.print_utils.print_args
 def _c_softmax_with_cross_entropy(
     logits,
     label,

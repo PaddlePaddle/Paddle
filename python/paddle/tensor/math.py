@@ -462,6 +462,7 @@ def multiplex(inputs, index, name=None):
         return out
 
 
+@paddle.utils.print_utils.print_args
 @inplace_apis_in_dygraph_only
 def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
@@ -1116,6 +1117,7 @@ def multiply(x, y, name=None):
         return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
+@paddle.utils.print_utils.print_args
 @inplace_apis_in_dygraph_only
 def multiply_(x, y, name=None):
     """
@@ -1190,6 +1192,7 @@ def _divide_with_axis(x, y, axis=-1, name=None):
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+@paddle.utils.print_utils.print_args
 def maximum(x, y, name=None):
     """
     Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
@@ -1442,6 +1445,7 @@ def fmin(x, y, name=None):
         return _elementwise_op(LayerHelper('elementwise_fmin', **locals()))
 
 
+@paddle.utils.print_utils.print_args
 def sum(x, axis=None, dtype=None, keepdim=False, name=None):
     """
     Computes the sum of tensor elements over the given dimension.
@@ -6361,6 +6365,7 @@ def heaviside(x, y, name=None):
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+@paddle.utils.print_utils.print_args
 def frac(x, name=None):
     """
     This API is used to return the fractional portion of each element in input.

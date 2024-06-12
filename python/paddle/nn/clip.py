@@ -234,6 +234,7 @@ def _cast_to_mp_type_if_enabled(x):
         return x
 
 
+@paddle.utils.print_utils.print_args
 def _squared_l2_norm(x):
     r"""
     Return the squared L2 norm of a tensor.

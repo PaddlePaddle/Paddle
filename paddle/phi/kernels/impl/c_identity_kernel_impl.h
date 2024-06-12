@@ -27,6 +27,14 @@ void CIdentityKernel(const Context& dev_ctx,
                      bool use_calc_stream,
                      bool use_model_parallel,
                      DenseTensor* out) {
+  std::cout << "{function_name : c_identity, inputs: { { x, type: <class "
+               "'paddle.Tensor'>, shape: "
+            << x.dims() << " }, }"
+            << ", params: [ "
+            << "ring_id: " << ring_id << ", "
+            << "use_calc_stream: " << use_calc_stream << ", "
+            << "use_model_parallel: " << use_model_parallel << ", "
+            << "]}" << std::endl;
   PADDLE_ENFORCE_GE(
       ring_id,
       0,

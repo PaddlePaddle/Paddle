@@ -22,6 +22,7 @@ from paddle.framework import (
 from paddle.tensor.linalg import matmul
 
 
+@paddle.utils.print_utils.print_args
 def fused_matmul_bias(
     x, y, bias=None, transpose_x=False, transpose_y=False, name=None
 ):
