@@ -643,19 +643,22 @@ class RowSequenceParallelLinear(Layer):
         self.linear = F.linear
 
         self.mp_scale = None
-        # if fuse_matmul_bias:
-        #     if not is_fused_matmul_bias_supported():
-        #         raise NotImplementedError(
-        #             "You set fuse_matmul_bias=True in RowParallelLinear, "
-        #             "however, the paddle you are using not support this operation. "
-        #             "Please set fuse_matmul_bias=False or use paddle compiled "
-        #             "with cuda 11.6 or higher."
-        #         )
-        #     from paddle.incubate.nn.functional import fused_linear
-        #
-        #     self.linear = fused_linear
-        #     if self.is_mp and has_bias:
-        #         self.mp_scale = MPScale.apply
+        mp_configs = fleet.fleet._user_defined_strategy.hybrid_configs[
+            "mp_configs"
+        ]
+        if fuse_matmul_bias:
+            if not is_fused_matmul_bias_supported():
+                raise NotImplementedError(
+                    "You set fuse_matmul_bias=True in RowParallelLinear, "
+                    "however, the paddle you are using not support this operation. "
+                    "Please set fuse_matmul_bias=False or use paddle compiled "
+                    "with cuda 11.6 or higher."
+                )
+            from paddle.incubate.nn.functional import fused_linear
+
+            self.linear = fused_linear
+            if self.is_mp and has_bias and mp_configs.enable_mp_scale_bias:
+                self.mp_scale = MPScale.apply
 
     def forward(self, x):
         input_parallel = x
