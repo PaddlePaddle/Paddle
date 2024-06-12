@@ -39,23 +39,23 @@ class SGD(Optimizer):
     Parameters:
         learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
             It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
-        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
+        parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static graph mode, at this time all parameters will be updated.
-        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
+        weight_decay (float|WeightDecayRegularizer|None, optional): The strategy of regularization. \
             It can be a float value as coeff of L2 regularization or \
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+        grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
             :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. \
             Default is false.
-        name (str, optional): The default value is None. Normally there is no need for user
+        name (str|None, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
                 :ref:`api_guide_Name` .
 
