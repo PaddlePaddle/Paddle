@@ -100,22 +100,22 @@ void ConstraintsManager::AddEqCstr(const DimExpr& lhs, const DimExpr& rhs) {
     equals_.Union(lhs, rhs);
     VLOG(4) << "add equal constraint: " << lhs << " == " << rhs;
   }
-  DimExpr origin, subsutituted;
+  DimExpr origin, substituted;
   auto comp_result = CompareDimExprPriority(lhs, rhs);
   if (comp_result == PriorityComparisonStatus::LOWER) {
     origin = lhs;
-    subsutituted = rhs;
+    substituted = rhs;
   } else if (comp_result == PriorityComparisonStatus::HIGHER) {
     origin = rhs;
-    subsutituted = lhs;
+    substituted = lhs;
   } else {
     return;
   }
-  if (CanSubstituteInConstraint(origin, subsutituted)) {
-    SubstituteInConstraint(origin, subsutituted);
+  if (CanSubstituteInConstraint(origin, substituted)) {
+    SubstituteInConstraint(origin, substituted);
   }
   if (equal_callback_func_) {
-    equal_callback_func_(origin, subsutituted);
+    equal_callback_func_(origin, substituted);
   }
 }
 

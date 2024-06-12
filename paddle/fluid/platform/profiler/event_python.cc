@@ -16,8 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/dump/serialization_logger.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 HostPythonNode::~HostPythonNode() {
   // delete all runtime or device nodes and recursive delete children
@@ -192,5 +191,4 @@ std::unique_ptr<ProfilerResult> LoadProfilerResult(std::string filename) {
   return result;
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

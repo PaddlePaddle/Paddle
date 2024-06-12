@@ -66,8 +66,8 @@ void DeleteRemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph *graph) const {
     std::unordered_set<const Node *> del_node_set;
 
     bool delete_recover_padding = true;
-    for (size_t i = 0; i < recover_padding_out->outputs.size();
-         ++i) {  // NOLINT
+    for (size_t i = 0; i < recover_padding_out->outputs.size();  // NOLINT
+         ++i) {
       if (recover_padding_out->outputs[i]->Name() ==
           "remove_padding") {  // op_node
         auto *remove_padding_out_node =

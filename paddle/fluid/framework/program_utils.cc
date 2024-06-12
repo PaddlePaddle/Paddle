@@ -17,8 +17,7 @@ limitations under the License. */
 #include <google/protobuf/text_format.h>
 #include "paddle/fluid/framework/block_desc.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 template <typename Container, typename Visitor>
 inline void VisitAllElements(Container &&container,
@@ -214,5 +213,4 @@ void DumpProgramDescFile(const std::string &name, const ProgramDesc &program) {
   WriteToFile(filename.c_str(), print_str);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

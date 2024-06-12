@@ -190,6 +190,15 @@ const auto& handler_reduce_prod_op =
   return pd_op;
 }
 
+::pir::Operation* ConvertGenerateShapeOp(
+    ::pir::Operation* op,
+    ::pir::IrMapping& ir_mapping,  // NOLINT
+    ::pir::Builder& builder) {     // NOLINT
+  auto* new_op = op->Clone(ir_mapping, {true, true, true});
+  builder.Insert(new_op);
+  return new_op;
+}
+
 ::pir::Operation* ConvertScaleOp(::pir::Operation* op,
                                  ::pir::IrMapping& ir_mapping,        // NOLINT
                                  ::pir::PatternRewriter& rewriter) {  // NOLINT
@@ -256,6 +265,20 @@ const auto& handler_reduce_prod_op =
       rtol,
       atol,
       equal_nan);
+  for (uint32_t i = 0; i < op->num_results(); ++i) {
+    ir_mapping.Add(op->result(i), pd_op->result(i));
+  }
+  return pd_op;
+}
+
+::pir::Operation* ConvertYieldStoreOp(
+    ::pir::Operation* op,
+    ::pir::IrMapping& ir_mapping,        // NOLINT
+    ::pir::PatternRewriter& rewriter) {  // NOLINT
+  VLOG(6) << "transform " << op->name() << " from cinn_op to pd_op";
+  const auto& attrs = op->attributes();
+  auto pd_op = rewriter.Build<paddle::dialect::ShareData_Op>(
+      ir_mapping.Lookup(op->operand_source(0)));
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     ir_mapping.Add(op->result(i), pd_op->result(i));
   }
@@ -404,6 +427,9 @@ REGISTER_TRANSFORM_RULES(concat_op,
                          cinn::dialect::ConcatOp::name(),
                          cinn::dialect::details::ConvertConcatOp);
 
+REGISTER_TRANSFORM_RULES(generate_shape_op,
+                         cinn::dialect::GenerateShapeOp::name(),
+                         cinn::dialect::details::ConvertGenerateShapeOp);
 REGISTER_TRANSFORM_RULES(scale_op,
                          cinn::dialect::ScaleOp::name(),
                          cinn::dialect::details::ConvertScaleOp);
@@ -421,6 +447,10 @@ REGISTER_TRANSFORM_RULES(pool2d_op,
 REGISTER_TRANSFORM_RULES(isclose_op,
                          cinn::dialect::IscloseOp::name(),
                          cinn::dialect::details::ConvertIscloseOp);
+
+REGISTER_TRANSFORM_RULES(yield_store,
+                         cinn::dialect::YieldStoreOp::name(),
+                         cinn::dialect::details::ConvertYieldStoreOp);
 
 REGISTER_TRANSFORM_RULES(
     expand_op,

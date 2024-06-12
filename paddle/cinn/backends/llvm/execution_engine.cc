@@ -176,7 +176,7 @@ std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
 }
 
 template <typename CodeGenT>
-void ExecutionEngine::Link(const ir::Module &module) {
+void ExecutionEngine::Link(const ir::Module &module, bool add_module) {
   utils::RecordEvent("ExecutionEngine Link", utils::EventType::kOrdinary);
 
   auto ir_emitter = std::make_unique<CodeGenT>(m.get(), b.get());
@@ -201,6 +201,10 @@ void ExecutionEngine::Link(const ir::Module &module) {
   machine->addPassesToEmitFile(
       pass_manager, rawstream, nullptr, llvm::CGFT_ObjectFile);
   pass_manager.run(*m);
+
+  if (add_module) {
+    AddSelfModule();
+  }
 
   if (VLOG_IS_ON(5)) {
     VLOG(5) << "======= dump jit execution session ======";
@@ -230,6 +234,9 @@ bool ExecutionEngine::AddModule(std::unique_ptr<llvm::Module> module,
   llvm::orc::ThreadSafeModule tsm(std::move(module), std::move(tsc));
   llvm::cantFail(jit_->addIRModule(std::move(tsm)));
   return true;
+}
+bool ExecutionEngine::AddSelfModule() {
+  return AddModule(std::move(m), std::move(ctx));
 }
 
 void ExecutionEngine::ExportObject(const std::string &path) {
@@ -268,8 +275,11 @@ void ExecutionEngine::RegisterRuntimeSymbols() {
   }
 }
 
-template void ExecutionEngine::Link<CodeGenLLVM>(const ir::Module &module);
-template void ExecutionEngine::Link<CodeGenX86>(const ir::Module &module);
-template void ExecutionEngine::Link<CodeGenCUDA_Host>(const ir::Module &module);
+template void ExecutionEngine::Link<CodeGenLLVM>(const ir::Module &module,
+                                                 bool add_module);
+template void ExecutionEngine::Link<CodeGenX86>(const ir::Module &module,
+                                                bool add_module);
+template void ExecutionEngine::Link<CodeGenCUDA_Host>(const ir::Module &module,
+                                                      bool add_module);
 
 }  // namespace cinn::backends

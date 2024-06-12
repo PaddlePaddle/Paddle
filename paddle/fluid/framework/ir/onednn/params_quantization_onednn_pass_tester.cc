@@ -18,9 +18,7 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/phi/common/place.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 namespace {
 struct Data {
   Data() = default;
@@ -380,8 +378,6 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o2i1h1ws) {
 }
 
 }  // namespace
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 USE_PASS(params_quantization_onednn_pass);

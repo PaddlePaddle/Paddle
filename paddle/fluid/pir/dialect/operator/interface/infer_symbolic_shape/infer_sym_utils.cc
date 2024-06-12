@@ -99,6 +99,18 @@ bool ReduceInferDim(pir::Operation *op,
   return true;
 }
 
+symbol::ShapeOrDataDimExprs CreateShapeOrDataForXShape(
+    const symbol::ShapeOrDataDimExprs &x_dim_exprs) {
+  const auto InsertZeros =
+      [](const std::vector<symbol::DimExpr> &dims) -> decltype(auto) {
+    auto out_dims = dims;
+    out_dims.insert(out_dims.begin(), 0);
+    return out_dims;
+  };
+  const auto &x_dims = x_dim_exprs.shape();
+  return symbol::TensorShapeOrDataDimExprs(InsertZeros(x_dims));
+}
+
 void BuildCstrEqForTensorListAlongAxis(
     pir::InferSymbolicShapeContext *infer_context,
     const symbol::TensorListShapeOrDataDimExprs &shape_data_list,
