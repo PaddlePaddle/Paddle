@@ -278,10 +278,6 @@ if(WITH_CINN)
     python)
   set_tests_properties(cinn_cache_key_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  paddle_test(build_cinn_pass_test SRCS paddle2cinn/build_cinn_pass_test.cc)
-  set_tests_properties(build_cinn_pass_test PROPERTIES LABELS "RUN_TYPE=CINN")
-  # target_link_libraries(build_cinn_pass_test ${PYTHON_LIBRARIES})
-
   paddle_test(cinn_zero_tensor_trick_pass_test SRCS
               paddle2cinn/cinn_zero_tensor_trick_pass_test.cc DEPS paddle2cinn)
   set_tests_properties(cinn_zero_tensor_trick_pass_test
