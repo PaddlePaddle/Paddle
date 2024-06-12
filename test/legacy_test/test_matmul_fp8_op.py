@@ -44,7 +44,7 @@ def check_fp8_support() -> bool:
     # Device compute capability 8.9 or higher required for FP8 execution.
     if gpu_arch < 89:  # pre-ada
         return False
-    if get_cuda_version() < 11080:
+    if get_cuda_version() < 12010:
         return False
     return True
 
@@ -61,7 +61,7 @@ def _to_fp8_saturated(x: paddle.Tensor, float8_dtype) -> paddle.Tensor:
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or not check_fp8_support(),
-    "Fp8 matmul requires CUDA >= 11.8 on Ada arch or hopper arch",
+    "Fp8 matmul requires CUDA >= 12.1 on Ada arch or hopper arch",
 )
 class TestMatmulFp8(unittest.TestCase):
     def config(self):
