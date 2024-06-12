@@ -33,7 +33,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import paddle
-import paddle.version as paddle_version
 
 from .. import pir
 from . import core, unique_name
@@ -573,10 +572,10 @@ def require_version(min_version, max_version=None):
             )
 
     version_installed = [
-        paddle_version.major,
-        paddle_version.minor,
-        paddle_version.patch,
-        paddle_version.rc,
+        paddle.version.major,
+        paddle.version.minor,
+        paddle.version.patch,
+        paddle.version.rc,
     ]
     zero_version = ["0", "0", "0", "0"]
 
@@ -591,13 +590,13 @@ def require_version(min_version, max_version=None):
     if version_cmp(version_installed, zero_version) == 0:
         if max_version is not None:
             warnings.warn(
-                f"PaddlePaddle version in [{min_version}, {max_version}] required, but {paddle_version.full_version} installed. "
+                f"PaddlePaddle version in [{min_version}, {max_version}] required, but {paddle.version.full_version} installed. "
                 "Maybe you are using a develop version, "
                 "please make sure the version is good with your code."
             )
         else:
             warnings.warn(
-                f"PaddlePaddle version {min_version} or higher is required, but {paddle_version.full_version} installed, "
+                f"PaddlePaddle version {min_version} or higher is required, but {paddle.version.full_version} installed, "
                 "Maybe you are using a develop version, "
                 "please make sure the version is good with your code."
             )
@@ -619,12 +618,12 @@ def require_version(min_version, max_version=None):
             or version_cmp(version_installed, min_version_to_check) < 0
         ):
             raise Exception(
-                f"VersionError: PaddlePaddle version in [{min_version}, {max_version}] required, but {paddle_version.full_version} installed."
+                f"VersionError: PaddlePaddle version in [{min_version}, {max_version}] required, but {paddle.version.full_version} installed."
             )
     else:
         if version_cmp(version_installed, min_version_to_check) < 0:
             raise Exception(
-                f"VersionError: PaddlePaddle version {min_version} or higher is required, but {paddle_version.full_version} installed, "
+                f"VersionError: PaddlePaddle version {min_version} or higher is required, but {paddle.version.full_version} installed, "
                 f"please upgrade your PaddlePaddle to {min_version} or other higher version."
             )
 
@@ -8154,16 +8153,19 @@ def _get_paddle_place(place):
 
     # XPU
     available_xpu_place = re.match(r"xpu:\d+", place)
-    if available_xpu_place:
+    if available_xpu_place or place == "xpu":
         if not core.is_compiled_with_xpu():
             raise ValueError(
                 f"The device should not be {available_xpu_place.group()}, since PaddlePaddle is "
                 "not compiled with XPU"
             )
-        place_info_list = place.split(":", 1)
-        device_id = place_info_list[1]
-        device_id = int(device_id)
-        return core.XPUPlace(device_id)
+        if place == "xpu":
+            return core.XPUPlace(0)
+        else:
+            place_info_list = place.split(":", 1)
+            device_id = place_info_list[1]
+            device_id = int(device_id)
+            return core.XPUPlace(device_id)
 
     # IPU
     available_ipu_place = re.match(r"ipu:\d+", place)

@@ -15,7 +15,7 @@
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
-
+#include "paddle/common/enforce.h"
 /** \brief A macro that guards the beginning of each implementation of schedule
  */
 #define CINN_IR_SCHEDULE_BEGIN() try {
@@ -83,7 +83,10 @@ void DyScheduleImpl::MergeExprs() {
                  x->As<ir::ScheduleBlockRealize>()->iter_values.empty();
         },
         true);
-    CHECK_EQ(root_block.size(), 1U);
+    PADDLE_ENFORCE_EQ(
+        root_block.size(),
+        1U,
+        phi::errors::InvalidArgument("Number of root block should be 1"));
     for (auto& it_block : root_block) {
       auto& block_body = it_block.As<ir::ScheduleBlockRealize>()
                              ->schedule_block.As<ir::ScheduleBlock>()
@@ -92,7 +95,7 @@ void DyScheduleImpl::MergeExprs() {
     }
   }
   for (auto& block : merged_block) {
-    VLOG(3) << "in merged_block, it has " << block;
+    VLOG(3) << "in merged_block, it has \n" << block;
   }
   auto merged_expr = ir::Block::Make(merged_block);
   exprs[0]
@@ -511,7 +514,10 @@ void StScheduleImpl::MergeExprs() {
   auto exprs = this->GetModule().GetExprs();
   if (exprs.size() == 1U) return;
   CHECK(exprs[0].As<ir::Block>());
-  CHECK_EQ(exprs[0].As<ir::Block>()->stmts.size(), 1U);
+  PADDLE_ENFORCE_EQ(exprs[0].As<ir::Block>()->stmts.size(),
+                    1U,
+                    phi::errors::InvalidArgument(
+                        "Expr[0] of module_expr should have only one stmt!"));
   CHECK(exprs[0].As<ir::Block>()->stmts[0].As<ir::ScheduleBlockRealize>());
   CHECK(exprs[0]
             .As<ir::Block>()
@@ -534,7 +540,10 @@ void StScheduleImpl::MergeExprs() {
                  x->As<ir::ScheduleBlockRealize>()->iter_values.empty();
         },
         true);
-    CHECK_EQ(root_block.size(), 1U);
+    PADDLE_ENFORCE_EQ(
+        root_block.size(),
+        1U,
+        phi::errors::InvalidArgument("Number of root block should be 1"));
     for (auto& it_block : root_block) {
       auto& block_body = it_block.As<ir::ScheduleBlockRealize>()
                              ->schedule_block.As<ir::ScheduleBlock>()
@@ -636,7 +645,10 @@ void StScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   CHECK(block.As<ir::ScheduleBlockRealize>());
   CHECK(block_target.As<ir::ScheduleBlockRealize>());
   auto exprs = this->GetModule().GetExprs();
-  CHECK_EQ(exprs.size(), 1U);
+  PADDLE_ENFORCE_EQ(exprs.size(),
+                    1U,
+                    phi::errors::InvalidArgument(
+                        "Size of exprs of current module must be 1!"));
   auto expr = exprs[0];
   auto vars = block.As<ir::ScheduleBlockRealize>()
                   ->schedule_block.As<ir::ScheduleBlock>()
@@ -691,7 +703,12 @@ void StScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
                  Contains(*x, block_target);
         },
         true);
-    CHECK_EQ(find_loop_var.size(), 1U);
+    PADDLE_ENFORCE_EQ(find_loop_var.size(),
+                      1U,
+                      phi::errors::InvalidArgument(
+                          "Number of loop with iter_var which is used in "
+                          "ScheduleBlockRealize for indexing in Exprs[0] of "
+                          "module_exprs must be 1!"));
     used_target_loops.push_back(*find_loop_var.begin());
     VLOG(3) << "used_target_loops push_back " << used_target_loops.back();
   }
@@ -720,13 +737,21 @@ void StScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
                  Contains(*x, block);
         },
         true);
-    CHECK_EQ(find_partial_loop.size(), 1U);
+    PADDLE_ENFORCE_EQ(find_partial_loop.size(),
+                      1U,
+                      phi::errors::InvalidArgument(
+                          "Number of loop with iter_var which is  should be "
+                          "1 in Exprs[0] of module_expr!"));
     new_loop = ir::ir_utils::IRCopy(*find_partial_loop.begin());
     auto find_schedule_block = ir::ir_utils::CollectIRNodesWithoutTensor(
         new_loop,
         [&](const Expr* x) { return x->As<ir::ScheduleBlockRealize>(); },
         true);
-    CHECK_EQ(find_schedule_block.size(), 1U);
+    PADDLE_ENFORCE_EQ(find_schedule_block.size(),
+                      1U,
+                      phi::errors::InvalidArgument(
+                          "Number of ScheduleBlockRealize in partial_loop "
+                          "should be 1!"));
     Expr sch_block = (*find_schedule_block.begin());
     sch_block.As<ir::ScheduleBlockRealize>()->iter_values = new_iter_values;
   }
@@ -762,9 +787,14 @@ std::vector<Expr> StScheduleImpl::SamplePerfectTile(
     int max_innermost_factor) {
   CHECK(loop.As<ir::For>())
       << "Expr param of SamplePerfectTile should be a For loop";
-  CHECK_GE(n, 2) << "The number of tile factors should be at least 2";
-  CHECK_GE(max_innermost_factor, 1)
-      << "The max innermost factor should be at least 1";
+  PADDLE_ENFORCE_GE(n,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The number of tile factors should be at least 2"));
+  PADDLE_ENFORCE_GE(max_innermost_factor,
+                    1,
+                    phi::errors::InvalidArgument(
+                        "The max innermost factor should be at least 1"));
   CHECK(cinn::common::is_zero(loop.As<ir::For>()->min))
       << "The For loop should start from 0";
   int loop_extent = GetLoopExtent(loop);
@@ -791,8 +821,10 @@ Expr StScheduleImpl::SampleCategorical(
     const std::vector<int>& candidates,
     const std::vector<float>& probs) {
   // check two sizes
-  CHECK_EQ(candidates.size(), probs.size())
-      << "candidates and probs must have same size.";
+  PADDLE_ENFORCE_EQ(candidates.size(),
+                    probs.size(),
+                    phi::errors::InvalidArgument(
+                        "candidates and probs must have same size."));
   int seed_idx = utils::SampleDiscreteFromDistribution(probs, rand_seed);
   auto result = candidates[seed_idx];
   Expr result_expr(result);

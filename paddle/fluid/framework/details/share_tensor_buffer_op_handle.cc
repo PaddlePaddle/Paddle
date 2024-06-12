@@ -18,17 +18,11 @@
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class MemOptVarInfo;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 class ComputationOpHandle;
 
@@ -103,6 +97,4 @@ void ShareTensorBufferOpHandle::InitCUDA() {
 
 void ShareTensorBufferOpHandle::RunImpl() { functor_(local_exec_scopes_[0]); }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

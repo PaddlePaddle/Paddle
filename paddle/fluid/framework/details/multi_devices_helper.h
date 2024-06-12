@@ -21,8 +21,8 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
-#include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -40,6 +40,12 @@ class OpDesc;
 namespace paddle {
 namespace framework {
 namespace details {
+
+struct VariableInfo {
+  std::string name_;
+  proto::VarType::Type type_;
+  bool persistable_;
+};
 
 // all variable in each devices.
 // The outside vector is the device vector. Each element of this vector is a
@@ -63,7 +69,7 @@ constexpr char kUseHierarchicalAllReduce[] = "use_hierarchical_allreduce";
 typedef std::unordered_set<VarHandleBase *> GraphDepVars;
 constexpr char kGraphDepVars[] = "dep_vars";
 
-typedef std::unordered_map<std::string, details::VariableInfo> FusedVars;
+typedef std::unordered_map<std::string, VariableInfo> FusedVars;
 constexpr char kFusedVars[] = "fused_vars";
 constexpr char kFusedVarNamePrefix[] = "@FUSEDVAR@";
 

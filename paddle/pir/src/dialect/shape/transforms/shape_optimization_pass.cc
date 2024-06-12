@@ -126,6 +126,10 @@ void DebugPrintOpInfo(pir::Operation* op,
   std::ostringstream print_stream;
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     const auto& res = op->result(i);
+    if (!res || !res.type()) {
+      continue;
+    }
+
     print_stream << "\tresult(" << res.dyn_cast<pir::OpResult>().index() << ") "
                  << "ShapeOrData: {";
 
@@ -170,6 +174,10 @@ void CheckInferSymWithInferMeta(
     pir::InferSymbolicShapeContext* infer_context = nullptr) {
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     const auto& res = op->result(i);
+    if (!res || !res.type()) {
+      continue;
+    }
+
     std::ostringstream print_stream;
 
     // InferMeta funcs of some Ops are not corrrect now, we don't check them.
@@ -314,6 +322,9 @@ void InferSymExprForAllValues(ModuleOp module_op) {
   auto infer_context = shape_analysis.MutInferSymbolicShapeContext();
   for (uint32_t i = 0; i < module_op->num_regions(); i++) {
     for (auto& block : module_op->region(i)) {
+      for (auto& [_, value] : block.kwargs()) {
+        infer_context->SetSymbolForValueByStaticShape(value);
+      }
       InferSymExprForBlock(block, infer_context);
     }
   }
