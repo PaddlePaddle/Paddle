@@ -27,7 +27,10 @@ class PatternRewriter;
 class IrMapping;
 }  // namespace pir
 
-namespace cinn::dialect::details {
+namespace cinn::dialect {
+class FusionOp;
+
+namespace details {
 
 using TRule = std::function<::pir::Operation*(
     ::pir::Operation*, ::pir::IrMapping&, ::pir::PatternRewriter&)>;
@@ -93,4 +96,7 @@ void RewriteCinnOpToPdOp(const ::pir::Block& src_block,
                                       ::pir::IrMapping&,         // NOLINT
                                       ::pir::PatternRewriter&);  // NOLINT
 
-}  // namespace cinn::dialect::details
+void FallbackFusionOpToPdOps(cinn::dialect::FusionOp& fusion_op,  // NOLINT
+                             ::pir::PatternRewriter& rewriter);   // NOLINT
+}  // namespace details
+}  // namespace cinn::dialect

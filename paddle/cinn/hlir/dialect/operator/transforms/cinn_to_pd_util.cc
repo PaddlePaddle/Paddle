@@ -25,6 +25,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
 #include "paddle/pir/include/core/ir_mapping.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 
 namespace cinn::dialect::details {
@@ -381,6 +382,34 @@ void RewriteCinnOpToPdOp(const ::pir::Block& src_block,
       new_op->MoveTo(target_block, target_block->end());
     }
   }
+}
+
+void FallbackFusionOpToPdOps(cinn::dialect::FusionOp& fusion_op,  // NOLINT
+                             ::pir::PatternRewriter& rewriter) {  // NOLINT
+  VLOG(8) << "Rewrite FusionOp to PdOp.";
+  ::pir::IrMapping ir_mapping;
+  for (auto& op : *fusion_op.block()) {
+    if (op.isa<::pir::YieldOp>()) {
+      for (uint32_t i = 0; i < op.num_operands(); ++i) {
+        rewriter.ReplaceAllUsesWith(
+            fusion_op->result(i),
+            ir_mapping.Lookup<::pir::Value>(op.operand_source(i)));
+      }
+      continue;
+    }
+    for (size_t i = 0; i < op.num_operands(); ++i) {
+      if (!ir_mapping.GetMap<::pir::Value>().count(op.operand_source(i))) {
+        ir_mapping.Add(op.operand_source(i), op.operand_source(i));
+      }
+    }
+    if (CanApplyOn(&op)) {
+      auto new_pd_op = RewriteCinnOpToPdOp(&op, ir_mapping, rewriter);
+    } else {
+      auto* new_op = op.Clone(ir_mapping, {true, true, true});
+      rewriter.Insert(new_op);
+    }
+  }
+  rewriter.EraseOp(fusion_op);
 }
 
 }  // namespace cinn::dialect::details

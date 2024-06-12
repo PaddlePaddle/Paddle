@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/shape_ops_fallback_to_phi_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/fusion_fallback_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_to_pd_util.h"
@@ -25,39 +25,25 @@ namespace ir {
 
 namespace {
 
-class FusionShapeOpsPattern
-    : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
+class FusionOpsPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
  public:
-  explicit FusionShapeOpsPattern(::pir::IrContext* context)
+  explicit FusionOpsPattern(::pir::IrContext* context)
       : pir::OpRewritePattern<cinn::dialect::FusionOp>(context) {}
 
-  bool Match(cinn::dialect::FusionOp fusion_op) const override {
-    auto& shape_analysis = ::pir::ShapeAnalysisManager::Instance().Get(
-        fusion_op->GetParentProgram());
-    if (fusion_op.num_results() == 1) {
-      const auto& shape =
-          shape_analysis.GetShapeOrDataForValue(fusion_op.result(0));
-      if (shape.data() && shape.data()->size() <= 9) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  void Rewrite(cinn::dialect::FusionOp fusion_op,
-               ::pir::PatternRewriter& rewriter) const override {
+  bool MatchAndRewrite(cinn::dialect::FusionOp fusion_op,
+                       ::pir::PatternRewriter& rewriter) const override {
     details::FallbackFusionOpToPdOps(fusion_op, rewriter);
+    return true;
   }
 };
 
-class ShapeOpsFallbackToPhiPass : public pir::PatternRewritePass {
+class FusionFallbackPass : public pir::PatternRewritePass {
  public:
-  ShapeOpsFallbackToPhiPass()
-      : pir::PatternRewritePass("shape_ops_fallback_to_phi_pass", 1) {}
+  FusionFallbackPass() : pir::PatternRewritePass("fusion_fallback_pass", 1) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add<FusionShapeOpsPattern>(context);
+    ps.Add<FusionOpsPattern>(context);
 
     return ps;
   }
@@ -69,8 +55,8 @@ class ShapeOpsFallbackToPhiPass : public pir::PatternRewritePass {
 
 }  // namespace
 
-std::unique_ptr<::pir::Pass> CreateShapeOpsFallbackToPhiPass() {
-  return std::make_unique<ShapeOpsFallbackToPhiPass>();
+std::unique_ptr<::pir::Pass> CreateFusionFallbackPass() {
+  return std::make_unique<FusionFallbackPass>();
 }
 
 }  // namespace ir
