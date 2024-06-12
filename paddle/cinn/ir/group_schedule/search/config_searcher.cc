@@ -62,11 +62,6 @@ WeightedSamplingTrailObjectiveFunc::WeightedSamplingTrailObjectiveFunc(
       weights_.push_back(weights[i]);
     }
   }
-  for (const auto& dim : bucket_info_.space) {
-    std::vector<double> weight;
-    double weights_sum = std::accumulate(weight.begin(), weight.end(), 0.0);
-    weighted_space_size *= weights_sum;
-  }
   sampling_times_ =
       std::min(static_cast<int>(weighted_space_size * sampling_prob),
                max_sampling_times);
