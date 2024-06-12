@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
-#include "paddle/cinn/ir/group_schedule/config/file_database.h"
 #include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 
 #include "paddle/cinn/hlir/framework/pir/utils.h"
@@ -75,11 +74,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
   const size_t thread_size = GetThreadNum(task_size);
   VLOG(5) << "Found " << task_size << " new groups parsed from "
           << groups.size() << " and compiles with " << thread_size;
-  std::shared_ptr<cinn::ir::TileConfigDatabase> tile_config_database =
-      std::make_shared<cinn::ir::FileTileConfigDatabase>();
-  auto& schedule_config_manager = cinn::ir::ScheduleConfigManager::Instance();
-  schedule_config_manager.SetPolicy("optimal");
-  schedule_config_manager.AddConfigDatabase("optimal", tile_config_database);
+  cinn::ir::InitScheduleConfig();
   if (task_size > 0) {
     auto worker_fn = [&](int index) {
       CompilationTask task(&group_compilation_contexts[index]);

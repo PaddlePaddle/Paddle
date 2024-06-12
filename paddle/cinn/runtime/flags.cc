@@ -61,7 +61,7 @@ PD_DEFINE_string(cinn_tile_config_filename_label,
 
 PD_DEFINE_string(
     cinn_use_best_tile_config,
-    StringFromEnv("FLAGS_cinn_use_best_tile_config", "optimal"),
+    StringFromEnv("FLAGS_cinn_use_best_tile_config", "default"),
     "Which config does the compiler use, optimal, custom or default");
 
 PD_DEFINE_int32(cinn_parallel_compile_thread,

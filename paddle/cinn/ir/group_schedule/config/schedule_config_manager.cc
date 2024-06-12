@@ -57,5 +57,13 @@ void ScheduleConfigManager::SetPolicy(const std::string& policy) {
   policy_ = policy;
 }
 
+void InitScheduleConfig() {
+  std::shared_ptr<cinn::ir::TileConfigDatabase> tile_config_database =
+      std::make_shared<cinn::ir::FileTileConfigDatabase>();
+  auto& schedule_config_manager = cinn::ir::ScheduleConfigManager::Instance();
+  schedule_config_manager.SetPolicy("optimal");
+  schedule_config_manager.AddConfigDatabase("optimal", tile_config_database);
+}
+
 }  // namespace ir
 }  // namespace cinn
