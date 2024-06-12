@@ -25,8 +25,8 @@ def sparse_attention(
     value: paddle.Tensor,
     sparse_csr_offset: paddle.Tensor,
     sparse_csr_columns: paddle.Tensor,
-    key_padding_mask: paddle.Tensor = None,
-    attn_mask: paddle.Tensor = None,
+    key_padding_mask: paddle.Tensor | None = None,
+    attn_mask: paddle.Tensor | None = None,
     name: str | None = None,
 ) -> paddle.Tensor:
     r"""
