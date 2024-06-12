@@ -192,7 +192,6 @@ void DenseTensor::ShareBufferWith(const DenseTensor& tensor, bool only_buffer) {
   if (!only_buffer) {
     meta_.offset = tensor.meta().offset;
     meta_.dtype = tensor.dtype();
-    meta_.strides = tensor.strides();
   }
 }
 
