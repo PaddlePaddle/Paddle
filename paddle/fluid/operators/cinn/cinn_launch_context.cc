@@ -30,7 +30,6 @@
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/build_strategy.h"
-#include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/io/save_paddle2cinn_varmap.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"

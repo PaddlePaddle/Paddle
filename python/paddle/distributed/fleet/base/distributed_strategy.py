@@ -185,8 +185,8 @@ class DistributedStrategy:
 
         DistributedStrategy can be serialized into protobuf file or deserialized from protobuf file
 
-        Users who run local training usually configure BuildStrategy and ExecutionStrategy, and
-        DistributedStrategy supports configurations from BuildStrategy and ExecutionStrategy
+        Users who run local training usually configure BuildStrategy, and
+        DistributedStrategy supports configurations from BuildStrategy.
 
         """
         self.strategy = distributed_strategy_pb2.DistributedStrategy()
