@@ -139,7 +139,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
         operand.template As<ir::Load>()->tensor.as_tensor()->type();
     auto tmp_buffer = ir::_Buffer_::Make(
         "shm32_" + hlir::pe::Type2StrForReduce(tmp_dtype) + "_reduce",
-        {ir::Expr(1024)});
+        {ir::Expr(512)});
     tmp_buffer->dtype = tmp_dtype;
     tmp_buffer->memory_type = ir::MemoryType::GPUShared;
     shm_buffer_.insert(tmp_buffer);
