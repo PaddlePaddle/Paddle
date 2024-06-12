@@ -591,15 +591,6 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : pir::SideEffectTrait
 
-- op : prune_gate_by_capacity
-  args : (Tensor gate_idx, Tensor expert_count, int64_t n_expert, int64_t n_worker)
-  output : Tensor(new_gate_idx)
-  infer_meta :
-    func : PruneGateByCapacityInferMeta
-  kernel :
-    func : prune_gate_by_capacity
-    data_type : gate_idx
-
 - op : pull_box_sparse
   args : (Tensor w, Tensor[] ids, bool is_sparse = false, bool is_distributed = false, int size = 1)
   output : Tensor[](out){ids.size()}
@@ -795,17 +786,6 @@
     param: [x]
   inplace : (x -> out)
 
-- op : shuffle_batch
-  args : (Tensor x, Tensor seed, int startup_seed=0)
-  output : Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
-  infer_meta:
-     func: ShuffleBatchInferMeta
-  kernel:
-     func: shuffle_batch
-     data_type: x
-  backward : shuffle_batch_grad
-  traits : pir::SideEffectTrait
-
 - op : soft_relu
   args : (Tensor x, float threshold = 20.0f)
   output : Tensor(out)
@@ -907,16 +887,6 @@
     func: FusedAttentionInferMeta
   optional: cache_kv, ln_scale, ln_bias, qkv_bias, src_mask, out_linear_bias, ln_scale_2, ln_bias_2, ln_mean_2, ln_var_2, bias_dropout_residual_out, cache_kv_out
   backward: fused_attention_grad
-
-- op: fused_elemwise_add_activation
-  args: (Tensor x, Tensor y, str[] functor_list, float scale=0.0, int axis=-1, bool save_intermediate_out=false)
-  output: Tensor(out), Tensor(intermediate_out)
-  kernel:
-    func: fused_elemwise_add_activation
-  infer_meta:
-    func : FusedElemwiseAddActivationInferMeta
-  backward: fused_elemwise_add_activation_grad
-  intermediate: intermediate_out
 
 - op: fused_feedforward
   args: (Tensor x, Tensor dropout1_seed, Tensor dropout2_seed, Tensor linear1_weight, Tensor linear1_bias, Tensor linear2_weight, Tensor linear2_bias, Tensor ln1_scale, Tensor ln1_bias, Tensor ln2_scale, Tensor ln2_bias, bool pre_layer_norm, float ln1_epsilon, float ln2_epsilon, str act_method, float dropout1_prob, float dropout2_prob, str dropout1_implementation, str dropout2_implementation, bool is_test, bool dropout1_fix_seed, bool dropout2_fix_seed, int dropout1_seed_val, int dropout2_seed_val, bool add_residual, int ring_id)
