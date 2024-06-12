@@ -16,6 +16,7 @@
 
 #include <stdint.h>
 
+#include <array>
 #include <cmath>
 #include <cstring>
 #include <iostream>
@@ -49,7 +50,7 @@ inline T bit_cast(U x) {
   static_assert(sizeof(T) == sizeof(U), "invalid sizeof");
   static_assert(std::is_pod<T>::value, "invalid pod type T");
   static_assert(std::is_pod<U>::value, "invalid pod type U");
-  U y;
+  T y;
   std::memcpy(&y, &x, sizeof(T));
   return y;
 }
