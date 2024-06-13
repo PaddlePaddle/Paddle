@@ -15,7 +15,7 @@
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
@@ -35,9 +35,7 @@ from paddle.base.framework import (
     in_pir_mode,
     name_scope,
 )
-from paddle.callbacks import Callback
-from paddle.nn.clip import GradientClipBase
-from paddle.regularizer import L2Decay, WeightDecayRegularizer
+from paddle.regularizer import L2Decay
 
 from ..base import framework, unique_name
 from ..base.backward import (
@@ -45,12 +43,17 @@ from ..base.backward import (
     _get_no_grad_set_value,
     append_backward,
 )
-from ..base.framework import Parameter, Program
+from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper
 from .lr import LRScheduler
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle.callbacks import Callback
+    from paddle.nn.clip import GradientClipBase
+    from paddle.regularizer import WeightDecayRegularizer
+
+    from ..base.framework import Operator, Program
 
 __all__ = []
 
@@ -117,7 +120,7 @@ class Optimizer:
     Args:
         learning_rate (float|LRScheduler): The learning rate used to update ``Parameter``.
             It can be a float value or any subclass of ``LRScheduler`` .
-        parameters (list[Tensor]|tuple[Tensor]|None, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
+        parameters (list[Tensor]|tuple[Tensor,...]|None, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. And you can specify different options for \
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \
@@ -185,7 +188,7 @@ class Optimizer:
     def __init__(
         self,
         learning_rate: float | LRScheduler,
-        parameters: list[Tensor] | tuple[Tensor] | None = None,
+        parameters: Sequence[Tensor] | None = None,
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,
@@ -366,7 +369,7 @@ class Optimizer:
         Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc. If LRScheduler have been used, global_step will be changed.
 
         Args:
-            dict[str|Tensor]: Dict contains all the Tensor needed by optimizer
+            state_dict(dict): Dict contains all the Tensor needed by optimizer
 
         Return:
             None
@@ -1365,7 +1368,7 @@ class Optimizer:
 
         Args:
             loss (Tensor): ``loss`` tensor to run optimizations.
-            startup_program (Program|Tensor, optional): :ref:`api_paddle_static_Program` for
+            startup_program (Program|None, optional): :ref:`api_paddle_static_Program` for
                 initializing parameters in ``parameters``. The default value
                 is None, at this time :ref:`api_paddle_static_default_startup_program` will be used.
             parameters (list[Tensor]|list[str]|None, optional): List of ``Tensor`` or ``Tensor.name`` to update
@@ -1377,7 +1380,7 @@ class Optimizer:
                 operator for one parameter. The default value is None.
 
         Return:
-            list[tuple[Tensor, Tensor]]: list of (param, grad) tensor pairs, param is ``Parameter``,
+            list[tuple[Tensor, Tensor]], list of (param, grad) tensor pairs, param is ``Parameter``,
                 grad is the gradient value corresponding to the parameter.
 
         Examples:
@@ -1460,7 +1463,7 @@ class Optimizer:
 
     def apply_gradients(
         self, params_grads: list[tuple[Tensor, Tensor]]
-    ) -> list[Any]:
+    ) -> list[Operator]:
         """
         Second part of `minimize`, appending optimization operators for
         given `params_grads` pairs.
@@ -1751,7 +1754,7 @@ class Optimizer:
         startup_program: Program | None = None,
         parameters: list[Tensor] | list[str] | None = None,
         no_grad_set: set[Tensor] | set[str] | None = None,
-    ) -> tuple[list[tuple[Tensor, Tensor]], list[Any]]:
+    ) -> tuple[list[Operator], list[tuple[Tensor, Tensor]]]:
         """
         Add operations to minimize ``loss`` by updating ``parameters``.
 
@@ -1767,7 +1770,7 @@ class Optimizer:
                 to be updated. The default value is None.
 
         Returns:
-            tuple[list[tuple[Tensor, Tensor]], list[Any]], A list of operators appended
+            tuple[list[Operator],list[tuple[Tensor, Tensor]]], A list of operators appended
                 by minimize and a list of (param, grad) tensor pairs, param is
                 ``Parameter``, grad is the gradient value corresponding to the parameter.
                 In static graph mode, the returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to
