@@ -76,6 +76,7 @@ def to_dim_map(placements, tensor_dims):
         List[int]: a list of integer that represents sharding on each tensor dimension.
     """
     dim_map = [-1] * tensor_dims
+    partial_status = {}
     for i, placement in enumerate(placements):
         if placement.is_shard():
             shard_dim = cast(Shard, placement).get_dim()
@@ -85,13 +86,15 @@ def to_dim_map(placements, tensor_dims):
                 )
 
             dim_map[shard_dim] = i
+        if placement.is_partial():
+            partial_status[i] = cast(Partial, placement).reduce_type()
 
-    return dim_map
+    return dim_map, partial_status
 
 
 def get_shard_spec(mesh, placements, tensor_dims):
     """to get shard_spec for construct DistAttr for static API."""
-    dim_map = to_dim_map(placements, tensor_dims)
+    dim_map, _ = to_dim_map(placements, tensor_dims)
     mesh_dim_names = mesh.dim_names
     shard_spec = [None] * len(dim_map)
     for i, d in enumerate(dim_map):

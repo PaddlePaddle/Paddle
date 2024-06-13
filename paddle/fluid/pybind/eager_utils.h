@@ -507,5 +507,9 @@ void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
 void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh);
 void BindEagerUtils(PyObject* module);
 
+std::tuple<std::vector<int64_t>,
+           paddle::flat_hash_map<int64_t, phi::ReduceType>>
+CvtPlacements(phi::distributed::Placements placements, int ndim);
+
 }  // namespace pybind
 }  // namespace paddle
