@@ -81,7 +81,7 @@ class Initializer:
 
         return param
 
-    def _check_block(self, block: paddle.pir.Block) -> paddle.pir.Block:
+    def _check_block(self, block: paddle.pir.Block | None) -> paddle.pir.Block:
         if block is None:
             block = default_main_program().global_block()
 
