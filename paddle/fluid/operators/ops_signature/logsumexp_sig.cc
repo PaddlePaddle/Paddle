@@ -12,19 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
 namespace phi {
 
-template <typename T, typename Context>
-void LogsumexpKernel(const Context& ctx,
-                     const DenseTensor& x,
-                     const std::vector<int64_t>& axis,
-                     bool keepdim,
-                     bool reduce_all,
-                     DenseTensor* out);
+KernelSignature LogsumexpGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature("logsumexp_grad",
+                         {"X", "Out", "Out@GRAD"},
+                         {"axis", "keepdim", "reduce_all"},
+                         {"X@GRAD"});
+}
 
 }  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(logsumexp_grad, phi::LogsumexpGradOpArgumentMapping);

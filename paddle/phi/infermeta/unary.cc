@@ -2343,7 +2343,7 @@ void LogicalNotInferMeta(const MetaTensor& x, MetaTensor* out) {
 }
 
 void LogsumexpInferMeta(const MetaTensor& input,
-                        const std::vector<int>& axis_in,
+                        const std::vector<int64_t>& axis,
                         bool keepdim,
                         bool reduce_all,
                         MetaTensor* out) {
@@ -2354,11 +2354,6 @@ void LogsumexpInferMeta(const MetaTensor& input,
       4,
       errors::InvalidArgument("The input tensor X's dimensions of logsumexp "
                               "should be less or equal than 4. "));
-  std::vector<int64_t> axis;
-  axis.reserve(axis_in.size());
-  std::for_each(axis_in.begin(), axis_in.end(), [&axis](const int& t) {
-    axis.push_back(static_cast<int64_t>(t));
-  });
   ReduceInferMetaBase(input, axis, keepdim, reduce_all, out);
 }
 
