@@ -1687,22 +1687,12 @@ class OpTest(unittest.TestCase):
                     shape_or_data = shape_analysis.get_shape_or_data_for_var(
                         var
                     )
-                    # TODO(gongshaotian): compare in c++ level
-                    # result = shape_or_data.compare()
-                    # TODO(gongshaotian): compare in python level
-                    print(
-                        "------symbol infer test------- shape_string:",
-                        "shape_string",
-                    )
-                    print(
-                        "------symbol infer test------- data_string:",
-                        "data_string",
-                    )
-
-                    # if not result:
-                    #     print("Shape or data mismatch for var: ", var.name)
-                    # else:
-                    #     print("Shape or data match for var: ", var.name)
+                    expect_shape = var.shape
+                    expect_data = []
+                    if not shape_or_data.is_equal(expect_shape, expect_data):
+                        print("Shape or data mismatch for var: ", var.name)
+                        return False
+                return True
 
     def _compare_expect_and_actual_outputs(
         self, place, fetch_list, expect_outs, actual_outs, inplace_atol=None

@@ -118,10 +118,6 @@ using pir::Value;
 using pir::VectorType;
 using pybind11::return_value_policy;
 
-using pir::ShapeAnalysisManager;
-using pir::ShapeConstraintIRAnalysis;
-using symbol::ShapeOrDataDimExprs;
-
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
 
@@ -2450,37 +2446,6 @@ void BindIrPass(pybind11::module *m) {
            [](const Pass &self) { return self.pass_info().dependents; });
 }
 
-void BindShapeOrDataDimExprs(pybind11::module *m) {
-  py::class_<ShapeOrDataDimExprs, std::shared_ptr<ShapeOrDataDimExprs>>
-      shape_or_data_dim_exprs(*m, "ShapeOrDataDimExprs", R"DOC(
-      A class that store the shape or data of value.
-    )DOC");
-  shape_or_data_dim_exprs
-      .def("shape", &ShapeOrDataDimExprs::shape, return_value_policy::reference)
-      .def("data", &ShapeOrDataDimExprs::data, return_value_policy::reference);
-}
-
-void BindShapeConstraintIRAnalysis(pybind11::module *m) {
-  m->def(
-      "get_shape_constraint_ir_analysis",
-      [](const pir::Program *program) -> ShapeConstraintIRAnalysis & {
-        return ShapeAnalysisManager::Instance().Get(program);
-      },
-      return_value_policy::reference);
-
-  py::class_<ShapeConstraintIRAnalysis,
-             std::shared_ptr<ShapeConstraintIRAnalysis>>
-      shape_constraint_ir_analysis(*m, "ShapeConstraintIRAnalysis", R"DOC(
-      A class that store the shape information of all operators.
-    )DOC");
-  shape_constraint_ir_analysis
-      .def("get_shape_or_data_for_var",
-           &ShapeConstraintIRAnalysis::GetShapeOrDataForValue,
-           return_value_policy::reference)
-      .def("set_shape_or_data_for_var",
-           &ShapeConstraintIRAnalysis::SetShapeOrDataForValue);
-}
-
 void BindPassManager(pybind11::module *m) {
   py::class_<PassManager, std::shared_ptr<PassManager>> pass_manager(
       *m,
@@ -2546,7 +2511,64 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
            return_value_policy::reference)
       .def("data",
            &symbol::ShapeOrDataDimExprs::data,
-           return_value_policy::reference);
+           return_value_policy::reference)
+      .def("is_equal",
+           [](symbol::ShapeOrDataDimExprs &self,
+              std::vector<int64_t> &expect_shape,
+              std::vector<int64_t> expect_data = {}) -> bool {
+             VLOG(3) << "--------------------------- start compare shape and "
+                        "data ---------------------------";
+             // compare shape
+             const std::vector<symbol::DimExpr> &actual_shape = self.shape();
+             VLOG(3) << "actual shape size:" << actual_shape.size()
+                     << "expect shape size:" << expect_shape.size();
+             symbol::DimExpr s = actual_shape.at(0);
+             if (!s.isa<int64_t>()) {
+               // rise error
+               VLOG(3) << "DimExpr is not int64, return false";
+               return false;
+             }
+             if (actual_shape.size() != expect_shape.size()) {
+               return false;
+             }
+             for (size_t i = 0; i < actual_shape.size(); i++) {
+               VLOG(3) << " actual shape[" << i << "]: " << actual_shape.at(i)
+                       << " expect shape[" << i << "]: " << expect_shape.at(i);
+               if (self.shape().at(i) != expect_shape.at(i)) {
+                 VLOG(3) << "shape not equal, return false";
+                 return false;
+               }
+             }
+             // compare data
+             if (expect_data.size() == 0) {
+               VLOG(3) << "expect data size is 0, return true";
+               return true;
+             } else {
+               const std::optional<std::vector<symbol::DimExpr>> &actual_data =
+                   self.data();
+               if (!actual_data.has_value()) {
+                 return false;
+               }
+               if (!actual_data.value().at(0).isa<int64_t>()) {
+                 // rise error
+                 VLOG(3) << "DimExpr is not int64, return false";
+                 return false;
+               }
+               if (actual_data.value().size() != expect_data.size()) {
+                 return false;
+               }
+               for (size_t i = 0; i < actual_data.value().size(); i++) {
+                 VLOG(3) << "actual data[" << i << "]: " << actual_shape.at(i)
+                         << "expect data[" << i << "]: " << expect_shape.at(i);
+                 if (actual_data.value().at(i) != expect_data.at(i)) {
+                   VLOG(3) << "data not equal, return false";
+                   return false;
+                 }
+               }
+             }
+             VLOG(3) << "shape and data equal, return true";
+             return true;
+           });
 }
 
 void BindShapeConstraintIRAnalysis(pybind11::module *m) {

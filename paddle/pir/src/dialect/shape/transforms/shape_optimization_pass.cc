@@ -339,6 +339,11 @@ std::unique_ptr<Pass> CreateShapeOptimizationPass() {
 namespace pir::shape {
 
 bool HasDynamicShape(const pir::Program& program) {
+  // for test
+  VLOG(vlog_level)
+      << "###### gongshaotian: Enforce she HasDynamicShape == true";
+  return true;
+
   for (const auto& op : *program.block()) {
     if (op.isa<pir::CombineOp>()) {
       continue;
@@ -363,7 +368,7 @@ void AddShapeOptimizationPass(
     pir::Program& program) {                          // NOLINT
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
+  if (FLAGS_pir_apply_shape_optimization_pass) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }
