@@ -35,7 +35,7 @@ std::optional<int> GetArchDevice(const common::Target& target) {
         PADDLE_ENFORCE_EQ(
             cudaGetDevice(&device_id),
             cudaSuccess,
-            ::common::errors::InvalidArgument("cudaGetDeviceCount failed!"));
+            ::common::errors::InvalidArgument("cudaGetDevice failed!"));
         return std::optional<int>{device_id};
 #else
         return std::nullopt;
