@@ -25,8 +25,53 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
 
+#include "paddle/phi/kernels/funcs/math_cuda_utils.h"
+
 namespace phi {
 namespace sparse {
+
+// Limitation of the setting in one dimension of cuda grid.
+constexpr int kMultiDimslimit = 65536;
+
+template <typename T = int64_t>
+inline T DivUp(T a, T b) {
+  return (a + b - 1) / b;
+}
+
+inline int GetLastPow2(int n) {
+  n |= (n >> 1);
+  n |= (n >> 2);
+  n |= (n >> 4);
+  n |= (n >> 8);
+  n |= (n >> 16);
+  return std::max(1, n - (n >> 1));
+}
+
+inline void GetGpuLaunchConfig3D(const phi::GPUContext& context,
+                                 int x,
+                                 int y,
+                                 int z,
+                                 dim3* block_dims,
+                                 dim3* grid_dims) {
+  const int kThreadsPerBlock = 256;
+  int max_threads_per_block = context.GetMaxThreadsPerBlock();  // 1024
+  int max_threads = std::min(kThreadsPerBlock, max_threads_per_block);
+
+  int block_x = std::min(GetLastPow2(x), max_threads);
+  int block_y = std::min(GetLastPow2(y), max_threads / block_x);
+  int block_z = std::min(z, max_threads / block_x / block_y);
+
+  std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+  unsigned int grid_x =
+      std::min(max_grid_dim[0], DivUp<unsigned int>(x, block_x));
+  unsigned int grid_y =
+      std::min(max_grid_dim[1], DivUp<unsigned int>(y, block_y));
+  unsigned int grid_z =
+      std::min(max_grid_dim[2], DivUp<unsigned int>(z, block_z));
+
+  *block_dims = dim3(block_x, block_y, block_z);
+  *grid_dims = dim3(grid_x, grid_y, grid_z);
+}
 
 template <typename T>
 struct PointerToPointer {
@@ -156,6 +201,7 @@ __global__ void ConcatCsr2D0ASetCrowsKernel(const IndexT total_crows_offsets,
     if (tid_x == 0) {
       out_crows[0] = 0;
     }
+    // index mean the number of input  tensor
     IndexT index = 0;
     IndexT curr_offset = 0;
     IndexT next_offset = 0;
@@ -180,8 +226,9 @@ __global__ void ConcatCsr2D1AGetHelpArrayKernel(const IndexT total_rows,
       rows_nnzs[0] = 0;
     }
     IndexT now_rows = tid_x / in_num;
+    // index mean the number of input  tensor
     IndexT index = tid_x % in_num;
-    // 使用这个优化?????
+
     rows_nnzs[tid_x + 1] =
         in_crows_vec[index][now_rows + 1] - in_crows_vec[index][now_rows];
   }
@@ -204,38 +251,60 @@ __global__ void ConcatCsr2D1ASetValueKernel(const IndexT total_nnz,
                                             IndexT* out_cols) {
   CUDA_KERNEL_LOOP_TYPE(tid_x, total_nnz, IndexT) {
     IndexT i = 0;
-    IndexT next_offset = rows_nnzs_offsets[1];
-    IndexT curr_offset = 0;
-    // 优化
-    while (next_offset <= tid_x) {
-      curr_offset = next_offset;
-      ++i;
-      next_offset += rows_nnzs_offsets[i + 1];
-    }
-    IndexT left_nnz = tid_x - curr_offset;
+
+    i = phi::funcs::UpperBound<IndexT, IndexT>(
+        rows_nnzs_offsets, rows * in_num + 1, tid_x);
+    i--;
+    IndexT left_nnz = tid_x - rows_nnzs_offsets[i];
 
     IndexT index = i % in_num;
     IndexT now_rows = i / in_num;
 
     IndexT total_offset = left_nnz + in_crows[index][now_rows];
+
     out_values[tid_x] = in_values[index][total_offset];
     // need to add the previous tensor's col number in this line
     out_cols[tid_x] = in_cols[index][total_offset] + col_offsets[index];
   }
 }
 
+// template <typename IndexT, typename PointerWrapperT>
+// __global__ void ConcatCsr2D1ASetCrowsKernel(const IndexT crows_nums,
+//                                             const size_t in_num,
+//                                             PointerWrapperT in_crows_vec,
+//                                             IndexT* out_crows) {
+//   CUDA_KERNEL_LOOP_TYPE(tid_x, crows_nums, IndexT) {
+//     IndexT total_crows = 0;
+//     IndexT tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+
+//     // use block
+//     for (int i = 0; i != in_num; i++) {
+//       total_crows += in_crows_vec[i][tid_x];
+//     }
+//     out_crows[tid_x] = total_crows;
+//   }
+// }
+#define FULL_MASK 0xffffffff
+
 template <typename IndexT, typename PointerWrapperT>
 __global__ void ConcatCsr2D1ASetCrowsKernel(const IndexT crows_nums,
                                             const size_t in_num,
                                             PointerWrapperT in_crows_vec,
                                             IndexT* out_crows) {
-  CUDA_KERNEL_LOOP_TYPE(tid_x, crows_nums, IndexT) {
+  CUDA_KERNEL_LOOP_TYPE(tid_y, crows_nums, IndexT) {
     IndexT total_crows = 0;
-
-    for (int i = 0; i != in_num; i++) {
-      total_crows += in_crows_vec[i][tid_x];
+    for (int i = 0; blockDim.x * i + threadIdx.x < in_num; i++) {
+      total_crows += in_crows_vec[i][tid_y];
     }
-    out_crows[tid_x] = total_crows;
+    if (blockDim.x <= 32) {
+      phi::funcs::warpReduceSum<IndexT>(total_crows, FINAL_MASK);
+    } else {
+      phi::funcs::blockReduceSum<IndexT>(total_crows, FINAL_MASK);
+    }
+
+    if (threadIdx.x == 0) {
+      out_crows[tid_y] = total_crows;
+    }
   }
 }
 
@@ -278,11 +347,31 @@ __global__ void ConcatCsr3D1AGetHelpArrayKernel(
   __syncthreads();
 
   tid_y = blockIdx.y * blockDim.y + threadIdx.y;
-  if (tid_y == 0) {
-    CUDA_KERNEL_LOOP_TYPE(tid_x, batch, IndexT) {
+  IndexT tid_x = blockIdx.x * blockDim.x + threadIdx.x;
+  for (; tid_x < batch; tid_x += blockDim.x * gridDim.x) {
+    if (tid_y == 0) {
       for (int i = 0; i < in_num - 1; i++) {
         out_crows_offset[tid_x * (in_num + 1) + i + 1] +=
             out_crows_offset[tid_x * (in_num + 1) + i];
+      }
+    }
+    __syncthreads();
+    // inclusive_scan的一个简单实现
+    if ((batch * in_num < 256)) {
+      for (; tid_y < in_num; tid_y += blockDim.y * gridDim.y) {
+        IndexT tid_z = tid_y * batch + tid_x;
+        IndexT y = 0;
+        // printf("tid_z %d", tid_z);
+        for (int offset = 1; offset < batch * in_num; offset <<= 1) {
+          if (tid_z >= offset) {
+            y = values_index_offset[tid_z + 1] +
+                values_index_offset[tid_z - offset + 1];
+          }
+          __syncthreads();
+          if (tid_z >= offset) {
+            values_index_offset[tid_z + 1] = y;
+          }
+        }
       }
     }
   }
@@ -313,7 +402,9 @@ __global__ void ConcatCsr3D1ASetCrowsKernel(const IndexT in_num,
         IndexT offset = out_crows_offset[tid_y * (in_num + 1) + tid_z];
 
         out_crows[out_pos] = in_crows_vec[tid_z][in_crows_pos] + offset;
-
+        // printf("tid_x:%d/%d tid_y:%d/%d tid_z:%d/%d out_pos:%d/%d
+        // in_crows_vec[tid_z][in_crows_pos] :%d/%d offset :%d/%d \n", tid_x,
+        // tid_y, tid_z, out_pos, in_crows_vec[tid_z][in_crows_pos], offset);
         if (tid_x == 0 && tid_z == 0) {
           out_crows[tid_y * (total_rows + 1)] = 0;
         }
@@ -398,14 +489,15 @@ __global__ void ConcatCsr3D2AGetHelpArrayKernel(const IndexT rows,
   IndexT tid_y = blockIdx.y * blockDim.y + threadIdx.y;
   IndexT tid_z = blockIdx.z * blockDim.z + threadIdx.z;
 
-  for (; tid_y < batch; tid_y += blockDim.y * gridDim.y) {
-    for (; tid_z < in_num; tid_z += blockDim.z * gridDim.z) {
+  for (; tid_z < in_num; tid_z += blockDim.z * gridDim.z) {
+    for (; tid_y < batch; tid_y += blockDim.y * gridDim.y) {
       CUDA_KERNEL_LOOP_TYPE(tid_x, rows, IndexT) {
         IndexT curr_offset = tid_y * (rows + 1) + tid_x;
 
         IndexT now = rows * in_num * tid_y + in_num * tid_x + tid_z;
         rows_nnz[now] = in_crows_vec[tid_z][curr_offset + 1] -
                         in_crows_vec[tid_z][curr_offset];
+
         if (tid_x == 0) {
           now = (tid_y + 1) * (rows + 1) - 1;
           in_index_batch_nnz[tid_z * (batch + 1) + tid_y + 1] =
@@ -697,15 +789,6 @@ void ConcatCsrGPU2D0A(const Context& dev_ctx,
          dev_ctx.stream()>>>(
           in_num, d_in_crows_vec, d_in_rows, d_out_crows_offsets);
 
-  //   #ifdef PADDLE_WITH_HIP
-  //   thrust::inclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
-  // #else
-  //   thrust::inclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
-  // #endif
-  //   thrust::device_pointer_cast(d_out_crows_offsets),
-  //   thrust::device_pointer_cast(d_out_crows_offsets) + in_num + 1,
-  //   d_out_crows_offsets);
-
   config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_crows_size - 1, 1);
 
@@ -786,7 +869,11 @@ void ConcatCsrGPU2D1A(const Context& dev_ctx,
          0,
          dev_ctx.stream()>>>(
           total_rows, in_num, rows, d_in_crows_vec, d_rows_nnzs);
-
+  // 使用这样的方式能够并行加速,不过要注意,速度不要太慢
+  thrust::inclusive_scan(
+      thrust::device_pointer_cast(d_rows_nnzs),
+      thrust::device_pointer_cast(d_rows_nnzs) + total_rows + 1,
+      d_rows_nnzs);
   config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total_nnz, 1);
   ConcatCsr2D1ASetValueKernel<T,
                               int64_t,
@@ -807,7 +894,10 @@ void ConcatCsrGPU2D1A(const Context& dev_ctx,
                              d_out_values,
                              d_out_cols);
 
-  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_crows_size, 1);
+  // config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_crows_size,
+  // 1);
+  config = phi::backends::gpu::GetGpuLaunchConfig2D(
+      dev_ctx, in_num, out_crows_size, 1);
 
   ConcatCsr2D1ASetCrowsKernel<int64_t, decltype(d_in_crows_vec)>
       <<<config.block_per_grid.x,
@@ -940,13 +1030,15 @@ void ConcatCsrGPU3D1A(const Context& dev_ctx,
           d_out_crows_offset,
           d_values_index_offset,
           d_batch_nnz);
+  // When the number is very large, using thrust for processing will bring
+  // better performance. this maybe need deeply analysis
+  if (batch * in_num >= 256) {
+    thrust::inclusive_scan(
+        thrust::device_pointer_cast(d_values_index_offset),
+        thrust::device_pointer_cast(d_values_index_offset) + batch * in_num + 1,
+        d_values_index_offset);
+  }
 
-  thrust::inclusive_scan(
-      thrust::device_pointer_cast(d_values_index_offset),
-      thrust::device_pointer_cast(d_values_index_offset) + batch * in_num + 1,
-      d_values_index_offset);
-
-  // note: The order of GetGpuLaunchConfig3D is z, y , x
   config = phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, in_num, max_nnz);
 
   ConcatCsr3D1ASetValuesColsKernel<T,
@@ -965,20 +1057,23 @@ void ConcatCsrGPU3D1A(const Context& dev_ctx,
           d_out_values,
           d_out_cols);
 
-  config = phi::backends::gpu::GetGpuLaunchConfig3D(
-      dev_ctx, in_num, batch, max_rows);
+  // note: The order of GetGpuLaunchConfig3D is z, y , x
+  dim3 block_dims;
+  dim3 grid_dims;
+  GetGpuLaunchConfig3D(
+      dev_ctx, max_rows, batch, in_num, &block_dims, &grid_dims);
+
   ConcatCsr3D1ASetCrowsKernel<int64_t,
                               decltype(d_in_crows_vec),
                               decltype(d_rows_offsets)>
-      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
-          in_num,
-          batch,
-          rows_offset,
-          d_in_crows_vec,
-          d_rows_nums,
-          d_rows_offsets,
-          d_out_crows_offset,
-          d_out_crows);
+      <<<grid_dims, block_dims, 0, dev_ctx.stream()>>>(in_num,
+                                                       batch,
+                                                       rows_offset,
+                                                       d_in_crows_vec,
+                                                       d_rows_nums,
+                                                       d_rows_offsets,
+                                                       d_out_crows_offset,
+                                                       d_out_crows);
   out->SetMember(out_crows, out_cols, out_values, out_dims);
 }
 
@@ -1052,19 +1147,17 @@ void ConcatCsrGPU3D2A(const Context& dev_ctx,
 
   int64_t* d_in_batch_offsets = in_batch_offsets_tensor.data<int64_t>();
   // note: The order of GetGpuLaunchConfig3D is z, y , x
-  config =
-      phi::backends::gpu::GetGpuLaunchConfig3D(dev_ctx, in_num, batch, rows);
+  dim3 block_dims;
+  dim3 grid_dims;
+  GetGpuLaunchConfig3D(dev_ctx, rows, batch, in_num, &block_dims, &grid_dims);
   ConcatCsr3D2AGetHelpArrayKernel<int64_t, decltype(d_in_crows_vec)>
-      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
-          rows,
-          in_num,
-          batch,
-          d_in_crows_vec,
-          d_rows_nnz,
-          d_in_index_batch_nnz,
-          d_in_batch_offsets);
-
-  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, total_nnz, 1);
+      <<<grid_dims, block_dims, 0, dev_ctx.stream()>>>(rows,
+                                                       in_num,
+                                                       batch,
+                                                       d_in_crows_vec,
+                                                       d_rows_nnz,
+                                                       d_in_index_batch_nnz,
+                                                       d_in_batch_offsets);
 
   ConcatCsr3D2ASetvaluesKernel<T,
                                int64_t,
