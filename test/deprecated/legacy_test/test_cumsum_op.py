@@ -569,6 +569,7 @@ class TestTensorAxis(unittest.TestCase):
                 config.enable_new_ir()
                 config.enable_new_executor()
                 config.enable_save_optim_model(True)
+                config.use_optimized_model(True)
             else:
                 print("跑的旧ir")
                 config = paddle_infer.Config(
@@ -578,7 +579,6 @@ class TestTensorAxis(unittest.TestCase):
                 config.enable_use_gpu(100, 0)
             else:
                 config.disable_gpu()
-    
 
             predictor = paddle_infer.create_predictor(config)
             input_names = predictor.get_input_names()

@@ -133,12 +133,11 @@ void SaveCombineFunction(const std::vector<const phi::DenseTensor*>& x,
                         "it to be greater than 0.",
                         x.size()));
   LOG(INFO) << "获取dev_ctx前面 ";
- 
+  const phi::DeviceContext* dev_ctx = GetDeviceContext(*(x[0]));
   LOG(INFO) << "Device context type: " << typeid(*dev_ctx).name();
   LOG(INFO) << "获取dev_ctx后面 ";
   LOG(INFO) << "x.size()是多大" << x.size();
   for (size_t i = 0; i < x.size(); i++) {
-    const phi::DeviceContext* dev_ctx = GetDeviceContext(*(x[0]));
     LOG(INFO) << "Saving tensor " << i;
     LOG(INFO) << "names " << names[i];
     auto& tensor = *(x[i]);
