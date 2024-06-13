@@ -77,9 +77,11 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     // See
     // https://developer.nvidia.com/blog/cuda-pro-tip-always-set-current-device-avoid-multithreading-bugs/
     // for details.
-    const int device_id = runtime::GetArchDevice(target_);
+    const auto device_id = runtime::GetArchDevice(target_);
     auto worker_fn = [&](int index) {
-      runtime::SetArchDevice(target_, device_id);
+      if (device_id.has_value()) {
+        runtime::SetArchDevice(target_, device_id.value());
+      }
       CompilationTask task(&group_compilation_contexts[index]);
       compilation_results[index] = task();
       // Triggering llvm compilation in thread

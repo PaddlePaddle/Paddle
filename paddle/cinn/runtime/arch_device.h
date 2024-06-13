@@ -20,37 +20,39 @@
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/target.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::runtime {
 
-int GetArchDevice(const common::Target& target) {
-  return target.arch.Visit(
-      adt::match{[&](common::UnknownArch) -> int { CINN_NOT_IMPLEMENTED; },
-                 [&](common::X86Arch) -> int { CINN_NOT_IMPLEMENTED; },
-                 [&](common::ARMArch) -> int { CINN_NOT_IMPLEMENTED; },
-                 [&](common::NVGPUArch) -> int {
+std::optional<int> GetArchDevice(const common::Target& target) {
+  return target.arch.Match(
+      [&](common::UnknownArch) -> std::optional<int> { return std::nullopt; },
+      [&](common::X86Arch) -> std::optional<int> { return std::nullopt; },
+      [&](common::ARMArch) -> std::optional<int> { return std::nullopt; },
+      [&](common::NVGPUArch) -> std::optional<int> {
 #ifdef CINN_WITH_CUDA
-                   int device_id;
-                   cudaGetDevice(&device_id);
-                   return device_id;
+        int device_id;
+        cudaGetDevice(&device_id);
+        return std::optional<int>{device_id};
 #else
-                   CINN_NOT_IMPLEMENTED
+        return std::nullopt;
 #endif
-                 }});
+      });
 }
 
 void SetArchDevice(const common::Target& target, int device_id) {
-  target.arch.Visit(
-      adt::match{[&](common::UnknownArch) -> void { CINN_NOT_IMPLEMENTED; },
-                 [&](common::X86Arch) -> void { CINN_NOT_IMPLEMENTED; },
-                 [&](common::ARMArch) -> void { CINN_NOT_IMPLEMENTED; },
-                 [&](common::NVGPUArch) -> void {
+  PADDLE_ENFORCE_GE(device_id,
+                    0,
+                    ::common::errors::InvalidArgument(
+                        "Required device_id >=0  but received %d.", device_id));
+  target.arch.Match([&](common::UnknownArch) -> void {},
+                    [&](common::X86Arch) -> void {},
+                    [&](common::ARMArch) -> void {},
+                    [&](common::NVGPUArch) -> void {
 #ifdef CINN_WITH_CUDA
-                   cudaSetDevice(device_id);
-#else
-                   CINN_NOT_IMPLEMENTED
+                      cudaSetDevice(device_id);
 #endif
-                 }});
+                    });
 }
 
 }  // namespace cinn::runtime
