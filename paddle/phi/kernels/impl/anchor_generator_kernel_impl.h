@@ -57,7 +57,7 @@ void AnchorGeneratorOpKernel(const Context& dev_ctx,
   auto* anchors = anchors_out;
   auto* vars = variances_out;
 
-  T offset = static_cast<T>(offset);
+  T offset = static_cast<T>(offset_in);
 
   auto feature_width = input->dims()[3];
   auto feature_height = input->dims()[2];
