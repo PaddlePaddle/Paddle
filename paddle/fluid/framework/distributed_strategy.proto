@@ -419,7 +419,7 @@ message DistributedStrategy {
   optional QatConfig qat_configs = 117;
 
   optional BuildStrategy build_strategy = 201;
-  optional GradientScaleConfig gradient_scale_configs = 202;
+  optional GradientScaleConfig gradient_scale_configs = 203;
 }
 
 message DistributedJobInfo {
