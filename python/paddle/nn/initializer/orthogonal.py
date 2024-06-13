@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle import _C_ops, pir
 from paddle.utils import unique_name
 
@@ -47,7 +48,7 @@ class Orthogonal(Initializer):
 
     Args:
         gain(float, optional): The multiplication coefficient for initialized tensor. Default: 1.0.
-        name(str, optional): The default value is None. Normally there is no need for user to set this
+        name(str|None, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -65,17 +66,19 @@ class Orthogonal(Initializer):
             >>> # linear.weight: X' * X = I
     """
 
-    def __init__(self, gain=1.0, name=None):
+    def __init__(self, gain: float = 1.0, name: str | None = None) -> None:
         assert gain is not None, 'gain should not be None'
         super().__init__()
         self._gain = gain
 
-    def __call__(self, var, block=None):
+    def __call__(
+        self, var: paddle.Tensor, block: paddle.pir.Block | None = None
+    ):
         """Initialize the input tensor with orthogonal initializer.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
-            block(Block, optional): The block in which initialization ops
+            block(Block|None, optional): The block in which initialization ops
                    should be added. Used in static graph only, default None.
 
         Returns:
