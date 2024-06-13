@@ -27,36 +27,7 @@ namespace {
 
 inline const char kCanRunTrtAttr[] = "__can_run_tensorrt__";
 
-class MatmulOpPattern_0 : public paddle::drr::DrrPatternBase {
- public:
-  std::string name() const override { return "MatmulOpPattern"; }
-
-  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-    paddle::drr::SourcePattern src = ctx->SourcePattern();
-    const auto &src_matmul = src.Op(paddle::dialect::MatmulOp::name(),
-                                    {{"transpose_x", src.Attr("transpose_x")},
-                                     {"transpose_y", src.Attr("transpose_y")}});
-    src.Tensor("matmul_out") = src_matmul(src.Tensor("x"), src.Tensor("y"));
-
-    src.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      auto matmul_op = match_ctx.Tensor("matmul_out").defining_op();
-      if (matmul_op->HasAttribute(kCanRunTrtAttr) &&
-          matmul_op->attribute<bool>(kCanRunTrtAttr)) {
-        return false;
-      }
-      return true;
-    });
-
-    paddle::drr::ResultPattern res = src.ResultPattern();
-    const auto &res_matmul = res.Op(paddle::dialect::MatmulOp::name(),
-                                    {{"transpose_x", src.Attr("transpose_x")},
-                                     {"transpose_y", src.Attr("transpose_y")}},
-                                    {{kCanRunTrtAttr, res.BoolAttr(true)}});
-    res.Tensor("matmul_out") = res_matmul(res.Tensor("x"), res.Tensor("y"));
-  }
-};
-
-class MatmulOpPattern_1
+class MatmulOpPattern
     : public pir::OpRewritePattern<paddle::dialect::MatmulOp> {
  public:
   using pir::OpRewritePattern<paddle::dialect::MatmulOp>::OpRewritePattern;
@@ -82,8 +53,7 @@ class OpMarkerPass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(paddle::drr::Create<MatmulOpPattern_0>(context));
-    ps.Add(std::make_unique<MatmulOpPattern_1>(context));
+    ps.Add(std::make_unique<MatmulOpPattern>(context));
     return ps;
   }
 };
