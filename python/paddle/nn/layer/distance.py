@@ -65,20 +65,25 @@ class PairwiseDistance(Layer):
             [4.99999860, 4.99999860])
     """
 
-    def __init__(self, p: float = 2.0, epsilon: float = 1e-6, keepdim: bool = False, name: str | None = None):
+    def __init__(
+        self,
+        p: float = 2.0,
+        epsilon: float = 1e-6,
+        keepdim: bool = False,
+        name: str | None = None,
+    ):
         super().__init__()
         self.p = p
         self.epsilon = epsilon
         self.keepdim = keepdim
         self.name = name
 
-    def forward(self, x: paddle.Tensor, y: paddle.Tensor
-    ) -> paddle.Tensor:
+    def forward(self, x: paddle.Tensor, y: paddle.Tensor) -> paddle.Tensor:
         return F.pairwise_distance(
             x, y, self.p, self.epsilon, self.keepdim, self.name
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         main_str = 'p={p}'
         if self.epsilon != 1e-6:
             main_str += ', epsilon={epsilon}'
