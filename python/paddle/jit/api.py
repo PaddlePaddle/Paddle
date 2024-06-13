@@ -23,16 +23,10 @@ import threading
 import types
 import warnings
 from collections import OrderedDict
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from contextlib import contextmanager
 from types import ModuleType
-from typing import (
-    Any,
-    Protocol,
-    TypedDict,
-    TypeVar,
-    overload,
-)
+from typing import Any, Callable, Protocol, TypedDict, TypeVar, overload
 
 from typing_extensions import (
     Literal,
