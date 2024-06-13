@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/tensorrt/op_marker_pass.h"
+#include <memory>
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
@@ -26,7 +27,7 @@ namespace {
 
 inline const char kCanRunTrtAttr[] = "__can_run_tensorrt__";
 
-class MatmulOpPattern : public paddle::drr::DrrPatternBase {
+class MatmulOpPattern_0 : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "MatmulOpPattern"; }
 
@@ -55,13 +56,34 @@ class MatmulOpPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
+class MatmulOpPattern_1
+    : public pir::OpRewritePattern<paddle::dialect::MatmulOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::MatmulOp>::OpRewritePattern;
+  bool MatchAndRewrite(
+      paddle::dialect::MatmulOp op,
+      pir::PatternRewriter &rewriter) const override {  // NOLINT
+    if (op->HasAttribute(kCanRunTrtAttr) &&
+        op->attribute<bool>(kCanRunTrtAttr)) {
+      return false;
+    }
+    auto matmul_op = rewriter.Build<paddle::dialect::MatmulOp>(
+        op.x(), op.y(), op->attributes());
+    matmul_op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
+    rewriter.ReplaceAllUsesWith(op.out(), matmul_op.out());
+    rewriter.EraseOp(op);
+    return true;
+  }
+};
+
 class OpMarkerPass : public pir::PatternRewritePass {
  public:
   OpMarkerPass() : pir::PatternRewritePass("op_marker_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(paddle::drr::Create<MatmulOpPattern>(context));
+    ps.Add(paddle::drr::Create<MatmulOpPattern_0>(context));
+    ps.Add(std::make_unique<MatmulOpPattern_1>(context));
     return ps;
   }
 };
