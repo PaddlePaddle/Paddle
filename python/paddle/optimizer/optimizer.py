@@ -188,7 +188,7 @@ class Optimizer:
 
     regularization: WeightDecayRegularizer | None
     helper: LayerHelperBase | None
-    clear_gradients: Callable
+    clear_gradients: Callable[[bool], None]
 
     @imperative_base.no_grad()
     def __init__(
