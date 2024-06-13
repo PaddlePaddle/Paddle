@@ -25,11 +25,12 @@ import paddle
 from paddle import _C_ops
 from paddle._typing import (
     DTypeLike,
+    DynamicShapeLike,
     NestedNumbericSequence,
+    Numberic,
     PlaceLike,
     ShapeLike,
     TensorLike,
-    Numberic,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -1136,7 +1137,9 @@ def ones_like(
 
 
 def zeros(
-    shape: ShapeLike, dtype: DTypeLike | None = None, name: str | None = None
+    shape: DynamicShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
 ) -> paddle.Tensor:
     """
     Creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
@@ -1735,13 +1738,13 @@ def triu_(
 @overload
 def meshgrid(
     args: Sequence[paddle.Tensor], name: str | None = None
-) -> paddle.Tensor: ...
+) -> paddle.Tensor:
+    ...
 
 
 @overload
-def meshgrid(
-    *args: paddle.Tensor, name: str | None = None
-) -> paddle.Tensor: ...
+def meshgrid(*args: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
+    ...
 
 
 def meshgrid(*args, **kwargs):
