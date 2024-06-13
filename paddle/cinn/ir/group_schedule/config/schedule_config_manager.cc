@@ -15,7 +15,8 @@
 #include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 #include "paddle/cinn/ir/group_schedule/config/file_database.h"
 
-PD_DECLARE_string(cinn_use_best_tile_config);
+PD_DECLARE_string(tile_config_policy);
+PD_DECLARE_bool(cinn_enable_config_search);
 
 namespace cinn {
 namespace ir {
@@ -34,7 +35,7 @@ void ScheduleConfigManager::AddConfigDatabase(
 ScheduleConfigMap ScheduleConfigManager::ExtractConfigs(
     const common::Target& target,
     const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info) const {
-  if (FLAGS_cinn_use_best_tile_config == "default") {
+  if (policy_ == "default") {
     return BuildScheduleConfig(group_info, target);
   } else {
     std::shared_ptr<ScheduleConfig::BaseInfo> base_info =
@@ -61,8 +62,14 @@ void InitScheduleConfig() {
   std::shared_ptr<cinn::ir::TileConfigDatabase> tile_config_database =
       std::make_shared<cinn::ir::FileTileConfigDatabase>();
   auto& schedule_config_manager = cinn::ir::ScheduleConfigManager::Instance();
-  schedule_config_manager.SetPolicy("optimal");
-  schedule_config_manager.AddConfigDatabase("optimal", tile_config_database);
+  std::string policy;
+  if (FLAGS_cinn_enable_config_search == true) {
+    policy = "custom";
+  } else {
+    policy = FLAGS_tile_config_policy;
+  }
+  schedule_config_manager.SetPolicy(policy);
+  schedule_config_manager.AddConfigDatabase(policy, tile_config_database);
 }
 
 }  // namespace ir

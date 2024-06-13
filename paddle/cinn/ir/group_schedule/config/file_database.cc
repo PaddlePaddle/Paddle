@@ -22,8 +22,9 @@
 
 #include "paddle/cinn/utils/multi_threading.h"
 
-#define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
 PD_DECLARE_string(cinn_tile_config_filename_label);
+
+#define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
 static bool PathExists(const std::string& path) {
   struct stat statbuf;
   if (stat(path.c_str(), &statbuf) != -1) {

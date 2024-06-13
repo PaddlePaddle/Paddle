@@ -60,8 +60,8 @@ PD_DEFINE_string(cinn_tile_config_filename_label,
                  "Label used to name file of tile config database");
 
 PD_DEFINE_string(
-    cinn_use_best_tile_config,
-    StringFromEnv("FLAGS_cinn_use_best_tile_config", "default"),
+    tile_config_policy,
+    StringFromEnv("FLAGS_tile_config_policy", "default"),
     "Which config does the compiler use, optimal, custom or default");
 
 PD_DEFINE_int32(cinn_parallel_compile_thread,

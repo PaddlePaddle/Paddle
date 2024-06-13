@@ -33,6 +33,41 @@
 #include "paddle/pir/include/core/program.h"
 
 COMMON_DECLARE_bool(print_ir);
+PD_DECLARE_string(cinn_tile_config_filename_label);
+#define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
+static bool PathExists(const std::string& path) {
+  struct stat statbuf;
+  if (stat(path.c_str(), &statbuf) != -1) {
+    if (S_ISDIR(statbuf.st_mode)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void RemoveDir(const cinn::common::Target target,
+               const cinn::ir::IterSpaceType& iter_space_type) {
+  std::string dirname = "";
+  std::string filename = "";
+  for (auto i : iter_space_type) {
+    dirname += i.first;
+    dirname += "_";
+    filename += i.first + i.second;
+    filename += "_";
+  }
+  dirname = dirname.substr(0, dirname.size() - 1);
+  filename = filename.substr(0, filename.size() - 1);
+
+  auto removedir = [](std::string test_path) {
+    if (PathExists(test_path)) {
+      std::remove(test_path.c_str());
+    }
+  };
+  std::string root_path = FLAGS_cinn_tile_config_filename_label;
+  removedir(root_path + target.arch_str() + "/" + dirname);
+  LOG(INFO) << "Dump_path is "
+            << root_path + dirname + "/" + filename + ".json has been removed";
+}
 
 TEST(ConfigSearcher, TestReduceDemo) {
   constexpr int kThreadsPerWarp = 32;
@@ -75,6 +110,9 @@ TEST(ConfigSearcher, TestReduceDemo) {
       cinn::common::DefaultTarget(), bucket_info, tile_config, 2);
   cinn::ir::TileConfigMap tile_config_map =
       file_database.GetConfigs(cinn::common::DefaultTarget(), iter_space_type);
+  // Delete the file
+  RemoveDir(cinn::common::DefaultTarget(), iter_space_type);
+  // Check the correctness
   for (auto& it : tile_config_map) {
     LOG(INFO) << "bucket info is: ";
     auto dims = it.first.space.size();

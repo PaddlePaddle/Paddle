@@ -74,8 +74,6 @@ TEST(ConfigSearcher, TestReduceDemo) {
   std::shared_ptr<::pir::Program> program = BuildReduceSumProgram();
   // Step 2: Switch schedule config manager mode.
   auto& schedule_config_manager = cinn::ir::ScheduleConfigManager::Instance();
-  schedule_config_manager.SetPolicy("custom");
-
   // Step 3: Construct iter space and objective function.
   cinn::ir::BucketInfo bucket_info;
   int s_dimension_lower = shape0 * shape1;
