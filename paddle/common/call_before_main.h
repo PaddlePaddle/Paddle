@@ -15,22 +15,15 @@
 #pragma once
 #include <functional>
 
-namespace pir {
+namespace paddle_ctor {
 
-class Program;
+struct StaticGlobalWrapper {
+  explicit StaticGlobalWrapper(const std::function<void()>& f) { f(); }
+  StaticGlobalWrapper(const StaticGlobalWrapper&) = default;
+  StaticGlobalWrapper(StaticGlobalWrapper&&) = default;
+};
 
-}
+}  // namespace paddle_ctor
 
-namespace paddle::framework {
-
-class Scope;
-
-using FeedHookType =
-    std::function<void(const pir::Program& program, const Scope& scope)>;
-
-// only called before main
-void AddFeedHook(FeedHookType hook);
-
-void RunFeedHooks(const pir::Program& program, const Scope& scope);
-
-}  // namespace paddle::framework
+#define PD_CALL_BEFORE_MAIN(f) \
+  ::paddle_ctor::StaticGlobalWrapper static_global_wrapper_##__LINE__(f)
