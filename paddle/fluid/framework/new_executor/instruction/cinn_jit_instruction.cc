@@ -141,7 +141,6 @@ CinnJitInstruction::CinnJitInstruction(
     const ValueExecutionInfo* value_exec_info)
     : InstructionBase(id, place) {
   auto jit_kernel_op = op->dyn_cast<cinn::dialect::JitKernelOp>();
-  // VLOG(-1) << jit_kernel_op.cinn_kernel_info().fn_name;
   fn_ptr_impl_ = std::make_shared<FnPtrImpl>(jit_kernel_op.cinn_kernel_info());
   op_ = op;
   input_tensor_size = op->num_operands();
@@ -212,7 +211,12 @@ void CinnJitInstruction::Run() {
 
   // 2. exexute kernel
   if (FLAGS_cinn_enable_config_search) {
-    ::common::PerformanceStatistician& ps = cudaDeviceSynchronize();
+    ::common::PerformanceStatistician& ps =
+        ::common::PerformanceStatistician::Instance();
+    ps.Start(FLAGS_cinn_kernel_execution_label);
+    fn_ptr_impl_->Run(tensor_args_, running_stream, is_gpu);
+    cudaDeviceSynchronize();
+    ps.End(FLAGS_cinn_kernel_execution_label);
   } else {
     fn_ptr_impl_->Run(tensor_args_, running_stream, is_gpu);
   }

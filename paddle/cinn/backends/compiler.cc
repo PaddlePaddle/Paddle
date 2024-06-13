@@ -254,7 +254,12 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
       [&](common::ARMArch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::NVGPUArch) -> std::string {
 #ifdef CINN_WITH_CUDA
+        auto _host_module_device_module_ =
+            SplitDeviceAndHostModule(module);  // NOLINT
+        auto& host_module = std::get<0>(_host_module_device_module_);
+        auto& device_module = std::get<1>(_host_module_device_module_);
         CodeGenCUDA_Dev codegen(target_);
+        auto source_code = codegen.Compile(device_module);
         return source_code;
 #else
         CINN_NOT_IMPLEMENTED
