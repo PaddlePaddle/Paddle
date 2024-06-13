@@ -26,7 +26,9 @@ from paddle.framework import (
 def _get_arch_info():
     # Get SMVersion from device.
     cuda_version = paddle.version.cuda()
-    if cuda_version is not None and cuda_version != 'False':
+    if (
+        cuda_version is not None and cuda_version != 'False'
+    ) or paddle.is_compiled_with_rocm():
         major, minor = get_device_capability()
         arch = int(major * 10 + minor)
         return arch
@@ -69,7 +71,11 @@ def weight_quantize(x, algo="weight_only_int8", arch=None, group_size=-1):
         arch = _get_arch_info()
 
     assert (
-        arch == 70 or arch == 80 or arch == 86 or arch == 75
+        arch == 70
+        or arch == 80
+        or arch == 86
+        or arch == 75
+        or paddle.is_compiled_with_rocm()
     ), f"Currently weight_quantize only support SM70/75/80/86. but got {arch} "
 
     assert (
