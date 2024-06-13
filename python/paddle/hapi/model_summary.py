@@ -34,6 +34,11 @@ class ModelSummary(TypedDict):
     trainable_params: int
 
 
+class InputDict(TypedDict):
+    input_names: str
+    input_tensors: paddle.Tensor
+
+
 def summary(
     net: paddle.nn.Layer,
     input_size: int
@@ -42,10 +47,7 @@ def summary(
     | list[tuple[int, ...] | InputSpec]
     | None = None,
     dtypes: str | Sequence[str] | None = None,
-    input: paddle.Tensor
-    | Sequence[paddle.Tensor]
-    | dict[str, paddle.Tensor]
-    | None = None,
+    input: paddle.Tensor | Sequence[paddle.Tensor] | InputDict | None = None,
 ) -> ModelSummary:
     """Prints a string summary of the network.
 
@@ -58,7 +60,7 @@ def summary(
                     batch_size can be None or -1. Default: None. Note that
                     input_size and input cannot be None at the same time.
         dtypes (str|None, optional): If dtypes is None, 'float32' will be used, Default: None.
-        input (Tensor|Sequence[paddle.Tensor]|dict[str, paddle.Tensor]|None, optional): If input is given, input_size and dtype will be ignored, Default: None.
+        input (Tensor|Sequence[paddle.Tensor]|InputDict|None, optional): If input is given, input_size and dtype will be ignored, Default: None.
 
     Returns:
         dict: A summary of the network including total params and total trainable params.
