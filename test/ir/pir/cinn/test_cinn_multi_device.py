@@ -30,7 +30,7 @@ class LinearNet(nn.Layer):
 
 def train():
     dist.init_parallel_env()
-    layer = paddle.jit.to_static(LinearNet(), full_graph=True)
+    layer = paddle.jit.to_static(LinearNet(), full_graph=True, backend='CINN')
     dp_layer = paddle.DataParallel(layer)
     inputs = paddle.randn([10, 10], 'float32')
     # NOTE(dev): Spawn will launch multi-process to run this file in

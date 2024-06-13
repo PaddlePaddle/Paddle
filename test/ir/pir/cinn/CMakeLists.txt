@@ -32,7 +32,7 @@ if(WITH_GPU)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
-      FLAGS_enable_pir_api=1 FLAGS_prim_all=True
+      CUDA_VISIBLE_DEVICES=0,1 FLAGS_enable_pir_api=1 FLAGS_prim_all=True
       FLAGS_cinn_new_group_scheduler=1 FLAGS_cinn_bucket_compile=1
       FLAGS_group_schedule_tiling_first=1 ${PYTHON_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/test_cinn_multi_device.py
