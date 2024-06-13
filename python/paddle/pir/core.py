@@ -317,6 +317,15 @@ def create_parameter(
     main_program = default_main_program()
     parameter_meta = ParameterMeta(shape, dtype)
 
+    is_dist = False
+    if (
+        'placements' in kwargs
+        and kwargs['placements']
+        and 'process_mesh' in kwargs
+        and kwargs['process_mesh']
+    ):
+        is_dist = True
+
     def to_dist(value):
         import paddle
         import paddle.distributed as dist
@@ -343,7 +352,7 @@ def create_parameter(
             parameter_meta, startup_program.global_block()
         )
         init_result.persistable = True
-        if kwargs['placements'] is not None:
+        if is_dist:
             to_dist(init_result)
 
         set_parameter(init_result, value_name)
@@ -354,7 +363,7 @@ def create_parameter(
         param = parameter(value_name)
         param.persistable = True
 
-        if kwargs['placements'] is not None:
+        if is_dist:
             to_dist(param)
 
     param.trainable = kwargs.get('trainable', True)
