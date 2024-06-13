@@ -28,8 +28,8 @@ DynamicShapeLike: TypeAlias = Union[
 
 
 ShapeLike: TypeAlias = Union[
-    Tuple[int, ...],
-    List[int],
+    Tuple[int | None, ...],
+    List[int | None],
     "Tensor",
 ]
 
