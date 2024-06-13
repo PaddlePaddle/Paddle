@@ -237,6 +237,8 @@ class Distribution:
             if value.dtype != param.dtype and convert_dtype(value.dtype) in [
                 'float32',
                 'float64',
+                'complex64',
+                'complex128',
             ]:
                 warnings.warn(
                     "dtype of input 'value' needs to be the same as parameters of distribution class. dtype of 'value' will be converted."
@@ -245,7 +247,10 @@ class Distribution:
             return value
 
         check_variable_and_dtype(
-            value, 'value', ['float32', 'float64'], 'log_prob'
+            value,
+            'value',
+            ['float32', 'float64', 'complex64', 'complex128'],
+            'log_prob',
         )
         if value.dtype != param.dtype:
             warnings.warn(

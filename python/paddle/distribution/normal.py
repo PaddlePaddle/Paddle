@@ -166,6 +166,8 @@ class Normal(distribution.Distribution):
                 self.loc = paddle.to_tensor(loc, dtype=loc.dtype)
             elif not isinstance(loc, paddle.Tensor):
                 self.loc = paddle.to_tensor(loc, dtype='complex64')
+            else:
+                self.loc = loc
 
             if (self.loc.real() != self.loc.imag()).any():
                 raise ValueError(

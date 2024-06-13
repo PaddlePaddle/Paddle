@@ -106,11 +106,7 @@ class NormalNumpy(DistributionNumpy):
 
     def entropy(self):
         if self._complex_gaussian:
-            return (
-                1.0
-                + np.log(np.array(math.pi).astype(self.loc.dtype))
-                + 2.0 * np.log(self.scale)
-            )
+            return 1.0 + np.log(math.pi) + 2.0 * np.log(self.scale)
         else:
             return (
                 0.5
@@ -1075,7 +1071,7 @@ class TestNormalSampleDygraph(unittest.TestCase):
         self.paddle_normal = Normal(loc=self.loc, scale=self.scale)
         n = 100000
         self.sample_shape = (n,)
-        self.samples = self.paddle_normal.sample(self.sample_shape)
+        self.samples = self.paddle_normal.sample(self.sample_shape).numpy()
         self._complex_normal = self.loc.dtype in [np.complex64, np.complex128]
 
     def test_sample(self):
@@ -1088,8 +1084,8 @@ class TestNormalSampleDygraph(unittest.TestCase):
             samples_var, self.paddle_normal.variance, rtol=0.1, atol=0
         )
         if self._complex_normal:
-            samples_var_real = self.samples.real().var(axis=0)
-            samples_var_imag = self.samples.imag().var(axis=0)
+            samples_var_real = self.samples.real.var(axis=0)
+            samples_var_imag = self.samples.imag.var(axis=0)
             np.testing.assert_allclose(
                 samples_var_real,
                 self.paddle_normal.variance / 2.0,
@@ -1119,14 +1115,14 @@ class TestNormalSampleDygraph(unittest.TestCase):
                     kstest(
                         self.loc[i].real,
                         self.scale[i],
-                        self.samples[:, i].real(),
+                        self.samples[:, i].real,
                     )
                 )
                 self.assertTrue(
                     kstest(
                         self.loc[i].imag,
                         self.scale[i],
-                        self.samples[:, i].imag(),
+                        self.samples[:, i].imag,
                     )
                 )
 
