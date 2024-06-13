@@ -894,6 +894,26 @@ void BilinearInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void BeamSearchInferMeta(const MetaTensor& pre_ids,
+                         const MetaTensor& pre_scores,
+                         const MetaTensor& ids,
+                         const MetaTensor& scores,
+                         int level,
+                         int beam_size,
+                         int end_id,
+                         bool is_accumulated,
+                         MetaTensor* selected_ids,
+                         MetaTensor* selected_scores,
+                         MetaTensor* parent_idx) {
+  const auto& id_dims = pre_ids.dims();
+  selected_scores->set_dims(pre_scores.dims());
+  selected_ids->set_dims(id_dims);
+  parent_idx->set_dims({id_dims[0]});
+  selected_scores->set_dtype(pre_scores.dtype());
+  selected_ids->set_dtype(pre_ids.dtype());
+  parent_idx->set_dtype(pre_ids.dtype());
+}
+
 void BroadcastTensorsInferMeta(const std::vector<const MetaTensor*>& x,
                                std::vector<MetaTensor*> out) {
   int target_rank = 0;
