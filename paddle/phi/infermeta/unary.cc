@@ -2326,7 +2326,7 @@ void LogicalNotInferMeta(const MetaTensor& x, MetaTensor* out) {
 }
 
 void LogsumexpInferMeta(const MetaTensor& input,
-                        const std::vector<int64_t>& axis,
+                        const std::vector<int>& axis_in,
                         bool keepdim,
                         bool reduce_all,
                         MetaTensor* out) {
@@ -2337,6 +2337,11 @@ void LogsumexpInferMeta(const MetaTensor& input,
       4,
       errors::InvalidArgument("The input tensor X's dimensions of logsumexp "
                               "should be less or equal than 4. "));
+  std::vector<int64_t> axis;
+  axis.reserve(axis_in.size());
+  std::for_each(axis_in.begin(), axis_in.end(), [&axis](const int& t) {
+    axis.push_back(static_cast<int64_t>(t));
+  });
   ReduceInferMetaBase(input, axis, keepdim, reduce_all, out);
 }
 
@@ -4363,6 +4368,19 @@ void SequenceMaskScalarInferMeta(const MetaTensor& x,
   y->set_dtype(out_dtype);
 }
 
+void SequencePoolInferMeta(const MetaTensor& x,
+                           bool is_test,
+                           const std::string& pooltype,
+                           float pad_value,
+                           MetaTensor* out,
+                           MetaTensor* max_index,
+                           MetaConfig config) {
+  out->set_dims(x.dims());
+  if (pooltype == "MAX") {
+    max_index->set_dims(x.dims());
+  }
+}
+
 void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims({1});
   out->set_dtype(x.dtype());
@@ -4958,6 +4976,40 @@ void TopKInferMeta(const MetaTensor& x,
   if (input_dims.size() > 0) {
     dims[axis] = k;
   }
+  out->set_dims(dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+  indices->set_dims(dims);
+  indices->share_lod(x);
+  indices->set_dtype(DataType::INT64);
+}
+
+void TopkV1InferMeta(const MetaTensor& x,
+                     const Scalar& k_scalar,
+                     MetaTensor* out,
+                     MetaTensor* indices,
+                     MetaConfig config) {
+  const auto& input_dims = x.dims();
+
+  int k = k_scalar.to<int>();
+  if (k_scalar.FromTensor()) {
+    k = -1;
+  } else {
+    PADDLE_ENFORCE_EQ(k >= 1,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "the attribute of k in the topk must >= 1 or be a "
+                          "Tensor, but received %d .",
+                          k));
+  }
+
+  PADDLE_ENFORCE_GE(
+      input_dims.size(),
+      0,
+      phi::errors::InvalidArgument("input of topk must have >= 0d shape"));
+
+  phi::DDim dims = input_dims;
+  dims[dims.size() - 1] = k;
   out->set_dims(dims);
   out->share_lod(x);
   out->set_dtype(x.dtype());
