@@ -1077,14 +1077,6 @@ bool AnalysisPredictor::PrepareProgram(
   }
 
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
-
-  if (config_.new_ir_enabled()) {
-    if (pir_program_ != nullptr) {
-      PADDLE_FATAL("pir_program_ must be nullptr");
-    }
-    pir_program_ = paddle::TranslateLegacyProgramToProgram(*inference_program_);
-    OptimizeInferencePirProgram();
-  }
   return true;
 }
 
@@ -1170,6 +1162,15 @@ bool AnalysisPredictor::PrepareExecutor() {
                                          output_names.end());
 
     if (config_.new_ir_enabled()) {
+      if (!load_pir_model_) {
+        PADDLE_ENFORCE_EQ(
+            pir_program_,
+            nullptr,
+            platform::errors::Fatal("Here, pir_program must be a nullptr!"));
+        pir_program_ =
+            paddle::TranslateLegacyProgramToProgram(*inference_program_);
+        OptimizeInferencePirProgram();
+      }
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
     } else {
