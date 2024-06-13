@@ -193,7 +193,7 @@ def summary(
         .. code-block:: python
             :name: code-example-3
 
-            >>> # example 3: List/Dict Input Demo
+            >>> # example 3: List Input Demo
             >>> import paddle
             >>> import paddle.nn as nn
 
@@ -253,7 +253,15 @@ def summary(
             >>> print(params_info)
             {'total_params': 61610, 'trainable_params': 61610}
 
-            >>> # dict input demo
+
+        .. code-block:: python
+            :name: code-example-4
+
+            >>> # example 4: Dict Input Demo
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> # Dict input demo
             >>> class LeNetDictInput(nn.Layer):
             ...     def __init__(self, num_classes=10):
             ...         super().__init__()
