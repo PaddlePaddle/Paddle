@@ -1236,6 +1236,7 @@ class DataFeed {
               << "set true only when "
               << "PADDLE_WITH_HETERPS=ON and PADDLE_WITH_PSCORE=ON";
       return 0;
+#endif
     } else {
       return batch_size_;
     }
