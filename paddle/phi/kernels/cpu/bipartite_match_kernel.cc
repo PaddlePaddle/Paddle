@@ -28,7 +28,7 @@ bool DistPairDescend(std::tuple<int, int, T> pair1,
 template <typename T>
 void BipartiteMatch(const phi::DenseTensor& dist,
                     int* match_indices,
-                    T* match_dist) const {
+                    T* match_dist) {
   PADDLE_ENFORCE_EQ(
       dist.dims().size(),
       2,
@@ -114,7 +114,7 @@ template <typename T>
 void ArgMaxMatch(const phi::DenseTensor& dist,
                  int* match_indices,
                  T* match_dist,
-                 T overlap_threshold) const {
+                 T overlap_threshold) {
   constexpr T kEPS = static_cast<T>(1e-6);
   int64_t row = dist.dims()[0];
   int64_t col = dist.dims()[1];
@@ -209,7 +209,7 @@ void BipartiteMatchKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(bipartite_match,
                    CPU,
                    ALL_LAYOUT,
-                   ops::BipartiteMatchKernel,
+                   phi::BipartiteMatchKernel,
                    float,
                    double) {
   kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
