@@ -119,7 +119,7 @@ void FTRLOpKernel(const Context& dev_ctx,
                   const DenseTensor& param,
                   const DenseTensor& squared_accumulator,
                   const DenseTensor& linear_accumulator,
-                  const SelectedRows& grad,
+                  const SelectedRows& grad_in,
                   const DenseTensor& learning_rate,
                   float l1_in,
                   float l2_in,
@@ -127,8 +127,6 @@ void FTRLOpKernel(const Context& dev_ctx,
                   DenseTensor* param_out,
                   DenseTensor* squared_accum_out,
                   DenseTensor* linear_accum_out) {
-  const auto* grad_var = &grad;
-
   auto* lr_in = &learning_rate;
 
   auto* param_in = &param;
@@ -155,7 +153,7 @@ void FTRLOpKernel(const Context& dev_ctx,
 
   auto* merged_rows = merged_grad->mutable_rows();
   phi::MixVector<int64_t> mixv_merged_rows(merged_rows);
-  const int64_t* rows = mixv_merged_rows.Data(ctx.GetPlace());
+  const int64_t* rows = mixv_merged_rows.Data(dev_ctx.GetPlace());
   auto row_numel = static_cast<int64_t>(merged_grad->value().dims()[1]);
   auto row_height = static_cast<int64_t>(merged_grad->rows().size());
 
