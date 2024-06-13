@@ -58,7 +58,7 @@ set(XPU_XPTI_BASE_URL
 
 if(WITH_XPU_XRE5)
   set(XPU_XRE_BASE_VERSION "5.0.3.1")
-  set(XPU_XHPC_BASE_DATE "20240601")
+  set(XPU_XHPC_BASE_DATE "20240608")
   set(XPU_XRE_BASE_URL
       "https://klx-sdk-release-public.su.bcebos.com/xre/kl3-release/${XPU_XRE_BASE_VERSION}"
   )
