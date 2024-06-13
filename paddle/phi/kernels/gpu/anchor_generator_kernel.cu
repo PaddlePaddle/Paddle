@@ -103,13 +103,13 @@ void AnchorGeneratorOpCUDAKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(vars);
 
   phi::DenseTensor ar;
-  framework::TensorFromVector(aspect_ratios, dev_ctx, &ar);
+  phi::TensorFromVector(aspect_ratios, dev_ctx, &ar);
 
   phi::DenseTensor as;
-  framework::TensorFromVector(anchor_sizes, dev_ctx, &as);
+  phi::TensorFromVector(anchor_sizes, dev_ctx, &as);
 
   phi::DenseTensor sd;
-  framework::TensorFromVector(stride, dev_ctx, &sd);
+  phi::TensorFromVector(stride, dev_ctx, &sd);
 
   GenAnchors<T><<<grid, block, 0, stream>>>(anchors->data<T>(),
                                             ar.data<T>(),
@@ -123,15 +123,13 @@ void AnchorGeneratorOpCUDAKernel(const Context& dev_ctx,
                                             offset);
 
   phi::DenseTensor v;
-  framework::TensorFromVector(variances, dev_ctx, &v);
+  phi::TensorFromVector(variances, dev_ctx, &v);
   grid = (box_num * 4 + block - 1) / block;
   SetVariance<T><<<grid, block, 0, stream>>>(
       vars->data<T>(), v.data<T>(), variances.size(), box_num * 4);
 }
 
 }  // namespace phi
-
-namespace ops = paddle::operators;
 
 PD_REGISTER_KERNEL(anchor_generator,
                    GPU,
