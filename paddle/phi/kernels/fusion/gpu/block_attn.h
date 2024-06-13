@@ -2465,7 +2465,7 @@ void gqa_rotary_qk_variable(
     const int input_output_len,
     const int dim_head,
     bool use_neox_style = false) {
-  const int elem_nums =
+  int elem_nums =
       token_num * (q_head_num + kv_head_num) * dim_head;  // just q and k
   if (use_neox_style) {
     elem_nums /= 2;
