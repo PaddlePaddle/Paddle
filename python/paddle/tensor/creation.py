@@ -25,7 +25,6 @@ import paddle
 from paddle import _C_ops
 from paddle._typing import (
     DTypeLike,
-    DynamicShapeLike,
     NestedNumbericSequence,
     Numberic,
     PlaceLike,
@@ -1137,7 +1136,7 @@ def ones_like(
 
 
 def zeros(
-    shape: DynamicShapeLike,
+    shape: ShapeLike,
     dtype: DTypeLike | None = None,
     name: str | None = None,
 ) -> paddle.Tensor:
