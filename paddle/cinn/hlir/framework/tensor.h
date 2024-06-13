@@ -74,6 +74,7 @@ class _Tensor_ : public Object {
         },
         [&](std::variant<common::UnknownArch,
                          common::NVGPUArch,
+                         common::HygonDCUArchHIP,
                          common::ARMArch>) {
           buffer_->ResizeLazy(shape_.numel() * type.bytes(), target);
         });
@@ -89,6 +90,7 @@ class _Tensor_ : public Object {
         },
         [&](std::variant<common::UnknownArch,
                          common::NVGPUArch,
+                         common::HygonDCUArchHIP,
                          common::ARMArch>) {
           buffer_->ResizeLazy(shape_.numel() * sizeof(T), target);
         });

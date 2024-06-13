@@ -27,6 +27,10 @@
 #include "paddle/cinn/utils/string.h"
 #include "paddle/cinn/utils/timer.h"
 #include "paddle/common/enforce.h"
+
+#include "paddle/cinn/runtime/backend_api.h"
+using cinn::runtime::BackendAPI;
+
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -131,6 +135,11 @@ class Instruction {
 #else
               CINN_NOT_IMPLEMENTED;
 #endif
+            },
+            [&](common::HygonDCUArchHIP) {
+              ((lower_func_ptr_g)fn_ptrs_[idx])(
+                  static_cast<void*>(pod_args.data()), pod_args.size(), stream);
+              BackendAPI::get_backend(target_.arch)->device_sync();
             },
             [&](std::variant<common::UnknownArch,
                              common::X86Arch,

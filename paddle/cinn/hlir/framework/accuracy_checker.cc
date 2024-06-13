@@ -21,6 +21,9 @@
 #include <cuda_runtime.h>
 #endif
 
+#include "paddle/cinn/runtime/backend_api.h"
+using cinn::runtime::BackendAPI;
+
 PD_DECLARE_int64(cinn_self_check_accuracy_num);
 
 namespace cinn {
@@ -279,6 +282,13 @@ void AccuracyChecker::MemcpyDeviceToHost(const T* src, size_t numel, T* dst) {
 #else
         CINN_NOT_IMPLEMENTED;
 #endif
+      },
+      [&](common::HygonDCUArchHIP) {
+        BackendAPI::get_backend(target_.arch)
+            ->memcpy(dst,
+                     src,
+                     numel * sizeof(T),
+                     BackendAPI::MemcpyType::DeviceToHost);
       },
       [&](common::X86Arch) {
         for (size_t i = 0; i < numel; ++i) {

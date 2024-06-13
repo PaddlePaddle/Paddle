@@ -131,6 +131,10 @@ class Compiler final {
                          const std::string& code = "",
                          bool add_module = true);
 
+  void CompileHipModule(const ir::Module& module,
+                        const std::string& code = "",
+                        bool add_module = true);
+
   void CompileX86Module(const ir::Module& module, bool add_module = true);
 
   explicit Compiler(const Target& target)

@@ -49,6 +49,10 @@ std::optional<int> GetDataAlignmentImpl(common::NVGPUArch arch) {
   return std::nullopt;
 }
 
+std::optional<int> GetDataAlignmentImpl(common::HygonDCUArchHIP arch) {
+  return std::nullopt;
+}
+
 std::optional<int> GetDataAlignment(common::Arch arch) {
   return std::visit([](const auto &impl) { return GetDataAlignmentImpl(impl); },
                     arch.variant());

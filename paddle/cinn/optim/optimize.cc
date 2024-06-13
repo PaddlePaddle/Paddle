@@ -62,8 +62,8 @@ Expr Optimize(Expr e,
   cinn::common::DefaultDeviceTarget().arch.Match(
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
       },
-      [&](common::NVGPUArch) {
-#ifdef CINN_WITH_CUDA
+      [&](std::variant<common::NVGPUArch, common::HygonDCUArchHIP>) {
+#ifdef CINN_WITH_CUDA || defined(CINN_WITH_HIP)
         if (copied.as_lowered_func()) {
           ir::SetCudaAxisInfo(&copied);
         }

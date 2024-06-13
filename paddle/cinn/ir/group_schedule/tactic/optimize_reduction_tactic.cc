@@ -161,7 +161,7 @@ void OptimizeReductionTactic::Apply(ir::IRSchedule* sch,
   sch->SimpleComputeAt(rf_init_block, rb_loops.back());
 
   context_->target.arch.Match(
-      [&](common::NVGPUArch) {
+      [&](std::variant<common::NVGPUArch, common::HygonDCUArchHIP>) {
         rb_loops = sch->GetLoops(block_id);
         rf_block = sch->GetBlock(rf_block_id);
         sch->Bind(rb_loops.back(), "threadIdx.x");

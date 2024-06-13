@@ -24,8 +24,10 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/arch_util.h"
 #include "paddle/cinn/common/target.h"
+#include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/common/enforce.h"
+using cinn::runtime::BackendAPI;
 
 namespace cinn {
 namespace common {
@@ -54,6 +56,10 @@ int GetRuntimeArchImpl(NVGPUArch) {
   PADDLE_THROW(phi::errors::InvalidArgument("Not supported arch"));
 }
 
+int GetRuntimeArchImpl(HygonDCUArchHIP) {
+  PADDLE_THROW(phi::errors::InvalidArgument("Not supported arch"));
+}
+
 int GetRuntimeArch(Arch arch) {
   return std::visit([](const auto &impl) { return GetRuntimeArchImpl(impl); },
                     arch.variant());
@@ -74,6 +80,8 @@ int GetMaxNumThreadsImpl(ARMArch arch) {
 }
 
 int GetMaxNumThreadsImpl(NVGPUArch arch) { return 1024; }
+
+int GetMaxNumThreadsImpl(HygonDCUArchHIP arch) { return 1024; }
 
 int GetMaxNumThreads(Arch arch) {
   return std::visit([](const auto &impl) { return GetMaxNumThreadsImpl(impl); },
@@ -101,6 +109,11 @@ int GetMultiProcessCountImpl(NVGPUArch arch) {
       &num_sm, cudaDeviceAttr::cudaDevAttrMultiProcessorCount, 0);
 #endif
   return num_sm;
+}
+
+int GetMultiProcessCountImpl(HygonDCUArchHIP arch) {
+  return BackendAPI::get_backend(arch)->get_device_property(
+      BackendAPI::DeviceProperty::MultiProcessorCount);
 }
 
 int GetMultiProcessCount(Arch arch) {
@@ -137,6 +150,11 @@ int GetMaxThreadsPerSmImpl(NVGPUArch arch) {
   return max_thread;
 }
 
+int GetMaxThreadsPerSmImpl(HygonDCUArchHIP arch) {
+  return BackendAPI::get_backend(arch)->get_device_property(
+      BackendAPI::DeviceProperty::MaxThreadsPerSM);
+}
+
 int GetMaxThreadsPerSm(Arch arch) {
   return std::visit(
       [](const auto &impl) { return GetMaxThreadsPerSmImpl(impl); },
@@ -167,6 +185,11 @@ int GetMaxBlocksPerSmImpl(NVGPUArch) {
       &max_blocks, cudaDeviceAttr::cudaDevAttrMaxBlocksPerMultiprocessor, 0);
 #endif
   return max_blocks;
+}
+
+int GetMaxBlocksPerSmImpl(HygonDCUArchHIP arch) {
+  return BackendAPI::get_backend(arch)->get_device_property(
+      BackendAPI::DeviceProperty::MaxBlocksPerSM);
 }
 
 int GetMaxBlocksPerSm(Arch arch) {
@@ -249,9 +272,17 @@ const Target &DefaultNVGPUTarget() {
   return target;
 }
 
+const Target &DefaultHygonDcuHipTarget() {
+  static Target target(
+      Target::OS::Linux, HygonDCUArchHIP{}, Target::Bit::k64, {}, {});
+  return target;
+}
+
 const Target &DefaultDeviceTarget() {
 #ifdef CINN_WITH_CUDA
   return DefaultNVGPUTarget();
+#elif defined(CINN_WITH_HIP)
+  return DefaultHygonDcuHipTarget();
 #endif
 }
 
@@ -287,8 +318,8 @@ int GetMaxBlocks() {
 }
 
 const Target &DefaultTarget() {
-#ifdef CINN_WITH_CUDA
-  return DefaultNVGPUTarget();
+#ifdef CINN_WITH_CUDA || defined(CINN_WITH_HIP)
+  return DefaultDeviceTarget()
 #else
   return DefaultHostTarget();
 #endif

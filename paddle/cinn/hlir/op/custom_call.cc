@@ -103,7 +103,7 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
         ir::Argument(kernel_args_num, ir::Argument::IO::kInput)};
     // if target is nvgpu, add stream.
     target.arch.Match(
-        [&](common::NVGPUArch) {
+        [&](std::variant<common::NVGPUArch, common::HygonDCUArchHIP>) {
           ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
           host_args.push_back(kernel_stream);
           arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);

@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/program.h"
+#include "paddle/cinn/runtime/backend_api.h"
+using cinn::runtime::BackendAPI;
 
 namespace cinn {
 namespace hlir {
@@ -188,6 +190,13 @@ void DeviceSynchronizeImpl(common::NVGPUArch, void* stream) {
     CUDA_CALL(cudaDeviceSynchronize());
   }
 #endif
+}
+
+void DeviceSynchronizeImpl(common::HygonDCUArchHIP, void* stream) {
+  VLOG(4) << "-- The value of the used stream: " << stream;
+  if (stream == nullptr) {
+    BackendAPI::get_backend(common::HygonDCUArchHIP{})->device_sync();
+  }
 }
 
 void DeviceSynchronize(common::Arch arch, void* stream) {

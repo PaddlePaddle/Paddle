@@ -651,6 +651,16 @@ Variable AddOpMapperDepthwiseConv2dImpl(common::NVGPUArch,
 }
 
 template <typename T>
+Variable AddOpMapperDepthwiseConv2dImpl(common::HygonDCUArchHIP,
+                                        T* net_builder,
+                                        const paddle::cpp::OpDesc& op_desc,
+                                        const Variable& x,
+                                        const Variable& y) {
+  // old code
+  CINN_NOT_IMPLEMENTED
+}
+
+template <typename T>
 Variable AddOpMapperDepthwiseConv2d(common::Arch arch,
                                     T* net_builder,
                                     const paddle::cpp::OpDesc& op_desc,

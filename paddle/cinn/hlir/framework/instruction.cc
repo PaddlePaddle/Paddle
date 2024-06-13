@@ -19,9 +19,11 @@
 
 #include "paddle/cinn/common/test_helper.h"
 #include "paddle/cinn/hlir/framework/accuracy_checker.h"
+#include "paddle/cinn/runtime/backend_api.h"
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/profiler.h"
 #include "paddle/common/enforce.h"
+using cinn::runtime::BackendAPI;
 PD_DECLARE_bool(cinn_sync_run);
 PD_DECLARE_string(cinn_self_check_accuracy);
 
@@ -168,6 +170,10 @@ void Instruction::Run(
                              common::ARMArch>) {
               ((lower_func_ptr_t)fn_ptrs_[idx])(
                   static_cast<void*>(pod_args.data()), pod_args.size());
+            },
+            [&](common::HygonDCUArchHIP) {
+              // meaningless branch
+              CINN_NOT_IMPLEMENTED
             });
       }
     }
@@ -193,6 +199,10 @@ void Instruction::Run(
                              common::ARMArch>) {
               ((lower_func_ptr_t)fn_ptrs_[idx])(
                   static_cast<void*>(pod_args.data()), pod_args.size());
+            },
+            [&](common::HygonDCUArchHIP) {
+              // meaningless branch
+              CINN_NOT_IMPLEMENTED
             });
       }
     }
@@ -253,6 +263,10 @@ void Instruction::Run(
                                common::ARMArch>) {
                 ((lower_func_ptr_t)fn_ptrs_[idx])(
                     static_cast<void*>(pod_args.data()), pod_args.size());
+              },
+              [&](common::HygonDCUArchHIP) {
+                // meaningless branch
+                CINN_NOT_IMPLEMENTED
               });
         }
       }
@@ -422,16 +436,32 @@ void Instruction::Run(
                              common::ARMArch>) {
               ((lower_func_ptr_t)fn_ptrs_[idx])(
                   static_cast<void*>(pod_args.data()), pod_args.size());
-            });
+            },
+            [&](common::HygonDCUArchHIP) { CINN_NOT_IMPLEMENTED });
       }
     }
     VLOG(3) << "Done Running extern function " << function_name_;
 #endif
   };
+  const auto HygonDcuHipRun = [&] {
+    VLOG(3) << "Running extern function " << function_name_;
+    for (int idx = 0; idx < fn_ptrs_.size(); ++idx) {
+      VLOG(3) << "Running func name: " << fn_names_[idx];
+      auto& pod_args = args_cached_[idx];
+      CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first by "
+                              "calling SetLoweredFunc method";
+      if (!dryrun) {
+        ((lower_func_ptr_g)fn_ptrs_[idx])(
+            static_cast<void*>(pod_args.data()), pod_args.size(), stream);
+      }
+    }
+    VLOG(3) << "Done Running extern function " << function_name_;
+  };
   target_.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
                      [&](common::X86Arch) { DefaultRun(); },
                      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                     [&](common::NVGPUArch) { NVGPURun(); });
+                     [&](common::NVGPUArch) { NVGPURun(); },
+                     [&](common::HygonDCUArchHIP) { HygonDcuHipRun(); });
   if (!cinn::runtime::CheckStringFlagFalse(FLAGS_cinn_self_check_accuracy)) {
     CheckResults(name2podargs, stream);
   }
@@ -469,6 +499,9 @@ void Instruction::CheckResults(
 #ifdef CINN_WITH_CUDA
         cudaStreamSynchronize(static_cast<cudaStream_t>(stream));
 #endif
+      },
+      [&](common::HygonDCUArchHIP) {
+        BackendAPI::get_backend(common::HygonDCUArchHIP{})->stream_sync(stream);
       });
 
   if (fn_names_.size() == 1) {

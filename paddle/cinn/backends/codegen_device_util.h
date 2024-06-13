@@ -122,6 +122,10 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
           codegen_dev.Compile(ir::LoweredFunc(func));
           shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
 #endif
+        },
+        [&](common::HygonDCUArchHIP) {
+          // todo: new hardware
+          CINN_NOT_IMPLEMENTED
         });
 
     VLOG(6) << "Add a call node for func->name " << func->name << "\n"
@@ -140,6 +144,10 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
                          common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
         [&](common::NVGPUArch) {
           call_kernel = runtime::intrinsic::call_cuda_kernel;
+        },
+        [&](common::HygonDCUArchHIP) {
+          // todo: new hardware
+          CINN_NOT_IMPLEMENTED;
         });
 
     auto call_extern_api =

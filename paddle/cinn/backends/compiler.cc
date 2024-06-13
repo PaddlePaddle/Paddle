@@ -237,7 +237,8 @@ void Compiler::Build(const Module& module,
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { CompileX86Module(module, end); },
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::NVGPUArch) { CompileCudaModule(module, code, end); }};
+      [&](common::NVGPUArch) { CompileCudaModule(module, code, end); },
+      [&](common::HygonDCUArchHIP) { CompileHipModule(module, code, end); }};
   return std::visit(PatternMatch, target_.arch.variant());
 }
 
@@ -264,14 +265,21 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 #else
         CINN_NOT_IMPLEMENTED
 #endif
+
+      },
+      [&](common::HygonDCUArchHIP) -> std::string {
+        // todo: new hardware
+        CINN_NOT_IMPLEMENTED
       });
 }
 
 void Compiler::BuildDefault(const Module& module) {
-  target_.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                     [&](common::X86Arch) { CompileX86Module(module); },
-                     [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                     [&](common::NVGPUArch) { CompileCudaModule(module); });
+  target_.arch.Match(
+      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::X86Arch) { CompileX86Module(module); },
+      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::NVGPUArch) { CompileCudaModule(module); },
+      [&](common::HygonDCUArchHIP) { CompileHipModule(module); });
 }
 
 namespace {
@@ -349,6 +357,13 @@ void Compiler::CompileCudaModule(const Module& module,
 #else
   CINN_NOT_IMPLEMENTED
 #endif
+}
+
+void Compiler::CompileHipModule(const Module& module,
+                                const std::string& code,
+                                bool add_module) {
+  // todo: new hardware
+  CINN_NOT_IMPLEMENTED
 }
 
 void Compiler::CompileX86Module(const Module& module, bool add_module) {

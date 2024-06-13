@@ -24,6 +24,8 @@
 #include "paddle/cinn/backends/llvm/simple_jit.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/runtime/backend_api.h"
+using cinn::runtime::BackendAPI;
 
 PD_DECLARE_string(cinn_self_check_accuracy);
 
@@ -57,6 +59,13 @@ void SetRandomTensor(Tensor tensor, Target target, bool generate_nan) {
 #else
         CINN_NOT_IMPLEMENTED;
 #endif
+      },
+      [&](common::HygonDCUArchHIP) {
+        BackendAPI::get_backend(target.arch)
+            ->memcpy(dst,
+                     random_nan_vec.data(),
+                     numel * sizeof(float),
+                     BackendAPI::MemcpyType::HostToDevice);
       },
       [&](common::X86Arch) {
         std::copy(random_nan_vec.begin(), random_nan_vec.end(), dst);

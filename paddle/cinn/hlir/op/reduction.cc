@@ -131,35 +131,34 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     }
   };
 
-  framework::CINNCompute reduction_compute([=](lang::Args args,
-                                               lang::RetValue *ret) {
-    CHECK(!args.empty()) << "The input argument of " << op_name
-                         << " compute is empty! Please check.";
-    CINNValuePack arg_packs = args[0];
-    CHECK_EQ(arg_packs.size(), 2U)
-        << "There should be 2 input args for " << op_name << " compute";
-    CHECK(arg_packs[1].is_string());
-    std::string tensor_name = arg_packs[1].operator std::string();
-    Expr x_expr = arg_packs[0];
-    CHECK(x_expr.as_tensor());
-    ir::Tensor x = x_expr.as_tensor_ref();
+  framework::CINNCompute reduction_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty()) << "The input argument of " << op_name
+                             << " compute is empty! Please check.";
+        CINNValuePack arg_packs = args[0];
+        CHECK_EQ(arg_packs.size(), 2U)
+            << "There should be 2 input args for " << op_name << " compute";
+        CHECK(arg_packs[1].is_string());
+        std::string tensor_name = arg_packs[1].operator std::string();
+        Expr x_expr = arg_packs[0];
+        CHECK(x_expr.as_tensor());
+        ir::Tensor x = x_expr.as_tensor_ref();
 
-    std::unordered_set<std::string> bool_reduce_op = {"reduce_all",
-                                                      "reduce_any"};
-    CHECK(!bool_reduce_op.count(op_name) || x->type().is_bool())
-        << "The type of input argument " << x->name << " of " << op_name
-        << " should be bool, but get " << x->type() << "! Please check.";
+        std::unordered_set<std::string> bool_reduce_op = {"reduce_all",
+                                                          "reduce_any"};
+        CHECK(!bool_reduce_op.count(op_name) || x->type().is_bool())
+            << "The type of input argument " << x->name << " of " << op_name
+            << " should be bool, but get " << x->type() << "! Please check.";
 
-    const auto &NaiveCompute = [&]() {
-      VLOG(3) << "Do Reduce Compute!";
-      auto out = common_reduce_func(x, reduce_axes, keepdim, tensor_name);
-      auto stages = CreateStages({out});
+        const auto &NaiveCompute = [&]() {
+          VLOG(3) << "Do Reduce Compute!";
+          auto out = common_reduce_func(x, reduce_axes, keep_dim, tensor_name);
+          auto stages = CreateStages({out});
 
-      std::vector<CINNValue> cinn_values{CINNValue(out), CINNValue(stages)};
-      *ret = CINNValuePack{cinn_values};
-    };
-    target.arch.Match(
-        [&](common::NVGPUArch) {
+          std::vector<CINNValue> cinn_values{CINNValue(out), CINNValue(stages)};
+          *ret = CINNValuePack{cinn_values};
+        };
+        auto reductionComputeGpuDcu = [&] {
           if (!FLAGS_cinn_enable_map_expr && !FLAGS_cinn_new_group_scheduler) {
             if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
               VLOG(3) << "Do Two Step Block Reduce Compute!";
@@ -189,11 +188,14 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           } else {
             NaiveCompute();
           }
-        },
-        [&](std::variant<common::UnknownArch,
-                         common::X86Arch,
-                         common::ARMArch>) { NaiveCompute(); });
-  });
+        };
+        target.arch.Match(
+            [&](common::NVGPUArch) { reductionComputeGpuDcu(); },
+            [&](common::HygonDCUArchHIP) { reductionComputeGpuDcu(); },
+            [&](std::variant<common::UnknownArch,
+                             common::X86Arch,
+                             common::ARMArch>) { NaiveCompute(); });
+      });
 
   framework::CINNSchedule reduction_schedule([=](lang::Args args,
                                                  lang::RetValue *ret) {
@@ -340,6 +342,15 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
                         *ret = CINNValuePack{res};
                       },
                       [&](common::NVGPUArch) {
+                        if (!FLAGS_cinn_new_group_scheduler) {
+                          ReduceSchedule();
+                        } else {
+                          std::vector<CINNValue> res{
+                              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+                          *ret = CINNValuePack{res};
+                        }
+                      },
+                      [&](common::HygonDCUArchHIP) {
                         if (!FLAGS_cinn_new_group_scheduler) {
                           ReduceSchedule();
                         } else {

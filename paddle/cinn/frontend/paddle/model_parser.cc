@@ -121,6 +121,10 @@ void TensorFromStream(std::istream &is,
         PADDLE_THROW(phi::errors::Fatal(
             "To use CUDA backends, you need to set WITH_CUDA ON!"));
 #endif
+      },
+      [&](common::HygonDCUArchHIP) {
+        // old code
+        CINN_NOT_IMPLEMENTED
       });
 }
 

@@ -97,7 +97,10 @@ static const char* TargetToBackendRepr(Target target) {
       [&](common::UnknownArch) -> const char* { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) -> const char* { return backend_llvm_host; },
       [&](common::ARMArch) -> const char* { CINN_NOT_IMPLEMENTED; },
-      [&](common::NVGPUArch) -> const char* { return backend_nvgpu; });
+      [&](common::NVGPUArch) -> const char* { return backend_nvgpu; },
+      [&](common::HygonDCUArchHIP) -> const char* {
+        return backend_hygondcu_hip;
+      });
 }
 
 /**
