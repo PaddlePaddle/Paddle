@@ -13,19 +13,21 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/transforms/tensorrt/op_marker_pass.h"
+
 #include <memory>
 
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 
+#include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/pass/pass.h"
 #include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
 
-inline const char kCanRunTrtAttr[] = "__can_run_tensorrt__";
+inline auto kCanRunTrtAttr = paddle::dialect::kCanRunTrtAttr;
 
 class MatmulOpPattern
     : public pir::OpRewritePattern<paddle::dialect::MatmulOp> {
@@ -35,7 +37,7 @@ class MatmulOpPattern
       paddle::dialect::MatmulOp op,
       pir::PatternRewriter &rewriter) const override {  // NOLINT
     if (op->HasAttribute(kCanRunTrtAttr) &&
-        op->attribute<bool>(kCanRunTrtAttr)) {
+        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
       return false;
     }
     auto matmul_op = rewriter.Build<paddle::dialect::MatmulOp>(
