@@ -1136,96 +1136,6 @@ inline __device__ static void convert_(__nv_bfloat16* result,
 #endif
 }
 
-template <int N>
-inline __device__ static void convert_int4(__nv_bfloat16* result,
-                                           uint32_t const& source) {
-#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
-
-  uint32_t* bf16_result_ptr = reinterpret_cast<uint32_t*>(result);
-
-  float fp32_intermediates[N];
-
-  static constexpr uint32_t immLut = (0xf0 & 0xcc) | 0xaa;
-  static constexpr uint32_t MASK = 0x0000000f;  // 0xf -> 0b1111 select 0
-  static constexpr uint32_t I4s_TO_FP32s_MAGIC_NUM = 0x4B000000;
-
-  uint32_t* fp32_intermediates_casted =
-      reinterpret_cast<uint32_t*>(fp32_intermediates);
-
-  uint32_t i4s = source;
-  asm volatile("lop3.b32 %0, %1, %2, %3, %4;\n"
-               : "=r"(fp32_intermediates_casted[0])
-               : "r"(i4s), "n"(MASK), "n"(I4s_TO_FP32s_MAGIC_NUM), "n"(immLut));
-#pragma unroll
-  for (int ii = 1; ii < N; ++ii) {
-    // (source & 0x0000000f) | 0x4B000000
-    i4s >>= 4;
-    asm volatile(
-        "lop3.b32 %0, %1, %2, %3, %4;\n"
-        : "=r"(fp32_intermediates_casted[ii])
-        : "r"(i4s), "n"(MASK), "n"(I4s_TO_FP32s_MAGIC_NUM), "n"(immLut));
-  }
-
-#pragma unroll
-  for (int ii = 0; ii < N; ++ii) {
-    fp32_intermediates[ii] -= 8388616.f;  // (8388608.f + 8.f)
-  }
-#pragma unroll
-  for (int ii = 0; ii < N / 2; ++ii) {
-    bf16_result_ptr[ii] = __byte_perm(fp32_intermediates_casted[2 * ii + 1],
-                                      fp32_intermediates_casted[2 * ii],
-                                      0x7632);
-  }
-#endif
-}
-
-template <int N>
-inline __device__ static void convert_int4_v2(__nv_bfloat16* result,
-                                              uint32_t const& source) {
-#if (defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 800))
-  constexpr int HALF_N = N / 2;
-  uint32_t* bf16_result_ptr = reinterpret_cast<uint32_t*>(result);
-
-  uint32_t bf16_intermediates[HALF_N];
-
-  static constexpr uint32_t immLut = (0xf0 & 0xcc) | 0xaa;
-  static constexpr uint32_t MASK = 0x000f000f;  // 0xf -> 0b1111 select 0,4
-  static constexpr uint32_t I4s_TO_FP32s_MAGIC_NUM = 0x43004300;
-  static constexpr uint32_t BF16_BIAS = 0xC308C308;
-  static constexpr uint32_t BF16_ONE = 0x3F803F80;
-
-  uint32_t i4s = source;
-  asm volatile("lop3.b32 %0, %1, %2, %3, %4;\n"
-               : "=r"(bf16_intermediates[0])
-               : "r"(i4s), "n"(MASK), "n"(I4s_TO_FP32s_MAGIC_NUM), "n"(immLut));
-#pragma unroll
-  for (int ii = 1; ii < HALF_N; ++ii) {
-    // (source & 0x000f000f) | 0x43004300
-    i4s >>= 4;
-    asm volatile(
-        "lop3.b32 %0, %1, %2, %3, %4;\n"
-        : "=r"(bf16_intermediates[ii])
-        : "r"(i4s), "n"(MASK), "n"(I4s_TO_FP32s_MAGIC_NUM), "n"(immLut));
-  }
-
-#pragma unroll
-  for (int ii = 0; ii < HALF_N; ++ii) {
-    asm("fma.rn.bf16x2 %0, %1, %2, %3;\n"
-        : "=r"(bf16_intermediates[ii])
-        : "r"(bf16_intermediates[ii]), "r"(BF16_ONE), "r"(BF16_BIAS));
-  }
-
-  bf16_result_ptr[0] =
-      __byte_perm(bf16_intermediates[1], bf16_intermediates[0], 0x5410);
-  bf16_result_ptr[1] =
-      __byte_perm(bf16_intermediates[3], bf16_intermediates[2], 0x5410);
-  bf16_result_ptr[2] =
-      __byte_perm(bf16_intermediates[1], bf16_intermediates[0], 0x7632);
-  bf16_result_ptr[3] =
-      __byte_perm(bf16_intermediates[3], bf16_intermediates[2], 0x7632);
-#endif
-}
-
 template <>
 inline __device__ void
 mul_pointer_v2<__nv_bfloat162, float, uint8_t, CacheType::INT8>(
@@ -2873,7 +2783,7 @@ inline __device__ void apply_rotary_embedding(uint2& q,      // NOLINT
   q.x = rotary_embedding_transform(q.x, cos.x, sin.x);
   k.x = rotary_embedding_transform(k.x, cos.x, sin.x);
   q.y = rotary_embedding_transform(q.y, cos.y, sin.y);
-  k.y = rotary_embedding_transform(k.y, cos.y, sin.x);
+  k.y = rotary_embedding_transform(k.y, cos.y, sin.y);
 }
 
 inline __device__ void apply_rotary_embedding(uint2& q,       // NOLINT

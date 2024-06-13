@@ -119,7 +119,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
   float *logits_smem = reinterpret_cast<float *>(smem_ + block_smem_offset);
 
   /*
-  Note(zhengzekang): This shared memory is used in Final Reduce, so we do not
+  Note: This shared memory is used in Final Reduce, so we do not
   need to add offset. Since in Final Reduce Phase, the block tables is not used.
   */
   T *out_smem = reinterpret_cast<T *>(smem_);
@@ -590,7 +590,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
       reinterpret_cast<float *>(smem_ + block_smem_offset + q_smem_offset);
 
   /*
-  Note(zhengzekang): This shared memory is used in Final Reduce, so we do not
+  Note: This shared memory is used in Final Reduce, so we do not
   need to add offset. Since in Final Reduce Phase, the block tables is not used.
   */
   T *out_smem = reinterpret_cast<T *>(smem_);
@@ -1087,8 +1087,7 @@ inline size_t smem_size_in_bytes(const Block_AttN_params<T> &params,
 
   int rows_per_red = threads_per_block / threads_per_value;
 
-  // Note(zhengzekang): Because half threads in ThreadBlock use out_smem to do
-  // reduce. 这个值很小，不影响smem_size的计算。
+  // Note: Because half threads in ThreadBlock use out_smem to do reduce.
   size_t red_sz = rows_per_red * dim_head * sizeof(T) / 2;
 
   return max(logits_table_sz, red_sz);
