@@ -768,7 +768,7 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
 void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   platform::Timer timeline;
 #if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
-  if (gpu_graph_mode_ && 
+  if (gpu_graph_mode_ &&
       (slot_num_for_pull_feature_ > 0 || float_slot_num_ > 0) &&
       FLAGS_gpugraph_storage_mode !=
           paddle::framework::GpuGraphStorageMode::WHOLE_HBM) {
@@ -1944,7 +1944,7 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
         (FLAGS_gpugraph_storage_mode ==
             paddle::framework::GpuGraphStorageMode::
                 MEM_EMB_FEATURE_AND_GPU_GRAPH ||
-        FLAGS_gpugraph_storage_mode == 
+        FLAGS_gpugraph_storage_mode ==
             paddle::framework::GpuGraphStorageMode::
                 SSD_EMB_AND_MEM_FEATURE_GPU_GRAPH)) {
     std::vector<GpuPsCommGraphFea>* tmp =
