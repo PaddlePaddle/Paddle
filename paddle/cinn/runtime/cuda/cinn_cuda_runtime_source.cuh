@@ -618,6 +618,7 @@ EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
 
 #define CINN_DISCRETE_REDUCE_INTERNAL_SHM_IMPL(REDUCE_TYPE, value) \
   int tid = threadIdx.y * blockDim.x + threadIdx.x;                                        \
+  __syncthreads();                                                                         \
   shm[tid] = value;                                                                        \
   __syncthreads();                                                                         \
   for (int offset = blockDim.y / 2;offset > 0;offset >>= 1) {                              \
@@ -626,7 +627,6 @@ EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_SHM_MACRO)
     }                                                                                      \
     __syncthreads();                                                                       \
   }                                                                                        \
-  __syncthreads(); \
   return shm[threadIdx.x];
 
 #define CINN_DISCRETE_REDUCE_INTERNAL_SHM_MACRO(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                          \
