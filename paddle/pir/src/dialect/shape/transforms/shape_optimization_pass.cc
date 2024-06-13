@@ -134,33 +134,7 @@ void DebugPrintOpInfo(pir::Operation* op,
                  << "ShapeOrData: {";
 
     if (infer_context != nullptr) {
-      auto shape_data = infer_context->GetShapeOrDataForValue(res);
-      if (shape_data.isa<symbol::TensorListShapeOrDataDimExprs>()) continue;
-      print_stream << "shape: [";
-
-      for (size_t i = 0; i < shape_data.shape().size(); ++i) {
-        if (i != shape_data.shape().size() - 1) {
-          print_stream << symbol::ToString(shape_data.shape()[i]) << ",";
-        } else {
-          print_stream << symbol::ToString(shape_data.shape()[i]);
-        }
-      }
-
-      print_stream << "], data: [";
-      if (shape_data.data().has_value()) {
-        for (size_t i = 0; i < shape_data.data().value().size(); ++i) {
-          if (i != shape_data.data().value().size() - 1) {
-            print_stream << symbol::ToString(shape_data.data().value()[i])
-                         << ",";
-          } else {
-            print_stream << symbol::ToString(shape_data.data().value()[i]);
-          }
-        }
-      } else {
-        print_stream << "nullopt";
-      }
-
-      print_stream << "]";
+      print_stream << infer_context->GetShapeOrDataForValue(res);
     }
     print_stream << " }\n";
   }
