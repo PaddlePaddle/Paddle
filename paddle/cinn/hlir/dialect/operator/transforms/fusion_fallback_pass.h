@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,23 +14,13 @@
 
 #pragma once
 
-#include "paddle/cinn/auto_schedule/search_strategy/mutate_rule/mutate_rule.h"
+#include <memory>
+#include "paddle/pir/include/pass/pass.h"
 
 namespace cinn {
-namespace auto_schedule {
-
-/**
- * The rule to mutate tile size, witch will modify the factors of the Split
- * primitive.
- */
-class MutateTileSize : public MutateRule {
- public:
-  MutateTileSize() = default;
-
-  ir::ScheduleDesc Apply(
-      const ir::ScheduleDesc& trace,
-      utils::LinearRandomEngine::StateType* rand_seed) override;
-};
-
-}  // namespace auto_schedule
+namespace dialect {
+namespace ir {
+std::unique_ptr<::pir::Pass> CreateFusionFallbackPass();
+}  // namespace ir
+}  // namespace dialect
 }  // namespace cinn

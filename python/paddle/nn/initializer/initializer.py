@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import functools
 import math
 
 import numpy as np
+
+import paddle
 
 from ...base.framework import (
     EagerParamBase,
@@ -39,23 +43,31 @@ class Initializer:
     def __init__(self):
         pass
 
-    def __call__(self, param, block=None):
+    def __call__(
+        self, param: paddle.Tensor, block: paddle.pir.Block | None = None
+    ):
         if not lazy_init_helper().state:
             return self.forward(param, block)
 
         return self._lazy_init(param, block)
 
-    def forward(self, param, block=None):
+    def forward(
+        self, param: paddle.Tensor, block: paddle.pir.Block | None = None
+    ):
         """Add corresponding initialization operations to the network."""
         raise NotImplementedError()
 
-    def _lazy_init(self, param, block=None):
+    def _lazy_init(
+        self, param: paddle.Tensor, block: paddle.pir.Block | None = None
+    ):
         """
         Apply lazy initialization
         """
         assert in_dygraph_mode()
 
-        def init_op_creator(forward, param, block):
+        def init_op_creator(
+            forward, param: paddle.Tensor, block: paddle.pir.Block | None
+        ):
             new_var = param._to_static_var(True, block=block)
             # Record initializer operator
             with lazy_init_helper():
@@ -69,13 +81,13 @@ class Initializer:
 
         return param
 
-    def _check_block(self, block):
+    def _check_block(self, block: paddle.pir.Block | None) -> paddle.pir.Block:
         if block is None:
             block = default_main_program().global_block()
 
         return block
 
-    def _compute_fans(self, var):
+    def _compute_fans(self, var: paddle.Tensor) -> tuple[int, int]:
         """Compute the fan_in and the fan_out for layers
 
         This method computes the fan_in and the fan_out
@@ -115,7 +127,9 @@ class Initializer:
         return (fan_in, fan_out)
 
 
-def calculate_gain(nonlinearity, param=None):
+def calculate_gain(
+    nonlinearity: str, param: bool | float | None = None
+) -> float:
     """
     Get the recommended ``gain`` value of some nonlinearity function. ``gain`` value can be used in some
     ``paddle.nn.initializer`` api to adjust the initialization value.
@@ -123,7 +137,7 @@ def calculate_gain(nonlinearity, param=None):
     Args:
         nonlinearity(str): name of nonlinearity activation function. If it is a linear function, such as:
             `linear/conv1d/conv2d/conv3d/conv1d_transpose/conv2d_transpose/conv3d_transpose` , 1.0 will be returned.
-        param(bool|int|float, optional): optional parameter for somme nonlinearity function. Now, it only applies to
+        param(bool|int|float|None, optional): optional parameter for somme nonlinearity function. Now, it only applies to
             'leaky_relu'. Default: None, it will be calculated as 0.01 in the formula.
 
     Returns:
