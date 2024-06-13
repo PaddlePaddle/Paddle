@@ -4717,12 +4717,3 @@
   kernel:
      func: number_count
      data_type: numbers
-
-- op : c_reducescatter_add
-  args : (Tensor x, Tensor bias, int ring_id = 0, int nranks = 1, bool use_calc_stream = false)
-  output : Tensor(out)
-  infer_meta :
-    func : ReduceScatterInferMeta
-    param: [x, nranks]
-  kernel :
-    func : c_reducescatter_add
