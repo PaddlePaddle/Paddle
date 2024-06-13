@@ -36,7 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
-#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
@@ -252,9 +252,11 @@ class PSGPUWrapper {
     if (s_instance_ == nullptr) {
       return;
     }
-#if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
-    if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
-      this->EndPass();
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+    if (gpu_graph_mode_) {
+      if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
+        this->EndPass();
+      }
     }
 #endif
     for (size_t i = 0; i < hbm_pools_.size(); i++) {
@@ -814,10 +816,12 @@ class PSGPUWrapper {
   void SetPullFeatureSlotNum(int sparse_slot_num, int float_slot_num) {
     slot_num_for_pull_feature_ = sparse_slot_num;
     float_slot_num_ = float_slot_num;
-#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
-    auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
-    gpu_graph_ptr->set_feature_info(slot_num_for_pull_feature_,
-                                    float_slot_num_);
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
+    if (gpu_graph_mode_) {
+      auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
+      gpu_graph_ptr->set_feature_info(slot_num_for_pull_feature_,
+                                      float_slot_num_);
+    }
 #endif
     VLOG(0) << "slot_num_for_pull_feature_ is " << slot_num_for_pull_feature_
             << ", float_slot_num is " << float_slot_num_;

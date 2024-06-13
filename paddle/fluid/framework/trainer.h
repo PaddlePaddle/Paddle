@@ -136,6 +136,8 @@ class MultiTrainer : public TrainerBase {
   int mpi_rank_;
   int mpi_size_;
   int dump_file_num_;
+  int use_ps_gpu_;
+  int use_gpu_graph_;
 };
 
 class DistMultiTrainer : public MultiTrainer {

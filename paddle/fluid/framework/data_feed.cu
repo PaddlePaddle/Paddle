@@ -23,7 +23,7 @@ limitations under the License. */
 #include <thrust/shuffle.h>
 #include <sstream>
 #include "cub/cub.cuh"
-#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
@@ -485,7 +485,7 @@ __global__ void CopyDuplicateKeys(int64_t *dist_tensor,
   }
 }
 
-#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
 int AcquireInstance(BufState *state) {
   if (state->GetNextStep()) {
     DEBUG_STATE(state);
@@ -2993,7 +2993,7 @@ int multi_node_sync_sample(int flag,
   }
 
   int ret = 0;
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
   platform::CUDADeviceGuard guard(gpu_id);
   int *stat_ptr = multi_node_sync_stat_ptr->data<int>();
   auto comm = platform::NCCLCommContext::Instance().Get(0, place.GetDeviceId());

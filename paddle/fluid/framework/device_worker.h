@@ -344,6 +344,8 @@ class HogwildWorker : public CPUWorkerBase {
   std::unordered_map<std::string, std::string> cast_fp16_vars_;
   std::unordered_map<std::string, std::string> param_cast_vars_;
   std::unordered_map<std::string, std::string> need_cast_vars_;
+  bool use_ps_gpu_ = false;
+  bool use_gpu_graph_ = false;
 };
 
 class DownpourWorker : public HogwildWorker {

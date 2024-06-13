@@ -123,6 +123,7 @@ message TableParameter {
   // for patch model
   optional bool enable_revert = 13 [ default = false ];
   optional float shard_merge_rate = 14 [ default = 1.0 ];
+  optional bool use_gpu_graph = 15 [ default = false ];
 }
 
 message TableAccessorParameter {
