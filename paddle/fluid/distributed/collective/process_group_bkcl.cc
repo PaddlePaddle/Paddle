@@ -237,6 +237,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
     CommType op_type,
     bool sync_op,
     bool use_calc_stream) {
+  if (!use_calc_stream) {
+    VLOG(3) << "For XPU, Communication on non-calc stream has minor effect on "
+               "performance and might be conflict with streams in calc_ctx, so "
+               "we disable it currently.";
+    use_calc_stream = true;
+  }
   const auto& place = tensor.place();
   const auto& key = GetKeyFromPlace(place);
 
@@ -281,6 +287,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Point2Point(
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
+  if (!use_calc_stream) {
+    VLOG(3) << "For XPU, Communication on non-calc stream has minor effect on "
+               "performance and might be conflict with streams in calc_ctx, so "
+               "we disable it currently.";
+    use_calc_stream = true;
+  }
   auto tensor_tmp =
       paddle::experimental::CheckAndTrans2NewContiguousTensor(tensor);
   const auto& place = tensor_tmp.place();
