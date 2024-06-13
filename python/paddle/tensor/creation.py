@@ -29,6 +29,7 @@ from paddle._typing import (
     PlaceLike,
     ShapeLike,
     TensorLike,
+    Numberic,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -1734,13 +1735,13 @@ def triu_(
 @overload
 def meshgrid(
     args: Sequence[paddle.Tensor], name: str | None = None
-) -> paddle.Tensor:
-    ...
+) -> paddle.Tensor: ...
 
 
 @overload
-def meshgrid(*args: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
-    ...
+def meshgrid(
+    *args: paddle.Tensor, name: str | None = None
+) -> paddle.Tensor: ...
 
 
 def meshgrid(*args, **kwargs):
@@ -3038,7 +3039,10 @@ def polar(
 
 @dygraph_only
 def cauchy_(
-    x: paddle.Tensor, loc=0, scale=1, name: str | None = None
+    x: paddle.Tensor,
+    loc: Numberic = 0,
+    scale: Numberic = 1,
+    name: str | None = None,
 ) -> paddle.Tensor:
     """Fills the tensor with numbers drawn from the Cauchy distribution.
 
