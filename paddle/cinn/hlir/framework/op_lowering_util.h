@@ -16,11 +16,25 @@
 
 #include <queue>
 
-#include "paddle/cinn/hlir/framework/op_lowering_impl.h"
+#include <string>
+#include <vector>
+
+#include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/graph.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/op_lowering_impl_base.h"
+#include "paddle/cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
+#include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/schedule/ir_schedule_util.h"
+#include "paddle/cinn/lang/packed_func.h"
 
 namespace cinn {
 namespace hlir {
 namespace framework {
+
+using GroupPtr = std::shared_ptr<Graph::Group>;
+using cinn::common::Target;
 
 std::vector<NodeData*> GetInputNodeData(const Node* node);
 

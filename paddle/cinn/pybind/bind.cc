@@ -53,7 +53,6 @@ void BindCINN(py::module *m) {
   BindBackends(&backends);
   BindOptim(&optim);
   BindPE(&pe);
-  BindFrontend(&frontend);
   BindFramework(&framework);
   BindUtils(&utils);
   BindSchedule(&schedule);

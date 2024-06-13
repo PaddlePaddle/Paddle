@@ -23,9 +23,7 @@
 #include "paddle/cinn/frontend/program_pass.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph.h"
-#include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
-#include "paddle/cinn/hlir/pass/use_pass.h"
 #include "paddle/cinn/runtime/flags.h"
 
 PD_DECLARE_bool(cinn_use_fill_constant_folding);
@@ -145,7 +143,7 @@ std::shared_ptr<hlir::framework::Graph> Optimize(
       std::make_shared<hlir::framework::Graph>(*program, fetch_ids, target);
 
   VLOG(3) << "Before hlir::framework::ApplyPasses";
-  hlir::framework::ApplyPasses(graph.get(), options.graph_passes);
+  // hlir::framework::ApplyPasses(graph.get(), options.graph_passes);
   cinn::hlir::framework::PassPrinter::GetInstance()->End();
   return graph;
 }
@@ -161,15 +159,9 @@ std::shared_ptr<hlir::framework::Graph> Optimize(
   if (!passes.empty()) {
     for (const auto& pass : passes) {
       auto* p_pass = ProgramPassRegistry::Global()->Find(pass);
-      auto* g_pass =
-          Registry<hlir::framework::PassFunctionRegister>::Global()->Find(pass);
+
       if (p_pass) {
         options.program_passes.emplace_back(pass);
-      } else if (g_pass) {
-        options.graph_passes.emplace_back(pass);
-        if (pass == "OpFusionPass" || pass == "FusionMergePass") {
-          enable_fusion = true;
-        }
       } else {
         std::stringstream ss;
         ss << "Pass " << pass << " unsupported in CINN! Please check.\n";
