@@ -31,8 +31,13 @@ limitations under the License. */
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
+
+PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(assign, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(memcpy_h2d, GPU, ALL_LAYOUT);
 
 TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
   // 1. Init env
