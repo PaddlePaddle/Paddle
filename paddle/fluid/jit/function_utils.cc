@@ -20,9 +20,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace jit {
-namespace utils {
+namespace paddle::jit::utils {
 
 std::vector<DenseTensor> ToDenseTensors(const std::vector<Tensor> &tensors) {
   std::vector<DenseTensor> ret;
@@ -111,6 +109,4 @@ void RemoveFeedFetch(framework::ProgramDesc *program_desc) {
   }
 }
 
-}  // namespace utils
-}  // namespace jit
-}  // namespace paddle
+}  // namespace paddle::jit::utils

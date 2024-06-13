@@ -748,7 +748,6 @@ class PartialProgramLayer:
 
                 # if-else pass
                 if cinn_is_enabled(self._build_strategy, self._backend):
-                    print("##### forward_program: ", forward_program)
                     paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
                 else:
                     paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
@@ -833,9 +832,6 @@ class PartialProgramLayer:
     @cached_property
     def _train_program_id(self):
         program_id = paddle.utils._hash_with_id(self.train_program, self)
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
-        )
         return program_id
 
     @cached_property

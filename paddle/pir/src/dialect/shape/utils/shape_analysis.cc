@@ -132,13 +132,12 @@ void InferSymbolicShapeContext::SetSymbolForValueByStaticShape(Value val) {
     const std::vector<Type>& vec_data =
         value_type.dyn_cast<VectorType>().data();
     symbol::TensorListShapeOrDataDimExprs shape_data_list;
-    for (unsigned i = 0; i < vec_data.size(); ++i) {
-      if (!vec_data[i].isa<DenseTensorType>()) {
+    for (const auto& vec : vec_data) {
+      if (!vec.isa<DenseTensorType>()) {
         PADDLE_THROW(phi::errors::Fatal(
             "Set static shape ONLY SUPPORT inner type DenseTensorType!"));
       } else {
-        const DenseTensorType& type_info =
-            vec_data[i].dyn_cast<DenseTensorType>();
+        const DenseTensorType& type_info = vec.dyn_cast<DenseTensorType>();
         shape_data_list.emplace_back(
             GetStaticShapeForDenseTensorType(type_info));
       }
@@ -291,18 +290,16 @@ void InferSymbolicShapeContext::SubstituteDimExpr(
   if (!CanSubstituteInShapeAnalysis(origin, substituted)) return;
 
   substitution_pattern_[origin] = substituted;
-  for (auto it = substitution_pattern_.begin();
-       it != substitution_pattern_.end();
-       it++) {
-    if (it->second == origin) it->second = substituted;
+  for (auto& val : substitution_pattern_) {
+    if (val.second == origin) {
+      val.second = substituted;
+    }
   }
 
-  for (auto it = value_id_to_shape_or_data_.begin();
-       it != value_id_to_shape_or_data_.end();
-       it++) {
+  for (auto& val : value_id_to_shape_or_data_) {
     const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
-        symbol::SubstituteShapeOrData(it->second, substitution_pattern_);
-    it->second = substituted_shape_or_data;
+        symbol::SubstituteShapeOrData(val.second, substitution_pattern_);
+    val.second = substituted_shape_or_data;
   }
 }
 
@@ -417,21 +414,22 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
     if (infer_symbolic_shape_interface) {
       infer_symbolic_shape_interface.InferSymbolicShape(&context_);
       for (auto& result_value : op->results()) {
-        if (result_value && (!context_.HasShapeOrDataForValue(result_value))) {
+        if (!result_value || !result_value.type()) {
+          continue;
+        }
+        if (!context_.HasShapeOrDataForValue(result_value)) {
           PADDLE_THROW(phi::errors::Fatal(op->name() +
                                           " HAS ERROR on InferSymbolicShape!"));
         }
       }
     } else {
-      // TODO(Hongqing-work): throw it after the shape analysis reconstruct
-      // is done.
-      // PADDLE_THROW(phi::errors::Unimplemented(
-      //     val.defining_op()->name() +
-      //     " DOES NOT have InferSymbolicShapeInterface!"));
       LOG(WARNING) << op->name()
                    << " DOES NOT have InferSymbolicShapeInterface!";
       for (auto& result_value : op->results()) {
-        if (result_value && (!context_.HasShapeOrDataForValue(result_value))) {
+        if (!result_value || !result_value.type()) {
+          continue;
+        }
+        if (!context_.HasShapeOrDataForValue(result_value)) {
           SetSymbolForValueByStaticShape(result_value);
         }
       }
@@ -682,13 +680,13 @@ bool IsStaticShape(const Value& value) {
   if (value_type.isa<VectorType>()) {
     bool is_static = true;
     auto vec_data = value_type.dyn_cast<VectorType>().data();
-    for (unsigned i = 0; i < vec_data.size(); ++i) {
-      if (!vec_data[i].isa<DenseTensorType>()) {
+    for (const auto& vec : vec_data) {
+      if (!vec.isa<DenseTensorType>()) {
         is_static = false;
         break;
       } else {
         is_static = !::common::contain_unknown_dim(
-            vec_data[i].dyn_cast<DenseTensorType>().dims());
+            vec.dyn_cast<DenseTensorType>().dims());
         if (!is_static) {
           break;
         }
