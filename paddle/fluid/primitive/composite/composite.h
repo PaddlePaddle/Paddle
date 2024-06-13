@@ -403,6 +403,12 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     }
     run_mean_ = run_mean * momentum + batch_mean * (1. - momentum);
     run_var_ = run_var * momentum + batch_var * (1. - momentum);
+    if (run_mean_.dtype() != run_mean.dtype()) {
+      run_mean_ = cast<T>(run_mean_, run_mean.dtype());
+    }
+    if (run_var_.dtype() != run_var.dtype()) {
+      run_var_ = cast<T>(run_var_, run_var.dtype());
+    }
     assign_out_<T>(run_mean_, run_mean);
     assign_out_<T>(run_var_, run_var);
   } else {
