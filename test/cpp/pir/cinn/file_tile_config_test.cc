@@ -35,7 +35,7 @@
 COMMON_DECLARE_bool(print_ir);
 PD_DECLARE_string(cinn_tile_config_filename_label);
 #define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
-static bool PathExists(const std::string& path) {
+bool PathExists(const std::string& path) {
   struct stat statbuf;
   if (stat(path.c_str(), &statbuf) != -1) {
     if (S_ISDIR(statbuf.st_mode)) {
@@ -58,15 +58,20 @@ void RemoveDir(const cinn::common::Target target,
   dirname = dirname.substr(0, dirname.size() - 1);
   filename = filename.substr(0, filename.size() - 1);
 
-  auto removedir = [](std::string test_path) {
+  auto removedir = [](const std::string& test_path) {
     if (PathExists(test_path)) {
       std::remove(test_path.c_str());
+      LOG(INFO) << "File exsit.";
+    } else {
+      LOG(INFO) << "File doesn't exsit.";
     }
   };
   std::string root_path = FLAGS_cinn_tile_config_filename_label;
   dirname += "/" + filename + ".json";
   removedir(root_path + target.arch_str() + "/" + dirname);
-  LOG(INFO) << "Dump_path is " << root_path + dirname + " has been removed";
+  LOG(INFO) << "Dump_file "
+            << root_path + target.arch_str() + "/" + dirname +
+                   " has been removed";
 }
 
 TEST(ConfigSearcher, TestReduceDemo) {

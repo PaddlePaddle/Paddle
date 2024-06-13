@@ -86,6 +86,7 @@ struct BucketInfo {
              bool sp_is_dynamic,
              bool rb_is_dynamic);
   explicit BucketInfo(size_t size) : space(std::vector<Dimension>(size)) {}
+  explicit BucketInfo(const std::vector<Dimension>& dims);
   bool operator==(const BucketInfo& other) const;
 };
 

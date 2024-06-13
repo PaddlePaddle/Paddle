@@ -209,13 +209,15 @@ TileConfigMap FileTileConfigDatabase::GetConfigs(
         piece_tileconfig.bucket_info();
     //  Step 2.1: Convert proto bucketinfo to source bucketinfo
     int dims = its.dimension_size();
-    BucketInfo bucket_info(static_cast<size_t>(dims));
+    std::vector<BucketInfo::Dimension> vector_dim_info(
+        static_cast<size_t>(dims));
     for (int i = 0; i < dims; i++) {
-      bucket_info.space[i].lower_bound = its.dimension(i).lower_bound();
-      bucket_info.space[i].upper_bound = its.dimension(i).upper_bound();
-      bucket_info.space[i].iter_type = its.dimension(i).iter_type();
-      bucket_info.space[i].is_dynamic = its.dimension(i).is_dynamic();
+      vector_dim_info[i].lower_bound = its.dimension(i).lower_bound();
+      vector_dim_info[i].upper_bound = its.dimension(i).upper_bound();
+      vector_dim_info[i].iter_type = its.dimension(i).iter_type();
+      vector_dim_info[i].is_dynamic = its.dimension(i).is_dynamic();
     }
+    auto bucket_info = BucketInfo(vector_dim_info);
     //  Step 2.2: Convert proto tile_config to source tile_config
     ScheduleConfig::TileConfig tconfig;
     tconfig.tree_reduce_num = piece_tileconfig.tile_config().tree_reduce_num();

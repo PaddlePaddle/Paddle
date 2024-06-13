@@ -35,21 +35,14 @@ void ScheduleConfigManager::AddConfigDatabase(
 ScheduleConfigMap ScheduleConfigManager::ExtractConfigs(
     const common::Target& target,
     const std::shared_ptr<hlir::framework::pir::GroupInfo>& group_info) const {
-  if (policy_ == "default") {
+  if (policy_ == "default" || tile_config_data_.count(policy_) == 0) {
     return BuildScheduleConfig(group_info, target);
   } else {
+    VLOG(3) << "Enter policy branch: " << policy_;
     std::shared_ptr<ScheduleConfig::BaseInfo> base_info =
         InitBasicInfo(group_info);
-    IterSpaceType iter_space_type = [&] {
-      std::string sp_state =
-          base_info->has_dynamic_spatial ? "dynamic" : "static";
-      std::string rd_state =
-          base_info->has_dynamic_reduce ? "dynamic" : "static";
-      return IterSpaceType{{"S", sp_state}, {"R", rd_state}};
-    }();
-
-    TileConfigMap tile_config_map =
-        tile_config_data_.at(policy_)->GetConfigs(target, iter_space_type);
+    TileConfigMap tile_config_map = tile_config_data_.at(policy_)->GetConfigs(
+        target, base_info->iter_space_type);
     return CombineBaseInfoAndConfig(tile_config_map, base_info);
   }
 }
@@ -59,17 +52,19 @@ void ScheduleConfigManager::SetPolicy(const std::string& policy) {
 }
 
 void InitScheduleConfig() {
-  std::shared_ptr<cinn::ir::TileConfigDatabase> tile_config_database =
-      std::make_shared<cinn::ir::FileTileConfigDatabase>();
   auto& schedule_config_manager = cinn::ir::ScheduleConfigManager::Instance();
   std::string policy;
   if (FLAGS_cinn_enable_config_search == true) {
-    policy = "custom";
+    policy = "search";
   } else {
     policy = FLAGS_tile_config_policy;
   }
   schedule_config_manager.SetPolicy(policy);
-  schedule_config_manager.AddConfigDatabase(policy, tile_config_database);
+  if (policy == "optimal") {
+    std::shared_ptr<cinn::ir::TileConfigDatabase> tile_config_database =
+        std::make_shared<cinn::ir::FileTileConfigDatabase>();
+    schedule_config_manager.AddConfigDatabase(policy, tile_config_database);
+  }
 }
 
 }  // namespace ir

@@ -75,7 +75,6 @@ TEST(ConfigSearcher, TestReduceDemo) {
   // Step 2: Switch schedule config manager mode.
   auto& schedule_config_manager = cinn::ir::ScheduleConfigManager::Instance();
   // Step 3: Construct iter space and objective function.
-  cinn::ir::BucketInfo bucket_info;
   int s_dimension_lower = shape0 * shape1;
   int s_dimension_upper = shape0 * shape1;
   auto s_dimension_type = "S";
@@ -85,17 +84,18 @@ TEST(ConfigSearcher, TestReduceDemo) {
   auto r_dimension_type = "R";
   auto r_dimension_is_dynamic = false;
 
-  bucket_info.space.push_back(
-      cinn::ir::BucketInfo::Dimension{s_dimension_lower,
-                                      s_dimension_upper,
-                                      s_dimension_type,
-                                      s_dimension_is_dynamic});
-  bucket_info.space.push_back(
-      cinn::ir::BucketInfo::Dimension{r_dimension_lower,
-                                      r_dimension_upper,
-                                      r_dimension_type,
-                                      r_dimension_is_dynamic});
+  auto s_dimension = cinn::ir::BucketInfo::Dimension{s_dimension_lower,
+                                                     s_dimension_upper,
+                                                     s_dimension_type,
+                                                     s_dimension_is_dynamic};
+  auto r_dimension = cinn::ir::BucketInfo::Dimension{r_dimension_lower,
+                                                     r_dimension_upper,
+                                                     r_dimension_type,
+                                                     r_dimension_is_dynamic};
 
+  cinn::ir::BucketInfo bucket_info(
+      std::vector<cinn::ir::BucketInfo::Dimension>{s_dimension, r_dimension});
+  LOG(INFO) << "Bucket_info.space.size is: " << bucket_info.space.size();
   std::unique_ptr<cinn::ir::search::BaseObjectiveFunc> obj_func =
       std::make_unique<cinn::ir::search::WeightedSamplingTrailObjectiveFunc>(
           program.get(), bucket_info);

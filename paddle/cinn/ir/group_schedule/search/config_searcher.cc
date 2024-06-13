@@ -103,12 +103,13 @@ ScoreType WeightedSamplingTrailObjectiveFunc::operator()(
     }
     return res;
   }();
+  VLOG(3) << "Bucket_info_.space.size is " << bucket_info_.space.size();
   ScheduleConfig::TileConfig config{
       candidate[0], candidate[1], candidate[2], NoneReduceMethod()};
   tile_config_database->AddConfig(
       cinn::common::DefaultTarget(), bucket_info_, config);
   auto& schedule_config_manager = ScheduleConfigManager::Instance();
-  schedule_config_manager.AddConfigDatabase("custom", tile_config_database);
+  schedule_config_manager.AddConfigDatabase("search", tile_config_database);
   measurer_.Compile();
 
   for (auto& input_name_and_shapes : inputs_sampling_) {
