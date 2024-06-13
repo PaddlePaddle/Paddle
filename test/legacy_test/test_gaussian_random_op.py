@@ -398,11 +398,6 @@ class TestStandardNormalDtype(unittest.TestCase):
             )
             self.assertEqual(out.dtype, paddle.complex128)
 
-        if paddle.is_compiled_with_cuda():
-            paddle.set_device('gpu')
-            test_complex64()
-            test_complex128()
-        paddle.set_device('cpu')
         test_complex64()
         test_complex128()
 
@@ -414,18 +409,17 @@ class TestComplexRandnAPI(unittest.TestCase):
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
-        paddle.disable_static(place)
-        for dtype in ['complex64', 'complex128']:
-            out = paddle.randn([5000, 2], dtype=dtype)
-            mean = out.numpy().mean()
-            np.testing.assert_allclose(mean, 0.0 + 0.0j, rtol=0.2, atol=0.2)
-            var = out.numpy().var()
-            var_real = out.numpy().real.var()
-            var_imag = out.numpy().imag.var()
-            np.testing.assert_allclose(var, 1.0, rtol=0.2, atol=0.2)
-            np.testing.assert_allclose(var_real, 0.5, rtol=0.2, atol=0.2)
-            np.testing.assert_allclose(var_imag, 0.5, rtol=0.2, atol=0.2)
-        paddle.enable_static()
+        with base.dygrpah.guard(place):
+            for dtype in ['complex64', 'complex128']:
+                out = paddle.randn([5000, 2], dtype=dtype)
+                mean = out.numpy().mean()
+                np.testing.assert_allclose(mean, 0.0 + 0.0j, rtol=0.2, atol=0.2)
+                var = out.numpy().var()
+                var_real = out.numpy().real.var()
+                var_imag = out.numpy().imag.var()
+                np.testing.assert_allclose(var, 1.0, rtol=0.2, atol=0.2)
+                np.testing.assert_allclose(var_real, 0.5, rtol=0.2, atol=0.2)
+                np.testing.assert_allclose(var_imag, 0.5, rtol=0.2, atol=0.2)
 
     @test_with_pir_api
     def test_static(self):
@@ -434,23 +428,22 @@ class TestComplexRandnAPI(unittest.TestCase):
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
-        paddle.enable_static()
-        for dtype in ['complex64', 'complex128']:
-            main_program = paddle.static.Program()
-            with paddle.static.program_guard(main_program):
-                out = paddle.randn([5000, 2], dtype=dtype)
-                exe = paddle.static.Executor(place)
-                ret = exe.run(fetch_list=[out])
+        with paddle_static_guard():
+            for dtype in ['complex64', 'complex128']:
+                main_program = paddle.static.Program()
+                with paddle.static.program_guard(main_program):
+                    out = paddle.randn([5000, 2], dtype=dtype)
+                    exe = paddle.static.Executor(place)
+                    ret = exe.run(fetch_list=[out])
 
-            mean = ret[0].mean()
-            np.testing.assert_allclose(mean, 0.0 + 0.0j, rtol=0.2, atol=0.2)
-            var = ret[0].var()
-            var_real = ret[0].real.var()
-            var_imag = ret[0].imag.var()
-            np.testing.assert_allclose(var, 1.0, rtol=0.2, atol=0.2)
-            np.testing.assert_allclose(var_real, 0.5, rtol=0.2, atol=0.2)
-            np.testing.assert_allclose(var_imag, 0.5, rtol=0.2, atol=0.2)
-        paddle.disable_static()
+                mean = ret[0].mean()
+                np.testing.assert_allclose(mean, 0.0 + 0.0j, rtol=0.2, atol=0.2)
+                var = ret[0].var()
+                var_real = ret[0].real.var()
+                var_imag = ret[0].imag.var()
+                np.testing.assert_allclose(var, 1.0, rtol=0.2, atol=0.2)
+                np.testing.assert_allclose(var_real, 0.5, rtol=0.2, atol=0.2)
+                np.testing.assert_allclose(var_imag, 0.5, rtol=0.2, atol=0.2)
 
 
 class TestRandomValue(unittest.TestCase):

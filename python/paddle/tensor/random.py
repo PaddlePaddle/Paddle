@@ -31,7 +31,6 @@ from ..base.data_feeder import (
     check_shape,
     check_type,
     check_variable_and_dtype,
-    convert_dtype,
 )
 from ..framework import (
     LayerHelper,
@@ -831,15 +830,24 @@ def standard_normal(shape, dtype=None, name=None):
                (0.16270922124385834-1.3086302280426025j),
                (0.9428746104240417+0.06869460642337799j)]])
     """
-    if dtype is not None and convert_dtype(dtype) in [
-        'complex64',
-        'complex128',
-    ]:
-        return gaussian(
-            shape=shape, mean=(0.0 + 0.0j), std=1.0, dtype=dtype, name=name
-        )
+
+    if dtype is not None and not isinstance(
+        dtype, (core.VarDesc.VarType, core.DataType)
+    ):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+        if dtype in [
+            core.VarDesc.VarType.COMPLEX64,
+            core.VarDesc.VarType.COMPLEX64,
+        ]:
+            return gaussian(
+                shape=shape, mean=(0.0 + 0.0j), std=1.0, dtype=dtype, name=name
+            )
+        else:
+            return gaussian(
+                shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name
+            )
     else:
-        return gaussian(shape=shape, mean=0.0, std=1.0, dtype=dtype, name=name)
+        return gaussian(shape=shape, mean=0.0, std=1.0, dtype=None, name=name)
 
 
 def randn(shape, dtype=None, name=None):
@@ -996,6 +1004,12 @@ def normal(mean=0.0, std=1.0, shape=None, name=None):
             >>> mean_tensor = paddle.to_tensor([1+1j, 2+2j, 3+3j])
             >>> out5 = paddle.normal(mean=mean_tensor)
             >>> print(out5)
+            [[(1.137553095817566+1.0932074785232544j)  ,
+              (1.7955012321472168+0.5819810628890991j) ,
+              (0.32699793577194214+0.9083631038665771j)],
+             [(1.1745303869247437+0.09971672296524048j),
+              (1.1627092361450195-0.30863022804260254j),
+              (1.9428746700286865+1.0686945915222168j) ]])
     """
     if not in_dynamic_mode():
         check_type(
