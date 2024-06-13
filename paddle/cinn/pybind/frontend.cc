@@ -26,7 +26,6 @@
 #include "paddle/cinn/frontend/net_builder.h"
 #include "paddle/cinn/frontend/optimize.h"
 #include "paddle/cinn/frontend/paddle_model_convertor.h"
-#include "paddle/cinn/frontend/pass/use_program_pass.h"
 #include "paddle/cinn/frontend/program_pass.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph.h"

@@ -16,7 +16,15 @@
 # Add docstring, attributes, methods and alias with type annotaions for `Tensor` in `tensor.prototype.pyi`
 # if not conveniently coding in original place (like c++ source file).
 
-from typing import Any, overload
+# Import common typings for generated methods
+# isort: off
+from typing import *  # noqa: F403
+from typing_extensions import *  # noqa: F403
+from paddle._typing import *  # noqa: F403
+
+# isort: on
+
+from typing import Any, Literal, overload
 
 import numpy.typing as npt
 from typing_extensions import TypeAlias
@@ -180,7 +188,7 @@ class Tensor:
             | tuple[None | bool | int | _Slice, ...]
             | list[Tensor | bool | int]
         ),
-        value: Tensor | npt.NDArray[Any] | int | float | complex | bool,
+        value: Tensor | npt.NDArray[Any] | complex | bool,
     ) -> None: ...
     def __len__(self) -> int: ...
 
@@ -260,4 +268,4 @@ class Tensor:
     def type(self) -> Any: ...
 
     # annotation: ${tensor_alias}
-    __qualname__ = "Tensor"
+    __qualname__: Literal["Tensor"]

@@ -14,8 +14,10 @@
 import inspect
 import sys
 import warnings
+from typing import Callable, TypeVar
 
 import decorator
+from typing_extensions import ParamSpec
 
 import paddle
 from paddle.base import core, framework
@@ -27,6 +29,9 @@ from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 from .tracer import Tracer
 
 __all__ = []
+
+_InputT = ParamSpec("_InputT")
+_RetT = TypeVar("_RetT")
 
 NON_PERSISTABLE_VAR_NAME_SUFFIX = "__non_persistable"
 
@@ -60,8 +65,10 @@ def to_static_unsupport_argument_warning(
             )
 
 
-def _switch_to_static_graph_(func):
-    def __impl__(*args, **kwargs):
+def _switch_to_static_graph_(
+    func: Callable[_InputT, _RetT]
+) -> Callable[_InputT, _RetT]:
+    def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         with framework._dygraph_guard(None):
             return func(*args, **kwargs)
 

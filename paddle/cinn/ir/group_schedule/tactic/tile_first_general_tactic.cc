@@ -20,9 +20,6 @@
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 
-PD_DECLARE_bool(support_reduce_stride_read);
-PD_DECLARE_bool(support_trivial_stride_read);
-
 namespace cinn {
 namespace ir {
 
@@ -47,11 +44,11 @@ bool IsWarpReduce(const ScheduleConfig& config) {
   return std::visit(MatchWarpReduce, config.tile_config.reduce_method);
 }
 
-bool UseReduceTile(const ScheduleConfig& config) {
+bool UseContinuousDataTile(const ScheduleConfig& config) {
   const auto& raw_reduce_axis = config.base_info->raw_reduce_axis;
   const auto raw_data_rank = config.base_info->raw_data_rank;
   if (raw_reduce_axis.empty()) {
-    return false;
+    return true;
   }
   for (size_t i = 1; i < raw_reduce_axis.size(); i++) {
     if (raw_reduce_axis[i] != raw_reduce_axis[i - 1] + 1) {
@@ -66,7 +63,8 @@ class TileFirstGeneralTactic final : public ScheduleTactic {
   void Init(ScheduleContext* context) override;
 
   void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
-  void ApplyReduceTile(ir::IRSchedule* sch, const std::string& block_id);
+  void ApplyContinuousDataTile(ir::IRSchedule* sch,
+                               const std::string& block_id);
 
   std::string TacticName() const override { return "TileFirstGeneralTactic"; }
 
@@ -113,9 +111,9 @@ void TileFirstGeneralTactic::Init(ScheduleContext* context) {
 
 void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
                                    const std::string& block_id) {
-  if (UseReduceTile(context_->config)) {
-    VLOG(4) << "Using ApplyReduceTile";
-    ApplyReduceTile(sch, block_id);
+  if (UseContinuousDataTile(context_->config)) {
+    VLOG(4) << "Using ApplyContinuousDataTile";
+    ApplyContinuousDataTile(sch, block_id);
     return;
   }
   if (ir::IsReduceInitTensorName(block_id)) return;
@@ -156,20 +154,20 @@ void TileFirstGeneralTactic::Apply(ir::IRSchedule* sch,
   SetReduceType(sch, block_id);
 }
 
-void TileFirstGeneralTactic::ApplyReduceTile(ir::IRSchedule* sch,
-                                             const std::string& block_id) {
+void TileFirstGeneralTactic::ApplyContinuousDataTile(
+    ir::IRSchedule* sch, const std::string& block_id) {
   if (ir::IsReduceInitTensorName(block_id)) return;
 
   const auto sp_thread = context_->config.tile_config.warp_num * 32 /
                          context_->config.tile_config.tree_reduce_num;
   const auto sp_loop = context_->config.tile_config.spatial_inner_num;
   const auto rd_thread = context_->config.tile_config.tree_reduce_num;
-  VLOG(4) << "ApplyReduceTile sp_thread=" << sp_thread;
-  VLOG(4) << "ApplyReduceTile sp_loop=" << sp_loop;
-  VLOG(4) << "ApplyReduceTile rd_thread=" << rd_thread;
-  VLOG(4) << "ApplyReduceTile vec_flatten_axis: "
+  VLOG(4) << "ApplyContinuousDataTile sp_thread=" << sp_thread;
+  VLOG(4) << "ApplyContinuousDataTile sp_loop=" << sp_loop;
+  VLOG(4) << "ApplyContinuousDataTile rd_thread=" << rd_thread;
+  VLOG(4) << "ApplyContinuousDataTile vec_flatten_axis: "
           << utils::Join(vec_flatten_axis_, ", ");
-  VLOG(4) << "ApplyReduceTile vec_reduce_axis: "
+  VLOG(4) << "ApplyContinuousDataTile vec_reduce_axis: "
           << utils::Join(vec_reduce_axis_, ", ");
 
   // Merge reduce axes
@@ -287,22 +285,13 @@ void TileFirstGeneralTactic::MergeReduceAxis(ir::IRSchedule* sch,
 void TileFirstGeneralTactic::SplitSptialInner(ir::IRSchedule* sch,
                                               const std::string& block_id) {
   if (IsInnerThreadSpatialLoopGT(context_->config, 1)) {
-    if (FLAGS_support_trivial_stride_read) {
-      auto loops = sch->GetLoops(block_id);
-      std::vector<int> split_factors{
-          static_cast<int>(context_->config.tile_config.spatial_inner_num), -1};
-      sch->Split(loops[0], split_factors);
-      loops = sch->GetLoops(block_id);
-      sch->Reorder({loops[1], loops[0]});
-    } else {
-      auto loops = sch->GetLoops(block_id);
-      auto split_loops = sch->Split(
-          loops[0],
-          std::vector<int>(
-              {-1,
-               static_cast<int>(
-                   context_->config.tile_config.spatial_inner_num)}));
-    }
+    auto loops = sch->GetLoops(block_id);
+    auto split_loops =
+        sch->Split(loops[0],
+                   std::vector<int>(
+                       {-1,
+                        static_cast<int>(
+                            context_->config.tile_config.spatial_inner_num)}));
   }
 }
 
@@ -313,30 +302,9 @@ void TileFirstGeneralTactic::SplitReduceInner(ir::IRSchedule* sch,
   auto loops = sch->GetLoops(block_id);
   auto reduce_loop = loops[reduce_current_axis_].As<ir::For>();
 
-  if (FLAGS_support_reduce_stride_read) {
-    if (context_->config.base_info->reduce_numel <= 256) {
-      std::vector<int> split_factors{
-          -1, static_cast<int>(context_->config.tile_config.tree_reduce_num)};
-      sch->Split(loops[reduce_current_axis_], split_factors);
-      loops = sch->GetLoops(block_id);
-      sch->Reorder(
-          {loops[reduce_current_axis_ + 1], loops[reduce_current_axis_]});
-    } else {
-      // split warp num first
-      std::vector<int> split_factors{
-          static_cast<int>(context_->config.tile_config.warp_num), -1, 32};
-      sch->Split(loops[reduce_current_axis_], split_factors);
-      loops = sch->GetLoops(block_id);
-      sch->Reorder(
-          {loops[reduce_current_axis_ + 2], loops[reduce_current_axis_ + 1]});
-      loops = sch->GetLoops(block_id);
-      sch->Fuse({loops[reduce_current_axis_], loops[reduce_current_axis_ + 1]});
-    }
-  } else {
-    std::vector<int> split_factors{
-        static_cast<int>(context_->config.tile_config.tree_reduce_num), -1};
-    sch->Split(loops[reduce_current_axis_], split_factors);
-  }
+  std::vector<int> split_factors{
+      static_cast<int>(context_->config.tile_config.tree_reduce_num), -1};
+  sch->Split(loops[reduce_current_axis_], split_factors);
   loops = sch->GetLoops(block_id);
   if (IsReduceBlock(context_->config, block_id)) {
     sch->FactorizeReduction(loops[reduce_current_axis_],
