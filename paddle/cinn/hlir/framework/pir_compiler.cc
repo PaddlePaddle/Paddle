@@ -79,9 +79,7 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
     // for details.
     const auto device_id = runtime::GetArchDevice(target_);
     auto worker_fn = [&](int index) {
-      if (device_id.has_value()) {
-        runtime::SetArchDevice(target_, device_id.value());
-      }
+      runtime::SetArchDevice(target_, device_id);
       CompilationTask task(&group_compilation_contexts[index]);
       compilation_results[index] = task();
       // Triggering llvm compilation in thread

@@ -32,7 +32,10 @@ std::optional<int> GetArchDevice(const common::Target& target) {
       [&](common::NVGPUArch) -> std::optional<int> {
 #ifdef CINN_WITH_CUDA
         int device_id;
-        cudaGetDevice(&device_id);
+        PADDLE_ENFORCE_EQ(
+            cudaGetDevice(&device_id),
+            cudaSuccess,
+            ::common::errors::InvalidArgument("cudaGetDeviceCount failed!"));
         return std::optional<int>{device_id};
 #else
         return std::nullopt;
@@ -40,17 +43,20 @@ std::optional<int> GetArchDevice(const common::Target& target) {
       });
 }
 
-void SetArchDevice(const common::Target& target, int device_id) {
-  PADDLE_ENFORCE_GE(device_id,
-                    0,
-                    ::common::errors::InvalidArgument(
-                        "Required device_id >=0  but received %d.", device_id));
+void SetArchDevice(const common::Target& target,
+                   const std::optional<int>& device_id) {
   target.arch.Match([&](common::UnknownArch) -> void {},
                     [&](common::X86Arch) -> void {},
                     [&](common::ARMArch) -> void {},
                     [&](common::NVGPUArch) -> void {
 #ifdef CINN_WITH_CUDA
-                      cudaSetDevice(device_id);
+                      PADDLE_ENFORCE_EQ(
+                          device_id.has_value(),
+                          true,
+                          ::common::errors::InvalidArgument(
+                              "Required device_id should have value, but "
+                              "received std::nullopt."));
+                      cudaSetDevice(device_id.value());
 #endif
                     });
 }
