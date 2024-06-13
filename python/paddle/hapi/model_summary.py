@@ -292,14 +292,14 @@ def summary(
             >>> # The module suffix number indicates its sequence in modules of the same type, used for differentiation identification
             >>> params_info = paddle.summary(lenet_dict_input, input=input_data) # doctest: +NORMALIZE_WHITESPACE
             ---------------------------------------------------------------------------
-            Layer (type)       Input Shape          Output Shape         Param #
+             Layer (type)       Input Shape          Output Shape         Param #
             ===========================================================================
                Conv2D-1       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
-                   ReLU-1        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
-               MaxPool2D-1     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
+                ReLU-1        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
+              MaxPool2D-1     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
                Conv2D-2       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
-                   ReLU-2       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
-               MaxPool2D-2    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
+                ReLU-2       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
+              MaxPool2D-2    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
                Linear-1          [[1, 400]]            [1, 120]           48,120
                Linear-2          [[1, 120]]            [1, 84]            10,164
                Linear-3          [[1, 84]]             [1, 10]              850
