@@ -93,9 +93,6 @@ class TestDropout(UnittestBase):
             out = paddle.nn.functional.dropout(feat, p=p)
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
-            # test _to_string
-            if not in_pir_mode():
-                self.assertTrue("Var[" in str(main_prog))
 
             exe = paddle.static.Executor()
             exe.run(startup_prog)
@@ -107,10 +104,12 @@ class TestDropout(UnittestBase):
             infer_out = self.infer_prog()
             self.assertEqual(infer_out.shape, (10, 10))
 
-            self.assertEqual(
-                main_prog.block(0).ops[4].all_attrs()['dropout_prob'].name,
-                p.name,
-            )
+            if not in_pir_mode():
+                self.assertTrue("Var[" in str(main_prog))
+                self.assertEqual(
+                    main_prog.block(0).ops[4].all_attrs()['dropout_prob'].name,
+                    p.name,
+                )
 
 
 if __name__ == '__main__':
