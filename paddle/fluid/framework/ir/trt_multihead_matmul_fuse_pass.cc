@@ -790,6 +790,22 @@ int TrtMultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     auto* bk_data = bk_tensor->mutable_data<float>(platform::CPUPlace());
     auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
 
+    /*
+        This is a trick method to avoid fp16 overflow.
+        We multiply the scale into the weights and bias of Q,
+        and set the corresponding scale in CustomQKVToContextPluginDynamic to 1.
+        (https://github.com/NVIDIA/TensorRT/blob/release/8.5/plugin/bertQKVToContextPlugin/qkvToContext.cu#L974)
+        This can maintain equivalence and reduce the risk of overflow in
+       CustomQKVToContextPluginDynamic.
+    */
+    for (int64_t idx = 0; idx <= wq_tensor->numel(); idx++) {
+      wq_data[idx] *= scale_attr;
+    }
+
+    for (int64_t idx = 0; idx <= bq_tensor->numel(); idx++) {
+      bq_data[idx] *= scale_attr;
+    }
+
     auto combined_w_dims =
         common::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
     auto combined_bias_dims = common::make_ddim({3, bq_tensor->dims()[0]});
