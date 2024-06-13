@@ -62,9 +62,9 @@ void BatchFCCUDAKernel(const Context& dev_ctx,
   // W.dim = slot_pairs_num * in_dim * out_dim
   // b.dim = slot_pairs_num * out_dim
   // output.dim = slot_pairs_num * ins_num * out_dim
-  auto* input = &input;
-  auto* w = &w;
-  auto* bias = &bias;
+  auto* input = &input_in;
+  auto* w = &w_in;
+  auto* bias = &bias_in;
   auto* output = out;
   auto input_dims = input->dims();
   auto w_dims = w->dims();

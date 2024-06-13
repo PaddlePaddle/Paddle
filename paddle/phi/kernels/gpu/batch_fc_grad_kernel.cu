@@ -63,7 +63,7 @@ template <typename T, typename Context>
 void BatchFCGradOpCUDAKernel(const Context& dev_ctx,
                              const DenseTensor& input_in,
                              const DenseTensor& w_in,
-                             const DenseTensor& bias_in,
+                             const DenseTensor& bias_in UNUSED,
                              const DenseTensor& out_grad,
                              DenseTensor* input_grad,
                              DenseTensor* w_grad,
