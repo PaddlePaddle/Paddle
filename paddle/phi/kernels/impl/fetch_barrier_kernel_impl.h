@@ -16,16 +16,16 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/core/dense_tensor.h"
-include "paddle/utils/optional.h"
+#include "paddle/utils/optional.h"
 
-    namespace phi {
-  template <typename T, typename Context>
-  void FetchBarrierKernel(
-      const Context &dev_ctx,
-      const paddle::optional<std::vector<const DenseTensor *>> &x UNUSED,
-      int trainer_id UNUSED,
-      const std::vector<std::string> endpoints UNUSED,
-      std::vector<DenseTensor *> out UNUSED) {
-    VLOG(5) << "FetchBarrier Sync, do not need now";
-  }
+namespace phi {
+template <typename T, typename Context>
+void FetchBarrierKernel(
+    const Context &dev_ctx,
+    const paddle::optional<std::vector<const DenseTensor *>> &x UNUSED,
+    int trainer_id UNUSED,
+    const std::vector<std::string> endpoints UNUSED,
+    std::vector<DenseTensor *> out UNUSED) {
+  VLOG(5) << "FetchBarrier Sync, do not need now";
+}
 }  // namespace phi
