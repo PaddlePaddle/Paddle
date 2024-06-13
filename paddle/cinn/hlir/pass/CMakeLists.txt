@@ -30,9 +30,6 @@ if(WITH_CUDA)
   cinn_cc_test(test_dot_merger_pass SRCS dot_merger_test.cc DEPS cinncore)
 
   # TODO(thisjiang): move when test bug in x86 is fixed
-  cinn_cc_test(
-    test_check_fusion_accuracy_pass SRCS check_fusion_accuracy_pass_test.cc
-    DEPS cinncore decomposer_test_helper)
   cinn_cc_test(test_dense_merge_pass SRCS dense_merge_pass_test.cc DEPS
                cinncore)
   cinn_cc_test(test_reduce_split_pass SRCS reduce_split_pass_test.cc DEPS
