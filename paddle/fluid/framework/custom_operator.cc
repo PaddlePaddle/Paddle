@@ -968,7 +968,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   auto op_name = OpMetaInfoHelper::GetOpName(base_op_meta);
 
   if (OpInfoMap::Instance().Has(op_name)) {
-    LOG(WARNING) << "Operator (" << op_name << ") has been registered.";
+    VLOG(1) << "Operator (" << op_name << ") has been registered.";
     return;
   }
 
@@ -1293,8 +1293,8 @@ void RegisterOperatorWithMetaInfoMap(
       continue;
     }
     for (const auto& meta_info : pair.second) {
-      LOG(INFO) << "register pir custom op :"
-                << OpMetaInfoHelper::GetOpName(meta_info);
+      VLOG(1) << "register pir custom op :"
+              << OpMetaInfoHelper::GetOpName(meta_info);
       custom_dialect->RegisterCustomOp(meta_info);
     }
 
