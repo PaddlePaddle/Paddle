@@ -153,8 +153,6 @@ class TestEyeRowsCol(UnittestBase):
 
     @test_with_pir_api
     def test_static(self):
-        if not in_pir_mode():
-            return
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, startup_prog):
