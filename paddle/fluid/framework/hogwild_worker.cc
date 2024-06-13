@@ -1002,8 +1002,8 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
     }                                                                        \
   } while (0)
         _ForEachDataType_(MemsetCallback);
-      }
-      else if (unpersist_vars_.find(name) == unpersist_vars_.end()) {  // NOLINT
+      } else if (unpersist_vars_.find(name) ==
+                 unpersist_vars_.end()) {  // NOLINT
         if (use_gpu_graph_ && use_ps_gpu_) {
           Variable *root_var = root_scope_->FindVar(name);
           if (!root_var) {
@@ -1050,11 +1050,11 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
               auto dst_ptr = root_tensor->mutable_data(
                   place_, root_tensor->dtype(), holder->size());
               memory::Copy(place_,
-                          dst_ptr,
-                          src_place,
-                          holder->ptr(),
-                          holder->size(),
-                          stream);
+                           dst_ptr,
+                           src_place,
+                           holder->ptr(),
+                           holder->size(),
+                           stream);
               CHECK(platform::is_gpu_place(root_tensor->place()));
               ++persist_reset;
             }
@@ -1063,7 +1063,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
             CHECK(proto::VarType::LOD_TENSOR == var->GetType());
             InitializeVariable(ptr, var->GetType());
             phi::DenseTensor *thread_tensor =
-                  ptr->GetMutable<phi::DenseTensor>();
+                ptr->GetMutable<phi::DenseTensor>();
             TensorCopy(*root_tensor, place_, thread_tensor);
             need_copy_vars_.push_back(name);
             //          VLOG(0) << "need copy var name=" << name;
@@ -1084,8 +1084,8 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
             auto dims = phi::make_ddim(var->GetShape());
             auto var_dtype =
                 phi::TransToPhiDataType(static_cast<int>(var->GetDataType()));
-            ptr->GetMutable<phi::DenseTensor>()
-                ->Resize(dims).set_type(var_dtype);
+            ptr->GetMutable<phi::DenseTensor>()->Resize(dims).set_type(
+                var_dtype);
           }
         }
       }
@@ -1162,10 +1162,10 @@ void HogwildWorker::CreateDeviceResource(const ProgramDesc &main_prog) {
     float flags[] = {0.0, 1.0, 1.0};
     auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(stat_ptr,  // output
-                                              &flags,
-                                              sizeof(float) * 3,
-                                              cudaMemcpyHostToDevice,
-                                              stream));
+                                               &flags,
+                                               sizeof(float) * 3,
+                                               cudaMemcpyHostToDevice,
+                                               stream));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
   }
 }
@@ -1204,7 +1204,7 @@ bool HogwildWorker::CheckBatchNum(int flag) {
                             "has ring_id attr."));
     } else {
       comm = platform::NCCLCommContext::Instance().Get(ring_id,
-                                                      place_.GetDeviceId());
+                                                       place_.GetDeviceId());
     }
 
     auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
@@ -1213,31 +1213,31 @@ bool HogwildWorker::CheckBatchNum(int flag) {
       // single element is not supported now.
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::ncclAllReduce(&stat_ptr[flag],
-                                          &stat_ptr[2],
-                                          1,
-                                          ncclFloat32,
-                                          ncclProd,
-                                          comm_ctx->GetNcclComm(),
-                                          stream));
+                                           &stat_ptr[2],
+                                           1,
+                                           ncclFloat32,
+                                           ncclProd,
+                                           comm_ctx->GetNcclComm(),
+                                           stream));
 
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(
           platform::dynload::ncclAllReduce(&stat_ptr[flag],
-                                          &stat_ptr[2],
-                                          1,
-                                          ncclFloat32,
-                                          ncclProd,
-                                          comm->comm(),
-                                          stream));
+                                           &stat_ptr[2],
+                                           1,
+                                           ncclFloat32,
+                                           ncclProd,
+                                           comm->comm(),
+                                           stream));
     }
 
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
-                                              &stat_ptr[2],
-                                              sizeof(float),
-                                              cudaMemcpyDeviceToHost,
-                                              stream));
+                                               &stat_ptr[2],
+                                               sizeof(float),
+                                               cudaMemcpyDeviceToHost,
+                                               stream));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-  //  g_barrier.wait();
+    //  g_barrier.wait();
   }
   return (ret > 0.0);
 }
@@ -1252,8 +1252,8 @@ bool HogwildWorker::GetPassEnd(int flag) {
     }
     //  g_barrier.wait();
     float *stat_ptr = sync_stat_.data<float>();
-    auto comm =
-      platform::NCCLCommContext::Instance().Get(ring_id_, place_.GetDeviceId());
+    auto comm = platform::NCCLCommContext::Instance().Get(ring_id_,
+                                                          place_.GetDeviceId());
     //  auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
     //  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
     auto stream = comm->stream();
@@ -1265,12 +1265,12 @@ bool HogwildWorker::GetPassEnd(int flag) {
                                                                 comm->comm(),
                                                                 stream));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&ret,  // output
-                                              &stat_ptr[2],
-                                              sizeof(float),
-                                              cudaMemcpyDeviceToHost,
-                                              stream));
+                                               &stat_ptr[2],
+                                               sizeof(float),
+                                               cudaMemcpyDeviceToHost,
+                                               stream));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
-  // g_barrier.wait();
+    // g_barrier.wait();
   }
   return (ret > 0.0);
 }

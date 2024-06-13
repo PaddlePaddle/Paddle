@@ -243,11 +243,11 @@ int32_t CtrDymfAccessor::Create(float** values, size_t num) {
     value[common_feature_value.MfDimIndex()] = -1;
     bool zero_init = _config.ctr_accessor_param().zero_init();
     _embed_sgd_rule->InitValue(
-      value + common_feature_value.EmbedWIndex(),
-      value + common_feature_value.EmbedG2SumIndex(),
-      zero_init);  // adam embed init not zero, adagrad embed init zero;
-              // pglbox set false for adam, gpups set true for adagrad
-              // users can set this in python config, default is true
+        value + common_feature_value.EmbedWIndex(),
+        value + common_feature_value.EmbedG2SumIndex(),
+        zero_init);  // adam embed init not zero, adagrad embed init zero;
+                    // pglbox set false for adam, gpups set true for adagrad
+                    // users can set this in python config, default is true
     _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
                                 value + common_feature_value.EmbedxG2SumIndex(),
                                 false);

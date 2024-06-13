@@ -1229,7 +1229,13 @@ class DataFeed {
     if (gpu_graph_mode_) {
 #if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
       return gpu_graph_data_generator_.GetGraphBatchsize();
-#endif
+#else
+      // gpu_graph_mode_ set true only when
+      // PADDLE_WITH_HETERPS=ON and PADDLE_WITH_PSCORE=ON
+      VLOG(1) << "Error: GetCurBatchSize() gpu_graph_mode_ "
+              << "set true only when "
+              << "PADDLE_WITH_HETERPS=ON and PADDLE_WITH_PSCORE=ON";
+      return 0;
     } else {
       return batch_size_;
     }
@@ -1237,7 +1243,7 @@ class DataFeed {
   virtual void SetNewBatchsize(int batch_num) {
 #if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
     if (gpu_graph_mode_) {
-    gpu_graph_data_generator_.SetNewBatchsize(batch_num);
+      gpu_graph_data_generator_.SetNewBatchsize(batch_num);
     }
 #endif
   }

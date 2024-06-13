@@ -591,7 +591,7 @@ int32_t SSDSparseTable::Save(const std::string& path,
 #if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   // gpu graph mode
   if (_use_gpu_graph) {
-    auto *save_filtered_slots = _value_accessor->GetSaveFilteredSlots();
+    auto* save_filtered_slots = _value_accessor->GetSaveFilteredSlots();
     if (save_filtered_slots != nullptr && (save_filtered_slots->size()) > 0) {
       return Save_v2(path, param);
     }

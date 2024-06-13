@@ -537,25 +537,25 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
         }
 
         auto get_feature_id = [this,
-                              slot_num,
-                              batch,
-                              fea_num_per_node,
-                              &h_slot_feature_num_map,
-                              &node_ids,
-                              &feature_ids](int i) {
+                               slot_num,
+                               batch,
+                               fea_num_per_node,
+                               &h_slot_feature_num_map,
+                               &node_ids,
+                               &feature_ids](int i) {
           platform::CUDADeviceGuard guard(resource_->dev_id(i));
           auto stream = resource_->local_stream(i, 0);
           int* d_slot_feature_num_map;
           uint64_t* d_node_list_ptr;
           uint64_t* d_feature_list_ptr;
-          CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(
-                                  &d_slot_feature_num_map),
-                                slot_num * sizeof(int)));
+          CUDA_CHECK(
+              cudaMalloc(reinterpret_cast<void**>(&d_slot_feature_num_map),
+                         slot_num * sizeof(int)));
           CUDA_CHECK(cudaMemcpyAsync(d_slot_feature_num_map,
-                                    h_slot_feature_num_map.data(),
-                                    sizeof(int) * slot_num,
-                                    cudaMemcpyHostToDevice,
-                                    stream));
+                                     h_slot_feature_num_map.data(),
+                                     sizeof(int) * slot_num,
+                                     cudaMemcpyHostToDevice,
+                                     stream));
           PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
           CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_node_list_ptr),
                                 batch * sizeof(uint64_t)));
@@ -567,32 +567,32 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
           feature_ids[i].resize(node_ids[i].size() * fea_num_per_node);
           while (pos < node_ids[i].size()) {
             real_batch = (pos + batch) <= node_ids[i].size()
-                            ? batch
-                            : node_ids[i].size() - pos;
+                              ? batch
+                              : node_ids[i].size() - pos;
             CUDA_CHECK(cudaMemcpyAsync(d_node_list_ptr,
-                                      node_ids[i].data() + pos,
-                                      real_batch * sizeof(uint64_t),
-                                      cudaMemcpyHostToDevice,
-                                      stream));
+                                       node_ids[i].data() + pos,
+                                       real_batch * sizeof(uint64_t),
+                                       cudaMemcpyHostToDevice,
+                                       stream));
             int ret =
-                  gpu_graph_ptr->get_feature_of_nodes(i,
-                                                      d_node_list_ptr,
-                                                      d_feature_list_ptr,
-                                                      real_batch,
-                                                      slot_num,
-                                                      d_slot_feature_num_map,
-                                                      fea_num_per_node);
+                gpu_graph_ptr->get_feature_of_nodes(i,
+                                                    d_node_list_ptr,
+                                                    d_feature_list_ptr,
+                                                    real_batch,
+                                                    slot_num,
+                                                    d_slot_feature_num_map,
+                                                    fea_num_per_node);
             PADDLE_ENFORCE_EQ(ret,
                               0,
                               platform::errors::PreconditionNotMet(
                                   "Get_feature_of_nodes error."));
 
-            CUDA_CHECK(
-              cudaMemcpyAsync(feature_ids[i].data() + pos * fea_num_per_node,
-                              d_feature_list_ptr,
-                              real_batch * fea_num_per_node * sizeof(uint64_t),
-                              cudaMemcpyDeviceToHost,
-                              stream));
+            CUDA_CHECK(cudaMemcpyAsync(
+                feature_ids[i].data() + pos * fea_num_per_node,
+                d_feature_list_ptr,
+                real_batch * fea_num_per_node * sizeof(uint64_t),
+                cudaMemcpyDeviceToHost,
+                stream));
             pos += real_batch;
           }
           PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
@@ -614,14 +614,14 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
           feature_list_size[i] = feature_ids[i].size();
         }
       } else if (FLAGS_gpugraph_storage_mode ==
-                    paddle::framework::GpuGraphStorageMode::
-                        MEM_EMB_FEATURE_AND_GPU_GRAPH ||
-                FLAGS_gpugraph_storage_mode ==
-                    paddle::framework::GpuGraphStorageMode::
-                        SSD_EMB_AND_MEM_FEATURE_GPU_GRAPH) {
+                     paddle::framework::GpuGraphStorageMode::
+                         MEM_EMB_FEATURE_AND_GPU_GRAPH ||
+                 FLAGS_gpugraph_storage_mode ==
+                     paddle::framework::GpuGraphStorageMode::
+                         SSD_EMB_AND_MEM_FEATURE_GPU_GRAPH) {
         auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
         auto sub_graph_feas =
-                  gpu_graph_ptr->get_sub_graph_fea(node_ids, slot_num);
+            gpu_graph_ptr->get_sub_graph_fea(node_ids, slot_num);
         for (size_t i = 0; i < device_num; i++) {
           feature_list[i] = sub_graph_feas[i].feature_list;
           feature_list_size[i] = sub_graph_feas[i].feature_size;
@@ -1940,13 +1940,11 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
   }
   gpu_task_futures.clear();
 #if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
-  if (gpu_graph_mode_ && \
-        (FLAGS_gpugraph_storage_mode ==
-            paddle::framework::GpuGraphStorageMode::
-                MEM_EMB_FEATURE_AND_GPU_GRAPH ||
-        FLAGS_gpugraph_storage_mode ==
-            paddle::framework::GpuGraphStorageMode::
-                SSD_EMB_AND_MEM_FEATURE_GPU_GRAPH)) {
+  if (gpu_graph_mode_ &&
+      (FLAGS_gpugraph_storage_mode == paddle::framework::GpuGraphStorageMode::
+                                          MEM_EMB_FEATURE_AND_GPU_GRAPH ||
+       FLAGS_gpugraph_storage_mode == paddle::framework::GpuGraphStorageMode::
+                                          SSD_EMB_AND_MEM_FEATURE_GPU_GRAPH)) {
     std::vector<GpuPsCommGraphFea>* tmp =
         (std::vector<GpuPsCommGraphFea>*)gpu_task->sub_graph_feas;
     delete tmp;
@@ -2075,8 +2073,8 @@ void PSGPUWrapper::build_task() {
 void PSGPUWrapper::BeginPass() {
   platform::Timer timer;
 #if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
-  if (gpu_graph_mode_ && \
-        (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM)) {
+  if (gpu_graph_mode_ &&
+      (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM)) {
     return;
   }
 #endif
@@ -2108,8 +2106,8 @@ void PSGPUWrapper::BeginPass() {
 
 void PSGPUWrapper::EndPass() {
 #if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
-  if (gpu_graph_mode_ && \
-        (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM)) {
+  if (gpu_graph_mode_ &&
+      (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM)) {
     return;
   }
 #endif
@@ -2320,8 +2318,8 @@ void PSGPUWrapper::HbmToSparseTable() {
 
 void PSGPUWrapper::DumpToMem() {
 #if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
-  if (gpu_graph_mode_ && \
-        (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM)) {
+  if (gpu_graph_mode_ &&
+      (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM)) {
     this->HbmToSparseTable();
   }
 #endif
