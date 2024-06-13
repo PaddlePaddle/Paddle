@@ -46,7 +46,7 @@ from ..base.backward import (
     append_backward,
 )
 from ..base.framework import Parameter
-from ..base.layer_helper import LayerHelper
+from ..base.layer_helper import LayerHelper, LayerHelperBase
 from .lr import LRScheduler
 
 if TYPE_CHECKING:
@@ -187,7 +187,7 @@ class Optimizer:
     """
 
     regularization: WeightDecayRegularizer | None
-    helper: LayerHelper | None
+    helper: LayerHelperBase | None
     clear_gradients: Callable
 
     @imperative_base.no_grad()
