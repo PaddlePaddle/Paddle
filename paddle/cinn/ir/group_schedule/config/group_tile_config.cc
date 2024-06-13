@@ -117,6 +117,7 @@ std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
       (base_info->reduce_axis.size() == base_info->data_rank);
 
   for (int64_t i = 0; i < group_info->data_space.size(); ++i) {
+    if (group_info->data_space[i] == 1) continue;
     std::string iter_type = reduce_dim_loc.count(i) > 0 ? "R" : "S";
     std::string static_or_dynamic =
         group_info->data_space[i] == -1 ? "dynamic" : "static";
@@ -128,6 +129,9 @@ std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
         base_info->iter_space_type.back().second = "dynamic";
       }
     }
+  }
+  if (base_info->iter_space_type.empty()) {
+    base_info->iter_space_type.push_back({"S", "static"});
   }
 
   return base_info;

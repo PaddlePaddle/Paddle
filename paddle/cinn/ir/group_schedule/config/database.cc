@@ -65,15 +65,9 @@ ScheduleConfigMap ScheduleConfigManager::ExtractConfigs(
   }
   std::shared_ptr<ScheduleConfig::BaseInfo> base_info =
       InitBasicInfo(group_info);
-  IterSpaceType iter_space_type = [&] {
-    std::string sp_state =
-        base_info->has_dynamic_spatial ? "dynamic" : "static";
-    std::string rd_state = base_info->has_dynamic_reduce ? "dynamic" : "static";
-    return IterSpaceType{{"S", sp_state}, {"R", rd_state}};
-  }();
 
-  TileConfigMap tile_config_map =
-      tile_config_data_.at(policy_)->GetConfigs(target, iter_space_type);
+  TileConfigMap tile_config_map = tile_config_data_.at(policy_)->GetConfigs(
+      target, base_info->iter_space_type);
   return CombineBaseInfoAndConfig(tile_config_map, base_info);
 }
 
