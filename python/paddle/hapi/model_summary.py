@@ -58,7 +58,7 @@ def summary(
                     batch_size can be None or -1. Default: None. Note that
                     input_size and input cannot be None at the same time.
         dtypes (str|None, optional): If dtypes is None, 'float32' will be used, Default: None.
-        input (Tensor|Sequence[paddle.Tensor]|InputDict|None, optional): If input is given, input_size and dtype will be ignored, Default: None.
+        input (Tensor|Sequence[paddle.Tensor]|dict[str, paddle.Tensor]|None, optional): If input is given, input_size and dtype will be ignored, Default: None.
 
     Returns:
         dict: A summary of the network including total params and total trainable params.
