@@ -110,7 +110,7 @@ std::string IterSpaceTypeToDir(const common::Target target,
          ".json";
 }
 
-bool FileTileConfigDatabase::Tofile(const common::Target& target,
+bool FileTileConfigDatabase::ToFile(const common::Target& target,
                                     int priority) {
   // Step1. To proto
   TileConfigMap& tile_config_map = target_config_data_;
@@ -233,7 +233,7 @@ void FileTileConfigDatabase::AddConfig(const common::Target& target,
                                        const ScheduleConfig::TileConfig& config,
                                        int priority) {
   target_config_data_[bucket_info] = config;
-  auto status = FileTileConfigDatabase::Tofile(target, priority);
+  auto status = FileTileConfigDatabase::ToFile(target, priority);
   if (status == true) {
     target_config_data_.clear();
     return;

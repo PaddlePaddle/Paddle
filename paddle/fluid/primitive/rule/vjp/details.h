@@ -550,28 +550,12 @@ void add_grad(const Tensor& x,
               Tensor* dx,
               Tensor* dy) {
   if (dy) {
-    if (out_grad.dims() != y.dims()) {
-      phi::DDim reduce_dim =
-          get_reduce_dims_from_out(out_grad.dims(), y.dims());
-      auto dy_reduce_res =
-          out_grad.sum(common::vectorize(reduce_dim), y.dtype(), false);
-      auto dy_tmp = reshape<T>(dy_reduce_res, common::vectorize(y.dims()));
-      set_output<T>(dy_tmp, dy);
-
-    } else {
-      by_pass<T>(out_grad, dy);
-    }
+    auto dy_tmp = reduce_as<T>(out_grad, y);
+    set_output<T>(dy_tmp, dy);
   }
   if (dx) {
-    if (out_grad.dims() != x.dims()) {
-      auto reduce_dim = get_reduce_dims_from_out(out_grad.dims(), x.dims());
-      auto dx_reduce_res =
-          out_grad.sum(common::vectorize(reduce_dim), x.dtype(), false);
-      auto dx_tmp = reshape<T>(dx_reduce_res, common::vectorize(x.dims()));
-      set_output<T>(dx_tmp, dx);
-    } else {
-      by_pass<T>(out_grad, dx);
-    }
+    auto dx_tmp = reduce_as<T>(out_grad, x);
+    set_output<T>(dx_tmp, dx);
   }
 }
 

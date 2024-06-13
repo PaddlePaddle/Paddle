@@ -38,7 +38,6 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/fuse_shape_ops_into_generate_shape_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_dynamic_to_static_dim_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/convert_static_dim_to_dynamic_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/move_generate_shape_ops_to_prologue_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/simplify_dim_expr_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/single_op_fallback_to_phi.h"
@@ -159,13 +158,8 @@ void ApplyDivideGroupOpToFusionOpPass(
     const std::function<std::shared_ptr<pir::PassManager>()>&
         CreatePassManager) {
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
-  if (FLAGS_group_schedule_tiling_first) {
-    pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInGroupOpPass());
-    pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
-  } else {
-    pass_manager->AddPass(
-        cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
-  }
+  pass_manager->AddPass(cinn::dialect::ir::CreateAddStoreInGroupOpPass());
+  pass_manager->AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
 
   pass_manager->AddPass(cinn::dialect::ir::CreateSingleOpFallbackToPhiPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateShapeOpsFallbackToPhiPass());
