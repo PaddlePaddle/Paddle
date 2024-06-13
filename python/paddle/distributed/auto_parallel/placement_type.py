@@ -87,7 +87,7 @@ def to_dim_map(placements, tensor_dims):
 
             dim_map[shard_dim] = i
         if placement.is_partial():
-            partial_status.append[i] = cast(Partial, placement).reduce_type()
+            partial_status[i] = cast(Partial, placement).reduce_type()
 
     return dim_map, partial_status
 
