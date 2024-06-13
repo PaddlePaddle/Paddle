@@ -100,16 +100,6 @@
     param : [shape, dtype, values]
     data_type : dtype
 
-- op : batch_fc
-  args : (Tensor input, Tensor w, Tensor bias)
-  output : Tensor(out)
-  infer_meta:
-    func : BatchFCInferMeta
-  kernel :
-    func : batch_fc
-    data_type: input
-  backward: batch_fc_grad
-
 - op : broadcast
   args : (Tensor x, int ring_id = 0, int root = 0)
   output : Tensor(out)
