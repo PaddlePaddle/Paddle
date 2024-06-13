@@ -411,26 +411,25 @@ class TestNormal(unittest.TestCase):
 
     def test_normal_initializer_complex(self, dtype="complex64"):
         """Test normal initializer with complex dtype"""
-        paddle.enable_static()
-
-        program = framework.Program()
-        block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype=dtype,
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.Normal(2.3 + 2.3j, 1.9),
+        with static_guard():
+            program = framework.Program()
+            block = program.global_block()
+            for _ in range(2):
+                block.create_parameter(
+                    dtype=dtype,
+                    shape=[5, 10],
+                    lod_level=0,
+                    name="param",
+                    initializer=initializer.Normal(2.3 + 2.3j, 1.9),
+                )
+            num_ops = 1
+            self.assertEqual(len(block.ops), num_ops)
+            init_op = block.ops[0]
+            self.assertEqual(init_op.type, 'gaussian_random')
+            self.assertAlmostEqual(
+                init_op.attr('mean'), 2.3 + 2.3j, delta=DELTA
             )
-        num_ops = 1
-        self.assertEqual(len(block.ops), num_ops)
-        init_op = block.ops[0]
-        self.assertEqual(init_op.type, 'gaussian_random')
-        self.assertAlmostEqual(init_op.attr('mean'), 2.3 + 2.3j, delta=DELTA)
-        self.assertAlmostEqual(init_op.attr('std'), 1.9, delta=DELTA)
-
-        paddle.disable_static()
+            self.assertAlmostEqual(init_op.attr('std'), 1.9, delta=DELTA)
 
         return block
 
