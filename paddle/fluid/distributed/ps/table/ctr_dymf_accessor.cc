@@ -245,8 +245,8 @@ int32_t CtrDymfAccessor::Create(float** values, size_t num) {
         value + common_feature_value.EmbedWIndex(),
         value + common_feature_value.EmbedG2SumIndex(),
         zero_init);  // adam embed init not zero, adagrad embed init zero;
-                    // pglbox set false for adam, gpups set true for adagrad
-                    // users can set this in python config, default is true
+                     // pglbox set false for adam, gpups set true for adagrad
+                     // users can set this in python config, default is true
     _embedx_sgd_rule->InitValue(value + common_feature_value.EmbedxWIndex(),
                                 value + common_feature_value.EmbedxG2SumIndex(),
                                 false);

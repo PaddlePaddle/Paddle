@@ -567,8 +567,8 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
           feature_ids[i].resize(node_ids[i].size() * fea_num_per_node);
           while (pos < node_ids[i].size()) {
             real_batch = (pos + batch) <= node_ids[i].size()
-                              ? batch
-                              : node_ids[i].size() - pos;
+                             ? batch
+                             : node_ids[i].size() - pos;
             CUDA_CHECK(cudaMemcpyAsync(d_node_list_ptr,
                                        node_ids[i].data() + pos,
                                        real_batch * sizeof(uint64_t),

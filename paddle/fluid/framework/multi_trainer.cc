@@ -160,6 +160,8 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   for (auto& th : wait_futures) {
     th.get();
   }
+
+  #ifdef PADDLE_WITH_HETERPS
   // only gpups mode
   if (!use_gpu_graph_ && use_ps_gpu_) {
     for (int num = 0; num < thread_num_; ++num) {
@@ -186,6 +188,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
       }
     }
   }
+#endif
   if (!use_gpu_graph_) {  // cpups mode
     for (auto& var : main_program.Block(0).AllVars()) {
       if (var->Persistable()) {
@@ -336,6 +339,7 @@ void MultiTrainer::Finalize() {
   if (need_dump_field_ || need_dump_param_) {
     FinalizeDumpEnv();
   }
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   // gpugraph mode
   if (use_gpu_graph_ && use_ps_gpu_) {
     // graph copy dense param to root scope
@@ -345,6 +349,7 @@ void MultiTrainer::Finalize() {
   } else if (use_ps_gpu_) {  // gpups mode
     MergeDenseParam();
   }
+#endif
 #if defined PADDLE_WITH_PSCORE
   auto communicator = paddle::distributed::Communicator::GetInstance();
   // for unittest which does not call fleet.init_worker() first

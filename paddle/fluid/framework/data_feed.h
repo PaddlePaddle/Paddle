@@ -1252,6 +1252,8 @@ class DataFeed {
     if (gpu_graph_mode_) {
 #if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
       return gpu_graph_data_generator_.GetSageMode();
+#else
+      return 0;
 #endif
     } else {
       return 0;
@@ -1261,6 +1263,8 @@ class DataFeed {
     if (gpu_graph_mode_) {
 #if defined(PADDLE_WITH_HETERPS)
       return gpu_graph_data_generator_.GetMultiNodeMode();
+#else
+      return 0;
 #endif
     } else {
       return 0;
@@ -1270,6 +1274,8 @@ class DataFeed {
     if (gpu_graph_mode_) {
 #if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
       return gpu_graph_data_generator_.GetPathNum();
+#else
+      return 0;
 #endif
     } else {
       return 0;
@@ -1279,6 +1285,8 @@ class DataFeed {
     if (gpu_graph_mode_) {
 #if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
       return gpu_graph_data_generator_.GetTrainState();
+#else
+      return 0;
 #endif
     } else {
       return 0;
@@ -1288,6 +1296,8 @@ class DataFeed {
     if (gpu_graph_mode_) {
 #if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_HETERPS)
       return gpu_graph_data_generator_.GetTrainMemoryDataSize();
+#else
+      return 0;
 #endif
     } else {
       return 0;
