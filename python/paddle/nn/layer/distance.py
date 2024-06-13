@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+import paddle
+
 from .. import functional as F
 from .layers import Layer
 
@@ -61,14 +65,15 @@ class PairwiseDistance(Layer):
             [4.99999860, 4.99999860])
     """
 
-    def __init__(self, p=2.0, epsilon=1e-6, keepdim=False, name=None):
+    def __init__(self, p: float = 2.0, epsilon: float = 1e-6, keepdim: bool = False, name: str | None = None):
         super().__init__()
         self.p = p
         self.epsilon = epsilon
         self.keepdim = keepdim
         self.name = name
 
-    def forward(self, x, y):
+    def forward(self, x: paddle.Tensor, y: paddle.Tensor
+    ) -> paddle.Tensor:
         return F.pairwise_distance(
             x, y, self.p, self.epsilon, self.keepdim, self.name
         )
