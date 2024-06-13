@@ -362,7 +362,7 @@ void KthvalueInferMeta(const MetaTensor& x,
 void LogicalNotInferMeta(const MetaTensor& x, MetaTensor* out);
 
 void LogsumexpInferMeta(const MetaTensor& input,
-                        const std::vector<int64_t>& axis,
+                        const std::vector<int>& axis,
                         bool keepdim,
                         bool reduce_all,
                         MetaTensor* out);
@@ -633,6 +633,14 @@ void SequenceMaskScalarInferMeta(const MetaTensor& x,
                                  const Scalar& max_len,
                                  DataType out_dtype,
                                  MetaTensor* y);
+
+void SequencePoolInferMeta(const MetaTensor& x,
+                           bool is_test,
+                           const std::string& pooltype,
+                           float pad_value,
+                           MetaTensor* out,
+                           MetaTensor* max_index,
+                           MetaConfig config = MetaConfig());
 
 void SetValueInferMeta(const MetaTensor& x, MetaTensor* out);
 

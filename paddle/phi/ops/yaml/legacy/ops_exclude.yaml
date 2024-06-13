@@ -51,7 +51,6 @@
 - hsigmoid_loss
 - increment
 - linspace
-- logsumexp
 - matrix_rank
 - matrix_rank_tol
 - max

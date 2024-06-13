@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
 """
 math functions
 """
@@ -146,7 +149,7 @@ def _get_reduce_axis_with_tensor(axis, x):
     return reduce_all, axis
 
 
-def log(x, name=None):
+def log(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
     r"""
     Calculates the natural log of the given input Tensor, element-wise.
 

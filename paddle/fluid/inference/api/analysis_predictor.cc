@@ -941,8 +941,9 @@ bool AnalysisPredictor::LoadPirParameters() {
     // put pd-op.data and pd-op.fetch into idx2feeds and idx2feeds
     if (op->isa<paddle::dialect::FetchOp>()) {
       int idx = op->attribute("col").dyn_cast<pir::Int32Attribute>().data();
-      if (fetches_.size() <= static_cast<size_t>(idx)) {
-        fetches_.resize(idx + 1);
+      if (pir_fetches_.size() <= static_cast<size_t>(idx)) {
+        pir_fetches_.resize(idx + 1);
+        pir_fetches_[idx] = op;
         std::string fetch_name =
             op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
         idx2fetches_[idx] = fetch_name;
@@ -953,6 +954,7 @@ bool AnalysisPredictor::LoadPirParameters() {
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
       idx2feeds_[feed_idx] = data_name;
       feed_idx++;
+      pir_feeds_.emplace_back(op);
     }
     for (auto var : op->results()) {
       std::string var_name;
@@ -1759,12 +1761,22 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
                                 framework::Scope *scope) {
   VLOG(3) << "Predictor::set_feed";
-  PADDLE_ENFORCE_EQ(inputs.size(),
-                    feeds_.size(),
-                    platform::errors::InvalidArgument(
-                        "wrong feed input size, need %d but get %d.",
-                        feeds_.size(),
-                        inputs.size()));
+  if (load_pir_model_) {
+    PADDLE_ENFORCE_EQ(inputs.size(),
+                      pir_feeds_.size(),
+                      platform::errors::InvalidArgument(
+                          "wrong feed input size, need %d but get %d.",
+                          pir_feeds_.size(),
+                          inputs.size()));
+  } else {
+    PADDLE_ENFORCE_EQ(inputs.size(),
+                      feeds_.size(),
+                      platform::errors::InvalidArgument(
+                          "wrong feed input size, need %d but get %d.",
+                          feeds_.size(),
+                          inputs.size()));
+  }
+
   for (const auto &input : inputs) {
     PADDLE_ENFORCE_EQ(input.defined(),
                       true,
@@ -1864,6 +1876,16 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 bool AnalysisPredictor::GetFetch(std::vector<paddle::Tensor> *outputs,
                                  framework::Scope *scope) {
   VLOG(3) << "Predictor::get_fetch";
+  if (load_pir_model_) {
+    outputs->resize(pir_fetches_.size());
+    for (size_t i = 0; i < pir_fetches_.size(); ++i) {
+      auto const &name = idx2fetches_[i];
+      auto &t = framework::GetVariableTensor(*scope, name);
+      (*outputs)[i] =
+          paddle::Tensor(std::make_shared<phi::DenseTensor>(t), name);
+    }
+    return true;
+  }
   outputs->resize(fetches_.size());
   for (size_t i = 0; i < fetches_.size(); ++i) {
     auto const &name = idx2fetches_[i];

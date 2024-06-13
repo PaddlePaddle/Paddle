@@ -20,6 +20,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/pir/include/core/program.h"
 
 COMMON_DECLARE_string(logging_pir_py_code_dir);
@@ -69,29 +70,67 @@ void VisitFeedName(const pir::Program& program,
   }
 }
 
-std::string GetLoggingShapeOrDataForName(int64_t program_id,
-                                         const std::string& name,
-                                         const phi::DenseTensor& tensor) {
-  int64_t random_id = [&] {
-    std::random_device rd{};
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<int64_t> dis(
-        0, std::numeric_limits<int64_t>::max());
-    return dis(gen);
-  }();
+std::optional<std::vector<int64_t>> GetTensorData(
+    const phi::DenseTensor& tensor) {
+  constexpr int kLimit = 64;
+  if (tensor.numel() > kLimit) return std::nullopt;
+  if (tensor.dtype() == phi::DataType::INT64) {
+    return phi::GetVectorFromTensor<int64_t>(&tensor);
+  }
+  if (tensor.dtype() == phi::DataType::INT32) {
+    const auto& data = phi::GetVectorFromTensor<int32_t>(&tensor);
+    return std::vector<int64_t>(data.begin(), data.end());
+  }
+  return std::nullopt;
+}
+
+std::string ShapeToString(const phi::DenseTensor& tensor) {
   std::ostringstream ss;
-  ss << "class PirProgram_example_input_tensor_meta_" << random_id << ":";
-  ss << "\n\tprogram_id = " << program_id;
-  ss << "\n\tinput_name = " << std::quoted(name);
-  ss << "\n\tshape = [";
+  ss << "[";
   int i = 0;
-  for (int dim : ::common::vectorize<int64_t>(tensor.dims())) {
+  for (int64_t dim : ::common::vectorize<int64_t>(tensor.dims())) {
     if (i++ > 0) {
       ss << ", ";
     }
     ss << dim;
   }
   ss << "]";
+  return ss.str();
+}
+
+std::string DataToString(const phi::DenseTensor& tensor) {
+  const auto& data = GetTensorData(tensor);
+  if (!data.has_value()) return "None";
+  std::ostringstream ss;
+  ss << "[";
+  int i = 0;
+  for (int64_t dim : data.value()) {
+    if (i++ > 0) {
+      ss << ", ";
+    }
+    ss << dim;
+  }
+  ss << "]";
+  return ss.str();
+}
+
+int64_t GetRandomId() {
+  std::random_device rd{};
+  std::mt19937_64 gen(rd());
+  std::uniform_int_distribution<int64_t> dis(
+      0, std::numeric_limits<int64_t>::max());
+  return dis(gen);
+}
+
+std::string GetLoggingShapeOrDataForName(int64_t program_id,
+                                         const std::string& name,
+                                         const phi::DenseTensor& tensor) {
+  std::ostringstream ss;
+  ss << "class PirProgram_example_input_tensor_meta_" << GetRandomId() << ":";
+  ss << "\n\tprogram_id = " << program_id;
+  ss << "\n\tinput_name = " << std::quoted(name);
+  ss << "\n\tshape = " << ShapeToString(tensor);
+  ss << "\n\tdata = " << DataToString(tensor);
   ss << "\n\n";
   return ss.str();
 }

@@ -134,8 +134,7 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     FeedOp::name(),
     DataOp::name(),
     ArrayLengthOp::name(),
-    "cinn_runtime.jit_kernel",
-};
+    "cinn_runtime.jit_kernel"};
 const std::unordered_set<std::string> SpecialLowerOps = {
     pir::CombineOp::name(),
     pir::ConstantTensorOp::name(),
@@ -274,6 +273,48 @@ static bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
 #endif
 
   return false;
+}
+
+bool CanRunOnCpuKernel(const std::vector<::pir::Value>& vec_inputs,
+                       ::pir::Operation* op) {
+  bool can_run_cpu = true;
+  for (size_t i = 0; i < vec_inputs.size(); ++i) {
+    auto tmp_in = vec_inputs[i];
+    if (!tmp_in) {
+      continue;
+    }
+
+    if (tmp_in.type().isa<AllocatedDenseTensorType>()) {
+      auto type = tmp_in.type().dyn_cast<AllocatedDenseTensorType>();
+      if (type.place().GetType() != phi::AllocationType::CPU) {
+        can_run_cpu = false;
+        break;
+      }
+
+      if (phi::product(type.dims()) > 4) {
+        can_run_cpu = false;
+        break;
+      }
+    }
+  }
+
+  for (size_t i = 0; i < op->num_results(); ++i) {
+    auto out = op->result(i);
+
+    if (!out || !out.type()) {
+      continue;
+    }
+
+    if (out.type().isa<DenseTensorType>()) {
+      auto type = out.type().dyn_cast<DenseTensorType>();
+      if (phi::product(type.dims()) > 4) {
+        can_run_cpu = false;
+        break;
+      }
+    }
+  }
+
+  return can_run_cpu;
 }
 
 static phi::Backend DeriveBackend(const std::string& op,
@@ -2008,19 +2049,38 @@ void HandleForSpecialOp(
   }
 
   if (op_item->name() == "cinn_runtime.jit_kernel") {
+    std::vector<pir::Value> in_temps;
     for (size_t i = 0; i < op_item->num_operands(); ++i) {
       auto cur_in = op_item->operand_source(i);
       if (!cur_in) {
-        vec_inputs.emplace_back();
+        in_temps.emplace_back();
         continue;
       }
       auto new_in = GetNewInput(
           cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+
+      in_temps.push_back(new_in);
+    }
+
+    auto dst_backend = phi::TransToPhiBackend(place);
+    auto exec_backend = paddle::dialect::PlaceAttribute::get(ctx, place);
+    if (CanRunOnCpuKernel(in_temps, op_item)) {
+      // change dst_backend to cpu
+      dst_backend = phi::Backend::CPU;
+
+      exec_backend = paddle::dialect::PlaceAttribute::get(
+          ctx, phi::Place(phi::AllocationType::CPU));
+    }
+
+    op_item->set_attribute(kAttrExecBackend, exec_backend);
+
+    for (size_t i = 0; i < in_temps.size(); ++i) {
+      auto new_in = in_temps[i];
       // For data transform
       if (new_in.type().isa<AllocatedDenseTensorType>()) {
         auto in_place =
             new_in.type().dyn_cast<AllocatedDenseTensorType>().place();
-        auto dst_backend = phi::TransToPhiBackend(place);
+
         bool need_trans =
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&
             (paddle::experimental::NeedTransformPlace(
@@ -2044,7 +2104,9 @@ void HandleForSpecialOp(
 
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       op_output_types.push_back(AllocatedDenseTensorType::get(
-          ctx, place, op_item->result(i).type().dyn_cast<DenseTensorType>()));
+          ctx,
+          phi::TransToPhiPlace(dst_backend),
+          op_item->result(i).type().dyn_cast<DenseTensorType>()));
     }
   }
 
