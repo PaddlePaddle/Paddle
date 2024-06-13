@@ -57,7 +57,7 @@ def summary(
                     every input's shape. Note that input_size only dim of
                     batch_size can be None or -1. Default: None. Note that
                     input_size and input cannot be None at the same time.
-        dtypes (str|None, optional): If dtypes is None, 'float32' will be used, Default: None.
+        dtypes (str|Sequence[str]|None, optional): If dtypes is None, 'float32' will be used, Default: None.
         input (Tensor|Sequence[paddle.Tensor]|dict[str, paddle.Tensor]|None, optional): If input is given, input_size and dtype will be ignored, Default: None.
 
     Returns:
@@ -294,15 +294,15 @@ def summary(
             ---------------------------------------------------------------------------
             Layer (type)       Input Shape          Output Shape         Param #
             ===========================================================================
-            Conv2D-1       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
-                ReLU-1        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
-            MaxPool2D-1     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
-            Conv2D-2       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
-                ReLU-2       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
-            MaxPool2D-2    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
-            Linear-1          [[1, 400]]            [1, 120]           48,120
-            Linear-2          [[1, 120]]            [1, 84]            10,164
-            Linear-3          [[1, 84]]             [1, 10]              850
+               Conv2D-1       [[1, 1, 28, 28]]      [1, 6, 28, 28]          60
+                   ReLU-1        [[1, 6, 28, 28]]      [1, 6, 28, 28]           0
+               MaxPool2D-1     [[1, 6, 28, 28]]      [1, 6, 14, 14]           0
+               Conv2D-2       [[1, 6, 14, 14]]     [1, 16, 10, 10]         2,416
+                   ReLU-2       [[1, 16, 10, 10]]     [1, 16, 10, 10]           0
+               MaxPool2D-2    [[1, 16, 10, 10]]      [1, 16, 5, 5]            0
+               Linear-1          [[1, 400]]            [1, 120]           48,120
+               Linear-2          [[1, 120]]            [1, 84]            10,164
+               Linear-3          [[1, 84]]             [1, 10]              850
             ===========================================================================
             Total params: 61,610
             Trainable params: 61,610
@@ -313,7 +313,9 @@ def summary(
             Params size (MB): 0.24
             Estimated Total Size (MB): 0.35
             ---------------------------------------------------------------------------
-
+            <BLANKLINE>
+            >>> print(params_info)
+            {'total_params': 61610, 'trainable_params': 61610}
     """
     if input_size is None and input is None:
         raise ValueError("input_size and input cannot be None at the same time")
