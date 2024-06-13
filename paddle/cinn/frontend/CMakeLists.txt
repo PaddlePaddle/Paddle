@@ -45,6 +45,3 @@ add_subdirectory(decomposer)
 # add_subdirectory(op_mappers)
 # add_subdirectory(pass)
 #add_subdirectory(group_cluster)
-
-cinn_cc_test(test_op_mapper_registry SRCS op_mapper_registry_test.cc DEPS
-             cinncore)
