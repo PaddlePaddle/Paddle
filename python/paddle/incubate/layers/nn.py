@@ -42,7 +42,10 @@ def inference(
     switch_ir_optim=True,
     switch_ir_debug=False,
     collect_shape=False,
-    delete_pass_lists=[],
+    delete_pass_lists=[
+        "trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass",
+        "add_support_int8_pass",
+    ],
     enable_new_ir=False,
     exp_enable_use_cutlass=False,
 ):
@@ -329,15 +332,16 @@ def inference(
                     )
                 else:
                     for i in range(len(input_tensor_lists)):
-                        min_input_shape[
-                            d2s_input_names[i]
-                        ] = input_tensor_lists[i].shape
-                        max_input_shape[
-                            d2s_input_names[i]
-                        ] = input_tensor_lists[i].shape
-                        opt_input_shape[
-                            d2s_input_names[i]
-                        ] = input_tensor_lists[i].shape
+                        if input_tensor_lists[i] is not None:
+                            min_input_shape[
+                                d2s_input_names[i]
+                            ] = input_tensor_lists[i].shape
+                            max_input_shape[
+                                d2s_input_names[i]
+                            ] = input_tensor_lists[i].shape
+                            opt_input_shape[
+                                d2s_input_names[i]
+                            ] = input_tensor_lists[i].shape
 
                     config.set_trt_dynamic_shape_info(
                         min_input_shape, max_input_shape, opt_input_shape
