@@ -1289,6 +1289,16 @@ PHI_DEFINE_EXPORTED_bool(enable_fuse_parallel_matmul_pass,
                          "Whether enable fuse_parallel_matmul_pass in cinn.");
 
 /**
+ * CINN fallback fusion ops FLAG
+ * Name: FLAGS_enable_fusion_fallback
+ * Since Version: 3.0 beta
+ * Value Range: bool, default=false
+ */
+PHI_DEFINE_EXPORTED_bool(enable_fusion_fallback,
+                         false,
+                         "Whether enable fallback fusion ops in cinn.");
+
+/**
  * Conv Search cache max number related FLAG
  * Name: FLAGS_search_cache_max_number
  * Since Version: 2.3.0
@@ -1615,6 +1625,11 @@ PHI_DEFINE_EXPORTED_bool(pir_apply_shape_optimization_pass,
                          false,
                          "Whether to apply shape_optimization pass "
                          "to infer symbolic shape");
+
+PHI_DEFINE_EXPORTED_int64(
+    pir_broadcast_tree_limit,
+    32,
+    "Maximum number of broadcast nodes allowed in a tree");
 
 PHI_DEFINE_EXPORTED_string(
     nvidia_package_dir,  // NOLINT

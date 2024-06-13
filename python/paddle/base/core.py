@@ -308,7 +308,6 @@ try:
         _RecordEvent,
         _Scope,
         _set_amp_op_list,
-        _set_cached_executor_build_strategy,
         _set_current_stream,
         _set_eager_deletion_mode,
         _set_fuse_parameter_group_size,
