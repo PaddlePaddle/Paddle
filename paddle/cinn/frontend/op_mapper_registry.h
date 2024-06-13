@@ -27,7 +27,6 @@
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/frontend/net_builder.h"
-#include "paddle/cinn/frontend/paddle/cpp/op_desc.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/scope.h"
 #include "paddle/cinn/utils/registry.h"
