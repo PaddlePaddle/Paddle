@@ -44,7 +44,6 @@ from .layout import (
 
 # Shape
 from .shape import (
-    DynamicShapeLike as DynamicShapeLike,
     ShapeLike as ShapeLike,
     Size1 as Size1,
     Size2 as Size2,
