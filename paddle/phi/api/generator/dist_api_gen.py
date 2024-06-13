@@ -1106,9 +1106,7 @@ class DistForwardAPI(ForwardAPI):
                         )
                     else:
                         if (
-                            self.need_to_generate_code_for_inplace_or_view_impl(
-                                i
-                            )
+                            self.need_to_generate_code_for_inplace_impl(i)
                             and self.generate_general_infer_spmd
                         ):
                             output_creation_code += (

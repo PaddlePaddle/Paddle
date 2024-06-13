@@ -2946,7 +2946,6 @@ All parameter, weight, gradient are variables in Paddle.
 #endif  // PADDLE_WITH_CUDA
   m.def("clear_executor_cache", []() {
     pybind11::gil_scoped_release release;
-    framework::ExecutorInfoCache::Instance().Finalize();
     framework::InterpreterCoreInfoCache::Instance().Finalize();
   });
 

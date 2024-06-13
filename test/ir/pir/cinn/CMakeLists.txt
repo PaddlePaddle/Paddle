@@ -34,8 +34,8 @@ if(WITH_GPU)
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
       FLAGS_enable_pir_api=1 FLAGS_prim_all=True
       FLAGS_cinn_new_group_scheduler=1 FLAGS_cinn_bucket_compile=1
-      FLAGS_support_reduce_stride_read=1 FLAGS_group_schedule_tiling_first=1
-      ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_cinn_sub_graph.py
+      FLAGS_group_schedule_tiling_first=1 ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_cinn_sub_graph.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   set_tests_properties(test_cinn_sub_graph_stride_read
                        PROPERTIES LABELS "RUN_TYPE=CINN")

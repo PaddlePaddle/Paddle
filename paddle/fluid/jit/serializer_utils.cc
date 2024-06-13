@@ -20,9 +20,7 @@
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/var_desc.h"
 
-namespace paddle {
-namespace jit {
-namespace utils {
+namespace paddle::jit::utils {
 
 bool IsPersistable(framework::VarDesc* desc_ptr) {
   auto type = desc_ptr->GetType();
@@ -109,6 +107,4 @@ void InitKernelSignatureMap() {
   paddle::framework::InitDefaultKernelSignatureMap();
 }
 
-}  // namespace utils
-}  // namespace jit
-}  // namespace paddle
+}  // namespace paddle::jit::utils

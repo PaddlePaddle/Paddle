@@ -137,11 +137,16 @@ __global__ void SumCsr3DCudaKernel(const int64_t* x_crows_data,
                                    int64_t* out_crows_data,
                                    int64_t* out_cols_data,
                                    T* out_values_data) {
+  {
+    CUDA_KERNEL_LOOP_TYPE(index, x_dim0 * x_dim1, int64_t) {
+      out_cols_data[index] = 0;
+    }
+  }
+
   CUDA_KERNEL_LOOP_TYPE(index, x_dim0 * (x_dim1 + 1), int64_t) {
     int64_t batch = index / (x_dim1 + 1);
     int64_t number = index % (x_dim1 + 1);
     out_crows_data[index] = number;
-    out_cols_data[index] = 0;
 
     if (number != x_dim1) {
       T sum_value = 0;
@@ -154,6 +159,8 @@ __global__ void SumCsr3DCudaKernel(const int64_t* x_crows_data,
       for (int64_t j = x_crows_data[index]; j < x_crows_data[index + 1]; ++j) {
         sum_value += x_values_data[j + x_values_data_offset];
       }
+
+      // `index - batch` would never exceed x_dim0 * x_dim1.
       out_values_data[index - batch] = sum_value;
     }
   }
