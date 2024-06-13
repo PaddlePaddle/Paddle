@@ -64,9 +64,9 @@ void RemoveDir(const cinn::common::Target target,
     }
   };
   std::string root_path = FLAGS_cinn_tile_config_filename_label;
+  dirname += "/" + filename + ".json";
   removedir(root_path + target.arch_str() + "/" + dirname);
-  LOG(INFO) << "Dump_path is "
-            << root_path + dirname + "/" + filename + ".json has been removed";
+  LOG(INFO) << "Dump_path is " << root_path + dirname + " has been removed";
 }
 
 TEST(ConfigSearcher, TestReduceDemo) {
