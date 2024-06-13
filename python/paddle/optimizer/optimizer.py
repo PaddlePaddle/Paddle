@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Callable, Sequence
 
 import numpy as np
 
@@ -186,9 +186,9 @@ class Optimizer:
 
     """
 
-    regularization: Any
-    helper: Any
-    clear_gradients: Any
+    regularization: WeightDecayRegularizer | None
+    helper: LayerHelper | None
+    clear_gradients: Callable
 
     @imperative_base.no_grad()
     def __init__(
