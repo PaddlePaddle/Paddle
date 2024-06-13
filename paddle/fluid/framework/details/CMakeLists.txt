@@ -111,10 +111,6 @@ if(WITH_CUDNN_FRONTEND)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} fuse_resunit_pass)
 endif()
 
-if(WITH_CINN)
-  set(IR_PASS_DEPS ${IR_PASS_DEPS} paddle2cinn)
-endif()
-
 if(NOT APPLE
    AND NOT WIN32
    AND (WITH_GPU OR WITH_ROCM))

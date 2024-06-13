@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,17 +14,13 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/device_context.h"
+#include <memory>
+#include "paddle/pir/include/pass/pass.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void LogsumexpKernel(const Context& ctx,
-                     const DenseTensor& x,
-                     const std::vector<int>& axis,
-                     bool keepdim,
-                     bool reduce_all,
-                     DenseTensor* out);
-
-}  // namespace phi
+namespace cinn {
+namespace dialect {
+namespace ir {
+std::unique_ptr<::pir::Pass> CreateFusionFallbackPass();
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

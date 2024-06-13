@@ -134,7 +134,7 @@ class MypyChecker(TypeChecker):
         self, test_results: list[TestResult], whl_error: list[str]
     ) -> None:
         is_fail = False
-        failed_apis = []
+        failed_apis = set()
 
         logger.warning("----------------Check results--------------------")
 
@@ -160,7 +160,7 @@ class MypyChecker(TypeChecker):
                         test_result.api_name,
                     )
                     logger.error(test_result.msg)
-                    failed_apis.append(test_result.api_name.split(':')[0])
+                    failed_apis.add(test_result.api_name.split(':')[0])
 
             is_fail = True
 
@@ -170,7 +170,7 @@ class MypyChecker(TypeChecker):
                     is_fail = True
                     logger.error(test_result.api_name)
                     logger.error(test_result.msg)
-                    failed_apis.append(test_result.api_name.split(':')[0])
+                    failed_apis.add(test_result.api_name.split(':')[0])
 
                 else:
                     logger.debug(test_result.api_name)
@@ -182,7 +182,8 @@ class MypyChecker(TypeChecker):
                 ">>> Please recheck the type annotations. Run `tools/type_checking.py` to check the typing issues:"
             )
             logger.error(
-                "> python tools/type_checking.py " + " ".join(failed_apis)
+                "> python tools/type_checking.py "
+                + " ".join(sorted(failed_apis))
             )
             logger.error("----------------End of the Check--------------------")
 
