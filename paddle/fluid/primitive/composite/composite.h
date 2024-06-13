@@ -1059,7 +1059,11 @@ Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
   }
 
   auto ans = maximum<T>(minimum<T>(x, max_reshape), min_reshape);
-  return ans;
+  if (x.shape().size() == 0) {
+    return reshape<T>(ans, x.shape());
+  } else {
+    return ans;
+  }
 }
 
 template <typename T>
