@@ -345,15 +345,20 @@ def _recompute_without_reentrant(
                 if holder_list[unpack_counter - 1]() is None:
                     return
 
-                tmp_tensor = core.eager.Tensor(
-                    inner_x.dtype,
-                    inner_x.shape,
-                    inner_x.name + "cpy",
-                    core.VarDesc.VarType.LOD_TENSOR,
-                    inner_x.persistable,
-                )
-                inner_x._share_buffer_to(tmp_tensor)
-                storage[holder_list[unpack_counter - 1]()] = tmp_tensor
+                if inner_x.is_contiguous():
+                    tmp_tensor = core.eager.Tensor(
+                        inner_x.dtype,
+                        inner_x.shape,
+                        inner_x.name + "cpy",
+                        core.VarDesc.VarType.LOD_TENSOR,
+                        inner_x.persistable,
+                    )
+                    inner_x._share_buffer_to(tmp_tensor)
+                    storage[holder_list[unpack_counter - 1]()] = tmp_tensor
+                else:
+                    storage[
+                        holder_list[unpack_counter - 1]()
+                    ] = inner_x.contiguous()
                 return
 
             def inner_unpack(inner_x):
