@@ -903,6 +903,12 @@ def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
         f.write(meta.serialize_to_string())
 
 
+def ensure_tensor_contiguous(tensor):
+    if not tensor.is_contiguous():
+        return tensor.contiguous()
+    return tensor
+
+
 @_run_save_pre_hooks
 @switch_to_static_graph
 def save(
@@ -1257,7 +1263,7 @@ def save(
             state_var_dict = {}
             for structured_name, var in dygraph_state_dict.items():
                 state_names_dict[var.name] = structured_name
-                state_var_dict[var.name] = var
+                state_var_dict[var.name] = ensure_tensor_contiguous(var)
         # 3. share parameters from Layer to scope & record var info
         with dygraph.guard():
             if use_pir_api():
