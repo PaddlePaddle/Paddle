@@ -21,3 +21,10 @@ PD_REGISTER_KERNEL(fake_dequantize_max_abs,
                    phi::FakeDequantizeMaxAbsKernel,
                    float,
                    double) {}
+
+PD_REGISTER_KERNEL(fake_channel_wise_dequantize_max_abs,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FakeChannelWiseDequantizeMaxAbsKernel,
+                   float,
+                   double) {}

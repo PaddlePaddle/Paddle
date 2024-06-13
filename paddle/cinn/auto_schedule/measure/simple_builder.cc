@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/auto_schedule/measure/simple_builder.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace auto_schedule {
 
@@ -25,8 +25,10 @@ SimpleBuilder::SimpleBuilder(hlir::framework::GraphCompiler* graph_compiler)
     : graph_compiler_(graph_compiler) {}
 
 BuildResult SimpleBuilder::Build(const MeasureInput& input) {
-  CHECK_NE(graph_compiler_, static_cast<GraphCompiler*>(nullptr))
-      << "empty handle to GraphCompiler";
+  PADDLE_ENFORCE_NE(
+      graph_compiler_,
+      static_cast<GraphCompiler*>(nullptr),
+      phi::errors::InvalidArgument("empty handle to GraphCompiler"));
   CompilationContext& context = graph_compiler_->GetCompilationContext();
   context.groups.emplace_back(input.task->subgraph);
   context.lowered_funcs.emplace_back(input.lowered_funcs);

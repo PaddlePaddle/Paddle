@@ -13,23 +13,24 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import List, Tuple, Union
+from typing import TYPE_CHECKING, List, Tuple, Union
 
 from typing_extensions import TypeAlias
 
-from .. import Tensor
+if TYPE_CHECKING:
+    from .. import Tensor
 
 DynamicShapeLike: TypeAlias = Union[
-    Tuple[Union[int, Tensor, None], ...],
-    List[Union[int, Tensor, None]],
-    Tensor,
+    Tuple[Union[int, "Tensor", None], ...],
+    List[Union[int, "Tensor", None]],
+    "Tensor",
 ]
 
 
 ShapeLike: TypeAlias = Union[
     Tuple[int, ...],
     List[int],
-    Tensor,
+    "Tensor",
 ]
 
 

@@ -60,11 +60,12 @@ from .io_utils import (
 )
 from .pir_io import (
     get_pir_parameters,
+    load_inference_model_pir,
     load_pir,
-    load_pir_inference_model,
     load_vars_pir,
+    normalize_pir_program,
+    save_inference_model_pir,
     save_pir,
-    save_pir_inference_model,
     save_vars_pir,
 )
 
@@ -183,6 +184,8 @@ def normalize_program(program, feed_vars, fetch_vars, **kwargs):
             >>> normalized_program = paddle.static.normalize_program(program, [image], [predict])
 
     """
+    if in_pir_mode():
+        return normalize_pir_program(program, feed_vars, fetch_vars, **kwargs)
     if not isinstance(program, Program):
         raise TypeError(
             "program type must be `base.Program`, but received `%s`"
@@ -523,7 +526,7 @@ def save_inference_model(
     """
 
     if in_pir_mode():
-        save_pir_inference_model(
+        save_inference_model_pir(
             path_prefix, feed_vars, fetch_vars, executor, **kwargs
         )
         return
@@ -849,7 +852,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
             # program to get the inference result.
     """
     if in_pir_mode():
-        return load_pir_inference_model(path_prefix, executor, **kwargs)
+        return load_inference_model_pir(path_prefix, executor, **kwargs)
     # check kwargs
     supported_args = ('model_filename', 'params_filename')
     deprecated_args = ('pserver_endpoints',)
@@ -1735,6 +1738,7 @@ def set_program_state(program, state_dict):
     if in_pir_mode():
         params, opts = get_pir_parameters(program)
         parameter_list = params + opts
+        parameter_list = [var for var in parameter_list if var.persistable]
     else:
         parameter_list = list(filter(is_persistable, program.list_vars()))
 

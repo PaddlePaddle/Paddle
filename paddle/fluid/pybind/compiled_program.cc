@@ -74,7 +74,6 @@
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -996,12 +995,6 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           R"DOC(Allow user to customized passes. Normally model-specific
                 optimization passes should be defined in this way. BuildStrategy
                 cannot be updated after being finalized.)DOC");
-
-  m.def("_set_cached_executor_build_strategy",
-        [](int64_t program_id, const BuildStrategy &build_strategy) {
-          auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
-          cached_exe_info.SetBuildStrategy(program_id, build_strategy);
-        });
 
   cp.def(py::init<const std::vector<platform::Place> &,
                   const std::vector<std::string> &,

@@ -42,15 +42,13 @@ class OpLoweringGroup {
   OpLoweringGroup(const OpLoweringGroup&) = delete;
   OpLoweringGroup(OpLoweringGroup&&) = delete;
 
-  explicit OpLoweringGroup(const std::vector<::pir::Operation*>& group_ops)
-      : ops_(group_ops) {
-    fn_name_ = CompatibleInfo::GroupOpsName(ops_);
-  }
+  explicit OpLoweringGroup(const std::vector<::pir::Operation*>& group_ops,
+                           const std::string& fn_name)
+      : ops_(group_ops), fn_name_(fn_name) {}
 
-  explicit OpLoweringGroup(std::initializer_list<::pir::Operation*> group_ops)
-      : ops_(group_ops) {
-    fn_name_ = CompatibleInfo::GroupOpsName(ops_);
-  }
+  explicit OpLoweringGroup(std::initializer_list<::pir::Operation*> group_ops,
+                           const std::string& fn_name)
+      : ops_(group_ops), fn_name_(fn_name) {}
 
   const std::string& FuncName() const { return this->fn_name_; }
   ::pir::Block* GetParentBlock() const;

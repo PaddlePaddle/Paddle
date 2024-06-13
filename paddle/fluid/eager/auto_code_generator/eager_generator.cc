@@ -33,8 +33,7 @@
 
 #define NUM_CREATED_DUP_INPUTS 4
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 // To handle append_op at python-level
 std::unordered_map<std::string, std::vector<std::string>>
@@ -125,11 +124,6 @@ static void PrepareAttrMapForOps() {
   operators_with_attrs["cast"] = {};
   operators_with_attrs["cast"]["out_dtype"] = 5;
   operators_with_attrs["cast"]["in_dtype"] = 5;
-
-  // Handle "transfer_dtype"
-  operators_with_attrs["transfer_dtype"] = {};
-  operators_with_attrs["transfer_dtype"]["out_dtype"] = 5;
-  operators_with_attrs["transfer_dtype"]["in_dtype"] = 5;
 
   // Handle "c_split"
   operators_with_attrs["c_split"] = {};
@@ -3315,8 +3309,7 @@ static void DygraphCodeGeneration(const std::string& output_dir,
   GenerateNodeHFile(node_h_path, grad_node_h_str);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 int main(int argc, char* argv[]) {  // NOLINT
   if (argc != 3) {

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/mask_kernel.h"
+#include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/api/ext/dispatch.h"
@@ -24,8 +25,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/sparse/flatten_indices.h"
 
-namespace phi {
-namespace sparse {
+namespace phi::sparse {
 
 template <typename T, typename IntT>
 void MaskCooCPUKernel(const CPUContext& dev_ctx,
@@ -75,14 +75,114 @@ void MaskCooCPUKernel(const CPUContext& dev_ctx,
  * x and mask must have the same shape.
  **/
 template <typename T, typename Context>
-void MaskCooKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const SparseCooTensor& mask,
-                   SparseCooTensor* out) {
+void MaskAsCooKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const SparseCooTensor& mask,
+                     SparseCooTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
       mask.indices().dtype(), "MaskCooCPUKernel", ([&] {
         MaskCooCPUKernel<T, data_t>(dev_ctx, x, mask, out);
       }));
+}
+
+template <typename T, typename IntT>
+void MaskCsr2DCPUKernel(const CPUContext& dev_ctx,
+                        const DenseTensor& x,
+                        const SparseCsrTensor& mask,
+                        SparseCsrTensor* out) {
+  const DenseTensor& mask_cols = mask.cols();
+  const DenseTensor& mask_crows = mask.crows();
+  int64_t num_non_zeros = mask.nnz();
+
+  DenseTensor out_cols = phi::EmptyLike<IntT>(dev_ctx, mask_cols);
+  DenseTensor out_crows = phi::EmptyLike<IntT>(dev_ctx, mask_crows);
+  DenseTensor out_values = phi::Empty<T>(dev_ctx, {num_non_zeros});
+
+  phi::Copy(dev_ctx, mask_cols, dev_ctx.GetPlace(), false, &out_cols);
+  phi::Copy(dev_ctx, mask_crows, dev_ctx.GetPlace(), false, &out_crows);
+
+  int64_t numel = 0;
+  for (int64_t i = 0; i < mask_crows.numel() - 1; ++i) {
+    for (int64_t j = mask_crows.data<IntT>()[i];
+         j < mask_crows.data<IntT>()[i + 1];
+         ++j) {
+      IntT col_idx = mask_cols.data<IntT>()[numel];
+
+      out_values.data<T>()[numel] =
+          x.data<T>()[(i / x.dims()[0]) * x.dims()[1] +
+                      (i % x.dims()[0]) * x.dims()[1] + col_idx];
+
+      ++numel;
+    }
+  }
+
+  out->SetMember(out_crows, out_cols, out_values, x.dims());
+}
+
+template <typename T, typename IntT>
+void MaskCsr3DCPUKernel(const CPUContext& dev_ctx,
+                        const DenseTensor& x,
+                        const SparseCsrTensor& mask,
+                        SparseCsrTensor* out) {
+  const DenseTensor& mask_cols = mask.cols();
+  const DenseTensor& mask_crows = mask.crows();
+  int64_t num_non_zeros = mask.nnz();
+
+  DenseTensor out_cols = phi::EmptyLike<IntT>(dev_ctx, mask_cols);
+  DenseTensor out_crows = phi::EmptyLike<IntT>(dev_ctx, mask_crows);
+  DenseTensor out_values = phi::Empty<T>(dev_ctx, {num_non_zeros});
+
+  phi::Copy(dev_ctx, mask_cols, dev_ctx.GetPlace(), false, &out_cols);
+  phi::Copy(dev_ctx, mask_crows, dev_ctx.GetPlace(), false, &out_crows);
+
+  int64_t numel = 0;
+  for (int64_t i = 0; i < mask_crows.numel() - 1; ++i) {
+    for (int64_t j = mask_crows.data<IntT>()[i];
+         j < mask_crows.data<IntT>()[i + 1];
+         ++j) {
+      IntT col_idx = mask_cols.data<IntT>()[numel];
+
+      out_values.data<T>()[numel] =
+          x.data<T>()[(i / (mask_crows.numel() / x.dims()[0])) *
+                          (x.dims()[1] * x.dims()[2]) +
+                      (i % (mask_crows.numel() / x.dims()[0])) * x.dims()[2] +
+                      col_idx];
+
+      ++numel;
+    }
+  }
+
+  out->SetMember(out_crows, out_cols, out_values, x.dims());
+}
+
+/**
+ * @brief Filter the DenseTensor x by the
+ * mask.crows(), mask.cols() and output a SparseCsrTensor
+ * x and mask must have the same shape.
+ **/
+template <typename T, typename Context>
+void MaskAsCsrKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const SparseCsrTensor& mask,
+                     SparseCsrTensor* out) {
+  const phi::DDim& x_dims = x.dims();
+  if (x_dims.size() == 2) {
+    PD_VISIT_BASE_INTEGRAL_TYPES(
+        mask.crows().dtype(), "MaskCsr2DCPUKernel", ([&] {
+          MaskCsr2DCPUKernel<T, data_t>(dev_ctx, x, mask, out);
+        }));
+  } else if (x_dims.size() == 3) {
+    PD_VISIT_BASE_INTEGRAL_TYPES(
+        mask.crows().dtype(), "MaskCsr3DCPUKernel", ([&] {
+          MaskCsr3DCPUKernel<T, data_t>(dev_ctx, x, mask, out);
+        }));
+  } else {
+    // throw exception
+    phi::errors::InvalidArgument(
+        "mask_as for Sparse CSR Tensor only support 2-D or 3-D, but got "
+        "%d-D.",
+        x_dims.size());
+  }
 }
 
 template <typename T, typename IntT>
@@ -154,25 +254,7 @@ void MaskHelperCooKernel(const Context& dev_ctx,
       }));
 }
 
-}  // namespace sparse
-}  // namespace phi
-
-PD_REGISTER_KERNEL(mask_coo,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::sparse::MaskCooKernel,
-                   float,
-                   double,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
-  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
-}
+}  // namespace phi::sparse
 
 PD_REGISTER_KERNEL(mask_helper_coo,
                    CPU,
@@ -188,4 +270,38 @@ PD_REGISTER_KERNEL(mask_helper_coo,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(mask_as_coo,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MaskAsCooKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(mask_as_csr,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MaskAsCsrKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
