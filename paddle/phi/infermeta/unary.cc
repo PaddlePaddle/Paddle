@@ -2326,7 +2326,7 @@ void LogicalNotInferMeta(const MetaTensor& x, MetaTensor* out) {
 }
 
 void LogsumexpInferMeta(const MetaTensor& input,
-                        const std::vector<int64_t>& axis,
+                        const std::vector<int>& axis_in,
                         bool keepdim,
                         bool reduce_all,
                         MetaTensor* out) {
@@ -2337,6 +2337,11 @@ void LogsumexpInferMeta(const MetaTensor& input,
       4,
       errors::InvalidArgument("The input tensor X's dimensions of logsumexp "
                               "should be less or equal than 4. "));
+  std::vector<int64_t> axis;
+  axis.reserve(axis_in.size());
+  std::for_each(axis_in.begin(), axis_in.end(), [&axis](const int& t) {
+    axis.push_back(static_cast<int64_t>(t));
+  });
   ReduceInferMetaBase(input, axis, keepdim, reduce_all, out);
 }
 
@@ -5760,12 +5765,13 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
                              const int32_t group_size,
                              MetaTensor* out,
                              MetaTensor* scale) {
+#ifndef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(
       ((arch == 80) || (arch == 86) || (arch == 70) || (arch == 75)),
       true,
       phi::errors::InvalidArgument(
           "Currently, arch only support 70, 75, 80, 86."));
-
+#endif
   auto x_dims = x.dims();
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
