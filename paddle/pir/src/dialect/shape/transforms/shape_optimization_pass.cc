@@ -318,24 +318,29 @@ void InferSymExprForBlock(const Block& block,
 void InferSymExprForAllValues(ModuleOp module_op) {
   ShapeConstraintIRAnalysis& shape_analysis =
       ShapeAnalysisManager::Instance().Get(module_op.program());
-  const bool is_foward_program = [&] {
-    for (uint32_t i = 0; i < module_op->num_regions(); i++) {
-      for (auto& block : module_op->region(i)) {
-        if (!block.kwargs_empty()) return false;
-      }
-    }
-    return true;
-  }();
-  // Note: backward program is initialized from python layer.
-  if (is_foward_program) {
-    shape_analysis.Init();
+  auto* infer_context = shape_analysis.MutInferSymbolicShapeContext();
+
+  // hold the kwargs symbol shape info to avoid be cleared when call init.
+  const std::unordered_map<pir::Value, symbol::ShapeOrDataDimExprs>
+      symbol_shape_map = [&] {
+        std::unordered_map<pir::Value, symbol::ShapeOrDataDimExprs>
+            symbol_shape_map;
+        for (const auto& [_, value] : module_op.block().kwargs()) {
+          if (infer_context->HasShapeOrDataForValue(value)) {
+            symbol_shape_map.emplace(
+                value, infer_context->GetShapeOrDataForValue(value));
+          }
+        }
+        return symbol_shape_map;
+      }();
+
+  shape_analysis.Init();
+  // init the kwarg symbol shape info
+  for (const auto& kv : symbol_shape_map) {
+    infer_context->SetShapeOrDataForValue(kv.first, kv.second);
   }
-  auto infer_context = shape_analysis.MutInferSymbolicShapeContext();
-  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
-    for (auto& block : module_op->region(i)) {
-      InferSymExprForBlock(block, infer_context);
-    }
-  }
+
+  InferSymExprForBlock(module_op.block(), infer_context);
 }
 
 std::unique_ptr<Pass> CreateShapeOptimizationPass() {

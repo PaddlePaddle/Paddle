@@ -78,6 +78,7 @@ class IR_API InferSymbolicShapeContext {
   void SubstituteDimExpr(const symbol::DimExpr& origin,
                          const symbol::DimExpr& substituted);
 
+  int64_t sym_idx_begin_ = 0;
   int64_t next_sym_idx_ = 0;
 
   std::unordered_map<uint64_t, symbol::ShapeOrDataDimExprs>
