@@ -362,9 +362,6 @@ try:
             _throw_error_if_process_failed,
         )
 
-    # CINN
-    from .libpaddle import is_run_with_cinn  # noqa: F401
-
 except Exception as e:
     if has_paddle_dy_lib:
         sys.stderr.write(

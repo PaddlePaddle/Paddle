@@ -218,8 +218,13 @@ void LaunchQuantKernel(const T* input,
                        const float min_bound,
                        gpuStream_t stream) {
   // TODO(minghaoBD): optimize the kennel launch times when m==1 or n==1
+#ifdef PADDLE_WITH_HIP
+  dim3 grid(((n >> 2) + 63) / 64, (m + 7) / 8);
+  dim3 block(64, 8);
+#else
   dim3 grid(((n >> 2) + 31) / 32, (m + 31) / 32);
   dim3 block(32, 32);
+#endif
 
   QuantKernel<<<grid, block, 0, stream>>>(input,
                                           (char4*)output,  // NOLINT
@@ -250,8 +255,13 @@ void LaunchQuantKernelWithVecSize(const T* input,
     vec_size = 2;
   }
 
+#ifdef PADDLE_WITH_HIP
+  dim3 grid(((n / vec_size) + 63) / 64, (m + 7) / 8);
+  dim3 block(64, 8);
+#else
   dim3 grid(((n / vec_size) + 31) / 32, (m + 31) / 32);
   dim3 block(32, 32);
+#endif
 
   switch (vec_size) {
     case 4:
