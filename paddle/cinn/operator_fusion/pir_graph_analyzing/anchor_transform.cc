@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/operator_fusion/pir_graph_analyzing/anchor_transform.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 
 namespace cinn::fusion {
 

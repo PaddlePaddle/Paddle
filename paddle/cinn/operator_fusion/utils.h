@@ -27,11 +27,14 @@
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
-#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn::fusion {
 
@@ -89,20 +92,7 @@ static bool GetReduceOpKeepDims(pir::Operation* reduce_op) {
 }
 
 static std::optional<std::pair<pir::Value, pir::Value>>
-GetBroadcastOpInputOuputValue(pir::Operation* op) {
-  auto* mut_op = const_cast<pir::Operation*>(op);
-  if (op->isa<paddle::dialect::ExpandOp>()) {
-    auto expand_op = mut_op->dyn_cast<paddle::dialect::ExpandOp>();
-    return std::make_pair(expand_op.x(), expand_op.out());
-  } else if (op->isa<cinn::dialect::BroadcastOp>()) {
-    auto broadcast_op = mut_op->dyn_cast<cinn::dialect::BroadcastOp>();
-    return std::make_pair(broadcast_op.x(), broadcast_op.out());
-  } else {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("Unsupported broadcast op, %s", op->name()));
-  }
-  return std::nullopt;
-}
+GetBroadcastOpInputOuputValue(pir::Operation* op);
 
 static std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(
     pir::Operation* op) {

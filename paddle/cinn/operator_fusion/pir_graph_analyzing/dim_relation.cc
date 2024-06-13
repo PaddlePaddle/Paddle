@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/operator_fusion/pir_graph_analyzing/dim_relation.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 
 #include "paddle/common/enforce.h"
 

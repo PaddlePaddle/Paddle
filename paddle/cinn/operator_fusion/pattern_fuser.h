@@ -41,14 +41,16 @@ StmtPattern ConvertToStmtPattern(const PatternContent& content) {
   if (kind == hlir::framework::kReduction) {
     auto result =
         ReducePattern({content.op}, std::make_shared<FusionTracker>());
-    result.tracker_->append(std::make_shared<InitPatternInstr>(content.op));
+    result.tracker_->append(
+        std::make_shared<InitPatternInstr>(content.op, result.name()));
     return result;
   } else if (kind == hlir::framework::kElementWise ||
              kind == hlir::framework::kBroadcast ||
              kind == hlir::framework::kInjective) {
     auto result = TrivialPattern(
         {content.op}, content.op, std::make_shared<FusionTracker>());
-    result.tracker_->append(std::make_shared<InitPatternInstr>(content.op));
+    result.tracker_->append(
+        std::make_shared<InitPatternInstr>(content.op, result.name()));
     return result;
   } else {
     auto result =
@@ -190,7 +192,7 @@ std::vector<ExprPromise> InitExprPromise(const StmtPattern& pattern,
                                          pir::Value anchor) {
   return std::visit(
       [anchor](const auto& arg) { return InitExprPromiseImpl(arg, anchor); },
-      pattern.variant());
+      pattern);
 }
 
 StmtPattern MergePatternImpl(const AnchorPattern& source,
@@ -274,7 +276,7 @@ struct LoopFrameworkVisitor {
   }
 
   MaybeLoopFramework operator()(const ReduceTreePattern& pattern) {
-    return GetLoopFramework(StmtPattern(pattern.GetRootPattern()));
+    return GetLoopFramework(pattern.GetRootPattern());
   }
 
   MaybeLoopFramework operator()(const TrivialPattern& pattern) {
@@ -287,7 +289,7 @@ struct LoopFrameworkVisitor {
     // Horizontal Fusion must have the same loop framework.
     VLOG(4) << "Get horizontal fusion pattern for loop framework.";
     const auto& base_exprs =
-        GetLoopFramework(StmtPattern(pattern.padding_patterns_.back().pattern));
+        GetLoopFramework(pattern.padding_patterns_.back().pattern);
     const auto& padding_vector = pattern.padding_patterns_.back().padding_pos;
     std::vector<symbol::DimExpr> exprs(
         base_exprs.size() + padding_vector.size(), 1);
@@ -303,14 +305,12 @@ struct LoopFrameworkVisitor {
 
   MaybeLoopFramework operator()(const ReduceTreePlusTrivialPattern& pattern) {
     const auto& sink_trivial = pattern.sink_trivial;
-    const auto& trivial_loop =
-        GetLoopFramework(StmtPattern(pattern.sink_trivial));
+    const auto& trivial_loop = GetLoopFramework(pattern.sink_trivial);
     if (pattern.fake_reduce_iter_idx.empty()) {
       // we add reduce loop to the end;
       int reduce_axes_len =
           GetReduceAxisIdx(pattern.tree.GetRootPattern().GetReduceOp()).size();
-      const auto& reduce_loop =
-          GetLoopFramework(StmtPattern(pattern.tree.GetRootPattern()));
+      const auto& reduce_loop = GetLoopFramework(pattern.tree.GetRootPattern());
       return ConcatVector(
           trivial_loop,
           SliceVector(reduce_loop, -reduce_axes_len, reduce_loop.size()));
@@ -336,7 +336,7 @@ struct LoopFrameworkVisitor {
 };
 
 MaybeLoopFramework GetLoopFramework(const StmtPattern& pattern) {
-  return std::visit(LoopFrameworkVisitor(), pattern.variant());
+  return std::visit(LoopFrameworkVisitor(), pattern);
 }
 
 inline auto GetPaddingVector(const MaybeLoopFramework& first,
@@ -380,8 +380,8 @@ inline auto GetPaddingVector(const MaybeLoopFramework& first,
 
 StmtPattern MergePatternImpl(const HorizontalFusionPattern& first,
                              const HorizontalFusionPattern& second) {
-  const auto& [f, s] = GetPaddingVector(GetLoopFramework(StmtPattern(first)),
-                                        GetLoopFramework(StmtPattern(second)));
+  const auto& [f, s] =
+      GetPaddingVector(GetLoopFramework(first), GetLoopFramework(second));
   typename HorizontalFusionPattern::PaddingStmtPattern pad_first = {first, f};
   typename HorizontalFusionPattern::PaddingStmtPattern pad_second = {second, s};
   return HorizontalFusionPattern(
@@ -428,7 +428,7 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
                      << "X" << GetPatternName(second);
       },
   };
-  return std::visit(PatternMatch, first.variant(), second.variant());
+  return std::visit(PatternMatch, first, second);
 }
 
 void SetReturnInstr(const StmtPattern& s) {
@@ -436,7 +436,7 @@ void SetReturnInstr(const StmtPattern& s) {
       [](const auto& impl) {
         impl.tracker_->append(std::make_shared<ReturnInstr>(impl.name()));
       },
-      s.variant());
+      s);
 }
 
 }  // namespace cinn::fusion

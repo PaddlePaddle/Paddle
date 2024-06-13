@@ -44,15 +44,15 @@ class OpLoweringGroup {
   OpLoweringGroup(OpLoweringGroup&&) = delete;
 
   explicit OpLoweringGroup(const std::vector<::pir::Operation*>& group_ops,
-                           const std::string& fn_name FusionTrackerPtr
-                               fusion_tracker_ptr)
+                           const std::string& fn_name,
+                           cinn::fusion::FusionTrackerPtr fusion_tracker_ptr)
       : ops_(group_ops),
         fn_name_(fn_name),
         fusion_tracker_ptr(fusion_tracker_ptr) {}
 
   explicit OpLoweringGroup(std::initializer_list<::pir::Operation*> group_ops,
                            const std::string& fn_name,
-                           FusionTrackerPtr fusion_tracker_ptr)
+                           cinn::fusion::FusionTrackerPtr fusion_tracker_ptr)
       : ops_(group_ops),
         fn_name_(fn_name),
         fusion_tracker_ptr(fusion_tracker_ptr) {}
@@ -228,7 +228,7 @@ class OpLoweringGroup {
       value_to_shape_or_data_exprs_;
 
  public:
-  FusionTrackerPtr fusion_tracker_ptr;
+  cinn::fusion::FusionTrackerPtr fusion_tracker_ptr;
 };
 
 std::ostream& operator<<(std::ostream& os, const OpLoweringGroup& group);

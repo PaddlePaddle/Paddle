@@ -34,6 +34,7 @@ struct PatternContent {
 
 struct StmtPattern;
 std::string GetPatternName(const StmtPattern& s);
+std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
 
 struct TrivialPattern {
   explicit TrivialPattern(const std::vector<pir::Operation*>& ops,
@@ -120,8 +121,8 @@ struct ReduceTreePattern {
   void update_tracker() const {
     std::vector<std::string> tmp_names({GetRootPattern().name()});
     int count = 0;
-    const auto hook = [tracker = tracker_, &tmp_names, &count](
-                          const std::string& up, const std::string& down) {
+    auto hook = [tracker = tracker_, &tmp_names, &count](
+                    const std::string& up, const std::string& down) {
       std::string tmp_name = "tmp_" + std::to_string(count++);
       tracker->append(std::make_shared<TmpTransformInstr>(up, down, tmp_name));
       tmp_names.emplace_back(tmp_name);
@@ -132,7 +133,7 @@ struct ReduceTreePattern {
   }
 
   using Hook = std::function<void(const std::string&, const std::string&)>;
-  void recursive_call(const Hook& hook) {
+  void recursive_call(const Hook& hook) const {
     for (auto child : childs_) {
       hook(child.GetRootPattern().name(), GetRootPattern().name());
       child.recursive_call(hook);
@@ -178,10 +179,10 @@ struct ReduceTreePlusTrivialPattern {
                                             fake_reduce_iter_idx));
 
     int count = 0;
-    const auto hook = [tracker = tracker_,
-                       &tmp_names,
-                       fake_reduce = fake_reduce_iter_idx,
-                       &count](const std::string& up, const std::string& down) {
+    auto hook = [tracker = tracker_,
+                 &tmp_names,
+                 fake_reduce = fake_reduce_iter_idx,
+                 &count](const std::string& up, const std::string& down) {
       std::string tmp_name = "tmp_" + std::to_string(count++);
       tracker->append(
           std::make_shared<TmpTransformInstr>(up, down, tmp_name, fake_reduce));
@@ -330,20 +331,13 @@ struct UnsupportPattern {
   void update_tracker() const {}
 };
 
-using StmtPatternBase = std::variant<TrivialPattern,
-                                     ReducePattern,
-                                     ReduceTreePattern,
-                                     ReduceTreePlusTrivialPattern,
-                                     HorizontalFusionPattern,
-                                     UnsupportPattern,
-                                     AnchorPattern>;
-
-struct StmtPattern final : public StmtPatternBase {
-  using StmtPatternBase::StmtPatternBase;
-  const StmtPatternBase& variant() const {
-    return static_cast<const StmtPatternBase&>(*this);
-  }
-};
+using StmtPattern = std::variant<TrivialPattern,
+                                 ReducePattern,
+                                 ReduceTreePattern,
+                                 ReduceTreePlusTrivialPattern,
+                                 HorizontalFusionPattern,
+                                 UnsupportPattern,
+                                 AnchorPattern>;
 
 std::string StmtPatternDebugStr(const StmtPattern& stmt) {
   std::stringstream ss;
@@ -354,17 +348,15 @@ std::string StmtPatternDebugStr(const StmtPattern& stmt) {
 }
 
 std::string GetPatternName(const StmtPattern& s) {
-  return std::visit([](const auto& impl) { return impl.name(); }, s.variant());
+  return std::visit([](const auto& impl) { return impl.name(); }, s);
 }
 
 FusionTrackerPtr GetFusionTracker(const StmtPattern& s) {
-  return std::visit([](const auto& impl) { return impl.tracker_; },
-                    s.variant());
+  return std::visit([](const auto& impl) { return impl.tracker_; }, s);
 }
 
 std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern) {
-  return std::visit([](const auto& impl) { return impl.ops(); },
-                    pattern.variant());
+  return std::visit([](const auto& impl) { return impl.ops(); }, pattern);
 }
 
 std::unordered_set<pir::Value> GetPatternInputValuesIncludeInner(
@@ -399,7 +391,6 @@ std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A) {
 }
 
 void PatternUpdateTracker(const StmtPattern& pattern) {
-  return std::visit([](const auto& impl) { impl.update_tracker(); },
-                    pattern.variant());
+  return std::visit([](const auto& impl) { impl.update_tracker(); }, pattern);
 }
 }  // namespace cinn::fusion

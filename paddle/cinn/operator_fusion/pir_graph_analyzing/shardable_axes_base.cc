@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/operator_fusion/pir_graph_analyzing/shardable_axes_base.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn::fusion {
