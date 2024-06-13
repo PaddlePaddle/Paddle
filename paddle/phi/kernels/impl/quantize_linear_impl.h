@@ -52,7 +52,7 @@ void DeQuantizeLinearImpl(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& scale,
                           int quant_axis,
-                          int bit_length,
+                          int qmax,
                           bool only_observer,
                           DenseTensor* out) {
   auto* in = &x;
@@ -67,7 +67,7 @@ void DeQuantizeLinearImpl(const Context& dev_ctx,
   }
 
   if (quant_axis < 0) {
-    float max_range = (std::pow(2, bit_length - 1) - 1);
+    float max_range = qmax;
     DequantizeFunctor<Context, D>()(
         dev_ctx, &in_tmp, &scale, static_cast<D>(max_range), out);
   } else {
@@ -80,7 +80,7 @@ void DeQuantizeLinearImpl(const Context& dev_ctx,
             "only one element, but %ld != %ld here.",
             scale.numel(),
             in_tmp.dims()[quant_axis]));
-    int max_range = (std::pow(2, bit_length - 1) - 1);
+    int max_range = qmax;
 
     ChannelDequantizeFunctorV2<Context, D>()(
         dev_ctx, &in_tmp, &scale, static_cast<D>(max_range), quant_axis, out);
@@ -96,7 +96,9 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
                             const paddle::optional<DenseTensor>& in_state,
                             int quant_axis,
                             int bit_length,
-                            int round_type,
+                            int qmin,
+                            int qmax,
+                            int round_type,                       
                             bool is_test,
                             bool only_observer,
                             DenseTensor* out,
@@ -111,15 +113,15 @@ void DeQuantizeLinearKernel(const Context& dev_ctx,
   switch (scale.dtype()) {
     case phi::DataType::FLOAT64:
       DeQuantizeLinearImpl<T, Context, double>(
-          dev_ctx, x, scale, quant_axis, bit_length, only_observer, out);
+          dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;
     case phi::DataType::FLOAT32:
       DeQuantizeLinearImpl<T, Context, float>(
-          dev_ctx, x, scale, quant_axis, bit_length, only_observer, out);
+          dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;
     case phi::DataType::FLOAT16:
       DeQuantizeLinearImpl<T, Context, float16>(
-          dev_ctx, x, scale, quant_axis, bit_length, only_observer, out);
+          dev_ctx, x, scale, quant_axis, qmax, only_observer, out);
       break;
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
@@ -139,6 +141,8 @@ void QuantizeLinearKernel(const Context& dev_ctx,
                           const paddle::optional<DenseTensor>& in_state,
                           int quant_axis,
                           int bit_length,
+                          int qmin,
+                          int qmax,
                           int round_type,
                           bool is_test,
                           bool only_observer,
@@ -154,7 +158,7 @@ void QuantizeLinearKernel(const Context& dev_ctx,
   auto* in_scale = scale.get_ptr();
   dev_ctx.template Alloc<float>(out);
   int bin_cnt = std::pow(2, bit_length - 1) - 1;
-
+  if(qmax == 448 || qmax == 57344) {bin_cnt = qmax;}
   if (quant_axis < 0) {
     if (!is_test) {
       // training
@@ -223,7 +227,9 @@ void QuantizeLinearDeprecatedKernel(
     const paddle::optional<DenseTensor>& in_state,
     int quant_axis,
     int bit_length,
-    int round_type,
+    int qmin,
+    int qmax,
+    int round_type,    
     bool is_test,
     bool only_observer,
     DenseTensor* out,
@@ -240,6 +246,8 @@ void QuantizeLinearDeprecatedKernel(
                                    in_state,
                                    quant_axis,
                                    bit_length,
+                                   qmin,
+                                   qmax,
                                    round_type,
                                    is_test,
                                    only_observer,
@@ -259,6 +267,8 @@ void DeQuantizeLinearDeprecatedKernel(
     const paddle::optional<DenseTensor>& in_state,
     int quant_axis,
     int bit_length,
+    int qmin,
+    int qmax,
     int round_type,
     bool is_test,
     bool only_observer,
@@ -276,6 +286,8 @@ void DeQuantizeLinearDeprecatedKernel(
                                      in_state,
                                      quant_axis,
                                      bit_length,
+                                     qmin,
+                                     qmax,
                                      round_type,
                                      is_test,
                                      only_observer,
