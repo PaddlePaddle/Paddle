@@ -19,7 +19,7 @@
 PD_REGISTER_KERNEL(fetch_barrier,
                    GPU,
                    ALL_LAYOUT,
-                   phi::DependKernel,
+                   phi::FetchBarrierKernel,
                    float,
                    double,
                    int,
