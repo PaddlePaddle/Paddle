@@ -175,7 +175,7 @@ bool IsAnyFirstInSecond(const std::vector<T>& first,
 
 template <typename T>
 std::vector<T> UniqueVectorBySet(const std::vector<T>& v) {
-  std::set<T> unique(v.begin(), v.end());
+  std::unordered_set<T> unique(v.begin(), v.end());
   return std::vector<T>(unique.begin(), unique.end());
 }
 
@@ -345,4 +345,36 @@ std::vector<U> VectorFlatMap(
   }
   return result;
 }
+
+inline std::vector<pir::Value> GetInputsValue(
+    const std::vector<pir::Operation*>& ops) {
+  // include middle value.
+  std::function<std::vector<pir::Value>(pir::Operation* const&)> get_inputs =
+      [](const pir::Operation* const& in) { return in->operands_source(); };
+  const auto& all_inputs =
+      VectorFlatMap<pir::Operation*, pir::Value>(ops, get_inputs);
+  return UniqueVectorBySet(all_inputs);
+}
+
+inline std::vector<pir::Value> GetOutputsValue(
+    const std::vector<pir::Operation*>& ops) {
+  // include middle value.
+  std::function<std::vector<pir::Value>(pir::Operation* const&)> get_outputs =
+      [](const pir::Operation* const& in) { return in->results(); };
+  const auto& all_outputs =
+      VectorFlatMap<pir::Operation*, pir::Value>(ops, get_outputs);
+  return UniqueVectorBySet(all_outputs);
+}
+
+template <typename T>
+std::vector<T> VectorDiff(const std::vector<T>& left,
+                          const std::vector<T>& right) {
+  const auto& set = ToSet(right);
+  std::vector<T> res;
+  for (const auto& v : left) {
+    if (!set.count(v)) res.push_back(v);
+  }
+  return res;
+}
+
 }  // namespace cinn::fusion

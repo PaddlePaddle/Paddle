@@ -109,7 +109,9 @@ void PatternGraph<T>::HorizontalFusion() {
 
   GraphTransformer<NodePairPattern,
                    T,
-                   HorizontalFusionConstrain<T>,
+                   And<HorizontalFusionConstrain<T>,
+                       InputOutputMaximumConstrain<T>>,  // Avoid two many
+                                                         // inputs and outputs.
                    HorizontalFusionOperation>(this);
 }
 

@@ -328,6 +328,37 @@ struct CanFuseReduceTreeAndTrivialMatcher {
   }
 };
 
+/*
+ * We must limit the output + input + shape_info number and make sure
+ * the number is smaller than 512.
+ */
+template <typename T>
+struct InputOutputMaximumConstrain {
+  const int MAX_INPUT_OUTPUT_NUMBER = 480;  // cuda only support 512
+  std::vector<pir::Value> GetInputValuesExceptMiddle(
+      const std::vector<pir::Operation*>& ops) {
+    return VectorDiff(GetInputsValue(ops), GetOutputsValue(ops));
+  }
+  std::vector<pir::Value> GetOutputValuesExceptMiddle(
+      const std::vector<pir::Operation*>& ops) {
+    return VectorDiff(GetOutputsValue(ops), GetInputsValue(ops));
+  }
+  std::vector<pir::Operation*> GetAllOps(const PatternNodePtr<T>& lhs,
+                                         const PatternNodePtr<T>& rhs) {
+    return UniqueVectorBySet(
+        ConcatVector(GetOpsInPattern(lhs->stmt_pattern()),
+                     GetOpsInPattern(rhs->stmt_pattern())));
+  }
+  bool operator()(const PatternGraph<T>& graph,
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    const auto& all_ops = GetAllOps(lhs, rhs);
+    int input_number = GetInputValuesExceptMiddle(all_ops).size();
+    int output_number = GetOutputValuesExceptMiddle(all_ops).size();
+    return input_number + output_number < MAX_INPUT_OUTPUT_NUMBER;
+  }
+};
+
 template <typename T>
 struct HorizontalFusionConstrain {
   bool operator()(const PatternGraph<T>& graph,
