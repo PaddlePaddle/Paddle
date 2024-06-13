@@ -421,7 +421,7 @@ void TensorRTEngineInstruction::BindInputTensor(
         auto int32_tensor = scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
         *int32_tensor = phi::Cast<int64_t>(
             reinterpret_cast<const phi::GPUContext &>(*dev_ctx_),
-            t,
+            input_tensor,
             phi::DataType::INT32);
         phi::memory_utils::Copy(phi::CPUPlace(),
                                 shape_v.data(),
