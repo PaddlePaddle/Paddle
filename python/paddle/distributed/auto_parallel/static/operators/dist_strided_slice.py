@@ -42,7 +42,6 @@ class DistributedStridedSlice(DistributedOperatorImplContainer):
         y_spec = get_dist_tensor_spec(dist_op, y_name, False)
 
         # step2: infer spmd
-        print("infer spmd by strided_slice", flush=1)
         rule = get_phi_spmd_rule("strided_slice")
         # tensor order following order in PHI definition
         fw_results = rule.infer_forward(x_spec, axes, starts, ends, strides)
