@@ -21,11 +21,6 @@
 
 namespace phi {
 
-template <typename T,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
-
 template <typename T>
 class SparseFTRLFunctor {
  private:
@@ -126,8 +121,6 @@ void FTRLOpKernel(const Context& dev_ctx,
                   DenseTensor* param_out,
                   DenseTensor* squared_accum_out,
                   DenseTensor* linear_accum_out) {
-  const auto* grad_var = &grad;
-
   auto* lr_in = &learning_rate;
 
   auto* param_in = &param;
