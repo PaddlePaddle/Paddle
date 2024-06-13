@@ -479,6 +479,15 @@
   kernel :
     func : binomial
 
+- op : bipartite_match
+  args: (Tensor dist_mat, str match_type = "bipartite", float dist_threshold = 0.5)
+  output: Tensor (col_to_row_match_indices), Tensor (col_to_row_match_dist)
+  infer_meta:
+    func: BipartiteMatchInferMeta
+  kernel:
+    func: bipartite_match
+    data_type: dist_mat
+
 - op : bitwise_and
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -2679,7 +2688,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : logsumexp
-  args : (Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all)
+  args : (Tensor x, int[] axis={0},  bool keepdim=false,  bool reduce_all=false)
   output : Tensor(out)
   infer_meta :
     func : LogsumexpInferMeta
