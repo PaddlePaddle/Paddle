@@ -20,7 +20,6 @@
 namespace phi {
 namespace funcs {
 
-#ifndef PADDLE_WITH_HIP
 template <typename T>
 __device__ __inline__ T ClipFunc(const T v, const T min, const T max) {
   if (v > max) return max;
@@ -216,6 +215,6 @@ struct QuantStore<T, true> {
   const T *smooth_;
   const int cols_;
 };
-#endif
+
 }  // namespace funcs
 }  // namespace phi
