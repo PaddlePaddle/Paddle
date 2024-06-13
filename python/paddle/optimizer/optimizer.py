@@ -327,8 +327,6 @@ class Optimizer:
         Get state dict information from optimizer. It contain all the tensor used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. If LRScheduler have been used, global_step will be include in state dict.
         If the optimizer never be called(minimize function), the state_dict is empty.
 
-        Args:
-            None
 
         Returns:
             dict[str,Tensor], dict contains all the Tensor used by optimizer
@@ -680,9 +678,6 @@ class Optimizer:
         Get current learning rate of optimizer.
         If 'LRScheduler' is not used, the return value is all the same.
         If 'LRScheduler' is used, the return value is the current scheduled learing rete.
-
-        Args:
-            None.
 
         Returns:
             float, The current learning rate of optimizer.
@@ -1844,9 +1839,6 @@ class Optimizer:
     def step(self) -> None:
         """
         Execute the optimizer and update parameters once.
-
-        Args:
-            None
 
         Returns:
             None
