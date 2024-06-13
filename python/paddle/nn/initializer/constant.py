@@ -46,7 +46,7 @@ class ConstantInitializer(Initializer):
     def forward(
         self,
         var: paddle.Tensor,
-        block: framework.Block | paddle.pir.Block | None = None,
+        block: paddle.pir.Block | None = None,
     ):
         """Initialize the input tensor with constant.
 
