@@ -30,7 +30,7 @@ class FileTileConfigDatabase : TileConfigDatabase {
 
  private:
   TileConfigMap target_config_data_;
-  bool Tofile(const common::Target& target, int priority);
+  bool ToFile(const common::Target& target, int priority);
 };
 
 }  // namespace ir

@@ -16,6 +16,14 @@
 # Add docstring, attributes, methods and alias with type annotaions for `Tensor` in `tensor.prototype.pyi`
 # if not conveniently coding in original place (like c++ source file).
 
+# Import common typings for generated methods
+# isort: off
+from typing import *  # noqa: F403
+from typing_extensions import *  # noqa: F403
+from paddle._typing import *  # noqa: F403
+
+# isort: on
+
 from typing import Any, Literal, overload
 
 import numpy.typing as npt
