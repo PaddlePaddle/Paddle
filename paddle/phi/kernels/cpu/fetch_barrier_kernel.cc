@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/fetch_barrier_kernel_impl.h"
 
