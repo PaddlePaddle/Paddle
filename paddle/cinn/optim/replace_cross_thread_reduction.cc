@@ -109,6 +109,63 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
     return true;
   }
 
+  template <typename OpT>
+  void ReplaceByContinuousReduceExternCall(ir::Expr* store, bool return_warp) {
+    auto* node = store->As<ir::Store>()->value.As<OpT>();
+    CHECK(node);
+    auto& operand = node->b();
+    std::string reduce_func_name = hlir::pe::CrossThreadReduceExternalFuncName(
+        store->As<ir::Store>()->value, operand.template As<ir::Load>()->tensor);
+    auto tmp_dtype =
+        operand.template As<ir::Load>()->tensor.as_tensor()->type();
+    auto tmp_buffer = ir::_Buffer_::Make(
+        "shm32_" + hlir::pe::Type2StrForReduce(tmp_dtype) + "_reduce",
+        {ir::Expr(32)});
+    tmp_buffer->dtype = tmp_dtype;
+    tmp_buffer->memory_type = ir::MemoryType::GPUShared;
+    shm_buffer_.insert(tmp_buffer);
+    store->As<ir::Store>()->value = lang::CallExtern(
+        reduce_func_name, {node->b(), tmp_buffer, ir::Expr(return_warp)});
+  }
+
+  template <typename OpT>
+  void ReplaceByDiscreteReduceExternCall(ir::Expr* store) {
+    auto* node = store->As<ir::Store>()->value.As<OpT>();
+    CHECK(node);
+    auto& operand = node->b();
+    std::string reduce_func_name = hlir::pe::DiscreteReduceExternalFuncName(
+        store->As<ir::Store>()->value, operand.template As<ir::Load>()->tensor);
+    auto tmp_dtype =
+        operand.template As<ir::Load>()->tensor.as_tensor()->type();
+    auto tmp_buffer = ir::_Buffer_::Make(
+        "shm32_" + hlir::pe::Type2StrForReduce(tmp_dtype) + "_reduce",
+        {ir::Expr(512)});
+    tmp_buffer->dtype = tmp_dtype;
+    tmp_buffer->memory_type = ir::MemoryType::GPUShared;
+    shm_buffer_.insert(tmp_buffer);
+    store->As<ir::Store>()->value =
+        lang::CallExtern(reduce_func_name, {node->b(), tmp_buffer});
+  }
+
+  template <typename OpT>
+  void ReplaceByReduceExternCall(ir::Expr* store,
+                                 const ir::ReduceMethod& method) {
+    std::visit(cinn::adt::match{
+                   [&](const ir::NoneReduceMethod&) {
+                     ReplaceByContinuousReduceExternCall<OpT>(store, false);
+                   },
+                   [&](const ir::WarpReduceMethod&) {
+                     ReplaceByContinuousReduceExternCall<OpT>(store, true);
+                   },
+                   [&](const ir::BlockReduceMethod&) {
+                     ReplaceByContinuousReduceExternCall<OpT>(store, false);
+                   },
+                   [&](const ir::DiscreteReduceMethod&) {
+                     ReplaceByDiscreteReduceExternCall<OpT>(store);
+                   }},
+               method);
+  }
+
   void Visit(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
   void Visit(const ir::_LoweredFunc_* expr, ir::Expr* op) override {
@@ -163,28 +220,15 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
         [&](const ir::NoneReduceMethod&) { return ir::Expr(false); },
         [&](const ir::WarpReduceMethod&) { return ir::Expr(true); },
         [&](const ir::BlockReduceMethod&) { return ir::Expr(false); },
+        [&](const ir::DiscreteReduceMethod&) { return ir::Expr(false); },
     };
     ir::Expr return_warp =
         std::visit(IsWarpReduce, schedule_block->reduce_method);
 
-#define REPLACE_TO_EXTERNAL_CALL(Op)                                     \
-  if (original_update_stmt.As<ir::Store>()->value.As<Op>()) {            \
-    auto* node = original_update_stmt.As<ir::Store>()->value.As<Op>();   \
-    CHECK(node);                                                         \
-    auto& operand = node->b();                                           \
-    std::string reduce_func_name =                                       \
-        hlir::pe::CrossThreadReduceExternalFuncName(                     \
-            original_update_stmt.As<ir::Store>()->value,                 \
-            operand.As<ir::Load>()->tensor);                             \
-    auto tmp_dtype = operand.As<ir::Load>()->tensor.as_tensor()->type(); \
-    auto tmp_buffer = ir::_Buffer_::Make(                                \
-        "shm32_" + hlir::pe::Type2StrForReduce(tmp_dtype) + "_reduce",   \
-        {ir::Expr(32)});                                                 \
-    tmp_buffer->dtype = tmp_dtype;                                       \
-    tmp_buffer->memory_type = ir::MemoryType::GPUShared;                 \
-    shm_buffer_.insert(tmp_buffer);                                      \
-    original_update_stmt.As<ir::Store>()->value = lang::CallExtern(      \
-        reduce_func_name, {node->b(), tmp_buffer, return_warp});         \
+#define REPLACE_TO_EXTERNAL_CALL(Op)                              \
+  if (original_update_stmt.As<ir::Store>()->value.As<Op>()) {     \
+    ReplaceByReduceExternCall<Op>(&original_update_stmt,          \
+                                  schedule_block->reduce_method); \
   }
 
     REPLACE_TO_EXTERNAL_CALL(ir::Add)

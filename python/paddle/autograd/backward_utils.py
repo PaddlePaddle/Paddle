@@ -121,6 +121,7 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.sum",
     "pd_op.mean",
     "pd_op.add",
+    "pd_op.subtract",
 ]
 
 
