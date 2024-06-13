@@ -37,8 +37,6 @@ const int NUM_STREAMS = 8;
 const int N = 2;
 const float DELTA = 1e-1;
 
-using CudaDevCtxVec = std::vector<std::unique_ptr<phi::GPUContext>>;
-
 __global__ void kernel(float *x, int n) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   for (int i = tid; i < n; i += blockDim.x * gridDim.x) {
@@ -46,51 +44,58 @@ __global__ void kernel(float *x, int n) {
   }
 }
 
-void CheckKernelOutput(float *x, int n) {
+void CheckKernelOutput(const AllocationPtr &x, int n) {
   auto host_x = std::unique_ptr<float[]>(new float[n]);
   for (int i = 0; i < n; ++i) {
 #ifdef PADDLE_WITH_HIP
-    EXPECT_TRUE(
-        hipSuccess ==
-        hipMemcpy(host_x.get(), x, n * sizeof(float), hipMemcpyDeviceToHost));
+    EXPECT_TRUE(hipSuccess == hipMemcpy(host_x.get(),
+                                        (x->ptr()),
+                                        n * sizeof(float),
+                                        hipMemcpyDeviceToHost));
 #else
-    EXPECT_TRUE(
-        cudaSuccess ==
-        cudaMemcpy(host_x.get(), x, n * sizeof(float), cudaMemcpyDeviceToHost));
+    EXPECT_TRUE(cudaSuccess == cudaMemcpy(host_x.get(),
+                                          (x->ptr()),
+                                          n * sizeof(float),
+                                          cudaMemcpyDeviceToHost));
 #endif
     EXPECT_GE(host_x[i] + DELTA, 3.14159f * i);
     EXPECT_LE(host_x[i] - DELTA, 3.14159f * i);
   }
 }
 
-void MultiStreamCompute(float **data,
-                        float **second_data,
-                        const phi::GPUContext &ctx) {
+void MultiStreamCompute(const AllocationPtr &first_data,
+                        const AllocationPtr &second_data,
+                        phi::GPUContext *ctx) {
   // multi-streams
-  AllocationPtr allocation_ptr =
-      Alloc(ctx.GetPlace(),
-            N * sizeof(float),
-            phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
-  EXPECT_GE(allocation_ptr->size(), N * sizeof(float));
-  *data = reinterpret_cast<float *>(allocation_ptr->ptr());
+  EXPECT_GE(first_data->size(), N * sizeof(float));
+
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL((kernel), dim3(1), dim3(64), 0, ctx.stream(), *data, N);
+  hipLaunchKernelGGL((kernel),
+                     dim3(1),
+                     dim3(64),
+                     0,
+                     ctx->stream(),
+                     reinterpret_cast<float *>(first_data->ptr()),
+                     N);
 #else
-  kernel<<<1, 64, 0, ctx.stream()>>>(*data, N);
+  kernel<<<1, 64, 0, ctx->stream()>>>(
+      reinterpret_cast<float *>(first_data->ptr()), N);
 #endif
 
+  EXPECT_GE(second_data->size(), N * sizeof(float));
   // allocate and compute on same stream again
-  allocation_ptr =
-      Alloc(ctx.GetPlace(),
-            N * sizeof(float),
-            phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
-  EXPECT_GE(allocation_ptr->size(), N * sizeof(float));
-  *second_data = reinterpret_cast<float *>(allocation_ptr->ptr());
+
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL(
-      (kernel), dim3(1), dim3(64), 0, ctx.stream(), *second_data, N);
+  hipLaunchKernelGGL((kernel),
+                     dim3(1),
+                     dim3(64),
+                     0,
+                     ctx->stream(),
+                     reinterpret_cast<float *>(second_data->ptr()),
+                     N);
 #else
-  kernel<<<1, 64, 0, ctx.stream()>>>(*second_data, N);
+  kernel<<<1, 64, 0, ctx->stream()>>>(
+      reinterpret_cast<float *>(second_data->ptr()), N);
 #endif
 }
 
@@ -100,23 +105,26 @@ TEST(Malloc, GPUContextMultiStream) {
 
   AllocationPtr main_stream_alloc_ptr = Alloc(place, N * sizeof(float));
   EXPECT_GE(main_stream_alloc_ptr->size(), N * sizeof(float));
-  float *main_stream_data =
-      reinterpret_cast<float *>(main_stream_alloc_ptr->ptr());
 
-  float *data[NUM_STREAMS];
-  float *second_data[NUM_STREAMS];
-  CudaDevCtxVec dev_ctx;
+  AllocationPtr first_data[NUM_STREAMS], second_data[NUM_STREAMS];
+  std::vector<phi::GPUContext *> dev_ctx;
 
 // default stream
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL((kernel), dim3(1), dim3(64), 0, 0, main_stream_data, N);
+  hipLaunchKernelGGL((kernel),
+                     dim3(1),
+                     dim3(64),
+                     0,
+                     0,
+                     reinterpret_cast<float *>(main_stream_alloc_ptr->ptr()),
+                     N);
 #else
-  kernel<<<1, 64>>>(main_stream_data, N);
+  kernel<<<1, 64>>>(reinterpret_cast<float *>(main_stream_alloc_ptr->ptr()), N);
 #endif
   main_stream_alloc_ptr.reset();
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
-    auto ctx = std::make_unique<phi::GPUContext>(place);
+    auto ctx = new phi::GPUContext(place);
     ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                           .GetAllocator(place, ctx->stream())
                           .get());
@@ -133,8 +141,16 @@ TEST(Malloc, GPUContextMultiStream) {
             .GetAllocator(paddle::platform::CUDAPinnedPlace())
             .get());
     ctx->PartialInitWithAllocator();
-    dev_ctx.emplace_back(std::move(ctx));
-    MultiStreamCompute(&data[i], &second_data[i], *dev_ctx[i]);
+    dev_ctx.emplace_back(ctx);
+    first_data[i] =
+        Alloc(ctx->GetPlace(),
+              N * sizeof(float),
+              phi::Stream(reinterpret_cast<phi::StreamId>(ctx->stream())));
+    second_data[i] =
+        Alloc(ctx->GetPlace(),
+              N * sizeof(float),
+              phi::Stream(reinterpret_cast<phi::StreamId>(ctx->stream())));
+    MultiStreamCompute(first_data[i], second_data[i], ctx);
   }
 
 #ifdef PADDLE_WITH_HIP
@@ -142,9 +158,20 @@ TEST(Malloc, GPUContextMultiStream) {
 #else
   EXPECT_TRUE(cudaSuccess == cudaDeviceSynchronize());
 #endif
+
   for (int i = 0; i < NUM_STREAMS; ++i) {
-    CheckKernelOutput(data[i], N);
+    CheckKernelOutput(first_data[i], N);
     CheckKernelOutput(second_data[i], N);
+  }
+
+  // For cudaMallocAsyncAllocator, cudaFreeAsync is executed on _malloc_stream,
+  // which is the stream passed at Alloc(). Therefore, the stream must be
+  // postponed until the the memory is freed. Otherwise, the stream would be
+  // destroyed before the cudaFreeAsync is called.
+  for (int i = 0; i < NUM_STREAMS; i++) {
+    first_data[i].release();
+    second_data[i].release();
+    delete dev_ctx[i];
   }
 }
 
@@ -154,24 +181,27 @@ TEST(Malloc, GPUContextMultiThreadMultiStream) {
 
   AllocationPtr main_stream_alloc_ptr = Alloc(place, N * sizeof(float));
   EXPECT_GE(main_stream_alloc_ptr->size(), N * sizeof(float));
-  float *main_stream_data =
-      reinterpret_cast<float *>(main_stream_alloc_ptr->ptr());
 
-  float *data[NUM_STREAMS];
-  float *second_data[NUM_STREAMS];
-  CudaDevCtxVec dev_ctx;
-  std::vector<std::thread> threads;
+  AllocationPtr first_data[NUM_STREAMS], second_data[NUM_STREAMS];
+  std::vector<phi::GPUContext *> dev_ctx;
 
 // default stream
 #ifdef PADDLE_WITH_HIP
-  hipLaunchKernelGGL((kernel), dim3(1), dim3(64), 0, 0, main_stream_data, N);
+  hipLaunchKernelGGL((kernel),
+                     dim3(1),
+                     dim3(64),
+                     0,
+                     0,
+                     reinterpret_cast<float *>(main_stream_alloc_ptr->ptr()),
+                     N);
 #else
-  kernel<<<1, 64>>>(main_stream_data, N);
+  kernel<<<1, 64>>>(reinterpret_cast<float *>(main_stream_alloc_ptr->ptr()), N);
 #endif
   main_stream_alloc_ptr.reset();
+  std::vector<std::thread> threads;
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
-    auto ctx = std::make_unique<phi::GPUContext>(place);
+    auto ctx = new phi::GPUContext(place);
     ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                           .GetAllocator(place, ctx->stream())
                           .get());
@@ -192,22 +222,42 @@ TEST(Malloc, GPUContextMultiThreadMultiStream) {
             .GetAllocator(paddle::platform::CUDAPinnedPlace())
             .get());
     ctx->PartialInitWithAllocator();
-    dev_ctx.emplace_back(std::move(ctx));
-    threads.emplace_back(
-        MultiStreamCompute, &data[i], &second_data[i], std::cref(*dev_ctx[i]));
+    dev_ctx.emplace_back(ctx);
+    first_data[i] =
+        Alloc(ctx->GetPlace(),
+              N * sizeof(float),
+              phi::Stream(reinterpret_cast<phi::StreamId>(ctx->stream())));
+    second_data[i] =
+        Alloc(ctx->GetPlace(),
+              N * sizeof(float),
+              phi::Stream(reinterpret_cast<phi::StreamId>(ctx->stream())));
+    threads.emplace_back(MultiStreamCompute,
+                         std::ref(first_data[i]),
+                         std::ref(second_data[i]),
+                         ctx);
   }
 
   for (int i = 0; i < NUM_STREAMS; ++i) {
     threads[i].join();
   }
+
 #ifdef PADDLE_WITH_HIP
   EXPECT_TRUE(hipSuccess == hipDeviceSynchronize());
 #else
   EXPECT_TRUE(cudaSuccess == cudaDeviceSynchronize());
 #endif
+
   for (int i = 0; i < NUM_STREAMS; ++i) {
-    CheckKernelOutput(data[i], N);
+    CheckKernelOutput(first_data[i], N);
     CheckKernelOutput(second_data[i], N);
+  }
+
+  // There are dependencies on the pointer deconstructing. Manually
+  // release the pointers would resolve the conflict.
+  for (int i = 0; i < NUM_STREAMS; i++) {
+    first_data[i].release();
+    second_data[i].release();
+    delete dev_ctx[i];
   }
 }
 

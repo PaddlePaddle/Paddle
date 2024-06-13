@@ -13,8 +13,12 @@
 # limitations under the License.
 
 # Define functions about array.
+from __future__ import annotations
+
+from typing import Any, Sequence, TypeVar, overload
 
 import paddle
+from paddle import _typing
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..base.framework import in_pir_mode
@@ -22,6 +26,17 @@ from ..common_ops_import import Variable
 from ..framework import LayerHelper, core, in_dynamic_mode
 
 __all__ = []
+T = TypeVar("T")
+
+
+@overload
+def array_length(array: list[Any]) -> int:
+    ...
+
+
+@overload
+def array_length(array: paddle.Tensor) -> paddle.Tensor:
+    ...
 
 
 def array_length(array):
@@ -32,7 +47,7 @@ def array_length(array):
         array (list|Tensor): The input array that will be used to compute the length. In dynamic mode, ``array`` is a Python list. But in static graph mode, array is a Tensor whose VarType is LOD_TENSOR_ARRAY.
 
     Returns:
-        Tensor: 0-D Tensor with shape [], which is the length of array.
+        Tensor, 0-D Tensor with shape [], which is the length of array.
 
     Examples:
         .. code-block:: python
@@ -83,6 +98,16 @@ def array_length(array):
         return tmp
 
 
+@overload
+def array_read(array: list[T], i: paddle.Tensor) -> T:
+    ...
+
+
+@overload
+def array_read(array: paddle.Tensor, i: paddle.Tensor) -> paddle.Tensor:
+    ...
+
+
 def array_read(array, i):
     """
     This OP is used to read data at the specified position from the input array.
@@ -106,7 +131,7 @@ def array_read(array, i):
             specified read position of ``array``.
 
     Returns:
-        Tensor: A Tensor that is read at the specified position of ``array``.
+        Tensor, A Tensor that is read at the specified position of ``array``.
 
     Examples:
         .. code-block:: python
@@ -161,7 +186,32 @@ def array_read(array, i):
         return out
 
 
-def array_write(x, i, array=None):
+@overload
+def array_write(
+    x: paddle.Tensor, i: paddle.Tensor, array: None = None
+) -> list[Any] | paddle.Tensor:
+    ...
+
+
+@overload
+def array_write(
+    x: paddle.Tensor, i: paddle.Tensor, array: list[paddle.Tensor]
+) -> list[paddle.Tensor]:
+    ...
+
+
+@overload
+def array_write(
+    x: paddle.Tensor, i: paddle.Tensor, array: paddle.Tensor
+) -> paddle.Tensor:
+    ...
+
+
+def array_write(
+    x,
+    i,
+    array=None,
+):
     """
     This OP writes the input ``x`` into the i-th position of the ``array`` returns the modified array.
     If ``array`` is none, a new array will be created and returned.
@@ -176,7 +226,7 @@ def array_write(x, i, array=None):
             But in static graph mode, array is a Tensor whose ``VarType`` is ``LOD_TENSOR_ARRAY``.
 
     Returns:
-        list|Tensor: The input ``array`` after ``x`` is written into.
+        list|Tensor, The input ``array`` after ``x`` is written into.
 
     Examples:
         .. code-block:: python
@@ -258,7 +308,10 @@ def array_write(x, i, array=None):
         return array
 
 
-def create_array(dtype, initialized_list=None):
+def create_array(
+    dtype: _typing.DTypeLike,
+    initialized_list: Sequence[paddle.Tensor] | None = None,
+) -> paddle.Tensor | list[paddle.Tensor]:
     """
     This OP creates an array. It is used as the input of :ref:`api_paddle_tensor_array_array_read` and
     :ref:`api_paddle_tensor_array_array_write`.
@@ -269,7 +322,7 @@ def create_array(dtype, initialized_list=None):
                     All values in initialized list should be a Tensor.
 
     Returns:
-        list|Tensor: An empty array. In dynamic mode, ``array`` is a Python list. But in static graph mode, array is a Tensor
+        list|Tensor, An empty array. In dynamic mode, ``array`` is a Python list. But in static graph mode, array is a Tensor
         whose ``VarType`` is ``LOD_TENSOR_ARRAY``.
 
     Examples:
@@ -314,7 +367,7 @@ def create_array(dtype, initialized_list=None):
         return out
     else:
         helper = LayerHelper("array", **locals())
-        tensor_array = helper.create_variable(
+        tensor_array: paddle.Tensor = helper.create_variable(
             name=f"{helper.name}.out",
             type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
             dtype=dtype,

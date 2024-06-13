@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, version
+import paddle
+from paddle import _C_ops
 from paddle.base.data_feeder import check_dtype
 from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.device.cuda import get_device_capability
@@ -24,8 +25,10 @@ from paddle.framework import (
 
 def _get_arch_info():
     # Get SMVersion from device.
-    cuda_version = version.cuda()
-    if cuda_version is not None and cuda_version != 'False':
+    cuda_version = paddle.version.cuda()
+    if (
+        cuda_version is not None and cuda_version != 'False'
+    ) or paddle.is_compiled_with_rocm():
         major, minor = get_device_capability()
         arch = int(major * 10 + minor)
         return arch
@@ -68,7 +71,11 @@ def weight_quantize(x, algo="weight_only_int8", arch=None, group_size=-1):
         arch = _get_arch_info()
 
     assert (
-        arch == 70 or arch == 80 or arch == 86 or arch == 75
+        arch == 70
+        or arch == 80
+        or arch == 86
+        or arch == 75
+        or paddle.is_compiled_with_rocm()
     ), f"Currently weight_quantize only support SM70/75/80/86. but got {arch} "
 
     assert (

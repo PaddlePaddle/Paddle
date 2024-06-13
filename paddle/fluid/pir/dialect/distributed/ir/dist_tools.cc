@@ -17,8 +17,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/pir/include/core/operation.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 bool AllInputAreDist(const std::vector<pir::Value>& inputs) {
   for (auto value : inputs) {
@@ -133,6 +132,7 @@ pir::Attribute CvtToPirAttr(const phi::distributed::ArgDistAttr& dist_attr) {
     auto& vec = PADDLE_GET_CONST(std::vector<phi::distributed::TensorDistAttr>,
                                  dist_attr);
     std::vector<pir::Attribute> array;
+    array.reserve(vec.size());
     for (auto& attr : vec) {
       array.push_back(TensorDistAttribute::get(ctx,
                                                attr.process_mesh(),
@@ -225,5 +225,4 @@ void CopyLeafOpToMesh(pir::Value value, ProcessMeshAttribute mesh_attr) {
     }
   }
 }
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

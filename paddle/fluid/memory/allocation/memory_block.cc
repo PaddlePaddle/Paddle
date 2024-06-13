@@ -16,9 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace memory {
-namespace detail {
+namespace paddle::memory::detail {
 
 void MemoryBlock::Init(MetadataCache* cache,
                        Type t,
@@ -154,6 +152,4 @@ MemoryBlock* MemoryBlock::Metadata() const {
       reinterpret_cast<const MemoryBlock::Desc*>(this) - 1));
 }
 
-}  // namespace detail
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::detail

@@ -793,6 +793,7 @@ std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
     }
     return dist_output;
   }
+  VLOG(4) << "CreateKernelDistOutput with NULL out";
   return nullptr;
 }
 

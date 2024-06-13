@@ -118,6 +118,9 @@ inline ExprVec GetExprVecFromShape(const ShapeOrData &shapeordata) {
   }
 }
 
+symbol::ShapeOrDataDimExprs CreateShapeOrDataForXShape(
+    const symbol::ShapeOrDataDimExprs &x_dim_exprs);
+
 std::optional<std::vector<int64_t>> VecExpr2Int64(const ExprVec &expr_vec);
 
 ExprVec VecInt642Expr(const std::vector<int64_t> &int_vec);
