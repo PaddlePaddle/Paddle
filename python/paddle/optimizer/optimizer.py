@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 
@@ -245,9 +245,9 @@ class Optimizer:
                     "'grad_clip' should be an instance of GradientClipBase's derived class"
                 )
         if isinstance(weight_decay, float):
-            self.regularization = L2Decay(weight_decay)
+            self.regularization: Any = L2Decay(weight_decay)
         else:
-            self.regularization = weight_decay
+            self.regularization: Any = weight_decay
         self._grad_clip = grad_clip
         self._learning_rate = learning_rate
 
@@ -271,11 +271,11 @@ class Optimizer:
         # to train. These tensors are called accumulators.
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: {})
-        self.helper = None
+        self.helper: Any = None
         self._opti_name_list = []
         self._accumulators_holder = {}
         self._param_device_map = {}
-        self.clear_gradients = self.clear_grad
+        self.clear_gradients: Any = self.clear_grad
         self._default_dict = {
             'weight_decay': self.regularization,
             'grad_clip': self._grad_clip,
