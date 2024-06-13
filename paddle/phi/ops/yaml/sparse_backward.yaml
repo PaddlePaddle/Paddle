@@ -453,17 +453,6 @@
   kernel :
     func : values_coo_grad{sparse_coo, dense-> sparse_coo}
 
-- backward_op: concat_grad
-  forward : concat(Tensor[] x, Scalar axis=0) -> Tensor(out)
-  args : (Tensor[] x, Tensor out_grad, Scalar axis = 0)
-  output : Tensor[](x_grad){x.size()}
-  infer_meta :
-    func : sparse::UnchangedMultiInferMeta
-    param : [x]
-  kernel :
-    func : concat_coo_grad{vec::sparse_coo, sparse_coo -> vec::sparse_coo},
-           concat_csr_grad{vec::sparse_csr, sparse_csr -> vec::sparse_csr}
-
 - backward_op: fused_attention_grad
   forward : fused_attention(Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask) -> Tensor(out), Tensor(softmax)
   args: (Tensor query, Tensor key, Tensor value, Tensor softmax, Tensor out_grad)
