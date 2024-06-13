@@ -73,6 +73,9 @@ inline cudnnDataType_t ToCudnnDataType(const phi::DataType& t) {
     case phi::DataType::FLOAT8_E4M3FN:
       type = CUDNN_DATA_FP8_E4M3;
       break;
+    case phi::DataType::FLOAT8_E5M2:
+      type = CUDNN_DATA_FP8_E5M2;
+      break;
 #endif
 #if CUDNN_VERSION_MIN(8, 1, 0)
     case phi::DataType::BFLOAT16:

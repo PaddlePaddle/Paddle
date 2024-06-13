@@ -44,7 +44,7 @@ def check_fp8_support() -> bool:
     # Device compute capability 8.9 or higher required for FP8 execution.
     if gpu_arch < 89:  # pre-ada
         return False
-    if get_cuda_version() < 12010:
+    if get_cuda_version() < 12100:
         return False
     return True
 
@@ -66,8 +66,8 @@ def _to_fp8_saturated(x: paddle.Tensor, float8_dtype) -> paddle.Tensor:
 class TestMatmulFp8(unittest.TestCase):
     def config(self):
         self.dtype = 'float8_e4m3fn'
-        self.rtol = 0.6
-        self.atol = 7.6
+        self.rtol = 1e-5
+        self.atol = 1e-5
         self.x_shape = (64, 64)
         self.y_shape = (64, 64)
 
