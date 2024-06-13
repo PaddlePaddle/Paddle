@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
 
-namespace phi {
+#include <memory>
+#include "paddle/pir/include/pass/pass.h"
 
-KernelSignature LogsumexpGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx UNUSED) {
-  return KernelSignature("logsumexp_grad",
-                         {"X", "Out", "Out@GRAD"},
-                         {"axis", "keepdim", "reduce_all"},
-                         {"X@GRAD"});
-}
-
-}  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(logsumexp_grad, phi::LogsumexpGradOpArgumentMapping);
+namespace cinn {
+namespace dialect {
+namespace ir {
+std::unique_ptr<::pir::Pass> CreateFusionFallbackPass();
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn
