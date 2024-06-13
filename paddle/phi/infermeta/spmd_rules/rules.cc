@@ -563,6 +563,11 @@ PD_REGISTER_SPMD_RULE(slice,
                       PD_INFER_SPMD(phi::distributed::SliceInferSpmd),
                       PD_INFER_SPMD(phi::distributed::SliceInferSpmdReverse));
 
+PD_REGISTER_SPMD_RULE(
+    strided_slice,
+    PD_INFER_SPMD(phi::distributed::StridedSliceInferSpmd),
+    PD_INFER_SPMD(phi::distributed::StridedSliceGradInferSpmd));
+
 PD_REGISTER_SPMD_RULE(concat,
                       PD_INFER_SPMD(phi::distributed::ConcatInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ConcatInferSpmdReverse));

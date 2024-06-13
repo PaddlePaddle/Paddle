@@ -355,6 +355,29 @@ SpmdInfo SliceGradInferSpmdDynamic(const DistMetaTensor& input,
   return SliceGradInferBase(input, out_grad, axes, decrease_axis);
 }
 
+SpmdInfo StridedSliceInferSpmd(const DistMetaTensor& input,
+                               const std::vector<int>& axes,
+                               const std::vector<int>& starts,
+                               const std::vector<int>& ends,
+                               const std::vector<int>& strides) {
+  // starts, ends and strides have no impact on the derivation,
+  // only to align with the definition in phi api
+  std::vector<int64_t> axes_bridge(axes.begin(), axes.end());
+  return SliceInferSpmdBase(input, axes_bridge, {});
+}
+
+SpmdInfo StridedSliceGradInferSpmd(const DistMetaTensor& input,
+                                   const DistMetaTensor& out_grad,
+                                   const std::vector<int>& axes,
+                                   const std::vector<int>& starts,
+                                   const std::vector<int>& ends,
+                                   const std::vector<int>& strides) {
+  // starts, ends and strides have no impact on the derivation,
+  // only to align with the definition in phi api
+  std::vector<int64_t> axes_bridge(axes.begin(), axes.end());
+  return SliceGradInferBase(input, out_grad, axes_bridge, {});
+}
+
 SpmdInfo StridedSliceInferSpmdDynamic(const DistMetaTensor& input,
                                       const std::vector<int>& axes,
                                       const IntArray& starts,
