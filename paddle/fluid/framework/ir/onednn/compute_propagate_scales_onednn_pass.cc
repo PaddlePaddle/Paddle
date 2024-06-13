@@ -21,9 +21,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void ComputePropagateScalesMkldnnPass::GetTensorFromVector(
     const std::vector<float>& data_v, phi::DenseTensor* tensor) const {
@@ -516,9 +514,7 @@ void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
       graph, "has_quant_info", "var_quant_scales", var_quant_scales);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(compute_propagate_scales_onednn_pass,
               paddle::framework::ir::ComputePropagateScalesMkldnnPass);

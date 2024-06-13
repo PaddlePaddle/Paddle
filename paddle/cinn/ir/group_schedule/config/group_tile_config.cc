@@ -26,12 +26,19 @@ BucketInfo::BucketInfo(int sp_lower_bound,
                        int rb_upper_bound,
                        bool sp_is_dynamic = false,
                        bool rb_is_dynamic = false) {
-  BucketInfo::Dimension sp_dimension(
-      sp_lower_bound, sp_upper_bound, "S", sp_is_dynamic);
-  BucketInfo::Dimension rb_dimension(
-      rb_lower_bound, rb_upper_bound, "R", rb_is_dynamic);
-  this->space.push_back(sp_dimension);
-  this->space.push_back(rb_dimension);
+  if (sp_is_dynamic || sp_lower_bound != 1 || sp_upper_bound != 1) {
+    BucketInfo::Dimension sp_dimension(
+        sp_lower_bound, sp_upper_bound, "S", sp_is_dynamic);
+    this->space.push_back(sp_dimension);
+  }
+  if (rb_is_dynamic || rb_lower_bound != 1 || rb_upper_bound != 1) {
+    BucketInfo::Dimension rb_dimension(
+        rb_lower_bound, rb_upper_bound, "R", rb_is_dynamic);
+    this->space.push_back(rb_dimension);
+  }
+  if (this->space.empty()) {
+    this->space.emplace_back(1, 1, "S", /* is_dynamic = */ false);
+  }
 }
 
 bool BucketInfo::operator==(const BucketInfo& other) const {
@@ -109,6 +116,20 @@ std::shared_ptr<ScheduleConfig::BaseInfo> InitBasicInfo(
   base_info->is_reduce_all =
       (base_info->reduce_axis.size() == base_info->data_rank);
 
+  for (int64_t i = 0; i < group_info->data_space.size(); ++i) {
+    std::string iter_type = reduce_dim_loc.count(i) > 0 ? "R" : "S";
+    std::string static_or_dynamic =
+        group_info->data_space[i] == -1 ? "dynamic" : "static";
+    if (base_info->iter_space_type.empty() ||
+        base_info->iter_space_type.back().first != iter_type) {
+      base_info->iter_space_type.push_back({iter_type, static_or_dynamic});
+    } else {
+      if (static_or_dynamic == "dynamic") {
+        base_info->iter_space_type.back().second = "dynamic";
+      }
+    }
+  }
+
   return base_info;
 }
 
@@ -117,7 +138,18 @@ BuildPureStaticShapeConfig(
     const std::shared_ptr<ScheduleConfig::BaseInfo>& base_info,
     const common::Target& target) {
   if (base_info->spatial_numel == 1) {  // reduce all
-    if (base_info->reduce_numel <= 256) {
+    if (base_info->reduce_numel == 1) {
+      BucketInfo bucket_info{/* sp_lower_bound = */ 1,
+                             /* sp_upper_bound = */ 1,
+                             /* rb_lower_bound = */ 1,
+                             /* rb_upper_bound = */ 1};
+      ScheduleConfig::TileConfig tile_config{
+          /* warp_num = */ 1,
+          /* tree_reduce_num = */ 1,
+          /* spatial_inner_num = */ 1,
+          /* reduce_method = */ NoneReduceMethod()};
+      return {{bucket_info, tile_config}};
+    } else if (base_info->reduce_numel <= 256) {
       BucketInfo bucket_info{/* sp_lower_bound = */ 1,
                              /* sp_upper_bound = */ 1,
                              /* rb_lower_bound = */ 1,

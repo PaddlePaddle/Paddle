@@ -478,9 +478,12 @@ class Parallelizer:
             self._strategy.gradient_merge.avg = True
 
         # gradient_merge is then train-only optimization
+        grad_to_global_grad = {}
         if self.is_train and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
             config["dist_context"] = self._dist_context
+            config["grad_to_global_grad"] = grad_to_global_grad
+            config["pipeline_mode"] = self._strategy.pipeline.schedule_mode
             if gradient_sync_after_accumulate:
                 config["params_grads"] = global_params_grads
                 config[
@@ -560,4 +563,5 @@ class Parallelizer:
                 "program_runtimes": self._strategy.pipeline.program_runtimes,
                 "memory_limit_times": self._strategy.pipeline.memory_limit_times,
                 "split_backward": self._strategy.pipeline.split_backward,
+                "grad_to_global_grad": grad_to_global_grad,
             }

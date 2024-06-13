@@ -22,9 +22,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 void FuseReluDepthwiseConvPass::ApplyImpl(ir::Graph *graph) const {
   graph = FuseReluDepthwiseConv(graph, true);
@@ -186,9 +184,7 @@ ir::Graph *FuseReluDepthwiseConvPass::FuseReluDepthwiseConv(
   return graph;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(fuse_relu_depthwise_conv_pass,
               paddle::framework::ir::FuseReluDepthwiseConvPass);

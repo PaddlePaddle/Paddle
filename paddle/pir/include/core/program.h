@@ -71,9 +71,13 @@ class IR_API Program {
     parameters_ = parameters;
   }
 
+  uint64_t id() const { return id_; }
+
  private:
   // computation graph
   ModuleOp module_;
+  // unique in current process, "almost" unique between processes.
+  uint64_t id_;
   // weight
   ParameterMap parameters_;
 };
