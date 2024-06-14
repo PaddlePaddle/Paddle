@@ -101,10 +101,6 @@ class ContinuousBernoulli(distribution.Distribution):
         self.dtype = paddle.get_default_dtype()
         self.probs = self._to_tensor(probs)
         self.lims = paddle.to_tensor(lims, dtype=self.dtype)
-        if not self._check_constraint(self.probs):
-            raise ValueError(
-                'Every element of input parameter `probs` should be nonnegative.'
-            )
 
         # eps_prob is used to clip the input `probs` in the range of [eps_prob, 1-eps_prob]
         eps_prob = paddle.finfo(self.probs.dtype).eps
@@ -128,17 +124,6 @@ class ContinuousBernoulli(distribution.Distribution):
         else:
             self.dtype = probs.dtype
         return probs
-
-    def _check_constraint(self, value):
-        """Check the constraint for input parameters
-
-        Args:
-            value (Tensor)
-
-        Returns:
-            bool: pass or not.
-        """
-        return (value >= 0).all() and (value <= 1).all()
 
     def _cut_support_region(self):
         """Generate stable support region indicator (prob < self.lims[0] && prob >= self.lims[1] )
@@ -290,10 +275,6 @@ class ContinuousBernoulli(distribution.Distribution):
           Tensor: log probability. The data type is the same as `self.probs`.
         """
         value = paddle.cast(value, dtype=self.dtype)
-        if not self._check_constraint(value):
-            raise ValueError(
-                'Every element of input parameter `value` should be >= 0.0 and <= 1.0.'
-            )
         eps = paddle.finfo(self.probs.dtype).eps
         cross_entropy = paddle.nan_to_num(
             value * paddle.log(self.probs)
@@ -363,10 +344,6 @@ class ContinuousBernoulli(distribution.Distribution):
             Tensor: quantile of :attr:`value`. The data type is the same as `self.probs`.
         """
         value = paddle.cast(value, dtype=self.dtype)
-        if not self._check_constraint(value):
-            raise ValueError(
-                'Every element of input parameter `value` should be >= 0.0 and <= 1.0.'
-            )
         cut_probs = self._cut_probs()
         cdfs = (
             paddle.pow(cut_probs, value)
@@ -407,10 +384,6 @@ class ContinuousBernoulli(distribution.Distribution):
             Tensor: the value of the r.v. corresponding to the quantile. The data type is the same as `self.probs`.
         """
         value = paddle.cast(value, dtype=self.dtype)
-        if not self._check_constraint(value):
-            raise ValueError(
-                'Every element of input parameter `value` should be >= 0.0 and <= 1.0.'
-            )
         cut_probs = self._cut_probs()
         return paddle.where(
             self._cut_support_region(),

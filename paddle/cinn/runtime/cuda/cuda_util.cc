@@ -99,7 +99,7 @@ void cinn_call_cuda_kernel(void *kernel_fn,
           << ", " << grid_z << "}, block_dim={" << block_x << ", " << block_y
           << ", " << block_z << "}, num_args=" << num_args
           << ", shared_memory_bytes=" << shared_memory_bytes
-          << ", stream=" << stream;
+          << ", stream=" << stream << ", kernel_fn=" << kernel_fn;
 
   std::vector<void *> kernel_args;
   {
