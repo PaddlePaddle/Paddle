@@ -360,6 +360,28 @@ struct InputOutputMaximumConstrain {
 };
 
 template <typename T>
+struct HorizontalCheckMiddleOutputVar {
+  bool HaveMiddleVariable(const PatternGraph<T>& graph,
+                          const PatternNodePtr<T>& lhs,
+                          const PatternNodePtr<T>& rhs) {
+    for (const auto& i : lhs->downstream()) {
+      if (i == rhs) return false;
+    }
+    for (const auto& i : lhs->upstream()) {
+      if (i == rhs) return false;
+    }
+    return true;
+  }
+  bool operator()(const PatternGraph<T>& graph,
+                  const PatternNodePtr<T>& lhs,
+                  const PatternNodePtr<T>& rhs) {
+    // Middle Variable Must be ( id-dependent )
+    return HaveMiddleVariable(graph, lhs, rhs);
+    // GetOutputOpsInPattern(lhs->stmt_pattern());
+  }
+};
+
+template <typename T>
 struct HorizontalFusionConstrain {
   bool operator()(const PatternGraph<T>& graph,
                   const PatternNodePtr<T>& lhs,

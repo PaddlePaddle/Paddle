@@ -55,6 +55,40 @@ std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern<T>& pattern) {
                     pattern.variant());
 }
 
+template <typename T>
+std::vector<pir::Operation*> GetOutputOpsInPattern(
+    const StmtPattern<T>& pattern) {
+  struct Visitor {
+    std::vector<pir::Operation*> operator()(const ReducePattern<T>& pattern) {
+      return {pattern.GetReduceOp()};
+    }
+    std::vector<pir::Operation*> operator()(const TrivialPattern<T>& pattern) {
+      return {pattern.sink()};
+    }
+    std::vector<pir::Operation*> operator()(
+        const UnsupportPattern<T>& pattern) {
+      PADDLE_THROW("not implement!");
+    }
+    std::vector<pir::Operation*> operator()(
+        const ReduceTreePattern<T>& pattern) {
+      return this->operator()(pattern.GetRootPattern());
+    }
+    std::vector<pir::Operation*> operator()(
+        const ReduceTreePlusTrivialPattern<T>& pattern) {
+      return {pattern.sink_trivial};
+    }
+    std::vector<pir::Operation*> operator()(
+        const HorizontalFusionPattern<T>& horizontal) {
+      std::vector<pir::Operation*> res;
+      for (const auto& pattern : horizontal.padding_patterns_) {
+        res.push_back(this->operator()(pattern.pattern));
+      }
+      return res;
+    }
+  };
+  return std::visit(Visitor(), pattern.variant());
+}
+
 using LoopFramework = std::vector<symbol::DimExpr>;
 
 // std::optional({}) means not sure.
