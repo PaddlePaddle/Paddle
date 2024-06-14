@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Callable, NotRequired, Sequence, TypedDict
+from typing import TYPE_CHECKING, Callable, Sequence
 
 import numpy as np
 
@@ -50,6 +50,8 @@ from ..base.layer_helper import LayerHelper, LayerHelperBase
 from .lr import LRScheduler
 
 if TYPE_CHECKING:
+    from typing_extensions import NotRequired, TypedDict
+
     from paddle import Tensor
     from paddle.callbacks import Callback
     from paddle.nn.clip import GradientClipBase
