@@ -112,6 +112,8 @@ if(WITH_GPU)
     "passes/test_*.py")
 
   set(EXCLUDE_PASS ${EXCLUDE_PASS} test_fusion_fallback_pass)
+  set(EXCLUDE_PASS ${EXCLUDE_PASS} test_accuracy_check_pass)
+
   foreach(pass_test_name ${EXCLUDE_PASS})
     list(REMOVE_ITEM CINN_PASS_TEST passes/${pass_test_name}.py)
   endforeach()
@@ -140,6 +142,40 @@ if(WITH_GPU)
       ${PYTHON_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/passes/test_fusion_fallback_pass.py
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+  # test accuracy_check_pass
+  add_test(
+    NAME test_accuracy_check_pass
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+      FLAGS_prim_enable_dynamic=1 FLAGS_cinn_new_group_scheduler=1
+      FLAGS_check_infer_symbolic=1 FLAGS_enable_pir_api=1
+      FLAGS_cinn_bucket_compile=1 FLAGS_group_schedule_tiling_first=1
+      FLAGS_cudnn_deterministic=true FLAGS_enable_cinn_accuracy_check=1
+      ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/passes/test_accuracy_check_pass.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+  file(
+    GLOB CINN_FUSION_TEST
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "fusion/test_*.py")
+
+  foreach(fusion_test_name ${EXCLUDE_FUSION})
+    list(REMOVE_ITEM CINN_FUSION_TEST fusion/${fusion_test_name}.py)
+  endforeach()
+
+  foreach(fusion_test_name ${CINN_FUSION_TEST})
+    string(REGEX REPLACE ".py" "" fusion_test_name ${fusion_test_name})
+    add_test(
+      NAME ${fusion_test_name}
+      COMMAND
+        ${CMAKE_COMMAND} -E env
+        PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
+        python3 ${CMAKE_CURRENT_SOURCE_DIR}/${fusion_test_name}.py
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  endforeach()
 
   file(
     GLOB CINN_RUNTIME_TEST
