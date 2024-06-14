@@ -750,14 +750,19 @@ def _remove_save_pre_hook(hook):
 
 
 @wrap_decorator
-def _run_save_pre_hooks(func):
-    def wrapper(layer, path, input_spec=None, **configs):
+def _run_save_pre_hooks(func: _F) -> _F:
+    def wrapper(
+        layer: Layer | Callable[..., Any],
+        path: str,
+        input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
+        **configs: Unpack[_SaveLoadOptions],
+    ) -> None:
         global _save_pre_hooks
         for hook in _save_pre_hooks:
             hook(layer, input_spec, configs)
         func(layer, path, input_spec, **configs)
 
-    return wrapper
+    return wrapper  # type: ignore
 
 
 def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
