@@ -29,7 +29,7 @@ from ..base.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
-from .optimizer import Optimizer, ParameterConfig
+from .optimizer import Optimizer
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from paddle.regularizer import WeightDecayRegularizer
 
     from .lr import LRScheduler
+    from .optimizer import ParameterConfig
 
     class AdamParameterConfig(ParameterConfig):
         beta1: NotRequired[float | Tensor]
