@@ -2469,15 +2469,14 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
 
             >>> import paddle
             >>> import numpy as np
-            >>> import numpy.typing as npt
             >>> data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64')
             >>> print(data.numpy())
             [[2.5 2.5]
              [2.5 2.5]
              [2.5 2.5]]
-            >>> array: npt.NDArray[Any] = np.array([[1, 1], [3, 4], [1, 3]]).astype(
+            >>> array = np.array([[1, 1], [3, 4], [1, 3]]).astype(
             ...     np.int64
-            ... )
+            ... )  # type: ignore
             >>> result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             >>> paddle.assign(array, result1)
             >>> print(result1.numpy())
