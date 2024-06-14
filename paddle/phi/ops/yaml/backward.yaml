@@ -62,11 +62,12 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : add_position_encoding_grad
-  forward: add_position_encoding (Tensor x, float alpha = 1.0f, float beta = 1.0f)
+  forward: add_position_encoding (Tensor x, float alpha = 1.0f, float beta = 1.0f) -> Tensor (out)
   args: (Tensor x, Tensor out_grad, float alpha = 1.0f, float beta = 1.0f)
   output: Tensor (x_grad)
   infer_meta:
-    func: AddPositionEncodingInferMeta
+    func : UnchangedInferMeta
+    param : [x]
   kernel:
     func: add_position_encoding_grad
     data_type: out_grad
