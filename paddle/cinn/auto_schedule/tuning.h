@@ -17,7 +17,6 @@
 #include <memory>
 #include <vector>
 
-#include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/ir/lowered_func.h"
 
@@ -26,8 +25,6 @@ namespace auto_schedule {
 
 // alias a LoweredFunc array as FunctionGroup
 using FunctionGroup = std::vector<ir::LoweredFunc>;
-// alias a Graph::Group array as SubGraph
-using SubGraphPtr = std::shared_ptr<hlir::framework::Graph::Group>;
 
 // Options for tuning process
 struct TuningOptions {
@@ -81,8 +78,6 @@ struct TuningOptions {
 
 // Result of the tuning process
 struct TuningResult {
-  // Result of graph tuning
-  std::vector<SubGraphPtr> subgraphs;
   // Result of schedule tuning
   std::vector<FunctionGroup> function_groups;
 };

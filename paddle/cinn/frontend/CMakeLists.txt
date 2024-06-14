@@ -7,8 +7,7 @@ gather_srcs(
   net_builder.cc
   op_mapper_registry.cc
   paddle_model_convertor.cc
-  program_pass.cc
-  optimize.cc)
+  program_pass.cc)
 
 #cinn_cc_test(test_paddle_model_convertor
 #        ARGS --model_dir=${THIRD_PARTY_PATH}/resnet_model

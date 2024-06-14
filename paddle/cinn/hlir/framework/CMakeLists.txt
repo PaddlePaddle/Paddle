@@ -12,10 +12,8 @@ gather_srcs(
   instruction.cc
   program.cc
   graph_compiler_util.cc
-  graph.cc
   node.cc
   op_strategy.cc
-  op_lowering_util.cc
   accuracy_checker.cc
   visualize_helper.cc
   compile_error.cc)

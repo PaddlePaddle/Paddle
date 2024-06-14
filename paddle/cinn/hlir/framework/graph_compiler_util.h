@@ -16,7 +16,6 @@
 
 #include "paddle/cinn/auto_schedule/tuning.h"
 #include "paddle/cinn/common/common.h"
-#include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/program.h"
 #include "paddle/cinn/ir/lowered_func.h"
 
@@ -54,49 +53,6 @@ enum class CompilationStatus {
   PROGRAM_FAIL = 4,
   // Compile successfully.
   SUCCESS = 5,
-};
-
-struct CompilationContext {
-  CompilationContext() = default;
-  CompilationContext(const std::shared_ptr<Graph>& graph,
-                     const std::shared_ptr<Scope>& scope,
-                     const Target& target)
-      : graph(graph), scope(scope), target(target) {}
-
-  std::string attached_source_code = "";
-  // Compile options.
-  bool with_instantiate_variables = false;
-  bool with_buffer_handle_instruction_inserted = false;
-  bool remove_unused_variables = true;
-  // Compile stage, full compile by default.
-  CompilationStage stage = CompilationStage::DEFAULT;
-  // Compile target.
-  Target target;
-  // Computation graph.
-  std::shared_ptr<Graph> graph;
-  // Variable scope
-  std::shared_ptr<Scope> scope;
-  // Fetch var ids in cinn and the corresponding var nodes will not be fused
-  // so as to get the result.
-  std::unordered_set<std::string> fetch_var_ids;
-  // Map dst reuse var to the src var sharing buffer
-  absl::flat_hash_map<std::string, std::string> reuse_vars_map;
-  // Nodes group, it may come from the result of op fusion or graph tuning.
-  // Nodes in a group will be built into an Instruction.
-  std::vector<std::shared_ptr<Graph::Group>> groups;
-  // Corresponding lowered functions of above grouped nodes,
-  // if it is empty then graph_compiler will generate for them.
-  std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-  // CUDA stream.
-  void* stream = nullptr;
-
-  // Set attached source code, if code is not empty, these codes will replace
-  // the device_module code after SplitDeviceAndHostModule.
-  void ApplySourceCode(const std::string& code);
-  // Apply results of auto-tune to compile.
-  // Compilation will start from CompilationStage::CODEGEN_AND_JIT when tuning
-  // results are applied.
-  void ApplyTuningResult(const auto_schedule::TuningResult& tuning_result);
 };
 
 class GraphCompiler;
