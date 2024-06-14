@@ -14,14 +14,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Literal, Tuple
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from paddle import Tensor
 
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, pir
-
-from paddle._typing import *
+from paddle._typing import *  # noqa: F403
 from paddle.base.framework import _global_flags, in_dynamic_or_pir_mode
 from paddle.device import (
     get_all_custom_device_type,
@@ -284,8 +283,8 @@ def conv1d(
     padding: Literal['valid', 'same']
     | Size1
     | Size2
-    | List[List[int]]
-    | List[Tuple[int, int]] = 0,
+    | list[list[int]]
+    | list[tuple[int, int]] = 0,
     dilation: Size1 = 1,
     groups: int = 1,
     data_format: DataLayout1D = 'NCL',
@@ -533,8 +532,8 @@ def conv2d(
     padding: Literal['VALID', 'SAME']
     | Size2
     | Size4
-    | List[List[int]]
-    | List[Tuple[int, int]] = 0,
+    | list[list[int]]
+    | list[tuple[int, int]] = 0,
     dilation: Size2 = 1,
     groups: int = 1,
     data_format: DataLayout2D = "NCHW",
@@ -1050,8 +1049,8 @@ def conv2d_transpose(
     padding: Literal['VALID', 'SAME']
     | Size2
     | Size4
-    | List[List[int]]
-    | List[Tuple[int, int]] = 0,
+    | list[list[int]]
+    | list[tuple[int, int]] = 0,
     output_padding: Size2 = 0,
     dilation: Size2 = 1,
     groups: int = 1,
@@ -1538,8 +1537,8 @@ def conv3d_transpose(
     padding: Literal['VALID', 'SAME']
     | Size3
     | Size6
-    | List[List[int]]
-    | List[Tuple[int, int]] = 0,
+    | list[list[int]]
+    | list[tuple[int, int]] = 0,
     output_padding: Size3 = 0,
     groups: int = 1,
     dilation: Size3 = 1,

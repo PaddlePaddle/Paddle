@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Tuple
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -23,7 +23,7 @@ import numpy
 
 import paddle
 from paddle import _C_ops, pir
-from paddle._typing import *
+from paddle._typing import *  # noqa: F403
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
 from paddle.distributed.communication.group import Group
@@ -1017,8 +1017,8 @@ def bilinear(
 
 def dropout(
     x: Tensor,
-    p: float | int = 0.5,
-    axis: IntSequence | None = None,
+    p: float | int = 0.5,  # noqa: PYI041
+    axis: int | IntSequence | None = None,
     training: bool = True,
     mode: Literal[
         'upscale_in_train', 'downscale_in_infer'
@@ -2181,7 +2181,7 @@ def class_center_sample(
     num_classes: int,
     num_samples: int,
     group: Group | bool | None = None,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """
     Class center sample method is proposed from the paper PartialFC that only sample a subset of the class centers.
     The process of sampling subset class centers is straightforward:
