@@ -521,7 +521,7 @@ void concat_grad(const std::vector<Tensor>& x,
                                   {int64_t(axis_value)},
                                   {int64_t(axis_value) + 1},
                                   {1},
-                                  {}))
+                                  {}));
     }
     Tensor sections_tensor = concat<T>(sections);
     x_grad_tmp =

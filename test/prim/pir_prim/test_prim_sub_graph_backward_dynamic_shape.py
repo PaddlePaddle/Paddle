@@ -63,25 +63,28 @@ def subtract_net(x, y):
 
 def concat_net1(x):
     y = x + 1
-    return paddle.concat([x, y], axis=-5)
-
-
-def concat_net2(x):
-    y = x + 1
     return paddle.concat([x, y], axis=-1)
 
 
-def concat_net3(x):
+def concat_net2(x):
     y = x + 1
     return paddle.concat([x, y], axis=1)
 
 
 def split_net1(x):
-    return paddle.split(x, axis=-1)
+    res = paddle.split(x, num_or_sections=10, axis=-1)
+    tmp_res = res[0]
+    for i in range(1, len(res)):
+        tmp_res = tmp_res + res[i] * i
+    return tmp_res / len(res)
 
 
 def split_net2(x):
-    return paddle.split(x, axis=1)
+    res = paddle.split(x, num_or_sections=10, axis=1)
+    tmp_res = res[0]
+    for i in range(1, len(res)):
+        tmp_res = tmp_res + res[i] * i
+    return tmp_res / len(res)
 
 
 def apply_to_static(net, use_cinn, input_spec=None):
@@ -561,7 +564,7 @@ class TestPrimConcatWithGrad2(TestPrimBaseWithGrad):
         np.random.seed(2023)
         self.dtype = "float32"
         self.x_shape = [30, 200, 40]
-        self.init_x_shape = [30, None, None]
+        self.init_x_shape = [None, None, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.net = concat_net1
         self.enable_cinn = False
@@ -585,33 +588,9 @@ class TestPrimConcatWithGrad4(TestPrimBaseWithGrad):
         np.random.seed(2023)
         self.dtype = "float32"
         self.x_shape = [30, 200, 40]
-        self.init_x_shape = [None, None, None]
-        self.x = np.random.random(self.x_shape).astype(self.dtype)
-        self.net = concat_net2
-        self.enable_cinn = False
-        self.tol = 1e-6
-
-
-class TestPrimConcatWithGrad5(TestPrimBaseWithGrad):
-    def setUp(self):
-        np.random.seed(2023)
-        self.dtype = "float32"
-        self.x_shape = [30, 200, 40]
-        self.init_x_shape = [None, None, 40]
-        self.x = np.random.random(self.x_shape).astype(self.dtype)
-        self.net = concat_net3
-        self.enable_cinn = False
-        self.tol = 1e-6
-
-
-class TestPrimConcatWithGrad6(TestPrimBaseWithGrad):
-    def setUp(self):
-        np.random.seed(2023)
-        self.dtype = "float32"
-        self.x_shape = [30, 200, 40]
         self.init_x_shape = [None, 200, None]
         self.x = np.random.random(self.x_shape).astype(self.dtype)
-        self.net = concat_net3
+        self.net = concat_net2
         self.enable_cinn = False
         self.tol = 1e-6
 
