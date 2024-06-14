@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <string>
 
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace phi {
