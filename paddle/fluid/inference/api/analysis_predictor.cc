@@ -1092,15 +1092,12 @@ bool AnalysisPredictor::PrepareProgram(
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
 
   if (config_.new_ir_enabled()) {
-    if (!load_pir_model_) {
-      PADDLE_ENFORCE_EQ(
-          pir_program_,
-          nullptr,
-          platform::errors::Fatal("Here, pir_program must be a nullptr!"));
-      pir_program_ =
-          paddle::TranslateLegacyProgramToProgram(*inference_program_);
-      OptimizeInferencePirProgram();
-    }
+    PADDLE_ENFORCE_EQ(
+        pir_program_,
+        nullptr,
+        platform::errors::Fatal("Here, pir_program must be a nullptr!"));
+    pir_program_ = paddle::TranslateLegacyProgramToProgram(*inference_program_);
+    OptimizeInferencePirProgram();
   }
   return true;
 }
