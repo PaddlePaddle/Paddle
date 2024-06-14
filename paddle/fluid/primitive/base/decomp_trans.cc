@@ -469,15 +469,31 @@ void DecompProgram::decomp_block(
       builder.set_insertion_point(op);
       std::vector<std::vector<pir::Value>> decomp_res = call_decomp_rule(op);
       std::vector<pir::Value> orig_outs = op->results();
-      bool is_next_builtin_split = false;
+      bool is_next_builtin_split_slice = false;
 
       for (size_t i = 0; i < orig_outs.size(); i++) {
         auto item = orig_outs[i];
-        if (item.use_count() == 1) {
+        if (item.use_count() >= 1) {
           auto next_op = item.first_use().owner();
-          if (next_op->name() == "builtin.split" ||
-              next_op->name() == "builtin.slice") {
-            is_next_builtin_split = true;
+
+          if (next_op->name() == "builtin.slice") {
+            is_next_builtin_split_slice = true;
+            std::vector<pir::Operation*> slice_ops;
+            for (auto it = item.use_begin(); it != item.use_end(); ++it) {
+              slice_ops.push_back(it->owner());
+            }
+            for (size_t j = 0; j < slice_ops.size(); j++) {
+              int attr_idx = slice_ops[j]
+                                 ->attribute("index")
+                                 .dyn_cast<pir::Int32Attribute>()
+                                 .data();
+              slice_ops[j]->ReplaceAllUsesWith(decomp_res[i][attr_idx]);
+              RemoveOp(block, slice_ops[j]);
+            }
+          }
+
+          if (next_op->name() == "builtin.split") {
+            is_next_builtin_split_slice = true;
 
             check_decomp_outputs(
                 next_op->name(), next_op->results(), decomp_res[i]);
@@ -492,7 +508,7 @@ void DecompProgram::decomp_block(
           }
         }
       }
-      if (!is_next_builtin_split) {
+      if (!is_next_builtin_split_slice) {
         std::vector<pir::Value> standard_decomp_res =
             format_decomp_res(op->name(), orig_outs, decomp_res);
         check_decomp_outputs(op->name(), orig_outs, standard_decomp_res);
