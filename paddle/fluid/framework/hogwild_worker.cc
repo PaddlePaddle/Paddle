@@ -1424,9 +1424,9 @@ void HogwildWorker::TrainFilesWithProfiler() {
         timeline.Start();
         auto &op = ops_[i];
         VLOG(3) << "Going to run op " << op_names_[i];
-        auto it = offload_vars_.find(op.get());
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
     defined(PADDLE_WITH_PSCORE)
+        auto it = offload_vars_.find(op.get());
         if (use_gpu_graph_ && use_ps_gpu_) {
           // offload
           if (it != offload_vars_.end()) {
