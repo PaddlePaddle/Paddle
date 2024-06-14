@@ -278,10 +278,9 @@ class TestAbsTransform(unittest.TestCase):
 )
 class TestAffineTransform(unittest.TestCase):
     def setUp(self):
-        with paddle.static.program_guard(
-            paddle.static.default_main_program(),
-            paddle.static.default_startup_program(),
-        ):
+        self.sp = paddle.static.Program()
+        self.mp = paddle.static.Program()
+        with paddle.static.program_guard(self.mp, self.sp):
             loc = paddle.static.data('loc', self.loc.shape, self.loc.dtype)
             scale = paddle.static.data(
                 'scale', self.scale.shape, self.scale.dtype
