@@ -438,8 +438,7 @@ void DispatchWithDtype(
                            q_num_head,
                            max_seq_len,
                            rope_emb.get().dims()[2],
-                           dim_head,
-                           use_neox_style);
+                           dim_head);
       } else {
         gqa_rotary_qk_variable(dev_ctx,
                                qkv_buf.data<T>(),
@@ -452,8 +451,7 @@ void DispatchWithDtype(
                                kv_num_head,
                                max_seq_len,
                                rope_emb.get().dims()[2],
-                               dim_head,
-                               use_neox_style);
+                               dim_head);
       }
     }
     VLOG(3) << "rope end";

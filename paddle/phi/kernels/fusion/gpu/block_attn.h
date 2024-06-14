@@ -410,14 +410,14 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void block_attention_kernel(
 
   float sum = 0.f;
   for (int ti = tid; ti <= act_time_step; ti += THREADS_PER_BLOCK) {
-    float logit = expf(qk_smem[ti] - qk_max);
+    float logit = __expf(qk_smem[ti] - qk_max);
     sum += logit;
     qk_smem[ti] = logit;
   }
 
   sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], sum);
 
-  float inv_sum = fdividef(1.f, sum + 1.e-6f);
+  float inv_sum = __fdividef(1.f, sum + 1.e-6f);
 
   for (int ti = tid; ti <= act_time_step; ti += THREADS_PER_BLOCK) {
     convert_from_float(logits_smem[ti], qk_smem[ti] * inv_sum);
@@ -904,15 +904,15 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
 
     float sum = 0.f;
     for (int ti = tid; ti <= act_time_step; ti += THREADS_PER_BLOCK) {
-      float logit = expf(qk_smem[ti * GQA_SUB_PARTITION_SIZE + local_hi] -
-                         qk_maxs[local_hi]);
+      float logit = __expf(qk_smem[ti * GQA_SUB_PARTITION_SIZE + local_hi] -
+                           qk_maxs[local_hi]);
       sum += logit;
       qk_smem[ti * GQA_SUB_PARTITION_SIZE + local_hi] = logit;
     }
 
     sum = block_sum<WARPS_PER_BLOCK>(&red_smem[WARPS_PER_BLOCK], sum);
 
-    float inv_sum = fdividef(1.f, sum + 1.e-6f);
+    float inv_sum = __fdividef(1.f, sum + 1.e-6f);
 
     for (int ti = tid; ti <= act_time_step; ti += THREADS_PER_BLOCK) {
       convert_from_float(
@@ -2212,72 +2212,6 @@ void DynamicQuantCacheKernel(
 }
 
 template <typename T, int VecSize = 1>
-__global__ void NeoxVariableLengthRotaryKernel(
-    const T *qkv,
-    const float *cos_emb,  // [1, 1, seq_len, dim_head / 2]
-    const float *sin_emb,
-    const int *padding_offsets,
-    const int *seq_lens,
-    T *qkv_out,
-    const int64_t elem_cnt,
-    const int num_head,
-    const int seq_len,
-    const int last_dim) {
-  // [token_num, 2, num_head, dim_head / 2]
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using LoadEmbT = phi::AlignedVector<float, VecSize>;
-  LoadT left_vec;
-  LoadT right_vec;
-  LoadEmbT cos_emb_vec;
-  LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
-  const int half_lastdim = last_dim / 2;
-  const int hidden_size = num_head * half_lastdim;
-  const int full_hidden_size = num_head * last_dim;
-  const int offset = 2 * hidden_size;
-  for (int64_t linear_index = global_thread_idx * VecSize,
-               step = gridDim.x * blockDim.x * VecSize;
-       linear_index < elem_cnt;
-       linear_index += step) {
-    const int token_idx = linear_index / offset;
-    const int ori_token_idx = token_idx + padding_offsets[token_idx];
-    const int ori_bi = ori_token_idx / seq_len;
-    if (seq_lens && seq_lens[ori_bi] == 0) continue;
-    const int bias = linear_index % offset;
-    const int qkv_id = bias / hidden_size;
-    const int qkv_bias = bias % hidden_size;
-    const int hi = qkv_bias / half_lastdim;
-    const int h_bias = qkv_bias % half_lastdim;
-
-    const int ori_seq_id = ori_token_idx % seq_len;
-
-    const int emb_idx = ori_seq_id * last_dim + h_bias;
-    const int base_idx_left = token_idx * 3 * full_hidden_size +
-                              qkv_id * full_hidden_size + hi * last_dim +
-                              h_bias;
-    const int base_idx_right = base_idx_left + half_lastdim;
-
-    phi::Load<T, VecSize>(&qkv[base_idx_left], &left_vec);
-    phi::Load<T, VecSize>(&qkv[base_idx_right], &right_vec);
-    phi::Load<float, VecSize>(&cos_emb[emb_idx], &cos_emb_vec);
-    phi::Load<float, VecSize>(&sin_emb[emb_idx], &sin_emb_vec);
-#pragma unroll
-    for (int i = 0; i < VecSize; i++) {
-      const float input_left = static_cast<float>(left_vec[i]);
-      const float input_right = static_cast<float>(right_vec[i]);
-      const float cos_tmp = cos_emb_vec[i];
-      const float sin_tmp = sin_emb_vec[i];
-      left_vec[i] =
-          static_cast<T>(input_left * cos_tmp - input_right * sin_tmp);
-      right_vec[i] =
-          static_cast<T>(input_right * cos_tmp + input_left * sin_tmp);
-    }
-    phi::Store<T, VecSize>(left_vec, &qkv_out[base_idx_left]);
-    phi::Store<T, VecSize>(right_vec, &qkv_out[base_idx_right]);
-  }
-}
-
-template <typename T, int VecSize = 1>
 __global__ void VariableLengthRotaryKernel(
     const T *qkv,
     const float *cos_emb,  // [1, 1, seq_len, dim_head / 2]
@@ -2348,46 +2282,26 @@ void rotary_qk_variable(
     const int head_num,
     const int seq_len,
     const int input_output_len,
-    const int dim_head,
-    bool use_neox_style = false) {
+    const int dim_head) {
   int elem_nums = token_num * 2 * head_num * dim_head;  // just q and k
-  if (use_neox_style) {
-    elem_nums /= 2;
-  }
   constexpr int PackSize = 16 / sizeof(T);
   const int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
   int grid_size = 1;
   GetNumBlocks(pack_num, &grid_size);
-  if (!use_neox_style) {
-    const float *cos_emb = rotary_emb;
-    const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
-    VariableLengthRotaryKernel<T, PackSize>
-        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
-                                                        cos_emb,
-                                                        sin_emb,
-                                                        padding_offsets,
-                                                        seq_lens,
-                                                        qkv,
-                                                        elem_nums,
-                                                        head_num,
-                                                        seq_len,
-                                                        dim_head);
-  } else {
-    const float *cos_emb = rotary_emb;
-    const float *sin_emb = rotary_emb + input_output_len * dim_head;
-    NeoxVariableLengthRotaryKernel<T, PackSize>
-        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
-                                                        cos_emb,
-                                                        sin_emb,
-                                                        padding_offsets,
-                                                        seq_lens,
-                                                        qkv,
-                                                        elem_nums,
-                                                        head_num,
-                                                        seq_len,
-                                                        dim_head);
-  }
+  const float *cos_emb = rotary_emb;
+  const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
+  VariableLengthRotaryKernel<T, PackSize>
+      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
+                                                      cos_emb,
+                                                      sin_emb,
+                                                      padding_offsets,
+                                                      seq_lens,
+                                                      qkv,
+                                                      elem_nums,
+                                                      head_num,
+                                                      seq_len,
+                                                      dim_head);
 }
 
 template <typename T, int VecSize = 1>
@@ -2462,140 +2376,29 @@ void gqa_rotary_qk_variable(
     const int kv_head_num,
     const int seq_len,
     const int input_output_len,
-    const int dim_head,
-    bool use_neox_style = false) {
+    const int dim_head) {
   int elem_nums =
       token_num * (q_head_num + kv_head_num) * dim_head;  // just q and k
-  if (use_neox_style) {
-    elem_nums /= 2;
-  }
   constexpr int PackSize = 16 / sizeof(T);
   const int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
   int grid_size = 1;
   GetNumBlocks(pack_num, &grid_size);
-  if (!use_neox_style) {
-    const float *cos_emb = rotary_emb;
-    const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
-    GQAVariableLengthRotaryKernel<T, PackSize>
-        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
-                                                        cos_emb,
-                                                        sin_emb,
-                                                        padding_offsets,
-                                                        seq_lens,
-                                                        qkv,
-                                                        elem_nums,
-                                                        q_head_num,
-                                                        kv_head_num,
-                                                        seq_len,
-                                                        dim_head);
-  } else {
-    // NOTE: not support gqa
-    const float *cos_emb = rotary_emb;
-    const float *sin_emb = rotary_emb + input_output_len * dim_head;
-    NeoxVariableLengthRotaryKernel<T, PackSize>
-        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
-                                                        cos_emb,
-                                                        sin_emb,
-                                                        padding_offsets,
-                                                        seq_lens,
-                                                        qkv,
-                                                        elem_nums,
-                                                        q_head_num,
-                                                        seq_len,
-                                                        dim_head);
-  }
-}
 
-template <typename T, int VecSize = 1>
-__global__ void NeoxVariableLengthRotaryKernel(
-    const int *qkv,
-    const float *cos_emb,  // [1, 1, seq_len, dim_head / 2]
-    const float *sin_emb,
-    const int *padding_offsets,
-    const int *seq_lens,
-    const float *qkv_out_scales,  // [3, num_head, dim_head]
-    const T *qkv_biases,          // [3, num_head, dim_head]
-    T *qkv_out,
-    const int64_t elem_cnt,
-    const int num_head,
-    const int seq_len,
-    const int last_dim) {
-  using LoadT = phi::AlignedVector<int, VecSize>;
-  using LoadBiasT = phi::AlignedVector<T, VecSize>;
-  using LoadScaleT = phi::AlignedVector<float, VecSize>;
-  using LoadEmbT = phi::AlignedVector<float, VecSize>;
-  LoadT left_vec;
-  LoadT right_vec;
-  LoadBiasT left_bias_vec;
-  LoadBiasT right_bias_vec;
-  LoadScaleT left_out_scale_vec;
-  LoadScaleT right_out_scale_vec;
-  LoadEmbT cos_emb_vec;
-  LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
-  const int half_lastdim = last_dim / 2;
-  const int hidden_size = num_head * half_lastdim;
-  const int full_hidden_size = num_head * last_dim;
-  const int offset = 3 * hidden_size;
-  for (int64_t linear_index = global_thread_idx * VecSize,
-               step = gridDim.x * blockDim.x * VecSize;
-       linear_index < elem_cnt;
-       linear_index += step) {
-    const int token_idx = linear_index / offset;
-    const int ori_token_idx = token_idx + padding_offsets[token_idx];
-    const int ori_bi = ori_token_idx / seq_len;
-    if (seq_lens && seq_lens[ori_bi] == 0) continue;
-    const int bias = linear_index % offset;
-    const int qkv_id = bias / hidden_size;
-    const int qkv_bias = bias % hidden_size;
-    const int hi = qkv_bias / half_lastdim;
-    const int h_bias = qkv_bias % half_lastdim;
-
-    const int ori_seq_id = ori_token_idx % seq_len;
-
-    const int emb_idx = ori_seq_id * last_dim + h_bias;
-    const int bias_idx_left =
-        qkv_id * full_hidden_size + hi * last_dim + h_bias;
-    const int bias_idx_right = bias_idx_left + half_lastdim;
-    const int base_idx_left = token_idx * 3 * full_hidden_size + bias_idx_left;
-    const int base_idx_right = base_idx_left + half_lastdim;
-    phi::Load<int, VecSize>(&qkv[base_idx_left], &left_vec);
-    phi::Load<int, VecSize>(&qkv[base_idx_right], &right_vec);
-    phi::Load<T, VecSize>(&qkv_biases[bias_idx_left], &left_bias_vec);
-    phi::Load<T, VecSize>(&qkv_biases[bias_idx_right], &right_bias_vec);
-    phi::Load<float, VecSize>(&qkv_out_scales[bias_idx_left],
-                              &left_out_scale_vec);
-    phi::Load<float, VecSize>(&qkv_out_scales[bias_idx_right],
-                              &right_out_scale_vec);
-    if (qkv_id < 2) {
-      phi::Load<float, VecSize>(&cos_emb[emb_idx], &cos_emb_vec);
-      phi::Load<float, VecSize>(&sin_emb[emb_idx], &sin_emb_vec);
-    }
-#pragma unroll
-    for (int i = 0; i < VecSize; i++) {
-      float input_left = static_cast<float>(left_vec[i]);
-      float input_right = static_cast<float>(right_vec[i]);
-      // dequant + bias_add
-      input_left = input_left * left_out_scale_vec[i] +
-                   static_cast<float>(left_bias_vec[i]);
-      input_right = input_right * right_out_scale_vec[i] +
-                    static_cast<float>(right_bias_vec[i]);
-      if (qkv_id < 2) {  // qk rope
-        const float cos_tmp = cos_emb_vec[i];
-        const float sin_tmp = sin_emb_vec[i];
-        left_bias_vec[i] =
-            static_cast<T>(input_left * cos_tmp - input_right * sin_tmp);
-        right_bias_vec[i] =
-            static_cast<T>(input_right * cos_tmp + input_left * sin_tmp);
-      } else {
-        left_bias_vec[i] = static_cast<T>(input_left);
-        right_bias_vec[i] = static_cast<T>(input_right);
-      }
-    }
-    phi::Store<T, VecSize>(left_bias_vec, &qkv_out[base_idx_left]);
-    phi::Store<T, VecSize>(right_bias_vec, &qkv_out[base_idx_right]);
-  }
+  const float *cos_emb = rotary_emb;
+  const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
+  GQAVariableLengthRotaryKernel<T, PackSize>
+      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
+                                                      cos_emb,
+                                                      sin_emb,
+                                                      padding_offsets,
+                                                      seq_lens,
+                                                      qkv,
+                                                      elem_nums,
+                                                      q_head_num,
+                                                      kv_head_num,
+                                                      seq_len,
+                                                      dim_head);
 }
 
 template <typename T, int VecSize = 1>
@@ -2691,50 +2494,28 @@ void rotary_qk_variable(
     const int head_num,
     const int seq_len,
     const int input_output_len,
-    const int dim_head,
-    bool use_neox_style = false) {
+    const int dim_head) {
   int elem_nums = token_num * 3 * head_num * dim_head;  // just q and k
-  if (use_neox_style) {
-    elem_nums = token_num * 3 * head_num * dim_head / 2;
-  }
   constexpr int PackSize = 16 / sizeof(T);
   const int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
   int grid_size = 1;
   GetNumBlocks(pack_num, &grid_size);
-  if (!use_neox_style) {
-    const float *cos_emb = rotary_emb;
-    const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
-    VariableLengthRotaryKernel<T, PackSize>
-        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
-                                                        cos_emb,
-                                                        sin_emb,
-                                                        padding_offsets,
-                                                        seq_lens,
-                                                        qkv_out_scales,
-                                                        qkv_bias,
-                                                        qkv,
-                                                        elem_nums,
-                                                        head_num,
-                                                        seq_len,
-                                                        dim_head);
-  } else {
-    const float *cos_emb = rotary_emb;
-    const float *sin_emb = rotary_emb + input_output_len * dim_head;
-    NeoxVariableLengthRotaryKernel<T, PackSize>
-        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
-                                                        cos_emb,
-                                                        sin_emb,
-                                                        padding_offsets,
-                                                        seq_lens,
-                                                        qkv_out_scales,
-                                                        qkv_bias,
-                                                        qkv,
-                                                        elem_nums,
-                                                        head_num,
-                                                        seq_len,
-                                                        dim_head);
-  }
+  const float *cos_emb = rotary_emb;
+  const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
+  VariableLengthRotaryKernel<T, PackSize>
+      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
+                                                      cos_emb,
+                                                      sin_emb,
+                                                      padding_offsets,
+                                                      seq_lens,
+                                                      qkv_out_scales,
+                                                      qkv_bias,
+                                                      qkv,
+                                                      elem_nums,
+                                                      head_num,
+                                                      seq_len,
+                                                      dim_head);
 }
 
 template <typename T, int VecSize = 1>
@@ -2829,8 +2610,7 @@ void gqa_rotary_qk_variable(
     const int kv_head_num,
     const int seq_len,
     const int input_output_len,
-    const int dim_head,
-    bool use_neox_style = false) {
+    const int dim_head) {
   const int elem_nums =
       token_num * (q_head_num + 2 * kv_head_num) * dim_head;  // for all q k v
   constexpr int PackSize = 16 / sizeof(T);
@@ -2838,119 +2618,23 @@ void gqa_rotary_qk_variable(
   const int blocksize = 128;
   int grid_size = 1;
   GetNumBlocks(pack_num, &grid_size);
-  if (!use_neox_style) {
-    const float *cos_emb = rotary_emb;
-    const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
-    GQAVariableLengthRotaryKernel<T, PackSize>
-        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
-                                                        cos_emb,
-                                                        sin_emb,
-                                                        padding_offsets,
-                                                        seq_lens,
-                                                        qkv_out_scales,
-                                                        qkv_bias,
-                                                        qkv,
-                                                        elem_nums,
-                                                        q_head_num,
-                                                        kv_head_num,
-                                                        seq_len,
-                                                        dim_head);
-  } else {
-    // NOTE: not support gqa
-    const float *cos_emb = rotary_emb;
-    const float *sin_emb = rotary_emb + input_output_len * dim_head;
-    NeoxVariableLengthRotaryKernel<T, PackSize>
-        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
-                                                        cos_emb,
-                                                        sin_emb,
-                                                        padding_offsets,
-                                                        seq_lens,
-                                                        qkv_out_scales,
-                                                        qkv_bias,
-                                                        qkv,
-                                                        elem_nums,
-                                                        q_head_num,
-                                                        seq_len,
-                                                        dim_head);
-  }
-}
 
-template <typename T, int VecSize = 1>
-__global__ void NeoxVariableLengthRotaryKernel(
-    const T *qkv,
-    const float *cos_emb,  // [1, 1, seq_len, dim_head / 2]
-    const float *sin_emb,
-    const int *padding_offsets,
-    const int *seq_lens,
-    const T *qkv_biases,
-    T *qkv_out,
-    const int64_t elem_cnt,
-    const int num_head,
-    const int seq_len,
-    const int last_dim) {
-  using LoadT = phi::AlignedVector<T, VecSize>;
-  using LoadEmbT = phi::AlignedVector<float, VecSize>;
-  LoadT left_vec;
-  LoadT right_vec;
-  LoadT left_bias_vec;
-  LoadT right_bias_vec;
-  LoadEmbT cos_emb_vec;
-  LoadEmbT sin_emb_vec;
-  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
-  const int half_lastdim = last_dim / 2;
-  const int hidden_size = num_head * half_lastdim;
-  const int full_hidden_size = num_head * last_dim;
-  const int offset = 3 * hidden_size;
-  for (int64_t linear_index = global_thread_idx * VecSize,
-               step = gridDim.x * blockDim.x * VecSize;
-       linear_index < elem_cnt;
-       linear_index += step) {
-    const int token_idx = linear_index / offset;
-    const int ori_token_idx = token_idx + padding_offsets[token_idx];
-    const int ori_bi = ori_token_idx / seq_len;
-    if (seq_lens && seq_lens[ori_bi] == 0) continue;
-    const int bias = linear_index % offset;
-    const int qkv_id = bias / hidden_size;
-    const int qkv_bias = bias % hidden_size;
-    const int hi = qkv_bias / half_lastdim;
-    const int h_bias = qkv_bias % half_lastdim;
-
-    const int ori_seq_id = ori_token_idx % seq_len;
-
-    const int emb_idx = ori_seq_id * last_dim + h_bias;
-    const int bias_idx_left =
-        qkv_id * full_hidden_size + hi * last_dim + h_bias;
-    const int bias_idx_right = bias_idx_left + half_lastdim;
-    const int base_idx_left = token_idx * 3 * full_hidden_size + bias_idx_left;
-    const int base_idx_right = base_idx_left + half_lastdim;
-    phi::Load<int, VecSize>(&qkv[base_idx_left], &left_vec);
-    phi::Load<int, VecSize>(&qkv[base_idx_right], &right_vec);
-    phi::Load<T, VecSize>(&qkv_biases[bias_idx_left], &left_bias_vec);
-    phi::Load<T, VecSize>(&qkv_biases[bias_idx_right], &right_bias_vec);
-    phi::Load<float, VecSize>(&cos_emb[emb_idx], &cos_emb_vec);
-    phi::Load<float, VecSize>(&sin_emb[emb_idx], &sin_emb_vec);
-#pragma unroll
-    for (int i = 0; i < VecSize; i++) {
-      const float input_left =
-          static_cast<float>(left_vec[i] + left_bias_vec[i]);
-      const float input_right =
-          static_cast<float>(right_vec[i] + right_bias_vec[i]);
-
-      if (qkv_id < 2) {  // qk rope
-        const float cos_tmp = cos_emb_vec[i];
-        const float sin_tmp = sin_emb_vec[i];
-        left_vec[i] =
-            static_cast<T>(input_left * cos_tmp - input_right * sin_tmp);
-        right_vec[i] =
-            static_cast<T>(input_right * cos_tmp + input_left * sin_tmp);
-      } else {
-        left_vec[i] = static_cast<T>(input_left);
-        right_vec[i] = static_cast<T>(input_right);
-      }
-    }
-    phi::Store<T, VecSize>(left_vec, &qkv_out[base_idx_left]);
-    phi::Store<T, VecSize>(right_vec, &qkv_out[base_idx_right]);
-  }
+  const float *cos_emb = rotary_emb;
+  const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
+  GQAVariableLengthRotaryKernel<T, PackSize>
+      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
+                                                      cos_emb,
+                                                      sin_emb,
+                                                      padding_offsets,
+                                                      seq_lens,
+                                                      qkv_out_scales,
+                                                      qkv_bias,
+                                                      qkv,
+                                                      elem_nums,
+                                                      q_head_num,
+                                                      kv_head_num,
+                                                      seq_len,
+                                                      dim_head);
 }
 
 template <typename T, int VecSize = 1>
@@ -3036,48 +2720,28 @@ void rotary_qk_variable(
     const int head_num,
     const int seq_len,
     const int input_output_len,
-    const int dim_head,
-    bool use_neox_style = false) {
+    const int dim_head) {
   int elem_nums = token_num * 3 * head_num * dim_head;  // just q and k
-  if (use_neox_style) {
-    elem_nums = token_num * 3 * head_num * dim_head / 2;
-  }
   constexpr int PackSize = 16 / sizeof(T);
   const int pack_num = elem_nums / PackSize;
   const int blocksize = 128;
   int grid_size = 1;
   GetNumBlocks(pack_num, &grid_size);
-  if (!use_neox_style) {
-    const float *cos_emb = rotary_emb;
-    const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
-    VariableLengthRotaryKernel<T, PackSize>
-        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
-                                                        cos_emb,
-                                                        sin_emb,
-                                                        padding_offsets,
-                                                        seq_lens,
-                                                        qkv_bias,
-                                                        qkv,
-                                                        elem_nums,
-                                                        head_num,
-                                                        seq_len,
-                                                        dim_head);
-  } else {
-    const float *cos_emb = rotary_emb;
-    const float *sin_emb = rotary_emb + input_output_len * dim_head;
-    NeoxVariableLengthRotaryKernel<T, PackSize>
-        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
-                                                        cos_emb,
-                                                        sin_emb,
-                                                        padding_offsets,
-                                                        seq_lens,
-                                                        qkv_bias,
-                                                        qkv,
-                                                        elem_nums,
-                                                        head_num,
-                                                        seq_len,
-                                                        dim_head);
-  }
+
+  const float *cos_emb = rotary_emb;
+  const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
+  VariableLengthRotaryKernel<T, PackSize>
+      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
+                                                      cos_emb,
+                                                      sin_emb,
+                                                      padding_offsets,
+                                                      seq_lens,
+                                                      qkv_bias,
+                                                      qkv,
+                                                      elem_nums,
+                                                      head_num,
+                                                      seq_len,
+                                                      dim_head);
 }
 
 template <typename T, int VecSize = 1>
@@ -3168,8 +2832,7 @@ void gqa_rotary_qk_variable(
     const int kv_head_num,
     const int seq_len,
     const int input_output_len,
-    const int dim_head,
-    bool use_neox_style = false) {
+    const int dim_head) {
   const int elem_nums =
       token_num * (q_head_num + 2 * kv_head_num) * dim_head;  // for all q k v
   constexpr int PackSize = 16 / sizeof(T);
@@ -3177,39 +2840,21 @@ void gqa_rotary_qk_variable(
   const int blocksize = 128;
   int grid_size = 1;
   GetNumBlocks(pack_num, &grid_size);
-  if (!use_neox_style) {
-    const float *cos_emb = rotary_emb;
-    const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
-    GQAVariableLengthRotaryKernel<T, PackSize>
-        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
-                                                        cos_emb,
-                                                        sin_emb,
-                                                        padding_offsets,
-                                                        seq_lens,
-                                                        qkv_bias,
-                                                        qkv,
-                                                        elem_nums,
-                                                        q_head_num,
-                                                        kv_head_num,
-                                                        seq_len,
-                                                        dim_head);
-  } else {
-    // NOTE: not support gqa
-    const float *cos_emb = rotary_emb;
-    const float *sin_emb = rotary_emb + input_output_len * dim_head;
-    NeoxVariableLengthRotaryKernel<T, PackSize>
-        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
-                                                        cos_emb,
-                                                        sin_emb,
-                                                        padding_offsets,
-                                                        seq_lens,
-                                                        qkv_bias,
-                                                        qkv,
-                                                        elem_nums,
-                                                        q_head_num,
-                                                        seq_len,
-                                                        dim_head);
-  }
+  const float *cos_emb = rotary_emb;
+  const float *sin_emb = rotary_emb + input_output_len * dim_head / 2;
+  GQAVariableLengthRotaryKernel<T, PackSize>
+      <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(qkv_input,
+                                                      cos_emb,
+                                                      sin_emb,
+                                                      padding_offsets,
+                                                      seq_lens,
+                                                      qkv_bias,
+                                                      qkv,
+                                                      elem_nums,
+                                                      q_head_num,
+                                                      kv_head_num,
+                                                      seq_len,
+                                                      dim_head);
 }
 
 template <typename T, int VecSize, int RoundType>
