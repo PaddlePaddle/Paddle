@@ -807,7 +807,6 @@ bool AnalysisPredictor::PrepareScope(
 }
 
 void AnalysisPredictor::OptimizeInferencePirProgram() {
-  // std::string optimized_model_file ="optimized_program.json";
   auto ir_printing_conditions = [this](::pir::Pass *pass,
                                        ::pir::Operation *op) {
     if (this->config_.ir_debug_passes_.empty()) {
@@ -817,20 +816,14 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
                      this->config_.ir_debug_passes_.end(),
                      pass->name()) != this->config_.ir_debug_passes_.end();
   };
-  // optimized_model_path_ = GetOptimizedModelPath();
-  // optimized_model_ = optimized_model_path_ + "/" + "_optimized.json";
 
-  LOG(INFO) << "optimized_model_ " << optimized_model_name_;
-  LOG(INFO) << "config_.use_optimized_model" << config_.use_optimized_model_;
-
-  LOG(INFO) << "optimized_model存在";
 #ifdef PADDLE_WITH_CINN
   auto CreatePassMgr = [&] {
     pir::IrContext *ctx = pir::IrContext::Instance();
     ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
     ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-    auto pass_manager =
-        std::make_shared<::pir::PassManager>(::pir::IrContext::Instance(), 2);
+    auto pass_manager = std::make_shared<::pir::PassManager>(
+        ::pir::IrContext::Instance(), config_.pm_opt_level_);
     if (!config_.glog_info_disabled()) {
       pass_manager->EnablePrintStatistics();
     }
@@ -909,22 +902,33 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
         std::make_unique<pir::PassManager::IRPrinterOption>(
             ir_printing_conditions, ir_printing_conditions));
   }
+  // set attr
+  for (const auto &pass : pass_pm.passes()) {
+    if (pass->name() == "matmul_add_act_fuse_pass" ||
+        pass->name() == "conv2d_add_act_fuse_pass" ||
+        pass->name() == "conv2d_add_fuse_pass") {
+      pass->Set("use_cutlass", new bool(config_.use_cutlass_));
+    }
+  }
+
   pass_pm.Run(pir_program_.get());
 
   if (config_.save_optimized_model_ && !FileExists(optimized_model_name_)) {
+    LOG(INFO) << "要保存优化后的json模型";
     pir::WriteModule(
         *pir_program_, optimized_model_name_, 1, true, false, true);
-    LOG(INFO) << "保存optimized.json";
+    LOG(INFO) << "已经保存完优化后的json模型";
   }
-
   if (config_.save_optimized_model_ && !FileExists(optimized_params_)) {
+    LOG(INFO) << "要保存优化后的参数文件";
     LoadPirParameters(true);
+    LOG(INFO) << "保存完了优化后的参数文件";
   }
 
   // Apply some basic passes required by the framework
   ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
                                    config_.pm_opt_level_);
-
+  basic_pass_pm.AddPass(::pir::CreateCommonSubexpressionEliminationPass());
   auto params_sync_among_devices_pass =
       ::pir::CreateParamsSyncAmongDevicesPass();
   params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
@@ -949,21 +953,15 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
             ir_printing_conditions, ir_printing_conditions));
   }
   basic_pass_pm.Run(pir_program_.get());
-
-  std::cout << "pass优化后的pir_program_" << *pir_program_;
-  LOG(INFO) << "config_.use_optimized_model_" << config_.use_optimized_model_;
-
-  LOG(INFO) << "在pass里面打印下sub_scope的变量值";
-  PrintScopeVariables(*sub_scope_);
-  LOG(INFO) << "sub_scope_的指针" << sub_scope_;
-  std::cout << "还未经过lowerToKernelPass之前的pir_program" << *pir_program_;
-
   //----------------------------------------------------------------------------------------------//
 
   pir_program_ =
       paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
   ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
+  auto remove_shadow_feed_pass = ::pir::CreateRemoveShadowFeedPass();
+  remove_shadow_feed_pass->Set("used_for_inference", new bool(true));
+  lowered_pm.AddPass(std::move(remove_shadow_feed_pass));
   if (FLAGS_pir_apply_inplace_pass) {
     lowered_pm.AddPass(::pir::CreateInplacePass());
   }
@@ -976,7 +974,6 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
             ir_printing_conditions, ir_printing_conditions));
   }
   lowered_pm.Run(pir_program_.get());
-  LOG(INFO) << "PdOpLowerToKernelPass跑完了";
 
   LOG(INFO) << "======= pir optimization completed =======";
 }
