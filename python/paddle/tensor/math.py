@@ -1528,6 +1528,10 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
+        if isinstance(axis, (list, tuple)):
+            if paddle.utils._contain_var(axis):
+                axis = paddle.utils.get_tensor_list(axis)
+        print("axis = ", axis)
         return _C_ops.sum(x, axis, dtype, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)

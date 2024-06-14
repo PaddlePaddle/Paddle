@@ -91,6 +91,7 @@ ALLOW_NO_GRAD_OPS = [
     "pd_op.gaussian",
     "pd_op.isnan",
     "pd_op.isinf",
+    "pd_op.multinomial",
     "pd_op.nextafter",
     "pd_op.nonzero",
     "pd_op.one_hot",

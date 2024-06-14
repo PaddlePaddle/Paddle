@@ -42,6 +42,7 @@ from .layers_utils import (  # noqa: F401
     get_inputs_outputs_in_block,
     get_int_tensor_list,
     get_shape_tensor_inputs,
+    get_tensor_list,
     hold_mutable_vars,
     is_sequence,
     map_structure,

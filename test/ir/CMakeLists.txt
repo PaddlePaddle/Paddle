@@ -17,6 +17,8 @@ else()
     py_test_modules(${target} MODULES ${target})
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
+  py_test_modules(test_inference_datatype_pir MODULES
+                  test_inference_datatype_pir ENVS FLAGS_enable_pir_api=1)
   add_subdirectory(pir)
   set_tests_properties(test_fuse_resnet_unit PROPERTIES TIMEOUT 120)
   set_tests_properties(test_convert_to_mixed_precision PROPERTIES TIMEOUT 300)
