@@ -64,7 +64,7 @@ static PyObject *static_api_set_parameter(PyObject *self,
 
     // Get Value from args
     PyObject *parameter_obj = PyTuple_GET_ITEM(args, 0);
-    auto parameter = CastPyArg2Value(parameter_obj, "parameter", 0);
+    auto parameter = CastPyArg2Value(parameter_obj, "parameter", 0, false);
 
     // Parse Attributes
     PyObject *name_obj = PyTuple_GET_ITEM(args, 1);
@@ -90,7 +90,7 @@ static PyObject *static_api_update_parameter(PyObject *self,
 
     // Get Value from args
     PyObject *parameter_obj = PyTuple_GET_ITEM(args, 0);
-    auto parameter = CastPyArg2Value(parameter_obj, "parameter", 0);
+    auto parameter = CastPyArg2Value(parameter_obj, "parameter", 0, false);
 
     // Parse Attributes
     PyObject *name_obj = PyTuple_GET_ITEM(args, 1);
@@ -116,7 +116,8 @@ static PyObject *static_api_set_persistable_value(PyObject *self,
 
     // Get OpResult from args
     PyObject *persist_value_obj = PyTuple_GET_ITEM(args, 0);
-    auto persist_value = CastPyArg2Value(persist_value_obj, "persist_value", 0);
+    auto persist_value =
+        CastPyArg2Value(persist_value_obj, "persist_value", 0, false);
 
     // Parse Attributes
     PyObject *name_obj = PyTuple_GET_ITEM(args, 1);
@@ -161,10 +162,10 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
       pir::Value shape, value;
 
       if (PyObject_CheckIRValue(shape_obj)) {
-        shape = CastPyArg2Value(shape_obj, "full", 0);
+        shape = CastPyArg2Value(shape_obj, "full", 0, false);
       } else if (PyObject_CheckIRVectorOfValue(shape_obj)) {
         std::vector<pir::Value> shape_tmp =
-            CastPyArg2VectorOfValue(shape_obj, "full", 0);
+            CastPyArg2VectorOfValue(shape_obj, "full", 0, false);
         shape = paddle::dialect::stack(shape_tmp, 0);
       } else {
         std::vector<int64_t> shape_tmp = CastPyArg2Longs(shape_obj, "full", 0);
@@ -173,7 +174,7 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
       }
 
       if (PyObject_CheckIRValue(value_obj)) {
-        value = CastPyArg2Value(value_obj, "full", 1);
+        value = CastPyArg2Value(value_obj, "full", 1, false);
       } else {
         float value_tmp = CastPyArg2Float(value_obj, "full", 1);
         value = paddle::dialect::full(std::vector<int64_t>{1},
@@ -230,7 +231,7 @@ static PyObject *static_api_create_array_like(PyObject *self,
 
     // Get Value from args
     PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
-    auto input = CastPyArg2Value(input_obj, "create_array_like", 0);
+    auto input = CastPyArg2Value(input_obj, "create_array_like", 0, false);
 
     // Parse Attributes
     PyObject *value_obj = PyTuple_GET_ITEM(args, 1);
@@ -257,7 +258,7 @@ static PyObject *static_api_array_length(PyObject *self,
 
     // Get Value from args
     PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
-    auto x = CastPyArg2Value(x_obj, "array_length", 0);
+    auto x = CastPyArg2Value(x_obj, "array_length", 0, false);
 
     // Call ir static api
     CallStackRecorder callstack_recoder("array_length");
@@ -281,12 +282,12 @@ static PyObject *static_api_array_read(PyObject *self,
 
     // Get Value from args
     PyObject *array_obj = PyTuple_GET_ITEM(args, 0);
-    auto array = CastPyArg2Value(array_obj, "array_read", 0);
+    auto array = CastPyArg2Value(array_obj, "array_read", 0, false);
 
     PyObject *i_obj = PyTuple_GET_ITEM(args, 1);
     pir::Value i;
     if (PyObject_CheckIRValue(i_obj)) {
-      i = CastPyArg2Value(i_obj, "array_read", 1);
+      i = CastPyArg2Value(i_obj, "array_read", 1, false);
     } else {
       int64_t i_tmp = CastPyArg2Int(i_obj, "array_read", 1);
       i = paddle::dialect::full(std::vector<int64_t>{1},
@@ -317,13 +318,13 @@ static PyObject *static_api_array_write_(PyObject *self,
 
     // Get Value from args
     PyObject *array_obj = PyTuple_GET_ITEM(args, 0);
-    auto array = CastPyArg2Value(array_obj, "array_write_", 0);
+    auto array = CastPyArg2Value(array_obj, "array_write_", 0, false);
     PyObject *x_obj = PyTuple_GET_ITEM(args, 1);
-    auto x = CastPyArg2Value(x_obj, "array_write_", 1);
+    auto x = CastPyArg2Value(x_obj, "array_write_", 1, false);
     PyObject *i_obj = PyTuple_GET_ITEM(args, 2);
     pir::Value i;
     if (PyObject_CheckIRValue(i_obj)) {
-      i = CastPyArg2Value(i_obj, "array_write_", 2);
+      i = CastPyArg2Value(i_obj, "array_write_", 2, false);
     } else {
       int64_t i_tmp = CastPyArg2Int(i_obj, "array_write_", 2);
       i = paddle::dialect::full(std::vector<int64_t>{1},
@@ -356,10 +357,10 @@ static PyObject *static_api_array_to_tensor(PyObject *self,
     PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
     pir::Value x;
     if (PyObject_CheckIRValue(x_obj)) {
-      x = CastPyArg2Value(x_obj, "array_to_tensor", 0);
+      x = CastPyArg2Value(x_obj, "array_to_tensor", 0, false);
     } else if (PyObject_CheckIRVectorOfValue(x_obj)) {
       std::vector<pir::Value> x_tmp =
-          CastPyArg2VectorOfValue(x_obj, "array_to_tensor", 0);
+          CastPyArg2VectorOfValue(x_obj, "array_to_tensor", 0, false);
       if (x_tmp.size() != 1) {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Input x expects only one input, but %d are given.",
@@ -396,7 +397,7 @@ PyObject *static_api_add_n_array(PyObject *self,
 
     // Get Value from args
     PyObject *inputs_obj = PyTuple_GET_ITEM(args, 0);
-    auto inputs = CastPyArg2VectorOfValue(inputs_obj, "add_n", 0);
+    auto inputs = CastPyArg2VectorOfValue(inputs_obj, "add_n", 0, false);
 
     CallStackRecorder callstack_recoder("add_n_array");
     callstack_recoder.Record();
@@ -419,15 +420,15 @@ static PyObject *static_api_slice_array(PyObject *self,
 
     // Get Value from args
     PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
-    auto input = CastPyArg2Value(input_obj, "slice_array", 0);
+    auto input = CastPyArg2Value(input_obj, "slice_array", 0, false);
 
     PyObject *starts_obj = PyTuple_GET_ITEM(args, 1);
     pir::Value starts;
     if (PyObject_CheckIRValue(starts_obj)) {
-      starts = CastPyArg2Value(starts_obj, "slice_array", 1);
+      starts = CastPyArg2Value(starts_obj, "slice_array", 1, false);
     } else if (PyObject_CheckIRVectorOfValue(starts_obj)) {
       std::vector<pir::Value> starts_tmp =
-          CastPyArg2VectorOfValue(starts_obj, "slice_array", 1);
+          CastPyArg2VectorOfValue(starts_obj, "slice_array", 1, false);
       starts = paddle::dialect::stack(starts_tmp, /*axis*/ 0);
     } else {
       std::vector<int64_t> starts_tmp =
@@ -439,10 +440,10 @@ static PyObject *static_api_slice_array(PyObject *self,
     PyObject *ends_obj = PyTuple_GET_ITEM(args, 2);
     pir::Value ends;
     if (PyObject_CheckIRValue(ends_obj)) {
-      ends = CastPyArg2Value(ends_obj, "slice_array", 2);
+      ends = CastPyArg2Value(ends_obj, "slice_array", 2, false);
     } else if (PyObject_CheckIRVectorOfValue(ends_obj)) {
       std::vector<pir::Value> ends_tmp =
-          CastPyArg2VectorOfValue(ends_obj, "slice_array", 2);
+          CastPyArg2VectorOfValue(ends_obj, "slice_array", 2, false);
       ends = paddle::dialect::stack(ends_tmp, /*axis*/ 0);
     } else {
       std::vector<int64_t> ends_tmp =
@@ -473,15 +474,15 @@ static PyObject *static_api_slice_array_dense(PyObject *self,
 
     // Get Value from args
     PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
-    auto input = CastPyArg2Value(input_obj, "slice_array_dense", 0);
+    auto input = CastPyArg2Value(input_obj, "slice_array_dense", 0, false);
 
     PyObject *starts_obj = PyTuple_GET_ITEM(args, 1);
     pir::Value starts;
     if (PyObject_CheckIRValue(starts_obj)) {
-      starts = CastPyArg2Value(starts_obj, "slice_array_dense", 1);
+      starts = CastPyArg2Value(starts_obj, "slice_array_dense", 1, false);
     } else if (PyObject_CheckIRVectorOfValue(starts_obj)) {
       std::vector<pir::Value> starts_tmp =
-          CastPyArg2VectorOfValue(starts_obj, "slice_array_dense", 1);
+          CastPyArg2VectorOfValue(starts_obj, "slice_array_dense", 1, false);
       starts = paddle::dialect::stack(starts_tmp, /*axis*/ 0);
 
     } else {
@@ -585,7 +586,7 @@ static PyObject *static_api_run_custom_op(PyObject *self,
       vec_input_name2id_map[inputs[i]] = vec_input_index;
       vec_input_index++;
       std::vector<pir::Value> input_values =
-          CastPyArg2VectorOfValue(obj, op_type, i + 1);
+          CastPyArg2VectorOfValue(obj, op_type, i + 1, false);
       for (auto &input_value : input_values) {
         paddle::dialect::DenseTensorType input_tensor =
             input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
@@ -602,7 +603,8 @@ static PyObject *static_api_run_custom_op(PyObject *self,
     } else {
       input_name2id_map[inputs[i]] = input_index;
       input_index++;
-      pir::Value input_value = CastPyArg2Value(obj, op_type, i + 1);  // NOLINT
+      pir::Value input_value =
+          CastPyArg2Value(obj, op_type, i + 1, false);  // NOLINT
       paddle::dialect::DenseTensorType input_tensor =
           input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
       input_shapes.push_back(phi::vectorize(input_tensor.dims()));
@@ -880,7 +882,7 @@ static PyObject *builtin_combine_op(PyObject *self,
     VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
     // Get Value from args
     PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
-    auto x = CastPyArg2VectorOfValue(x_obj, "builtin_combine", 0);
+    auto x = CastPyArg2VectorOfValue(x_obj, "builtin_combine", 0, false);
     CallStackRecorder callstack_recoder("builtin_combine_op");
     callstack_recoder.Record();
     auto static_api_out = paddle::dialect::builtin_combine(x);
@@ -901,11 +903,11 @@ static PyObject *static_api_fused_gemm_epilogue(PyObject *self,
     VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
     // Get OpResult from args
     PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
-    auto x = CastPyArg2Value(x_obj, "fused_gemm_epilogue", 0);
+    auto x = CastPyArg2Value(x_obj, "fused_gemm_epilogue", 0, false);
     PyObject *y_obj = PyTuple_GET_ITEM(args, 1);
-    auto y = CastPyArg2Value(y_obj, "fused_gemm_epilogue", 1);
+    auto y = CastPyArg2Value(y_obj, "fused_gemm_epilogue", 1, false);
     PyObject *bias_obj = PyTuple_GET_ITEM(args, 2);
-    auto bias = CastPyArg2Value(bias_obj, "fused_gemm_epilogue", 2);
+    auto bias = CastPyArg2Value(bias_obj, "fused_gemm_epilogue", 2, false);
 
     // Parse Attributes if needed
     PyObject *trans_x_obj = PyTuple_GET_ITEM(args, 3);
@@ -937,7 +939,7 @@ static PyObject *static_api_array_pop(PyObject *self,
 
     // Get Value from args
     PyObject *input_obj = PyTuple_GET_ITEM(args, 0);
-    auto input = CastPyArg2Value(input_obj, "array_pop", 0);
+    auto input = CastPyArg2Value(input_obj, "array_pop", 0, false);
 
     PyObject *index_obj = PyTuple_GET_ITEM(args, 1);
     auto index = CastPyArg2Int(index_obj, "array_pop", 1);
