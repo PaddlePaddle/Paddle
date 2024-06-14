@@ -287,7 +287,7 @@ def quant_weights(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOp(OpTest):
@@ -354,7 +354,7 @@ class TestQuantLinearOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpNoBias1(TestQuantLinearOp):
@@ -377,7 +377,7 @@ class TestQuantLinearOpNoBias1(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpNoBias2(TestQuantLinearOp):
@@ -400,7 +400,7 @@ class TestQuantLinearOpNoBias2(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpNoBias3(TestQuantLinearOp):
@@ -423,7 +423,7 @@ class TestQuantLinearOpNoBias3(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpNoBias4(TestQuantLinearOp):
@@ -446,7 +446,7 @@ class TestQuantLinearOpNoBias4(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpWithBias1(TestQuantLinearOp):
@@ -469,7 +469,7 @@ class TestQuantLinearOpWithBias1(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpWithBias2(TestQuantLinearOp):
@@ -492,7 +492,7 @@ class TestQuantLinearOpWithBias2(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpWithPadding1(TestQuantLinearOp):
@@ -515,7 +515,7 @@ class TestQuantLinearOpWithPadding1(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpWithPadding2(TestQuantLinearOp):
@@ -538,7 +538,7 @@ class TestQuantLinearOpWithPadding2(TestQuantLinearOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOp_NumFlattenDims_NegOne(unittest.TestCase):
@@ -606,7 +606,7 @@ class TestQuantLinearOp_NumFlattenDims_NegOne(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
     "QuantLinear only supports cuda kernel.",
 )
 class TestQuantLinearOpError(unittest.TestCase):

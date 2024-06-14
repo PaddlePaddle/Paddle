@@ -27,9 +27,7 @@
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 namespace {
 std::mutex ipc_mutex_;
@@ -73,8 +71,6 @@ CudaIpcAllocation::~CudaIpcAllocation() {
           << "\t" << this->ptr();
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation
 
 #endif
