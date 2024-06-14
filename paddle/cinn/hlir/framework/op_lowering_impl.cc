@@ -25,6 +25,7 @@
 #include "paddle/cinn/runtime/flags.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
+PD_DECLARE_bool(cinn_use_cutlass);
 PD_DECLARE_bool(cinn_new_group_scheduler);
 
 namespace cinn {
@@ -110,6 +111,12 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   std::vector<Node*> nodes = group->CollectNodes();
   if (nodes.size() == 1 && nodes[0]->op()->name == "custom_call") {
     return LowerCustomCall(group);
+  }
+  if (FLAGS_cinn_use_cutlass && nodes.size() == 1 &&
+      nodes[0]->op()->name == "matmul") {
+    nodes[0]->attrs.attr_store["original_op"] = nodes[0]->op()->name;
+    nodes[0]->attrs.op = framework::Operator::Get("cutlass_matmul");
+    return LowerCutlassCall(group);
   }
   std::vector<ir::Tensor> group_func_arg_tensors;
   std::unordered_map<std::string, ir::Tensor> tensor_map;
@@ -225,6 +232,53 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
                               __FILE__,
                               __LINE__);
   }
+  // reset input names as extern api input args can't be remove duplicate.
+  group->input_names.clear();
+  for (auto& inode : node->inlinks_in_order()) {
+    group->input_names.push_back(inode->source()->as<NodeData>()->id());
+  }
+  return {pack[0].operator ir::Expr().as_lowered_func_ref()};
+}
+
+std::vector<ir::LoweredFunc> OpLowererImpl::LowerCutlassCall(
+    const GroupPtr& group) {
+  std::vector<Node*> nodes = group->CollectNodes();
+  CHECK_EQ(nodes.size(), 1);
+  Node* node = nodes[0];
+  std::vector<ir::Tensor> op_func_arg_tensors;
+  std::unordered_map<std::string, ir::Tensor> tensor_map;
+  for (auto& node_data : GetInputNodeData(node)) {
+    CHECK(node_data);
+    ir::Tensor tensor;
+    if (!tensor_map.count(node_data->id())) {
+      tensor = GetTensor(node_data, this->type_dict_, this->shape_dict_);
+      // record tensor.
+      tensor_map[node_data->id()] = tensor;
+      // input name.
+      group->input_names.push_back(node_data->id());
+    } else {
+      tensor = tensor_map[node_data->id()];
+    }
+    op_func_arg_tensors.push_back(tensor);
+  }
+
+  std::vector<Type> out_types;
+  std::vector<std::vector<int>> out_shapes;
+  auto node_datas = GetAllNodeData(node);
+  for (auto node_data : node_datas) {
+    group->output_names.push_back(node_data->id());
+    out_types.push_back(this->type_dict_.at(node_data->id()));
+    out_shapes.push_back(this->shape_dict_.at(node_data->id()));
+  }
+  auto& cinn_strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
+  auto impl = OpStrategy::SelectImpl(cinn_strategy[node->op()](
+      node->attrs, op_func_arg_tensors, out_types, out_shapes, target_));
+  std::string op_name = node->op()->name;
+  std::vector<common::CINNValue> compute_args = {
+      common::CINNValue(group->GetFuncName()), common::CINNValue(op_name)};
+  common::CINNValuePack pack =
+      impl->fcompute(common::CINNValuePack{compute_args});
+  CHECK_EQ(pack.size(), 1UL);
   // reset input names as extern api input args can't be remove duplicate.
   group->input_names.clear();
   for (auto& inode : node->inlinks_in_order()) {
