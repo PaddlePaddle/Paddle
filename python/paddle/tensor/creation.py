@@ -2474,9 +2474,9 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
             [[2.5 2.5]
              [2.5 2.5]
              [2.5 2.5]]
-            >>> array = np.array([[1, 1],
-            ...                     [3, 4],
-            ...                     [1, 3]]).astype(np.int64)
+            >>> array: npt.NDArray[Any] = np.array([[1, 1], [3, 4], [1, 3]]).astype(
+            ...     np.int64
+            ... )
             >>> result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             >>> paddle.assign(array, result1)
             >>> print(result1.numpy())
@@ -2685,9 +2685,9 @@ def clone(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
 
             >>> y = clone_x**3
             >>> y.backward()
-            >>> print(clone_x.grad.numpy())
+            >>> print(clone_x.grad.numpy())  # type: ignore
             [3. 3.]
-            >>> print(x.grad.numpy())
+            >>> print(x.grad.numpy())  # type: ignore
             [3. 3.]
     """
     return x.clone()
