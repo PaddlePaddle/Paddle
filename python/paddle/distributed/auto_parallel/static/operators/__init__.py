@@ -39,6 +39,7 @@ from . import (  # noqa: F401
     dist_slice,
     dist_softmax,
     dist_split,
+    dist_strided_slice,
     dist_tile,
     dist_transpose,
     dist_unsqueeze2,
