@@ -1450,7 +1450,7 @@ void PirToPyCodeConverter::SaveIfFlagEnabled() const {
 
 void DumpExecProgram(const pir::Program& program,
                      const ::paddle::framework::Scope& _) {
-  PirToPyCodeConverter(const_cast<pir::Program*>(&program))
+  PirToPyCodeConverter(&program)
       .file_name("exec_programs.py")
       .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
       .SaveIfFlagEnabled();
