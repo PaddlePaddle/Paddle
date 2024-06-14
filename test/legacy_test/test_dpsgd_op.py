@@ -23,20 +23,8 @@ import paddle
 def api_wrapper(
     param, grad, learning_rate, clip=10.0, batch_size=16.0, sigma=1.0, seed=0
 ):
-    param_out = paddle.ones([1])
-    return paddle._legacy_C_ops.dpsgd(
-        param,
-        grad,
-        learning_rate,
-        param_out,
-        "clip",
-        clip,
-        "batch_size",
-        batch_size,
-        "sigma",
-        sigma,
-        "seed",
-        seed,
+    return paddle._C_ops.dpsgd(
+        param, grad, learning_rate, clip, batch_size, sigma, seed
     )
 
 
