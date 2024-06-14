@@ -884,7 +884,7 @@ class Layer:
             type=core.VarDesc.VarType.LOD_TENSOR,
         )
 
-    def parameters(self, include_sublayers=True):
+    def parameters(self, include_sublayers: bool = True) -> list[paddle.Tensor]:
         """
 
         Returns a list of all Parameters from current layer and its sub-layers.
@@ -895,7 +895,7 @@ class Layer:
                 Default: True.
 
         Returns:
-            list of Tensor, a list of Parameters.
+            list, list of Tensor, a list of Parameters.
 
         Examples:
             .. code-block:: python

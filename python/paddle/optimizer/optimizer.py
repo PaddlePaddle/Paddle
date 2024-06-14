@@ -20,6 +20,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Callable, Sequence
 
 import numpy as np
+from typing_extensions import NotRequired, TypedDict
 
 import paddle
 import paddle.autograd as imperative_base
@@ -37,7 +38,7 @@ from paddle.base.framework import (
     in_pir_mode,
     name_scope,
 )
-from paddle.regularizer import L2Decay
+from paddle.regularizer import L2Decay, WeightDecayRegularizer
 
 from ..base import framework, unique_name
 from ..base.backward import (
@@ -49,20 +50,19 @@ from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper, LayerHelperBase
 from .lr import LRScheduler
 
-if TYPE_CHECKING:
-    from typing_extensions import NotRequired, TypedDict
 
+class _ParameterConfig(TypedDict):
+    params: Sequence[Tensor]
+    weight_decay: NotRequired[float | WeightDecayRegularizer | None]
+    learning_rate: NotRequired[float | Tensor | LRScheduler | None]
+
+
+if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.callbacks import Callback
     from paddle.nn.clip import GradientClipBase
-    from paddle.regularizer import WeightDecayRegularizer
 
     from ..base.framework import Operator, Program
-
-    class ParameterConfig(TypedDict):
-        params: Sequence[Tensor]
-        weight_decay: NotRequired[float | WeightDecayRegularizer | None]
-        learning_rate: NotRequired[float | Tensor | LRScheduler | None]
 
 
 __all__ = []
@@ -202,7 +202,7 @@ class Optimizer:
     def __init__(
         self,
         learning_rate: float | LRScheduler,
-        parameters: Sequence[Tensor] | None = None,
+        parameters: Sequence[Tensor] | Sequence[_ParameterConfig] | None = None,
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,

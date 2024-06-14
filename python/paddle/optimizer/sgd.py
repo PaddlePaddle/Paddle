@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from paddle.regularizer import WeightDecayRegularizer
 
     from .lr import LRScheduler
-    from .optimizer import ParameterConfig
+    from .optimizer import _ParameterConfig
 __all__ = []
 
 
@@ -84,7 +84,7 @@ class SGD(Optimizer):
     def __init__(
         self,
         learning_rate: float | LRScheduler = 0.001,
-        parameters: Sequence[Tensor] | Sequence[ParameterConfig] | None = None,
+        parameters: Sequence[Tensor] | Sequence[_ParameterConfig] | None = None,
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
         multi_precision: bool = False,
