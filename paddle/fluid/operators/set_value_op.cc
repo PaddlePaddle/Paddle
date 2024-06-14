@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/set_value_op.h"
-
 #include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
