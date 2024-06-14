@@ -21,7 +21,6 @@
 #include "paddle/common/errors.h"
 #include "paddle/common/performance_statistician.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
-#include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #endif

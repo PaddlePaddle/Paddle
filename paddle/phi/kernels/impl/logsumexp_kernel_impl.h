@@ -63,10 +63,15 @@ struct LogsumexpFunctor {
 template <typename T, typename Context>
 void LogsumexpKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const std::vector<int64_t>& axis,
+                     const std::vector<int>& axis_in,
                      bool keepdim,
                      bool reduce_all,
                      DenseTensor* out) {
+  std::vector<int64_t> axis;
+  axis.reserve(axis_in.size());
+  std::for_each(axis_in.begin(), axis_in.end(), [&axis](const int& t) {
+    axis.push_back(static_cast<int64_t>(t));
+  });
   dev_ctx.template Alloc<T>(out);
 
   reduce_all = recompute_reduce_all(x, axis, reduce_all);
