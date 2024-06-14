@@ -2471,8 +2471,7 @@ void LogLossInferMeta(const MetaTensor& input,
 void LookupTableDequantInferMeta(const MetaTensor& w,
                                  const MetaTensor& ids,
                                  int64_t padding_idx,
-                                 MetaTensor* out,
-                                 MetaConfig config) {
+                                 MetaTensor* out) {
   PADDLE_ENFORCE_EQ(
       w.initialized(),
       true,
