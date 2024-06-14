@@ -1826,6 +1826,12 @@
   outputs :
     out : Out
 
+- op : hash
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
   inputs :

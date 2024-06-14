@@ -2135,6 +2135,15 @@
   inplace: (x -> out)
   backward : hardtanh_grad
 
+- op : hash
+  args: (Tensor x, int num_hash = 1, int64_t mod_by = 100000)
+  output: Tensor (out)
+  infer_meta:
+    func: HashInferMeta
+  kernel:
+    func: hash
+    data_type: x
+
 - op : heaviside
   args : (Tensor x, Tensor y)
   output : Tensor(out)
