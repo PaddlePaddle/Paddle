@@ -1436,11 +1436,14 @@ void HogwildWorker::TrainFilesWithProfiler() {
         }
 #endif
         op->Run(*thread_scope_, place_);
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
         if (use_gpu_graph_ && use_ps_gpu_) {
           if (it != offload_vars_.end()) {
             it->second.BackUpInputs(root_scope_, thread_scope_, copyer.get());
           }
         }
+#endif
 #ifdef PADDLE_WITH_HETERPS
         dev_ctx_->Wait();
 #endif
