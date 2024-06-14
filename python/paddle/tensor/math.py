@@ -1562,7 +1562,6 @@ def sum(
         if isinstance(axis, (list, tuple)):
             if paddle.utils._contain_var(axis):
                 axis = paddle.utils.get_tensor_list(axis)
-        print("axis = ", axis)
         return _C_ops.sum(x, axis, dtype, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
