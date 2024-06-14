@@ -142,6 +142,10 @@ def naive_bilateral_slice(x, guide, grid, has_offset):
     return output
 
 
+def api_wrapper(x, grid, guide, has_offset=False):
+    return paddle._C_ops.bilateral_slice(x, grid, guide, has_offset)
+
+
 @unittest.skipIf(
     not paddle.base.is_compiled_with_cuda(), 'CPU testing is not supported'
 )
@@ -149,6 +153,7 @@ class TestBilateralSliceOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'bilateral_slice'
+        self.python_api = api_wrapper
         batch_size = 3
         h = 50
         w = 30
