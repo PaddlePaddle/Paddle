@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, Callable, Sequence
+from typing import TYPE_CHECKING, Callable, NotRequired, Sequence, TypedDict
 
 import numpy as np
 
@@ -56,6 +56,12 @@ if TYPE_CHECKING:
     from paddle.regularizer import WeightDecayRegularizer
 
     from ..base.framework import Operator, Program
+
+    class ParameterConfig(TypedDict):
+        params: Sequence[Tensor]
+        weight_decay: NotRequired[float | WeightDecayRegularizer | None]
+        learning_rate: NotRequired[float | Tensor | LRScheduler | None]
+
 
 __all__ = []
 

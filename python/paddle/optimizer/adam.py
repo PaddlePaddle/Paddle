@@ -14,6 +14,7 @@
 
 import warnings
 from collections import defaultdict
+from typing import TYPE_CHECKING, NotRequired, Sequence
 
 import paddle
 from paddle import _C_ops, pir
@@ -28,7 +29,19 @@ from ..base.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
-from .optimizer import Optimizer
+from .optimizer import Optimizer, ParameterConfig
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.nn.clip import GradientClipBase
+    from paddle.regularizer import WeightDecayRegularizer
+
+    from .lr import LRScheduler
+
+    class AdamParameterConfig(ParameterConfig):
+        beta1: NotRequired[float | Tensor]
+        beta2: NotRequired[float | Tensor]
+
 
 __all__ = []
 
@@ -69,20 +82,20 @@ class Adam(Optimizer):
         epsilon (float|Tensor, optional): A small float value for numerical stability.
             It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 1e-08.
-        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
+        parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
             different parameter groups such as the learning rate, weight decay, etc,
             then the parameters are list of dict. Note that the learning_rate in parameter groups
             represents the scale of base learning_rate.
             The default value is None in static graph mode, at this time all parameters will be updated.
-        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
+        weight_decay (float|WeightDecayRegularizer|None, optional): The strategy of regularization.
             It canbe a float value as coeff of L2 regularization or
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already,
             the regularization setting here in optimizer will be ignored for this parameter.
             Otherwise, the regularization setting here in optimizer will take effect.
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+        grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
             :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
@@ -95,7 +108,7 @@ class Adam(Optimizer):
             The default value is False.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
         use_multi_tensor (bool, optional): Whether to use multi-tensor strategy to update all parameters at once . Default is false.
-        name (str, optional): Normally there is no need for user to set this property.
+        name (str|None, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
 
@@ -167,17 +180,19 @@ class Adam(Optimizer):
 
     def __init__(
         self,
-        learning_rate=0.001,
-        beta1=0.9,
-        beta2=0.999,
-        epsilon=1e-8,
-        parameters=None,
-        weight_decay=None,
-        grad_clip=None,
-        lazy_mode=False,
-        multi_precision=False,
-        use_multi_tensor=False,
-        name=None,
+        learning_rate: float | LRScheduler = 0.001,
+        beta1: float | Tensor = 0.9,
+        beta2: float | Tensor = 0.999,
+        epsilon: float | Tensor = 1e-8,
+        parameters: Sequence[Tensor]
+        | Sequence[AdamParameterConfig]
+        | None = None,
+        weight_decay: float | WeightDecayRegularizer | None = None,
+        grad_clip: GradientClipBase | None = None,
+        lazy_mode: bool = False,
+        multi_precision: bool = False,
+        use_multi_tensor: bool = False,
+        name: str | None = None,
     ):
         assert learning_rate is not None
         assert beta1 is not None
@@ -408,7 +423,7 @@ class Adam(Optimizer):
 
     @imperative_base.no_grad
     @framework.non_static_only
-    def step(self):
+    def step(self) -> None:
         """
         Execute the optimizer and update parameters once.
 
