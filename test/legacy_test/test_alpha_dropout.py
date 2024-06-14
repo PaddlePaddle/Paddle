@@ -381,6 +381,27 @@ class TestFeatureAlphaDropoutFunctionAPI(unittest.TestCase):
 
 
 class TestFeatureAlphaDropoutFunctionAPIError(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(base.CUDAPlace(0))
+
+    def test_input_ndim_errors(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                in_np = np.random.random(
+                    [
+                        40,
+                    ]
+                ).astype("float32")
+                input = paddle.to_tensor(in_np)
+
+                with self.assertRaises(ValueError):
+                    _ = paddle.nn.functional.feature_alpha_dropout(
+                        x=input, p=0.0
+                    )
+
     @_test_with_pir_api
     def test_input_type_errors(self):
         with paddle.static.program_guard(
