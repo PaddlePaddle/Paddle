@@ -73,6 +73,13 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
                        MetaTensor* output_box,
                        MetaConfig config = MetaConfig());
 
+void BilateralSliceInferMeta(const MetaTensor& x,
+                             const MetaTensor& grid,
+                             const MetaTensor& guide,
+                             bool has_offset,
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
+
 void DistributedPushSparseInferMeta(
     const std::vector<const MetaTensor*>& ids,
     const std::vector<const MetaTensor*>& shows,

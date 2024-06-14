@@ -318,6 +318,63 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
   output_box->set_dtype(target_box.dtype());
 }
 
+void BilateralSliceInferMeta(const MetaTensor& x,
+                             const MetaTensor& grid,
+                             const MetaTensor& guide,
+                             bool has_offset,
+                             MetaTensor* out,
+                             MetaConfig config) {
+  const auto& dim_x = x.dims();  // NCHW format
+  PADDLE_ENFORCE_EQ(
+      dim_x.size(),
+      4,
+      phi::errors::Unimplemented(
+          "Input(X) dimension must be 4, but got dimension = %d .",
+          dim_x.size()));
+
+  const auto& input_dims = x.dims();
+  const auto& grid_dims = grid.dims();
+  const auto& guide_dims = guide.dims();
+
+  int64_t h = guide_dims[1];
+  int64_t w = guide_dims[2];
+  int64_t bs = grid_dims[0];
+  int64_t coeffs_chans = grid_dims[1];
+  int64_t input_chans = input_dims[1];
+
+  int64_t output_chans = 0;
+  if ((!config.is_runtime) && ((coeffs_chans < 0) || (input_chans < 0))) {
+    output_chans = -1;
+  } else {
+    if (has_offset) {
+      PADDLE_ENFORCE_EQ((coeffs_chans % (input_chans + 1)),
+                        0,
+                        phi::errors::InvalidArgument(
+                            "Slicing with affine offset, coefficients grid "
+                            "should have n_out*(n_in+1) channels, but got %d",
+                            coeffs_chans));
+      output_chans = coeffs_chans / (input_chans + 1);
+    } else {
+      PADDLE_ENFORCE_EQ((coeffs_chans % input_chans),
+                        0,
+                        phi::errors::InvalidArgument(
+                            "Slicing without affine offset, coefficients grid "
+                            "should have n_out*n_in channels, but got %d .",
+                            coeffs_chans));
+      output_chans = coeffs_chans / input_chans;
+    }
+  }
+
+  std::vector<int64_t> output_dims;
+  output_dims.push_back(bs);
+  output_dims.push_back(output_chans);
+  output_dims.push_back(h);
+  output_dims.push_back(w);
+
+  out->set_dims(common::make_ddim(output_dims));
+  out->set_dtype(x.dtype());
+}
+
 void DistributedPushSparseInferMeta(
     const std::vector<const MetaTensor*>& ids,
     const std::vector<const MetaTensor*>& shows,

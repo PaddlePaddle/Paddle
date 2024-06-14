@@ -392,6 +392,12 @@
   extra :
     attrs : [bool use_mkldnn = false]
 
+- op : bilateral_slice
+  inputs:
+    {x : X, grid : Grid, guide : Guide}
+  outputs:
+    out : Out
+
 - op : bilinear (bilinear_tensor_product)
   backward: bilinear_grad (bilinear_tensor_product_grad)
   inputs :
