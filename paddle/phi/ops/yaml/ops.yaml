@@ -1788,6 +1788,16 @@
     func : frobenius_norm
   backward : frobenius_norm_grad
 
+- op : ftrl
+  args: (Tensor param, Tensor squared_accumulator, Tensor linear_accumulator, Tensor grad, Tensor learning_rate, float l1=0.0f, float l2=0.0f, float lr_power=-0.5f)
+  output: Tensor(param_out), Tensor(squared_accum_out), Tensor(linear_accum_out)
+  infer_meta:
+    func: FtrlInferMeta
+  kernel:
+    func: ftrl {dense, dense, dense, dense, dense -> dense, dense, dense}
+          ftrl_sr {dense, dense, dense, selected_rows, dense -> dense, dense, dense}
+    data_type: param
+
 - op : full
   args : (IntArray shape, Scalar value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor(out)
