@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/tensorrt/op_marker_pass.h"
+#include "paddle/fluid/pir/transforms/tensorrt/trt_op_marker_pass.h"
 
 #include <memory>
 
@@ -49,9 +49,9 @@ class MatmulOpPattern
   }
 };
 
-class OpMarkerPass : public pir::PatternRewritePass {
+class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
-  OpMarkerPass() : pir::PatternRewritePass("op_marker_pass", 2) {}
+  TrtOpMarkerPass() : pir::PatternRewritePass("trt_op_marker_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -64,9 +64,9 @@ class OpMarkerPass : public pir::PatternRewritePass {
 
 namespace pir {
 
-std::unique_ptr<Pass> CreateOpMarkerPass() {
-  return std::make_unique<OpMarkerPass>();
+std::unique_ptr<Pass> CreateTrtOpMarkerPass() {
+  return std::make_unique<TrtOpMarkerPass>();
 }
 }  // namespace pir
 
-REGISTER_IR_PASS(op_marker_pass, OpMarkerPass);
+REGISTER_IR_PASS(trt_op_marker_pass, TrtOpMarkerPass);

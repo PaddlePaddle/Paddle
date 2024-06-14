@@ -84,5 +84,5 @@ USE_PIR_PASS(convert_MEA_to_FA);
 #endif
 
 #ifdef PADDLE_WITH_TENSORRT
-USE_PIR_PASS(op_marker_pass)
+USE_PIR_PASS(trt_op_marker_pass);
 #endif
