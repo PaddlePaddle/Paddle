@@ -541,7 +541,7 @@ void AttentionLstmInferMeta(const MetaTensor& x,
                             MetaTensor* attention_fc_out,
                             MetaTensor* lstm_x,
                             MetaTensor* lstm_out,
-                            MetaConfig config = MetaConfig()) {
+                            MetaConfig config) {
   const auto& x_dims = x.dims();
   const int M = static_cast<int>(x_dims[1]);
   PADDLE_ENFORCE_EQ(x_dims.size(),
