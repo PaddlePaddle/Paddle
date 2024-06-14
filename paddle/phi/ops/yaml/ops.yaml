@@ -184,7 +184,7 @@
   backward : amin_grad
 
 - op : anchor_generator
-  args: (Tensor input, float[] anchor_sizes, float[] aspect_ratios, float[] variances, float[] stride, float offset=0.5)
+  args: (Tensor input, float[] anchor_sizes, float[] aspect_ratios, float[] variances, float[] stride={2, 16.0}, float offset=0.5)
   output: Tensor (anchors), Tensor (variances_out)
   infer_meta:
     func: AnchorGeneratorInferMeta
