@@ -131,7 +131,6 @@ void FTRLOpKernel(const Context& dev_ctx,
 
   auto* param_in = &param;
   auto* sq_accum_in = &squared_accumulator;
-  auto* lin_accum_in = &linear_accumulator;
 
   auto* sq_accum_out = squared_accum_out;
   auto* lin_accum_out = linear_accum_out;
@@ -148,7 +147,7 @@ void FTRLOpKernel(const Context& dev_ctx,
 
   phi::SelectedRows tmp_merged_grad;
   phi::SelectedRows* merged_grad = &tmp_merged_grad;
-  phi::funcs::scatter::MergeAdd<DeviceContext, T> merge_func;
+  phi::funcs::scatter::MergeAdd<Context, T> merge_func;
   merge_func(dev_ctx, *grad, merged_grad);
 
   auto* merged_rows = merged_grad->mutable_rows();
