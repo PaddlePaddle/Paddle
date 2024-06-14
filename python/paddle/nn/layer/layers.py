@@ -16,6 +16,7 @@ from __future__ import annotations
 import copy
 import inspect
 import re
+import typing
 import warnings
 import weakref
 from collections import OrderedDict
@@ -67,7 +68,7 @@ _ForwardPreHook = Callable[
 _ForwardPostHook = Callable[
     ["Layer", Tensor, Tensor], Tensor
 ]  # (layer, input, output) -> transformed_output
-_StateDict = Union[Dict[str, Tensor], OrderedDict[str, Tensor]]
+_StateDict = Union[Dict[str, Tensor], typing.OrderedDict[str, Tensor]]
 _StateDictHook = Callable[[_StateDict], None]
 
 _first_cap_re = re.compile('(.)([A-Z][a-z]+)')
@@ -336,7 +337,9 @@ class HookRemoveHelper:
 
     next_hook_id: int = 0
 
-    def __init__(self, hooks: OrderedDict[int, Callable[..., Any]]) -> None:
+    def __init__(
+        self, hooks: typing.OrderedDict[int, Callable[..., Any]]
+    ) -> None:
         self._hooks_ref = weakref.ref(hooks)
         self._hook_id = HookRemoveHelper.next_hook_id
         HookRemoveHelper.next_hook_id += 1
@@ -428,17 +431,19 @@ class Layer:
         self._op_recorder = LayerOpsRecorder(ops=[], hooks=[])
         self._customized_attrs = {}
 
-        self._forward_pre_hooks: OrderedDict[
+        self._forward_pre_hooks: typing.OrderedDict[
             int, _ForwardPreHook
         ] = OrderedDict()
-        self._forward_post_hooks: OrderedDict[
+        self._forward_post_hooks: typing.OrderedDict[
             int, _ForwardPostHook
         ] = OrderedDict()
 
         # only used in AMP Training
         self._cast_to_low_precision = True
 
-        self._state_dict_hooks: OrderedDict[int, _StateDictHook] = OrderedDict()
+        self._state_dict_hooks: typing.OrderedDict[
+            int, _StateDictHook
+        ] = OrderedDict()
         # Records original functions after @to_static to support to rollback
         self._original_funcs = OrderedDict()
 
