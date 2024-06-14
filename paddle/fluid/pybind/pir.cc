@@ -261,15 +261,22 @@ void SetValueName(Value value, const std::string name) {
   }
 }
 
+bool IsUsedByShadowOutput(const pir::Value &value) {
+  for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
+    if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool HasValueName(const Value &value) {
   if (IsFakeValue(value)) {
     return false;
   }
   if (value.defining_op()->isa<::pir::ParameterOp>() ||
       value.defining_op()->isa<paddle::dialect::DataOp>() ||
-      value.isa<BlockArgument>() ||
-      (value.first_use() &&
-       (value.first_use().owner()->isa<::pir::ShadowOutputOp>()))) {
+      value.isa<BlockArgument>() || IsUsedByShadowOutput(value)) {
     return true;
   } else {
     return false;
@@ -287,15 +294,15 @@ std::string GetValueName(Value value) {
     } else {
       return "arg_" + std::to_string(block_arg.index());
     }
-  } else if (value.first_use()) {
-    auto nextOp = value.first_use().owner();
-    if (nextOp->isa<::pir::ShadowOutputOp>()) {
-      return nextOp->attribute<StrAttribute>("output_name").AsString();
-    } else {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Currently, we can only get name of Value which is "
-          "shadowoutput "));
+  } else if (IsUsedByShadowOutput(value)) {
+    for (auto iter = value.use_begin(); iter != value.use_end(); ++iter) {
+      if (iter->owner()->isa<::pir::ShadowOutputOp>()) {
+        return iter->owner()->attribute<StrAttribute>("output_name").AsString();
+      }
     }
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get name of Value which is "
+        "shadowoutput "));
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get name of Value that "
@@ -2575,7 +2582,10 @@ void BindShapeConstraintIRAnalysis(pybind11::module *m) {
            &pir::ShapeConstraintIRAnalysis::GetShapeOrDataForValue,
            return_value_policy::reference)
       .def("set_shape_or_data_for_var",
-           &pir::ShapeConstraintIRAnalysis::SetShapeOrDataForValue);
+           &pir::ShapeConstraintIRAnalysis::SetShapeOrDataForValue)
+      .def("register_symbol_cstr_from_shape_analysis",
+           &pir::ShapeConstraintIRAnalysis::
+               RegisterSymbolConstraintFromShapeAnalysis);
 }
 
 void BindPir(pybind11::module *module) {
