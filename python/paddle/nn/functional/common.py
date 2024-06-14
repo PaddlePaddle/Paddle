@@ -12,18 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal, Tuple
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 import numpy
 
 import paddle
 from paddle import _C_ops, pir
+from paddle._typing import *
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
+from paddle.distributed.communication.group import Group
 from paddle.framework import (
     core,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+from paddle.static import Parameter
 from paddle.tensor.creation import full
 
 from ...base.data_feeder import (
@@ -40,7 +50,14 @@ from ...tensor.manipulation import squeeze, unsqueeze
 __all__ = []
 
 
-def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
+def unfold(
+    x: Tensor,
+    kernel_sizes: Size2,
+    strides: Size2 = 1,
+    paddings: Size4 = 0,
+    dilations: Size2 = 1,
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     Return a col buffer of sliding local blocks of input x, also known
@@ -176,20 +193,23 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
 
 def interpolate(
-    x,
-    size=None,
-    scale_factor=None,
-    mode='nearest',
-    align_corners=False,
-    align_mode=0,
-    data_format=None,
-    name=None,
-):
+    x: Tensor,
+    size: DynamicShapeLike = None,
+    scale_factor: DynamicShapeLike = None,
+    mode: Literal[
+        'linear', 'area', 'nearest', 'bilinear', 'bicubic', 'trilinear'
+    ] = 'nearest',
+    align_corners: bool = False,
+    align_mode: int = 0,
+    data_format: Literal["NCW", "NWC", "NCHW", "NHWC", "NCDHW", "NDHWC"]
+    | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
 
     This API resizes a batch of images.
 
-    The input must be be a 3-D Tensor of the shape (num_batches, channels, in_w)
+    The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
     or (num_batches, in_w, channels), or 4-D (num_batches, channels, in_h, in_w) or
     (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
@@ -333,7 +353,8 @@ def interpolate(
              If a Tensor, its dimensions size should be a 1.
         scale_factor (float|Tensor|list|tuple|None): The multiplier for the input height or width. At
              least one of :attr:`size` or :attr:`scale_factor` must be set.
-             And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if it is either a list or a tuple or a Tensor.If a list/tuple, each element can be an integer or a Tensor of shape: [1] or [].
+             And :attr:`size` has a higher priority than :attr:`scale_factor`.Has to match input size if it is either
+             a list or a tuple or a Tensor. If a list/tuple, each element can be an integer or a Tensor of shape: [1] or [].
              Default: None.
         mode (str): The resample method. It supports 'linear', 'area', 'nearest', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
@@ -730,15 +751,17 @@ def interpolate(
 
 
 def upsample(
-    x,
-    size=None,
-    scale_factor=None,
-    mode='nearest',
-    align_corners=False,
-    align_mode=0,
-    data_format=None,
-    name=None,
-):
+    x: Tensor,
+    size: DynamicShapeLike = None,
+    scale_factor: DynamicShapeLike = None,
+    mode: Literal[
+        'linear', 'nearest', 'bilinear', 'bicubic', 'trilinear'
+    ] = 'nearest',
+    align_corners: bool = False,
+    align_mode: int = 0,
+    data_format: Literal["NCW", "NWC", "NCHW", "NHWC", "NCDHW", "NDHWC"] = None,
+    name: str | None = None,
+) -> Tensor:
     """
 
     This API resizes a batch of images.
@@ -934,7 +957,13 @@ def upsample(
     )
 
 
-def bilinear(x1, x2, weight, bias=None, name=None):
+def bilinear(
+    x1: Tensor,
+    x2: Tensor,
+    weight: Parameter,
+    bias: Parameter | None = None,
+    name: str | None = None,
+) -> Tensor:
     """
 
     This layer performs bilinear on two inputs.
@@ -987,8 +1016,15 @@ def bilinear(x1, x2, weight, bias=None, name=None):
 
 
 def dropout(
-    x, p=0.5, axis=None, training=True, mode="upscale_in_train", name=None
-):
+    x: Tensor,
+    p: float | int = 0.5,
+    axis: IntSequence | None = None,
+    training: bool = True,
+    mode: Literal[
+        'upscale_in_train', 'downscale_in_infer'
+    ] = "upscale_in_train",
+    name: str | None = None,
+) -> Tensor:
     r"""
     Dropout is a regularization technique for reducing overfitting by preventing
     neuron co-adaption during training. The dropout operator randomly sets the
@@ -1267,7 +1303,13 @@ def dropout(
             return ret
 
 
-def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
+def dropout2d(
+    x: Tensor,
+    p: float = 0.5,
+    training: bool = True,
+    data_format: DataLayout2D = 'NCHW',
+    name: str | None = None,
+) -> Tensor:
     """
     Randomly zero out entire channels (in the batched input 4d tensor with the shape `NCHW` ,
     a channel is a 2D feature map with the shape `HW` ). Each channel will be zeroed out independently
@@ -1413,7 +1455,13 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
     )
 
 
-def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
+def dropout3d(
+    x: Tensor,
+    p: float = 0.5,
+    training: bool = True,
+    data_format: DataLayout3D = 'NCDHW',
+    name: str | None = None,
+) -> Tensor:
     """
     Randomly zero out entire channels (in the batched input 5d tensor with the shape `NCDHW` ,
     a channel is a 3D feature map with the shape `DHW` ). Each channel will be zeroed out independently
@@ -1469,7 +1517,9 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
     )
 
 
-def alpha_dropout(x, p=0.5, training=True, name=None):
+def alpha_dropout(
+    x: Tensor, p: float = 0.5, training: bool = True, name: str | None = None
+) -> Tensor:
     """
     Alpha Dropout is a type of Dropout that maintains the self-normalizing property.
     For an input with zero mean and unit standard deviation, the output of Alpha Dropout
@@ -1548,7 +1598,14 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         return x
 
 
-def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
+def pad(
+    x: Tensor,
+    pad: DynamicShapeLike,
+    mode: Literal["constant", "reflect", "replicate", "circular"] = 'constant',
+    value: float = 0.0,
+    data_format: DataLayoutND = "NCHW",
+    name: str | None = None,
+) -> Tensor:
     """
     Pad tensor according to ``'pad'`` and ``'mode'``.
     If mode is ``'constant'`` and length of pad is twice as length of x dimension,
@@ -1815,7 +1872,12 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
     return out
 
 
-def zeropad2d(x, padding, data_format="NCHW", name=None):
+def zeropad2d(
+    x: Tensor,
+    padding: DynamicShapeLike,
+    data_format: DataLayout2D = "NCHW",
+    name: str | None = None,
+) -> Tensor:
     """
     Pads the input tensor boundaries with zero according to 'pad'.
 
@@ -1859,7 +1921,9 @@ def zeropad2d(x, padding, data_format="NCHW", name=None):
     )
 
 
-def cosine_similarity(x1, x2, axis=1, eps=1e-8):
+def cosine_similarity(
+    x1: Tensor, x2: Tensor, axis: int = 1, eps: float = 1e-8
+) -> Tensor:
     """
     Compute cosine similarity between x1 and x2 along axis.
 
@@ -1912,7 +1976,12 @@ def cosine_similarity(x1, x2, axis=1, eps=1e-8):
     return cos_sim
 
 
-def linear(x, weight, bias=None, name=None):
+def linear(
+    x: Tensor,
+    weight: Tensor,
+    bias: Tensor | None = None,
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     Fully-connected linear transformation operator. For each input :math:`X` ,
@@ -2017,7 +2086,12 @@ def linear(x, weight, bias=None, name=None):
         return res
 
 
-def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
+def label_smooth(
+    label: Tensor,
+    prior_dist: Tensor | None = None,
+    epsilon: float = 0.1,
+    name: str | None = None,
+) -> Tensor:
     r"""
     Label smoothing is a mechanism to regularize the classifier layer and is called
     label-smoothing regularization (LSR).Label smoothing is proposed to encourage
@@ -2102,7 +2176,12 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     return smooth_label
 
 
-def class_center_sample(label, num_classes, num_samples, group=None):
+def class_center_sample(
+    label: Tensor,
+    num_classes: int,
+    num_samples: int,
+    group: Group | bool | None = None,
+) -> Tuple[Tensor, Tensor]:
     """
     Class center sample method is proposed from the paper PartialFC that only sample a subset of the class centers.
     The process of sampling subset class centers is straightforward:
@@ -2296,8 +2375,14 @@ def class_center_sample(label, num_classes, num_samples, group=None):
 
 
 def fold(
-    x, output_sizes, kernel_sizes, strides=1, paddings=0, dilations=1, name=None
-):
+    x: Tensor,
+    output_sizes: Size2,
+    kernel_sizes: Size2,
+    strides: Size2 = 1,
+    paddings: Size4 = 0,
+    dilations: Size2 = 1,
+    name: str | None = None,
+) -> Tensor:
     r"""
 
     Combines an array of sliding local blocks into a large containing
