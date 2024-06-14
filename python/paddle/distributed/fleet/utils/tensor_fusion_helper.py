@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import itertools
+import os
 import weakref
 from collections import OrderedDict
 
@@ -48,6 +49,18 @@ align = {
 
 
 __current_device_type__ = None
+
+
+def get_nccl_channel_num_from_env():
+    value = os.getenv("FLAGS_nccl_channel_num")
+    if value is None:
+        return None
+
+    value = int(value)
+    return value if value > 0 else None
+
+
+g_nccl_channel_num = get_nccl_channel_num_from_env()
 
 
 def get_current_device_type():
@@ -591,6 +604,9 @@ class FusedCommBuffer:
 
     @imperative_base.no_grad
     def _comm_grads(self):
+        if g_nccl_channel_num is not None:
+            old_channel_num = core.set_nccl_channels(g_nccl_channel_num)
+
         reduce_op = (
             paddle.distributed.ReduceOp.AVG
             if self._use_reduce_avg
@@ -631,6 +647,9 @@ class FusedCommBuffer:
                 sync_op=False,
             )
         self._task = task
+
+        if g_nccl_channel_num is not None:
+            core.set_nccl_channels(old_channel_num)
 
     @imperative_base.no_grad
     def scale_grads(self):

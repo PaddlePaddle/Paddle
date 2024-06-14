@@ -1203,6 +1203,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   m.def("nccl_version", &GetNCCLVersion);
+  m.def("set_nccl_channels", &phi::dynload::ncclSetMaxUserChannels);
 #endif
 
   m.def("is_cuda_graph_capturing", &platform::IsCUDAGraphCapturing);

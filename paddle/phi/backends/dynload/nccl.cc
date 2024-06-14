@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/backends/dynload/nccl.h"
+#include "glog/logging.h"
+#include "paddle/phi/core/enforce.h"
 
 ncclResult_t ncclCommInitRank2(ncclComm_t* newcomm,
                                int nranks,
@@ -48,6 +50,31 @@ NCCL_RAND_ROUTINE_EACH_AFTER_2703(DEFINE_WRAP)
 #if NCCL_VERSION_CODE >= 21100
 NCCL_RAND_ROUTINE_EACH_AFTER_21100(DEFINE_WRAP)
 #endif
+
+int ncclSetMaxUserChannels(int max_channels) {
+  using FuncPtr = ncclResult_t (*)(int, int*);
+  static FuncPtr func_ptr = [] {
+    std::call_once(nccl_dso_flag, []() {
+      nccl_dso_handle = phi::dynload::GetNCCLDsoHandle();
+    });
+    const char* kFuncName = "ncclUpdateMaxUserChannels";
+    auto ptr = reinterpret_cast<FuncPtr>(dlsym(nccl_dso_handle, kFuncName));
+    if (ptr != nullptr) {
+      LOG(INFO) << "Get " << kFuncName << " successfully at " << ptr;
+    } else {
+      LOG(INFO) << "Get " << kFuncName << " failed because: " << dlerror();
+    }
+    return ptr;
+  }();
+
+  if (func_ptr) {
+    int old_max_channels;
+    PADDLE_ENFORCE_GPU_SUCCESS(func_ptr(max_channels, &old_max_channels));
+    return old_max_channels;
+  } else {
+    return -1;
+  }
+}
 
 }  // namespace dynload
 }  // namespace phi

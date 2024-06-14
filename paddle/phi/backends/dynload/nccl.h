@@ -17,6 +17,7 @@ limitations under the License. */
 
 #include <mutex>  // NOLINT
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
 #include "paddle/phi/common/port.h"
 
@@ -103,6 +104,30 @@ NCCL_RAND_ROUTINE_EACH_AFTER_2703(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
   __macro(ncclRedOpDestroy);
 NCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
+
+int ncclSetMaxUserChannels(int max_channels);
+
+class NCCLSetMaxUserChannelsGuard {
+  DISABLE_COPY_AND_ASSIGN(NCCLSetMaxUserChannelsGuard);
+
+ public:
+  explicit NCCLSetMaxUserChannelsGuard(int max_channels, bool enable = true) {
+    enable_ = enable;
+    if (enable_) {
+      old_channels_ = ncclSetMaxUserChannels(max_channels);
+    }
+  }
+
+  ~NCCLSetMaxUserChannelsGuard() {
+    if (enable_) {
+      ncclSetMaxUserChannels(old_channels_);
+    }
+  }
+
+ private:
+  int old_channels_;
+  bool enable_;
+};
 
 }  // namespace dynload
 }  // namespace phi
