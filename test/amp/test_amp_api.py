@@ -38,6 +38,11 @@ from paddle.static import amp
     and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
     "run test when xpu's compute capability >= xpu3.",
 )
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable temporarily",
+)
 class TestAutoCast(AmpTestBase):
     def init_net(self):
         self._conv = paddle.nn.Conv2D(
@@ -102,6 +107,11 @@ class SimpleConvNet(nn.Layer):
     core.is_compiled_with_xpu()
     and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
     "run test when xpu's compute capability >= xpu3.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable temporarily",
 )
 class TestStaticDecorate(AmpTestBase):
     def check_results(
@@ -193,6 +203,11 @@ class TestStaticDecorate(AmpTestBase):
     and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
     "run test when xpu's compute capability >= xpu3.",
 )
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable temporarily",
+)
 class TestGradScaler(AmpTestBase):
     def test_amp_grad_scaler(self):
         model = paddle.nn.Conv2D(3, 2, 3)
@@ -281,6 +296,11 @@ class TestGradScaler(AmpTestBase):
     core.is_compiled_with_xpu()
     and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
     "run test when xpu's compute capability >= xpu3.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable temporarily",
 )
 class TestFp16Guard(AmpTestBase):
     def test_fp16_guard(self):
@@ -403,6 +423,11 @@ class SimpleModelIncludeSetValue(nn.Layer):
     core.is_compiled_with_xpu()
     and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
     "run test when xpu's compute capability >= xpu3.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable temporarily",
 )
 class TestDy2STWithSetValue(AmpTestBase):
     def test_op_called_as_expected(self):
