@@ -2685,9 +2685,9 @@ def clone(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
 
             >>> y = clone_x**3
             >>> y.backward()
-            >>> print(clone_x.grad.numpy())  # type: ignore
+            >>> clone_x.grad.numpy() # type: ignore
             [3. 3.]
-            >>> print(x.grad.numpy())  # type: ignore
+            >>> x.grad.numpy() # type: ignore
             [3. 3.]
     """
     return x.clone()
