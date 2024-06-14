@@ -256,12 +256,12 @@ class BoolAttributeVisitor : public AttributeVisitor {
     return pir::BoolAttribute::get(ctx, false);
   }
 
-  virtual pir::Attribute operator()(int i) {
+  pir::Attribute operator()(int i) override {
     VLOG(10) << "translating int";
     return pir::BoolAttribute::get(ctx, static_cast<bool>(i));
   }
 
-  virtual pir::Attribute operator()(int64_t i) {
+  pir::Attribute operator()(int64_t i) override {
     VLOG(10) << "translating int64";
     return pir::BoolAttribute::get(ctx, static_cast<bool>(i));
   }

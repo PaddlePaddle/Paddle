@@ -96,4 +96,13 @@ TEST(AttributeConverterTest, int2bool) {
   paddle::framework::Attribute attr(v);
   pir::Attribute pir_attr = attr_translator("pir::BoolAttribute", attr);
   EXPECT_TRUE(pir_attr.isa<pir::BoolAttribute>());
+
+  int64_t v1 = 0;
+  paddle::framework::Attribute attr1(v1);
+  pir_attr = attr_translator("pir::BoolAttribute", attr1);
+  EXPECT_TRUE(pir_attr.isa<pir::BoolAttribute>());
+
+  pir_attr =
+      attr_translator("pir::BoolAttribute", paddle::framework::Attribute());
+  EXPECT_TRUE(pir_attr.isa<pir::BoolAttribute>());
 }

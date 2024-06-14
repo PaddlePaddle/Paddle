@@ -30,7 +30,7 @@ class AttributeVisitor;
 
 class AttributeTranslator {
  private:
-  AttributeTranslator();
+  TEST_API AttributeTranslator();
   AttributeVisitor* general_visitor;
   std::unordered_map<std::string, AttributeVisitor*> special_visitors;
 
