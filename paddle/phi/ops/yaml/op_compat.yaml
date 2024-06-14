@@ -116,6 +116,13 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32"]
 
+- op : add_position_encoding
+  backward: add_position_encoding_grad
+  inputs:
+    x : X
+  outputs:
+    out : Out
+
 - op : addmm
   backward : addmm_grad
   inputs :
