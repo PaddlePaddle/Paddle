@@ -2469,6 +2469,7 @@ def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
 
             >>> import paddle
             >>> import numpy as np
+            >>> import numpy.typing as npt
             >>> data = paddle.full(shape=[3, 2], fill_value=2.5, dtype='float64')
             >>> print(data.numpy())
             [[2.5 2.5]
