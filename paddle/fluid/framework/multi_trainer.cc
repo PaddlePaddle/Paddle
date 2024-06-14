@@ -161,7 +161,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     th.get();
   }
 
-  #ifdef PADDLE_WITH_HETERPS
+#ifdef PADDLE_WITH_HETERPS
   // only gpups mode
   if (!use_gpu_graph_ && use_ps_gpu_) {
     for (int num = 0; num < thread_num_; ++num) {

@@ -309,7 +309,7 @@ int HogwildWorker::IsParameter(const std::string &name, bool full_match) {
     return -1;
   }
 #else
-    return -1;
+  return -1;
 #endif
 }
 void HogwildWorker::BuildShardingDepends(const ProgramDesc &program) {
@@ -1006,8 +1006,8 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
     }                                                                        \
   } while (0)
         _ForEachDataType_(MemsetCallback);
-      } 
-#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)    
+      }
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
       else if (unpersist_vars_.find(name) == unpersist_vars_.end()) {  // NOLINT
         if (use_gpu_graph_ && use_ps_gpu_) {
           Variable *root_var = root_scope_->FindVar(name);
@@ -1163,6 +1163,8 @@ void HogwildWorker::CreateDeviceResource(const ProgramDesc &main_prog) {
   CreateThreadScope(main_prog);
   CreateThreadOperators(main_prog);
 
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
   if (use_gpu_graph_ && use_ps_gpu_) {
     float *stat_ptr = sync_stat_.mutable_data<float>(place_, sizeof(float) * 3);
     float flags[] = {0.0, 1.0, 1.0};
@@ -1174,10 +1176,13 @@ void HogwildWorker::CreateDeviceResource(const ProgramDesc &main_prog) {
                                                stream));
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
   }
+#endif
 }
 // check batch num
 bool HogwildWorker::CheckBatchNum(int flag) {
   float ret = 0.0;
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
   if (use_gpu_graph_ && use_ps_gpu_) {
     if (flag > 1) {
       flag = 1;
@@ -1245,11 +1250,14 @@ bool HogwildWorker::CheckBatchNum(int flag) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
     //  g_barrier.wait();
   }
+#endif
   return (ret > 0.0);
 }
 
 bool HogwildWorker::GetPassEnd(int flag) {
   float ret = 0.0;
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
   if (use_gpu_graph_ && use_ps_gpu_) {
     if (flag > 1) {
       flag = 1;
@@ -1278,6 +1286,7 @@ bool HogwildWorker::GetPassEnd(int flag) {
     PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(stream));
     // g_barrier.wait();
   }
+#endif
   return (ret > 0.0);
 }
 
@@ -1304,11 +1313,13 @@ void HogwildWorker::TrainFilesWithProfiler() {
     quit_flag_.store(false);
   }
   g_barrier.wait();
-  
-#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
+  bool train_mode = false;
+  bool is_multi_node = false;
   if (use_gpu_graph_ && use_ps_gpu_) {
-    bool train_mode = device_reader_->IsTrainMode();
-    bool is_multi_node = false;
+    train_mode = device_reader_->IsTrainMode();
     auto gloo = paddle::framework::GlooWrapper::GetInstance();
     if (gloo->Size() > 1) {
       is_multi_node = true;
@@ -1329,8 +1340,9 @@ void HogwildWorker::TrainFilesWithProfiler() {
   if (max_memory_size >= 0) {
     gc = CreateGarbageCollector(place_, max_memory_size);
   }
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
   std::unique_ptr<GPUParallelCopyer> copyer = nullptr;
-#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   if (use_gpu_graph_ && use_ps_gpu_) {
     auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
     if (!offload_vars_.empty()) {
@@ -1413,6 +1425,8 @@ void HogwildWorker::TrainFilesWithProfiler() {
         auto &op = ops_[i];
         VLOG(3) << "Going to run op " << op_names_[i];
         auto it = offload_vars_.find(op.get());
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
         if (use_gpu_graph_ && use_ps_gpu_) {
           // offload
           if (it != offload_vars_.end()) {
@@ -1420,6 +1434,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
                 root_scope_, place_, thread_scope_, copyer.get());
           }
         }
+#endif
         op->Run(*thread_scope_, place_);
         if (use_gpu_graph_ && use_ps_gpu_) {
           if (it != offload_vars_.end()) {
@@ -1520,7 +1535,8 @@ void HogwildWorker::TrainFiles() {
   platform::SetDeviceId(thread_id_);
 #endif
   // while ((cur_batch = device_reader_->Next()) > 0) {
-#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+#if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
   bool is_multi_node = false;
   bool train_mode = false;
   if (use_gpu_graph_ && use_ps_gpu_) {
@@ -1542,7 +1558,8 @@ void HogwildWorker::TrainFiles() {
   if (max_memory_size >= 0) {
     gc = CreateGarbageCollector(place_, max_memory_size);
   }
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
   std::unique_ptr<GPUParallelCopyer> copyer = nullptr;
   if (use_gpu_graph_ && use_ps_gpu_) {
     auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
@@ -1611,7 +1628,8 @@ void HogwildWorker::TrainFiles() {
       }
     } else {
       for (auto &op : ops_) {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
         auto it = offload_vars_.find(op.get());
         if (use_gpu_graph_ && use_ps_gpu_) {
           // offload
@@ -1626,7 +1644,8 @@ void HogwildWorker::TrainFiles() {
                   << op->DebugStringEx(thread_scope_);
         }
         op->Run(*thread_scope_, place_);
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS) && \
+    defined(PADDLE_WITH_PSCORE)
         if (use_gpu_graph_ && use_ps_gpu_) {
           // offload
           if (it != offload_vars_.end()) {
