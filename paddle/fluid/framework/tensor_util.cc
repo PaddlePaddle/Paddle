@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_DNNL
@@ -455,6 +456,13 @@ void TensorCopySync(const phi::DenseTensor& src,
 void TensorToStream(std::ostream& os,
                     const phi::DenseTensor& tensor,
                     const platform::DeviceContext& dev_ctx) {
+  const auto ensure_contiguous = [](const phi::DenseTensor& tensor) {
+    if (tensor.meta().is_contiguous()) {
+      return tensor;
+    }
+    return paddle::experimental::Trans2Contiguous(tensor);
+  };
+  const phi::DenseTensor& contiguous_tensor = ensure_contiguous(tensor);
   {  // the 1st field, uint32_t version
     constexpr uint32_t version = 0;
     os.write(reinterpret_cast<const char*>(&version), sizeof(version));
@@ -463,8 +471,9 @@ void TensorToStream(std::ostream& os,
      // int32_t  size
      // void*    protobuf message
     proto::VarType::TensorDesc desc;
-    desc.set_data_type(framework::TransToProtoVarType(tensor.dtype()));
-    auto dims = common::vectorize(tensor.dims());
+    desc.set_data_type(
+        framework::TransToProtoVarType(contiguous_tensor.dtype()));
+    auto dims = common::vectorize(contiguous_tensor.dims());
     auto* pb_dims = desc.mutable_dims();
     pb_dims->Resize(static_cast<int>(dims.size()), 0);
     std::copy(dims.begin(), dims.end(), pb_dims->begin());
@@ -474,14 +483,15 @@ void TensorToStream(std::ostream& os,
     os.write(out.data(), size);
   }
   {  // the 3rd field, tensor data
-    uint64_t size = tensor.numel() * phi::SizeOf(tensor.dtype());
+    uint64_t size =
+        contiguous_tensor.numel() * phi::SizeOf(contiguous_tensor.dtype());
 
-    auto* data_ptr = tensor.data();
+    auto* data_ptr = contiguous_tensor.data();
     PADDLE_ENFORCE_LT(size,
                       (std::numeric_limits<std::streamsize>::max)(),
                       platform::errors::ResourceExhausted(
                           "tensor size %d overflow when writing tensor", size));
-    if (platform::is_gpu_place(tensor.place())) {
+    if (platform::is_gpu_place(contiguous_tensor.place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
@@ -492,7 +502,7 @@ void TensorToStream(std::ostream& os,
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
         memory::Copy(cpu,
                      buf.get(),
-                     tensor.place(),
+                     contiguous_tensor.place(),
                      reinterpret_cast<const void*>(data),  // NOLINT
                      size_to_write,
                      gpu_dev_ctx.stream());
@@ -505,7 +515,7 @@ void TensorToStream(std::ostream& os,
       PADDLE_THROW(platform::errors::Unimplemented(
           "CUDAPlace is not supported when not compiled with CUDA"));
 #endif
-    } else if (platform::is_xpu_place(tensor.place())) {
+    } else if (platform::is_xpu_place(contiguous_tensor.place())) {
 #ifdef PADDLE_WITH_XPU
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);
@@ -517,7 +527,7 @@ void TensorToStream(std::ostream& os,
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
         memory::Copy(cpu,
                      buf.get(),
-                     tensor.place(),
+                     contiguous_tensor.place(),
                      reinterpret_cast<const void*>(data),
                      size_to_write);
         xpu_dev_ctx.Wait();
@@ -529,7 +539,7 @@ void TensorToStream(std::ostream& os,
       PADDLE_THROW(platform::errors::Unimplemented(
           "XPUPlace is not supported when not compiled with XPU"));
 #endif
-    } else if (platform::is_custom_place(tensor.place())) {
+    } else if (platform::is_custom_place(contiguous_tensor.place())) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       constexpr size_t kBufSize = 1024 * 1024 * 64;     // 64MB
       std::unique_ptr<char[]> buf(new char[kBufSize]);  // NOLINT
@@ -541,7 +551,7 @@ void TensorToStream(std::ostream& os,
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
         memory::Copy(cpu,
                      buf.get(),
-                     tensor.place(),
+                     contiguous_tensor.place(),
                      reinterpret_cast<const void*>(data),
                      size_to_write,
                      custom_device_context.stream());

@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 size_t OpKernelType::Hash::operator()(const OpKernelType& key) const {
   int cur_loc = 0;
@@ -73,5 +72,4 @@ bool OpKernelType::operator==(const OpKernelType& o) const {
          customized_type_value_ == o.customized_type_value_;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -28,7 +28,6 @@ from op_test import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.base import core
 
 paddle.enable_static()
 
@@ -45,9 +44,7 @@ class XPUTestElementwiseSubOp(XPUOpTestWrapper):
             self.op_type = "elementwise_sub"
             self.use_xpu = True
             self.dtype = self.in_type
-            # NOTE(lijin23): bugs on int64 for XPU3, to be fixed.
-            if core.get_xpu_device_version(0) == core.XPUVersion.XPU3:
-                self.dtype = np.int32
+
             self.init_shape()
             self.init_input_output()
 
