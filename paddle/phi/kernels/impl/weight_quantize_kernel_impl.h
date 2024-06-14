@@ -106,7 +106,12 @@ void per_channel_quant(int8_t* output,
                 static_cast<float>(current_weight_row[input_idx]);
             const float scaled_weight = round(weight_elt / col_scale);
             int int_weight = static_cast<int>(scaled_weight);
+#ifdef PADDLE_WITH_HIP
+            const int8_t clipped_weight =
+                std::max(-7, std::min(7, int_weight)) + 8;
+#else
             const int8_t clipped_weight = std::max(-7, std::min(7, int_weight));
+#endif
 
             // Kill the sign extension bits (hence 0x0F mask) then shift to
             // upper bits if packing the second int4 and or the bits into the
@@ -155,7 +160,12 @@ void group_wise_quant(int8_t* output,
                 static_cast<float>(current_weight_row[input_idx]);
             const float scaled_weight = round(weight_elt / col_scale);
             int int_weight = static_cast<int>(scaled_weight);
+#ifdef PADDLE_WITH_HIP
+            const int8_t clipped_weight =
+                std::max(-7, std::min(7, int_weight)) + 8;
+#else
             const int8_t clipped_weight = std::max(-7, std::min(7, int_weight));
+#endif
 
             // Kill the sign extension bits (hence 0x0F mask) then shift to
             // upper bits if packing the second int4 and or the bits into the
