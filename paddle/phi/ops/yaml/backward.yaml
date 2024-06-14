@@ -3595,3 +3595,14 @@
   kernel:
     func: unpool_grad
     data_type: x
+
+- op : hinge_loss_grad
+  forward: hinge_loss(Tensor logits, Tensor labels) -> Tensor (loss)
+  args: (Tensor logits, Tensor labels, Tensor loss_grad)
+  output: Tensor (logits_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [logits]
+  kernel:
+    func: hinge_loss_grad
+    data_type: loss_grad
