@@ -107,11 +107,10 @@ void PatternGraph<T>::HorizontalFusion() {
                       StmtPatternGraphMatcher<ReduceTreePattern<T>>>,
                    LiftToHorizontalFusionPatternOperation>(this);
 
-  GraphTransformer<
-      NodePairPattern,
-      T,
-      And<HorizontalFusionConstrain<T>, HorizontalCheckMiddleOutputVar<T>>,
-      HorizontalFusionOperation>(this);
+  GraphTransformer<NodePairPattern,
+                   T,
+                   HorizontalFusionConstrain<T>,
+                   HorizontalFusionOperation>(this);
 }
 
 template <typename T>

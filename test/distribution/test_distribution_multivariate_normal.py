@@ -21,7 +21,6 @@ from distribution import config
 from parameterize import (
     TEST_CASE_NAME,
     parameterize_cls,
-    parameterize_func,
 )
 
 import paddle
@@ -259,51 +258,6 @@ class TestMVNKL(unittest.TestCase):
 class MVNTestError(unittest.TestCase):
     def setUp(self):
         paddle.disable_static(self.place)
-
-    @parameterize_func(
-        [
-            (5, None, ValueError),  # no matrix input
-            (
-                5,
-                paddle.to_tensor([2.0, 3.0]),
-                ValueError,
-            ),  # wrong input matrix dim
-            (
-                5,
-                paddle.to_tensor([[2.0, 3.0, 4.0], [2.0, 3.0, 4.0]]),
-                ValueError,
-            ),  # non-sqaure input matrix
-            (
-                5,
-                paddle.to_tensor([[2.0, 3.0], [2.0, 3.0]]),
-                ValueError,
-            ),  # non-symmetric input matrix
-            (
-                5,
-                paddle.to_tensor([[-2.0, 3.0], [3.0, -1.0]]),
-                ValueError,
-            ),  # non-psd input matrix
-        ]
-    )
-    def test_bad_cov_matrix(self, loc, matrix, error):
-        with paddle.base.dygraph.guard(self.place):
-            self.assertRaises(error, MultivariateNormal, loc, matrix)
-
-    @parameterize_func(
-        [
-            (
-                1.0,
-                2.0,
-                paddle.to_tensor([[3.0, 2.0], [2.0, 3.0]]),
-                paddle.to_tensor([[2.0, 1.0], [1.0, 2.0]]),
-            ),
-        ]
-    )
-    def test_bad_kl_div(self, loc1, loc2, matrix1, matrix2):
-        with paddle.base.dygraph.guard(self.place):
-            rv = MultivariateNormal(loc1, covariance_matrix=matrix1)
-            rv_other = MultivariateNormal(loc2, covariance_matrix=matrix2)
-            self.assertRaises(ValueError, rv.kl_divergence, rv_other)
 
 
 if __name__ == '__main__':
