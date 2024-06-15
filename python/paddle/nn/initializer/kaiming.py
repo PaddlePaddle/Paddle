@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 # TODO: define the initializers of Kaiming functions in neural network
 import math
 
@@ -64,11 +66,11 @@ class MSRAInitializer(Initializer):
 
     def __init__(
         self,
-        uniform=True,
-        fan_in=None,
-        seed=0,
-        negative_slope=0,
-        nonlinearity='relu',
+        uniform: bool = True,
+        fan_in: float | None = None,
+        seed: int = 0,
+        negative_slope: float = 0,
+        nonlinearity: str = 'relu',
     ):
         """Constructor for MSRAInitializer"""
         assert uniform is not None
@@ -80,12 +82,14 @@ class MSRAInitializer(Initializer):
         self._negative_slope = negative_slope
         self._nonlinearity = nonlinearity
 
-    def forward(self, var, block=None):
+    def forward(
+        self, var: paddle.Tensor, block: paddle.pir.Block | None = None
+    ) -> paddle.Tensor | None:
         """Initialize the input tensor with MSRA initialization.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
-            block(Block, optional): The block in which initialization ops
+            block(Block|None, optional): The block in which initialization ops
                    should be added. Used in static graph only, default None.
 
         Returns:
@@ -271,7 +275,12 @@ class KaimingNormal(MSRAInitializer):
 
     """
 
-    def __init__(self, fan_in=None, negative_slope=0.0, nonlinearity='relu'):
+    def __init__(
+        self,
+        fan_in: float | None = None,
+        negative_slope: float = 0.0,
+        nonlinearity: str = 'relu',
+    ):
         super().__init__(
             uniform=False,
             fan_in=fan_in,
@@ -317,7 +326,12 @@ class KaimingUniform(MSRAInitializer):
 
     """
 
-    def __init__(self, fan_in=None, negative_slope=0.0, nonlinearity='relu'):
+    def __init__(
+        self,
+        fan_in: float | None = None,
+        negative_slope: float = 0.0,
+        nonlinearity: str = 'relu',
+    ):
         super().__init__(
             uniform=True,
             fan_in=fan_in,
