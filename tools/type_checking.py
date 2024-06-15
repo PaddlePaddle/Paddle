@@ -26,7 +26,6 @@ from __future__ import annotations
 import argparse
 import doctest
 import multiprocessing
-import os
 import pathlib
 import re
 import signal
@@ -34,7 +33,6 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
-import psutil
 from mypy import api as mypy_api
 from sampcd_processor_utils import (
     extract_code_blocks_from_docstr,
@@ -234,23 +232,8 @@ def parse_args() -> argparse.Namespace:
 # https://stackoverflow.com/questions/32160054/keyboard-interrupts-with-pythons-multiprocessing-pool-and-map-function/45259908#45259908
 # ctrl+c interrupt handler
 # this should be a global function, a local function makes `pickle` fail on MacOS.
-parent_id = os.getpid()
-
-
 def init_worker():
-    def sig_int(signal_num, frame):
-        logger.debug(f"signal: {signal_num}")
-        parent = psutil.Process(parent_id)
-        for child in parent.children():
-            if child.pid != os.getpid():
-                logger.debug(f"killing child: {child.pid}")
-                child.kill()
-        logger.debug(f"killing parent: {parent_id}")
-        parent.kill()
-        logger.debug(f"suicide: {os.getpid()}")
-        psutil.Process(os.getpid()).kill()
-
-    signal.signal(signal.SIGINT, sig_int)
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
 def get_test_results(
@@ -280,16 +263,15 @@ def get_test_results(
             )
 
     test_results = []
-    try:
-        pool = multiprocessing.Pool(initializer=init_worker)
-        test_results = pool.starmap(type_checker.run, codeblocks)
-
-    except KeyboardInterrupt:
-        pool.terminate()
-    else:
-        pool.close()
-    finally:
-        pool.join()
+    with multiprocessing.Pool(initializer=init_worker) as pool:
+        try:
+            test_results = pool.starmap(type_checker.run, codeblocks)
+        except KeyboardInterrupt:
+            pool.terminate()
+        else:
+            pool.close()
+        finally:
+            pool.join()
 
     return list(test_results)
 
