@@ -1074,4 +1074,25 @@ void FusedElemwiseActivationGradInferMeta(
     MetaTensor* y_grad,
     MetaConfig config = MetaConfig());
 
+void FusedEmbeddingFcLstmInferMeta(const MetaTensor& ids,
+                                   const MetaTensor& embeddings,
+                                   const MetaTensor& weight_h,
+                                   const MetaTensor& bias,
+                                   const MetaTensor& h0,
+                                   const MetaTensor& c0,
+                                   bool use_peepholes,
+                                   bool is_reverse,
+                                   bool use_seq,
+                                   const std::string& gate_activation,
+                                   const std::string& cell_activation,
+                                   const std::string& candidate_activation,
+                                   MetaTensor* hidden,
+                                   MetaTensor* cell,
+                                   MetaTensor* x_x,
+                                   MetaTensor* batched_input,
+                                   MetaTensor* batched_hidden,
+                                   MetaTensor* batched_cell,
+                                   MetaTensor* reordered_h0,
+                                   MetaTensor* reordered_c0);
+
 }  // namespace phi
