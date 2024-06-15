@@ -155,7 +155,8 @@ void Im2SequenceGradKernel(const Context& dev_ctx,
                            const std::vector<int>& out_stride,
                            DenseTensor* x_grad) {
   auto* in = &x_in;
-  phi::DenseTensor* d_out = &out_grad;
+  phi::DenseTensor tmp = out_grad;
+  phi::DenseTensor* d_out = &tmp;
   auto* d_x = x_grad;
   dev_ctx.template Alloc<T>(d_x);
 
