@@ -150,7 +150,7 @@ void AttentionLSTMKernel(
   // x(TxM) * fc (Mx1) part of atten_wgt(M+D)x1
   auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
 
-  phi::funcs::FCFunctor<DeviceContext, T> fc;
+  phi::funcs::FCFunctor<Context, T> fc;
   fc(dev_ctx, total_T, 1, M, x_data, atten_w_data, atted_x_data, atten_b_data);
 
   const T* cur_atten_x_data = atted_x_data;
