@@ -90,7 +90,6 @@ class FusedEmbeddingFCLSTMKernel {
   /* for peephole only*/                                          \
   phi::DenseTensor checked_cell;                                  \
   T* checked_cell_data = nullptr;                                 \
-  auto place = dev_ctx.GetPlace();                                \
   if (use_peepholes) {                                            \
     /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/              \
     checked_cell.Resize({2, D});                                  \
