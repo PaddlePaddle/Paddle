@@ -114,7 +114,7 @@ void CVMGradCUDAKernel(const Context& dev_ctx,
                                      dout_data,
                                      dx_data,
                                      true,
-                                     mixv_lod.CUDAData(context.GetPlace()),
+                                     mixv_lod.CUDAData(dev_ctx.GetPlace()),
                                      lod.size(),
                                      dx_numel);
   }
