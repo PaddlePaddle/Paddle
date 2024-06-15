@@ -475,28 +475,6 @@ void DispatchWithDtype(
       // Reshape fmha_buf back (to 2-D), to not affect following codes.
       fmha_buf.Resize(fmha_shape);
     } else {
-#ifdef PADDLE_WITH_HIP
-      phi::DenseTensor q_trans_tmp, k_trans_tmp, v_trans_tmp, qktv_out_tmp;
-
-      q_trans_tmp.Resize(
-          {{bsz, max_enc_len_this_time_data, num_head, dim_head}});
-      k_trans_tmp.Resize({{bsz,
-                           max_enc_len_this_time_data + pre_cache_length,
-                           num_head,
-                           dim_head}});
-      v_trans_tmp.Resize({{bsz,
-                           max_enc_len_this_time_data + pre_cache_length,
-                           num_head,
-                           dim_head}});
-      qktv_out_tmp.Resize(
-          {{bsz, max_enc_len_this_time_data, num_head, dim_head}});
-
-      dev_ctx.template Alloc<T>(&q_trans_tmp, q_trans_tmp.numel() * sizeof(T));
-      dev_ctx.template Alloc<T>(&k_trans_tmp, k_trans_tmp.numel() * sizeof(T));
-      dev_ctx.template Alloc<T>(&v_trans_tmp, v_trans_tmp.numel() * sizeof(T));
-      dev_ctx.template Alloc<T>(&qktv_out_tmp,
-                                qktv_out_tmp.numel() * sizeof(T));
-#endif
       qkv_transpose_split<T>(
           dev_ctx,
           q_trans.data<T>(),
@@ -527,30 +505,6 @@ void DispatchWithDtype(
           /*causual*/ false,
           pre_cache_length,
           &qktv_out);
-#elif defined(PADDLE_WITH_HIP)
-      const bool is_precache_infer = true;
-      std::vector<int> axis = {0, 2, 1, 3};
-      funcs::Transpose<Context, T, 4> trans;
-      trans(dev_ctx, q_trans, &q_trans_tmp, axis);
-      trans(dev_ctx, k_trans, &k_trans_tmp, axis);
-      trans(dev_ctx, v_trans, &v_trans_tmp, axis);
-      phi::FlashAttnKernel<T>(
-          dev_ctx,
-          q_trans_tmp,
-          k_trans_tmp,
-          v_trans_tmp,
-          paddle::none /*fixed_seed_offset*/,
-          paddle::none /*mask*/,
-          0.0,
-          is_precache_infer ? true : causual /*precache_infer_casual*/,
-          false,
-          is_precache_infer /*is_test*/,
-          "" /*rng_name*/,
-          &qktv_out_tmp,
-          &softmax_out,
-          &softmax_lse,
-          &seed_offset);
-      trans(dev_ctx, qktv_out_tmp, &qktv_out, axis);
 #else
       PADDLE_THROW(phi::errors::Unimplemented(
           "Not supports MultiHeadAttentionVariableForwardKernel."));
@@ -676,13 +630,8 @@ void DispatchWithDtype(
   if (out_scale > 0) {
     int m = fmha_out->dims()[0];
     int n = fmha_out->dims()[1];
-#ifdef PADDLE_WITH_HIP
-    dim3 grid(((n >> 2) + 63) / 64, (m + 7) / 8);
-    dim3 block(64, 8);
-#else
     dim3 grid((n >> 2 + 31) / 32, (m + 31) / 32);
     dim3 block(32, 32);
-#endif
     if (out_shift && out_smooth) {
       QuantKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
           fmha_buf.data<T>(),

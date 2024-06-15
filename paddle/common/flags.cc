@@ -1758,3 +1758,13 @@ PHI_DEFINE_EXPORTED_string(
     win_cuda_bin_dir,  // NOLINT
     "",
     "Specify path for loading *.dll about cuda on windows");
+
+// Example: FLAGS_accuracy_check_atol=1e-3 would set the atol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_atol,
+                           1e-6,
+                           "It controls the atol of accuracy_check op");
+
+// Example: FLAGS_accuracy_check_rtol=1e-3 would set the rtol to 1e-3.
+PHI_DEFINE_EXPORTED_double(accuracy_check_rtol,
+                           1e-6,
+                           "It controls the rtol of accuracy_check op");
