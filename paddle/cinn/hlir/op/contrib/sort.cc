@@ -51,7 +51,7 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
                                 const std::string &name) {
   std::string find_func_name;
   std::string index_func_name;
-  target.arch.Visit(adt::match{
+  target.arch.Match(
       [&](common::UnknownArch) {
         PADDLE_THROW(phi::errors::Fatal(
             "ArgSort only supports X86 and NVGPU ! Please Check.\n"));
@@ -65,8 +65,7 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
       },
       [&](common::NVGPUArch) {
         find_func_name.assign("cinn_nvgpu_next_smallest_int32");
-      },
-  });
+      });
   if (is_ascend) {
     index_func_name =
         cinn::hlir::GetExternFuncName(target, A->type(), "lt_num");

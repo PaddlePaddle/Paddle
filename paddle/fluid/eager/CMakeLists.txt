@@ -13,6 +13,10 @@ set(eager_deps
     grad_tensor_holder
     custom_operator_node)
 
+if(WITH_GPU OR WITH_ROCM)
+  set(eager_deps ${eager_deps} phi_kernel_gpu)
+endif()
+
 if(NOT (NOT WITH_PYTHON AND ON_INFER))
   set(eager_deps ${eager_deps} accumulation_node prim_utils)
 endif()
