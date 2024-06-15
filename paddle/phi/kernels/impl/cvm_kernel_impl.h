@@ -13,11 +13,10 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
 template <typename T>
 void CvmComputeKernel(const bool use_cvm,
@@ -54,86 +53,83 @@ void CvmGradComputeKernel(const bool use_cvm,
   (*DY) += item_width - cvm_offset;
 }
 
-template <typename T, typename DeviceContext>
-class CVMOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const auto* x = context.Input<phi::DenseTensor>("X");
-    const T* x_data = x->data<T>();
+template <typename T, typename Context>
+void CVMOpKernel(const Context& dev_ctx,
+                 const DenseTensor& x_in,
+                 const DenseTensor& cvm,
+                 bool use_cvm,
+                 DenseTensor* out) {
+  const auto* x = &x_in;
+  const T* x_data = x->data<T>();
 
-    auto batch_size = x->dims()[0];
-    auto item_size = x->numel() / batch_size;
-    auto use_cvm = context.Attr<bool>("use_cvm");
+  auto batch_size = x->dims()[0];
+  auto item_size = x->numel() / batch_size;
 
-    auto* y = context.Output<phi::DenseTensor>("Y");
-    T* y_data = y->mutable_data<T>(context.GetPlace());
+  auto* y = out;
+  T* y_data = dev_ctx.template Alloc<T>(y);
 
-    // for Input X do not have Lod Information.
-    if (x->NumLevels() == 0) {
-      if (use_cvm) {
-        for (int i = 0; i < batch_size; i++) {
-          int cursor = i * item_size;
-          y_data[cursor] = log(x_data[cursor] + 1);
-          y_data[cursor + 1] = log(x_data[cursor + 1] + 1) - y_data[cursor];
-          for (int j = 2; j < item_size; j++) {
-            y_data[cursor + j] = x_data[cursor + j];
-          }
-        }
-      } else {
-        for (int i = 0; i < batch_size; i++) {
-          CvmComputeKernel(use_cvm, item_size, &x_data, &y_data);
+  // for Input X do not have Lod Information.
+  if (x->NumLevels() == 0) {
+    if (use_cvm) {
+      for (int i = 0; i < batch_size; i++) {
+        int cursor = i * item_size;
+        y_data[cursor] = log(x_data[cursor] + 1);
+        y_data[cursor + 1] = log(x_data[cursor + 1] + 1) - y_data[cursor];
+        for (int j = 2; j < item_size; j++) {
+          y_data[cursor + j] = x_data[cursor + j];
         }
       }
     } else {
-      auto lod = x->lod()[0];
-      for (size_t i = 0; i < lod.size() - 1; ++i) {
-        for (size_t j = 0; j < lod[i + 1] - lod[i]; ++j) {
-          CvmComputeKernel(use_cvm, item_size, &x_data, &y_data);
-        }
+      for (int i = 0; i < batch_size; i++) {
+        CvmComputeKernel(use_cvm, item_size, &x_data, &y_data);
+      }
+    }
+  } else {
+    auto lod = x->lod()[0];
+    for (size_t i = 0; i < lod.size() - 1; ++i) {
+      for (size_t j = 0; j < lod[i + 1] - lod[i]; ++j) {
+        CvmComputeKernel(use_cvm, item_size, &x_data, &y_data);
       }
     }
   }
-};
+}
 
-template <typename T, typename DeviceContext>
-class CVMGradOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* dx = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
-    T* dx_data = dx->mutable_data<T>(context.GetPlace());
+template <typename T, typename Context>
+void CVMGradOpKernel(const Context& dev_ctx,
+                     const DenseTensor& x_in,
+                     const DenseTensor& cvm_in,
+                     const DenseTensor& out_grad,
+                     bool use_cvm,
+                     DenseTensor* x_grad) {
+  auto* dx = x_grad;
+  T* dx_data = dev_ctx.template Alloc<T>(dx);
 
-    const phi::DenseTensor* cvm = context.Input<phi::DenseTensor>("CVM");
-    const T* cvm_data = cvm->data<T>();
+  const phi::DenseTensor* cvm = &cvm_in;
+  const T* cvm_data = cvm->data<T>();
 
-    const auto* dOut =
-        context.Input<phi::DenseTensor>(framework::GradVarName("Y"));
-    const T* dout_data = dOut->data<T>();
+  const auto* dOut = &out_grad;
+  const T* dout_data = dOut->data<T>();
 
-    auto use_cvm = context.Attr<bool>("use_cvm");
+  auto offset = 2;
+  auto batch_size = dx->dims()[0];
+  auto item_size = dx->numel() / batch_size;
 
-    auto offset = 2;
-    auto batch_size = dx->dims()[0];
-    auto item_size = dx->numel() / batch_size;
-
-    // for Input X do not have Lod Information.
-    if (dx->NumLevels() == 0) {
-      for (int x = 0; x < batch_size; ++x) {
+  // for Input X do not have Lod Information.
+  if (dx->NumLevels() == 0) {
+    for (int x = 0; x < batch_size; ++x) {
+      CvmGradComputeKernel(use_cvm, item_size, *cvm_data, &dout_data, &dx_data);
+      cvm_data += offset;
+    }
+  } else {
+    auto lod = dx->lod()[0];
+    int seq_num = static_cast<int>(lod.size()) - 1;
+    for (int i = 0; i < seq_num; ++i) {
+      for (size_t j = 0; j < lod[i + 1] - lod[i]; ++j) {
         CvmGradComputeKernel(
             use_cvm, item_size, *cvm_data, &dout_data, &dx_data);
-        cvm_data += offset;
       }
-    } else {
-      auto lod = dx->lod()[0];
-      int seq_num = static_cast<int>(lod.size()) - 1;
-      for (int i = 0; i < seq_num; ++i) {
-        for (size_t j = 0; j < lod[i + 1] - lod[i]; ++j) {
-          CvmGradComputeKernel(
-              use_cvm, item_size, *cvm_data, &dout_data, &dx_data);
-        }
-        cvm_data += offset;
-      }
+      cvm_data += offset;
     }
   }
-};
-}  // namespace operators
-}  // namespace paddle
+}
+}  // namespace phi
