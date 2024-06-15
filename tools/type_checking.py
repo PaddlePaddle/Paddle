@@ -229,7 +229,6 @@ def parse_args() -> argparse.Namespace:
 
 
 # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
-# https://stackoverflow.com/questions/32160054/keyboard-interrupts-with-pythons-multiprocessing-pool-and-map-function/45259908#45259908
 # ctrl+c interrupt handler
 # this should be a global function, a local function makes `pickle` fail on MacOS.
 def init_worker():
