@@ -494,7 +494,7 @@ def monkey_patch_tensor():
 
     @framework.dygraph_only
     def register_hook(
-        self: Tensor, hook: Callable[[Tensor | None], Tensor | None]
+        self: Tensor, hook: Callable[[Tensor], Tensor | None]
     ) -> TensorHookRemoveHelper:
         """
         Registers a backward hook for current Tensor.
