@@ -98,8 +98,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
                        kernels[1]});
       offset_out += output_height[i] * output_width[i];
 
-      phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T>
-          f;
+      phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, Context, T> f;
       f(dev_ctx, src, dilations, strides, paddings, &dst);
     }
     phi::LoD lod(1);
@@ -129,8 +128,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
       phi::DenseTensor dst = out->Slice(i, i + 1).Resize(
           {output_height, output_width, img_channels, kernels[0], kernels[1]});
 
-      phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T>
-          f;
+      phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, Context, T> f;
       f(dev_ctx, src, dilations, strides, paddings, &dst);
     }
     out->Resize(out_dims);
@@ -186,7 +184,7 @@ void Im2SequenceGradKernel(const Context& dev_ctx,
         d_x->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
     const phi::DenseTensor src = d_out->Slice(i, i + 1).Resize(
         {output_height, output_width, img_channels, kernels[0], kernels[1]});
-    phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> f;
+    phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, Context, T> f;
     f(dev_ctx, src, dilations, strides, paddings, &dst);
   }
   d_out->Resize(d_out_dims);
