@@ -18,12 +18,18 @@ import numpy as np
 from op import Operator
 from op_test import OpTest
 
+import paddle
 from paddle.base import core
+
+
+def api_wrapper(x):
+    return paddle._C_ops.share_data(x)
 
 
 class TestShareDataOp(OpTest):
     def setUp(self):
         self.op_type = "share_data"
+        self.python_api = api_wrapper
         input = np.random.rand(2, 3, 5).astype("float32")
         self.inputs = {'X': input}
         self.outputs = {'Out': input}
