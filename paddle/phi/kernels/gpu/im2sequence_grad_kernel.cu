@@ -16,4 +16,3 @@
 
 PD_REGISTER_KERNEL(
     im2sequence_grad, GPU, ALL_LAYOUT, phi::Im2SequenceGradKernel, float) {}
-#endif
