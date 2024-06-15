@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/kernels/impl/share_data_kernel_impl.h"
+#include "paddle/phi/kernels/selected_rows/impl/share_data_kernel_impl.h"
 
 PD_REGISTER_KERNEL(share_data_sr,
                    GPU,
