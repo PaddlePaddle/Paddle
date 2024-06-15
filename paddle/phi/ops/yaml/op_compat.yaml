@@ -1829,6 +1829,8 @@
 - op : hash
   inputs:
     x : X
+  attrs :
+    runtime_shape : ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE
   outputs:
     out : Out
 
