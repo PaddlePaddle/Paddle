@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import typing
 from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 from typing import Any, Iterator, Sequence
@@ -29,7 +30,7 @@ from .layers import Layer
 __all__ = []
 
 
-class LayerDict(Layer):
+class LayerDict(Layer, typing.Mapping[str, Layer]):
     """
     LayerDict holds sublayers in the ordered dictionary, and sublayers it contains are properly registered.
     Held sublayers can be accessed like a regular ordered python dictionary.
@@ -78,7 +79,7 @@ class LayerDict(Layer):
         self,
         sublayers: (
             LayerDict
-            | OrderedDict[str, Layer]
+            | typing.Mapping[str, Layer]
             | Sequence[tuple[str, Layer]]
             | None
         ) = None,
@@ -257,7 +258,7 @@ class LayerDict(Layer):
     def update(
         self,
         sublayers: (
-            LayerDict | OrderedDict[str, Layer] | Sequence[tuple[str, Layer]]
+            LayerDict | typing.Mapping[str, Layer] | Sequence[tuple[str, Layer]]
         ),
     ) -> None:
         """
@@ -317,7 +318,7 @@ class LayerDict(Layer):
                 self.add_sublayer(kv[0], kv[1])
 
 
-class ParameterList(Layer):
+class ParameterList(Layer, Sequence[Tensor]):
     """ParameterList Container.
 
     This container acts like a Python list, but parameters it contains will be properly added.
@@ -406,7 +407,7 @@ class ParameterList(Layer):
         return self
 
 
-class LayerList(Layer):
+class LayerList(Layer, Sequence[Layer]):
     """
     LayerList holds sublayers, and sublayers it contains are properly registered.
     Holded sublayers can be indexed like a regular python list.
@@ -560,7 +561,7 @@ class LayerList(Layer):
         return self
 
 
-class Sequential(Layer):
+class Sequential(Layer, Sequence[Layer]):
     """Sequential container.
     Sub layers will be added to this container in the order of argument in the constructor.
     The argument passed to the constructor can be iterable Layers or iterable name Layer pairs.
