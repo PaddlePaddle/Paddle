@@ -3798,7 +3798,7 @@ function clang-tidy_check() {
         -extra-arg=-Wno-overloaded-virtual  \
         -extra-arg=-Wno-defaulted-function-deleted  \
         -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor  \
-        -extra-arg=-Wno-return-type-c-linkage -p ${PADDLE_ROOT}/build -files ${PADDLE_ROOT}/${file}
+        -extra-arg=-Wno-return-type-c-linkage -files .*${file}
         check_error=$?
         if [ ${check_error} != 0 ];then
             break
