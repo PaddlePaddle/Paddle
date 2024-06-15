@@ -23,7 +23,6 @@
 #include "paddle/cinn/frontend/decomposer_registry.h"
 #include "paddle/cinn/frontend/net_builder.h"
 #include "paddle/cinn/frontend/optimize.h"
-#include "paddle/cinn/frontend/pass/use_program_pass.h"
 #include "paddle/cinn/frontend/program_pass.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
