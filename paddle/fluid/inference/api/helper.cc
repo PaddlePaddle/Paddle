@@ -422,8 +422,8 @@ void RegisterAllCustomOperator(bool use_pir) {
       framework::RegisterOperatorWithMetaInfo(pair.second);
     } else {
       VLOG(3) << "The operator `" << pair.first
-                << "` has been registered. "
-                   "Therefore, we will not repeat the registration here.";
+              << "` has been registered. Therefore, we will not repeat the "
+                 "registration here.";
     }
   }
 }
