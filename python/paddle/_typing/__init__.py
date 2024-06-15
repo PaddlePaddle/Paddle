@@ -20,6 +20,7 @@ from .basic import (
     Numberic as Numberic,
     NumbericSequence as NumbericSequence,
     PaddingMode as PaddingMode,
+    ResampleMode as ResampleMode,
     TensorLike as TensorLike,
     TensorOrTensors as TensorOrTensors,
 )

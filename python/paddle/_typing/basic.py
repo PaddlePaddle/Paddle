@@ -34,3 +34,6 @@ NestedNumbericSequence: TypeAlias = NestedSequence[Numberic]
 TensorOrTensors: TypeAlias = Union["Tensor", Sequence["Tensor"]]
 
 PaddingMode: TypeAlias = Literal["constant", "reflect", "replicate", "circular"]
+ResampleMode: TypeAlias = Literal[
+    "linear", "nearest", "bilinear", "bicubic", "trilinear"
+]

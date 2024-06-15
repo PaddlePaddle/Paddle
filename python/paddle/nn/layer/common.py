@@ -27,6 +27,7 @@ from ..._typing import (
     DataLayout3D,
     DynamicShapeLike,
     PaddingMode,
+    ResampleMode,
     ShapeLike,
 )
 from .. import functional as F
@@ -403,9 +404,7 @@ class Upsample(Layer):
         self,
         size: DynamicShapeLike | None = None,
         scale_factor: DynamicShapeLike | float | None = None,
-        mode: Literal[
-            'linear', 'nearest', 'bilinear', 'bicubic', 'trilinear'
-        ] = 'nearest',
+        mode: ResampleMode = 'nearest',
         align_corners: bool = False,
         align_mode: int = 0,
         data_format: (
