@@ -163,7 +163,7 @@ CUSTOM_VJP = [
 ]  # custom vjp list of composite op
 
 # declare belongs to codegen, but implementation not
-OTHER_VJP = ["concat_grad", "stack_grad"]
+OTHER_VJP = ["concat_grad", "stack_grad", 'slice_grad']
 
 vjp_list = (
     UNARY_PRIM_VJP_OPS + BINARY_PRIM_VJP_OPS + CUSTOM_VJP + OTHER_PRIM_VJP_OPS

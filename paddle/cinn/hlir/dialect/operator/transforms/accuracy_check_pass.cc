@@ -21,6 +21,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -32,7 +33,17 @@
 #include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
+
+COMMON_DECLARE_double(accuracy_check_rtol);
+COMMON_DECLARE_double(accuracy_check_atol);
+
 namespace cinn::dialect::ir {
+
+static double rtol =
+    FLAGS_accuracy_check_rtol;  // relative tolerance for accuracy check
+static double atol =
+    FLAGS_accuracy_check_atol;  // relative tolerance for accuracy check
+static constexpr bool equal_nan = false;  // whether to consider NaN as equal
 
 class AddAccuracyCheckPattern
     : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
@@ -61,7 +72,9 @@ class AddAccuracyCheckPattern
             fusion_op.result(i),
             ir_mapping.Lookup(op->operand_source(i)),
             fn_name,
-            i);
+            rtol,
+            atol,
+            equal_nan);
       }
     };
 
