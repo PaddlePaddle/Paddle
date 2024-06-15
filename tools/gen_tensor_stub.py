@@ -33,6 +33,8 @@ logger.setLevel(logging.INFO)
 
 INDENT_SIZE = 4
 INDENT = " " * INDENT_SIZE
+MEANLESS_INDEX = -1
+
 
 MemberType: TypeAlias = Literal[
     "doc",
@@ -65,7 +67,7 @@ def _slot_pattern(slot_name: str) -> re.Pattern:
 class TensorGen:
     def __init__(self, template: str = ''):
         self._template = template
-        self._template_codes = []
+        self._template_codes: list[tuple[int, int, str]] = []
 
     def find_annotation_slot(self, slot_name: str) -> tuple[str, int, int]:
         pattern = _slot_pattern(slot_name)
@@ -111,10 +113,9 @@ class TensorGen:
             _comment = '' if _comment is None else _comment
 
             _start_index, _end_index = mo.span()
-            _start_indent, _end_indent = mo.span('indent')
-            _start_signature, _end_signature = mo.span('signature')
-            _start_docstring, _end_docstring = mo.span('docstring')
-            _start_ellipsis, _end_ellipsis = mo.span('ellipsis')
+            _start_indent, _ = mo.span('indent')
+            _start_docstring, _ = mo.span('docstring')
+            _, _end_ellipsis = mo.span('ellipsis')
             _start_comment = _end_ellipsis
             _end_comment = _start_comment + len(_comment)
 
@@ -122,18 +123,19 @@ class TensorGen:
             assert _end_comment == _end_index
 
             _api = {
-                'indent': (_indent, _start_indent, _end_indent),
-                'signature': (_signature, _start_signature, _end_signature),
-                'docstring': (_docstring, _start_docstring, _end_docstring),
-                'ellipsis': (_ellipsis, _start_ellipsis, _end_ellipsis),
-                'comment': (_comment, _start_comment, _end_comment),
+                'indent': (_indent, MEANLESS_INDEX, MEANLESS_INDEX),
+                'signature': (_signature, MEANLESS_INDEX, MEANLESS_INDEX),
+                'docstring': (_docstring, _start_docstring, _end_comment),
+                'ellipsis': (_ellipsis, MEANLESS_INDEX, MEANLESS_INDEX),
+                'comment': (_comment, MEANLESS_INDEX, MEANLESS_INDEX),
             }
             api.append(_api)
 
         return api
 
     def insert_template(self, code: str, start: int, end: int) -> None:
-        self._template_codes.append((start, end, code))
+        if start != MEANLESS_INDEX and end != MEANLESS_INDEX:
+            self._template_codes.append((start, end, code))
 
     def add_method(self, func: Member):
         """
@@ -163,7 +165,8 @@ class TensorGen:
                     _doc += with_indent(doc, len(_indent) // INDENT_SIZE)
                     _doc += "\n"
                     _doc += f'{_indent}"""\n'
-                    _doc += f'{_indent}'
+                    _doc += f'{_indent}...\n'
+                    _doc += f'{_indent}\n'
 
                     self.insert_template(comment + _doc, doc_start, doc_end)
         else:
@@ -354,6 +357,7 @@ def try_import_paddle() -> types.ModuleType | None:
             or path already been set for the system.
             '''
         )
+    return None
 
 
 def get_tensor_members():
