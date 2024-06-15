@@ -53,7 +53,7 @@ class UniformInitializer(Initializer):
         diag_num: int = 0,
         diag_step: int = 0,
         diag_val: float = 1.0,
-    ):
+    ) -> None:
         assert low is not None
         assert high is not None
         assert high >= low
@@ -226,7 +226,7 @@ class Uniform(UniformInitializer):
 
     def __init__(
         self, low: float = -1.0, high: float = 1.0, name: str | None = None
-    ):
+    ) -> None:
         assert low is not None, 'low should not be None'
         assert high is not None, 'high should not be None'
         assert high >= low, 'high should greater or equal than low'

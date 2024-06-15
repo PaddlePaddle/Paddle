@@ -39,7 +39,9 @@ class NormalInitializer(Initializer):
 
     """
 
-    def __init__(self, loc: float = 0.0, scale: float = 1.0, seed: int = 0):
+    def __init__(
+        self, loc: float = 0.0, scale: float = 1.0, seed: int = 0
+    ) -> None:
         assert loc is not None
         assert scale is not None
         assert seed is not None
@@ -48,7 +50,9 @@ class NormalInitializer(Initializer):
         self._std_dev = scale
         self._seed = seed
 
-    def forward(self, var: paddle.Tensor, block: pir.Block | None = None):
+    def forward(
+        self, var: paddle.Tensor, block: pir.Block | None = None
+    ) -> paddle.Tensor | None:
         """Initialize the input tensor with Normal distribution.
 
         Args:
@@ -161,7 +165,7 @@ class Normal(NormalInitializer):
 
     def __init__(
         self, mean: float = 0.0, std: float = 1.0, name: str | None = None
-    ):
+    ) -> None:
         assert mean is not None, 'mean should not be None'
         assert std is not None, 'std should not be None'
         super().__init__(loc=mean, scale=std, seed=0)
@@ -190,7 +194,7 @@ class TruncatedNormalInitializer(Initializer):
         seed: int = 0,
         a: float = -2.0,
         b: float = 2.0,
-    ):
+    ) -> None:
         assert loc is not None
         assert scale is not None
         assert seed is not None
@@ -205,7 +209,7 @@ class TruncatedNormalInitializer(Initializer):
 
     def forward(
         self, var: paddle.Tensor, block: pir.Block | None = None
-    ) -> None | paddle.Tensor:
+    ) -> paddle.Tensor | None:
         """Initialize the input tensor with TruncatedNormal distribution.
 
         Args:
@@ -346,7 +350,7 @@ class TruncatedNormal(TruncatedNormalInitializer):
         a: float = -2.0,
         b: float = 2.0,
         name: str | None = None,
-    ):
+    ) -> None:
         assert mean is not None, 'mean should not be None'
         assert std is not None, 'std should not be None'
         assert a is not None, 'a should not be None'

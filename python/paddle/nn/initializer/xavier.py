@@ -75,7 +75,7 @@ class XavierInitializer(Initializer):
         fan_out: float | None = None,
         seed: int = 0,
         gain: float = 1.0,
-    ):
+    ) -> None:
         assert uniform is not None
         assert seed is not None
         super().__init__()
@@ -319,7 +319,7 @@ class XavierNormal(XavierInitializer):
         fan_out: float | None = None,
         gain: float = 1.0,
         name: str | None = None,
-    ):
+    ) -> None:
         super().__init__(
             uniform=False, fan_in=fan_in, fan_out=fan_out, seed=0, gain=gain
         )
@@ -388,7 +388,7 @@ class XavierUniform(XavierInitializer):
         fan_out: float | None = None,
         gain: float = 1.0,
         name: str | None = None,
-    ):
+    ) -> None:
         super().__init__(
             uniform=True, fan_in=fan_in, fan_out=fan_out, seed=0, gain=gain
         )

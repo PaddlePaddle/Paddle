@@ -77,7 +77,7 @@ class Bilinear(Initializer):
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Constructor for BilinearInitializer."""
         super().__init__()
 

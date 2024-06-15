@@ -16,6 +16,7 @@ from __future__ import annotations
 
 # TODO: define the initializers of Kaiming functions in neural network
 import math
+from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops
@@ -27,6 +28,9 @@ from ...base.framework import (
     in_pir_mode,
 )
 from .initializer import Initializer, calculate_gain
+
+if TYPE_CHECKING:
+    from .initializer import NonLinearityT
 
 __all__ = []
 
@@ -70,8 +74,8 @@ class MSRAInitializer(Initializer):
         fan_in: float | None = None,
         seed: int = 0,
         negative_slope: float = 0,
-        nonlinearity: str = 'relu',
-    ):
+        nonlinearity: NonLinearityT = 'relu',
+    ) -> None:
         """Constructor for MSRAInitializer"""
         assert uniform is not None
         assert seed is not None
@@ -280,7 +284,7 @@ class KaimingNormal(MSRAInitializer):
         fan_in: float | None = None,
         negative_slope: float = 0.0,
         nonlinearity: str = 'relu',
-    ):
+    ) -> None:
         super().__init__(
             uniform=False,
             fan_in=fan_in,
@@ -331,7 +335,7 @@ class KaimingUniform(MSRAInitializer):
         fan_in: float | None = None,
         negative_slope: float = 0.0,
         nonlinearity: str = 'relu',
-    ):
+    ) -> None:
         super().__init__(
             uniform=True,
             fan_in=fan_in,

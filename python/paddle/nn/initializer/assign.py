@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Sequence
 
 import paddle
 from paddle import _C_ops
@@ -29,7 +29,7 @@ from ...base.framework import (
 from .initializer import Initializer
 
 if TYPE_CHECKING:
-    import numpy
+    import numpy.typing as npt
 
 __all__ = []
 
@@ -46,7 +46,7 @@ class NumpyArrayInitializer(Initializer):
 
     """
 
-    def __init__(self, value: numpy.ndarray):
+    def __init__(self, value: npt.NDArray[Any]) -> None:
         import numpy
 
         assert isinstance(value, numpy.ndarray)
@@ -251,9 +251,9 @@ class Assign(NumpyArrayInitializer):
 
     def __init__(
         self,
-        value: numpy.ndarray | list[int] | tuple[int] | paddle.Tensor,
+        value: npt.NDArray[Any] | Sequence[int] | paddle.Tensor,
         name: str | None = None,
-    ):
+    ) -> None:
         import numpy
 
         check_type(
