@@ -583,7 +583,7 @@ void AttentionLstmInferMeta(const MetaTensor& x,
       c_dims.size(),
       2,
       phi::errors::InvalidArgument("Input(C0)'s rank must be 2."));
-  if (ctx->IsRuntime()) {
+  if (config.is_runtime) {
     PADDLE_ENFORCE_EQ(
         c_dims[1],
         D,
