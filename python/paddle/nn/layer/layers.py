@@ -2249,6 +2249,7 @@ class Layer:
                 >>> linear.to(device=paddle.CUDAPinnedPlace(), blocking=False)
                 >>> linear.weight
                 >>> print(linear.weight)
+                Parameter containing:
                 Tensor(shape=[2, 2], dtype=float64, place=Place(gpu_pinned), stop_gradient=False,
                 [[ 0.89611185,  0.04935038],
                  [-0.58883440,  0.99266374]])
