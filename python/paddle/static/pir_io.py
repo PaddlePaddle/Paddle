@@ -110,6 +110,33 @@ def set_var(name, ndarray):
     t.set(ndarray, place)
 
 
+def append_pir_feed_ops(program, feed_vars):
+    """
+    Append feed ops to the program.
+    Args:
+        program(Program): Specify a program you want to append fetch op.
+        feed_vars(Value | list[Value]): Values should be feed.
+    Returns:
+        modify program
+    """
+    for i, var in enumerate(feed_vars):
+        orig_op = var.get_defining_op()
+        if orig_op.name() != 'pd_op.feed' and orig_op.name() != 'pd_op.data':
+            value = paddle._pir_ops.data(
+                "feed_name_" + str(i),
+                var.shape,
+                var.dtype,
+                paddle.base.core.Place(),
+            )
+            var.replace_all_uses_with(value)
+            value.get_defining_op().move_before(orig_op)
+
+    for i, var in enumerate(feed_vars):
+        orig_op = var.get_defining_op()
+        if orig_op.name() != 'pd_op.feed' and orig_op.name() != 'pd_op.data':
+            orig_op.get_parent_block().remove_op(orig_op)
+
+
 def append_pir_fetch_ops(program, fetch_name_var_maps):
     """
     Append fetch ops to the program.
@@ -298,6 +325,7 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
         else:
             fetch_vars_tuple.append((var, "fetch_name_" + str(i)))
     with paddle.static.program_guard(copy_program):
+        append_pir_feed_ops(copy_program, clone_feed_vars)
         append_pir_fetch_ops(copy_program, fetch_vars_tuple)
 
     return copy_program
