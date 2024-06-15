@@ -13,9 +13,22 @@
 # limitations under the License.
 
 # TODO: define the common classes to build a neural network
+from __future__ import annotations
+
+from typing import Literal, Sequence
+
 import paddle
 from paddle import in_dynamic_mode
 
+from ..._typing import (
+    DataLayout1D,
+    DataLayout1DVariant,
+    DataLayout2D,
+    DataLayout3D,
+    DynamicShapeLike,
+    PaddingMode,
+    ShapeLike,
+)
 from .. import functional as F
 from .layers import Layer
 
@@ -72,7 +85,7 @@ class Identity(Layer):
     def __init__(self, *args, **kwargs):
         super().__init__()
 
-    def forward(self, input):
+    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
         return input
 
 
@@ -157,12 +170,12 @@ class Linear(Layer):
 
     def __init__(
         self,
-        in_features,
-        out_features,
-        weight_attr=None,
-        bias_attr=None,
-        name=None,
-    ):
+        in_features: int,
+        out_features: int,
+        weight_attr: paddle.ParamAttr | None = None,
+        bias_attr: paddle.ParamAttr | bool | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self._dtype = self._helper.get_default_dtype()
         self._weight_attr = weight_attr
@@ -181,13 +194,13 @@ class Linear(Layer):
         )
         self.name = name
 
-    def forward(self, input):
+    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
         out = F.linear(
             x=input, weight=self.weight, bias=self.bias, name=self.name
         )
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self.name}' if self.name else ''
         return f'in_features={self.weight.shape[0]}, out_features={self.weight.shape[1]}, dtype={self._dtype}{name_str}'
 
@@ -388,14 +401,16 @@ class Upsample(Layer):
 
     def __init__(
         self,
-        size=None,
-        scale_factor=None,
-        mode='nearest',
-        align_corners=False,
-        align_mode=0,
-        data_format=None,
-        name=None,
-    ):
+        size: DynamicShapeLike | None = None,
+        scale_factor: DynamicShapeLike | float | None = None,
+        mode: str = 'nearest',
+        align_corners: bool = False,
+        align_mode: int = 0,
+        data_format: (
+            DataLayout1DVariant | DataLayout2D | DataLayout3D | None
+        ) = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self.size = size
         self.scale_factor = scale_factor
@@ -405,7 +420,7 @@ class Upsample(Layer):
         self.data_format = data_format
         self.name = name
 
-    def forward(self, x):
+    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
         if self.data_format is None:
             dim_size = len(x.shape)
             if dim_size == 3:
@@ -431,7 +446,7 @@ class Upsample(Layer):
 
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         if self.scale_factor is not None:
             main_str = f'scale_factor={self.scale_factor}'
         else:
@@ -493,8 +508,12 @@ class UpsamplingNearest2D(Layer):
     """
 
     def __init__(
-        self, size=None, scale_factor=None, data_format='NCHW', name=None
-    ):
+        self,
+        size: DynamicShapeLike | None = None,
+        scale_factor: DynamicShapeLike | float | None = None,
+        data_format: DataLayout1DVariant | DataLayout2D | DataLayout3D = 'NCHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         if isinstance(size, int):
             size = [size, size]
@@ -503,7 +522,7 @@ class UpsamplingNearest2D(Layer):
         self.data_format = data_format
         self.name = name
 
-    def forward(self, x):
+    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
         out = F.interpolate(
             x,
             size=self.size,
@@ -517,7 +536,7 @@ class UpsamplingNearest2D(Layer):
 
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         if self.scale_factor is not None:
             main_str = f'scale_factor={self.scale_factor}'
         else:
@@ -580,8 +599,12 @@ class UpsamplingBilinear2D(Layer):
     """
 
     def __init__(
-        self, size=None, scale_factor=None, data_format='NCHW', name=None
-    ):
+        self,
+        size: DynamicShapeLike | None = None,
+        scale_factor: DynamicShapeLike | float = None,
+        data_format: DataLayout1DVariant | DataLayout2D | DataLayout3D = 'NCHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         if isinstance(size, int):
             size = [size, size]
@@ -590,7 +613,7 @@ class UpsamplingBilinear2D(Layer):
         self.data_format = data_format
         self.name = name
 
-    def forward(self, x):
+    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
         out = F.interpolate(
             x,
             size=self.size,
@@ -604,7 +627,7 @@ class UpsamplingBilinear2D(Layer):
 
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         if self.scale_factor is not None:
             main_str = f'scale_factor={self.scale_factor}'
         else:
@@ -638,7 +661,7 @@ class Bilinear(Layer):
        out_features (int): The dimension of output of this layer.
        weight_attr (ParamAttr, optional): The parameter attribute for the learnable w, parameters/weights of
        this layer. The default value is None.
-       bias_attr (ParamAttr, optional): The parameter attribute for the bias
+       bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias
            of this layer. If it is set to False, no bias will be added to the output units.
            If it is set to None, the bias is initialized zero. The default value is None.
        name (str, optional): The default value is None. Normally there is no need for user
@@ -671,13 +694,13 @@ class Bilinear(Layer):
 
     def __init__(
         self,
-        in1_features,
-        in2_features,
-        out_features,
-        weight_attr=None,
-        bias_attr=None,
-        name=None,
-    ):
+        in1_features: int,
+        in2_features: int,
+        out_features: int,
+        weight_attr: paddle.ParamAttr | None = None,
+        bias_attr: paddle.ParamAttr | bool | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
@@ -706,10 +729,10 @@ class Bilinear(Layer):
             is_bias=True,
         )
 
-    def forward(self, x1, x2):
+    def forward(self, x1: paddle.Tensor, x2: paddle.Tensor) -> paddle.Tensor:
         return F.bilinear(x1, x2, self.weight, self.bias, self._name)
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
         return f'in1_features={self._in1_features}, in2_features={self._in2_features}, out_features={self._out_features}, dtype={self._dtype}{name_str}'
 
@@ -773,7 +796,15 @@ class Dropout(Layer):
              [4., 5., 6.]])
     """
 
-    def __init__(self, p=0.5, axis=None, mode="upscale_in_train", name=None):
+    def __init__(
+        self,
+        p: float = 0.5,
+        axis: int | Sequence[int] | None = None,
+        mode: Literal[
+            "upscale_in_train", "downscale_in_infer"
+        ] = "upscale_in_train",
+        name: str | None = None,
+    ) -> None:
         super().__init__()
 
         self.p = p
@@ -781,7 +812,7 @@ class Dropout(Layer):
         self.mode = mode
         self.name = name
 
-    def forward(self, input):
+    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
         out = F.dropout(
             input,
             p=self.p,
@@ -792,7 +823,7 @@ class Dropout(Layer):
         )
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self.name}' if self.name else ''
         return f'p={self.p}, axis={self.axis}, mode={self.mode}{name_str}'
 
@@ -851,14 +882,19 @@ class Dropout2D(Layer):
               [[0.78120756, 0.32112977, 0.90572405]]]])
     """
 
-    def __init__(self, p=0.5, data_format='NCHW', name=None):
+    def __init__(
+        self,
+        p: float = 0.5,
+        data_format: DataLayout2D = 'NCHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__()
 
         self.p = p
         self.data_format = data_format
         self.name = name
 
-    def forward(self, input):
+    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
         out = F.dropout2d(
             input,
             p=self.p,
@@ -868,7 +904,7 @@ class Dropout2D(Layer):
         )
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self.name}' if self.name else ''
         return f'p={self.p}, data_format={self.data_format}{name_str}'
 
@@ -929,14 +965,19 @@ class Dropout3D(Layer):
                 [21., 22., 23.]]]]])
     """
 
-    def __init__(self, p=0.5, data_format='NCDHW', name=None):
+    def __init__(
+        self,
+        p: float = 0.5,
+        data_format: DataLayout3D = 'NCDHW',
+        name: str | None = None,
+    ) -> None:
         super().__init__()
 
         self.p = p
         self.data_format = data_format
         self.name = name
 
-    def forward(self, input):
+    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
         out = F.dropout3d(
             input,
             p=self.p,
@@ -946,7 +987,7 @@ class Dropout3D(Layer):
         )
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self.name}' if self.name else ''
         return f'p={self.p}, data_format={self.data_format}{name_str}'
 
@@ -964,8 +1005,8 @@ class AlphaDropout(Layer):
     In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
 
     Parameters:
-        p (float | int): Probability of setting units to zero. Default: 0.5
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        p (float | int, optional): Probability of setting units to zero. Default: 0.5
+        name (str | None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
         - input: N-D tensor.
@@ -993,18 +1034,77 @@ class AlphaDropout(Layer):
              [-1.,  1.]])
     """
 
-    def __init__(self, p=0.5, name=None):
+    def __init__(self, p: float = 0.5, name: str | None = None) -> None:
         super().__init__()
         self.p = p
         self.name = name
 
-    def forward(self, input):
+    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
         out = F.alpha_dropout(
             input, p=self.p, training=self.training, name=self.name
         )
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
+        name_str = f', name={self.name}' if self.name else ''
+        return f'p={self.p}{name_str}'
+
+
+class FeatureAlphaDropout(Layer):
+    """
+    A channel is a feature map, Feature Alpha Dropout randomly masks out entire channels.
+    Alpha Dropout is a type of Dropout that maintains the self-normalizing property. For an input with
+    zero mean and unit standard deviation, the output of Alpha Dropout maintains the original mean and
+    standard deviation of the input. Alpha Dropout fits well to SELU activate function by randomly setting
+    activations to the negative saturation value.
+
+    For more information, please refer to:
+    `Self-Normalizing Neural Networks <https://arxiv.org/abs/1706.02515>`_
+
+    In dygraph mode, please use ``eval()`` to switch to evaluation mode, where dropout is disabled.
+
+    Parameters:
+        p (float | int, optional): Probability of setting units to zero. Default: 0.5
+        name (str | None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input: N-D tensor.
+        - output: N-D tensor, the same shape as input.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(2023)
+
+            >>> x = paddle.to_tensor([[-1, 1], [-1, 1]], dtype="float32")
+            >>> m = paddle.nn.FeatureAlphaDropout(p=0.5)
+            >>> y_train = m(x)
+            >>> print(y_train)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.10721093,  1.66559887],
+             [-0.77919382,  1.66559887]])
+
+            >>> m.eval()  # switch the model to test phase
+            >>> y_test = m(x)
+            >>> print(y_test)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-1.,  1.],
+             [-1.,  1.]])
+    """
+
+    def __init__(self, p: float = 0.5, name: str | None = None) -> None:
+        super().__init__()
+        self.p = p
+        self.name = name
+
+    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
+        out = F.feature_alpha_dropout(
+            input, p=self.p, training=self.training, name=self.name
+        )
+        return out
+
+    def extra_repr(self) -> None:
         name_str = f', name={self.name}' if self.name else ''
         return f'p={self.p}{name_str}'
 
@@ -1053,8 +1153,13 @@ class Pad1D(Layer):
     """
 
     def __init__(
-        self, padding, mode='constant', value=0.0, data_format="NCL", name=None
-    ):
+        self,
+        padding: paddle.Tensor | list[int] | int,
+        mode: PaddingMode = 'constant',
+        value: float = 0.0,
+        data_format: DataLayout1D = "NCL",
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self._pad = _npairs(padding, 1)
         self._mode = mode
@@ -1062,7 +1167,7 @@ class Pad1D(Layer):
         self._data_format = data_format
         self._name = name
 
-    def forward(self, x):
+    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
         return F.pad(
             x,
             pad=self._pad,
@@ -1072,7 +1177,7 @@ class Pad1D(Layer):
             name=self._name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
         return f'padding={self._pad}, mode={self._mode}, value={self._value}, data_format={self._data_format}{name_str}'
 
@@ -1115,7 +1220,12 @@ class ZeroPad1D(Layer):
               [0., 4., 5., 6., 0., 0.]]])
     """
 
-    def __init__(self, padding, data_format="NCL", name=None):
+    def __init__(
+        self,
+        padding: paddle.Tensor | list[int] | int,
+        data_format: DataLayout1D = "NCL",
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self._pad = _npairs(padding, 1)
         self._mode = 'constant'
@@ -1123,7 +1233,7 @@ class ZeroPad1D(Layer):
         self._data_format = data_format
         self._name = name
 
-    def forward(self, x):
+    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
         return F.pad(
             x,
             pad=self._pad,
@@ -1133,7 +1243,7 @@ class ZeroPad1D(Layer):
             name=self._name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
         return f'padding={self._pad}, data_format={self._data_format}{name_str}'
 
@@ -1186,8 +1296,13 @@ class Pad2D(Layer):
     """
 
     def __init__(
-        self, padding, mode='constant', value=0.0, data_format="NCHW", name=None
-    ):
+        self,
+        padding: paddle.Tensor | list[int] | int,
+        mode: PaddingMode = 'constant',
+        value: float = 0.0,
+        data_format: DataLayout2D = "NCHW",
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self._pad = _npairs(padding, 2)
         self._mode = mode
@@ -1195,7 +1310,7 @@ class Pad2D(Layer):
         self._data_format = data_format
         self._name = name
 
-    def forward(self, x):
+    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
         return F.pad(
             x,
             pad=self._pad,
@@ -1205,7 +1320,7 @@ class Pad2D(Layer):
             name=self._name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
         return f'padding={self._pad}, mode={self._mode}, value={self._value}, data_format={self._data_format}{name_str}'
 
@@ -1251,7 +1366,12 @@ class ZeroPad2D(Layer):
                [0., 0., 0., 0.]]]])
     """
 
-    def __init__(self, padding, data_format="NCHW", name=None):
+    def __init__(
+        self,
+        padding: paddle.Tensor | list[int] | int,
+        data_format: DataLayout2D = "NCHW",
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self._pad = _npairs(padding, 2)
         self._mode = 'constant'
@@ -1259,7 +1379,7 @@ class ZeroPad2D(Layer):
         self._data_format = data_format
         self._name = name
 
-    def forward(self, x):
+    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
         return F.pad(
             x,
             pad=self._pad,
@@ -1269,7 +1389,7 @@ class ZeroPad2D(Layer):
             name=self._name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
         return f'padding={self._pad}, data_format={self._data_format}{name_str}'
 
@@ -1323,12 +1443,12 @@ class Pad3D(Layer):
 
     def __init__(
         self,
-        padding,
-        mode='constant',
-        value=0.0,
-        data_format="NCDHW",
-        name=None,
-    ):
+        padding: paddle.Tensor | list[int] | int,
+        mode: PaddingMode = 'constant',
+        value: float = 0.0,
+        data_format: DataLayout3D = "NCDHW",
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self._pad = _npairs(padding, 3)
         self._mode = mode
@@ -1336,7 +1456,7 @@ class Pad3D(Layer):
         self._data_format = data_format
         self._name = name
 
-    def forward(self, x):
+    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
         return F.pad(
             x,
             pad=self._pad,
@@ -1346,7 +1466,7 @@ class Pad3D(Layer):
             name=self._name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
         return f'padding={self._pad}, mode={self._mode}, value={self._value}, data_format={self._data_format}{name_str}'
 
@@ -1392,7 +1512,12 @@ class ZeroPad3D(Layer):
                 [0., 0., 0., 0.]]]]])
     """
 
-    def __init__(self, padding, data_format="NCDHW", name=None):
+    def __init__(
+        self,
+        padding: paddle.Tensor | list[int] | int,
+        data_format: DataLayout3D = "NCDHW",
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self._pad = _npairs(padding, 3)
         self._mode = 'constant'
@@ -1400,7 +1525,7 @@ class ZeroPad3D(Layer):
         self._data_format = data_format
         self._name = name
 
-    def forward(self, x):
+    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
         return F.pad(
             x,
             pad=self._pad,
@@ -1410,7 +1535,7 @@ class ZeroPad3D(Layer):
             name=self._name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self._name}' if self._name else ''
         return f'padding={self._pad}, data_format={self._data_format}{name_str}'
 
@@ -1459,15 +1584,15 @@ class CosineSimilarity(Layer):
             [0.65079135, 0.98058069, 1.        ])
     """
 
-    def __init__(self, axis=1, eps=1e-8):
+    def __init__(self, axis: int = 1, eps: float = 1e-8) -> None:
         super().__init__()
         self._axis = axis
         self._eps = eps
 
-    def forward(self, x1, x2):
+    def forward(self, x1: paddle.Tensor, x2: paddle.Tensor) -> paddle.Tensor:
         return F.cosine_similarity(x1, x2, axis=self._axis, eps=self._eps)
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         return 'axis={_axis}, eps={_eps}'.format(**self.__dict__)
 
 
@@ -1509,7 +1634,7 @@ class Embedding(Layer):
     Parameters:
         num_embeddings (int): Just one element which indicate the size of the dictionary of embeddings.
         embedding_dim (int):  Just one element which indicate the size of each embedding vector respectively.
-        padding_idx(int|long|None, optional): padding_idx needs to be in the interval [-num_embeddings, num_embeddings).
+        padding_idx(int|float|None, optional): padding_idx needs to be in the interval [-num_embeddings, num_embeddings).
             If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
             to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever lookup
             encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
@@ -1573,13 +1698,13 @@ class Embedding(Layer):
 
     def __init__(
         self,
-        num_embeddings,
-        embedding_dim,
-        padding_idx=None,
-        sparse=False,
-        weight_attr=None,
-        name=None,
-    ):
+        num_embeddings: int,
+        embedding_dim: int,
+        padding_idx: float | None = None,
+        sparse: bool = False,
+        weight_attr: paddle.ParamAttr | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
         self._num_embeddings = num_embeddings
         self._embedding_dim = embedding_dim
@@ -1596,9 +1721,11 @@ class Embedding(Layer):
         padding_idx = (
             -1
             if padding_idx is None
-            else padding_idx
-            if padding_idx >= 0
-            else (num_embeddings + padding_idx)
+            else (
+                padding_idx
+                if padding_idx >= 0
+                else (num_embeddings + padding_idx)
+            )
         )
 
         if padding_idx >= num_embeddings or padding_idx < -num_embeddings:
@@ -1623,7 +1750,7 @@ class Embedding(Layer):
             with paddle.no_grad():
                 self.weight[padding_idx] = 0.0
 
-    def forward(self, x):
+    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
         return F.embedding(
             x,
             weight=self.weight,
@@ -1632,7 +1759,7 @@ class Embedding(Layer):
             name=self._name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         main_str = '{_num_embeddings}, {_embedding_dim}'
         if self._padding_idx is not None:
             main_str += ', padding_idx={_padding_idx}'
@@ -1688,8 +1815,13 @@ class Unfold(Layer):
     """
 
     def __init__(
-        self, kernel_sizes, dilations=1, paddings=0, strides=1, name=None
-    ):
+        self,
+        kernel_sizes: Sequence[int] | int,
+        dilations: Sequence[int] | int = 1,
+        paddings: Sequence[int] | int = 0,
+        strides: Sequence[int] | int = 1,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
 
         self.kernel_sizes = kernel_sizes
@@ -1698,7 +1830,7 @@ class Unfold(Layer):
         self.strides = strides
         self.name = name
 
-    def forward(self, input):
+    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
         return F.unfold(
             input,
             kernel_sizes=self.kernel_sizes,
@@ -1708,7 +1840,7 @@ class Unfold(Layer):
             name=self.name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self.name}' if self.name else ''
         return f'kernel_size={self.kernel_sizes}, dilation={self.dilations}, padding={self.paddings}, stride={self.strides}{name_str}'
 
@@ -1773,13 +1905,13 @@ class Fold(Layer):
 
     def __init__(
         self,
-        output_sizes,
-        kernel_sizes,
-        dilations=1,
-        paddings=0,
-        strides=1,
-        name=None,
-    ):
+        output_sizes: list[int],
+        kernel_sizes: Sequence[int] | int,
+        dilations: Sequence[int] | int = 1,
+        paddings: Sequence[int] | int = 0,
+        strides: Sequence[int] | int = 1,
+        name: str | None = None,
+    ) -> None:
         super().__init__()
 
         self.output_sizes = output_sizes
@@ -1789,7 +1921,7 @@ class Fold(Layer):
         self.strides = strides
         self.name = name
 
-    def forward(self, input):
+    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
         return F.fold(
             input,
             output_sizes=self.output_sizes,
@@ -1800,7 +1932,7 @@ class Fold(Layer):
             name=self.name,
         )
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self.name}' if self.name else ''
         return f'kernel_size={self.kernel_sizes}, dilation={self.dilations}, padding={self.paddings}, stride={self.strides}{name_str}'
 
@@ -1832,12 +1964,12 @@ class Flatten(Layer):
 
     """
 
-    def __init__(self, start_axis=1, stop_axis=-1):
+    def __init__(self, start_axis: int = 1, stop_axis: int = -1) -> None:
         super().__init__()
         self.start_axis = start_axis
         self.stop_axis = stop_axis
 
-    def forward(self, input):
+    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
         out = paddle.flatten(
             input, start_axis=self.start_axis, stop_axis=self.stop_axis
         )
@@ -1877,18 +2009,20 @@ class Unflatten(Layer):
 
     """
 
-    def __init__(self, axis, shape, name=None):
+    def __init__(
+        self, axis: int, shape: ShapeLike, name: str | None = None
+    ) -> None:
         super().__init__()
         self.axis = axis
         self.shape = shape
         self.name = name
 
-    def forward(self, input):
+    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
         out = paddle.unflatten(
             input, axis=self.axis, shape=self.shape, name=self.name
         )
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self.name}' if self.name else ''
         return f'axis={self.axis}, shape={self.shape}{name_str}'
