@@ -2208,7 +2208,7 @@ void HingeLossInferMeta(const MetaTensor& logits,
                         pred_dims[1]));
 
   loss->set_dims({pred_dims[0], 1});
-  loss - share_lod(logits);
+  loss->share_lod(logits);
   loss->set_dtype(logits.dtype());
 }
 
