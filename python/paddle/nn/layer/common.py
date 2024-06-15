@@ -13,6 +13,9 @@
 # limitations under the License.
 
 # TODO: define the common classes to build a neural network
+
+from __future__ import annotations
+
 import paddle
 from paddle import in_dynamic_mode
 
