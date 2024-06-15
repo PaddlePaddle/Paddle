@@ -25,6 +25,7 @@ from test_infer_sym_shape_utils import (
 import paddle
 import paddle.nn.functional as F
 from paddle.static import InputSpec
+from paddle.framework import core
 
 sys.path.append(dirname(dirname(__file__)))
 from utils import apply_to_static
@@ -807,6 +808,8 @@ class UnbindOpInferSymbolicShapeTest(TestBase):
         ]
 
     def test_eval_symbolic(self):
+        core._set_prim_all_enabled(False)
+        
         net = UnbindNet()
 
         for i in range(len(self.cases)):
