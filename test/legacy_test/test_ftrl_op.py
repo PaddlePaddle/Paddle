@@ -18,6 +18,7 @@ import numpy as np
 from op import Operator
 from op_test import OpTest
 
+import paddle
 from paddle.base import core
 
 
@@ -78,9 +79,33 @@ def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
     return param_out, sq_accum_out, lin_accum_out
 
 
+def api_wrapper(
+    param,
+    squared_accumulator,
+    linear_accumulator,
+    grad,
+    learning_rate,
+    l1=0.0,
+    l2=0.0,
+    lr_power=-0.5,
+):
+    return paddle._C_ops.ftrl(
+        param,
+        squared_accumulator,
+        linear_accumulator,
+        grad,
+        learning_rate,
+        l1,
+        l2,
+        lr_power,
+    )
+
+
 class TestFTRLOp(OpTest):
     def setUp(self):
         self.op_type = "ftrl"
+        self.python_api = api_wrapper
+        self.python_out_sig = ["ParamOut"]
         rows = 102
         w = np.random.random((rows, 105)).astype("float32")
         g = np.random.random((rows, 105)).astype("float32")
