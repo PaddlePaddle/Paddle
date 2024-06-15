@@ -21,7 +21,7 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
+#include "paddle/utils/optional.h"
 namespace phi {
 
 inline int Im2SeqOutputSize(
@@ -34,7 +34,7 @@ inline int Im2SeqOutputSize(
 template <typename T, typename Context>
 void Im2SequenceKernel(const Context& dev_ctx,
                        const DenseTensor& x_in,
-                       const paddel::optional<DenseTensor>& y,
+                       const paddle::optional<DenseTensor>& y,
                        const std::vector<int>& kernels,
                        const std::vector<int>& strides,
                        const std::vector<int>& paddings,
@@ -149,7 +149,7 @@ void Im2SequenceKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void Im2SequenceGradKernel(const Context& dev_ctx,
                            const DenseTensor& x_in,
-                           const paddel::optional<DenseTensor>& y,
+                           const paddle::optional<DenseTensor>& y,
                            const DenseTensor& out_grad,
                            const std::vector<int>& kernels,
                            const std::vector<int>& strides,
