@@ -3514,7 +3514,7 @@
 
 - backward_op: im2sequence_grad
   forward: im2sequence (Tensor x, Tensor y, int[] kernels, int[] strides = {1, 1}, int[] paddings
-    = {0, 0, 0, 0}, int[] out_stride = {1, 1})
+    = {0, 0, 0, 0}, int[] out_stride = {1, 1}) -> Tensor (out)
   args: (Tensor x, Tensor y, Tensor out_grad, int[] kernels, int[] strides = {1, 1}, int[] paddings
     = {0, 0, 0, 0}, int[] out_stride = {1, 1})
   output: Tensor (x_grad)
