@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include <string>
 #include <vector>
 
@@ -43,11 +41,11 @@ constexpr int64_t kNoPadding = -1;
 template <typename T, typename Context>
 void LookupTableDequantKernel(const Context &dev_ctx,
                               const DenseTensor &w,
-                              const DenseTensor &ids,
+                              const DenseTensor &ids_in,
                               int64_t padding_idx,
                               DenseTensor *out) {
-  auto *ids_t = &ids;    // int tensor
-  auto *output_t = out;  // float tensor
+  auto *ids_t = &ids_in;  // int tensor
+  auto *output_t = out;   // float tensor
 
   auto *ids = ids_t->data<int64_t>();
   int64_t ids_numel = ids_t->numel();
