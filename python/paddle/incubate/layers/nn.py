@@ -91,7 +91,11 @@ def inference(
                 self.layer = layer
 
             def forward(self, args):
-                return self.fn(self.layer, *args)
+                return (
+                    paddle.jit.dy2static.program_translator.convert_to_static(
+                        self.fn
+                    )(self.layer, *args)
+                )
 
         def wrapper(*args, **kwargs):
             import paddle
@@ -264,6 +268,7 @@ def inference(
                 model = paddle.jit.to_static(
                     to_jit_func,
                     input_spec=input_specs,
+                    full_graph=True,
                 )
                 paddle.jit.save(model, save_path, skip_prune_program=True)
 
