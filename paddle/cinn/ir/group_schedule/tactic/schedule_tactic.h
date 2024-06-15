@@ -43,7 +43,11 @@ struct IterativeSpaceInfo {
   // total rb extent
   ir::Expr total_rb_extent;
   // original loop order with same iteration order as the memory order
-  std::vector<ir::Expr> memory_consistent_order_space;
+  std::vector<std::pair<std::string, ir::Expr>> memory_consistent_order_space;
+  // memory consistent order space info with merging continuous same type
+  // [S: 16, S: a, R: 32] -> [S: 16 * a, R: 32]
+  std::vector<std::pair<std::string, ir::Expr>>
+      memory_consistent_order_homogeneous_merged_space;
   // index that transform from memory consistent order to rb last order
   // for example:
   // the memory consistent order axis is [A, B, C], and the B axis is reduce，
@@ -62,6 +66,16 @@ struct IterativeSpaceInfo {
       ss << "<" << std::get<0>(axis) << ", AxisType = ["
          << static_cast<int>(std::get<1>(axis)) << "]>  ";
     }
+    ss << "\n[memory_consistent_order_space]: [";
+    for (const auto& item : memory_consistent_order_space) {
+      ss << item.first << "(" << item.second << "), ";
+    }
+    ss << "] ";
+    ss << "\n[memory_consistent_order_homogeneous_merged_space]: [";
+    for (const auto& item : memory_consistent_order_homogeneous_merged_space) {
+      ss << item.first << "(" << item.second << "), ";
+    }
+    ss << "] ";
     return ss.str();
   }
 };

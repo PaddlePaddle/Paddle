@@ -26,6 +26,8 @@ struct GroupInfo;
 
 namespace ir {
 
+using IterSpaceType = std::vector<std::pair<std::string, std::string>>;
+
 struct ScheduleConfig {
   struct BaseInfo {
     std::vector<int64_t> reduce_axis;
@@ -37,6 +39,7 @@ struct ScheduleConfig {
     bool has_dynamic_spatial{false};
     bool has_dynamic_reduce{false};
     bool is_reduce_all{false};
+    IterSpaceType iter_space_type;
 
     std::set<std::string> reduce_tensor_names;
     std::set<std::string> temp_var_names;

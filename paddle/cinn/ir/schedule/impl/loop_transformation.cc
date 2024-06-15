@@ -17,7 +17,7 @@
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/macros.h"
-
+#include "paddle/common/enforce.h"
 /** \brief A macro that guards the beginning of each implementation of schedule
  */
 #define CINN_IR_SCHEDULE_BEGIN() try {
@@ -565,11 +565,15 @@ Expr StScheduleImpl::Fuse(const std::vector<Expr>& loops) {
     if (!for_nodes.empty()) {
       CHECK(for_nodes.back()->body.As<ir::Block>())
           << "The body of for node is not Block!";
-      CHECK_EQ(for_nodes.back()->body.As<ir::Block>()->stmts.size(), 1U)
-          << "The Block'size of for node is not 1!";
-      CHECK_EQ(for_nodes.back()->body.As<ir::Block>()->stmts[0], it_loop)
-          << "The For nodes in loops param of Fuse must be adjacent! Please "
-             "check.";
+      PADDLE_ENFORCE_EQ(
+          for_nodes.back()->body.As<ir::Block>()->stmts.size(),
+          1U,
+          phi::errors::InvalidArgument("The Block'size of for node is not 1!"));
+      PADDLE_ENFORCE_EQ(
+          for_nodes.back()->body.As<ir::Block>()->stmts[0],
+          it_loop,
+          phi::errors::InvalidArgument("The For nodes in loops param of Fuse "
+                                       "must be adjacent! Please check."));
     }
     for_nodes.push_back(it_loop.As<ir::For>());
     loop_vars.push_back(it_loop.As<ir::For>()->loop_var);
@@ -620,13 +624,21 @@ Expr StScheduleImpl::Fuse(const std::string& block_name,
   loops_expr.reserve(loops_index.size());
   for (int i = 0; i < loops_index.size(); ++i) {
     if (i > 0)
-      CHECK_EQ(loops_index[i - 1] + 1, loops_index[i])
-          << "Loops index in Fuse should be continuous!";
+      PADDLE_ENFORCE_EQ(loops_index[i - 1] + 1,
+                        loops_index[i],
+                        phi::errors::InvalidArgument(
+                            "Loops index in Fuse should be continuous!"));
   }
   for (int i : loops_index) {
-    CHECK_LT(i, (int)all_loops.size())
-        << "The loop index in Fuse should be less than total loop's number.";
-    CHECK_GE(i, 0) << "The loop index in Fuse should be >= 0.";
+    PADDLE_ENFORCE_LT(
+        i,
+        (int)all_loops.size(),
+        phi::errors::InvalidArgument(
+            "The loop index in Fuse should be less than total loop's number."));
+    PADDLE_ENFORCE_GE(
+        i,
+        0,
+        phi::errors::InvalidArgument("The loop index in Fuse should be >= 0."));
     loops_expr.emplace_back(all_loops[i]);
   }
   return this->Fuse(loops_expr);
@@ -639,13 +651,21 @@ Expr StScheduleImpl::Fuse(const Expr& block,
   loops_expr.reserve(loops_index.size());
   for (int i = 0; i < loops_index.size(); ++i) {
     if (i > 0)
-      CHECK_EQ(loops_index[i - 1] + 1, loops_index[i])
-          << "Loops index in Fuse should be continuous!";
+      PADDLE_ENFORCE_EQ(loops_index[i - 1] + 1,
+                        loops_index[i],
+                        phi::errors::InvalidArgument(
+                            "Loops index in Fuse should be continuous!"));
   }
   for (int i : loops_index) {
-    CHECK_LT(i, (int)all_loops.size())
-        << "The loop index in Fuse should be less than total loop's number.";
-    CHECK_GE(i, 0) << "The loop index in Fuse should be >= 0.";
+    PADDLE_ENFORCE_LT(
+        i,
+        (int)all_loops.size(),
+        phi::errors::InvalidArgument(
+            "The loop index in Fuse should be less than total loop's number."));
+    PADDLE_ENFORCE_GE(
+        i,
+        0,
+        phi::errors::InvalidArgument("The loop index in Fuse should be >= 0."));
     loops_expr.emplace_back(all_loops[i]);
   }
   return this->Fuse(loops_expr);
@@ -676,9 +696,15 @@ Expr StScheduleImpl::Reorder(const std::string& block_name,
   std::vector<Expr> loops_expr;
   loops_expr.reserve(loops_index.size());
   for (int i : loops_index) {
-    CHECK_LT(i, (int)all_loops.size())
-        << "The loop index in Reorder should be less than total loop's number.";
-    CHECK_GE(i, 0) << "The loop index in Reorder should be >= 0.";
+    PADDLE_ENFORCE_LT(
+        i,
+        (int)all_loops.size(),
+        phi::errors::InvalidArgument("The loop index in Reorder should be less "
+                                     "than total loop's number."));
+    PADDLE_ENFORCE_GE(i,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The loop index in Reorder should be >= 0."));
     loops_expr.emplace_back(all_loops[i]);
   }
   return this->Reorder(loops_expr);
@@ -690,9 +716,15 @@ Expr StScheduleImpl::Reorder(const Expr& block,
   std::vector<Expr> loops_expr;
   loops_expr.reserve(loops_index.size());
   for (int i : loops_index) {
-    CHECK_LT(i, (int)all_loops.size())
-        << "The loop index in Reorder should be less than total loop's number.";
-    CHECK_GE(i, 0) << "The loop index in Reorder should be >= 0.";
+    PADDLE_ENFORCE_LT(
+        i,
+        (int)all_loops.size(),
+        phi::errors::InvalidArgument("The loop index in Reorder should be less "
+                                     "than total loop's number."));
+    PADDLE_ENFORCE_GE(i,
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The loop index in Reorder should be >= 0."));
     loops_expr.emplace_back(all_loops[i]);
   }
   return this->Reorder(loops_expr);
@@ -700,7 +732,8 @@ Expr StScheduleImpl::Reorder(const Expr& block,
 
 void StScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
                                   const bool flat_tensor) {
-  CHECK_GT(loops.size(), 0) << "Loops can't be empty!";
+  PADDLE_ENFORCE_GT(
+      loops.size(), 0, phi::errors::InvalidArgument("Loops can't be empty!"));
   VLOG(4) << "Before FlattenLoops, ir is:\n" << loops[0];
   // compute loop
   int extent = 1;
@@ -711,7 +744,10 @@ void StScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
     extent *= loops[idx].As<ir::For>()->extent.as_int32();
     loop_vars[idx] = loops[idx].As<ir::For>()->loop_var;
   }
-  CHECK_EQ(loops.size(), strides.size());
+  PADDLE_ENFORCE_EQ(loops.size(),
+                    strides.size(),
+                    phi::errors::InvalidArgument(
+                        "Loops size should be equal to strides size!"));
 
   // create new loop.
   auto last = loops.back().As<ir::For>();
@@ -767,16 +803,24 @@ void StScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
 
     // checkout loops in orders.
     std::vector<std::string> var_names = {};
-    CHECK_GE(block_realize->iter_values.size(), loop_vars.size())
-        << "the number of iter bind values must be more than loop vars!";
+    PADDLE_ENFORCE_GE(
+        block_realize->iter_values.size(),
+        loop_vars.size(),
+        phi::errors::InvalidArgument(
+            "the number of iter bind values must be more than loop vars!"));
     for (int idx = 0; idx < block_realize->iter_values.size(); ++idx) {
       auto& iter = block_realize->iter_values[idx];
       if (iter.is_var()) {
-        CHECK_EQ(iter.as_var_ref()->name, loop_vars[idx]->name)
-            << "loops is not the same order with tensor!";
+        PADDLE_ENFORCE_EQ(iter.as_var_ref()->name,
+                          loop_vars[idx]->name,
+                          phi::errors::InvalidArgument(
+                              "loops is not the same order with tensor!"));
       } else {
         CHECK(iter.As<IntImm>()) << iter.node_type() << " is not IntImm";
-        CHECK_EQ(iter.as_int32(), 0);
+        PADDLE_ENFORCE_EQ(
+            iter.as_int32(),
+            0,
+            phi::errors::InvalidArgument("iter value must be 0!"));
       }
     }
 
@@ -797,13 +841,20 @@ void StScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
             << "Can't find var name : " << var_name;
         flat_i_to_loop_var.push_back(loops_to_flat_var_map[var_name]);
       } else {
-        CHECK_EQ(block_realize->iter_values[idx].as_int32(), 0);
+        PADDLE_ENFORCE_EQ(
+            block_realize->iter_values[idx].as_int32(),
+            0,
+            phi::errors::InvalidArgument("iter value must be 0!"));
         // insert var -> 0, to replace var to 0.
         var_to_replace.push_back(schedule_block->iter_vars[idx]);
         flat_i_to_loop_var.push_back(Expr(0));
       }
     }
-    CHECK_EQ(var_to_replace.size(), flat_i_to_loop_var.size());
+    PADDLE_ENFORCE_EQ(
+        var_to_replace.size(),
+        flat_i_to_loop_var.size(),
+        phi::errors::InvalidArgument(
+            "var_to_replace size should be equal to flat_i_to_loop_var size!"));
 
     for (auto expr : exprs) {
       if (expr.As<ir::Store>()) {
@@ -872,8 +923,11 @@ void StScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
 
     // update iter_vars
     schedule_block->iter_vars = {_var};
-    CHECK_EQ(block_realize->iter_values.size(),
-             schedule_block->iter_vars.size());
+    PADDLE_ENFORCE_EQ(
+        block_realize->iter_values.size(),
+        schedule_block->iter_vars.size(),
+        phi::errors::InvalidArgument(
+            "iter values size should be equal to iter vars size!"));
   }
 
   this->Replace(loops[0], loop);

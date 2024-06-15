@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/cinn/ir/ir_printer.h"
 #include <algorithm>
 #include <cfenv>
 #include <iomanip>
 #include <limits>
 #include <vector>
-
-#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace ir {
@@ -580,7 +580,10 @@ void IrPrinter::Visit(const ScheduleBlockRealize *x) {
   // print block vars and bindings
   auto iter_vars = schedule_block->iter_vars;
   auto iter_values = x->iter_values;
-  CHECK_EQ(iter_vars.size(), iter_values.size());
+  PADDLE_ENFORCE_EQ(
+      iter_vars.size(),
+      iter_values.size(),
+      phi::errors::InvalidArgument("iter_vars.size() != iter_values.size()"));
   IncIndent();
   if (!iter_vars.empty()) DoIndent();
   for (std::size_t i = 0; i < iter_vars.size(); i++) {
