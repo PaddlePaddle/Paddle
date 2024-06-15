@@ -286,10 +286,9 @@ def get_test_results(
 
     except KeyboardInterrupt:
         pool.terminate()
-        pool.join()
-
     else:
         pool.close()
+    finally:
         pool.join()
 
     return list(test_results)
