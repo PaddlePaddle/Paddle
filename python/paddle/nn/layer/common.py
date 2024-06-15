@@ -360,7 +360,7 @@ class Upsample(Layer):
              least one of :attr:`size` or :attr:`scale_factor` must be set.
              And :attr:`size` has a higher priority than :attr:`scale_factor`. Has to match input size if it is either a list or a tuple or a Tensor.
              Default: None.
-        mode (str): The resample method. It supports 'linear', 'nearst', 'bilinear',
+        mode (str): The resample method. It supports 'linear', 'nearest', 'bilinear',
                        'bicubic' and 'trilinear' currently. Default: 'nearest'
         align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
                                input and output tensors are aligned, preserving the values at the
@@ -403,7 +403,9 @@ class Upsample(Layer):
         self,
         size: DynamicShapeLike | None = None,
         scale_factor: DynamicShapeLike | float | None = None,
-        mode: str = 'nearest',
+        mode: Literal[
+            'linear', 'nearest', 'bilinear', 'bicubic', 'trilinear'
+        ] = 'nearest',
         align_corners: bool = False,
         align_mode: int = 0,
         data_format: (
