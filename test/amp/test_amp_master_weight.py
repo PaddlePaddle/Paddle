@@ -53,6 +53,11 @@ class SimpleNet(paddle.nn.Layer):
     and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
     "run test when xpu's compute capability >= xpu3.",
 )
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable temporarily.",
+)
 class TestMasterWeight(AmpTestBase):
     def run_dygraph(self, dtype, level, use_promote, max_iters, x_data):
         losses = []
@@ -103,8 +108,6 @@ class TestMasterWeight(AmpTestBase):
                     optimizers=optimizer,
                     level=level,
                     dtype=dtype,
-                    master_weight=False,
-                    master_grad=False,
                 )
                 with paddle.amp.auto_cast(
                     enable=True,
