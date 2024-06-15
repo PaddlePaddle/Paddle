@@ -993,18 +993,18 @@ class AlphaDropout(Layer):
              [-1.,  1.]])
     """
 
-    def __init__(self, p=0.5, name=None):
+    def __init__(self, p: float = 0.5, name: str | None = None) -> None:
         super().__init__()
         self.p = p
         self.name = name
 
-    def forward(self, input):
+    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
         out = F.alpha_dropout(
             input, p=self.p, training=self.training, name=self.name
         )
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self.name}' if self.name else ''
         return f'p={self.p}{name_str}'
 
@@ -1052,18 +1052,18 @@ class FeatureAlphaDropout(Layer):
              [-1.,  1.]])
     """
 
-    def __init__(self, p=0.5, name=None):
+    def __init__(self, p: float = 0.5, name: str | None = None) -> None:
         super().__init__()
         self.p = p
         self.name = name
 
-    def forward(self, input):
+    def forward(self, input: paddle.Tensor) -> paddle.Tensor:
         out = F.feature_alpha_dropout(
             input, p=self.p, training=self.training, name=self.name
         )
         return out
 
-    def extra_repr(self):
+    def extra_repr(self) -> str:
         name_str = f', name={self.name}' if self.name else ''
         return f'p={self.p}{name_str}'
 
