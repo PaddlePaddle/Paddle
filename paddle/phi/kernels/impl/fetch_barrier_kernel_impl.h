@@ -24,7 +24,7 @@ void FetchBarrierKernel(
     const Context &dev_ctx,
     const paddle::optional<std::vector<const DenseTensor *>> &x UNUSED,
     int trainer_id UNUSED,
-    const std::vector<std::string> endpoints UNUSED,
+    const std::vector<std::string> &endpoints UNUSED,
     std::vector<DenseTensor *> out UNUSED) {
   VLOG(5) << "FetchBarrier Sync, do not need now";
 }
