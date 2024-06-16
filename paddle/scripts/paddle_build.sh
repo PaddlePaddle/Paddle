@@ -3748,13 +3748,49 @@ function clang-tidy_check() {
     trap 'abort' 0
     set -e
 
-    diff_files=$(git diff --name-only --diff-filter=ACMR ${BRANCH})
-    num_diff_files=$(echo "$diff_files" | wc -l)
-    echo -e "diff files between pr and ${BRANCH}:\n${diff_files}"
+    modified_files=$(git diff --name-only test..upstream/develop)
+    diff_files=()
+    num_diff_files=0
 
+    for file in $modified_files
+    do
+        if [[ $file == *.cpp || $file == *.cc || $file == *.cxx || $file == *.c++ || $file == *.h || $file == *.hpp || $file == *.hh || $file == *.hxx || $file == *.h++ ]]; then
+            diff_files+=($file)
+            num_diff_files+=1
+        fi
+    done
+
+    echo ${diff_files[@]}
     echo "Checking code style by clang-tidy ..."
     startTime_s=`date +%s`
-    pre-commit run clang-tidy --files ${diff_files};check_error=$?
+    cd ${PADDLE_ROOT}
+    pwd
+    python ./tools/codestyle/clang-tidy.py -p=build -j=20 \
+    -clang-tidy-binary=clang-tidy \
+    -extra-arg=-Wno-unknown-warning-option \
+    -extra-arg=-Wno-pessimizing-move \
+    -extra-arg=-Wno-braced-scalar-init \
+    -extra-arg=-Wno-deprecated-copy \
+    -extra-arg=-Wno-dangling-gsl \
+    -extra-arg=-Wno-final-dtor-non-final-class \
+    -extra-arg=-Wno-implicit-int-float-conversion \
+    -extra-arg=-Wno-inconsistent-missing-override \
+    -extra-arg=-Wno-infinite-recursion \
+    -extra-arg=-Wno-mismatched-tags  \
+    -extra-arg=-Wno-self-assign \
+    -extra-arg=-Wno-sign-compare \
+    -extra-arg=-Wno-sometimes-uninitialized \
+    -extra-arg=-Wno-tautological-overlap-compare \
+    -extra-arg=-Wno-unused-const-variable \
+    -extra-arg=-Wno-unused-lambda-capture \
+    -extra-arg=-Wno-unused-private-field \
+    -extra-arg=-Wno-unused-value \
+    -extra-arg=-Wno-unused-variable  \
+    -extra-arg=-Wno-overloaded-virtual  \
+    -extra-arg=-Wno-defaulted-function-deleted  \
+    -extra-arg=-Wno-delete-non-abstract-non-virtual-dtor  \
+    -extra-arg=-Wno-return-type-c-linkage
+    check_error=$?
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Files Num: $[ $num_diff_files ]"
@@ -3771,7 +3807,7 @@ function clang-tidy_check() {
         if [[ $num_diff_files -le 100 ]];then
             echo "After the build is completed, run clang-tidy to check codestyle issues in your PR:"
             echo ""
-            echo "    pre-commit run clang-tidy --files" $(echo ${diff_files} | tr "\n" " ")
+            echo "    python ./tools/codestyle/clang-tidy.py -p=build -j=10 -clang-tidy-binary=clang-tidy --files" $(echo ${diff_files} | tr "\n" " ")
             echo ""
         fi
         echo "For more information, please refer to our codestyle check guide:"
@@ -3801,6 +3837,8 @@ function build_pr_and_develop() {
     generate_api_spec "$1" "PR"
     mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
+
+    clang-tidy_check
 
     git checkout $BRANCH
     dev_commit=`git log -2|grep -w 'commit'|awk '{print $2}'`
@@ -3834,7 +3872,6 @@ function build_pr_and_develop() {
     fi
 
     generate_api_spec "$1" "DEV"
-    clang-tidy_check
 
 }
 
