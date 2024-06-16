@@ -18,7 +18,6 @@
 - fused_softmax_mask_grad
 - fused_softmax_mask_upper_triangle_grad
 - hsigmoid_loss_grad
-- logsumexp_grad
 - max_grad
 - mean_double_grad
 - mean_grad

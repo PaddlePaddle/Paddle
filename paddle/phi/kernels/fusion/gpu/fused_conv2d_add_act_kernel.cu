@@ -385,7 +385,7 @@ void FusedConv2dAddActKernel(const Context& ctx,
   size_t workspace_size_limit = 0;
   if (FLAGS_conv_workspace_size_limit > 0 || workspace_size_MB > 0) {
     int64_t max_user_size =
-        std::min(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
+        std::max(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
                  static_cast<int64_t>(workspace_size_MB));
     workspace_size_limit = max_user_size * 1024 * 1024;
   }
