@@ -32,7 +32,7 @@ if(WITH_TESTING AND WITH_CINN)
               merge_parallel_matmul_pass_test.cc)
 
   paddle_test(test_tile_config_searcher SRCS tile_config_searcher_test.cc DEPS
-              schedule_config_search)
+              schedule_config_search file_tile_database)
 
   paddle_test(test_file_tile_config SRCS file_tile_config_test.cc DEPS
               file_tile_database)

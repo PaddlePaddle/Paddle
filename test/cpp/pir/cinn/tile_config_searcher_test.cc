@@ -19,6 +19,8 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/ir/group_schedule/config/database.h"
+#include "paddle/cinn/ir/group_schedule/config/filedatabase.h"
+#include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
 #include "paddle/cinn/ir/group_schedule/search/config_searcher.h"
 #include "paddle/cinn/ir/group_schedule/search/measurer.h"
 #include "paddle/cinn/utils/string.h"
@@ -59,8 +61,6 @@ std::shared_ptr<::pir::Program> BuildReduceSumProgram(int spatial_size,
 int get_tile_size_config(int dimension_lower) {
   if (dimension_lower < 128) {
     return 32;
-  } else if (dimension_lower < 256) {
-    return 64;
   } else if (dimension_lower < 512) {
     return 128;
   } else if (dimension_lower < 1024) {
@@ -87,21 +87,18 @@ TEST(ConfigSearcher, TestReduceDemo) {
   constexpr int kThreadsPerWarp = 32;
   constexpr int kMaxThreadsPerBlock = 1024;
 
-  // Define the size of the entire grid search space.
-  //   constexpr int spatial_left_bound = 32;
-  //   constexpr int spatial_right_bound = 4096;
-  //   constexpr int reduce_left_bound = 32;
-  //   constexpr int reduce_right_bound = 4096;
+  // Define the search space bounds and sampling probabilities.
   constexpr int spatial_left_bound = 32;
   constexpr int spatial_right_bound = 32;
   constexpr int reduce_left_bound = 32;
   constexpr int reduce_right_bound = 32;
   constexpr bool is_spatial_dynamic = false;
   constexpr bool is_reduce_dynamic = true;
+  constexpr sampling_prob_sp = 0.05;
+  constexpr sampling_prob_rd = 0.05;
 
   // Define the initial grid size for the spatial and reduction dimensions of
   // the search space table.
-  // if static 1 - 32 - 64 & if dynamic 1 ~ 32 - 33 ~ 64
   int spatial_tile_config =
       (is_spatial_dynamic ? get_tile_size_config(spatial_left_bound)
                           : get_tile_size_config(spatial_left_bound) - 1);
@@ -110,8 +107,8 @@ TEST(ConfigSearcher, TestReduceDemo) {
                          : get_tile_size_config(reduce_left_bound) - 1);
   int spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
   int reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-  double spatial_sampling_prob = (is_spatial_dynamic ? 0.1 : 1.0);
-  double reduce_sampling_prob = (is_reduce_dynamic ? 0.1 : 1.0);
+  double spatial_sampling_prob = (is_spatial_dynamic ? sampling_prob_sp : 1.0);
+  double reduce_sampling_prob = (is_reduce_dynamic ? sampling_prob_rd : 1.0);
 
   for (int s_dimension_lower = spatial_left_bound;
        s_dimension_lower <= spatial_right_bound;
@@ -125,6 +122,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
       // adjust the tile size for the reduce dimension dymaically
       reduce_tile_config = get_tile_size_config(r_dimension_lower);
       reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
+
       // Step 1: Construct pir::Program.
       ::pir::IrContext* ctx = ::pir::IrContext::Instance();
       std::shared_ptr<::pir::Program> program;
@@ -164,7 +162,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
 
       // Step 4: Construct config candidate range and constraints.
       std::vector<std::pair<int, int>> candidate_range{
-          {1, 32}, {1, 1024}, {1, 256}};
+          {1, 8}, {1, 256}, {1, 256}};
       std::vector<cinn::ir::search::ConstraintFunc> constraints;
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
@@ -200,18 +198,27 @@ TEST(ConfigSearcher, TestReduceDemo) {
           [&](const cinn::ir::search::CandidateType& candidate) -> bool {
             return candidate[1] <= r_dimension_lower;
           });
-
       constraints.emplace_back(
           [](const cinn::ir::search::CandidateType& candidate) -> bool {
-            return candidate[2] % 2 == 0;
+            return candidate[2] % 8 == 0;
           });
 
       // Step 5: Construct searcher and search.
       cinn::ir::search::ScheduleConfigSearcher searcher(
           std::move(obj_func), candidate_range, constraints);
       auto search_res = searcher.Search();
-      LOG(INFO) << "spatial tile dimension left bound = " << s_dimension_lower
-                << ", reduce tile dimension left bound = " << r_dimension_lower
+
+      // Step 6: Write the best candidate's config of each grid search to json
+      cinn::ir::FileTileConfigDatabase file_database;
+      cinn::ir::ScheduleConfig::TileConfig tile_bestconfig;
+      tile_bestconfig.warp_num = search_res.second[0];
+      tile_bestconfig.tree_reduce_num = search_res.second[1];
+      tile_bestconfig.spatial_inner_num = search_res.second[2];
+      file_database.AddConfig(
+          cinn::common::DefaultTarget(), bucket_info, tile_bestconfig, 0);
+
+      LOG(INFO) << "spatial tile dimension lower bound = " << s_dimension_lower
+                << ", reduce tile dimension lower bound = " << r_dimension_lower
                 << std::endl;
       LOG(INFO) << "min score = " << search_res.first;
       LOG(INFO) << "best candidate: "
