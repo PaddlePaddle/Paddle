@@ -2286,5 +2286,35 @@ class TestNotJitForward(unittest.TestCase):
         shutil.rmtree(save_dir)
 
 
+class StridedBufferNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        buffer = paddle.to_tensor([1, 2, 3, 4, 5, 6]).astype('float32')
+        strided_buffer = buffer[::2]
+        self.register_buffer("strided_buffer", strided_buffer)
+
+    def forward(self, x):
+        return self.strided_buffer + x
+
+
+class TestStridedBuffer(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    @test_with_dygraph_pir
+    def test_strided_buffer(self):
+        layer = StridedBufferNet()
+        save_dir = os.path.join(self.temp_dir.name, "test_strided_buffer")
+        path = save_dir + "/model"
+        paddle.jit.save(layer=layer, path=path, input_spec=[InputSpec([2, 3])])
+
+        loaded_layer = paddle.jit.load(path)
+        x = paddle.to_tensor([1, 2, 3]).astype('float32')
+        np.testing.assert_allclose(layer(x).numpy(), loaded_layer(x).numpy())
+
+
 if __name__ == '__main__':
     unittest.main()
