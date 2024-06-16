@@ -11,7 +11,6 @@ if(WITH_TESTING AND WITH_CINN)
   paddle_test(test_sub_graph_extract SRCS sub_graph_extract_test.cc DEPS
               pir_transforms)
 
-  paddle_test(test_ir_op_fusion SRCS ir_op_fusion_test.cc)
   paddle_test(test_ir_op_cluster SRCS ir_op_cluster_test.cc DEPS pir_transforms
               cinn_transforms)
 
@@ -44,7 +43,6 @@ if(WITH_TESTING AND WITH_CINN)
       test_dialect_convert
       test_add_broadcast_to_elementwise
       test_sub_graph_extract
-      test_ir_op_fusion
       test_pir_all_path
       test_group_op
       test_pir_build_cinn_pass

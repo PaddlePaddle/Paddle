@@ -509,19 +509,15 @@ void DebugPrintReduceVar(const FusibleOp& op) {
 std::pair<TrivialOp, ReduceOp> SplitReduceOp(const ReduceOp& reduce_op) {
   VLOG(4) << "DebugPrint Op Origin: ";
   VLOG(4) << "DebugPrint Op Origin: " << _GetRootExpr(reduce_op);
-  VLOG(4) << "XK";
   ir::Tensor reduce_out_tensor = GetOutputTensor(reduce_op);
   // substitude compute_body with a new init value.
-  VLOG(4) << "XK";
   ir::Expr trivial_compute_body =
       ExprTransformerUtils::ChangeTensorLoadTransformer(
           GetOutputTensor(reduce_op),
           GetInitExpr(reduce_op))(GetComputeBody(reduce_op));
-  VLOG(4) << "XK";
 
   const std::vector<ir::Var>& all_iters = ComposeUtils::ConcatVector(
       GetOutputIters(reduce_op), GetReduceIters(reduce_op));
-  VLOG(4) << "XK";
   VLOG(4) << "Trivial Compute Body is " << trivial_compute_body;
   ir::Tensor new_trivial_tensor =
       ir::Tensor(reduce_out_tensor->name + "_split_transform",
