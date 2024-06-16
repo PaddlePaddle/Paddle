@@ -1254,6 +1254,8 @@ XPUOpMap& get_kl2_ops() {
       {"sequence_unpad_xpu",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
       {"block_multihead_attention_xpu", XPUKernelSet({phi::DataType::FLOAT16})},
+      {"blha_get_max_len",
+       XPUKernelSet({phi::DataType::INT32, phi::DataType::INT64})},
   };
 
   return s_xpu2_kernels;

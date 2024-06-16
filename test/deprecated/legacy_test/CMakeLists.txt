@@ -39,7 +39,6 @@ list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_2_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
@@ -538,8 +537,6 @@ if(WITH_DISTRIBUTE)
                   test_communicator_geo_deprecated ENVS ${dist_ENVS})
   if(NOT APPLE)
     py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS})
-    py_test_modules(test_fleet_base_deprecated MODULES
-                    test_fleet_base_deprecated ENVS ${dist_ENVS})
     py_test_modules(test_fleet_base_2_deprecated MODULES
                     test_fleet_base_2_deprecated ENVS ${dist_ENVS})
     py_test_modules(test_fleet_base_3_deprecated MODULES
