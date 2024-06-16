@@ -232,6 +232,38 @@ inline GpuLaunchConfig GetGpuLaunchConfig3D(const phi::GPUContext& context,
   return config;
 }
 
+inline GpuLaunchConfig GetGpuLaunchConfig3D2(const phi::GPUContext& context,
+                                             int x,
+                                             int y,
+                                             int z) {
+  const int kThreadsPerBlock = 256;
+  int max_threads_per_block = context.GetMaxThreadsPerBlock();  // 1024
+  int max_threads = std::min(kThreadsPerBlock, max_threads_per_block);
+
+  int block_x = std::min(GetLastPow2(x), max_threads);
+  int block_y = std::min(GetLastPow2(y), max_threads / block_x);
+  int block_z = std::min(z, max_threads / block_x / block_y);
+
+  std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+  unsigned int grid_x =
+      std::min(max_grid_dim[0], DivUp<unsigned int>(x, block_x));
+  unsigned int grid_y =
+      std::min(max_grid_dim[1], DivUp<unsigned int>(y, block_y));
+  // Compared to GetGpuLaunchConfig3D, there is no "*4" here.noticed that if use
+  // the original function and when x >= 256, it would lead to an error in
+  // grid_z. not sure if using the function configured with GetGpuLaunchConfig3D
+  // would produce a similar error, so write a new function temporarily.
+  unsigned int grid_z =
+      std::min(max_grid_dim[2], DivUp<unsigned int>(z, block_z));
+
+  const int capability = context.GetComputeCapability();
+  GpuLaunchConfig config;
+  config.compute_capability = capability;
+  config.thread_per_block = dim3(block_x, block_y, block_z);
+  config.block_per_grid = dim3(grid_x, grid_y, grid_z);
+  return config;
+}
+
 template <typename Context>
 void LimitGridDim(const Context& ctx, dim3* grid_dim) {
   auto max_grid_dim =

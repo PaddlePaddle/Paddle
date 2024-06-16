@@ -33,46 +33,6 @@ namespace sparse {
 // Limitation of the setting in one dimension of cuda grid.
 constexpr int kMultiDimslimit = 65536;
 
-template <typename T = int64_t>
-inline T DivUp(T a, T b) {
-  return (a + b - 1) / b;
-}
-
-inline int GetLastPow2(int n) {
-  n |= (n >> 1);
-  n |= (n >> 2);
-  n |= (n >> 4);
-  n |= (n >> 8);
-  n |= (n >> 16);
-  return std::max(1, n - (n >> 1));
-}
-
-inline void GetGpuLaunchConfig3D(const phi::GPUContext& context,
-                                 int x,
-                                 int y,
-                                 int z,
-                                 dim3* block_dims,
-                                 dim3* grid_dims) {
-  const int kThreadsPerBlock = 256;
-  int max_threads_per_block = context.GetMaxThreadsPerBlock();  // 1024
-  int max_threads = std::min(kThreadsPerBlock, max_threads_per_block);
-
-  int block_x = std::min(GetLastPow2(x), max_threads);
-  int block_y = std::min(GetLastPow2(y), max_threads / block_x);
-  int block_z = std::min(z, max_threads / block_x / block_y);
-
-  std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
-  unsigned int grid_x =
-      std::min(max_grid_dim[0], DivUp<unsigned int>(x, block_x));
-  unsigned int grid_y =
-      std::min(max_grid_dim[1], DivUp<unsigned int>(y, block_y));
-  unsigned int grid_z =
-      std::min(max_grid_dim[2], DivUp<unsigned int>(z, block_z));
-
-  *block_dims = dim3(block_x, block_y, block_z);
-  *grid_dims = dim3(grid_x, grid_y, grid_z);
-}
-
 template <typename T>
 struct PointerToPointer {
  public:
@@ -1027,22 +987,22 @@ void ConcatCsrGPU3D1A(const Context& dev_ctx,
           d_out_cols);
 
   // note: The order of GetGpuLaunchConfig3D is z, y , x
-  dim3 block_dims;
-  dim3 grid_dims;
-  GetGpuLaunchConfig3D(
-      dev_ctx, max_rows, batch, in_num, &block_dims, &grid_dims);
+
+  config = phi::backends::gpu::GetGpuLaunchConfig3D2(
+      dev_ctx, max_rows, batch, in_num);
 
   ConcatCsr3D1ASetCrowsKernel<int64_t,
                               decltype(d_in_crows_vec),
                               decltype(d_rows_offsets)>
-      <<<grid_dims, block_dims, 0, dev_ctx.stream()>>>(in_num,
-                                                       batch,
-                                                       rows_offset,
-                                                       d_in_crows_vec,
-                                                       d_rows_nums,
-                                                       d_rows_offsets,
-                                                       d_out_crows_offset,
-                                                       d_out_crows);
+      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
+          in_num,
+          batch,
+          rows_offset,
+          d_in_crows_vec,
+          d_rows_nums,
+          d_rows_offsets,
+          d_out_crows_offset,
+          d_out_crows);
   out->SetMember(out_crows, out_cols, out_values, out_dims);
 }
 
@@ -1099,8 +1059,6 @@ void ConcatCsrGPU3D2A(const Context& dev_ctx,
 
   phi::Allocator::AllocationPtr dev_col_offsets_ptr{nullptr};
   DArray<int64_t> d_col_offsets(dev_ctx, col_offsets, &dev_col_offsets_ptr);
-  dim3 block_dims;
-  dim3 grid_dims;
 
   DenseTensor rows_nnz_tensor = phi::Empty<int64_t>(
       dev_ctx, {static_cast<int64_t>(in_num * batch * rows)});
@@ -1123,14 +1081,16 @@ void ConcatCsrGPU3D2A(const Context& dev_ctx,
       <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
           now_crow_numel, in_num, batch, rows, d_in_crows_vec, d_out_crows);
 
-  GetGpuLaunchConfig3D(dev_ctx, rows, batch, in_num, &block_dims, &grid_dims);
+  config =
+      phi::backends::gpu::GetGpuLaunchConfig3D2(dev_ctx, rows, batch, in_num);
   ConcatCsr3D2AGetHelpArrayKernel<int64_t, decltype(d_in_crows_vec)>
-      <<<grid_dims, block_dims, 0, dev_ctx.stream()>>>(rows,
-                                                       in_num,
-                                                       batch,
-                                                       d_in_crows_vec,
-                                                       d_rows_nnz,
-                                                       d_in_index_batch_nnz);
+      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
+          rows,
+          in_num,
+          batch,
+          d_in_crows_vec,
+          d_rows_nnz,
+          d_in_index_batch_nnz);
 
   config = phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, batch, in_num);
   ConcatCsr3D2AGetBatchNnzArrayKernel<int64_t, decltype(d_in_crows_vec)>
