@@ -14,13 +14,24 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Sequence
+
+from ..._typing.basic import PaddingMode
 
 if TYPE_CHECKING:
     from paddle import Tensor
 
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, pir
-from paddle._typing import *  # noqa: F403
+from paddle._typing import (
+    DataLayout1D,
+    DataLayout2D,
+    DataLayout3D,
+    Size1,
+    Size2,
+    Size3,
+    Size4,
+    Size6,
+)
 from paddle.base.framework import _global_flags, in_dynamic_or_pir_mode
 from paddle.device import (
     get_all_custom_device_type,
@@ -280,15 +291,11 @@ def conv1d(
     weight: Tensor,
     bias: Tensor | None = None,
     stride: Size1 = 1,
-    padding: Literal['valid', 'same']
-    | Size1
-    | Size2
-    | list[list[int]]
-    | list[tuple[int, int]] = 0,
+    padding: PaddingMode | Size1 | Size2 | Sequence[Size2] = 0,
     dilation: Size1 = 1,
     groups: int = 1,
     data_format: DataLayout1D = 'NCL',
-    name=None,
+    name: str | None = None,
 ) -> Tensor:
     r"""
     The convolution1D layer calculates the output based on the input, filter
@@ -529,15 +536,11 @@ def conv2d(
     weight: Tensor,
     bias: Tensor | None = None,
     stride: Size2 = 1,
-    padding: Literal['VALID', 'SAME']
-    | Size2
-    | Size4
-    | list[list[int]]
-    | list[tuple[int, int]] = 0,
+    padding: PaddingMode | Size2 | Size4 | Sequence[Size2] = 0,
     dilation: Size2 = 1,
     groups: int = 1,
     data_format: DataLayout2D = "NCHW",
-    name=None,
+    name: str | None = None,
 ) -> Tensor:
     r"""
 
@@ -774,13 +777,13 @@ def conv1d_transpose(
     weight: Tensor,
     bias: Tensor | None = None,
     stride: Size1 = 1,
-    padding: Literal['VALID', 'SAME'] | Size1 | Size2 = 0,
+    padding: PaddingMode | Size1 | Size2 = 0,
     output_padding: Size1 = 0,
     groups: int = 1,
     dilation: Size1 = 1,
     output_size: Size1 | None = None,
     data_format: DataLayout1D = "NCL",
-    name=None,
+    name: str | None = None,
 ) -> Tensor:
     r"""
     The 1-D convolution transpose layer calculates the output based on the input,
@@ -1046,17 +1049,13 @@ def conv2d_transpose(
     weight: Tensor,
     bias: Tensor | None = None,
     stride: Size2 = 1,
-    padding: Literal['VALID', 'SAME']
-    | Size2
-    | Size4
-    | list[list[int]]
-    | list[tuple[int, int]] = 0,
+    padding: PaddingMode | Size2 | Size4 | Sequence[Size2] = 0,
     output_padding: Size2 = 0,
     dilation: Size2 = 1,
     groups: int = 1,
     output_size: Size2 | None = None,
     data_format: DataLayout2D = 'NCHW',
-    name=None,
+    name: str | None = None,
 ) -> Tensor:
     r"""
 
@@ -1361,7 +1360,7 @@ def conv3d(
     dilation: Size3 = 1,
     groups: int = 1,
     data_format: DataLayout3D = "NCDHW",
-    name=None,
+    name: str | None = None,
 ) -> Tensor:
     r"""
 
@@ -1534,17 +1533,13 @@ def conv3d_transpose(
     weight: Tensor,
     bias: Tensor | None = None,
     stride: Size3 = 1,
-    padding: Literal['VALID', 'SAME']
-    | Size3
-    | Size6
-    | list[list[int]]
-    | list[tuple[int, int]] = 0,
+    padding: PaddingMode | Size3 | Size6 | Sequence[Size2] = 0,
     output_padding: Size3 = 0,
     groups: int = 1,
     dilation: Size3 = 1,
     output_size: Size3 | None = None,
     data_format: DataLayout3D = 'NCDHW',
-    name=None,
+    name: str | None = None,
 ) -> Tensor:
     r"""
     The convolution3d transpose layer calculates the output based on the input,

@@ -18,22 +18,29 @@ from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from paddle import Tensor
+    from paddle.distributed.communication.group import Group
 
 import numpy
 
 import paddle
 from paddle import _C_ops, pir
-from paddle._typing import *  # noqa: F403
+from paddle._typing import (
+    DataLayout2D,
+    DataLayout3D,
+    DataLayoutND,
+    IntSequence,
+    ShapeLike,
+    Size2,
+    Size4,
+)
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
-from paddle.distributed.communication.group import Group
 from paddle.framework import (
     core,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
-from paddle.static import Parameter
 from paddle.tensor.creation import full
 
 from ...base.data_feeder import (
@@ -194,8 +201,8 @@ def unfold(
 
 def interpolate(
     x: Tensor,
-    size: DynamicShapeLike = None,
-    scale_factor: DynamicShapeLike = None,
+    size: ShapeLike | None = None,
+    scale_factor: ShapeLike | None = None,
     mode: Literal[
         'linear', 'area', 'nearest', 'bilinear', 'bicubic', 'trilinear'
     ] = 'nearest',
@@ -752,8 +759,8 @@ def interpolate(
 
 def upsample(
     x: Tensor,
-    size: DynamicShapeLike = None,
-    scale_factor: DynamicShapeLike = None,
+    size: ShapeLike | None = None,
+    scale_factor: ShapeLike | None = None,
     mode: Literal[
         'linear', 'nearest', 'bilinear', 'bicubic', 'trilinear'
     ] = 'nearest',
@@ -960,8 +967,8 @@ def upsample(
 def bilinear(
     x1: Tensor,
     x2: Tensor,
-    weight: Parameter,
-    bias: Parameter | None = None,
+    weight: Tensor,
+    bias: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -972,8 +979,8 @@ def bilinear(
     Parameters:
         x1 (Tensor): the first input tensor, it's data type should be float32, float64.
         x2 (Tensor): the second input tensor, it's data type should be float32, float64.
-        weight (Parameter): The learnable weights of this layer, shape is [out_features, in1_features, in2_features].
-        bias (Parameter, optional): The learnable bias(Bias) of this layer, shape is [1, out_features]. If it is set to None, no bias will be added to the output units. The default value is None.
+        weight (Tensor): The learnable weights of this layer, shape is [out_features, in1_features, in2_features].
+        bias (Tensor, optional): The learnable bias(Bias) of this layer, shape is [1, out_features]. If it is set to None, no bias will be added to the output units. The default value is None.
         name (str, optional): The default value is None. Normally there is no need for user
             to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
 
@@ -1017,7 +1024,7 @@ def bilinear(
 
 def dropout(
     x: Tensor,
-    p: float | int = 0.5,  # noqa: PYI041
+    p: float = 0.5,
     axis: int | IntSequence | None = None,
     training: bool = True,
     mode: Literal[
@@ -1600,7 +1607,7 @@ def alpha_dropout(
 
 def pad(
     x: Tensor,
-    pad: DynamicShapeLike,
+    pad: ShapeLike,
     mode: Literal["constant", "reflect", "replicate", "circular"] = 'constant',
     value: float = 0.0,
     data_format: DataLayoutND = "NCHW",
@@ -1874,7 +1881,7 @@ def pad(
 
 def zeropad2d(
     x: Tensor,
-    padding: DynamicShapeLike,
+    padding: ShapeLike,
     data_format: DataLayout2D = "NCHW",
     name: str | None = None,
 ) -> Tensor:
