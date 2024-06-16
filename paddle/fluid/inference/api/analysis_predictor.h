@@ -397,7 +397,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \return Whether the function executed successfully
   ///
-  bool LoadPirParameters();
+  bool LoadPirParameters(bool save_optimized = false);
 
   ///
   /// \brief Prepare input data, only used in Run()
@@ -580,6 +580,9 @@ class AnalysisPredictor : public PaddlePredictor {
   std::shared_ptr<framework::ProgramDesc> inference_program_;
   std::shared_ptr<pir::Program> pir_program_;
   bool load_pir_model_{false};
+  std::string optimized_model_name_;
+  std::string optimized_model_path_;
+  std::string optimized_params_;
   std::vector<framework::OpDesc *> feeds_;
   std::vector<pir::Operation *> pir_feeds_;
   std::map<std::string, size_t> feed_names_;
@@ -588,7 +591,6 @@ class AnalysisPredictor : public PaddlePredictor {
   std::vector<framework::OpDesc *> fetches_;
   std::vector<pir::Operation *> pir_fetches_;
   std::map<size_t, std::string> idx2fetches_;
-
   phi::DataType model_precision_{phi::DataType::FLOAT32};
 
 #if PADDLE_WITH_DNNL

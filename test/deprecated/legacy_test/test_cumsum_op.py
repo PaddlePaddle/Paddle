@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import sys
 import tempfile
 import unittest
@@ -521,7 +520,7 @@ class TestTensorAxis(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.save_path = os.path.join(self.temp_dir.name, 'tensor_axis_cumsum')
+        self.save_path = "/home/zexuli/Paddle-1/test/deprecated/legacy_test/pir"
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()

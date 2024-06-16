@@ -481,6 +481,7 @@ void TensorToStream(std::ostream& os,
     os.write(reinterpret_cast<const char*>(&size), sizeof(size));
     auto out = desc.SerializeAsString();
     os.write(out.data(), size);
+    LOG(INFO) << "Written tensor description,size: " << size;
   }
   {  // the 3rd field, tensor data
     uint64_t size =
@@ -498,18 +499,30 @@ void TensorToStream(std::ostream& os,
       auto& gpu_dev_ctx = static_cast<const phi::GPUContext&>(dev_ctx);
       platform::CPUPlace cpu;
       uintptr_t data = reinterpret_cast<uintptr_t>(data_ptr);
+      LOG(INFO) << "Starting to copy data from GPU tensor to CPU buffer.";
+      LOG(INFO) << "Initial tensor size: " << size << " Bytes.";
       while (size != 0) {
         size_t size_to_write = std::min(kBufSize, static_cast<size_t>(size));
+        LOG(INFO) << "Calling memory::Copy with the following parameters:";
+        LOG(INFO) << " - dst_place: " << cpu;
+        LOG(INFO) << " - dst: " << static_cast<void*>(buf.get());
+        LOG(INFO) << " - src_place: " << tensor.place();
+        LOG(INFO) << " - src: " << reinterpret_cast<const void*>(data);
+        LOG(INFO) << " - num: " << size_to_write;
+        LOG(INFO) << " - stream: " << gpu_dev_ctx.stream();
         memory::Copy(cpu,
                      buf.get(),
                      contiguous_tensor.place(),
                      reinterpret_cast<const void*>(data),  // NOLINT
                      size_to_write,
                      gpu_dev_ctx.stream());
+        LOG(INFO) << "Waiting for GPU stream to complete the copy.";
         gpu_dev_ctx.Wait();
+        LOG(INFO) << "Writing " << size_to_write << "Bytes to output stream";
         os.write(buf.get(), size_to_write);
         data += size_to_write;
         size -= size_to_write;
+        LOG(INFO) << size << " bytes remaining.";
       }
 #else
       PADDLE_THROW(platform::errors::Unimplemented(

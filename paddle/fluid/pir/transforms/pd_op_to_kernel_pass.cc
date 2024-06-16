@@ -2325,6 +2325,8 @@ std::vector<pir::Type> BuildOutputs(
   auto args_def = phi_kernel.args_def();
   auto output_defs = args_def.output_defs();
 
+  // Log the number of results and output definitions
+
   if (!UnchangeOutputOps.count(op_item->name()) &&
       !IsLegacyOp(op_item->name())) {
     PADDLE_ENFORCE_EQ(

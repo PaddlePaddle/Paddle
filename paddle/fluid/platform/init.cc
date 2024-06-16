@@ -15,8 +15,10 @@ limitations under the License. */
 #include <fstream>
 #include <string>
 
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
+#include "paddle/pir/include/core/ir_context.h"
 #include "paddle/utils/string/split.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -421,6 +423,11 @@ void InitGLOG(const std::string &prog_name) {
     google::InstallFailureWriter(&SignalHandle);
 #endif
   });
+}
+
+void InitPir() {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 }
 
 void InitMemoryMethod() {
