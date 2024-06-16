@@ -27,7 +27,8 @@ namespace ir {
 
 bool ReplaceOpWithReshapeOp(pir::Operation* op,
                             pir::ShapeConstraintIRAnalysis* shape_analysis,
-                            pir::PatternRewriter& rewriter) {  // NOLINT
+                            pir::PatternRewriter& rewriter,  // NOLINT
+                            bool with_xshape) {
   pir::Value input = op->operand_source(0);
   pir::Value output = op->result(0);
   const auto& input_shape =
@@ -38,9 +39,10 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
   std::vector<pir::Attribute> output_dim_expr_attrs{};
   GenerateShapeOp::SymbolBindings symbol_bindings{};
 
-  unsigned output_dim_idx = 0, input_dim_idx = 0;
   int64_t local_dim_expr_id = 0;
-  for (; output_dim_idx < output_shape.size(); ++output_dim_idx) {
+  for (unsigned output_dim_idx = 0, input_dim_idx = 0;
+       output_dim_idx < output_shape.size();
+       ++output_dim_idx) {
     const auto& dim_expr = output_shape.at(output_dim_idx);
     if (dim_expr.isa<int64_t>()) {
       output_dim_expr_attrs.emplace_back(
@@ -64,12 +66,23 @@ bool ReplaceOpWithReshapeOp(pir::Operation* op,
       }
     }
   }
+  auto out_type = paddle::dialect::DenseTensorType::get(
+      rewriter.ir_context(),
+      pir::Int64Type::get(rewriter.ir_context()),
+      ::common::make_ddim(
+          {static_cast<int64_t>(output_dim_expr_attrs.size())}));
   auto cinn_generate_shape = rewriter.Build<cinn::dialect::GenerateShapeOp>(
-      std::vector<pir::Value>{input}, output_dim_expr_attrs, symbol_bindings);
+      std::vector<pir::Value>{input},
+      output_dim_expr_attrs,
+      symbol_bindings,
+      out_type);
   auto pd_reshape = rewriter.Build<paddle::dialect::ReshapeOp>(
       op->operand_source(0), cinn_generate_shape.result(0));
 
   rewriter.ReplaceAllUsesWith(output, pd_reshape.result(0));
+  if (with_xshape && op->num_results() == 2U) {
+    rewriter.ReplaceAllUsesWith(op->result(1), pd_reshape.result(1));
+  }
   rewriter.EraseOp(op);
   return true;
 }
@@ -86,7 +99,7 @@ class DynamicReshapeOpPattern
     auto& shape_analysis =
         pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
 
-    return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter);
+    return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter, true);
   }
 };
 
@@ -104,7 +117,7 @@ class DynamicSqueezeOpPattern
         shape_analysis.GetShapeOrDataForValue(op.axis());
     CHECK(axis_shape_expr.data().has_value());
 
-    return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter);
+    return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter, true);
   }
 };
 
@@ -122,7 +135,7 @@ class DynamicUnsqueezeOpPattern
         shape_analysis.GetShapeOrDataForValue(op.axis());
     CHECK(axis_shape_expr.data().has_value());
 
-    return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter);
+    return ReplaceOpWithReshapeOp(op, &shape_analysis, rewriter, true);
   }
 };
 

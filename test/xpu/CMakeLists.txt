@@ -1,4 +1,5 @@
 if(WITH_XPU)
+  add_subdirectory(amp)
   add_subdirectory(cpp)
 endif()
 

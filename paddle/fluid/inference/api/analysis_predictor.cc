@@ -26,10 +26,10 @@
 #include <vector>
 
 #include "paddle/common/enforce.h"
-
 #include "paddle/fluid//platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/feed_hook.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
@@ -958,17 +958,18 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   LOG(INFO) << "======= pir optimization completed =======";
 }
 
-bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
+=
+bool AnalysisPredictor::LoadPirParameters(bool save_optimized)) {
   std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
   int feed_idx = 0;
   int fetch_idx = 0;
-
   for (auto op : pir_program_->block()->ops()) {
-    // put pd-op.data and pd-op.fetch into idx2feeds and idx2fetches
+    // put pd-op.data and pd-op.fetch into idx2feeds and idx2feeds
     if (op->isa<paddle::dialect::FetchOp>()) {
       int idx = op->attribute("col").dyn_cast<pir::Int32Attribute>().data();
-      if (fetches_.size() <= static_cast<size_t>(idx)) {
-        fetches_.resize(idx + 1);
+      if (pir_fetches_.size() <= static_cast<size_t>(idx)) {
+        pir_fetches_.resize(idx + 1);
+        pir_fetches_[idx] = op;
         std::string fetch_name =
             op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
         idx2fetches_[idx] = fetch_name;
@@ -985,13 +986,13 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
                              .dyn_cast<pir::StrAttribute>()
                              .AsString();
       idx2fetches_[fetch_idx] = shadow_name;
+      pir_fetches_[fetch_idx] = op;
       fetch_idx++;
     }
     for (auto var : op->results()) {
       std::string var_name;
       auto is_persistable =
           var.attribute<pir::BoolAttribute>(kAttrIsPersistable);
-
       if (is_persistable && is_persistable.data()) {
         if (auto param_op = var.defining_op<::pir::ParameterOp>()) {
           var_name = param_op.param_name();
@@ -1030,7 +1031,6 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
       var = sub_scope_->Var(param_names[i]);
       auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
       tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
-
       phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       const phi::DeviceContext *dev_ctx = nullptr;
       dev_ctx = pool.Get(place_);
@@ -1068,7 +1068,6 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
 bool AnalysisPredictor::PreparePirProgram() {
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-
   if (pir_program_) {
     PADDLE_FATAL("pir_program_ must be nullptr");
   } else {
@@ -1088,7 +1087,6 @@ bool AnalysisPredictor::PreparePirProgram() {
     return false;
   }
   OptimizeInferencePirProgram();
-
   return true;
 }
 
@@ -1223,9 +1221,11 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.used_for_inference = true;
 
     auto input_names = GetInputNames();
+
     execution_config.skip_gc_vars.insert(input_names.begin(),
                                          input_names.end());
     auto output_names = GetOutputNames();
+
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
 
@@ -1622,7 +1622,9 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to set feed";
     return false;
   }
-
+  if (config_.new_ir_enabled()) {
+    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
+  }
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
@@ -1697,7 +1699,9 @@ bool AnalysisPredictor::Run(const std::vector<paddle::Tensor> &inputs,
     LOG(ERROR) << "fail to set feed";
     return false;
   }
-
+  if (config_.new_ir_enabled()) {
+    ::paddle::framework::RunFeedHooks(*pir_program_, *scope);
+  }
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.tensorrt_engine_enabled()) {
     inference::tensorrt::TensorRTEngine::predictor_id_per_thread =
@@ -1815,12 +1819,22 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
                                 framework::Scope *scope) {
   VLOG(3) << "Predictor::set_feed";
-  PADDLE_ENFORCE_EQ(inputs.size(),
-                    feeds_.size(),
-                    platform::errors::InvalidArgument(
-                        "wrong feed input size, need %d but get %d.",
-                        feeds_.size(),
-                        inputs.size()));
+  if (load_pir_model_) {
+    PADDLE_ENFORCE_EQ(inputs.size(),
+                      pir_feeds_.size(),
+                      platform::errors::InvalidArgument(
+                          "wrong feed input size, need %d but get %d.",
+                          pir_feeds_.size(),
+                          inputs.size()));
+  } else {
+    PADDLE_ENFORCE_EQ(inputs.size(),
+                      feeds_.size(),
+                      platform::errors::InvalidArgument(
+                          "wrong feed input size, need %d but get %d.",
+                          feeds_.size(),
+                          inputs.size()));
+  }
+
   for (const auto &input : inputs) {
     PADDLE_ENFORCE_EQ(input.defined(),
                       true,
@@ -1920,6 +1934,16 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 bool AnalysisPredictor::GetFetch(std::vector<paddle::Tensor> *outputs,
                                  framework::Scope *scope) {
   VLOG(3) << "Predictor::get_fetch";
+  if (load_pir_model_) {
+    outputs->resize(pir_fetches_.size());
+    for (size_t i = 0; i < pir_fetches_.size(); ++i) {
+      auto const &name = idx2fetches_[i];
+      auto &t = framework::GetVariableTensor(*scope, name);
+      (*outputs)[i] =
+          paddle::Tensor(std::make_shared<phi::DenseTensor>(t), name);
+    }
+    return true;
+  }
   outputs->resize(fetches_.size());
   for (size_t i = 0; i < fetches_.size(); ++i) {
     auto const &name = idx2fetches_[i];

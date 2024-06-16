@@ -35,8 +35,7 @@ limitations under the License. */
 
 PHI_DECLARE_bool(use_stride_kernel);
 
-namespace paddle {
-namespace experimental {
+namespace paddle::experimental {
 
 inline bool NeedTransformDataType(const DataType& input,
                                   const DataType& target,
@@ -303,6 +302,7 @@ phi::DenseTensor CheckAndTrans2NewContiguousTensor(
 std::vector<phi::DenseTensor> CheckAndTrans2NewContiguousTensor(
     const std::vector<phi::DenseTensor>& tensor) {
   std::vector<phi::DenseTensor> out;
+  out.reserve(tensor.size());
   for (auto& t : tensor) {
     out.emplace_back(CheckAndTrans2NewContiguousTensor(t));
   }
@@ -1043,5 +1043,4 @@ PrepareDataForDistTensor(
   return paddle::none;
 }
 
-}  // namespace experimental
-}  // namespace paddle
+}  // namespace paddle::experimental

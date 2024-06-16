@@ -13,8 +13,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/generator.h"
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class SoftmaxMaskFuseUpperTriangleOp : public framework::OperatorWithKernel {
  public:
@@ -89,8 +88,7 @@ class SoftmaxMaskFuseUpperTriangleGradOpMaker
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

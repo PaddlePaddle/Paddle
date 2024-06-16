@@ -26,8 +26,7 @@ COMMON_DECLARE_bool(eager_delete_scope);
 #define SCOPE_VARS_READER_LOCK phi::AutoRDLock auto_lock(&vars_lock_);
 #define SCOPE_VARS_WRITER_LOCK phi::AutoWRLock auto_lock(&vars_lock_);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 Scope::Scope() : vars_(), kids_() {}
 Scope::~Scope() { DropKids(); }  // NOLINT
 
@@ -307,5 +306,4 @@ std::string GenScopeTreeDebugInfo(Scope* root) {
   return os.str();
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
