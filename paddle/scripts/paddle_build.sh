@@ -3820,7 +3820,7 @@ function clang-tidy_check() {
     trap : 0
     set -x
 
-    exit ${check_error} 
+    exit ${check_error}
 }
 
 function build_pr_and_develop() {
