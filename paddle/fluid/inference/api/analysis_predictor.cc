@@ -438,8 +438,12 @@ bool AnalysisPredictor::Init(
   // no matter with or without OneDNN
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
+  std::string model_path = config_.prog_file();
+  load_pir_model_ =
+      model_path.substr(model_path.find_last_of(".") + 1) == "json";
+
   // Use Optimized model to inference
-  if (!config_.new_ir_enabled()) {
+  if (!load_pir_model_) {
     if (config_.use_optimized_model_) {
       std::string optimized_model_path = GetOptimizedModelPath();
       std::string optimized_model =
@@ -470,9 +474,6 @@ bool AnalysisPredictor::Init(
     return false;
   }
 
-  std::string model_path = config_.prog_file();
-  load_pir_model_ =
-      model_path.substr(model_path.find_last_of(".") + 1) == "json";
   if (load_pir_model_) {
     if (!PreparePirProgram()) {
       return false;
@@ -762,23 +763,6 @@ const void *AnalysisPredictor::GetDeviceContexts() const {
   }
 }
 
-void AnalysisPredictor::PrintScopeVariables(
-    const paddle::framework::Scope &scope) {
-  auto vars = scope.LocalVarNames();
-  for (const auto &var_name : vars) {
-    LOG(INFO) << "var_name " << var_name;
-    auto *var = scope.FindVar(var_name);
-    if (var) {
-      if (var->IsType<phi::DenseTensor>()) {
-        auto &tensor = var->Get<phi::DenseTensor>();
-        VLOG(0) << "Tensor shape: " << tensor.dims();
-        VLOG(0) << "Tensor dtype: " << tensor.dtype();
-      }
-    }
-  }
-  LOG(INFO) << "Total variables in scope: " << vars.size();
-}
-
 bool AnalysisPredictor::PrepareScope(
     const std::shared_ptr<framework::Scope> &parent_scope) {
 #ifdef PADDLE_WITH_XPU
@@ -914,15 +898,11 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   pass_pm.Run(pir_program_.get());
 
   if (config_.save_optimized_model_ && !FileExists(optimized_model_name_)) {
-    LOG(INFO) << "要保存优化后的json模型";
     pir::WriteModule(
         *pir_program_, optimized_model_name_, 1, true, false, true);
-    LOG(INFO) << "已经保存完优化后的json模型";
   }
   if (config_.save_optimized_model_ && !FileExists(optimized_params_)) {
-    LOG(INFO) << "要保存优化后的参数文件";
     LoadPirParameters(true);
-    LOG(INFO) << "保存完了优化后的参数文件";
   }
 
   // Apply some basic passes required by the framework
@@ -982,26 +962,21 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
   std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
   int feed_idx = 0;
   int fetch_idx = 0;
-  LOG(INFO) << "LoadPirParameters的第三行";
-  // PrintScopeVariables(*sub_scope_);
 
   for (auto op : pir_program_->block()->ops()) {
     // put pd-op.data and pd-op.fetch into idx2feeds and idx2fetches
-    LOG(INFO) << "op.name " << op->name();
     if (op->isa<paddle::dialect::FetchOp>()) {
       int idx = op->attribute("col").dyn_cast<pir::Int32Attribute>().data();
       if (fetches_.size() <= static_cast<size_t>(idx)) {
         fetches_.resize(idx + 1);
         std::string fetch_name =
             op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
-        LOG(INFO) << "fetch_name " << fetch_name;
         idx2fetches_[idx] = fetch_name;
       }
     } else if (op->isa<paddle::dialect::DataOp>() ||
                op->isa<paddle::dialect::FeedOp>()) {
       std::string data_name =
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
-      LOG(INFO) << "data_name " << data_name;
       idx2feeds_[feed_idx] = data_name;
       feed_idx++;
     } else if (op->isa<pir::ShadowOutputOp>()) {
@@ -1009,7 +984,6 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
                              .at("output_name")
                              .dyn_cast<pir::StrAttribute>()
                              .AsString();
-      LOG(INFO) << "ShadowOutputOp的var_name " << shadow_name;
       idx2fetches_[fetch_idx] = shadow_name;
       fetch_idx++;
     }
@@ -1021,16 +995,12 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
       if (is_persistable && is_persistable.data()) {
         if (auto param_op = var.defining_op<::pir::ParameterOp>()) {
           var_name = param_op.param_name();
-          LOG(INFO) << "var_name " << var_name;
           param_name_var_pairs.emplace_back(var_name, var);
         } else if (auto data_op = var.defining_op<paddle::dialect::DataOp>()) {
           var_name = data_op.attribute<pir::StrAttribute>("name").AsString();
-          LOG(INFO) << "var_name " << var_name;
           param_name_var_pairs.emplace_back(var_name, var);
         } else if (auto const_op = var.defining_op<pir::ConstantTensorOp>()) {
-          LOG(INFO) << "发现builton.constant op了";
           var_name = const_op.tensor_name();
-          LOG(INFO) << "var_name " << var_name;
           param_name_var_pairs.emplace_back(var_name, var);
         }
       }
@@ -1057,116 +1027,66 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
     auto *var = sub_scope_->FindVar(param_names[i]);
     pir::Value value = vars[i];
     if (var == nullptr) {
-      LOG(INFO) << "Variable not found, creating new variable: "
-                << param_names[i].c_str();
       var = sub_scope_->Var(param_names[i]);
       auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
       tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
-      LOG(INFO) << "Resized tensor for variable: " << param_names[i]
-                << " to shape: "
-                << common::make_ddim(pir::GetShapeFromValue(value));
-      LOG(INFO) << "Found variable: " << param_names[i]
-                << " with type: " << var->Type();
+
       phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
       const phi::DeviceContext *dev_ctx = nullptr;
       dev_ctx = pool.Get(place_);
       pir::Type type_ = pir::GetDataTypeFromValue(value);
       phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
       dev_ctx->Alloc(tensor_temp, type_data);
-    } else {
-      LOG(INFO) << "Variable already exists: " << param_names[i].c_str();
     }
     auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
-    LOG(INFO) << "Tensor value for " << param_names[i] << " is "
-              << *tensor_temp;
     tensor_out.push_back(tensor_temp);
-    LOG(INFO) << "tensor_out的个数" << tensor_out.size();
   }
-  // std::cout<<"LoadPirParameters中的pir_program的"<<*pir_program_;
-  LOG(INFO) << "LoadPirParameters中";
-  LOG(INFO) << "sub_scope_的指针" << sub_scope_;
-  PrintScopeVariables(*sub_scope_);
 
-  for (const auto &name : param_names) {
-    LOG(INFO) << "老的param_name: " << name;
-  }
   CreateFeedFetchVar(sub_scope_);
 
   optimized_params_ = optimized_model_path_ + "/" + "_optimized.pdiparams";
-  LOG(INFO) << "optimized_params_存在吗" << FileExists(optimized_params_);
   if (save_optimized && config_.save_optimized_model_ &&
       !FileExists(optimized_params_)) {
-    LOG(INFO) << "save_optimized_";
-
-    LOG(INFO) << "optimized_params " << optimized_params_;
     std::vector<const phi::DenseTensor *> const_tensor_out(tensor_out.begin(),
                                                            tensor_out.end());
-    LOG(INFO) << "const_tensor_out的个数" << const_tensor_out.size();
-    // 打印 param_names_ 的值
-    for (const auto &param_name : param_names) {
-      LOG(INFO) << "param_name: " << param_name;
-    }
-    for (size_t i = 0; i < const_tensor_out.size(); ++i) {
-      const phi::DenseTensor *tensor = const_tensor_out[i];
-      LOG(INFO) << "param_name " << param_names[i];
-      LOG(INFO) << "Tensor " << *tensor;
-      LOG(INFO) << "Tensor place: " << tensor->place();
-    }
     pir::SaveCombineFunction(
         const_tensor_out, param_names, optimized_params_, true, false, true);
-    LOG(INFO) << "pir::SaveCombineFunction已经运行完毕";
     // Check if the contents of const_tensor_out and tensor_out are the same
   }
-  LOG(INFO) << "optimized_params_" << optimized_params_;
 
   if (config_.use_optimized_model_ && FileExists(optimized_params_)) {
-    LOG(INFO) << "param_names的大小" << param_names.size();
-    for (const auto &param_name : param_names) {
-      LOG(INFO) << "原来的param_name " << param_name;
-    }
-    LOG(INFO) << "准备读取优化后的pdiparams";
     pir::LoadCombineFunction(
         optimized_params_, param_names, &tensor_out, false, place_);
-    LOG(INFO) << "读取了优化后的pdiparams";
   } else {
-    for (const auto &param_name : param_names) {
-      LOG(INFO) << "原来的config_.params_file()中的param_name " << param_name;
-    }
-    LOG(INFO) << "读取了没优化的pdiparams";
     pir::LoadCombineFunction(
         config_.params_file(), param_names, &tensor_out, false, place_);
   }
-
-  std::cout << "pir_program LoadCombineFunction后" << *pir_program_
-            << std::endl;
 
   return true;
 }
 
 bool AnalysisPredictor::PreparePirProgram() {
-  CHECK_EQ(pir_program_, nullptr);
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
-  pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
+  if (pir_program_) {
+    PADDLE_FATAL("pir_program_ must be nullptr");
+  } else {
+    pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
+  }
 
   optimized_model_path_ = GetOptimizedModelPath();
   optimized_model_name_ = optimized_model_path_ + "/" + "_optimized.json";
-  LOG(INFO) << "optimized_model_" << optimized_model_name_;
-  LOG(INFO) << "config_.use_optimized_model_" << config_.use_optimized_model_;
 
   if (FileExists(optimized_model_name_) && config_.use_optimized_model_) {
-    LOG(INFO) << "加载了优化后的json模型";
     pir::ReadModule(
         optimized_model_name_, pir_program_.get(), 1 /*pir_version*/);
-    std::cout << "加载了优化后的 pir_program " << *pir_program_ << std::endl;
-
   } else {
-    LOG(INFO) << "加载了未优化的json模型";
     pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
   }
   if (!LoadPirParameters()) {
     return false;
   }
-
   OptimizeInferencePirProgram();
 
   return true;
@@ -1298,36 +1218,21 @@ bool AnalysisPredictor::PrepareExecutor() {
   }
 
   if (config_.new_executor_enabled()) {
-    LOG(INFO) << "new executor is enabled,prepareing execution config";
     framework::interpreter::ExecutionConfig execution_config;
     execution_config.create_local_scope = false;
     execution_config.used_for_inference = true;
 
     auto input_names = GetInputNames();
-
-    LOG(INFO) << "Get input names";
-    for (const auto &name : input_names) {
-      LOG(INFO) << "input-name " << name;
-    }
     execution_config.skip_gc_vars.insert(input_names.begin(),
                                          input_names.end());
     auto output_names = GetOutputNames();
-    LOG(INFO) << "Get output names";
-    for (const auto &name : output_names) {
-      LOG(INFO) << "output-name " << name;
-    }
-
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
 
     if (config_.new_ir_enabled()) {
-      std::cout << "pir_program " << *pir_program_ << std::endl;
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
-      LOG(INFO) << "Called executor_->PrepareInterpreterCore with pir_program_";
     } else {
-      LOG(INFO) << "New IR is not enabled, calling PrepareInterpreterCore with "
-                   "inference_program_";
       executor_->PrepareInterpreterCore(
           sub_scope_, *inference_program_, execution_config);
     }

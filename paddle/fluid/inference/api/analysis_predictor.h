@@ -393,8 +393,6 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   bool LoadParameters();
 
-  void PrintScopeVariables(const paddle::framework::Scope &scope);
-
   ///
   /// \brief Load model parameters.
   ///
