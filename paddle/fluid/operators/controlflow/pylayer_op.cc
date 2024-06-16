@@ -19,8 +19,7 @@
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 namespace {  // NOLINT
 enum class PyLayerBlockIndex { kFORWARD = 0, kBACKWARD = 1, kNONE = 2 };
@@ -263,8 +262,7 @@ class PyLayerBackwardInferVarType : public framework::VarTypeInference {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(pylayer,

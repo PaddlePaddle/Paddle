@@ -27,6 +27,8 @@ import paddle.distributed as dist
 from paddle import LazyGuard
 from paddle.io import BatchSampler, DataLoader, Dataset
 
+np.random.seed(2024)
+
 
 class Config:
     vocab_size = 32000

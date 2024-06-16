@@ -225,7 +225,12 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
       backend::full_with_tensor<T>(num_classes, 0, x.dtype());
 
   std::vector<int64_t> input_dim;
-  input_dim.push_back(x.shape()[0]);
+  int x_dims = 1;
+  for (size_t i = 0; i < x.shape().size(); i++) {
+    x_dims *= x.shape()[i];
+  }
+
+  input_dim.push_back(x_dims);
   input_dim.push_back(num_classes_tensor.shape()[0]);
   auto input_tensor = full<T>(input_dim, 0, x.dtype());
 
@@ -235,13 +240,13 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
   }
   output_dim.push_back(num_classes_tensor.shape()[0]);
 
-  auto end = full<T>({1}, x.shape()[0], x.dtype());
+  auto end = full<T>({1}, x_dims, x.dtype());
   auto start = full<T>({1}, 0, x.dtype());
   auto step = full<T>({1}, 1, x.dtype());
   auto arange_tensor =
       backend::arange_with_tensor<T>(start, end, step, x.dtype());
 
-  std::vector<int64_t> reshape_dim{x.shape()[0], 1};
+  std::vector<int64_t> reshape_dim{x_dims, 1};
   auto x_reshape = reshape<T>(x, reshape_dim);
   auto arange_tensor_reshape = reshape<T>(arange_tensor, reshape_dim);
 
@@ -250,7 +255,7 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
   index_concat.push_back(x_reshape);
   auto index_tensor = concat<T>(index_concat, 1);
 
-  auto update_tensor = full<T>({x.shape()[0]}, 1, x.dtype());
+  auto update_tensor = full<T>({x_dims}, 1, x.dtype());
 
   auto ans = reshape<T>(
       cast<T>(scatter_nd_add<T>(input_tensor, index_tensor, update_tensor),
@@ -436,8 +441,10 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     return std::make_tuple(
         y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space);
   } else {
+    Tensor batch_mean_none;
+    Tensor inv_std_none;
     return std::make_tuple(
-        y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space);
+        y, run_mean_, run_var_, batch_mean_none, inv_std_none, reserve_space);
   }
 }
 
@@ -1218,9 +1225,8 @@ Tensor sigmoid_cross_entropy_with_logits_decomp(
     const paddle::optional<Tensor>& pos_weight,
     bool normalize,
     int ignore_index) {
-  auto dims = x.shape();
-  const Tensor zero = full<T>(dims, 0, x.type());
-  const Tensor one = full<T>(dims, 1, x.type());
+  const Tensor zero = full_like_decomp<T>(x, 0, x.type(), x.place());
+  const Tensor one = full_like_decomp<T>(x, 1, x.type(), x.place());
   Tensor pos_weight_tensor;
   if (pos_weight) {
     pos_weight_tensor = pos_weight.get();
@@ -1229,14 +1235,15 @@ Tensor sigmoid_cross_entropy_with_logits_decomp(
   }
   auto term1 = where<T>(x > zero, x, zero);
   auto term2 = x * label;
-  auto term3 = log<T>(1 + exp<T>(-abs<T>(x)));
+  auto term3 = log<T>(one + exp<T>(-abs<T>(x)));
   const Tensor tmp_out = term1 - term2 + term3 * pos_weight_tensor;
-  const Tensor ignore_index_tensor = full<T>(dims, ignore_index, label.type());
+  const Tensor ignore_index_tensor =
+      full_like_decomp<T>(x, ignore_index, label.type(), label.place());
   auto out = where<T>(label == ignore_index_tensor, zero, tmp_out);
   if (normalize) {
     // Follow the implementation in
     // paddle/phi/kernels/cpu/sigmoid_cross_entropy_with_logits_kernel.cc
-    const Tensor eps1 = full<T>(dims, 1e-6, x.type());
+    const Tensor eps1 = full_like_decomp<T>(x, 1e-6, x.type(), x.place());
     auto diff = label - ignore_index_tensor;
     const Tensor tmp_norm = sum<T>(where<T>(abs<T>(diff) > eps1, one, zero));
     // Follow the implementation in

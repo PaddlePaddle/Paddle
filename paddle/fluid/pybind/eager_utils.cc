@@ -50,8 +50,7 @@ limitations under the License. */
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_int32(check_nan_inf_level);
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 extern PyTypeObject* p_tensor_type;
 extern PyTypeObject* p_string_tensor_type;
@@ -2166,7 +2165,18 @@ PyObject* CastPyArg2ValuePreHook(PyObject* obj) {
 
 pir::Value CastPyArg2Value(PyObject* obj,
                            const std::string& op_type,
-                           size_t arg_pos) {
+                           size_t arg_pos,
+                           bool dispensable) {
+  if (obj == nullptr || obj == Py_None) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument (position %d) must be "
+          "Value, but got None",
+          op_type,
+          arg_pos + 1));
+    }
+    return pir::Value();
+  }
   obj = CastPyArg2ValuePreHook(obj);
   if (PyObject_TypeCheck(obj, g_ir_value_pytype)) {
     return ::pybind11::handle(obj).cast<pir::Value>();
@@ -2182,20 +2192,36 @@ pir::Value CastPyArg2Value(PyObject* obj,
 
 paddle::optional<pir::Value> CastPyArg2OptionalValue(PyObject* obj,
                                                      const std::string& op_type,
-                                                     size_t arg_pos) {
+                                                     size_t arg_pos,
+                                                     bool dispensable) {
   if (obj == nullptr || obj == Py_None) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument (position %d) must be "
+          "Value, but got None",
+          op_type,
+          arg_pos + 1));
+    }
     return paddle::none;
   }
   return paddle::make_optional<pir::Value>(
-      CastPyArg2Value(obj, op_type, arg_pos));
+      CastPyArg2Value(obj, op_type, arg_pos, dispensable));
 }
 
 std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
                                                 const std::string& op_type,
-                                                size_t arg_pos) {
+                                                size_t arg_pos,
+                                                bool dispensable) {
   std::vector<pir::Value> value_list;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
+    if (len == 0 && !dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument (position %d) must be "
+          "list of Value, but got empty list",
+          op_type,
+          arg_pos + 1));
+    }
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
@@ -2216,6 +2242,13 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
     }
   } else if (PyTuple_Check(obj)) {
     Py_ssize_t len = PyTuple_Size(obj);
+    if (len == 0 && !dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument (position %d) must be "
+          "list of Value, but got empty list",
+          op_type,
+          arg_pos + 1));
+    }
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
@@ -2246,12 +2279,22 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
 }
 
 paddle::optional<std::vector<pir::Value>> CastPyArg2OptionalVectorOfValue(
-    PyObject* obj, const std::string& op_type, size_t arg_pos) {
+    PyObject* obj,
+    const std::string& op_type,
+    size_t arg_pos,
+    bool dispensable) {
   if (obj == nullptr || obj == Py_None) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument (position %d) must be "
+          "list of Value, but got None",
+          op_type,
+          arg_pos + 1));
+    }
     return paddle::none;
   }
   return paddle::make_optional<std::vector<pir::Value>>(
-      CastPyArg2VectorOfValue(obj, op_type, arg_pos));
+      CastPyArg2VectorOfValue(obj, op_type, arg_pos, dispensable));
 }
 
 paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
@@ -2824,5 +2867,4 @@ void BindEagerUtils(PyObject* module) {
   }
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

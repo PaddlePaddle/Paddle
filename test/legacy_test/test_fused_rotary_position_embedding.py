@@ -159,8 +159,8 @@ def paddle_fused_rotary_position_embedding(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA ",
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCM ",
 )
 @param.parameterized_class(
     ("name", "shape_q", "shape_k", "shape_v", "position_ids_list"),
