@@ -18,8 +18,7 @@
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace paddle {
-namespace inference {
+namespace paddle::inference {
 
 using paddle::framework::proto::VarType;
 
@@ -70,5 +69,4 @@ phi::DataType GetModelPrecision(const framework::ProgramDesc& program) {
   return ret;
 }
 
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference

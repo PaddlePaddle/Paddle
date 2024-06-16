@@ -207,7 +207,7 @@ function fn (_A, _A1, _B)
       }
       serial for (j, 0, 32)
       {
-        B[((16 * i_outer) + i_inner), j] = (A1[((16 * i_outer) + i_inner), j] + (A1[(1 + ((16 * i_outer) + i_inner)), j] + A1[(2 + ((16 * i_outer) + i_inner)), j]))
+        B[((16 * i_outer) + i_inner), j] = ((A1[((16 * i_outer) + i_inner), j] + A1[(1 + ((16 * i_outer) + i_inner)), j]) + A1[(2 + ((16 * i_outer) + i_inner)), j])
       }
     }
   }
@@ -431,7 +431,7 @@ function fn (_A, _C)
   {
     serial for (j, 0, 200)
     {
-      C[i, j] = (6.00000000f + (2.00000000f * A[i, j]))
+      C[i, j] = ((((A[i, j] + 1.00000000f) + 1.00000000f) + 1.00000000f) * 2.00000000f)
     }
   }
 }
@@ -475,21 +475,21 @@ function fn (_A, _C, _C1, _C2)
   {
     serial for (j, 0, 200)
     {
-      C2[i, j] = (6.00000000f + (2.00000000f * A[i, j]))
+      C2[i, j] = ((((A[i, j] + 1.00000000f) + 1.00000000f) + 1.00000000f) * 2.00000000f)
     }
   }
   serial for (i, 0, 100)
   {
     serial for (j, 0, 200)
     {
-      C1[i, j] = (4.00000000f + (2.00000000f * A[i, j]))
+      C1[i, j] = (((A[i, j] + 1.00000000f) + 1.00000000f) * 2.00000000f)
     }
   }
   serial for (i, 0, 100)
   {
     serial for (j, 0, 200)
     {
-      C[i, j] = (2.00000000f + (2.00000000f * A[i, j]))
+      C[i, j] = ((A[i, j] + 1.00000000f) * 2.00000000f)
     }
   }
 }

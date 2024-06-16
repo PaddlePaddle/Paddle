@@ -42,3 +42,4 @@ py_test_modules(
   FLAGS_pir_subgraph_saving_dir=${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(fused_pass)
+add_subdirectory(translator)

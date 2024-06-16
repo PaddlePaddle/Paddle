@@ -307,7 +307,7 @@ static int64_t get_l3_size(int i) {
 
 XPUContext::XPUContext() : DeviceContext() {
   if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr) {
-    int default_num_stream = 4;
+    int default_num_stream = 2;
     if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL_STREAM_NUMBER") != nullptr) {
       default_num_stream =
           atoi(std::getenv("XPU_CDNN_CLUSTER_PARALLEL_STREAM_NUMBER"));
@@ -348,10 +348,29 @@ XPUContext::~XPUContext() = default;
 
 const Place& XPUContext::GetPlace() const { return impls_[0]->GetPlace(); }
 
-XPUStream XPUContext::stream(int i) const { return impls_[i]->stream(); }
+XPUStream XPUContext::stream(int i) const {
+  CheckValidStreamId(i);
+  return impls_[i]->stream();
+}
 
 void XPUContext::SetStream(void* stream, int i) {
+  CheckValidStreamId(i);
   impls_[i]->SetStream(stream);
+}
+
+void XPUContext::CheckValidStreamId(int i) const {
+  PADDLE_ENFORCE_GE(
+      i,
+      0,
+      errors::InvalidArgument(
+          "The stream index must be greater than or equal to 0."));
+  PADDLE_ENFORCE_LT(
+      i,
+      GetStreamNum(),
+      errors::InvalidArgument("The stream index shoule be less than the number "
+                              "of stream used (%d), but got %d",
+                              GetStreamNum(),
+                              i));
 }
 
 void XPUContext::SetXpuVersion(int version) {
@@ -371,6 +390,7 @@ backends::xpu::XPUVersion XPUContext::xpu_version() const {
 }
 
 xpu::Context* XPUContext::x_context(int i) const {
+  CheckValidStreamId(i);
   return impls_[i]->GetXContext();
 }
 
@@ -385,10 +405,12 @@ void XPUContext::Wait() const {
 }
 
 void XPUContext::SetXContext(xpu::Context* context, int i) {
+  CheckValidStreamId(i);
   impls_[i]->SetXContext(context);
 }
 
 void XPUContext::SetL3Cache(int64_t l3_size, int i) {
+  CheckValidStreamId(i);
   impls_[i]->SetL3Cache(l3_size);
 }
 
@@ -396,7 +418,36 @@ void XPUContext::SetBkclContext(xpu::BKCLContext_t context) {
   impls_[0]->SetBkclContext(context);
 }
 
-void XPUContext::CreateStream(int i) { impls_[i]->CreateStream(); }
+void XPUContext::CreateStream(int i) {
+  CheckValidStreamId(i);
+  impls_[i]->CreateStream();
+}
+
+void XPUContext::RecordEvent(XPUEvent event, int s) const {
+  CheckValidStreamId(s);
+  int r = xpu_event_record(event, stream(s));
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
+}
+
+void XPUContext::StreamWaitEvent(XPUEvent event, int s) const {
+  CheckValidStreamId(s);
+  int r = xpu_stream_wait_event(stream(s), event);
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
+}
+
+void XPUContext::StreamWaitStream(int wait_stream, int record_stream) const {
+  CheckValidStreamId(wait_stream);
+  CheckValidStreamId(record_stream);
+  XPUEvent event;
+  int r = xpu_event_create(&event);
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
+  RecordEvent(event, record_stream);
+  StreamWaitEvent(event, wait_stream);
+  r = xpu_event_destroy(event);
+  PADDLE_ENFORCE_XRE_SUCCESS(r);
+}
+
+int64_t XPUContext::GetStreamNum() const { return impls_.size(); }
 
 void XPUContext::Init() { impls_[0]->Init(); }
 }  // namespace phi
