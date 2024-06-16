@@ -106,10 +106,10 @@ class TestSparseUnary(unittest.TestCase):
                     [[8, 16], [16, 16], [24, 16]], 0, 'csr', 'float64'
                 )
                 self.compare_with_dense(
-                    [[6, 8], [6, 16], [6, 8]], 1, 'csr', 'float64'
+                    [[8, 8], [8, 16], [8, 8]], 1, 'csr', 'float64'
                 )
                 self.compare_with_dense(
-                    [[4, 8, 16], [4, 8, 16], [8, 8, 16]], 0, 'csr', 'float64'
+                    [[4, 8, 16], [8, 8, 16], [16, 8, 16]], 0, 'csr', 'float64'
                 )
                 self.compare_with_dense(
                     [[4, 16, 8], [4, 8, 8], [4, 24, 8]], 1, 'csr', 'float64'
