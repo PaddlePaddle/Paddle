@@ -4784,7 +4784,7 @@ void FusedEmbeddingFcLstmInferMeta(const MetaTensor& ids,
                                    b_dims[0]));
   PADDLE_ENFORCE_EQ(
       b_dims[1],
-      (ctx->Attrs().Get<bool>("use_peepholes") ? 7 : 4) * frame_size,
+      (use_peepholes ? 7 : 4) * frame_size,
       phi::errors::InvalidArgument(
           "The second dimension of Input(Bias) should be "
           "7 * %d if enable peepholes connection or"
@@ -4792,7 +4792,7 @@ void FusedEmbeddingFcLstmInferMeta(const MetaTensor& ids,
           frame_size,
           frame_size,
           b_dims[1],
-          ctx->Attrs().Get<bool>("use_peepholes")));
+          use_peepholes));
 
   phi::DDim out_dims({x_dims[0], frame_size});
   hidden->set_dims(out_dims);
