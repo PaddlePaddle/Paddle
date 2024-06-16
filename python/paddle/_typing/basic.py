@@ -13,7 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, TypeVar, Union
+from typing import TYPE_CHECKING, Any, List, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -32,8 +32,8 @@ _TensorIndexItem: TypeAlias = Union[
 ]
 TensorIndex: TypeAlias = Union[
     _TensorIndexItem,
-    tuple[_TensorIndexItem, ...],
-    list[_TensorIndexItem],
+    Tuple[_TensorIndexItem, ...],
+    List[_TensorIndexItem],
 ]
 
 
