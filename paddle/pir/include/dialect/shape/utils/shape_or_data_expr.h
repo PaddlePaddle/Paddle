@@ -121,7 +121,7 @@ using ShapeOrDataDimExprsBase =
 
 class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
  public:
-  ShapeOrDataDimExprs();
+  ShapeOrDataDimExprs() = delete;
   ShapeOrDataDimExprs(
       const TensorShapeOrDataDimExprs& tensor_dim_exprs)  // NOLINT
       : ShapeOrDataDimExprsBase(tensor_dim_exprs) {}

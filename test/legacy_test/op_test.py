@@ -1321,13 +1321,11 @@ class OpTest(unittest.TestCase):
                     if OpTestUtils.is_bfloat16_type(item.dtype)
                     else item.dtype
                 )
-                paddle.enable_static()
                 x = paddle.static.data(name=name, shape=item.shape, dtype=dtype)
                 x.stop_gradient = stop_gradient
                 static_inputs[name].append(x)
                 feed.update({name: item})
                 input_dict.update({name: x})
-        print(input_dict, "--input_dict", static_inputs, "--static_inputs")
         return static_inputs, attrs_outputs, input_dict, feed
 
     def _need_fetch(self, sig_name):
@@ -1613,9 +1611,8 @@ class OpTest(unittest.TestCase):
         else:
             return outs, fetch_list
 
-    def _infer_and_compare_symbol(self, place):
-        """Don't caculate the program, only infer of value"""
-        kernel_sig = self.get_kernel_signature(place)
+    def _infer_and_compare_symbol(self):
+        """Don't caculate the program, only infer the shape of var"""
         program = paddle.static.Program()
         with paddle.static.program_guard(program):
             with scope_guard(Scope()):
@@ -1626,51 +1623,6 @@ class OpTest(unittest.TestCase):
                     input_dict,
                     feed,
                 ) = self.get_ir_input_attr_dict_and_feed(stop_gradient=True)
-                # prepare args
-                args = OpTestUtils.prepare_python_api_arguments(
-                    self.python_api,
-                    static_inputs,
-                    attrs,
-                    kernel_sig,
-                    target_dtype=paddle.pir.core.DataType,
-                )
-                inputs_sig, attrs_sig, outputs_sig = kernel_sig
-                if hasattr(self, "python_out_sig"):
-                    outputs_sig = self.python_out_sig
-                args = OpTestUtils.assumption_assert_and_transform(
-                    args, len(inputs_sig)
-                )
-                # ret_tuple = self.python_api(*args)
-                fetch_list = getattr(self, "fetch_list", [])
-
-                # if the fetch_list is customized by user, we use it directly.
-                # if not, fill the fetch_list by the user configured outputs in test.
-                # filter ret_tuple
-                ret_to_check = []
-                # if len(fetch_list) == 0:
-                #     if isinstance(ret_tuple, (tuple, list)):
-                #         assert len(ret_tuple) == len(outputs_sig)
-                #         for var, sig_name in zip(ret_tuple, outputs_sig):
-                #             if no_check_set is not None and var in no_check_set:
-                #                 continue
-                #             if not self._need_fetch(sig_name):
-                #                 continue
-                #             if isinstance(var, list):
-                #                 ret_to_check.append(var)
-                #                 for v in var:
-                #                     fetch_list.append(v)
-                #             else:
-                #                 ret_to_check.append(var)
-                #                 fetch_list.append(var)
-                #     elif isinstance(ret_tuple, paddle.base.libpaddle.pir.Value):
-                #         fetch_list.append(ret_tuple)
-                #         ret_to_check = ret_tuple
-                #     elif ret_tuple is None:
-                #         pass
-                #     else:
-                #         raise ValueError(
-                #             "output of python api should be Value or list of Value or tuple of Value"
-                #         )
 
                 # run the program with pass
                 pm = pir.PassManager()
@@ -1690,8 +1642,9 @@ class OpTest(unittest.TestCase):
                     expect_shape = var.shape
                     expect_data = []
                     if not shape_or_data.is_equal(expect_shape, expect_data):
-                        print("Shape or data mismatch for var: ", var.name)
-                        return False
+                        raise AssertionError(
+                            f"Operator {self.op_type} Value {var.name}'s shape or data is different from expected."
+                        )
                 return True
 
     def _compare_expect_and_actual_outputs(
@@ -2617,34 +2570,15 @@ class OpTest(unittest.TestCase):
             def check(self):
                 """return None means ok, raise Error means failed."""
                 self.init()
-                self.infer_symbol()
-                # self.compare_symbol_with_expect()
+                self.infer_and_compare_symbol()
 
             def init(self):
                 self.checker_name = "symbol infer checker"
 
-            def _decode_symbol_of_value(self, fetch_list):
-                """Decode symbol of Value"""
-                pass
-                return fetch_list
-
-            def infer_symbol(self):
-                """infer symbol from inputs to outputs"""
+            def infer_and_compare_symbol(self):
+                """infer symbol and compare it with actualy shape and data"""
                 self.is_python_api_test = True
-                self.op_test._infer_and_compare_symbol(place)
-                # self.symbols = symbols
-                # self.fetch_list = self._decode_symbol_of_value(fetch_list)
-
-                # if self.op_test.is_compared_with_fp32():
-                # self.op_test.enable_cal_ref_output()
-                # ref_symbols, ref_fetch_list = self.op_test._infer_and_compare_symbol(place)
-                # self.op_test.disable_cal_ref_output()
-                # self.ref_symbols = ref_symbols
-                # self.ref_fetch_list = ref_fetch_list
-
-            def compare_symbol_with_expect():
-                print("compare symbol with expect")
-                pass
+                self.op_test._infer_and_compare_symbol()
 
         # set some flags by the combination of arguments.
         if self.is_float16_op():

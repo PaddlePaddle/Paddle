@@ -90,7 +90,7 @@ class IR_API ShapeConstraintIRAnalysis final
     : public std::enable_shared_from_this<ShapeConstraintIRAnalysis> {
  public:
   ShapeConstraintIRAnalysis() = default;
-  // ShapeConstraintIRAnalysis(const ShapeConstraintIRAnalysis&) = delete;
+  ShapeConstraintIRAnalysis(const ShapeConstraintIRAnalysis&) = delete;
   ShapeConstraintIRAnalysis(ShapeConstraintIRAnalysis&&) = delete;
   void Init();
 

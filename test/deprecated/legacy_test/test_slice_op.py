@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-
-sys.path.append('/home/workspace/Paddle/test/legacy_test')
-
 import unittest
 
 import gradient_checker
