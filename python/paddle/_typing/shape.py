@@ -20,7 +20,6 @@ from typing_extensions import TypeAlias
 if TYPE_CHECKING:
     from .. import Tensor
 
-
 _DynamicShapeLike: TypeAlias = Union[
     Sequence[Union[int, "Tensor", None]],
     "Tensor",
@@ -33,6 +32,7 @@ _StaticShapeLike: TypeAlias = Union[
 ]
 
 ShapeLike: TypeAlias = Union[_DynamicShapeLike, _StaticShapeLike]
+
 
 # for size parameters, eg, kernel_size, stride ...
 Size1: TypeAlias = Union[int, Tuple[int], List[int]]
