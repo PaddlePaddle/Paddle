@@ -18,7 +18,7 @@ namespace phi {
 
 namespace memory_utils {
 
-Allocator::AllocationPtr Alloc(const phi::GPUPlace& place,
+Allocator::AllocationPtr Alloc(const phi::Place& place,
                                size_t size,
                                const phi::Stream& stream) {
   return MemoryUtils::Instance().Alloc(place, size, stream);

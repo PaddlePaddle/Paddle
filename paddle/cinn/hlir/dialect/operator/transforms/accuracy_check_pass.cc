@@ -18,8 +18,10 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_to_pd_util.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
@@ -32,7 +34,16 @@
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
+COMMON_DECLARE_double(accuracy_check_rtol);
+COMMON_DECLARE_double(accuracy_check_atol);
+
 namespace cinn::dialect::ir {
+
+static double rtol =
+    FLAGS_accuracy_check_rtol;  // relative tolerance for accuracy check
+static double atol =
+    FLAGS_accuracy_check_atol;  // relative tolerance for accuracy check
+static constexpr bool equal_nan = false;  // whether to consider NaN as equal
 
 class AddAccuracyCheckPattern
     : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
@@ -54,8 +65,6 @@ class AddAccuracyCheckPattern
                                       /*clone_successors=*/false);
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
     ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-    ::pir::Builder builder = ::pir::Builder(ctx, fusion_op->GetParent());
-    builder.set_insertion_point(fusion_op);
 
     const auto& InsertAccuaryCheckOp = [&](::pir::Operation* op) -> void {
       for (size_t i = 0; i < op->num_operands(); ++i) {
@@ -63,19 +72,46 @@ class AddAccuracyCheckPattern
             fusion_op.result(i),
             ir_mapping.Lookup(op->operand_source(i)),
             fn_name,
-            i);
+            rtol,
+            atol,
+            equal_nan);
       }
     };
 
     const auto& ConvertCinnOpToPdOp = [&](::pir::Operation* op) -> void {
-      rewriter.SetInsertionPointAfter(fusion_op);
       for (size_t i = 0; i < op->num_operands(); ++i) {
         if (!ir_mapping.GetMap<pir::Value>().count(op->operand_source(i))) {
           ir_mapping.Add(op->operand_source(i), op->operand_source(i));
         }
       }
+      if (op->isa<cinn::dialect::GenerateShapeOp>()) {
+        auto cloned_op = op->Clone(ir_mapping, clone_options);
+        rewriter.Insert(cloned_op);
+        auto cinn_op = cloned_op->dyn_cast<cinn::dialect::GenerateShapeOp>();
+        std::optional<pir::Value> out_replacement =
+            details::GetOutReplacement(cinn_op, &rewriter);
+        if (!out_replacement.has_value()) return;
+
+        rewriter.ReplaceAllUsesWith(cloned_op->result(0),
+                                    out_replacement.value());
+        PADDLE_ENFORCE_EQ(
+            cloned_op->use_empty(),
+            true,
+            phi::errors::InvalidArgument("cinn_op.generate_shape op shouldn't "
+                                         "be used outside fusion block."));
+        rewriter.EraseOp(cloned_op);
+        ir_mapping.Add(op->result(0), out_replacement.value());
+        rewriter.SetInsertionPointAfter(out_replacement.value().defining_op());
+        return;
+      }
+      if (op->isa<cinn::dialect::YieldStoreOp>()) {
+        VLOG(6) << "skip yield_store op";
+        ir_mapping.Add(op->result(0), ir_mapping.Lookup(op->operand_source(0)));
+        return;
+      }
       pir::Operation* pd_op =
-          cinn::dialect::details::RewriteCinnOpToPdOp(op, ir_mapping, builder);
+          cinn::dialect::details::RewriteCinnOpToPdOp(op, ir_mapping, rewriter);
+      rewriter.SetInsertionPointAfter(pd_op);
     };
 
     const auto& ClonePdOp = [&](::pir::Operation* op) -> void {
@@ -89,6 +125,7 @@ class AddAccuracyCheckPattern
       rewriter.SetInsertionPointAfter(new_op);
     };
 
+    rewriter.SetInsertionPointAfter(fusion_op);
     for (auto& op : op_list) {
       if (op->isa<::pir::YieldOp>()) {
         InsertAccuaryCheckOp(op);
@@ -104,7 +141,7 @@ class AddAccuracyCheckPattern
 
 class AccuarcyCheckPass : public pir::Pass {
  public:
-  AccuarcyCheckPass() : pir::Pass("accuracy_check_pass", /*opt_level=*/3) {}
+  AccuarcyCheckPass() : pir::Pass("accuracy_check_pass", /*opt_level=*/1) {}
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);

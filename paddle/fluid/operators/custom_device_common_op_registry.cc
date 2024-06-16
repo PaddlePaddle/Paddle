@@ -529,7 +529,7 @@ class CSyncCalcStreamCustomDeviceKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto place = ctx.GetPlace();
     auto dev_ctx = static_cast<DeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
+        phi::DeviceContextPool::Instance().Get(place));
     dev_ctx->GetStream()->Synchronize();
   }
 };
@@ -609,7 +609,7 @@ class CAllReduceOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     std::shared_ptr<phi::stream::Stream> stream;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
                    ->GetStream();
     } else {
@@ -643,7 +643,7 @@ class CBroadcastOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     std::shared_ptr<phi::stream::Stream> stream;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
                    ->GetStream();
     } else {
@@ -663,11 +663,10 @@ class CBroadcastOpCustomDeviceKernel : public framework::OpKernel<T> {
       VLOG(3) << "rank " << comm->GetRank() << " invoke Bcast. sent "
               << x->numel();
       if (out != x) {
-        framework::TensorCopy(
-            *static_cast<const phi::DenseTensor*>(x),
-            place,
-            *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<phi::DenseTensor*>(out));
+        framework::TensorCopy(*static_cast<const phi::DenseTensor*>(x),
+                              place,
+                              *phi::DeviceContextPool::Instance().Get(place),
+                              static_cast<phi::DenseTensor*>(out));
       }
     } else {
       phi::DeviceManager::CCLBroadcast(place.GetDeviceType(),
@@ -702,7 +701,7 @@ class BarrierOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     std::shared_ptr<phi::stream::Stream> stream;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
                    ->GetStream();
     } else {
@@ -1020,8 +1019,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
 
       std::shared_ptr<phi::stream::Stream> stream;
       if (ctx.Attr<bool>("use_calc_stream")) {
-        auto dev_ctx =
-            paddle::platform::DeviceContextPool::Instance().Get(place);
+        auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
         stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
                      ->GetStream();
       } else {
@@ -1232,8 +1230,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
 
       std::shared_ptr<phi::stream::Stream> stream;
       if (ctx.Attr<bool>("use_calc_stream")) {
-        auto dev_ctx =
-            paddle::platform::DeviceContextPool::Instance().Get(place);
+        auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
         stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
                      ->GetStream();
       } else {
@@ -1369,7 +1366,10 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           float>,
       paddle::operators::CConcatOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          phi::dtype::float16>);
+          phi::dtype::float16>,
+      paddle::operators::CConcatOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          phi::dtype::bfloat16>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_split,
       device_type,
@@ -1381,7 +1381,10 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           int>,
       paddle::operators::CSplitOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          phi::dtype::float16>);
+          phi::dtype::float16>,
+      paddle::operators::CSplitOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          phi::dtype::bfloat16>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_embedding,
       device_type,

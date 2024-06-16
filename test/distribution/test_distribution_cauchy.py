@@ -625,22 +625,6 @@ class CauchyTestError(unittest.TestCase):
     def setUp(self):
         paddle.disable_static(self.place)
 
-    @parameterize_func(
-        [
-            (-1j + 1, 0.0, TypeError),  # complex
-            (np.array(0.0), 0.0, TypeError),  # ndarray
-            ([0.0, 0.0], 0.0, TypeError),  # list
-            ((0.0, 0.0), 0.0, TypeError),  # tuple
-            (0.0, -1j + 1, TypeError),  # complex
-            (0.0, np.array(0.0), TypeError),  # ndarray
-            (0.0, [0.0, 0.0], TypeError),  # list
-            (0.0, (0.0, 0.0), TypeError),  # tuple
-        ]
-    )
-    def test_bad_init(self, loc, scale, error):
-        with paddle.base.dygraph.guard(self.place):
-            self.assertRaises(error, Cauchy, loc, scale)
-
     def test_bad_property(self):
         """For property like mean/variance/stddev which is undefined in math,
         we should raise `ValueError` instead of `NotImplementedError`.

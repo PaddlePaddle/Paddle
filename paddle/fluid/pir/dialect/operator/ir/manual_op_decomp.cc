@@ -98,12 +98,22 @@ std::vector<std::vector<pir::Value>> BatchNormOp::Decomp(pir::Operation* op) {
   res[2].push_back(std::static_pointer_cast<primitive::LazyTensor>(
                        std::get<2>(op_res).impl())
                        ->value());
-  res[3].push_back(std::static_pointer_cast<primitive::LazyTensor>(
-                       std::get<3>(op_res).impl())
-                       ->value());
-  res[4].push_back(std::static_pointer_cast<primitive::LazyTensor>(
-                       std::get<4>(op_res).impl())
-                       ->value());
+  if (std::get<3>(op_res).initialized()) {
+    res[3].push_back(std::static_pointer_cast<primitive::LazyTensor>(
+                         std::get<3>(op_res).impl())
+                         ->value());
+  } else {
+    pir::Value saved_mean;
+    res[3].push_back(saved_mean);
+  }
+  if (std::get<4>(op_res).initialized()) {
+    res[4].push_back(std::static_pointer_cast<primitive::LazyTensor>(
+                         std::get<4>(op_res).impl())
+                         ->value());
+  } else {
+    pir::Value saved_var;
+    res[4].push_back(saved_var);
+  }
   pir::Value reserve_space;
   res[5].push_back(reserve_space);
 
@@ -180,16 +190,58 @@ std::vector<std::vector<pir::Value>> BatchNorm_Op::Decomp(pir::Operation* op) {
   res[2].push_back(std::static_pointer_cast<primitive::LazyTensor>(
                        std::get<2>(op_res).impl())
                        ->value());
-  res[3].push_back(std::static_pointer_cast<primitive::LazyTensor>(
-                       std::get<3>(op_res).impl())
-                       ->value());
-  res[4].push_back(std::static_pointer_cast<primitive::LazyTensor>(
-                       std::get<4>(op_res).impl())
-                       ->value());
+  if (std::get<3>(op_res).initialized()) {
+    res[3].push_back(std::static_pointer_cast<primitive::LazyTensor>(
+                         std::get<3>(op_res).impl())
+                         ->value());
+  } else {
+    pir::Value saved_mean;
+    res[3].push_back(saved_mean);
+  }
+  if (std::get<4>(op_res).initialized()) {
+    res[4].push_back(std::static_pointer_cast<primitive::LazyTensor>(
+                         std::get<4>(op_res).impl())
+                         ->value());
+  } else {
+    pir::Value saved_var;
+    res[4].push_back(saved_var);
+  }
+
   pir::Value reserve_space;
   res[5].push_back(reserve_space);
 
   VLOG(4) << "Decomp call batch_norm_'s decomp interface end";
+  return res;
+}
+
+std::vector<std::vector<pir::Value>> ClipOp::Decomp(pir::Operation* op) {
+  VLOG(4) << "Decomp call clip's decomp interface begin";
+
+  ClipOp op_obj = op->dyn_cast<ClipOp>();
+  (void)op_obj;
+
+  FLAGS_tensor_operants_mode = "static";
+
+  VLOG(6) << "Decomp Prepare inputs of clip";
+
+  Tensor x(std::make_shared<primitive::LazyTensor>(op_obj.x()));
+  Tensor min(std::make_shared<primitive::LazyTensor>(op_obj.min()));
+  Tensor max(std::make_shared<primitive::LazyTensor>(op_obj.max()));
+
+  VLOG(6) << "Decomp call clip's forward composite rule prepare";
+
+  auto org_res = op->results();
+  std::vector<std::vector<pir::Value>> res(org_res.size());
+
+  VLOG(6) << "Decomp call clip's forward composite rule begin";
+  Tensor op_res =
+      paddle::primitive::details::clip_decomp<primitive::LazyTensor>(
+          x, min, max);
+  VLOG(6) << "Decomp call clip's forward composite rule end";
+  res[0].push_back(
+      std::static_pointer_cast<primitive::LazyTensor>(op_res.impl())->value());
+
+  VLOG(4) << "Decomp call clip's decomp interface end";
   return res;
 }
 

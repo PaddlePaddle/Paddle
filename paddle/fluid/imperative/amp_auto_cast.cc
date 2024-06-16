@@ -23,8 +23,7 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/var_helper.h"
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 class VarBase;
 
@@ -120,9 +119,7 @@ OpSupportedInfos(const std::string& place,
 }
 
 AutoCastGuard::AutoCastGuard(std::shared_ptr<AmpAttrs> state, AmpLevel level)
-    : state_(state) {
-  pre_amp_level_ = state_->GetAmpLevel();
-
+    : state_(state), pre_amp_level_(state_->GetAmpLevel()) {
   if (pre_amp_level_ != level) {
     state_->SetAmpLevel(level);
   }
@@ -237,7 +234,7 @@ thread_local phi::DataType AmpAttrs::amp_dtype_ = phi::DataType::FLOAT32;
 
 AmpAttrs::AmpAttrs() {}
 
-AmpAttrs::~AmpAttrs() = default;
+// AmpAttrs::~AmpAttrs() = default;
 
 bool AmpAttrs::GetUsePromote() const { return use_promote_; }
 
@@ -589,5 +586,4 @@ template NameVarMap<VarBase> CastPureBf16Inputs<VarBase>(
 template NameVarMap<egr::EagerVariable> CastPureBf16Inputs<egr::EagerVariable>(
     const std::string& op_type, const NameVarMap<egr::EagerVariable>& ins);
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

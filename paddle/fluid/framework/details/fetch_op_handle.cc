@@ -18,9 +18,7 @@
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 FetchOpHandle::FetchOpHandle(ir::Node *node,
                              FetchResultType *data,
@@ -33,6 +31,7 @@ FetchOpHandle::FetchOpHandle(ir::Node *node,
       offset_(offset),
       local_scopes_(local_scopes),
       local_exec_scopes_(local_exec_scopes),
+      tensors_(),
       return_merged_(return_merged) {}
 
 FetchOpHandle::~FetchOpHandle() = default;
@@ -181,6 +180,4 @@ bool FetchOpHandle::IsMultiDeviceTransfer() { return true; }
 
 std::string FetchOpHandle::Name() const { return "Fetch"; }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

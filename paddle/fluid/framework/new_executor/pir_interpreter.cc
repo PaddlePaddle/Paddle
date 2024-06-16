@@ -91,8 +91,7 @@ COMMON_DECLARE_int32(low_precision_op_list);
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
       op_idx++, place_, &op, value_exe_info_.get()));
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void RecordLowPrecisionOp(const InstructionBase* instr_node) {
   if (FLAGS_low_precision_op_list) {
@@ -114,13 +113,47 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
                                const ::pir::Block* ir_block,
                                framework::Scope* scope,
                                const ExecutionConfig& execution_config)
-    : place_(place),
+    : is_build_(false),
+      static_build_(false),
+      is_shared_results_build_(false),
+      place_(place),
+      unfinished_op_number_(0),
       execution_config_(execution_config),
+      force_events_to_wait_(nullptr),
       var_scope_(scope),
       scope_(scope),
+      local_scope_(nullptr),
+      main_thread_blocker_(),
+      async_work_queue_(),
+      exception_holder_(),
+      exception_notifier_(nullptr),
+      completion_notifier_(nullptr),
+      gc_(nullptr),
+      last_live_ops_(),
+      dependency_count_(nullptr),
+      deps_(),
+      refs_(),
+      sync_op_num_(-1),
+      nccl_op_num_(-1),
+      onednn_op_num_(-1),
+      trace_execute_order_(),
+      pir_output_hookfuncs_(),
+      pir_input_hookfuncs_(),
+      ir_instruction_scheduling_priority_less(),
       ir_block_(ir_block),
+      sub_blocks_(),
+      vec_instruction_base_(),
+      value_exe_info_(nullptr),
+      var_ref_count_(),
+      ir_dependency_builder_(),
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names),
+      parameter_var_names_(),
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      calculate_stream_timer_(
+          std::make_unique<phi::CalculateStreamTimer>(place)),
+#endif
+      last_calculate_instr_id_(0),
       enable_job_schedule_profiler_(false) {
   VLOG(2) << "PirInterpreter(): " << this << " on " << place_;
 
@@ -163,11 +196,7 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
   std::stringstream ss;
   ss << this
      << std::chrono::high_resolution_clock::now().time_since_epoch().count();
-  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  calculate_stream_timer_ = std::make_unique<phi::CalculateStreamTimer>(place);
-#endif
+  BuildScope(*ir_block_, ss.str(), execution_config_, value_exe_info_.get());
 }
 
 PirInterpreter::PirInterpreter(
@@ -177,14 +206,47 @@ PirInterpreter::PirInterpreter(
     framework::Scope* scope,
     std::shared_ptr<ValueExecutionInfo> value_exe_info,
     const ExecutionConfig& execution_config)
-    : place_(place),
+    : is_build_(false),
+      static_build_(false),
+      is_shared_results_build_(false),
+      place_(place),
+      unfinished_op_number_(0),
       execution_config_(execution_config),
+      force_events_to_wait_(nullptr),
       var_scope_(scope),
       scope_(scope),
+      local_scope_(nullptr),
+      main_thread_blocker_(),
+      async_work_queue_(),
+      exception_holder_(),
+      exception_notifier_(nullptr),
+      completion_notifier_(nullptr),
+      gc_(nullptr),
+      last_live_ops_(),
+      dependency_count_(nullptr),
+      deps_(),
+      refs_(),
+      sync_op_num_(-1),
+      nccl_op_num_(-1),
+      onednn_op_num_(-1),
+      trace_execute_order_(),
+      pir_output_hookfuncs_(),
+      pir_input_hookfuncs_(),
+      ir_instruction_scheduling_priority_less(),
       ir_block_(ir_block),
+      sub_blocks_(),
+      vec_instruction_base_(),
       value_exe_info_(value_exe_info),
+      var_ref_count_(),
+      ir_dependency_builder_(),
       ir_stream_analyzer_(place),
-      fetch_var_names_(fetch_var_names) {
+      fetch_var_names_(fetch_var_names),
+      parameter_var_names_(),
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      calculate_stream_timer_(nullptr),
+#endif
+      last_calculate_instr_id_(0),
+      enable_job_schedule_profiler_(false) {
   VLOG(2) << "PirInterpreter(): " << this << " on " << place_;
 
   exception_notifier_ = main_thread_blocker_.RegisterEvent(kExceptionCaught);
@@ -223,7 +285,7 @@ PirInterpreter::PirInterpreter(
   std::stringstream ss;
   ss << this
      << std::chrono::high_resolution_clock::now().time_since_epoch().count();
-  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), execution_config_, value_exe_info_.get());
 }
 
 PirInterpreter::~PirInterpreter() {
@@ -1961,5 +2023,4 @@ void PirInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
       "SetCopyProgram is not implemented in PirInterpreter."));
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
