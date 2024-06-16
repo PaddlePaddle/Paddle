@@ -46,6 +46,11 @@ def dynamic_int_input_func3(x, n):
     return (x + n) * 2 - 1, (-n + 1) * 2 - 1
 
 
+def dynamic_shape_access_inner_var_shape(x):
+    y = x + 1
+    return y.shape[0]
+
+
 class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
     def test_dynamic_int_input_cache_hit_case1(self):
         with with_allow_dynamic_shape_guard(
@@ -96,6 +101,21 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
             for i in range(2, 6):
                 self.assert_results(
                     dynamic_shape_input_func1, paddle.randn([i, 4, 5])
+                )
+                self.assertEqual(ctx.translate_count, 2)
+
+    def test_dynamic_shape_input_cache_hit_case2(self):
+        with with_allow_dynamic_shape_guard(
+            True
+        ), test_instruction_translator_cache_context() as ctx:
+            self.assert_results(
+                dynamic_shape_access_inner_var_shape, paddle.randn([1, 4, 5])
+            )
+            self.assertEqual(ctx.translate_count, 1)
+            for i in range(2, 6):
+                self.assert_results(
+                    dynamic_shape_access_inner_var_shape,
+                    paddle.randn([i, 4, 5]),
                 )
                 self.assertEqual(ctx.translate_count, 2)
 

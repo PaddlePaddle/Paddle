@@ -451,7 +451,8 @@ void BuildValue(pir::Value value,
 
 void HandleForSpecialOp(pir::Operation* op,
                         const std::string& var_name_prefix,
-                        ValueExecutionInfo* value_exe_info) {
+                        ValueExecutionInfo* value_exe_info,
+                        const ExecutionConfig& execution_config) {
   std::string op_name = op->name();
   if (op->attributes().count("op_name")) {
     op_name =
@@ -554,12 +555,14 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->operand_source(0);
 
     Scope* scope = const_cast<Scope*>(value_exe_info->GetScope());
-    if (auto bool_attr =
-            value.attribute<pir::BoolAttribute>(kAttrIsPersistable)) {
-      if (bool_attr.data()) {
-        VLOG(6) << "Handle for builtin.shadow_output persistable value:"
-                << var_name;
-        scope = const_cast<Scope*>(value_exe_info->GetScope()->root());
+    if (!execution_config.used_for_inference) {
+      if (auto bool_attr =
+              value.attribute<pir::BoolAttribute>(kAttrIsPersistable)) {
+        if (bool_attr.data()) {
+          VLOG(6) << "Handle for builtin.shadow_output persistable value:"
+                  << var_name;
+          scope = const_cast<Scope*>(value_exe_info->GetScope()->root());
+        }
       }
     }
 
@@ -738,6 +741,7 @@ void HandleForInplaceOp(pir::Operation* op,
 // is created in inner_scope.
 void BuildScope(const pir::Block& block,
                 const std::string& var_name_prefix,
+                const ExecutionConfig& execution_config,
                 ValueExecutionInfo* value_exe_info) {
   VLOG(4) << "***** [before build] scope"
           << "(" << value_exe_info->GetScope() << ") ******\n"
@@ -767,7 +771,8 @@ void BuildScope(const pir::Block& block,
     }
     VLOG(4) << "build op:" << op_name;
     if (SpecialOps.count(op_name)) {
-      HandleForSpecialOp(&op, var_name_prefix, value_exe_info);
+      HandleForSpecialOp(
+          &op, var_name_prefix, value_exe_info, execution_config);
       continue;
     }
 
