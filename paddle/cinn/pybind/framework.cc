@@ -127,7 +127,7 @@ void BindFramework(pybind11::module *m) {
                                              t->shape().data().end());
              py::array array(std::move(dt), std::move(shape));
              auto *mutable_data = array.mutable_data();
-             target.arch.Visit(adt::match{
+             target.arch.Match(
                  [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
                  [&](common::X86Arch) {
                    std::memcpy(mutable_data,
@@ -146,8 +146,7 @@ void BindFramework(pybind11::module *m) {
     PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
     "you need to set WITH_CUDA ON!"));
 #endif
-                 },
-             });
+                 });
              return array;
            })
       .def("var_names", &Scope::var_names);
@@ -175,7 +174,7 @@ void BindFramework(pybind11::module *m) {
                                              self->shape().data().end());
              py::array array(std::move(dt), std::move(shape));
              void *array_data = array.mutable_data();
-             target.arch.Visit(adt::match{
+             target.arch.Match(
                  [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
                  [&](common::X86Arch) {
                    std::memcpy(array_data,
@@ -194,8 +193,7 @@ void BindFramework(pybind11::module *m) {
     PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
     "you need to set WITH_CUDA ON!"));
 #endif
-                 },
-             });
+                 });
              return array;
            })
       .def(
@@ -225,7 +223,7 @@ void BindFramework(pybind11::module *m) {
                                     [](int32_t a, int32_t b) { return a * b; }),
                     self->shape().numel()));
             auto *data = self->mutable_data(target, self->type());
-            target.arch.Visit(adt::match{
+            target.arch.Match(
                 [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
                 [&](common::X86Arch) {
                   std::memcpy(data,
@@ -244,8 +242,7 @@ void BindFramework(pybind11::module *m) {
     PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
     "you need to set WITH_CUDA ON!"));
 #endif
-                },
-            });
+                });
           });
 
   py::class_<Instruction> instruction(*m, "Instruction");
