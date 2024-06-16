@@ -30,7 +30,7 @@ from ...base.framework import (
 from .initializer import Initializer, calculate_gain
 
 if TYPE_CHECKING:
-    from .initializer import NonLinearityT
+    from .initializer import _NonLinearity
 
 __all__ = []
 
@@ -74,7 +74,7 @@ class MSRAInitializer(Initializer):
         fan_in: float | None = None,
         seed: int = 0,
         negative_slope: float = 0,
-        nonlinearity: NonLinearityT = 'relu',
+        nonlinearity: _NonLinearity = 'relu',
     ) -> None:
         """Constructor for MSRAInitializer"""
         assert uniform is not None

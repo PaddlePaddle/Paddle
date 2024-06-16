@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import functools
 import math
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+from typing_extensions import TypeAlias
 
 import paddle
 
@@ -30,7 +31,7 @@ from ...base.framework import (
 from .lazy_init import lazy_init_helper
 
 if TYPE_CHECKING:
-    NonLinearityT: TypeAlias = Literal[
+    _NonLinearity: TypeAlias = Literal[  # noqa: PYI047
         "sigmoid",
         "linear",
         "conv1d",
