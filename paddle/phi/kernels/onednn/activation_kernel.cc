@@ -20,7 +20,6 @@
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 namespace phi {
 
@@ -155,36 +154,24 @@ void RoundKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const int decimals,
                  DenseTensor* out) {
-  // float ten_pow_deciamls = std::pow(10, decimals);
-  //   out.device(d) = (x * static_cast<T>(ten_pow_deciamls)).round() *
-  //                   static_cast<T>(1.0 / ten_pow_deciamls);
-  using PowOneDNNFunctor =
-      OneDNNActivationFunc<T, dnnl::algorithm::eltwise_pow>;
-
   float ten_pow_deciamls = std::pow(10, decimals);
 
   DenseTensor out1;
   DenseTensorMeta meta_out(x.dtype(), x.dims());
   out1.set_meta(meta_out);
+  out1.set_lod(x.lod());
+  out1.set_mem_desc(x.mem_desc());
   dev_ctx.template Alloc<T>(&out1);
 
-  PowOneDNNFunctor pow_functor;
-  pow_functor(dev_ctx, x, 1, ten_pow_deciamls, &out1);
-
-  DenseTensor out2;
-  out2.set_meta(meta_out);
-  dev_ctx.template Alloc<T>(&out2);
-
+  for (int i = 0; i < x.numel(); i++) {
+    out1.data<T>()[i] = x.data<T>()[i] * ten_pow_deciamls;
+  }
   RoundOneDNNFunctor<T> functor;
-  functor(dev_ctx, out1, 0, 0, &out2);
+  functor(dev_ctx, out1, 0, 0, out);
 
-  DenseTensor one_div_ten_pow_deciamls;
-  DenseTensorMeta meta_one(x.dtype(), {1});
-  one_div_ten_pow_deciamls.set_meta(meta_one);
-  auto* one_data = dev_ctx.template Alloc<T>(&one_div_ten_pow_deciamls);
-  one_data[0] = 1.0 / ten_pow_deciamls;
-
-  MultiplyKernel<T, Context>(dev_ctx, out2, one_div_ten_pow_deciamls, out);
+  for (int i = 0; i < x.numel(); i++) {
+    out->data<T>()[i] = out->data<T>()[i] * (1 / ten_pow_deciamls);
+  }
 }
 
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Elu, EluOneDNNFunctor, alpha)
