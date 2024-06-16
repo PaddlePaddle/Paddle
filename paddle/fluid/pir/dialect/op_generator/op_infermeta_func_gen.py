@@ -314,8 +314,6 @@ def GenBuildOutputsPart2(
                                                                     {name}_type.dims(),
                                                                     {name}_type.non_zero_dims(),
                                                         {name}_type.data_layout(),
-                                                        {name}_type.non_zero_elements(),
-                                                        {name}_type.non_zero_indices(),
                                                         {name}_type.coalesced()));
     }} else {{
         PADDLE_THROW(phi::errors::Unimplemented("Only support SparseCooTensorType or AllocatedSparseCooTensorType"));
