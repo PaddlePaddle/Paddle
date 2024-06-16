@@ -1817,8 +1817,8 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : logsumexp_grad
-  forward : logsumexp(Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] axis,  bool keepdim,  bool reduce_all)
+  forward : logsumexp(Tensor x, int[] axis={0},  bool keepdim=false,  bool reduce_all=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int[] axis,  bool keepdim,  bool reduce_all)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

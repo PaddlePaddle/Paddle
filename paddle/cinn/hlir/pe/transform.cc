@@ -1533,7 +1533,7 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
       cinn::common::Int(32),
       phi::errors::InvalidArgument("index's type should be int32"));
   std::string extern_fun_name;
-  target.arch.Visit(adt::match{
+  target.arch.Match(
       [&](common::UnknownArch) {
         PADDLE_THROW(phi::errors::Fatal(
             "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
@@ -1543,8 +1543,7 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
         PADDLE_THROW(phi::errors::Fatal(
             "ScatterAssign only support X86 and NVGPU ! Please Check.\n"));
       },
-      [&](common::NVGPUArch) { extern_fun_name.assign("cinn_cuda_find_int"); },
-  });
+      [&](common::NVGPUArch) { extern_fun_name.assign("cinn_cuda_find_int"); });
 
   auto pos_axis = axis;
   if (pos_axis < 0) pos_axis += input->shape.size();

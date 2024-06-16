@@ -23,18 +23,18 @@ import threading
 import types
 import warnings
 from collections import OrderedDict
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from contextlib import contextmanager
 from types import ModuleType
-from typing import (
-    Any,
-    Protocol,
-    TypedDict,
-    TypeVar,
-    overload,
-)
+from typing import Any, Callable, Protocol, TypedDict, TypeVar, overload
 
-from typing_extensions import Literal, NotRequired, ParamSpec, TypeAlias, Unpack
+from typing_extensions import (
+    Literal,
+    NotRequired,
+    ParamSpec,
+    TypeAlias,
+    Unpack,
+)
 
 import paddle
 from paddle._typing import NestedSequence
@@ -83,6 +83,8 @@ from .translated_layer import (
 
 ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 
+
+_F = TypeVar('_F', bound=Callable[..., Any])
 _LayerT = TypeVar("_LayerT", bound=Layer)
 _RetT = TypeVar("_RetT")
 _InputT = ParamSpec("_InputT")
@@ -860,14 +862,19 @@ def _remove_save_pre_hook(hook):
 
 
 @wrap_decorator
-def _run_save_pre_hooks(func):
-    def wrapper(layer, path, input_spec=None, **configs):
+def _run_save_pre_hooks(func: _F) -> _F:
+    def wrapper(
+        layer: Layer | Callable[..., Any],
+        path: str,
+        input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
+        **configs: Unpack[_SaveLoadOptions],
+    ) -> None:
         global _save_pre_hooks
         for hook in _save_pre_hooks:
             hook(layer, input_spec, configs)
         func(layer, path, input_spec, **configs)
 
-    return wrapper
+    return wrapper  # type: ignore
 
 
 def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
@@ -906,9 +913,9 @@ def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
 @_run_save_pre_hooks
 @switch_to_static_graph
 def save(
-    layer: Callable[_InputT, _RetT],
+    layer: Layer | Callable[..., Any],
     path: str,
-    input_spec: InputSpec | None = None,
+    input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
     **configs: Unpack[_SaveLoadOptions],
 ) -> None:
     """
