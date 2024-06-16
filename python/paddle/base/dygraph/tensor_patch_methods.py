@@ -24,7 +24,7 @@ import numpy.typing as npt
 
 import paddle
 from paddle import _C_ops, profiler
-from paddle._typing import DTypeLike, PlaceLike
+from paddle._typing import DTypeLike, PlaceLike, TensorIndex
 from paddle.base.data_feeder import (
     _PADDLE_DTYPE_2_NUMPY_DTYPE,
     convert_uint16_to_float,
@@ -988,28 +988,14 @@ def monkey_patch_tensor():
 
     def __getitem__(
         self,
-        item: (
-            None
-            | bool
-            | int
-            | slice
-            | tuple[None | bool | int | slice, ...]
-            | list[Tensor | bool | int]
-        ),
+        item: TensorIndex,
     ):
         item = pre_deal_index(self, item)
         return self._getitem_dygraph(item)
 
     def __setitem__(
         self,
-        item: (
-            None
-            | bool
-            | int
-            | slice
-            | tuple[None | bool | int | slice, ...]
-            | list[Tensor | bool | int]
-        ),
+        item: TensorIndex,
         value: Tensor | npt.NDArray[Any] | complex | bool,
     ) -> None:
         item = pre_deal_index(self, item)

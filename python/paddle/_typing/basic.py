@@ -19,11 +19,23 @@ import numpy as np
 import numpy.typing as npt
 from typing_extensions import TypeAlias
 
+from .backport import EllipsisType
+
 if TYPE_CHECKING:
     from paddle import Tensor
 
+
 Numberic: TypeAlias = Union[int, float, complex, np.number, "Tensor"]
 TensorLike: TypeAlias = Union[npt.NDArray[Any], "Tensor", Numberic]
+_TensorIndexItem: TypeAlias = Union[
+    None, bool, int, slice, "Tensor", EllipsisType
+]
+TensorIndex: TypeAlias = Union[
+    _TensorIndexItem,
+    tuple[_TensorIndexItem, ...],
+    list[_TensorIndexItem],
+]
+
 
 _T = TypeVar("_T")
 
