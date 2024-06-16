@@ -29,16 +29,11 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 struct Conv2dLargeDilationsPattern : public PatternBase {
   Conv2dLargeDilationsPattern(PDPattern* pattern,
@@ -63,7 +58,8 @@ Conv2dLargeDilationsPattern::Conv2dLargeDilationsPattern(
       });
 }
 
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 void Conv2dTransFilterDilationsNxNTo1x1Pass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -213,9 +209,7 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
   AddStatis(found_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(conv2d_trans_filter_dilations_nxn_to_1x1_pass,
               paddle::framework::ir::Conv2dTransFilterDilationsNxNTo1x1Pass);

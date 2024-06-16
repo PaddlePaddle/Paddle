@@ -20,7 +20,6 @@
 #include "paddle/cinn/frontend/decomposer/use_decomposer.h"
 #include "paddle/cinn/frontend/decomposer_registry.h"
 #include "paddle/cinn/frontend/net_builder.h"
-#include "paddle/cinn/frontend/pass/use_program_pass.h"
 #include "paddle/cinn/frontend/program_pass.h"
 
 PD_DEFINE_string(model_dir, "", "");
