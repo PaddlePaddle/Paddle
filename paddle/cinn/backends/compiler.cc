@@ -230,17 +230,25 @@ void SourceCodePrint::write(const std::string& source_code) {
   }
 }
 
-void Compiler::Build(const Module& module, const std::string& code) {
-  auto PatternMatch =
-      adt::match{[&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                 [&](common::X86Arch) { CompileX86Module(module); },
-                 [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                 [&](common::NVGPUArch) { CompileCudaModule(module, code); }};
+void Compiler::Build(const Module& module,
+                     const std::string& code,
+                     const bool end) {
+  auto PatternMatch = adt::match{
+      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::X86Arch) { CompileX86Module(module, end); },
+      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::NVGPUArch) { CompileCudaModule(module, code, end); }};
   return std::visit(PatternMatch, target_.arch.variant());
 }
 
+void Compiler::AppendCX86(const Module& module) {
+  VLOG(3) << "Start Compiler::BuildCX86" << module;
+  CompileX86Module(module, true);
+  VLOG(3) << "Over Compiler::BuildCX86";
+}
+
 std::string Compiler::GetSourceCode(const ir::Module& module) {
-  return target_.arch.Visit(adt::match{
+  return target_.arch.Match(
       [&](common::UnknownArch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::ARMArch) -> std::string { CINN_NOT_IMPLEMENTED; },
@@ -256,16 +264,14 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 #else
         CINN_NOT_IMPLEMENTED
 #endif
-      }});
+      });
 }
 
 void Compiler::BuildDefault(const Module& module) {
-  target_.arch.Visit(adt::match{
-      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::X86Arch) { CompileX86Module(module); },
-      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::NVGPUArch) { CompileCudaModule(module); },
-  });
+  target_.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                     [&](common::X86Arch) { CompileX86Module(module); },
+                     [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                     [&](common::NVGPUArch) { CompileCudaModule(module); });
 }
 
 namespace {
@@ -287,7 +293,8 @@ std::string GetFileContent(const std::string& path) {
 }  // namespace
 
 void Compiler::CompileCudaModule(const Module& module,
-                                 const std::string& code) {
+                                 const std::string& code,
+                                 bool add_module) {
 #ifdef CINN_WITH_CUDA
   auto _host_module_device_module_ =
       SplitDeviceAndHostModule(module);  // NOLINT
@@ -327,7 +334,7 @@ void Compiler::CompileCudaModule(const Module& module,
   RuntimeSymbols symbols;
   for (auto& fn : device_module.functions()) {
     std::string kernel_fn_name = fn->name;
-    auto fn_kernel = cuda_module_->GetFunction(0, kernel_fn_name);
+    auto fn_kernel = cuda_module_->GetFunction(kernel_fn_name);
     CHECK(fn_kernel);
 
     fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));
@@ -337,15 +344,15 @@ void Compiler::CompileCudaModule(const Module& module,
   }
 
   engine_ = ExecutionEngine::Create(ExecutionOptions(), std::move(symbols));
-  engine_->Link<CodeGenCUDA_Host>(host_module);
+  engine_->Link<CodeGenCUDA_Host>(host_module, add_module);
 
 #else
   CINN_NOT_IMPLEMENTED
 #endif
 }
 
-void Compiler::CompileX86Module(const Module& module) {
-  engine_->Link<CodeGenX86>(module);
+void Compiler::CompileX86Module(const Module& module, bool add_module) {
+  engine_->Link<CodeGenX86>(module, add_module);
 }
 
 void Compiler::ExportObject(const std::string& path) {

@@ -23,10 +23,21 @@ import threading
 import types
 import warnings
 from collections import OrderedDict
+from collections.abc import Sequence
 from contextlib import contextmanager
-from typing import Any
+from types import ModuleType
+from typing import Any, Callable, Protocol, TypedDict, TypeVar, overload
+
+from typing_extensions import (
+    Literal,
+    NotRequired,
+    ParamSpec,
+    TypeAlias,
+    Unpack,
+)
 
 import paddle
+from paddle._typing import NestedSequence
 from paddle.base import core, dygraph
 from paddle.base.compiler import (
     BuildStrategy,
@@ -45,6 +56,7 @@ from paddle.base.framework import (
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import use_pir_api
 from paddle.nn import Layer
+from paddle.static import InputSpec
 from paddle.static.io import save_inference_model
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
@@ -70,6 +82,13 @@ from .translated_layer import (
 )
 
 ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
+
+
+_F = TypeVar('_F', bound=Callable[..., Any])
+_LayerT = TypeVar("_LayerT", bound=Layer)
+_RetT = TypeVar("_RetT")
+_InputT = ParamSpec("_InputT")
+Backends: TypeAlias = Literal["CINN"]
 
 
 @contextmanager
@@ -98,13 +117,13 @@ def copy_decorator_attrs(original_func, decorated_obj):
     return decorated_obj
 
 
-def ignore_module(modules: list[Any]):
+def ignore_module(modules: list[ModuleType]) -> None:
     """
     Adds modules that ignore transcription.
     Builtin modules that have been ignored are collections, pdb, copy, inspect, re, numpy, logging, six
 
     Args:
-        modules (List[Any]): Ignored modules that you want to add
+        modules (list[ModuleType]): Ignored modules that you want to add
 
     Examples:
         .. code-block:: python
@@ -131,6 +150,67 @@ def _check_and_set_backend(backend, build_strategy):
         )
     if backend == 'CINN':
         build_strategy.build_cinn_pass = True
+
+
+class ToStaticOptions(TypedDict):
+    property: NotRequired[bool]
+    full_graph: NotRequired[bool]
+
+
+class ToStaticDecorator(Protocol):
+    @overload
+    def __call__(self, function: _LayerT) -> _LayerT:
+        ...
+
+    @overload
+    def __call__(
+        self, function: Callable[_InputT, _RetT]
+    ) -> StaticFunction[_InputT, _RetT]:
+        ...
+
+
+@overload
+def to_static(
+    function: _LayerT,
+    input_spec: NestedSequence[InputSpec] | None = ...,
+    build_strategy: BuildStrategy | None = ...,
+    backend: Backends | None = ...,
+    **kwargs: Unpack[ToStaticOptions],
+) -> _LayerT:
+    ...
+
+
+@overload
+def to_static(
+    function: Callable[_InputT, _RetT],
+    input_spec: NestedSequence[InputSpec] | None = ...,
+    build_strategy: BuildStrategy | None = ...,
+    backend: Backends | None = ...,
+    **kwargs: Unpack[ToStaticOptions],
+) -> StaticFunction[_InputT, _RetT]:
+    ...
+
+
+@overload
+def to_static(
+    function: Any,
+    input_spec: NestedSequence[InputSpec] | None = ...,
+    build_strategy: BuildStrategy | None = ...,
+    backend: Backends | None = ...,
+    **kwargs: Unpack[ToStaticOptions],
+) -> Any:
+    ...
+
+
+@overload
+def to_static(
+    function: None = ...,
+    input_spec: NestedSequence[InputSpec] | None = ...,
+    build_strategy: BuildStrategy | None = ...,
+    backend: Backends | None = ...,
+    **kwargs: Unpack[ToStaticOptions],
+) -> ToStaticDecorator:
+    ...
 
 
 def to_static(
@@ -254,6 +334,28 @@ def to_static(
     return decorated
 
 
+class NotToStaticDecorator(Protocol):
+    @overload
+    def __call__(
+        self, func: Callable[_InputT, _RetT]
+    ) -> Callable[_InputT, _RetT]:
+        ...
+
+    @overload
+    def __call__(self, func: None = ...) -> NotToStaticDecorator:
+        ...
+
+
+@overload
+def not_to_static(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+    ...
+
+
+@overload
+def not_to_static(func: None = ...) -> NotToStaticDecorator:
+    ...
+
+
 def not_to_static(func=None):
     """
     A Decorator to suppresses the convention of a function.
@@ -337,14 +439,12 @@ class _SaveLoadConfig:
             return
         if not isinstance(spec, list):
             raise TypeError(
-                "The config `output_spec` should be 'list', but received input type is %s."
-                % type(input)
+                f"The config `output_spec` should be 'list', but received input type is {type(input)}."
             )
             for var in spec:
                 if not isinstance(var, core.eager.Tensor):
                     raise TypeError(
-                        "The element in config `output_spec` list should be 'Variable', but received element's type is %s."
-                        % type(var)
+                        f"The element in config `output_spec` list should be 'Variable', but received element's type is {type(var)}."
                     )
         self._output_spec = spec
 
@@ -358,8 +458,7 @@ class _SaveLoadConfig:
             return
         if not isinstance(filename, str):
             raise TypeError(
-                "The config `model_filename` should be str, but received input's type is %s."
-                % type(filename)
+                f"The config `model_filename` should be str, but received input's type is {type(filename)}."
             )
         if len(filename) == 0:
             raise ValueError("The config `model_filename` is empty string.")
@@ -375,8 +474,7 @@ class _SaveLoadConfig:
             return
         if not isinstance(filename, str):
             raise TypeError(
-                "The config `params_filename` should be str, but received input's type is %s."
-                % type(filename)
+                f"The config `params_filename` should be str, but received input's type is {type(filename)}."
             )
         if len(filename) == 0:
             raise ValueError("The config `params_filename` is empty string.")
@@ -392,13 +490,22 @@ class _SaveLoadConfig:
             return
         if not isinstance(value, bool):
             raise TypeError(
-                "The config `keep_name_table` should be bool value, but received input's type is %s."
-                % type(value)
+                f"The config `keep_name_table` should be bool value, but received input's type is {type(value)}."
             )
         self._keep_name_table = value
 
 
-def _parse_save_configs(configs):
+class _SaveLoadOptions(TypedDict):
+    output_spec: NotRequired[Sequence[InputSpec]]
+    with_hook: NotRequired[bool]
+    combine_params: NotRequired[bool]
+    clip_extra: NotRequired[bool]
+    skip_forward: NotRequired[bool]
+    input_names_after_prune: NotRequired[list[str]]
+    skip_prune_program: NotRequired[bool]
+
+
+def _parse_save_configs(configs: _SaveLoadOptions):
     supported_configs = [
         "output_spec",
         "with_hook",
@@ -413,8 +520,7 @@ def _parse_save_configs(configs):
     for key in configs:
         if key not in supported_configs:
             raise ValueError(
-                "The additional config (%s) of `paddle.jit.save` is not supported."
-                % (key)
+                f"The additional config ({key}) of `paddle.jit.save` is not supported."
             )
 
     # construct inner config
@@ -439,8 +545,7 @@ def _parse_load_config(configs):
     for key in configs:
         if key not in supported_configs:
             raise ValueError(
-                "The additional config (%s) of `paddle.jit.load` is not supported."
-                % (key)
+                f"The additional config ({key}) of `paddle.jit.load` is not supported."
             )
 
     # construct inner config
@@ -636,9 +741,9 @@ def _build_load_path_and_config(path, config):
         )
     elif not prefix_format_exist and not directory_format_exist:
         raise ValueError(
-            "The ``path`` (%s) to load model not exists. "
+            f"The ``path`` ({path}) to load model not exists. "
             "Please make sure that *.pdmodel exists or "
-            "don't using ``skip_forward=True`` to jit.save." % path
+            "don't using ``skip_forward=True`` to jit.save."
         )
     else:
         if prefix_format_exist:
@@ -757,14 +862,19 @@ def _remove_save_pre_hook(hook):
 
 
 @wrap_decorator
-def _run_save_pre_hooks(func):
-    def wrapper(layer, path, input_spec=None, **configs):
+def _run_save_pre_hooks(func: _F) -> _F:
+    def wrapper(
+        layer: Layer | Callable[..., Any],
+        path: str,
+        input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
+        **configs: Unpack[_SaveLoadOptions],
+    ) -> None:
         global _save_pre_hooks
         for hook in _save_pre_hooks:
             hook(layer, input_spec, configs)
         func(layer, path, input_spec, **configs)
 
-    return wrapper
+    return wrapper  # type: ignore
 
 
 def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
@@ -802,7 +912,12 @@ def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
 
 @_run_save_pre_hooks
 @switch_to_static_graph
-def save(layer, path, input_spec=None, **configs):
+def save(
+    layer: Layer | Callable[..., Any],
+    path: str,
+    input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
+    **configs: Unpack[_SaveLoadOptions],
+) -> None:
     """
     Saves input Layer or function as ``paddle.jit.TranslatedLayer``
     format model, which can be used for inference or fine-tuning after loading.
@@ -954,8 +1069,7 @@ def save(layer, path, input_spec=None, **configs):
         isinstance(layer, (Layer, StaticFunction)) or inspect.isfunction(layer)
     ):
         raise TypeError(
-            "The input of paddle.jit.save should be 'Layer' or 'Function', but received input type is %s."
-            % type(layer)
+            f"The input of paddle.jit.save should be 'Layer' or 'Function', but received input type is {type(layer)}."
         )
     elif inspect.isfunction(layer) or isinstance(layer, StaticFunction):
         warnings.warn(
@@ -996,14 +1110,12 @@ def save(layer, path, input_spec=None, **configs):
                     and 'forward' != attr_func
                 ):
                     raise ValueError(
-                        "If there are static functions other than 'forward' that need to be saved, the input 'input_spec' should be None, but received the type of 'input_spec' is %s."
-                        % type(input_spec)
+                        f"If there are static functions other than 'forward' that need to be saved, the input 'input_spec' should be None, but received the type of 'input_spec' is {type(input_spec)}."
                     )
 
         if not isinstance(input_spec, (list, tuple)):
             raise TypeError(
-                "The input input_spec should be 'list', but received input_spec's type is %s."
-                % type(input_spec)
+                f"The input input_spec should be 'list', but received input_spec's type is {type(input_spec)}."
             )
         inner_input_spec = []
         for var in paddle.utils.flatten(input_spec):
@@ -1372,7 +1484,9 @@ def save(layer, path, input_spec=None, **configs):
 
 
 @dygraph_only
-def load(path, **configs):
+def load(
+    path: str, **configs: Unpack[_SaveLoadOptions]
+) -> TranslatedLayer | PirTranslatedLayer:
     """
     :api_attr: imperative
 

@@ -31,8 +31,7 @@
 #endif
 
 COMMON_DECLARE_bool(use_mkldnn);
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 using framework::Variable;
 void ThreadSafeNameSet::Insert(const std::string& name) {
@@ -639,5 +638,4 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
   return nullptr;
 }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

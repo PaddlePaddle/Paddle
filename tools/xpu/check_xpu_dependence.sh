@@ -16,18 +16,6 @@
 
 set -u
 
-if [[ $# -ne 2 ]]; then
-    echo "usage: ./check_xpu_dependence.sh XPU_BASE_URL XPU_XCCL_BASE_URL"
-    exit 1
-fi
-
-xpu_base_url=$1
-xccl_base_url=$2
-BOS_PATTERN="https://baidu-kunlun-product.su.bcebos.com"
-
-echo "xpu_base_url: $xpu_base_url"
-echo "xccl_base_url: $xccl_base_url"
-
 function check_files() {
     local url="$1"
     local local_dir="$2"
@@ -74,58 +62,75 @@ function check_files() {
     rm -rf ./$local_dir
 }
 
-# check xpu_base_url type
-if [[ $xpu_base_url != *"$BOS_PATTERN"* ]]; then
-    echo "The xpu_base_url does not contain bos url, assume it is local path"
-    if [[ ! -d $xpu_base_url ]]; then
-        echo "The xpu_base_url does not exist, please check it"
-        exit 1
-    fi
-    exit 0
-else
-    echo "The URL is a bos url, will follow default download & compile logic"
-fi
+function check_xre() {
+    local xre_version="$1"
+    local xre_base_url="https://klx-sdk-release-public.su.bcebos.com/xre/kl3-release"
+    local xre_tar_file_names=("xre-ubuntu_2004-x86_64" "xre-bdcentos-x86_64")
+    local xre_files=("include/xpu/runtime.h" "so/libxpurt.so")
+    for name in ${xre_tar_file_names[@]}; do
+        local xre_url="${xre_base_url}/${xre_version}/${name}-${xre_version}.tar.gz"
+        check_files "${xre_url}" "${name}-${xre_version}" "${xre_files[@]}"
+        if [[ $? -ne 0 ]]; then
+            echo "XRE check failed, name: $name"
+            exit 1
+        else
+            echo "XRE check ok, name: $name"
+        fi
+    done
+}
 
-# XRE
-xre_tar_file_names=("xre-kylin_aarch64" "xre-bdcentos_x86_64" "xre-ubuntu_x86_64" "xre-centos7_x86_64")
-xre_inner_file_names=("include/xpu/runtime.h" "so/libxpurt.so")
-for name in ${xre_tar_file_names[@]}; do
-    url="${xpu_base_url}/${name}.tar.gz"
-    check_files $url $name "${xre_inner_file_names[@]}"
-    if [[ $? -ne 0 ]]; then
-        echo "XRE check failed, name: $name"
-        exit 1
-    else
-        echo "XRE check ok, name: $name"
-    fi
-done
+function check_xhpc() {
+    local xhpc_date="$1"
+    local xhpc_base_url="https://klx-sdk-release-public.su.bcebos.com/xhpc/dev"
+    local xhpc_tar_file_names=("xhpc-ubuntu2004_x86_64" "xhpc-bdcentos7_x86_64")
+    local xhpc_files=("xblas/include/cublasLt.h" "xblas/so/libxpu_blas.so" "xdnn/include/xpu/xdnn.h" "xdnn/so/libxpuapi.so" "xfa/include/flash_api.h" "xfa/so/libxpu_flash_attention.so")
+    for name in ${xhpc_tar_file_names[@]}; do
+        local xhpc_url="${xhpc_base_url}/${xhpc_date}/${name}.tar.gz"
+        check_files "${xhpc_url}" "${name}" "${xhpc_files[@]}"
+        if [[ $? -ne 0 ]]; then
+            echo "XHPC check failed, name: $name"
+            exit 1
+        else
+            echo "XHPC check ok, name: $name"
+        fi
+    done
+}
 
-# XDNN
-xdnn_tar_file_names=("xdnn-kylin_aarch64" "xdnn-bdcentos_x86_64" "xdnn-ubuntu_x86_64" "xdnn-centos7_x86_64")
-xdnn_inner_file_names=("include/xpu/xdnn.h" "so/libxpuapi.so")
-for name in ${xdnn_tar_file_names[@]}; do
-    url="${xpu_base_url}/${name}.tar.gz"
-    check_files $url $name "${xdnn_inner_file_names[@]}"
-    if [[ $? -ne 0 ]]; then
-        echo "XDNN check failed, name: $name"
-        exit 1
-    else
-        echo "XDNN check ok, name: $name"
-    fi
-done
+function check_xccl() {
+    local xccl_version="$1"
+    local xccl_base_url="https://klx-sdk-release-public.su.bcebos.com/xccl/release"
+    local xccl_tar_file_names=("xccl_rdma-bdcentos_x86_64" "xccl_rdma-ubuntu_x86_64" "xccl_socket-bdcentos_x86_64" "xccl_socket-ubuntu_x86_64")
+    local xccl_files=("include/bkcl.h" "so/libbkcl.so")
+    for name in ${xccl_tar_file_names[@]}; do
+        local xccl_url="${xccl_base_url}/${xccl_version}/${name}.tar.gz"
+        check_files "${xccl_url}" "${name}" "${xccl_files[@]}"
+        if [[ $? -ne 0 ]]; then
+            echo "XCCL check failed, name: $name"
+            exit 1
+        else
+            echo "XCCL check ok, name: $name"
+        fi
+    done
+}
 
-# XCCL
-xccl_tar_file_names=("xccl_rdma-bdcentos_x86_64" "xccl_rdma-ubuntu_x86_64" "xccl_socket-bdcentos_x86_64" "xccl_socket-kylin_aarch64" "xccl_socket-ubuntu_x86_64")
-xccl_inner_file_names=("include/bkcl.h" "so/libbkcl.so")
-for name in ${xccl_tar_file_names[@]}; do
-    url="${xccl_base_url}/${name}.tar.gz"
-    check_files $url $name "${xccl_inner_file_names[@]}"
-    if [[ $? -ne 0 ]]; then
-        echo "XCCL check failed, name: $name"
-        exit 1
-    else
-        echo "XCCL check ok, name: $name"
-    fi
+ARGS=$(getopt -o:: --long xre:,xhpc:,xccl:: -n "check_xpu_dependence" -- "$@")
+eval set -- "${ARGS}"
+
+while true; do
+    case "$1" in
+        --xre)
+            check_xre $2; shift 2 ;;
+        --xhpc)
+            check_xhpc $2; shift 2 ;;
+        --xccl)
+            check_xccl $2; shift 2 ;;
+        --)
+            shift; break ;;
+        *)
+            echo "unrecognized option: $1"
+            exit 1 ;;
+    esac
+
 done
 
 echo "ALL CHECKS PASSED"

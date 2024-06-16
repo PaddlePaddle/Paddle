@@ -26,8 +26,7 @@
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 static std::map<int64_t, std::set<pid_t>> load_process_pids;
 
@@ -193,7 +192,6 @@ void ThrowErrorIfLoadProcessFailed() {
   }
 }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative
 
 #endif

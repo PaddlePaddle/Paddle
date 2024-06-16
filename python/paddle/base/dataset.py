@@ -483,7 +483,7 @@ class InMemoryDataset(DatasetBase):
     )
     def set_parse_ins_id(self, parse_ins_id):
         """
-        Set id Dataset need to parse insid
+        Set id Dataset need to parse ins_id
 
         Args:
             parse_ins_id(bool): if parse ins_id or not
@@ -612,7 +612,7 @@ class InMemoryDataset(DatasetBase):
 
     def set_current_phase(self, current_phase):
         """
-        Set current phase in train. It is useful for untest.
+        Set current phase in train. It is useful for unittest.
         current_phase : 1 for join, 0 for update.
 
         Examples:

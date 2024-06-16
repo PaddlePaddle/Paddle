@@ -35,8 +35,7 @@
   } while (0)
 #endif  // PADDLE_WITH_XPTI
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 void XPUTracer::PrepareTracing() {
   PADDLE_ENFORCE_EQ(
@@ -209,5 +208,4 @@ void XPUTracer::CollectTraceData(TraceEventCollector* collector) {
 #endif
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

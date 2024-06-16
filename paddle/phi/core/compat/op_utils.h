@@ -65,8 +65,9 @@ static const std::unordered_set<std::string> deprecated_op_names(
      "expand_grad",
      "expand_as_grad",
      "one_hot",
-     "top_k",
-     "top_k_grad",
+     // If remove top_k in PHI, uncomment the lines.
+     // "top_k",
+     // "top_k_grad",
      "linear_interp",
      "linear_interp_grad",
      "bilinear_interp",
