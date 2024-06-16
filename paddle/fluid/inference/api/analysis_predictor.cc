@@ -778,7 +778,6 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    paddle::framework::InitPir();
     paddle::framework::InitMemoryMethod();
     paddle::framework::InitDevices();
     paddle::framework::InitDefaultKernelSignatureMap();
@@ -2621,14 +2620,6 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 #else
   scope = executor_->GetScope();
 #endif
-  LOG(INFO) << "Requested output tensor name: " << name;
-  LOG(INFO) << "scope的地址" << scope;
-  std::vector<std::string> var_names = scope->LocalVarNames();
-  LOG(INFO) << "Variables in the current scope:";
-  for (const auto &var_name : var_names) {
-    LOG(INFO) << var_name;
-  }
-
   PADDLE_ENFORCE_NOT_NULL(
       scope->FindVar(name),
       platform::errors::PreconditionNotMet(

@@ -359,11 +359,6 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return Whether the function executed successfully
   ///
   bool PreparePirProgram();
-<<<<<<< HEAD
-
-  void GetPirParameters(std::string param_file);
-=======
->>>>>>> 448c9299448b1953871baab169dc962bcf483685
   ///
   /// \brief Prepare scope environment, each predictor has its own scope
   ///
