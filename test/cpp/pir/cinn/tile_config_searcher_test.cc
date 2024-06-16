@@ -94,8 +94,8 @@ TEST(ConfigSearcher, TestReduceDemo) {
   constexpr int reduce_right_bound = 32;
   constexpr bool is_spatial_dynamic = false;
   constexpr bool is_reduce_dynamic = true;
-  constexpr sampling_prob_sp = 0.05;
-  constexpr sampling_prob_rd = 0.05;
+  constexpr double sampling_prob_sp = 0.05;
+  constexpr double sampling_prob_rd = 0.05;
 
   // Define the initial grid size for the spatial and reduction dimensions of
   // the search space table.
