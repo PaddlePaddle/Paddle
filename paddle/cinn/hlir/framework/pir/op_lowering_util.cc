@@ -827,7 +827,7 @@ std::vector<int> GetReducerDimAttr(::pir::Operation* reduce_op) {
                  .dims()
                  .size();
 
-  auto attr = reduce_op->attributes().at("dim");
+  auto attr = reduce_op->attributes().at("axis");
   auto attr_vec = attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
 
   std::vector<int> dim;

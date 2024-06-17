@@ -38,8 +38,8 @@ std::vector<int> GetVec32FromVec64Attr(::pir::Attribute attr) {
 
 void AppendAttrForReduceOp(const ::pir::Operation& op,
                            utils::AttributeMap& attrs) {  // NOLINT
-  auto attr = op.attributes().at("dim");
-  attrs["dim"] = GetVec32FromVec64Attr(attr);
+  auto attr = op.attributes().at("axis");
+  attrs["axis"] = GetVec32FromVec64Attr(attr);
 }
 
 void AppendAttrForTransposeOp(const ::pir::Operation& op,

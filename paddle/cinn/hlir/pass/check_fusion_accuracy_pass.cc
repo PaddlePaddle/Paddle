@@ -347,8 +347,8 @@ std::pair<NodePtr, NodeData*> CheckFusionAccuracyPass::CreateAllNode(
   for (int i = 0; i < shape_size; ++i) {
     axes[i] = i;
   }
-  all_node->attrs.attr_store["dim"] = axes;
-  all_node->attrs.attr_store["keep_dim"] = false;
+  all_node->attrs.attr_store["axis"] = axes;
+  all_node->attrs.attr_store["keepdim"] = false;
 
   graph_->RegisterNode(all_node_id, all_node.get());
 

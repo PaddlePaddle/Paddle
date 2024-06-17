@@ -230,8 +230,8 @@ TEST(Operator, Operator_BroadcastTo_0) {
   std::vector<int> broadcast_axes = {0};
   attrs.attr_store["broadcast_axes"] = broadcast_axes;
 
-  std::vector<int> dim = {0, 2, 3};
-  attrs.attr_store["dim"] = dim;
+  std::vector<int> axis = {0, 2, 3};
+  attrs.attr_store["axis"] = axis;
 
   std::vector<Type> type{Float(32)};
   cinn::common::Target target = cinn::common::DefaultHostTarget();

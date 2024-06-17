@@ -132,7 +132,7 @@ bool WithoutLastDimInReduce(const phi::DDim& inshape,
 
 static int GetSharedSize(const cinn::dialect::ir::OpNode& op_node) {
   const auto& inshape = op_node.inputs()[0].shape();
-  const auto& axes = op_node.GetAttr<std::vector<int64_t>>("dim");
+  const auto& axes = op_node.GetAttr<std::vector<int64_t>>("axis");
 
   if (WithoutLastDimInReduce(inshape, axes)) {
     int lane = 1;
@@ -211,27 +211,27 @@ static bool ReduceFuseReduce1(const OpGroupPtr& first,
   const auto& reducer_1_input_shape = reducer_1->inputs()[0].shape();
   const auto& reducer_1_output_shape = reducer_1->outputs()[0].shape();
 
-  auto reducer_0_reduce_dim = reducer_0->GetAttr<std::vector<int64_t>>("dim");
-  auto reducer_1_reduce_dim = reducer_1->GetAttr<std::vector<int64_t>>("dim");
+  auto reducer_0_reduce_axes = reducer_0->GetAttr<std::vector<int64_t>>("axis");
+  auto reducer_1_reduce_axes = reducer_1->GetAttr<std::vector<int64_t>>("axis");
 
-  for (auto& dim : reducer_0_reduce_dim) {
+  for (auto& dim : reducer_0_reduce_axes) {
     // if dim = -1, set as shape.size() - 1
     if (dim == -1) {
-      dim = reducer_0_reduce_dim.size() - 1;
+      dim = reducer_0_reduce_axes.size() - 1;
     }
   }
 
-  for (auto& dim : reducer_1_reduce_dim) {
+  for (auto& dim : reducer_1_reduce_axes) {
     // if dim = -1,  set as shape.size() - 1
     if (dim == -1) {
-      dim = reducer_1_reduce_dim.size() - 1;
+      dim = reducer_1_reduce_axes.size() - 1;
     }
   }
 
   // check shape is same
   if (reducer_0_input_shape == reducer_1_input_shape &&
       reducer_0_output_shape == reducer_1_output_shape &&
-      reducer_0_reduce_dim == reducer_1_reduce_dim) {
+      reducer_0_reduce_axes == reducer_1_reduce_axes) {
     auto shared_size = 0;
     for (auto& fusion_group : {first, second}) {
       fusion_group.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
@@ -249,10 +249,10 @@ static bool ReduceFuseReduce1(const OpGroupPtr& first,
     return true;
   }
 
-  if (WithoutLastDimInReduce(reducer_0_input_shape, reducer_0_reduce_dim) &&
-      WithoutLastDimInReduce(reducer_1_input_shape, reducer_1_reduce_dim) &&
+  if (WithoutLastDimInReduce(reducer_0_input_shape, reducer_0_reduce_axes) &&
+      WithoutLastDimInReduce(reducer_1_input_shape, reducer_1_reduce_axes) &&
       reducer_0_output_shape == reducer_1_output_shape &&
-      reducer_0_reduce_dim == reducer_1_reduce_dim) {
+      reducer_0_reduce_axes == reducer_1_reduce_axes) {
     auto shared_size = 0;
     for (auto& fusion_group : {first, second}) {
       fusion_group.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
