@@ -95,8 +95,6 @@ TEST(ConfigSearcher, TestReduceDemo) {
   constexpr int reduce_right_bound = 32;
   constexpr bool is_spatial_dynamic = false;
   constexpr bool is_reduce_dynamic = true;
-  constexpr double sampling_prob_sp = 0.05;
-  constexpr double sampling_prob_rd = 0.05;
 
   // Define the initial grid size for the spatial and reduction dimensions of
   // the search space table.
@@ -108,8 +106,6 @@ TEST(ConfigSearcher, TestReduceDemo) {
                          : get_tile_size_config(reduce_left_bound) - 1);
   int spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
   int reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
-  double spatial_sampling_prob = (is_spatial_dynamic ? sampling_prob_sp : 1.0);
-  double reduce_sampling_prob = (is_reduce_dynamic ? sampling_prob_rd : 1.0);
 
   for (int s_dimension_lower = spatial_left_bound;
        s_dimension_lower <= spatial_right_bound;
