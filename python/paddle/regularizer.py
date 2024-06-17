@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+from __future__ import annotations
+
 from paddle import _C_ops, pir
 from paddle.base import framework
 from paddle.base.framework import in_dynamic_or_pir_mode
@@ -105,7 +107,7 @@ class L1Decay(WeightDecayRegularizer):
             ...         bias_attr=False)
     """
 
-    def __init__(self, coeff=0.0):
+    def __init__(self, coeff: float = 0.0) -> None:
         assert coeff is not None
         super().__init__()
         self._coeff = coeff
@@ -217,7 +219,7 @@ class L2Decay(WeightDecayRegularizer):
             ...         bias_attr=False)
     """
 
-    def __init__(self, coeff=0.0):
+    def __init__(self, coeff: float = 0.0) -> None:
         assert coeff is not None
         super().__init__()
         self._coeff = coeff
