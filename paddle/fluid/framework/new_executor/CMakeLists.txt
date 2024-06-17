@@ -29,8 +29,7 @@ set(standalone_executor_deps
     garbage_collector
     executor_gc_helper
     device_event_base
-    framework_proto
-    pir_transforms)
+    framework_proto)
 
 if(WITH_CINN)
   set(standalone_executor_deps
