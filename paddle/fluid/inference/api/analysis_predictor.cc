@@ -1027,7 +1027,7 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
     auto *var = sub_scope_->FindVar(param_names[i]);
     pir::Value value = vars[i];
     if (var == nullptr) {
-      if (!value.type() || value.type().isa<pir::DenseTensorType>()) {
+      if (value.type().isa<pir::DenseTensorType>()) {
         var = sub_scope_->Var(param_names[i]);
         auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
         tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
