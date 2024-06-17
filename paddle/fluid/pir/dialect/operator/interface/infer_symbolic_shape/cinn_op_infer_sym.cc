@@ -144,13 +144,6 @@ bool ReshapeOpInferSymbolicShape(
     return true;
   };
 
-  const auto &IsZero = [&](const symbol::DimExpr &dim_expr) {
-    if (dim_expr.isa<int64_t>()) {
-      return dim_expr.dyn_cast<int64_t>() == static_cast<int64_t>(0);
-    }
-    return false;
-  };
-
   const symbol::ShapeOrDataDimExprs &x_dim_expr =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
 
@@ -180,7 +173,6 @@ bool ReshapeOpInferSymbolicShape(
       auto out_dim_expr = IsNotMinusOne(target_shape[i])
                               ? target_shape[i]
                               : (numel / product_exclude_minus_one);
-      out_dim_expr = IsZero(target_shape[i]) ? original_shape[i] : out_dim_expr;
       out_dims.emplace_back(out_dim_expr);
     }
 

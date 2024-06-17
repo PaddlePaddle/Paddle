@@ -62,6 +62,12 @@ if [[ $changed_env_var_count -gt 0 ]]; then
     check_approval 1 lanxianghit phlrain luotao1 Aurelius84
 fi
 
+changed_deprecated_tests_count=$(expr $(git ls-tree -r --name-only HEAD ${PADDLE_ROOT}/test/deprecated | grep '^test' | wc -l) - $(git ls-tree -r --name-only upstream/$BRANCH ${PADDLE_ROOT}/test/deprecated | grep '^tes' | wc -l))
+if [[ $changed_deprecated_tests_count -gt 0 ]]; then
+    echo_line="You must have one RD (wanghuancoder (Recommend)) approval for add new test in test/deprecated direcotry.\n"
+    check_approval 1 wanghuancoder
+fi
+
 if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
     echo_line="You must have raindrops2sea or XiaoguangHu01 approval for change 20+ files or add than 1000+ lines of content.\n"
     check_approval 1 raindrops2sea XiaoguangHu01
