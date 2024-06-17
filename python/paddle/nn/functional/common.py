@@ -2252,7 +2252,6 @@ def class_center_sample(
         :name: code-example2
 
         >>> # doctest: +REQUIRES(env:DISTRIBUTED)
-        >>> # required: distributed
         >>> # Multi GPU, test_class_center_sample.py
         >>> import paddle
         >>> import paddle.distributed as dist
@@ -2386,7 +2385,7 @@ def fold(
     output_sizes: Size2,
     kernel_sizes: Size2,
     strides: Size2 = 1,
-    paddings: Size4 = 0,
+    paddings: Size2 | Size4 = 0,
     dilations: Size2 = 1,
     name: str | None = None,
 ) -> Tensor:

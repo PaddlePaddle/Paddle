@@ -14,14 +14,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from paddle import Tensor
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
-from paddle._typing import DataLayout2D
+from paddle._typing import DataLayout2D, DTypeLike
 from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -331,7 +331,7 @@ def hardtanh(
 @inplace_apis_in_dygraph_only
 def hardtanh_(
     x: Tensor, min: float = -1.0, max: float = 1.0, name: str | None = None
-) -> None:
+) -> Tensor:
     r"""
     Inplace version of ``hardtanh`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_nn_functional_hardtanh`.
@@ -526,7 +526,7 @@ def leaky_relu(
 @inplace_apis_in_dygraph_only
 def leaky_relu_(
     x: Tensor, negative_slope: float = 0.01, name: str | None = None
-) -> None:
+) -> Tensor:
     r"""
     Inplace version of ``leaky_relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_nn_functional_leaky_relu`.
@@ -806,7 +806,7 @@ def relu(x: Tensor, name: str | None = None) -> Tensor:
 
 
 @inplace_apis_in_dygraph_only
-def relu_(x: Tensor, name: str | None = None) -> None:
+def relu_(x: Tensor, name: str | None = None) -> Tensor:
     """
     Inplace version of ``relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_nn_functional_relu`.
@@ -1113,7 +1113,7 @@ def silu(x: Tensor, name: str | None = None) -> Tensor:
 def softmax(
     x: Tensor,
     axis: int = -1,
-    dtype: Literal['bfloat16', 'float16', 'float32', 'float64'] | None = None,
+    dtype: DTypeLike | None = None,
     name: str | None = None,
 ) -> Tensor:
     r"""
@@ -1290,9 +1290,9 @@ def softmax(
 def softmax_(
     x: Tensor,
     axis: int = -1,
-    dtype: Literal['bfloat16', 'float16', 'float32', 'float64'] | None = None,
+    dtype: DTypeLike | None = None,
     name: str | None = None,
-) -> None:
+) -> Tensor:
     r"""
     Inplace version of ``softmax`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_nn_functional_softmax`.
@@ -1675,7 +1675,7 @@ def thresholded_relu_(
 def log_softmax(
     x: Tensor,
     axis: int = -1,
-    dtype: Literal['float32', 'float64'] | None = None,
+    dtype: DTypeLike | None = None,
     name: str | None = None,
 ) -> Tensor:
     r"""
