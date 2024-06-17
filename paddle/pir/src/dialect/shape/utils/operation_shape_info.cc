@@ -16,14 +16,14 @@
 #include "paddle/pir/include/core/ir_printer.h"
 
 namespace pir {
-constexpr static char *kOpCallStack = "op_callstack";
-constexpr static char *kSymShapeStr = "sym_shape_str";
-constexpr static char *kResultName = "name";
+static const char *kOpCallStack = "op_callstack";
+static const char *kSymShapeStr = "sym_shape_str";
+static const char *kResultName = "name";
 
 OperationShapeInfo::OperationShapeInfo(
     const Operation &op,
     const std::vector<symbol::ShapeOrDataDimExprs> &input_shape_or_datas)
-    : input_shape_or_datas_(input_shape_or_datas), op_name_(op.name()) {
+    : op_name_(op.name()), input_shape_or_datas_(input_shape_or_datas) {
   // Keep attribute always in order.
   const auto &attributes = op.attributes();
   std::map<std::string, ::pir::Attribute, std::less<>> order_attributes(
@@ -55,14 +55,14 @@ std::size_t OperationShapeInfo::hash() const {
 bool OperationShapeInfo::operator==(const OperationShapeInfo &other) const {
   if (op_name_ != other.op_name_) return false;
   if (attributes_.size() != other.attributes_.size()) return false;
-  for (int i = 0; i < attributes_.size(); ++i) {
+  for (std::size_t i = 0; i < attributes_.size(); ++i) {
     if (attributes_[i].first != other.attributes_[i].first ||
         attributes_[i].second != other.attributes_[i].second)
       return false;
   }
   if (input_shape_or_datas_.size() != other.input_shape_or_datas_.size())
     return false;
-  for (int i = 0; i < input_shape_or_datas_.size(); ++i) {
+  for (std::size_t i = 0; i < input_shape_or_datas_.size(); ++i) {
     if (input_shape_or_datas_[i] != other.input_shape_or_datas_[i])
       return false;
   }
@@ -72,14 +72,14 @@ bool OperationShapeInfo::operator==(const OperationShapeInfo &other) const {
 std::ostream &operator<<(std::ostream &os, const OperationShapeInfo &info) {
   os << "OperationShapeInfo - " << info.op_name_ << std::endl;
   os << "  attrs: {";
-  for (int i = 0; i < info.attributes_.size() - 1; ++i) {
+  for (std::size_t i = 0; i < info.attributes_.size() - 1; ++i) {
     ::pir::IrPrinter(os).PrintAttribute(info.attributes_[i].second);
     os << ", ";
   }
   ::pir::IrPrinter(os).PrintAttribute(info.attributes_.back().second);
   os << std::endl;
   os << "  input_shape_or_datas: {";
-  for (int i = 0; i < info.input_shape_or_datas_.size() - 1; ++i) {
+  for (std::size_t i = 0; i < info.input_shape_or_datas_.size() - 1; ++i) {
     os << info.input_shape_or_datas_[i] << ", ";
   }
   os << info.input_shape_or_datas_.back() << "}" << std::endl;
