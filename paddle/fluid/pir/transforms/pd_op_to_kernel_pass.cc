@@ -687,16 +687,6 @@ static pir::Type BuildOutputType(pir::Type type,
     auto out_dtype = type.dyn_cast<DenseTensorType>().dtype();
     return create_type<DenseTensorType, AllocatedDenseTensorType>(
         type, place, out_dtype, ctx);
-  } else if (type.isa<SparseCooTensorType>()) {
-    auto out_dtype = type.dyn_cast<SparseCooTensorType>().dtype();
-    return create_sparse_coo_tensor_type<SparseCooTensorType,
-                                         AllocatedSparseCooTensorType>(
-        type, place, out_dtype, ctx);
-  } else if (type.isa<SparseCsrTensorType>()) {
-    auto out_dtype = type.dyn_cast<SparseCsrTensorType>().dtype();
-    return create_sparse_csr_tensor_type<SparseCsrTensorType,
-                                         AllocatedSparseCsrTensorType>(
-        type, place, out_dtype, ctx);
   } else if (type.isa<SelectedRowsType>()) {
     auto out_dtype = type.dyn_cast<SelectedRowsType>().dtype();
     return create_type<SelectedRowsType, AllocatedSelectedRowsType>(
