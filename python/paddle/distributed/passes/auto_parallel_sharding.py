@@ -222,7 +222,7 @@ class ShardingPass(PassBase):
             if _is_reshard_op(op):
                 continue
             group = _inference_data_parallel_group_for_operator(
-                self.global_rank, op, self._dist_context
+                self.global_rank, op, self._dist_context, 0
             )
             if group is not None:
                 self.dp_groups.add(group)
@@ -1689,7 +1689,9 @@ def is_sharding_param_broadcast_op(op):
     )
 
 
-def _inference_data_parallel_group_for_operator(rank_id, op, dist_context):
+def _inference_data_parallel_group_for_operator(
+    rank_id, op, dist_context, dp_axis=None
+):
     dp_group = None
     for input_name in op.input_arg_names:
         # TODO(zhaoyingli): maintain a dict in dist_context to record all variables which are renamed,
@@ -1705,14 +1707,15 @@ def _inference_data_parallel_group_for_operator(rank_id, op, dist_context):
             # TODO(JZ-LIANG) replace with specific batch size dimension
             batch_size_axis = input_dim_mapping[0]
             if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
-                group_ranks = _get_comm_group(
-                    process_mesh.process_ids,
-                    process_mesh.shape,
-                    batch_size_axis,
-                    rank_id,
-                )
-                dp_group = new_process_group(group_ranks)
-                break
+                if dp_axis is None or batch_size_axis == dp_axis:
+                    group_ranks = _get_comm_group(
+                        process_mesh.process_ids,
+                        process_mesh.shape,
+                        batch_size_axis,
+                        rank_id,
+                    )
+                    dp_group = new_process_group(group_ranks)
+                    break
 
     return dp_group
 
