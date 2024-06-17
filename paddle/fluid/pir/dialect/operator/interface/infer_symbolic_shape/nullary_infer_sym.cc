@@ -136,7 +136,7 @@ bool DataOpInferSymbolicShape(pir::Operation *op,
     const auto &dims = value.type().dyn_cast<pir::DenseTensorType>().dims();
     const int64_t numel = ::common::product(dims);
     std::vector<symbol::DimExpr> data;
-    for (size_t i = 0; i < numel; ++i) {
+    for (int64_t i = 0; i < numel; ++i) {
       data.push_back(symbol::DimExpr(infer_context->GetNextSymName()));
     }
     return data;
