@@ -232,10 +232,7 @@ class TestRMSNormOp(unittest.TestCase):
         return paddle_rmsnorm_out, paddle_naive_rmsnorm_out
 
     def test_rmsnorm_fp16(self):
-        if (
-            not paddle.is_compiled_with_cuda()
-            and not paddle.is_compiled_with_rocm()
-        ):
+        if not paddle.is_compiled_with_cuda():
             return
         paddle_rmsnorm, paddle_naive_rmsnorm = self.check_rmsnorm(
             self.x_np, self.norm_weight_np, self.norm_bias_np, 'float16'
@@ -249,10 +246,7 @@ class TestRMSNormOp(unittest.TestCase):
         )
 
     def test_rmsnorm_int8(self):
-        if (
-            not paddle.is_compiled_with_cuda()
-            and not paddle.is_compiled_with_rocm()
-        ):
+        if not paddle.is_compiled_with_cuda():
             return
         paddle_rmsnorm, paddle_naive_rmsnorm = self.check_rmsnorm_int8(
             self.x_np, self.norm_weight_np, self.norm_bias_np, 'float16'
@@ -265,10 +259,7 @@ class TestRMSNormOp(unittest.TestCase):
         )
 
     def test_residual_bias_add_rmsnorm_fp16(self):
-        if (
-            not paddle.is_compiled_with_cuda()
-            and not paddle.is_compiled_with_rocm()
-        ):
+        if not paddle.is_compiled_with_cuda():
             return
         paddle_rmsnorm, paddle_naive_rmsnorm = self.check_residual_bias_rmsnorm(
             self.x_np,
@@ -287,10 +278,7 @@ class TestRMSNormOp(unittest.TestCase):
         )
 
     def test_residual_bias_add_rmsnorm_int8(self):
-        if (
-            not paddle.is_compiled_with_cuda()
-            and not paddle.is_compiled_with_rocm()
-        ):
+        if not paddle.is_compiled_with_cuda():
             return
         (
             paddle_rmsnorm,
@@ -529,10 +517,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
 
     @test_with_pir_api
     def test_rmsnorm_fp16(self):
-        if (
-            not paddle.is_compiled_with_cuda()
-            and not paddle.is_compiled_with_rocm()
-        ):
+        if not paddle.is_compiled_with_cuda():
             return
         paddle_rmsnorm, paddle_naive_rmsnorm = self.check_rmsnorm(
             self.x_np, self.norm_weight_np, self.norm_bias_np, 'float16'
@@ -547,10 +532,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
 
     @test_with_pir_api
     def test_residual_bias_add_rmsnorm_fp16(self):
-        if (
-            not paddle.is_compiled_with_cuda()
-            and not paddle.is_compiled_with_rocm()
-        ):
+        if not paddle.is_compiled_with_cuda():
             return
         paddle_rmsnorm, paddle_naive_rmsnorm = self.check_residual_bias_rmsnorm(
             self.x_np,
@@ -570,10 +552,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
 
     @test_with_pir_api
     def test_rmsnorm_int8(self):
-        if (
-            not paddle.is_compiled_with_cuda()
-            and not paddle.is_compiled_with_rocm()
-        ):
+        if not paddle.is_compiled_with_cuda():
             return
         paddle_rmsnorm, paddle_naive_rmsnorm = self.check_rmsnorm_int8(
             self.x_np, self.norm_weight_np, self.norm_bias_np, 'float16'
@@ -805,10 +784,7 @@ class TestRMSNormStaticOpCPU(unittest.TestCase):
 
     @test_with_pir_api
     def test_rmsnorm(self):
-        if (
-            not paddle.is_compiled_with_cuda()
-            and not paddle.is_compiled_with_rocm()
-        ):
+        if not paddle.is_compiled_with_cuda():
             return
         paddle_rmsnorm, paddle_naive_rmsnorm = self.check_rmsnorm(
             self.x_np, self.norm_weight_np, self.norm_bias_np, 'float32'
@@ -823,10 +799,7 @@ class TestRMSNormStaticOpCPU(unittest.TestCase):
 
     @test_with_pir_api
     def test_residual_bias_add_rmsnorm(self):
-        if (
-            not paddle.is_compiled_with_cuda()
-            and not paddle.is_compiled_with_rocm()
-        ):
+        if not paddle.is_compiled_with_cuda():
             return
         paddle_rmsnorm, paddle_naive_rmsnorm = self.check_residual_bias_rmsnorm(
             self.x_np,

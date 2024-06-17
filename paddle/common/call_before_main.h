@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/frontend/decomposer_registry.h"
+#pragma once
+#include <functional>
 
-#include <gtest/gtest.h>
+namespace paddle_ctor {
 
-#include "paddle/cinn/frontend/decomposer/use_decomposer.h"
+struct StaticGlobalWrapper {
+  explicit StaticGlobalWrapper(const std::function<void()>& f) { f(); }
+  StaticGlobalWrapper(const StaticGlobalWrapper&) = default;
+  StaticGlobalWrapper(StaticGlobalWrapper&&) = default;
+};
 
-namespace cinn::frontend {
+}  // namespace paddle_ctor
 
-TEST(InstrDecomposerRegistry, basic) {
-  cinn::common::Target target = cinn::common::DefaultHostTarget();
-  ASSERT_EQ(InstrDecomposerRegistry::Global()->Find("conv", target), nullptr);
-  ASSERT_NE(InstrDecomposerRegistry::Global()->Find("relu", target), nullptr);
-}
-
-}  // namespace cinn::frontend
+#define PD_CALL_BEFORE_MAIN(f) \
+  ::paddle_ctor::StaticGlobalWrapper static_global_wrapper_##__LINE__(f)
