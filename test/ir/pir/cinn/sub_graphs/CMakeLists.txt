@@ -57,8 +57,7 @@ if(WITH_GPU)
       test_sub_graph_84
       test_sub_graph_86
       test_sub_graph_87
-      test_sub_graph_88
-      )
+      test_sub_graph_88)
 
   file(
     GLOB DYNAMIC_BUILD_TESTS
