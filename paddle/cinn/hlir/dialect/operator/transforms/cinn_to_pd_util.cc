@@ -113,7 +113,10 @@ const auto& handler_reduce_prod_op =
 
   ::pir::Attribute attr_axis = ArrayAttributeToIntArrayAttribute(
       attrs.at("dims").dyn_cast<::pir::ArrayAttribute>());
-  attrs["dims"] = attr_axis;
+  attrs.insert({"axis", attr_axis});
+  attrs.insert({"keepdim", attrs["keep_dim"]});
+  attrs.erase("dims");
+  attrs.erase("keep_dim");
 
   auto pd_op = rewriter.Build<paddle::dialect::ProdOp>(
       ir_mapping.Lookup(op->operand_source(0)), attrs);

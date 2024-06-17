@@ -58,14 +58,14 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reduce_prod
-  args : (Tensor x, int64_t[] dims, bool keep_dim, bool reduce_all)
+  args : (Tensor x, int64_t[] axis, bool keepdim, bool reduce_all)
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
-    param : [x, dims, keep_dim]
+    param : [x, axis, keepdim]
   kernel :
     func : frobenius_norm
-    param : [x, dims, keep_dim]
+    param : [x, axis, keepdim]
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reduce_sum
