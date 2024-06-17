@@ -590,6 +590,8 @@ def is_same_shape(shape1: ShapeLike, shape2: ShapeLike) -> bool:
     """
     Check whether two shapes are the same. Deal with the dynamic shape.
     """
+    if paddle.in_dynamic_mode():
+        return shape1 == shape2
 
     def is_tensor(x):
         return isinstance(x, (paddle.static.Variable, paddle.pir.Value))
