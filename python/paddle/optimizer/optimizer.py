@@ -1370,7 +1370,10 @@ class Optimizer:
         no_grad_set: set[Tensor] | set[str] | None = None,
         callbacks: list[
             Callable[
-                [paddle.pir.Block, dict[str, Tensor | paddle.pir.Operation]],
+                [
+                    paddle.framework.Block,
+                    dict[str, Tensor | paddle.core.OpDesc],
+                ],
                 None,
             ]
         ]
