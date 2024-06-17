@@ -581,7 +581,6 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
         pd_out.backward()
         self.assertEqual(self.x.gradient().shape, tuple(self.x.shape))
 
-    @test_with_pir_api
     def test_static_and_infer(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()

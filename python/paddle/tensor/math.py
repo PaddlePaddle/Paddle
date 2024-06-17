@@ -1558,10 +1558,11 @@ def sum(
         dtype_flag = True
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dynamic_or_pir_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
     else:
+        reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
+
         attrs = {'dim': axis, 'keep_dim': keepdim}
 
         if dtype_flag:
@@ -2968,10 +2969,11 @@ def max(
              [[0., 0.],
               [1., 1.]]])
     """
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
+
     if in_dynamic_or_pir_mode():
         return _C_ops.max(x, axis, keepdim)
     else:
+        reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         helper = LayerHelper('max', **locals())
         check_variable_and_dtype(
             x,
@@ -3108,10 +3110,11 @@ def min(
              [[0., 0.],
               [0., 0.]]])
     """
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
+
     if in_dynamic_or_pir_mode():
         return _C_ops.min(x, axis, keepdim)
     else:
+        reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         helper = LayerHelper('min', **locals())
         check_variable_and_dtype(
             x,
