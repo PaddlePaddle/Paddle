@@ -1368,16 +1368,7 @@ class Optimizer:
         startup_program: Program | None = None,
         parameters: list[Tensor] | list[str] | None = None,
         no_grad_set: set[Tensor] | set[str] | None = None,
-        callbacks: list[
-            Callable[
-                [
-                    paddle.framework.Block,
-                    dict[str, Tensor | paddle.core.OpDesc],
-                ],
-                None,
-            ]
-        ]
-        | None = None,
+        callbacks: list[Callable[..., None]] | None = None,
     ) -> list[tuple[Tensor, Tensor]]:
         """
         The first part of ``minimize``, do auto-diff to append backward operations for
