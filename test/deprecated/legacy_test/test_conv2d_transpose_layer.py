@@ -90,6 +90,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
             self.bias = None
 
     def base_layer(self, place):
+        paddle.enable_static()
         main = base.Program()
         start = base.Program()
         with base.unique_name.guard():
@@ -128,6 +129,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         return y_np
 
     def functional(self, place):
+        paddle.enable_static()
         main = base.Program()
         start = base.Program()
         with base.unique_name.guard():

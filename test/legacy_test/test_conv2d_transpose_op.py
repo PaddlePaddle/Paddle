@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import os
+import sys
 import unittest
+
+sys.path.append("../deprecated/legacy_test")
 
 import numpy as np
 
@@ -21,16 +24,15 @@ import paddle
 from paddle import nn
 
 paddle.enable_static()
-import sys
 
 from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
-
-sys.path.append("../deprecated/legacy_test")
 from test_attribute_var import UnittestBase
 from testsuite import create_op
 
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.framework import in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 
 def conv2dtranspose_forward_naive(input_, filter_, attrs):
@@ -1358,10 +1360,11 @@ class TestTensorOutputSize1(UnittestBase):
         )
         return out
 
+    @test_with_pir_api
     def test_static(self):
-        main_prog = Program()
-        startup_prog = Program()
-        with program_guard(main_prog, startup_prog):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(8, 8)
             x = paddle.randn([2, 3, 8, 8])
             x.stop_gradient = False
@@ -1370,7 +1373,8 @@ class TestTensorOutputSize1(UnittestBase):
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
-            self.assertTrue(self.var_prefix() in str(main_prog))
+            if not in_pir_mode():
+                self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
             exe.run(startup_prog)
