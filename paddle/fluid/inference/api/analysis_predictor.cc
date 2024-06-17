@@ -438,23 +438,28 @@ bool AnalysisPredictor::Init(
   // no matter with or without OneDNN
   paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
 
+  std::string model_path = config_.prog_file();
+  load_pir_model_ =
+      model_path.substr(model_path.find_last_of(".") + 1) == "json";
   // Use Optimized model to inference
-  if (config_.use_optimized_model_) {
-    std::string optimized_model_path = GetOptimizedModelPath();
-    std::string optimized_model =
-        optimized_model_path + "/" + "_optimized.pdmodel";
-    std::string optimized_params =
-        optimized_model_path + "/" + "_optimized.pdiparams";
-    if (FileExists(optimized_model) && FileExists(optimized_params)) {
-      config_.SetModel(optimized_model, optimized_params);
-      LOG(INFO) << "Load Optimized model from " << optimized_model_path;
-    } else {
-      LOG(WARNING)
-          << "The optimized model is not found, fallback to original model. "
-             "EnableSaveOptimModel will be turned on and the optimized model "
-             "can be available next time.";
-      config_.EnableSaveOptimModel(true);
-      config_.UseOptimizedModel(false);
+  if (!load_pir_model_) {
+    if (config_.use_optimized_model_) {
+      std::string optimized_model_path = GetOptimizedModelPath();
+      std::string optimized_model =
+          optimized_model_path + "/" + "_optimized.pdmodel";
+      std::string optimized_params =
+          optimized_model_path + "/" + "_optimized.pdiparams";
+      if (FileExists(optimized_model) && FileExists(optimized_params)) {
+        config_.SetModel(optimized_model, optimized_params);
+        LOG(INFO) << "Load Optimized model from " << optimized_model_path;
+      } else {
+        LOG(WARNING)
+            << "The optimized model is not found, fallback to original model. "
+               "EnableSaveOptimModel will be turned on and the optimized model "
+               "can be available next time.";
+        config_.EnableSaveOptimModel(true);
+        config_.UseOptimizedModel(false);
+      }
     }
   }
 
@@ -468,9 +473,6 @@ bool AnalysisPredictor::Init(
     return false;
   }
 
-  std::string model_path = config_.prog_file();
-  load_pir_model_ =
-      model_path.substr(model_path.find_last_of(".") + 1) == "json";
   if (load_pir_model_) {
     if (!PreparePirProgram()) {
       return false;
@@ -892,6 +894,16 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   }
   pass_pm.Run(pir_program_.get());
 
+  if (load_pir_model_ && config_.save_optimized_model_ &&
+      !FileExists(optimized_model_name_)) {
+    pir::WriteModule(
+        *pir_program_, optimized_model_name_, 1, true, false, true);
+  }
+  if (load_pir_model_ && config_.save_optimized_model_ &&
+      !FileExists(optimized_params_)) {
+    LoadPirParameters(true);
+  }
+
   // Apply some basic passes required by the framework
   ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
                                    config_.pm_opt_level_);
@@ -945,9 +957,10 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   LOG(INFO) << "======= pir optimization completed =======";
 }
 
-bool AnalysisPredictor::LoadPirParameters() {
+bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
   std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
   int feed_idx = 0;
+  int fetch_idx = 0;
   for (auto op : pir_program_->block()->ops()) {
     // put pd-op.data and pd-op.fetch into idx2feeds and idx2feeds
     if (op->isa<paddle::dialect::FetchOp>()) {
@@ -966,6 +979,14 @@ bool AnalysisPredictor::LoadPirParameters() {
       idx2feeds_[feed_idx] = data_name;
       feed_idx++;
       pir_feeds_.emplace_back(op);
+    } else if (op->isa<pir::ShadowOutputOp>()) {
+      auto shadow_name = op->attributes()
+                             .at("output_name")
+                             .dyn_cast<pir::StrAttribute>()
+                             .AsString();
+      idx2fetches_[fetch_idx] = shadow_name;
+      pir_fetches_[fetch_idx] = op;
+      fetch_idx++;
     }
     for (auto var : op->results()) {
       std::string var_name;
@@ -977,6 +998,9 @@ bool AnalysisPredictor::LoadPirParameters() {
           param_name_var_pairs.emplace_back(var_name, var);
         } else if (auto data_op = var.defining_op<paddle::dialect::DataOp>()) {
           var_name = data_op.attribute<pir::StrAttribute>("name").AsString();
+          param_name_var_pairs.emplace_back(var_name, var);
+        } else if (auto const_op = var.defining_op<pir::ConstantTensorOp>()) {
+          var_name = const_op.tensor_name();
           param_name_var_pairs.emplace_back(var_name, var);
         }
       }
@@ -1003,37 +1027,67 @@ bool AnalysisPredictor::LoadPirParameters() {
     auto *var = sub_scope_->FindVar(param_names[i]);
     pir::Value value = vars[i];
     if (var == nullptr) {
-      var = sub_scope_->Var(param_names[i]);
-      auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
-      tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
-      phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-      const phi::DeviceContext *dev_ctx = nullptr;
-      dev_ctx = pool.Get(place_);
-      pir::Type type_ = pir::GetDataTypeFromValue(value);
-      phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
-      dev_ctx->Alloc(tensor_temp, type_data);
+      if (!value.type() || value.type().isa<pir::DenseTensorType>()) {
+        var = sub_scope_->Var(param_names[i]);
+        auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
+        tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
+        phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+        const phi::DeviceContext *dev_ctx = nullptr;
+        dev_ctx = pool.Get(place_);
+        pir::Type type_ = pir::GetDataTypeFromValue(value);
+        phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
+        dev_ctx->Alloc(tensor_temp, type_data);
+      } else {
+        PADDLE_THROW(platform::errors::Unavailable("Only support DenseTensor"));
+      }
     }
     auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
     tensor_out.push_back(tensor_temp);
   }
 
   CreateFeedFetchVar(sub_scope_);
-  pir::LoadCombineFunction(
-      config_.params_file(), param_names, &tensor_out, false, place_);
+
+  optimized_params_ = optimized_model_path_ + "/" + "_optimized.pdiparams";
+  if (save_optimized && config_.save_optimized_model_ &&
+      !FileExists(optimized_params_)) {
+    std::vector<const phi::DenseTensor *> const_tensor_out(tensor_out.begin(),
+                                                           tensor_out.end());
+    pir::SaveCombineFunction(
+        const_tensor_out, param_names, optimized_params_, true, false, true);
+    // Check if the contents of const_tensor_out and tensor_out are the same
+  }
+
+  if (config_.use_optimized_model_ && FileExists(optimized_params_)) {
+    pir::LoadCombineFunction(
+        optimized_params_, param_names, &tensor_out, false, place_);
+  } else {
+    pir::LoadCombineFunction(
+        config_.params_file(), param_names, &tensor_out, false, place_);
+  }
+
   return true;
 }
 
 bool AnalysisPredictor::PreparePirProgram() {
   pir::IrContext *ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-  if (pir_program_) {
-    PADDLE_FATAL("pir_program_ must be nullptr");
+
+  PADDLE_ENFORCE_EQ(
+      pir_program_,
+      nullptr,
+      platform::errors::Fatal("Here, pir_program must be a nullptr!"));
+
+  pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
+
+  optimized_model_path_ = GetOptimizedModelPath();
+  optimized_model_name_ = optimized_model_path_ + "/" + "_optimized.json";
+
+  if (FileExists(optimized_model_name_) && config_.use_optimized_model_) {
+    pir::ReadModule(
+        optimized_model_name_, pir_program_.get(), 1 /*pir_version*/);
   } else {
-    pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
+    pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
   }
-
-  pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
-
   if (!LoadPirParameters()) {
     return false;
   }
