@@ -1389,23 +1389,17 @@ class TestReduceAttnScores(unittest.TestCase):
         self.seqlen_q = 1024
         self.seqlen_k = 10240
         self.head_dim = 128
-        self.q_shape = [
-            self.batch_size,
-            self.seqlen_q,
-            self.num_head,
-            self.head_dim,
-        ]
-        self.k_shape = [
-            self.batch_size,
-            self.seqlen_k,
-            self.num_head,
-            self.head_dim,
-        ]
+        self.num_group = 1
         self.dtype = 'float16'
 
-    def naive_reduce(self, q, k):
+    def native_reduce(self, q, k):
         q_ref = paddle.cast(paddle.transpose(q, [0, 2, 1, 3]), 'float32')
         k_ref = paddle.cast(paddle.transpose(k, [0, 2, 1, 3]), 'float32')
+        if self.num_group != 1:
+            k_ref = paddle.stack([k_ref] * self.num_group, axis=2).reshape(
+                [self.batch_size, self.num_head, self.seqlen_k, self.head_dim]
+            )
+
         scale = 1.0 / np.sqrt(q_ref.shape[-1])
         product = paddle.matmul(x=q_ref, y=k_ref, transpose_y=True)
         product = paddle.scale(product, scale)
@@ -1417,8 +1411,21 @@ class TestReduceAttnScores(unittest.TestCase):
     def test_reduce_attn_scores(self):
         paddle.disable_static()
 
-        query = paddle.randn(self.q_shape)
-        key = paddle.randn(self.k_shape)
+        q_shape = [
+            self.batch_size,
+            self.seqlen_q,
+            self.num_head,
+            self.head_dim,
+        ]
+        k_shape = [
+            self.batch_size,
+            self.seqlen_k,
+            self.num_head // self.num_group,
+            self.head_dim,
+        ]
+
+        query = paddle.randn(q_shape)
+        key = paddle.randn(k_shape)
 
         q = paddle.to_tensor(
             query, place=self.place, dtype=self.dtype, stop_gradient=True
@@ -1427,7 +1434,7 @@ class TestReduceAttnScores(unittest.TestCase):
             key, place=self.place, dtype=self.dtype, stop_gradient=True
         )
 
-        reduced_scores_ref = self.naive_reduce(q, k)
+        reduced_scores_ref = self.native_reduce(q, k)
 
         (_, _, softmax_lse, _) = paddle._C_ops.flash_attn(
             q,
@@ -1454,12 +1461,8 @@ class TestReduceAttnScores(unittest.TestCase):
         paddle.enable_static()
 
         with paddle.static.program_guard(paddle.static.Program()):
-            qs = paddle.static.data(
-                name="q", shape=self.q_shape, dtype=self.dtype
-            )
-            ks = paddle.static.data(
-                name="k", shape=self.k_shape, dtype=self.dtype
-            )
+            qs = paddle.static.data(name="q", shape=q_shape, dtype=self.dtype)
+            ks = paddle.static.data(name="k", shape=k_shape, dtype=self.dtype)
             softmax_lse_s = paddle.static.data(
                 name="softmax_lse", shape=softmax_lse.shape, dtype='float32'
             )
@@ -1481,6 +1484,23 @@ class TestReduceAttnScores(unittest.TestCase):
                 atol=0,
             )
         paddle.disable_static()
+
+
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    "and device's compute capability must be 8.x or 90",
+)
+class TestReduceAttnScoresGQA(TestReduceAttnScores):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.batch_size = 1
+        self.num_head = 8
+        self.seqlen_q = 1024
+        self.seqlen_k = 10240
+        self.head_dim = 128
+        self.num_group = 2
+        self.dtype = 'float16'
 
 
 if __name__ == '__main__':
