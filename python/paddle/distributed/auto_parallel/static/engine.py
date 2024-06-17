@@ -1111,7 +1111,9 @@ class Engine:
             # 4. lazy init adaption
             # 5. amp init adaption
             # 6. vpp init adaption
-
+            self.program_helper.init_pir(
+                self._pir_dist_main_progs[mode], self._place
+            )
             # self._init_lr(self._pir_dense_main_progs[mode])
             if self._executor is None:
                 self._executor = paddle.static.Executor(self._place)
@@ -1137,10 +1139,6 @@ class Engine:
                 for del_op in del_ops:
                     del_op.erase()
                 self._executor.run(startup_prog)
-            self.program_helper.init_pir(
-                self._pir_dist_main_progs[mode], self._place
-            )
-
             return
 
         if self._strategy.seed:
