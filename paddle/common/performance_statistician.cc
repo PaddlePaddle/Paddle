@@ -96,7 +96,6 @@ std::string PerformanceReporter::Report(
   std::string unit = "us";
   auto durations = ExtractDuration(records);
   int top_count = durations.size();
-  int remove_num = top_count / 10;
   auto total_time = std::chrono::duration_cast<TimeDuration>(Sum(durations));
   auto mean_time = std::chrono::duration_cast<TimeDuration>(Mean(durations));
   auto trim_mean_time =
@@ -125,6 +124,7 @@ std::string PerformanceReporter::Report(
        << "  ";
   }
   ss << "]\n";
+
   return ss.str();
 }
 
