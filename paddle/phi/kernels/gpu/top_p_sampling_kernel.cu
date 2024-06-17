@@ -26,7 +26,6 @@ namespace cub = hipcub;
 #include <cub/cub.cuh>
 #endif
 
-#include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -34,6 +33,7 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
+#include "paddle/phi/kernels/primitive/functor_primitives.h"
 
 // #define DEBUG_TOPP
 
@@ -82,8 +82,6 @@ struct DataTypeTraits<phi::dtype::bfloat16> {
   FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);   \
   FIXED_BLOCK_DIM_BASE(32, ##__VA_ARGS__)
 #endif
-
-namespace ops = paddle::operators;
 
 struct SegmentOffsetIter {
   explicit SegmentOffsetIter(int num_cols) : num_cols_(num_cols) {}
