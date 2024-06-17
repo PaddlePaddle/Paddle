@@ -469,6 +469,9 @@ struct PirToPyCodeConverterHelper {
         },
         [](const symbol::TensorListShapeOrDataDimExprs& impl) {
           return ConvertTensorListShapeOrData(impl);
+        },
+        [](const symbol::NullShapeOrDataDimExprs& null_shape_or_data) {
+          return std::string("self.s_null_shape_or_data");
         });
   }
 

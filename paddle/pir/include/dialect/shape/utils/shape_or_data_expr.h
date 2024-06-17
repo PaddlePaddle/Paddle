@@ -116,8 +116,10 @@ class ShapeOrData {
 
 using TensorShapeOrDataDimExprs = ShapeOrData<DimExpr>;
 using TensorListShapeOrDataDimExprs = std::vector<TensorShapeOrDataDimExprs>;
-using ShapeOrDataDimExprsBase =
-    std::variant<TensorShapeOrDataDimExprs, TensorListShapeOrDataDimExprs>;
+using NullShapeOrDataDimExprs = DimExpr;
+using ShapeOrDataDimExprsBase = std::variant<TensorShapeOrDataDimExprs,
+                                             TensorListShapeOrDataDimExprs,
+                                             NullShapeOrDataDimExprs>;
 
 class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
  public:
@@ -128,6 +130,9 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
   ShapeOrDataDimExprs(
       const TensorListShapeOrDataDimExprs& tensor_list_dim_exprs)
       : ShapeOrDataDimExprsBase(tensor_list_dim_exprs) {}
+
+  ShapeOrDataDimExprs(const NullShapeOrDataDimExprs& null_dim_expr)  // NOLINT
+      : ShapeOrDataDimExprsBase(null_dim_expr) {}
 
   template <typename T>
   bool isa() const {
@@ -183,6 +188,13 @@ class ShapeOrDataDimExprs : public ShapeOrDataDimExprsBase {
 
     std::get<TensorShapeOrDataDimExprs>(*this).SetData(data);
   }
+
+  static const ShapeOrDataDimExprs& GetNullShapeOrData() {
+    return null_shape_or_data_;
+  }
+
+ private:
+  static ShapeOrDataDimExprs null_shape_or_data_;
 };
 
 IR_API ShapeOrDataDimExprs SubstituteShapeOrData(

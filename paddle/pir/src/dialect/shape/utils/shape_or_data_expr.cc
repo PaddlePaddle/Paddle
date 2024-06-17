@@ -16,6 +16,9 @@
 
 namespace symbol {
 
+ShapeOrDataDimExprs ShapeOrDataDimExprs::null_shape_or_data_(
+    NullShapeOrDataDimExprs{-1});
+
 TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
     const TensorShapeOrDataDimExprs& shape_or_data,
     const std::unordered_map<DimExpr, DimExpr>& substitution_pattern) {
@@ -59,6 +62,9 @@ ShapeOrDataDimExprs SubstituteShapeOrData(
               tensor_shape_or_data, substitution_pattern));
         }
         return ShapeOrDataDimExprs(substituted_tensor_list);
+      },
+      [&](const NullShapeOrDataDimExprs& null_shape_or_data) {
+        return ShapeOrDataDimExprs(null_shape_or_data);
       }};
   return std::visit(lambdas, shape_or_data.variant());
 }
@@ -86,6 +92,9 @@ std::ostream& operator<<(std::ostream& stream,
             stream << ", ";
           }
         }
+      },
+      [&](const NullShapeOrDataDimExprs& null_shape_data) {
+        stream << "shape[NULL], data[NULL]";
       }};
 
   std::visit(lambdas, shape_or_data.variant());

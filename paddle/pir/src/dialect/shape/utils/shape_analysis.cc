@@ -53,11 +53,8 @@ bool InferSymbolicShapeContext::HasShapeOrDataForValue(Value val) const {
 
 const symbol::ShapeOrDataDimExprs&
 InferSymbolicShapeContext::GetShapeOrDataForValue(Value val) const {
-  // TODO(Hongqing-work): define a default empty ShapeOrDataDimExprs
-  if (!val) {
-    static symbol::ShapeOrDataDimExprs empty{
-        symbol::TensorShapeOrDataDimExprs{}};
-    return empty;
+  if (!val || !val.type()) {
+    return symbol::ShapeOrDataDimExprs::GetNullShapeOrData();
   }
   if (!HasShapeOrDataForValue(val)) {
     PADDLE_THROW(phi::errors::Fatal(
@@ -235,6 +232,9 @@ InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
               TensorShapeOrDataVisitor(tensor_shape_or_data));
         }
         return symbol::ShapeOrDataDimExprs(simplified_tensor_list);
+      },
+      [&](const symbol::NullShapeOrDataDimExprs& null_shape_or_data) {
+        return symbol::ShapeOrDataDimExprs(null_shape_or_data);
       });
 }
 
@@ -272,6 +272,17 @@ void InferSymbolicShapeContext::SubstituteDimExpr(
         symbol::SubstituteShapeOrData(it->second, substitution_pattern_);
     it->second = substituted_shape_or_data;
   }
+  for (auto it = op_shape_share_cache_.begin();
+       it != op_shape_share_cache_.end();
+       it++) {
+    std::vector<symbol::ShapeOrDataDimExprs> substituted_result;
+    for (const auto& shape_or_data : it->second) {
+      const auto& substituted_shape_or_data =
+          symbol::SubstituteShapeOrData(shape_or_data, substitution_pattern_);
+      substituted_result.emplace_back(substituted_shape_or_data);
+    }
+    it->second = substituted_result;
+  }
 }
 
 void InferSymbolicShapeContext::PrintShapeOrDatas() const {
@@ -282,6 +293,19 @@ void InferSymbolicShapeContext::PrintShapeOrDatas() const {
   for (const auto& [value_id, shape_or_data] : value_id_to_shape_or_data_) {
     LOG(INFO) << value_id << " : " << shape_or_data;
   }
+}
+
+void InferSymbolicShapeContext::SetShareCacheForOp(
+    const OperationShapeInfo& op_shape_info, ShareCacheResultT result_shape) {
+  op_shape_share_cache_[op_shape_info] = result_shape;
+}
+
+std::optional<ShareCacheResultT> InferSymbolicShapeContext::GetShareCacheForOp(
+    const OperationShapeInfo& op_shape_info) const {
+  if (op_shape_share_cache_.count(op_shape_info) != 0) {
+    return op_shape_share_cache_.at(op_shape_info);
+  }
+  return std::nullopt;
 }
 
 void ShapeConstraintIRAnalysis::Init() { context_.Init(); }
@@ -405,11 +429,8 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
 
 const symbol::ShapeOrDataDimExprs&
 ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
-  // TODO(Hongqing-work): define a default empty ShapeOrDataDimExprs
-  if (!val) {
-    static symbol::ShapeOrDataDimExprs empty{
-        symbol::TensorShapeOrDataDimExprs{}};
-    return empty;
+  if (!val || !val.type()) {
+    return symbol::ShapeOrDataDimExprs::GetNullShapeOrData();
   }
   if (!context_.HasShapeOrDataForValue(val)) {
     // backtrack to infer shape from defining op

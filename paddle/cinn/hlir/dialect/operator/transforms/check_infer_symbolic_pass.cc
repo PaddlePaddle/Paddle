@@ -121,9 +121,14 @@ class BlockDimExprsAsserter {
           }
           return symbol::ShapeOrDataDimExprs(ret);
         };
+    auto NewSymbolReplacedNullValue =
+        [&](const symbol::NullShapeOrDataDimExprs& null_shape_or_data) {
+          return symbol::ShapeOrDataDimExprs(null_shape_or_data);
+        };
     auto GetNewSymbolReplaced = [&](const auto& value_dim_exprs) {
       auto patterns = ::common::Overloaded{NewSymbolReplacedTensor,
-                                           NewSymbolReplacedTensorList};
+                                           NewSymbolReplacedTensorList,
+                                           NewSymbolReplacedNullValue};
       return std::visit(patterns, value_dim_exprs.variant());
     };
     VisitEachInputAndDimExprs([&](auto value, const auto& value_dim_exprs) {

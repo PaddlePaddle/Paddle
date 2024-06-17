@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/builtin_type_interfaces.h"
@@ -23,9 +24,12 @@
 #include "paddle/pir/include/dialect/shape/ir/shape_op.h"
 #include "paddle/pir/include/dialect/shape/utils/constraints_manager.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_builder.h"
+#include "paddle/pir/include/dialect/shape/utils/operation_shape_info.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace pir {
+
+using ShareCacheResultT = std::vector<symbol::ShapeOrDataDimExprs>;
 
 void InferSymExprForAllValues(ModuleOp module_op);
 
@@ -63,6 +67,12 @@ class IR_API InferSymbolicShapeContext {
 
   void PrintShapeOrDatas() const;
 
+  void SetShareCacheForOp(const OperationShapeInfo& op_shape_info,
+                          ShareCacheResultT result_shape);
+
+  std::optional<ShareCacheResultT> GetShareCacheForOp(
+      const OperationShapeInfo& op_shape_info) const;
+
   const symbol::ConstraintsManager& constraints_manager() const {
     return constraints_manager_;
   }
@@ -84,6 +94,10 @@ class IR_API InferSymbolicShapeContext {
   using DimExprSubstitutionPattern =
       std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
   DimExprSubstitutionPattern substitution_pattern_;
+
+  std::unordered_map<OperationShapeInfo,
+                     std::vector<symbol::ShapeOrDataDimExprs>>
+      op_shape_share_cache_;
 };
 
 class IR_API ShapeConstraintIRAnalysis final
