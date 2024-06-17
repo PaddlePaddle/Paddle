@@ -37,7 +37,9 @@ class WeightDecayRegularizer:
     def __init__(self) -> None:
         pass
 
-    def __call__(self, param, grad, block):
+    def __call__(
+        self, param: paddle.Tensor, grad: paddle.Tensor, block: pir.Block
+    ):
         """Add corresponding weight decay operations to the network"""
         raise NotImplementedError()
 
