@@ -123,12 +123,6 @@ bool ConstraintsManager::IsEqual(const DimExpr& lhs, const DimExpr& rhs) const {
   return lhs == rhs || equals_.HasSameRoot(lhs, rhs);
 }
 
-template <typename DoEachClusterT>
-void ConstraintsManager::VisitEqualClusters(
-    const DoEachClusterT& DoEachCluster) const {
-  equals_.VisitCluster(DoEachCluster);
-}
-
 void ConstraintsManager::AddGTOneCstr(const DimExpr& dim_expr) {
   gtones_.insert(dim_expr);
 
@@ -262,39 +256,45 @@ void ConstraintsManager::SubstituteInConstraint(const DimExpr& origin,
   broadcastables_ = substituted_broadcastables;
 }
 
-template <typename DoEachT>
-void ConstraintsManager::EqualConstraintsVisitor(const DoEachT& DoEach) {
+void ConstraintsManager::VisitEqualClusters(
+    const std::function<void(const std::vector<DimExpr>&)>& DoEachCluster)
+    const {
+  equals_.VisitCluster(DoEachCluster);
+}
+
+void ConstraintsManager::EqualConstraintsVisitor(
+    const std::function<void(std::unordered_map<DimExpr, DimExpr>::iterator)>&
+        DoEach) {
   auto equals_parents = equals_.MutMap();
   for (auto it = equals_parents->begin(); it != equals_parents->end(); it++) {
     DoEach(it);
   }
 }
 
-template <typename DoEachT>
-void ConstraintsManager::GTOneConstraintsVisitor(const DoEachT& DoEach) {
+void ConstraintsManager::GTOneConstraintsVisitor(
+    const std::function<void(GTOneConstraints::iterator)>& DoEach) {
   for (auto it = gtones_.begin(); it != gtones_.end(); it++) {
     DoEach(it);
   }
 }
 
-template <typename DoEachT>
-void ConstraintsManager::GTOneConstraintsVisitor(const DoEachT& DoEach) const {
+void ConstraintsManager::GTOneConstraintsVisitor(
+    const std::function<void(GTOneConstraints::const_iterator)>& DoEach) const {
   for (auto it = gtones_.begin(); it != gtones_.end(); it++) {
     DoEach(it);
   }
 }
 
-template <typename DoEachT>
 void ConstraintsManager::BroadcastableConstraintsVisitor(
-    const DoEachT& DoEach) {
+    const std::function<void(BroadcastableConstraints::iterator)>& DoEach) {
   for (auto it = broadcastables_.begin(); it != broadcastables_.end(); it++) {
     DoEach(it);
   }
 }
 
-template <typename DoEachT>
 void ConstraintsManager::BroadcastableConstraintsVisitor(
-    const DoEachT& DoEach) const {
+    const std::function<void(BroadcastableConstraints::const_iterator)>& DoEach)
+    const {
   for (auto it = broadcastables_.begin(); it != broadcastables_.end(); it++) {
     DoEach(it);
   }
