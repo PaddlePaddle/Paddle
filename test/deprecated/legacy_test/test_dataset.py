@@ -875,18 +875,6 @@ class TestDataset(unittest.TestCase):
         dataset.set_use_var(slots_vars)
         dataset.set_filelist([filename1, filename2])
 
-        graph_config = {
-            "walk_len": 24,
-            "walk_degree": 10,
-            "once_sample_startid_len": 80000,
-            "sample_times_one_chunk": 5,
-            "window": 3,
-            "debug_mode": 0,
-            "batch_size": 800,
-            "meta_path": "cuid2clk-clk2cuid;cuid2conv-conv2cuid;clk2cuid-cuid2clk;clk2cuid-cuid2conv",
-            "gpu_graph_training": 1,
-        }
-        dataset.set_graph_config(graph_config)
         dataset.set_pass_id(2)
         pass_id = dataset.get_pass_id()
 
