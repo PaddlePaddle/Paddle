@@ -16,8 +16,7 @@
 
 #include <functional>
 #include <memory>
-#include <optional>
-#include "paddle/cinn/hlir/dialect/operator/transforms/local_infer_symbolic_util.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 #include "paddle/pir/include/pass/pass.h"
 
@@ -25,8 +24,14 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-std::unique_ptr<::pir::Pass> CreateCheckInferSymbolicPass(
-    const DimExprs4ValueT& OptDimExprs4Value);
+using DimExprs4ValueT =
+    std::function<const symbol::ShapeOrDataDimExprs&(pir::Value)>;
+
+std::shared_ptr<pir::ShapeConstraintIRAnalysis> MakeOpShapeAnalysis(
+    const pir::Operation* op, const DimExprs4ValueT& GraphDimExprs4Value);
+
+DimExprs4ValueT MakeOpDimExprs4Value(
+    const pir::Operation* op, const DimExprs4ValueT& GraphDimExprs4Value);
 
 }  // namespace ir
 }  // namespace dialect
