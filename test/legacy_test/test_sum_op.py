@@ -600,7 +600,6 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
                         axis.append(item)
                     else:
                         axis.append(paddle.full([1], self.np_axis[i], 'int64'))
-            print("axis = ", axis)
             linear = paddle.nn.Linear(x.shape[-1], 5)
             linear_out = linear(x)
             out = self.pd_api(linear_out, axis, keepdim=self.keepdim)

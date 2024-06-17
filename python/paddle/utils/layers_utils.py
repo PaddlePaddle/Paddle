@@ -393,25 +393,6 @@ def get_int_tensor_list(ele_list, default_dtype='int64'):
     return int_tensor_list
 
 
-def get_tensor_list(old_list, dtype="int32"):
-    from paddle.tensor import fill_constant
-
-    if _contain_var(paddle.pir.Value):
-        for ele in old_list:
-            if isinstance(ele, paddle.pir.Value):
-                dtype = ele.dtype
-    new_list_tensor = []
-    for ele in old_list:
-        if isinstance(ele, (Variable, paddle.pir.Value)):
-            ele.stop_gradient = True
-            new_list_tensor.append(ele)
-        else:
-            assert isinstance(ele, int)
-            temp_out = fill_constant([1], dtype, ele, force_cpu=True)
-            new_list_tensor.append(temp_out)
-    return new_list_tensor
-
-
 def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
     from paddle.tensor import fill_constant
 
@@ -469,6 +450,11 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
     Converts all elements of a list to Variable / Value.
     """
     from paddle.tensor import fill_constant
+
+    if _contain_var(old_list):
+        for ele in old_list:
+            if isinstance(ele, paddle.pir.Value):
+                dtype = ele.dtype
 
     new_list_tensor = []
     for ele in old_list:
