@@ -25,6 +25,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/cinn/utils/data_util.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
@@ -38,12 +39,13 @@
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
-using cinn::hlir::framework::pir::Group;
-using cinn::hlir::framework::pir::GroupPtr;
+using cinn::hlir::framework::pir::CompatibleInfo;
+using cinn::hlir::framework::pir::OpLoweringGroup;
+using cinn::hlir::framework::pir::OpLoweringGroupPtr;
 
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
-using ProgramInfo =
-    std::tuple<std::shared_ptr<::pir::Program>, std::vector<GroupPtr>>;
+using ProgramInfo = std::tuple<std::shared_ptr<::pir::Program>,
+                               std::vector<OpLoweringGroupPtr>>;
 ProgramInfo BuildProgram() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -73,20 +75,28 @@ ProgramInfo BuildProgram() {
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_y.result(0)});
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{relu_op_y.result(0)});
 
-  std::vector<GroupPtr> groups;
-  groups.emplace_back(
-      std::make_shared<Group>(std::initializer_list<::pir::Operation*>(
-          {full_op_x.operation()})));  // For coverage
-  groups[0]->output_values.push_back(groups[0]->ops.back()->result(0));
-  groups.emplace_back(std::make_shared<Group>(
-      std::initializer_list<::pir::Operation*>({full_op_y.operation()})));
-  groups[1]->output_values.push_back(groups[1]->ops.back()->result(0));
-  groups.emplace_back(std::make_shared<Group>(
+  std::vector<OpLoweringGroupPtr> groups;
+  const auto full_op_x_ops =
+      std::initializer_list<::pir::Operation*>({full_op_x.operation()});
+  groups.emplace_back(std::make_shared<OpLoweringGroup>(
+      full_op_x_ops,
+      CompatibleInfo::GroupOpsName(full_op_x_ops)));  // For coverage
+  groups[0]->mut_output_values().push_back(groups[0]->ops().back()->result(0));
+
+  const auto full_op_y_ops =
+      std::initializer_list<::pir::Operation*>({full_op_x.operation()});
+  groups.emplace_back(std::make_shared<OpLoweringGroup>(
+      full_op_y_ops, CompatibleInfo::GroupOpsName(full_op_y_ops)));
+
+  groups[1]->mut_output_values().push_back(groups[1]->ops().back()->result(0));
+  const auto vector_ops =
       std::vector<::pir::Operation*>({tan_op_x.operation(),
                                       relu_op_x.operation(),
                                       tan_op_y.operation(),
-                                      relu_op_y.operation()})));
-  groups[2]->output_values.push_back(groups[2]->ops.back()->result(0));
+                                      relu_op_y.operation()});
+  groups.emplace_back(std::make_shared<OpLoweringGroup>(
+      vector_ops, CompatibleInfo::GroupOpsName(vector_ops)));
+  groups[2]->mut_output_values().push_back(groups[2]->ops().back()->result(0));
 
   return {program, groups};
 }
@@ -126,17 +136,19 @@ ProgramInfo BuildSoftmax() {
       builder.Build<paddle::dialect::DivideOp>(exp, broadcast_2).result(0);
   auto yield_op = builder.Build<pir::YieldOp>(std::vector<pir::Value>{divide});
 
-  std::vector<GroupPtr> groups;
-  groups.emplace_back(std::make_shared<Group>(
+  std::vector<OpLoweringGroupPtr> groups;
+  const auto vector_ops =
       std::initializer_list<::pir::Operation*>({max.defining_op(),
                                                 broadcast_1.defining_op(),
                                                 sub.defining_op(),
                                                 exp.defining_op(),
                                                 sum.defining_op(),
                                                 broadcast_2.defining_op(),
-                                                divide.defining_op()})));
-  groups[0]->output_values.push_back(groups[0]->ops.back()->result(0));
-  groups[0]->op_pattern_kind = cinn::hlir::framework::kReduction;
+                                                divide.defining_op()});
+  groups.emplace_back(std::make_shared<OpLoweringGroup>(
+      vector_ops, CompatibleInfo::GroupOpsName(vector_ops)));
+  groups[0]->mut_output_values().push_back(groups[0]->ops().back()->result(0));
+  groups[0]->set_op_pattern_kind(cinn::hlir::framework::kReduction);
 
   return {program, groups};
 }

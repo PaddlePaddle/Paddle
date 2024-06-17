@@ -22,6 +22,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 reduce_api_list = [
     paddle.sum,
@@ -142,13 +143,11 @@ class TestReduceAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    # TODO(SigureMo): Temporarily disable this test case in due to hanging in mac CI.
-    # @test_with_pir_api
-    def test_static_reduce(self):
+    @test_with_pir_api
+    def test_static_reduce_x_0D(self):
         paddle.enable_static()
         for api in reduce_api_list:
             main_prog = paddle.static.Program()
-            block = main_prog.global_block()
             exe = paddle.static.Executor()
             with paddle.static.program_guard(
                 main_prog, paddle.static.Program()
@@ -188,17 +187,26 @@ class TestReduceAPI(unittest.TestCase):
                 )
                 res = exe.run(main_prog, fetch_list=fetch_list)
 
-                self.assertEqual(res[0].shape, ())
-                self.assertEqual(res[1].shape, ())
+                for res_data in res:
+                    self.assertEqual(res_data.shape, ())
                 if api not in [paddle.count_nonzero]:
                     np.testing.assert_allclose(res[0], res[1])
 
+                if len(res) > 3:
+                    np.testing.assert_allclose(res[-2], np.array(1.0))
+                    np.testing.assert_allclose(res[-1], np.array(1.0))
                 if len(res) > 2:
-                    self.assertEqual(res[2].shape, ())
-                    self.assertEqual(res[3].shape, ())
-                    np.testing.assert_allclose(res[2], np.array(1.0))
-                    np.testing.assert_allclose(res[3], np.array(1.0))
+                    np.testing.assert_allclose(res[-1], np.array(1.0))
 
+    @test_with_pir_api
+    def test_static_reduce_ND_0D(self):
+        paddle.enable_static()
+        for api in reduce_api_list:
+            main_prog = paddle.static.Program()
+            exe = paddle.static.Executor()
+            with paddle.static.program_guard(
+                main_prog, paddle.static.Program()
+            ):
                 # 2) x is ND, reduce to 0D
                 if api in [paddle.all, paddle.any]:
                     x = paddle.randint(0, 2, [3, 5]).astype('bool')
@@ -229,6 +237,15 @@ class TestReduceAPI(unittest.TestCase):
                 if len(res) > 2:
                     self.assertEqual(res[2].shape, (3, 5))
 
+    @test_with_pir_api
+    def test_static_reduce_x_1D(self):
+        paddle.enable_static()
+        for api in reduce_api_list:
+            main_prog = paddle.static.Program()
+            exe = paddle.static.Executor()
+            with paddle.static.program_guard(
+                main_prog, paddle.static.Program()
+            ):
                 # 3) x is 1D, axis=0, reduce to 0D
                 if api in [paddle.all, paddle.any]:
                     x = paddle.randint(0, 2, [5]).astype('bool')

@@ -442,9 +442,7 @@ def _print_operator_stats(op_count_dict):
                 called = value.split(",")
             else:
                 raise ValueError(
-                    "Input {} is expected to be a list of str, but received {}.".format(
-                        value, type(value)
-                    )
+                    f"Input {value} is expected to be a list of str, but received {type(value)}."
                 )
             print(
                 "  %-40s|  %-17s|  %-17s|  %-17s|  %-17s"

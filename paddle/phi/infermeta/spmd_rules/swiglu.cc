@@ -21,14 +21,19 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 SpmdInfo SwiGLUInferSpmd(const DistMetaTensor& x, const DistMetaTensor& y) {
   // y.dist_attr() is empty means y is None
   if (y.dist_attr() == TensorDistAttr()) {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("The input y is not allowed to be None"));
+    auto x_dims_mapping = x.dist_attr().dims_mapping();
+    if (x_dims_mapping.back() != -1) {
+      LOG(WARNING)
+          << "Note: Input x's dims_mapping[-1] != -1, but the input y is none "
+             "and the input x will be split again in the last dimension.";
+    }
+    auto res = ElementwiseUnaryInferSpmd(x);
+    return {{res.first[0], y.dist_attr()}, {res.second[0]}};
   } else {
     return ElementwiseBinaryInferSpmd(x, y);
   }
@@ -38,8 +43,14 @@ SpmdInfo SwiGLUInferSpmdReverse(const DistMetaTensor& x,
                                 const DistMetaTensor& y,
                                 const DistMetaTensor& out) {
   if (y.dist_attr() == TensorDistAttr()) {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("The input y is not allowed to be None"));
+    auto x_dims_mapping = x.dist_attr().dims_mapping();
+    if (x_dims_mapping.back() != -1) {
+      LOG(WARNING)
+          << "Note: Input x's dims_mapping[-1] != -1, but the input y is none "
+             "and the input x will be split again in the last dimension.";
+    }
+    auto res = ElementwiseUnaryInferSpmdReverse(x, out);
+    return {{res.first[0], y.dist_attr()}, {res.second[0]}};
   } else {
     return ElementwiseBinaryInferSpmdReverse(x, y, out);
   }
@@ -49,12 +60,18 @@ SpmdInfo SwiGLUGradInferSpmd(const DistMetaTensor& x,
                              const DistMetaTensor& y,
                              const DistMetaTensor& out_grad) {
   if (y.dist_attr() == TensorDistAttr()) {
-    PADDLE_THROW(
-        phi::errors::Unimplemented("The input y is not allowed to be None"));
+    auto x_dims_mapping = x.dist_attr().dims_mapping();
+    if (x_dims_mapping.back() != -1) {
+      LOG(WARNING)
+          << "Note: Input x's dims_mapping[-1] != -1, but the input y is none "
+             "and the input x will be split again in the last dimension.";
+    }
+    auto res = ElementwiseUnaryGradInferSpmd(x, out_grad);
+    return {{res.first[0], y.dist_attr(), res.first[1]},
+            {res.second[0], y.dist_attr()}};
   } else {
     return ElementwiseBinaryGradInferSpmd(x, y, out_grad);
   }
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

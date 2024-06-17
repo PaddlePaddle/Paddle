@@ -40,6 +40,24 @@ void Pool2dGradKernel(const Context& ctx,
                       DenseTensor* dx);
 
 template <typename T, typename Context>
+void LPPool2dGradKernel(const Context& ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& out,
+                        const DenseTensor& dout,
+                        const IntArray& kernel_size,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        bool ceil_mode,
+                        bool exclusive,
+                        const std::string& data_format,
+                        const std::string& pooling_type,
+                        bool global_pooling,
+                        bool adaptive,
+                        const std::string& padding_algorithm,
+                        const float norm_type,
+                        DenseTensor* dx);
+
+template <typename T, typename Context>
 void Pool2dGradGPUDNNKernel(const Context& ctx,
                             const DenseTensor& x,
                             const DenseTensor& out,

@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import numpy as np
 from decorator_helper import prog_scope
 
 import paddle
+from paddle.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 # Use to test zero-dim of Sundry API, which is unique and can not be classified
@@ -125,23 +126,27 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (5,))
 
+    @test_with_pir_api
     @prog_scope()
-    def test_create_parameter_var(self):
+    def test_create_parameter(self):
+        if not in_pir_mode():
+            zero_dim_param = paddle.create_parameter(shape=[], dtype='float32')
+            self.assertShapeEqual(zero_dim_param, [])
+            prog = paddle.static.default_startup_program()
+            res = self.exe.run(prog, fetch_list=[zero_dim_param])
+            self.assertEqual(res[0].shape, ())
+            return
         zero_dim_param = paddle.create_parameter(shape=[], dtype='float32')
-        self.assertShapeEqual(zero_dim_param, [])
-        prog = paddle.static.default_startup_program()
-        res = self.exe.run(prog, fetch_list=[zero_dim_param])
-        self.assertEqual(res[0].shape, ())
-
-        zero_dim_var = paddle.static.create_global_var(
-            shape=[], value=0.5, dtype='float32'
+        self.assertEqual(zero_dim_param.shape, [])
+        startup_prog = paddle.static.default_startup_program()
+        main_prog = paddle.static.default_main_program()
+        self.exe.run(startup_prog)
+        (zero_dim_param_res,) = self.exe.run(
+            main_prog, fetch_list=[zero_dim_param]
         )
-        self.assertEqual(zero_dim_var.shape, ())
-        prog = paddle.static.default_startup_program()
-        res = self.exe.run(prog, fetch_list=[zero_dim_var])
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[0], 0.5)
+        self.assertEqual(zero_dim_param_res.shape, ())
 
+    @test_with_pir_api
     @prog_scope()
     def test_getitem(self):
         # case1: When all axis have a scalar indice, output should be a 0-d Tensor;
@@ -195,67 +200,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         np.testing.assert_allclose(res[0], np.ones((1, 3, 4)))
         self.assertEqual(res[1].shape, (1, 4))
         np.testing.assert_allclose(res[1], np.ones((1, 4)))
-
-    @prog_scope()
-    def test_setitem(self):
-        # NOTE(zoooo0820): __setitem__ has gradient problem in static graph.
-        # To solve this, we may not support __setitem__ in static graph.
-        # These unit tests will delete soon.
-
-        # case1: all axis have a scalar indice
-        x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
-        x.stop_gradient = False
-        out = x * 2
-        out = paddle.static.setitem(out, (1, 2, 3, 4), 10)
-        paddle.static.append_backward(out.sum())
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
-
-        self.assertEqual(out.shape, x.shape)
-        np.testing.assert_allclose(res[0][1, 2, 3, 4], np.array(10))
-        self.assertEqual(res[1].shape, (2, 3, 4, 5))
-        x_grad_expected = np.ones((2, 3, 4, 5)) * 2
-        x_grad_expected[1, 2, 3, 4] = 0
-        np.testing.assert_allclose(res[1], x_grad_expected)
-
-        # case2: 0-D Tensor indice in some axis
-        # NOTE(zoooo0820): Now, int/slice with 0-D Tensor will still be
-        # treated as combined indexing, which is not support backward.
-        # There should have more test cases such as out[1, indice, :] = 0.5 when this
-        # problem is fixed.
-        x = paddle.randn((2, 3, 4, 5))
-        x.stop_gradient = False
-        indice = paddle.full([], 1, dtype='int32')
-        out = x * 1
-        out = paddle.static.setitem(out, (indice, indice), 0.5)
-        paddle.static.append_backward(out.sum())
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
-
-        self.assertEqual(out.shape, x.shape)
-        np.testing.assert_allclose(res[0][1, 1], np.ones((4, 5)) * 0.5)
-        x_grad_expected = np.ones((2, 3, 4, 5))
-        x_grad_expected[1, 1] = 0
-        np.testing.assert_allclose(res[1], x_grad_expected)
-
-        # case3：0-D Tensor indice in some axis, value is a Tensor
-        # and there is broadcast
-        x = paddle.randn((2, 3, 4, 5))
-        x.stop_gradient = False
-        v = paddle.ones((4, 5), dtype='float32') * 5
-        v.stop_gradient = False
-        indice = paddle.full([], 1, dtype='int32')
-        out = x * 1
-        out = paddle.static.setitem(out, indice, v)
-        paddle.static.append_backward(out.sum())
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name, v.grad_name])
-
-        self.assertEqual(out.shape, x.shape)
-        np.testing.assert_allclose(res[0][1], np.ones((3, 4, 5)) * 5)
-        x_grad_expected = np.ones((2, 3, 4, 5))
-        x_grad_expected[1] = 0
-        np.testing.assert_allclose(res[1], x_grad_expected)
 
     @test_with_pir_api
     @prog_scope()
@@ -634,9 +578,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         out = paddle.as_complex(x)
         self.assertShapeEqual(
             x,
-            [
-                2,
-            ],
+            [2],
         )
         self.assertShapeEqual(out, [])
         grad_list = paddle.static.append_backward(
@@ -764,6 +706,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[2].shape, (2, 2))
         self.assertEqual(res[3].shape, (2, 2))
 
+    @test_with_pir_api
     @prog_scope()
     def test_tensordot(self):
         x = paddle.full(shape=[10], fill_value=0.25, dtype='float64')
@@ -832,20 +775,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         x = paddle.full(shape=[2, 4], fill_value=0.25)
         y = paddle.full(shape=[2, 1], fill_value=1, dtype="int64")
         out = paddle.static.accuracy(input=x, label=y, k=1)
-
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(
-            prog,
-            fetch_list=[out],
-        )
-
-        self.assertEqual(res[0].shape, ())
-
-    @prog_scope()
-    def test_static_auc(self):
-        x = paddle.full(shape=[3, 2], fill_value=0.25)
-        y = paddle.full(shape=[3], fill_value=1, dtype="int64")
-        out = paddle.static.auc(input=x, label=y)[0]
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(

@@ -13,12 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <rccl.h>
+#include <rccl/rccl.h>
 
 #include <mutex>  // NOLINT
 
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 #ifdef __cplusplus
 extern "C" {

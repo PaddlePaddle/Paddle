@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 const phi::IntArray &IntArrayAttribute::data() const {
   return storage()->GetAsKey();
 }
@@ -28,7 +29,7 @@ phi::DataLayout DataLayoutAttribute::data() const {
   return storage()->GetAsKey();
 }
 
-phi::Scalar ScalarAttribute::data() {
+phi::Scalar ScalarAttribute::data() const {
   if (isa<pir::FloatAttribute>()) {
     return phi::Scalar(dyn_cast<pir::FloatAttribute>().data());
   } else if (isa<pir::DoubleAttribute>()) {
@@ -73,50 +74,28 @@ IntArrayAttribute IntArrayAttribute::Parse(pir::IrParser &parser) {  // NOLINT
 //                       |complex128|Undefined|psting|flaot16
 //                       |bfloat16|num_data_types|all_dtype
 DataTypeAttribute DataTypeAttribute::Parse(pir::IrParser &parser) {  // NOLINT
-  std::unordered_map<std::string, phi::DataType> StringToDataType{
-      {"bool", phi::DataType::BOOL},
-      {"uint8", phi::DataType::UINT8},
-      {"int8", phi::DataType::INT8},
-      {"uint16", phi::DataType::UINT16},
-      {"int16", phi::DataType::INT16},
-      {"uint32", phi::DataType::UINT32},
-      {"int32", phi::DataType::INT32},
-      {"uint64", phi::DataType::UINT64},
-      {"int64", phi::DataType::INT64},
-      {"float32", phi::DataType::FLOAT32},
-      {"complex64", phi::DataType::COMPLEX64},
-      {"complex128", phi::DataType::COMPLEX128},
-      {"Undefined", phi::DataType::UNDEFINED},
-      {"psting", phi::DataType::PSTRING},
-      {"float16", phi::DataType::FLOAT16},
-      {"bfloat16", phi::DataType::BFLOAT16},
-      {"float64", phi::DataType::FLOAT64}};
   std::string datatype_token_val = parser.ConsumeToken().val_;
-  IR_ENFORCE(StringToDataType.count(datatype_token_val) > 0,
-             datatype_token_val + " is not defined in DataType." +
-                 parser.GetErrorLocationInfo());
+  PADDLE_ENFORCE_EQ(StringToDataTypeMap().count(datatype_token_val) > 0,
+                    true,
+                    common::errors::InvalidArgument(
+                        datatype_token_val + " is not defined in DataType." +
+                        parser.GetErrorLocationInfo()));
   return DataTypeAttribute::get(parser.ctx,
-                                StringToDataType[datatype_token_val]);
+                                StringToDataTypeMap().at(datatype_token_val));
 }
 
 // Parse a PlaceAttribute
 // PlaceAttribute   :=    Place(cpu)|Place(gpu:0)|Place(gpu_pinned)
 //                        |Place(xpu:0)|Place(ipu:0)|Place(:0)|undefined
 PlaceAttribute PlaceAttribute::Parse(pir::IrParser &parser) {  // NOLINT
-  std::unordered_map<std::string, phi::Place> StringToPlace{
-      {"cpu", phi::CPUPlace{}},
-      {"gpu", phi::GPUPlace{}},
-      {"gpu_pinned", phi::GPUPinnedPlace{}},
-      {"xpu", phi::XPUPlace{}},
-      {"ipu", phi::IPUPlace{}},
-      {":", phi::CustomPlace{}},
-      {"undefined", phi::Place{}}};
   parser.ConsumeAToken("Place");
   parser.ConsumeAToken("(");
   std::string place_token_val = parser.ConsumeToken().val_;
-  IR_ENFORCE(StringToPlace.count(place_token_val) > 0,
-             place_token_val + " is not defined in Place." +
-                 parser.GetErrorLocationInfo());
+  PADDLE_ENFORCE_EQ(StringToPlaceMap().count(place_token_val) > 0,
+                    true,
+                    common::errors::InvalidArgument(
+                        place_token_val + " is not defined in Place." +
+                        parser.GetErrorLocationInfo()));
   if (parser.PeekToken().val_ == ":") {
     parser.ConsumeAToken(":");
     parser.ConsumeToken();
@@ -124,7 +103,8 @@ PlaceAttribute PlaceAttribute::Parse(pir::IrParser &parser) {  // NOLINT
     parser.ConsumeToken();
   }
   parser.ConsumeAToken(")");
-  return PlaceAttribute::get(parser.ctx, StringToPlace[place_token_val]);
+  return PlaceAttribute::get(parser.ctx,
+                             StringToPlaceMap().at(place_token_val));
 }
 
 // Parse a DataLayoutAttribute
@@ -133,32 +113,23 @@ PlaceAttribute PlaceAttribute::Parse(pir::IrParser &parser) {  // NOLINT
 //                           |NCDHW|PSTRING_UNION|STRIDED
 DataLayoutAttribute DataLayoutAttribute::Parse(
     pir::IrParser &parser) {  // NOLINT
-  std::unordered_map<std::string, phi::DataLayout> StringToDataLayout{
-      {"NHWC", phi::DataLayout::kNHWC},
-      {"NCHW", phi::DataLayout::kNCHW},
-      {"Undefined", phi::DataLayout::kAnyLayout},
-      {"ONEDNN", phi::DataLayout::ONEDNN},
-      {"SPARSE_COO", phi::DataLayout::SPARSE_COO},
-      {"SPARSE_CSR", phi::DataLayout::SPARSE_CSR},
-      {"NDHWC", phi::DataLayout::kNDHWC},
-      {"NCDHW", phi::DataLayout::kNCDHW},
-      {"PSTRING_UNION", phi::DataLayout::PSTRING_UNION},
-      {"STRIDED", phi::DataLayout::STRIDED}};
   std::string datalayout_token_val = parser.ConsumeToken().val_;
-  IR_ENFORCE(StringToDataLayout.count(datalayout_token_val) > 0,
-             datalayout_token_val + " is not defined in DataLayout." +
-                 parser.GetErrorLocationInfo());
+  PADDLE_ENFORCE_EQ(
+      StringToDataLayoutMap().count(datalayout_token_val) > 0,
+      true,
+      common::errors::InvalidArgument(datalayout_token_val +
+                                      " is not defined in DataLayout." +
+                                      parser.GetErrorLocationInfo()));
   if (datalayout_token_val == "Undefined") {
     parser.ConsumeAToken("(");
     parser.ConsumeAToken("AnyLayout");
     parser.ConsumeAToken(")");
   }
-  return DataLayoutAttribute::get(parser.ctx,
-                                  StringToDataLayout[datalayout_token_val]);
+  return DataLayoutAttribute::get(
+      parser.ctx, StringToDataLayoutMap().at(datalayout_token_val));
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IntArrayAttribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ScalarAttribute)

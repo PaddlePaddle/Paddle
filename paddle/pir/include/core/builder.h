@@ -107,7 +107,8 @@ class Builder {
 
   /// Set the insertion point to the end of the specified block.
   void SetInsertionPointToBlockEnd(Block *block) {
-    IR_ENFORCE(block != nullptr, "argument of block is nullptr");
+    PADDLE_ENFORCE_NOT_NULL(
+        block, phi::errors::PreconditionNotMet("argument of block is nullptr"));
     set_insertion_point(block, block->end());
   }
 

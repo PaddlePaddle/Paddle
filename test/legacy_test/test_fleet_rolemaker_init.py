@@ -21,7 +21,7 @@ from paddle.distributed.fleet.base import role_maker
 
 class TestPSCloudRoleMakerCase1(unittest.TestCase):
     """
-    Test cases for PaddleCloudRoleMake Parameter Server.
+    Test cases for PaddleCloudRoleMaker Parameter Server.
     """
 
     def setUp(self):
@@ -37,7 +37,7 @@ class TestPSCloudRoleMakerCase1(unittest.TestCase):
 
 class TestPSCloudRoleMakerCase2(unittest.TestCase):
     """
-    Test cases for PaddleCloudRoleMake Parameter Server.
+    Test cases for PaddleCloudRoleMaker Parameter Server.
     """
 
     def setUp(self):
@@ -54,7 +54,7 @@ class TestPSCloudRoleMakerCase2(unittest.TestCase):
 
 class TestPSCloudRoleMakerCase3(unittest.TestCase):
     """
-    Test cases for PaddleCloudRoleMake Parameter Server.
+    Test cases for PaddleCloudRoleMaker Parameter Server.
     """
 
     def setUp(self):
@@ -72,7 +72,7 @@ class TestPSCloudRoleMakerCase3(unittest.TestCase):
 
 class TestPSCloudRoleMakerCase4(unittest.TestCase):
     """
-    Test cases for PaddleCloudRoleMake Parameter Server.
+    Test cases for PaddleCloudRoleMaker Parameter Server.
     """
 
     def setUp(self):
@@ -90,7 +90,7 @@ class TestPSCloudRoleMakerCase4(unittest.TestCase):
 
 class TestPSCloudRoleMakerCase5(unittest.TestCase):
     """
-    Test cases for PaddleCloudRoleMake Parameter Server.
+    Test cases for PaddleCloudRoleMaker Parameter Server.
     """
 
     def setUp(self):
@@ -109,7 +109,7 @@ class TestPSCloudRoleMakerCase5(unittest.TestCase):
 
 class TestPSCloudRoleMakerCase6(unittest.TestCase):
     """
-    Test cases for PaddleCloudRoleMake Parameter Server.
+    Test cases for PaddleCloudRoleMaker Parameter Server.
     """
 
     def setUp(self):
@@ -130,7 +130,7 @@ class TestPSCloudRoleMakerCase6(unittest.TestCase):
 
 class TestPSCloudRoleMakerCase7(unittest.TestCase):
     """
-    Test cases for PaddleCloudRoleMake Parameter Server.
+    Test cases for PaddleCloudRoleMaker Parameter Server.
     """
 
     def setUp(self):

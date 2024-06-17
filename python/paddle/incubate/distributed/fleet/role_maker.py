@@ -142,12 +142,7 @@ class RoleMakerBase:
         return self._server_endpoints
 
     def to_string(self):
-        return "role: {}, current_id: {}, worker_endpoints: {}, server_endpoints: {}".format(
-            self._role,
-            self._current_id,
-            self._worker_endpoints,
-            self._server_endpoints,
-        )
+        return f"role: {self._role}, current_id: {self._current_id}, worker_endpoints: {self._worker_endpoints}, server_endpoints: {self._server_endpoints}"
 
     def all_gather(self, input):
         """
@@ -263,9 +258,9 @@ class MPIRoleMaker(RoleMakerBase):
         raise NotImplementedError("Please implement this method in child class")
 
 
-class MPISymetricRoleMaker(MPIRoleMaker):
+class MPISymmetricRoleMaker(MPIRoleMaker):
     """
-    MPISymetricRoleMaker is designed for worker and server assignment
+    MPISymmetricRoleMaker is designed for worker and server assignment
     under MPI. Typically, a worker and a server node will be appointed
     on each physical node. This role maker can be only used under MPI.
     """

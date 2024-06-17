@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -365,14 +364,17 @@ SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
 
 SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
                                        const DistMetaTensor& out_grad) {
-  return {{out_grad.dist_attr(), out_grad.dist_attr()}, {out_grad.dist_attr()}};
+  auto dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
+  dist_attr.set_dims_mapping(out_grad.dist_attr().dims_mapping());
+  return {{dist_attr, dist_attr}, {dist_attr}};
 }
 
 SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
                                        const DistMetaTensor& out,
                                        const DistMetaTensor& out_grad) {
-  return {{out_grad.dist_attr(), out_grad.dist_attr(), out_grad.dist_attr()},
-          {out_grad.dist_attr()}};
+  auto dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
+  dist_attr.set_dims_mapping(out_grad.dist_attr().dims_mapping());
+  return {{dist_attr, dist_attr, dist_attr}, {dist_attr}};
 }
 
 bool DimsNotEqualOrHasBroadcastDim(const DistMetaTensor& x,
@@ -528,5 +530,4 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
   info.first.emplace(info.first.begin() + 2, out_grad.dist_attr());
   return info;
 }
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

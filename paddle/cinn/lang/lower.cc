@@ -337,8 +337,11 @@ ir::LoweredFunc LowerToAst(const std::string& name,
                            const Target& target) {
   std::vector<ir::LoweredFunc> result =
       LowerToAstVec(name, tensor_args, tensor_group, target);
-  CHECK_EQ(result.size(), 1UL) << "LowerToAst contains not only 1 LoweredFunc, "
-                                  "use LowerToAstVec instead.";
+  PADDLE_ENFORCE_EQ(result.size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "LowerToAst contains not only 1 LoweredFunc, "
+                        "use LowerToAstVec instead."));
   return result[0];
 }
 
@@ -358,9 +361,11 @@ std::vector<ir::LoweredFunc> LowerToAstVec(
       target);
   std::vector<ir::LoweredFunc> result = lower_instance();
   for (auto& res : result) {
-    if (target == cinn::common::DefaultNVGPUTarget()) {
-      res->device_api = ir::DeviceAPI::GPU;
-    }
+    target.arch.Match(
+        [&](common::NVGPUArch) { res->device_api = ir::DeviceAPI::GPU; },
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) {});
   }
   return result;
 }
@@ -403,9 +408,11 @@ ir::LoweredFunc Lower(const std::string& name,
           break;
         }
       }
-      if (target == cinn::common::DefaultNVGPUTarget()) {
-        res->device_api = ir::DeviceAPI::GPU;
-      }
+      target.arch.Match(
+          [&](common::NVGPUArch) { res->device_api = ir::DeviceAPI::GPU; },
+          [&](std::variant<common::UnknownArch,
+                           common::X86Arch,
+                           common::ARMArch>) {});
     }
     if (b) {
       b->AddFunction(res);
@@ -456,10 +463,11 @@ std::vector<ir::LoweredFunc> LowerVec(const std::string& name,
           break;
         }
       }
-
-      if (target == cinn::common::DefaultNVGPUTarget()) {
-        res->device_api = ir::DeviceAPI::GPU;
-      }
+      target.arch.Match(
+          [&](common::NVGPUArch) { res->device_api = ir::DeviceAPI::GPU; },
+          [&](std::variant<common::UnknownArch,
+                           common::X86Arch,
+                           common::ARMArch>) {});
     }
     if (b) {
       b->AddFunction(res);

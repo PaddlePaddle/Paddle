@@ -30,7 +30,7 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GT(
         step_num,
         0UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "beam search steps, which is the"
             "size of Input(Ids) LoDTensorArray. beam search steps should "
             "be larger than 0, but received %d. ",
@@ -40,7 +40,7 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GT(
         source_num,
         0UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "source_num is the sequence number of the"
             "first decoding step, indicating by Input(Ids)[0].lod[0].size. "
             "The number of source_num should be larger than"
@@ -51,7 +51,7 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           ids->at(i).lod().size(),
           2UL,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "For the i step in beam search steps,"
               "the size of Input(Ids)[i].lod() should larger than 2,"
               "but received %d. ",
@@ -70,12 +70,12 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
     phi::DenseTensor* sentenceScores_temp =
         context.Output<phi::DenseTensor>("SentenceScores");
 
-    if (platform::is_xpu_place(ids->at(0).place())) {
+    if (ids->at(0).place().GetType() == phi::AllocationType::XPU) {
       sentenceIds = new phi::DenseTensor();
       sentenceIds->set_lod(sentenceIds_temp->lod());
     }
 
-    if (platform::is_xpu_place(ids->at(0).place())) {
+    if (ids->at(0).place().GetType() == phi::AllocationType::XPU) {
       sentenceScores = new phi::DenseTensor();
       sentenceScores->set_lod(sentenceScores_temp->lod());
     }
@@ -84,14 +84,14 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
         *ids, *scores, sentenceIds, sentenceScores, beam_size, end_id);
     bs_xpu.apply_xpu<T>();
 
-    if (platform::is_xpu_place(ids->at(0).place())) {
+    if (ids->at(0).place().GetType() == phi::AllocationType::XPU) {
       int r = 0;
       r = CopyTensorByXPU<int64_t>(
           *sentenceIds, sentenceIds_temp, 1, ids->at(0).place());
       PADDLE_ENFORCE_EQ(
           r,
           xpu::Error_t::SUCCESS,
-          platform::errors::External(
+          phi::errors::External(
               "Execute function CopyTensorByXPU failed by [%d]", r));
 
       r = CopyTensorByType(
@@ -99,7 +99,7 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           r,
           xpu::Error_t::SUCCESS,
-          platform::errors::External(
+          phi::errors::External(
               "Execute function CopyTensorByXPU failed by [%d]", r));
       sentenceIds_temp->set_lod(sentenceIds->lod());
       sentenceScores_temp->set_lod(sentenceScores->lod());
@@ -111,7 +111,6 @@ class BeamSearchDecodeXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(beam_search_decode,
                           XPU,
@@ -119,7 +118,7 @@ PD_REGISTER_STRUCT_KERNEL(beam_search_decode,
                           ops::BeamSearchDecodeXPUKernel,
                           float,
                           double,
-                          plat::float16,
+                          phi::dtype::float16,
                           int,
                           int64_t) {}
 #endif

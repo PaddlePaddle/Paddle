@@ -132,9 +132,7 @@ class FLClientBase(abc.ABC):
         self.train_dataset = train_dataset
         self.train_file_list = train_file_list
         logger.info(
-            "fl-ps > {}, data_feed_desc:\n {}".format(
-                type(self.train_dataset), self.train_dataset._desc()
-            )
+            f"fl-ps > {type(self.train_dataset)}, data_feed_desc:\n {self.train_dataset._desc()}"
         )
 
     def set_test_dataset_info(self, test_dataset, test_file_list):

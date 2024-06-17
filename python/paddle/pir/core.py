@@ -45,6 +45,8 @@ vartype_to_datatype = {
     VarDesc.VarType.COMPLEX128: DataType.COMPLEX128,
 }
 
+datatype_to_vartype = {v: k for k, v in vartype_to_datatype.items()}
+
 np_type_to_paddle_type = {
     np.dtype("float32"): DataType.FLOAT32,
     np.dtype("float64"): DataType.FLOAT64,
@@ -72,6 +74,21 @@ np_type_to_paddle_type = {
     np.complex128: DataType.COMPLEX128,
 }
 
+_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
+    DataType.BOOL: 'bool',
+    DataType.FLOAT16: 'float16',
+    DataType.BFLOAT16: 'uint16',
+    DataType.FLOAT32: 'float32',
+    DataType.FLOAT64: 'float64',
+    DataType.INT8: 'int8',
+    DataType.INT16: 'int16',
+    DataType.INT32: 'int32',
+    DataType.INT64: 'int64',
+    DataType.UINT8: 'uint8',
+    DataType.COMPLEX64: 'complex64',
+    DataType.COMPLEX128: 'complex128',
+}
+
 
 def convert_np_dtype_to_dtype_(np_dtype):
     """
@@ -86,14 +103,12 @@ def convert_np_dtype_to_dtype_(np_dtype):
 
     """
     # Convert the data type string to numpy data type.
-    if np_dtype == "bfloat16":
+    if isinstance(np_dtype, str) and np_dtype == "bfloat16":
         # since there is still no support for bfloat16 in NumPy,
         # uint16 is used for casting bfloat16
         dtype = np.dtype("uint16")
-    elif isinstance(np_dtype, str):
-        dtype = np.dtype(np_dtype)
     else:
-        dtype = np_dtype
+        dtype = np.dtype(np_dtype)
 
     if dtype in np_type_to_paddle_type.keys():
         return np_type_to_paddle_type[dtype]
@@ -288,16 +303,10 @@ def create_parameter(
     name=None,
     **kwargs,
 ):
-    regularizer = None
-    need_clip = None
     if 'initializer' not in kwargs:
         raise ValueError(
             "initializer is None, if you want to create parameter, please pass its initializer."
         )
-    if 'regularizer' in kwargs:
-        regularizer = kwargs['regularizer']
-    if 'need_clip' in kwargs:
-        need_clip = kwargs['need_clip']
     if dtype is not None:
         if not isinstance(dtype, DataType):
             dtype = convert_np_dtype_to_dtype_(dtype)
@@ -320,12 +329,16 @@ def create_parameter(
     with program_guard(default_main_program()):
         reset_insertion_point_to_start()
         param = parameter(value_name)
-        trainable = kwargs.get('trainable', True)
-        param.stop_gradient = not trainable
         param.persistable = True
 
-    param.regularizer = regularizer
-    param.need_clip = need_clip
+    param.trainable = kwargs.get('trainable', True)
+    param.stop_gradient = not param.trainable
+    param.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
+    param.regularizer = kwargs.get('regularizer', None)
+    param.do_model_average = kwargs.get('do_model_average', None)
+    param.need_clip = kwargs.get('need_clip', True)
+    param.is_distributed = False
+    param.is_parameter = True
     return param
 
 
@@ -406,9 +419,14 @@ def _convert_into_value(tensor):
     )
 
     if isinstance(tensor, paddle.Tensor):
-        return _global_parameter_recorder.get(
+        value = _global_parameter_recorder.get(
             paddle.pir.core.default_main_program(), tensor
         )
+        NON_PERSISTABLE_VAR_NAME_SUFFIX = "__non_persistable"
+        if tensor.name.endswith(NON_PERSISTABLE_VAR_NAME_SUFFIX):
+            value.persistable = False
+        return value
+
     return tensor
 
 

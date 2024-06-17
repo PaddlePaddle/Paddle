@@ -135,6 +135,88 @@ CollectLocalVarToIndexes(ir::Expr* expr) {
       gather_prohibited_local_var_visitor.prohibited_local_vars());
 }
 
+int ExtractMulNumberFromExpr(const ir::Expr& expr) {
+  ir::Expr simplied_expr = cinn::common::AutoSimplify(expr);
+  if (simplied_expr.is_constant()) {
+    return static_cast<int>(simplied_expr.get_constant());
+  } else if (expr.As<ir::Mul>()) {
+    auto mul = expr.As<ir::Mul>();
+    return ExtractMulNumberFromExpr(mul->a()) *
+           ExtractMulNumberFromExpr(mul->b());
+  } else {
+    VLOG(6) << "Not supported for calculating gcd, expr = " << expr;
+    return 1;
+  }
+  PADDLE_THROW(phi::errors::Fatal("Dead code"));
+}
+
+int ExtractAddNumberFromExpr(const ir::Expr& expr) {
+  ir::Expr simplied_expr = cinn::common::AutoSimplify(expr);
+  if (simplied_expr.is_constant()) {
+    return static_cast<int>(simplied_expr.get_constant());
+  } else if (expr.As<ir::Add>()) {
+    auto add = expr.As<ir::Add>();
+    return ExtractAddNumberFromExpr(add->a()) +
+           ExtractAddNumberFromExpr(add->b());
+  } else {
+    VLOG(6) << "Not supported for calculating offset, expr = " << expr;
+    return 0;
+  }
+  PADDLE_THROW(phi::errors::Fatal("Dead code"));
+}
+
+int gcd(int a, int b) {
+  if (b == 0) {
+    return a == 0 ? 1 : a;
+  }
+  return gcd(b, a % b);
+}
+
+class Gcd {};
+class Offset {};
+
+template <typename Op>
+struct CommonFactorTrait;
+
+template <>
+struct CommonFactorTrait<Gcd> {
+  static const ir::Expr unit;
+
+  // Note (Hongyu Jia): Currently, we only calculates gcd of int factors.
+  static ir::Expr Calculate(const ir::Expr& expr1, const ir::Expr& expr2) {
+    return ir::Expr(
+        gcd(ExtractMulNumberFromExpr(expr1), ExtractMulNumberFromExpr(expr2)));
+  }
+
+  static ir::Expr Simplify(const ir::Expr& expr, const ir::Expr& factor) {
+    if (factor != unit) {
+      return cinn::common::AutoSimplify(ir::Div::Make(expr, factor));
+    }
+    return expr;
+  }
+};
+
+const ir::Expr CommonFactorTrait<Gcd>::unit = ir::Expr(1);
+
+template <>
+struct CommonFactorTrait<Offset> {
+  static const ir::Expr unit;
+
+  static ir::Expr Calculate(const ir::Expr& expr1, const ir::Expr& expr2) {
+    return ir::Expr(std::min(ExtractAddNumberFromExpr(expr1),
+                             ExtractAddNumberFromExpr(expr2)));
+  }
+
+  static ir::Expr Simplify(const ir::Expr& expr, const ir::Expr& factor) {
+    if (factor != unit) {
+      return cinn::common::AutoSimplify(ir::Sub::Make(expr, factor));
+    }
+    return expr;
+  }
+};
+
+const ir::Expr CommonFactorTrait<Offset>::unit = ir::Expr(0);
+
 template <typename DoEachT>
 void VisitEachRowExpr(const std::vector<std::vector<ir::Expr>>& indexes,
                       std::size_t var_idx,
@@ -144,35 +226,8 @@ void VisitEachRowExpr(const std::vector<std::vector<ir::Expr>>& indexes,
   }
 }
 
-int ExtractNumberFromExpr(const ir::Expr& expr) {
-  ir::Expr simplied_expr = cinn::common::AutoSimplify(expr);
-  if (simplied_expr.is_constant()) {
-    return static_cast<int>(simplied_expr.get_constant());
-  } else if (expr.As<ir::Mul>()) {
-    auto mul = expr.As<ir::Mul>();
-    return std::max(ExtractNumberFromExpr(mul->a()),
-                    ExtractNumberFromExpr(mul->b()));
-  } else {
-    VLOG(6) << "Not supported for calculating gcd, expr = " << expr;
-    return 1;
-  }
-  PADDLE_THROW(phi::errors::Fatal("Dead code"));
-}
-
-int gcd(int a, int b) {
-  if (b == 0) {
-    return a;
-  }
-  return gcd(b, a % b);
-}
-
-// Note (Hongyu Jia): Currently, we only calculates gcd of int factors.
-ir::Expr CalculateGcdForExprPair(const ir::Expr& expr1, const ir::Expr& expr2) {
-  return ir::Expr(
-      gcd(ExtractNumberFromExpr(expr1), ExtractNumberFromExpr(expr2)));
-}
-
-std::vector<ir::Expr> CalculateIndexVectorGcd(
+template <typename Op>
+std::vector<ir::Expr> CalculateIndexCommonFactor(
     const std::string& local_var,
     const std::vector<std::vector<ir::Expr>>& indexes) {
   CHECK_GE(indexes.size(), 2)
@@ -184,49 +239,55 @@ std::vector<ir::Expr> CalculateIndexVectorGcd(
     // FLAGS_cinn_bucket_compile=1. However, some unit tests (e.g.
     // test_resnet_cinn, test_instance_norm_op) are still running with the
     // deprecated OpScheduler, and the ir::Expr will break this guarantee after
-    // IRCudaScheduleBlockReduce function. So we have to relax the restriction
+    // IRGpuScheduleBlockReduce function. So we have to relax the restriction
     // here.
     if (indexes[i].size() != indexes[0].size()) {
-      LOG(WARNING) << "Not supported for calculating gcd, local var = "
-                   << local_var;
+      LOG(WARNING)
+          << "Not supported for calculating common factor, local var = "
+          << local_var;
       return std::vector<ir::Expr>(
-          std::max(indexes[0].size(), indexes[i].size()), ir::Expr(1));
+          std::max(indexes[0].size(), indexes[i].size()),
+          CommonFactorTrait<Op>::unit);
     }
   }
   std::size_t var_index_size = indexes[0].size();
-  std::vector<ir::Expr> gcd_indexes;
+  std::vector<ir::Expr> common_factor_indexes;
   for (std::size_t var_idx = 0; var_idx < var_index_size; ++var_idx) {
-    std::optional<ir::Expr> gcd_expr;
+    std::optional<ir::Expr> common_factor;
     VisitEachRowExpr(indexes, var_idx, [&](const ir::Expr& expr) {
-      if (gcd_expr.has_value()) {
-        gcd_expr = CalculateGcdForExprPair(gcd_expr.value(), expr);
+      if (common_factor.has_value()) {
+        common_factor =
+            CommonFactorTrait<Op>::Calculate(common_factor.value(), expr);
       } else {
-        gcd_expr = expr;
+        common_factor = expr;
       }
     });
-    gcd_indexes.push_back(gcd_expr.value());
+    common_factor_indexes.push_back(common_factor.value());
   }
-  return gcd_indexes;
+  return common_factor_indexes;
 }
 
-std::unordered_map<std::string, std::vector<ir::Expr>> CalculateLocalIndexGcd(
+template <typename Op>
+std::unordered_map<std::string, std::vector<ir::Expr>>
+CalculateLocalVarCommonFactor(
     const std::unordered_map<std::string, std::vector<std::vector<ir::Expr>>>&
         local_var_to_indexes) {
   std::unordered_map<std::string, std::vector<ir::Expr>>
-      local_var_to_gcd_factor;
+      local_var_to_common_factor;
   for (const auto& [local_var, indexes] : local_var_to_indexes) {
-    local_var_to_gcd_factor[local_var] =
-        CalculateIndexVectorGcd(local_var, indexes);
+    local_var_to_common_factor[local_var] =
+        CalculateIndexCommonFactor<Op>(local_var, indexes);
   }
-  return local_var_to_gcd_factor;
+  return local_var_to_common_factor;
 }
 
-class DivideGcdForLocalIndexVisitor : public ir::IRMutator<> {
+template <typename Op>
+class EliminateCommonFactorVisitor : public ir::IRMutator<> {
  public:
-  DivideGcdForLocalIndexVisitor(
+  EliminateCommonFactorVisitor(
       const std::unordered_map<std::string, std::vector<ir::Expr>>&
-          local_var_to_gcd_factor)
-      : local_var_to_gcd_factor_(local_var_to_gcd_factor) {}
+          local_var_to_common_factor)
+      : local_var_to_common_factor_(local_var_to_common_factor) {}
 
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
@@ -241,15 +302,14 @@ class DivideGcdForLocalIndexVisitor : public ir::IRMutator<> {
     }
 
     if (store_buffer->memory_type == ir::MemoryType::GPULocal) {
-      if (local_var_to_gcd_factor_.count(store_buffer->name) == 0) {
+      if (local_var_to_common_factor_.count(store_buffer->name) == 0) {
         return;
       }
-      const auto& gcd_factors = local_var_to_gcd_factor_.at(store_buffer->name);
+      const auto& common_factors =
+          local_var_to_common_factor_.at(store_buffer->name);
       for (std::size_t i = 0; i < store->indices.size(); ++i) {
-        if (gcd_factors[i] != ir::Expr(0)) {
-          store->indices[i] = cinn::common::AutoSimplify(
-              ir::Div::Make(store->indices[i], gcd_factors[i]));
-        }
+        store->indices[i] = CommonFactorTrait<Op>::Simplify(store->indices[i],
+                                                            common_factors[i]);
       }
     }
   }
@@ -266,39 +326,41 @@ class DivideGcdForLocalIndexVisitor : public ir::IRMutator<> {
     }
 
     if (load_buffer->memory_type == ir::MemoryType::GPULocal) {
-      if (local_var_to_gcd_factor_.count(load_buffer->name) == 0) {
+      if (local_var_to_common_factor_.count(load_buffer->name) == 0) {
         return;
       }
-      const auto& gcd_factors = local_var_to_gcd_factor_.at(load_buffer->name);
+      const auto& common_factors =
+          local_var_to_common_factor_.at(load_buffer->name);
       for (std::size_t i = 0; i < load->indices.size(); ++i) {
-        if (gcd_factors[i] != ir::Expr(0)) {
-          load->indices[i] = cinn::common::AutoSimplify(
-              ir::Div::Make(load->indices[i], gcd_factors[i]));
-        }
+        load->indices[i] = CommonFactorTrait<Op>::Simplify(load->indices[i],
+                                                           common_factors[i]);
       }
     }
     ir::IRMutator<>::Visit(op, expr);
   }
   std::unordered_map<std::string, std::vector<ir::Expr>>
-      local_var_to_gcd_factor_;
+      local_var_to_common_factor_;
 };
 
 }  // namespace
 
-void EliminateCommonFactorOfLocalIndex(ir::Expr* expr) {
-  VLOG(2) << "Before EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
-
+template <typename Op>
+void EliminateCommonFactorHelper(ir::Expr* expr) {
   std::unordered_map<std::string, std::vector<std::vector<ir::Expr>>>
       local_var_to_indexes = CollectLocalVarToIndexes(expr);
-
   std::unordered_map<std::string, std::vector<ir::Expr>>
-      local_var_to_gcd_factor = CalculateLocalIndexGcd(local_var_to_indexes);
+      local_var_to_common_factor =
+          CalculateLocalVarCommonFactor<Op>(local_var_to_indexes);
+  EliminateCommonFactorVisitor<Op> eliminate_common_factor_visitor(
+      local_var_to_common_factor);
+  eliminate_common_factor_visitor(expr);
+}
 
-  DivideGcdForLocalIndexVisitor divide_gcd_for_local_index_visitor(
-      local_var_to_gcd_factor);
-  divide_gcd_for_local_index_visitor(expr);
-
-  VLOG(2) << "After EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
+void EliminateCommonFactorOfLocalIndex(ir::Expr* expr) {
+  VLOG(4) << "Before EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
+  EliminateCommonFactorHelper<Gcd>(expr);
+  EliminateCommonFactorHelper<Offset>(expr);
+  VLOG(4) << "After EliminateCommonFactorOfLocalIndex, Expr = \n" << *expr;
 }
 
 }  // namespace optim

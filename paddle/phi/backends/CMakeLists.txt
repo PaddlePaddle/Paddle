@@ -31,7 +31,7 @@ if(WITH_XPU)
   list(APPEND BACKENDS_DEPS phi_dynload_xpti)
 endif()
 
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   list(APPEND BACKENDS_SRCS onednn/onednn_context.cc)
   list(APPEND BACKENDS_SRCS onednn/axpy_handler.cc)
   list(APPEND BACKENDS_SRCS onednn/matmul_utils.cc)

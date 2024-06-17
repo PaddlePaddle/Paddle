@@ -87,6 +87,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_pipeline_scheduler_vpp)
   set_tests_properties(test_pipeline_scheduler_vpp
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+  py_test_modules(test_pipeline_scheduler_zb MODULES test_pipeline_scheduler_zb)
+  set_tests_properties(test_pipeline_scheduler_zb
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   py_test_modules(test_auto_tuner_compare MODULES test_auto_tuner_compare)
   set_tests_properties(test_auto_tuner_compare
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
@@ -139,7 +142,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_semi_auto_parallel_basic MODULES
                   test_semi_auto_parallel_basic)
   set_tests_properties(test_semi_auto_parallel_basic
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 600)
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 800)
 
   py_test_modules(test_semi_auto_parallel_for_llama_subnet MODULES
                   test_semi_auto_parallel_for_llama_subnet)
@@ -210,6 +213,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_unshard_dtensor)
   set_tests_properties(test_semi_auto_parallel_unshard_dtensor
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+  py_test_modules(test_semi_auto_parallel_simple_net_ep MODULES
+                  test_semi_auto_parallel_simple_net_ep)
+  set_tests_properties(test_semi_auto_parallel_simple_net_ep
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
@@ -262,7 +269,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_comp_cost MODULES test_comp_cost)
   py_test_modules(test_base_cost MODULES test_base_cost)
   py_test_modules(test_dist_context MODULES test_dist_context)
-  py_test_modules(test_prim_dist_op MODULES test_prim_dist_op)
   py_test_modules(test_to_static MODULES test_to_static)
   py_test_modules(test_dist_op_cost MODULES test_dist_op_cost)
   py_test_modules(test_cluster_v2 MODULES test_cluster_v2)
@@ -306,4 +312,4 @@ endif()
 py_test_modules(test_job_schedule_profiler_range MODULES
                 test_job_schedule_profiler_range)
 
-set_pit_tests_properties()
+set_pir_tests_properties()

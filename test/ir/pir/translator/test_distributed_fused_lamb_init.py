@@ -20,6 +20,8 @@ import paddle
 from paddle.base import unique_name
 from paddle.base.layer_helper import LayerHelper
 
+paddle.pir_utils._switch_to_old_ir_()
+
 
 class TestDistributedFusedLambInitOpTranslator(
     test_op_translator.TestOpTranslator

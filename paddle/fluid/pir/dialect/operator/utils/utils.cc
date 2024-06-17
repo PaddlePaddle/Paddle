@@ -45,9 +45,6 @@ const std::unordered_set<std::string> LegacyOpList = {
     CSyncCommStream_Op::name(),
     DistributedPushSparseOp::name(),
     FtrlOp::name(),
-    FusedElemwiseAddActivationOp::name(),
-    FusedElemwiseAddActivationGradOp::name(),
-    FusedTokenPruneOp::name(),
     DpsgdOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
@@ -58,44 +55,34 @@ const std::unordered_set<std::string> LegacyOpList = {
     CAllreduceAvg_Op::name(),
     CReduceSumOp::name(),
     CReduceSum_Op::name(),
+    CReducescatterOp::name(),
     CAllreduceMax_Op::name(),
     CAllreduceMin_Op::name(),
     CAllgatherOp::name(),
     CSoftmaxWithCrossEntropyOp::name(),
     CSoftmaxWithCrossEntropyGradOp::name(),
     CSplitOp::name(),
+    PushDenseOp::name(),
     SeedOp::name(),
-    ShareDataOp::name(),
+    ShareData_Op::name(),
     SparseMomentumOp::name(),
     GetTensorFromSelectedRowsOp::name(),
-    TdmSamplerOp::name(),
     RowConvOp::name(),
     RowConvGradOp::name(),
     SoftReluOp::name(),
     SoftReluGradOp::name(),
     MatchMatrixTensorOp::name(),
     MatchMatrixTensorGradOp::name(),
-    PartialConcatOp::name(),
-    PartialConcatGradOp::name(),
     NceOp::name(),
     NceGradOp::name(),
-    PartialSumOp::name(),
-    PartialSumGradOp::name(),
     LrnOp::name(),
     LrnGradOp::name(),
     MovingAverageAbsMaxScaleOp::name(),
     MovingAverageAbsMaxScale_Op::name(),
-    QuantizeLinearOp::name(),
-    QuantizeLinear_Op::name(),
-    DequantizeLinearOp::name(),
-    DequantizeLinear_Op::name(),
 #ifdef PADDLE_WITH_DNNL
     paddle::onednn::dialect::LrnOp::name(),
     paddle::onednn::dialect::LrnGradOp::name(),
-    paddle::onednn::dialect::QuantizeOp::name(),
-    paddle::onednn::dialect::RequantizeOp::name(),
     paddle::onednn::dialect::MultiGruOp::name(),
-    paddle::onednn::dialect::FusionLstmOp::name(),
 #endif
     CReduceAvgOp::name(),
     CReduceAvg_Op::name(),
@@ -103,9 +90,12 @@ const std::unordered_set<std::string> LegacyOpList = {
     CReduceMinOp::name(),
     CReduceProdOp::name(),
     CScatterOp::name(),
+    PullBoxSparseOp::name(),
+    PushBoxSparseOp::name(),
     PushSparseV2Op::name(),
     PartialSendOp::name(),
-    PartialRecvOp::name()};
+    PartialRecvOp::name(),
+    SendAndRecvOp::name()};
 
 enum class AttrType {
   UNDEFINED = 0,
@@ -334,6 +324,12 @@ phi::DataType GetValueDataType(const pir::Type& type) {
   } else if (type.isa<paddle::dialect::SelectedRowsType>()) {
     return dialect::TransToPhiDataType(
         type.dyn_cast<paddle::dialect::SelectedRowsType>().dtype());
+  } else if (type.isa<paddle::dialect::SparseCooTensorType>()) {
+    return dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::SparseCooTensorType>().dtype());
+  } else if (type.isa<paddle::dialect::SparseCsrTensorType>()) {
+    return dialect::TransToPhiDataType(
+        type.dyn_cast<paddle::dialect::SparseCsrTensorType>().dtype());
   } else if (type.isa<DenseTensorArrayType>()) {
     return dialect::TransToPhiDataType(
         type.dyn_cast<DenseTensorArrayType>().dtype());
@@ -345,6 +341,8 @@ phi::DataType GetValueDataType(const pir::Type& type) {
       return phi::DataType::UNDEFINED;
     }
   } else {
+    PADDLE_THROW(phi::errors::InvalidType(
+        "Not support op type %s in ConvertOpTypeToKernelType.", type));
     PADDLE_THROW(
         phi::errors::InvalidType("Currently, we can only get dtype for "
                                  "DenseTensorType and SelectedRowsType."));
@@ -495,7 +493,7 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
   return vec_shape;
 }
 
-const std::unordered_map<std::string, std::string>& AttrTypeMap() {
+const std::unordered_map<std::string, std::string>& CppTypeToAttrTypeMap() {
   static const std::unordered_map<std::string, std::string> attr_type_map = {
       {"bool", "pir::BoolAttribute"},
       {"int", "pir::Int32Attribute"},
@@ -507,6 +505,56 @@ const std::unordered_map<std::string, std::string>& AttrTypeMap() {
       {"std::vector<int64_t>", "pir::ArrayAttribute<pir::Int64Attribute>"},
       {"std::vector<std::string>", "pir::ArrayAttribute<pir::StrAttribute>"}};
   return attr_type_map;
+}
+
+const std::unordered_map<std::string, phi::DataType>& StringToDataTypeMap() {
+  static std::unordered_map<std::string, phi::DataType> data_type_map{
+      {"bool", phi::DataType::BOOL},
+      {"uint8", phi::DataType::UINT8},
+      {"int8", phi::DataType::INT8},
+      {"uint16", phi::DataType::UINT16},
+      {"int16", phi::DataType::INT16},
+      {"uint32", phi::DataType::UINT32},
+      {"int32", phi::DataType::INT32},
+      {"uint64", phi::DataType::UINT64},
+      {"int64", phi::DataType::INT64},
+      {"float32", phi::DataType::FLOAT32},
+      {"complex64", phi::DataType::COMPLEX64},
+      {"complex128", phi::DataType::COMPLEX128},
+      {"Undefined", phi::DataType::UNDEFINED},
+      {"psting", phi::DataType::PSTRING},
+      {"float16", phi::DataType::FLOAT16},
+      {"bfloat16", phi::DataType::BFLOAT16},
+      {"float64", phi::DataType::FLOAT64}};
+  return data_type_map;
+}
+
+const std::unordered_map<std::string, phi::Place>& StringToPlaceMap() {
+  static std::unordered_map<std::string, phi::Place> place_map{
+      {"cpu", phi::CPUPlace{}},
+      {"gpu", phi::GPUPlace{}},
+      {"gpu_pinned", phi::GPUPinnedPlace{}},
+      {"xpu", phi::XPUPlace{}},
+      {"ipu", phi::IPUPlace{}},
+      {":", phi::CustomPlace{}},
+      {"undefined", phi::Place{}}};
+  return place_map;
+}
+
+const std::unordered_map<std::string, phi::DataLayout>&
+StringToDataLayoutMap() {
+  static std::unordered_map<std::string, phi::DataLayout> data_layout_map{
+      {"NHWC", phi::DataLayout::kNHWC},
+      {"NCHW", phi::DataLayout::kNCHW},
+      {"Undefined", phi::DataLayout::kAnyLayout},
+      {"ONEDNN", phi::DataLayout::ONEDNN},
+      {"SPARSE_COO", phi::DataLayout::SPARSE_COO},
+      {"SPARSE_CSR", phi::DataLayout::SPARSE_CSR},
+      {"NDHWC", phi::DataLayout::kNDHWC},
+      {"NCDHW", phi::DataLayout::kNCDHW},
+      {"PSTRING_UNION", phi::DataLayout::PSTRING_UNION},
+      {"STRIDED", phi::DataLayout::STRIDED}};
+  return data_layout_map;
 }
 
 }  // namespace dialect

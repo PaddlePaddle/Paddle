@@ -11,6 +11,7 @@ set(ALLOCATOR_SRCS
     allocator_strategy.cc
     allocator_facade.cc
     auto_growth_best_fit_allocator.cc
+    auto_growth_best_fit_allocator_v2.cc
     virtual_memory_auto_growth_best_fit_allocator.cc
     retry_allocator.cc
     memory_block.cc
@@ -32,10 +33,13 @@ if(WITH_GPU OR WITH_ROCM)
   list(APPEND ALLOCATOR_DEPS cuda_device_guard gpu_info dynload_cuda)
 endif()
 
-if(WITH_GPU)
-  list(APPEND ALLOCATOR_DEPS phi common)
+if(WITH_ROCM)
+  list(APPEND ALLOCATOR_DEPS ${ROCM_HIPRTC_LIB})
 endif()
 
+if(WITH_GPU OR WITH_ROCM)
+  list(APPEND ALLOCATOR_DEPS phi common)
+endif()
 if(CUDA_VERSION VERSION_GREATER_EQUAL 10.2)
   list(APPEND ALLOCATOR_SRCS cuda_virtual_mem_allocator.cc)
 endif()

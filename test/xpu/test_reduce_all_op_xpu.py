@@ -40,8 +40,8 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
             self.op_type = 'reduce_all'
             self.attrs = {
                 'use_xpu': True,
-                'reduce_all': True,
-                'keep_dim': True,
+                'reduce_all': False,
+                'keep_dim': False,
                 'dim': (3, 5, 4),
             }
             self.inputs = {
@@ -49,7 +49,11 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
                     "bool"
                 )
             }
-            self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
+            self.outputs = {
+                'Out': self.inputs['X'].all(
+                    axis=self.attrs['dim'], keepdims=self.attrs['keep_dim']
+                )
+            }
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
@@ -63,7 +67,7 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
             self.attrs = {
                 'use_xpu': True,
                 'reduce_all': True,
-                'keep_dim': True,
+                'keep_dim': False,
                 'dim': [1],
             }
             self.inputs = {
@@ -76,8 +80,8 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
             self.op_type = 'reduce_all'
             self.attrs = {
                 'use_xpu': True,
-                'reduce_all': True,
-                'keep_dim': False,
+                'reduce_all': False,
+                'keep_dim': True,
                 'dim': (3, 6),
             }
             self.inputs = {
@@ -85,22 +89,28 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
                     "bool"
                 )
             }
-            self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
+            self.outputs = {
+                'Out': self.inputs['X'].all(
+                    axis=self.attrs['dim'], keepdims=self.attrs['keep_dim']
+                )
+            }
 
     class XPUTestReduceAllCase3(XPUTestReduceAllBase):
         def set_case(self):
             self.op_type = 'reduce_all'
             self.attrs = {
                 'use_xpu': True,
+                'reduce_all': True,
                 'keep_dim': True,
-                'dim': [1]
-                # 'reduce_all': True,
+                'dim': [1],
             }
             self.inputs = {
                 'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")
             }
             self.outputs = {
-                'Out': np.expand_dims(self.inputs['X'].all(axis=1), axis=1)
+                'Out': self.inputs['X'].all(
+                    axis=(0, 1, 2), keepdims=self.attrs['keep_dim']
+                )
             }
 
 

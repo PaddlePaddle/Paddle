@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir/group.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -22,8 +22,10 @@ namespace pir {
 std::shared_ptr<Group> Group::Clone(::pir::Block* target_block,
                                     ::pir::IrMapping& ir_mapping,
                                     const Options& option) const {
-  CHECK_EQ(option.OnlyCloneOps(), true)
-      << "Only Support Clone Group ops information.";
+  PADDLE_ENFORCE_EQ(option.OnlyCloneOps(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "OnlyCloneOps is the only supported option."));
   std::vector<::pir::Operation*> new_ops;
   // Mapper from original to new ops.
   std::unordered_map<::pir::Operation*, ::pir::Operation*> ops_mapper;
@@ -46,18 +48,6 @@ std::shared_ptr<Group> Group::Clone(::pir::Block* target_block,
   for (auto* op : this->output_ops) {
     new_group->output_ops.insert(ops_mapper.at(op));
   }
-  for (const auto& output_value : this->output_values) {
-    new_group->output_values.push_back(ir_mapping.Lookup(output_value));
-  }
-
-  new_group->input_names = this->input_names;
-  new_group->output_names = this->output_names;
-  new_group->fn_name = this->fn_name;
-  new_group->int_args_map = this->int_args_map;
-  new_group->alignment_schedule_info = this->alignment_schedule_info;
-  new_group->reduce_axis = this->reduce_axis;
-  new_group->loop_ranges = this->loop_ranges;
-
   return new_group;
 }
 

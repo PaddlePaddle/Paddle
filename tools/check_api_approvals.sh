@@ -40,21 +40,16 @@ function add_failed(){
 
 api_params_diff=`python ${PADDLE_ROOT}/tools/check_api_compatible.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec`
 api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api`
+api_annotation_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.annotations  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.annotations`
 if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
     echo_line="You must have one RD (XiaoguangHu01, jeff41404, lanxianghit or qingqing01) approval for API change.\n"
-    echo_line="${echo_line} and one TPM approval for API change: \n"
-    echo_line="${echo_line} jzhang533/ZhangJun, sunzhongkai588/SunZhongKai, Ligoml/LiMengLiu for general APIs.\n"
 
     check_approval 1 XiaoguangHu01 jeff41404 lanxianghit qingqing01
-    check_approval 1 jzhang533 sunzhongkai588 Ligoml
 fi
 
-api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc`
-if [ "$api_doc_spec_diff" != "" ]; then
-    echo_line="You must have  one TPM approval for API documents change: \n"
-    echo_line="${echo_line} jzhang533/ZhangJun, sunzhongkai588/SunZhongKai, Ligoml/LiMengLiu for general API docs.\n"
-
-    check_approval 1 jzhang533 sunzhongkai588 Ligoml
+if [ "$api_annotation_diff" != "" ]; then
+    echo_line="You must have one member of Typing group (SigureMo, megemini, zrr1999, sunzhongkai588, luotao1) approval for API annotation change.\n"
+    check_approval 1 SigureMo megemini zrr1999 sunzhongkai588 luotao1
 fi
 
 api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec ${BRANCH} ${PADDLE_ROOT}`
@@ -144,7 +139,7 @@ if [ -n "${echo_list}" ];then
   echo "**************************************************************"
 
   # L40 L48 L62 has fetch the result out, but there are splitted.
-  if [ "${api_spec_diff}" != "" -o "${api_doc_spec_diff}" != "" ] ; then
+  if [ "${api_spec_diff}" != "" -o "${api_annotation_diff}" != "" ] ; then
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec
   fi
   if [ "${api_params_diff}" != "" ] ; then

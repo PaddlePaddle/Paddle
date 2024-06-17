@@ -207,9 +207,7 @@ def setup(**attr):
         ext_modules = [ext_modules]
     assert (
         len(ext_modules) == 1
-    ), "Required only one Extension, but received {}. If you want to compile multi operators, you can include all necessary source files in one Extension.".format(
-        len(ext_modules)
-    )
+    ), f"Required only one Extension, but received {len(ext_modules)}. If you want to compile multi operators, you can include all necessary source files in one Extension."
     # replace Extension.name with attr['name] to keep consistent with Package name.
     for ext_module in ext_modules:
         ext_module.name = attr['name']
@@ -910,9 +908,7 @@ def load(
     ), f"Required type(extra_cxx_cflags) == list[str], but received {extra_cxx_cflags}"
     assert isinstance(
         extra_cuda_cflags, list
-    ), "Required type(extra_cuda_cflags) == list[str], but received {}".format(
-        extra_cuda_cflags
-    )
+    ), f"Required type(extra_cuda_cflags) == list[str], but received {extra_cuda_cflags}"
 
     log_v(
         "additional extra_cxx_cflags: [{}], extra_cuda_cflags: [{}]".format(

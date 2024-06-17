@@ -50,12 +50,12 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   PADDLE_ENFORCE_EQ(
       table_dims.size(),
       2,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The Embeddings's rank should be 2, but received value is:%d.",
           table_dims.size()));
   PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
                     1,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The last dimension of the 'Ids' tensor must be 1, but "
                         "received value is:%d.",
                         ids_dims[ids_rank - 1]));
@@ -64,14 +64,14 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   PADDLE_ENFORCE_EQ(
       x_dims.size(),
       2,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Input(Ids)'s rank must be 2, but received value is:%d.",
           x_dims.size()));
 
   if (ctx->HasInput("H0")) {
     PADDLE_ENFORCE_EQ(ctx->HasInput("C0"),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(Cell) and Input(Hidden) of LSTM should exist "
                           "at the same time."));
     auto h_dims = ctx->GetInputDim("H0");
@@ -79,7 +79,7 @@ void FusedEmbeddingFCLSTMOp::InferShape(
     PADDLE_ENFORCE_EQ(
         h_dims,
         c_dims,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The dimension of Input(H0) and Input(C0) "
             "should be the same, but received H0 dim is:[%s], C0 dim is[%s]",
             h_dims,
@@ -91,19 +91,19 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   PADDLE_ENFORCE_EQ(
       wh_dims.size(),
       2,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The rank of Input(WeightH) should be 2, but received value is:%d.",
           wh_dims.size()));
   PADDLE_ENFORCE_EQ(wh_dims[0],
                     frame_size,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The first dimension of Input(WeightH) should equal to "
                         "frame size:%d, but received value is:%d.",
                         frame_size,
                         wh_dims[0]));
   PADDLE_ENFORCE_EQ(wh_dims[1],
                     4 * frame_size,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The second dimension of Input(WeightH) should equal "
                         "to 4 * %d, but received value is:%d.",
                         frame_size,
@@ -113,19 +113,19 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   PADDLE_ENFORCE_EQ(
       b_dims.size(),
       2,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The rank of Input(Bias) should be 2, but received value is:%d.",
           b_dims.size()));
-  PADDLE_ENFORCE_EQ(b_dims[0],
-                    1,
-                    platform::errors::InvalidArgument(
-                        "The first dimension of Input(Bias) "
-                        "should be 1, but received value is:%d.",
-                        b_dims[0]));
+  PADDLE_ENFORCE_EQ(
+      b_dims[0],
+      1,
+      phi::errors::InvalidArgument("The first dimension of Input(Bias) "
+                                   "should be 1, but received value is:%d.",
+                                   b_dims[0]));
   PADDLE_ENFORCE_EQ(
       b_dims[1],
       (ctx->Attrs().Get<bool>("use_peepholes") ? 7 : 4) * frame_size,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "The second dimension of Input(Bias) should be "
           "7 * %d if enable peepholes connection or"
           "4 * %d if disable peepholes, bias dim is:%d, use_peepholes:%d",
@@ -134,7 +134,7 @@ void FusedEmbeddingFCLSTMOp::InferShape(
           b_dims[1],
           ctx->Attrs().Get<bool>("use_peepholes")));
 
-  framework::DDim out_dims({x_dims[0], frame_size});
+  phi::DDim out_dims({x_dims[0], frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
   ctx->SetOutputDim("Cell", out_dims);
   ctx->ShareLoD("Ids", "Hidden");
@@ -417,11 +417,11 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_LT(
           ids_data[i],
           row_number,
-          platform::errors::OutOfRange(
+          phi::errors::OutOfRange(
               "Value of Ids %d should less than dict size %d.", i, row_number));
       PADDLE_ENFORCE_GE(ids_data[i],
                         0,
-                        platform::errors::OutOfRange(
+                        phi::errors::OutOfRange(
                             "Value of Ids %d should greater than ZERO.", i));
       memcpy(xx_data + i * row_width,
              embeddings_data + ids_data[i] * row_width,
@@ -530,11 +530,11 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_LT(
           ids_data[i],
           row_number,
-          platform::errors::OutOfRange(
+          phi::errors::OutOfRange(
               "Value of Ids %d should less than dict size %d.", i, row_number));
       PADDLE_ENFORCE_GE(ids_data[i],
                         0,
-                        platform::errors::OutOfRange(
+                        phi::errors::OutOfRange(
                             "Value of Ids %d should greater than ZERO.", i));
       memcpy(xx_data + i * row_width,
              embeddings_data + ids_data[i] * row_width,

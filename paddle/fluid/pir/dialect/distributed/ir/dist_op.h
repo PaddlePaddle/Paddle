@@ -15,6 +15,8 @@
 #pragma once
 #include <vector>
 
+#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/pir/include/core/builder.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/op_base.h"
@@ -39,7 +41,7 @@ class ShardTensorOp : public pir::Op<ShardTensorOp> {
   void VerifySig();
 };
 
-class ReShardOp : public pir::Op<ReShardOp> {
+class ReshardOp : public pir::Op<ReshardOp, VjpInterface, OpYamlInfoInterface> {
  public:
   using Op::Op;
   static const char* name() { return "dist_op.reshard"; }
@@ -49,10 +51,19 @@ class ReShardOp : public pir::Op<ReShardOp> {
                              pir::OperationArgument& argument,  // NOLINT
                              pir::Value input,
                              TensorDistAttribute tensor_dist_attr);
+
+  static OpInfoTuple GetOpInfo();
+  static std::vector<std::vector<pir::Value>> Vjp(
+      pir::Operation* op,
+      const std::vector<std::vector<pir::Value>>& inputs_,
+      const std::vector<std::vector<pir::Value>>& outputs,
+      const std::vector<std::vector<pir::Value>>& out_grads,
+      const std::vector<std::vector<bool>>& stop_gradients);
+
   void VerifySig();
 };
 }  // namespace dialect
 }  // namespace paddle
 
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ShardTensorOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ReShardOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ReshardOp)

@@ -81,7 +81,12 @@ void StridedSliceRawKernel(const Context& dev_ctx,
       end = xshape[cur_axe];
     }
     if (end < 0) {
-      end += xshape[cur_axe];
+      if (!(end == -1 && strides_[i] < 0)) {
+        end = end + xshape[cur_axe];
+        if (end < 0) {
+          end = 0;
+        }
+      }
     }
 
     ends_in[cur_axe] = end;

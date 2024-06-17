@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/pir/transforms/gpu/fused_weight_only_linear_pass.h"
 
+#include <utility>
+
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_base.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
@@ -30,9 +32,6 @@ int getSMVersion() {
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_CUTLASS)
   sm_version = paddle::platform::GetGPUComputeCapability(
       paddle::platform::GetCurrentDeviceId());
-#else
-  PADDLE_THROW(paddle::platform::errors::Unavailable(
-      "fused_weight_only_linear_pass needs paddle compiled with CUDA."));
 #endif
   return sm_version;
 }
@@ -40,11 +39,17 @@ int getSMVersion() {
 class FusedWeightOnlyLinearWithBiasPattern
     : public paddle::drr::DrrPatternBase {
  private:
-  bool reverse_;
+  bool reverse_add_;
+  std::string algo_;
+  int sm_version_;
 
  public:
-  explicit FusedWeightOnlyLinearWithBiasPattern(bool reverse)
-      : reverse_(reverse) {}
+  FusedWeightOnlyLinearWithBiasPattern(bool reverse_add,
+                                       std::string algo,
+                                       int sm_version)
+      : reverse_add_(reverse_add),
+        algo_(std::move(algo)),
+        sm_version_(sm_version) {}
 
   std::string name() const override {
     return "FusedWeightOnlyLinearWithBiasPattern";
@@ -65,58 +70,87 @@ class FusedWeightOnlyLinearWithBiasPattern
     const auto &add = src.Op(paddle::dialect::AddOp::name());
 
     src.Tensor("add_out") =
-        reverse_ ? add(src.Tensor("matmul_out"), src.Tensor("bias"))
-                 : add(src.Tensor("bias"), src.Tensor("matmul_out"));
+        reverse_add_ ? add(src.Tensor("matmul_out"), src.Tensor("bias"))
+                     : add(src.Tensor("bias"), src.Tensor("matmul_out"));
 
     //
     // Constraints.
     //
-    src.RequireNativeCall(
-        [](const paddle::drr::MatchContext &match_ctx) -> bool {
-          if (!pir::ValueIsPersistable(match_ctx.Tensor("w"))) {
-            return false;
-          }
-          bool matmul_trans_x = match_ctx.Attr<bool>("matmul_transpose_x");
-          bool matmul_trans_y = match_ctx.Attr<bool>("matmul_transpose_y");
-          if (matmul_trans_x || matmul_trans_y) return false;
+    src.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
+      if (!pir::ValueIsPersistable(match_ctx.Tensor("w"))) {
+        return false;
+      }
+      bool matmul_trans_x = match_ctx.Attr<bool>("matmul_transpose_x");
+      bool matmul_trans_y = match_ctx.Attr<bool>("matmul_transpose_y");
+      if (matmul_trans_x || matmul_trans_y) return false;
 
-          auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
-          auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-          auto bias_dims = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
-          if (!(w_dims.size() == 2 && x_dims.size() >= 2 &&
-                bias_dims.size() == x_dims.size())) {
-            return false;
-          }
+      auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
+      if (!w_dtype.isa<pir::Float16Type>() &&
+          !w_dtype.isa<pir::BFloat16Type>()) {
+        return false;
+      }
 
-          if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
+      auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+      auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+      auto bias_dims = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
+      if (!(w_dims.size() == 2 && x_dims.size() >= 2 &&
+            bias_dims.size() == 1)) {
+        return false;
+      }
 
-          auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
-          if (!w_dtype.isa<pir::Float16Type>() &&
-              !w_dtype.isa<pir::BFloat16Type>())
-            return false;
+      if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
+      if (x_dims.at(x_dims.size() - 1) != w_dims.at(0)) return false;
 
-          if (x_dims.at(x_dims.size() - 1) != w_dims.at(0)) return false;
-
-          return true;
-        });
+      return true;
+    });
     //
     // Result Pattern.
     //
     paddle::drr::ResultPattern res = src.ResultPattern();
 
-    const auto &weight_quantize =
-        res.Op(paddle::dialect::WeightQuantizeOp::name(),
-               {{"algo", res.StrAttr("weight_only_int8")},
-                {"arch", res.Int32Attr(getSMVersion())},
-                {"group_size", res.Int32Attr(-1)}});
-    weight_quantize({&res.Tensor("w")},
-                    {&res.Tensor("quanted_weight_tensor"),
-                     &res.Tensor("weight_scale_tensor")});
+    if (algo_ == "weight_only_int4") {
+      // TODO(liuyuanle): When the operator weight_quantize supports
+      // weight_only_int4 on gpu version, delete the memory copy.
+      const auto &memcpy_d2h =
+          res.Op(paddle::dialect::MemcpyD2hOp::name(),
+                 {{"dst_place_type", res.Int32Attr(0 /*cpu*/)}});
+      res.Tensor("w_cpu") = memcpy_d2h(res.Tensor("w"));
+      const auto &weight_quantize =
+          res.Op(paddle::dialect::WeightQuantizeOp::name(),
+                 {{"algo", res.StrAttr(algo_)},
+                  {"arch", res.Int32Attr(sm_version_)},
+                  {"group_size", res.Int32Attr(-1)}});
+      weight_quantize({&res.Tensor("w_cpu")},
+                      {&res.Tensor("quanted_weight_tensor_cpu"),
+                       &res.Tensor("weight_scale_tensor_cpu")});
+
+      const auto &memcpy_h2d_1 =
+          res.Op(paddle::dialect::MemcpyH2dOp::name(),
+                 {{"dst_place_type", res.Int32Attr(1 /*gpu*/)}});
+      res.Tensor("quanted_weight_tensor") =
+          memcpy_h2d_1(res.Tensor("quanted_weight_tensor_cpu"));
+      const auto &memcpy_h2d_2 =
+          res.Op(paddle::dialect::MemcpyH2dOp::name(),
+                 {{"dst_place_type", res.Int32Attr(1 /*gpu*/)}});
+      res.Tensor("weight_scale_tensor") =
+          memcpy_h2d_2(res.Tensor("weight_scale_tensor_cpu"));
+    } else {
+      const auto &weight_quantize =
+          res.Op(paddle::dialect::WeightQuantizeOp::name(),
+                 {{"algo", res.StrAttr(algo_)},
+                  {"arch", res.Int32Attr(sm_version_)},
+                  {"group_size", res.Int32Attr(-1)}});
+
+      weight_quantize({&res.Tensor("w")},
+                      {&res.Tensor("quanted_weight_tensor"),
+                       &res.Tensor("weight_scale_tensor")});
+    }
 
     const auto &weight_only_linear =
         res.Op(paddle::dialect::WeightOnlyLinearOp::name(),
-               {{"weight_dtype", res.StrAttr("int8")},
-                {"arch", res.Int32Attr(getSMVersion())},
+               {{"weight_dtype",
+                 res.StrAttr(algo_ == "weight_only_int8" ? "int8" : "int4")},
+                {"arch", res.Int32Attr(sm_version_)},
                 {"group_size", res.Int32Attr(-1)}});
     weight_only_linear({&res.Tensor("x"),
                         &res.Tensor("quanted_weight_tensor"),
@@ -127,6 +161,14 @@ class FusedWeightOnlyLinearWithBiasPattern
 };
 
 class FusedWeightOnlyLinearNoBiasPattern : public paddle::drr::DrrPatternBase {
+ private:
+  std::string algo_;
+  int sm_version_;
+
+ public:
+  FusedWeightOnlyLinearNoBiasPattern(std::string algo, int sm_version)
+      : algo_(std::move(algo)), sm_version_(sm_version) {}
+
  public:
   std::string name() const override {
     return "FusedWeightOnlyLinearNoBiasPattern";
@@ -148,50 +190,77 @@ class FusedWeightOnlyLinearNoBiasPattern : public paddle::drr::DrrPatternBase {
     //
     // Constraints.
     //
-    src.RequireNativeCall(
-        [](const paddle::drr::MatchContext &match_ctx) -> bool {
-          if (!pir::ValueIsPersistable(match_ctx.Tensor("w"))) {
-            return false;
-          }
-          bool matmul_trans_x = match_ctx.Attr<bool>("matmul_transpose_x");
-          bool matmul_trans_y = match_ctx.Attr<bool>("matmul_transpose_y");
-          if (matmul_trans_x || matmul_trans_y) return false;
+    src.AddConstraint([](const paddle::drr::MatchContext &match_ctx) -> bool {
+      if (!pir::ValueIsPersistable(match_ctx.Tensor("w"))) {
+        return false;
+      }
+      bool matmul_trans_x = match_ctx.Attr<bool>("matmul_transpose_x");
+      bool matmul_trans_y = match_ctx.Attr<bool>("matmul_transpose_y");
+      if (matmul_trans_x || matmul_trans_y) return false;
 
-          auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
-          auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-          if (!(w_dims.size() == 2 && x_dims.size() >= 2)) {
-            return false;
-          }
+      auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
+      auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
+      if (!(w_dims.size() == 2 && x_dims.size() >= 2)) {
+        return false;
+      }
 
-          if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
+      if (w_dims.at(0) % 64 != 0 || w_dims.at(1) % 16 != 0) return false;
 
-          auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
-          if (!w_dtype.isa<pir::Float16Type>() &&
-              !w_dtype.isa<pir::BFloat16Type>())
-            return false;
+      auto w_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("w"));
+      if (!w_dtype.isa<pir::Float16Type>() && !w_dtype.isa<pir::BFloat16Type>())
+        return false;
 
-          if (x_dims.at(x_dims.size() - 1) != w_dims.at(0)) return false;
+      if (x_dims.at(x_dims.size() - 1) != w_dims.at(0)) return false;
 
-          return true;
-        });
+      return true;
+    });
     //
     // Result Pattern.
     //
     paddle::drr::ResultPattern res = src.ResultPattern();
 
-    const auto &weight_quantize =
-        res.Op(paddle::dialect::WeightQuantizeOp::name(),
-               {{"algo", res.StrAttr("weight_only_int8")},
-                {"arch", res.Int32Attr(getSMVersion())},
-                {"group_size", res.Int32Attr(-1)}});
-    weight_quantize({&res.Tensor("w")},
-                    {&res.Tensor("quanted_weight_tensor"),
-                     &res.Tensor("weight_scale_tensor")});
+    if (algo_ == "weight_only_int4") {
+      // TODO(liuyuanle): When the operator weight_quantize supports
+      // weight_only_int4 on gpu version, delete the memory copy.
+      const auto &memcpy_d2h =
+          res.Op(paddle::dialect::MemcpyD2hOp::name(),
+                 {{"dst_place_type", res.Int32Attr(0 /*cpu*/)}});
+      res.Tensor("w_cpu") = memcpy_d2h(res.Tensor("w"));
+      const auto &weight_quantize =
+          res.Op(paddle::dialect::WeightQuantizeOp::name(),
+                 {{"algo", res.StrAttr(algo_)},
+                  {"arch", res.Int32Attr(sm_version_)},
+                  {"group_size", res.Int32Attr(-1)}});
+      weight_quantize({&res.Tensor("w_cpu")},
+                      {&res.Tensor("quanted_weight_tensor_cpu"),
+                       &res.Tensor("weight_scale_tensor_cpu")});
 
+      const auto &memcpy_h2d_1 =
+          res.Op(paddle::dialect::MemcpyH2dOp::name(),
+                 {{"dst_place_type", res.Int32Attr(1 /*gpu*/)}});
+      res.Tensor("quanted_weight_tensor") =
+          memcpy_h2d_1(res.Tensor("quanted_weight_tensor_cpu"));
+      const auto &memcpy_h2d_2 =
+          res.Op(paddle::dialect::MemcpyH2dOp::name(),
+                 {{"dst_place_type", res.Int32Attr(1 /*gpu*/)}});
+      res.Tensor("weight_scale_tensor") =
+          memcpy_h2d_2(res.Tensor("weight_scale_tensor_cpu"));
+    } else {
+      const auto &weight_quantize =
+          res.Op(paddle::dialect::WeightQuantizeOp::name(),
+                 {{"algo", res.StrAttr(algo_)},
+                  {"arch", res.Int32Attr(sm_version_)},
+                  {"group_size", res.Int32Attr(-1)}});
+
+      weight_quantize({&res.Tensor("w")},
+                      {&res.Tensor("quanted_weight_tensor"),
+                       &res.Tensor("weight_scale_tensor")});
+    }
     const auto &weight_only_linear =
         res.Op(paddle::dialect::WeightOnlyLinearOp::name(),
-               {{"weight_dtype", res.StrAttr("int8")},
-                {"arch", res.Int32Attr(getSMVersion())},
+               {{"weight_dtype",
+                 res.StrAttr(algo_ == "weight_only_int8" ? "int8" : "int4")},
+                {"arch", res.Int32Attr(sm_version_)},
                 {"group_size", res.Int32Attr(-1)}});
     weight_only_linear({&res.Tensor("x"),
                         &res.Tensor("quanted_weight_tensor"),
@@ -204,15 +273,28 @@ class FusedWeightOnlyLinearNoBiasPattern : public paddle::drr::DrrPatternBase {
 class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
  public:
   FusedWeightOnlyLinearPass()
-      : pir::PatternRewritePass("fused_weight_only_linear_pass", 4) {}
+      : pir::PatternRewritePass("fused_weight_only_linear_pass", 4),
+        sm_version_(getSMVersion()) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
+    std::string algo = "weight_only_int8";
+    if (Has("weight_only_algo")) {
+      algo = Get<std::string>("weight_only_algo");
+    }
+    PADDLE_ENFORCE_EQ(algo == "weight_only_int8" || algo == "weight_only_int4",
+                      true,
+                      common::errors::InvalidArgument(
+                          "fused_weight_only_linear_pass only support "
+                          "weight_only_int8 or weight_only_int4, but get %s.",
+                          algo));
+
     pir::RewritePatternSet ps(context);
-    ps.Add(paddle::drr::Create<FusedWeightOnlyLinearWithBiasPattern>(context,
-                                                                     true));
-    ps.Add(paddle::drr::Create<FusedWeightOnlyLinearWithBiasPattern>(context,
-                                                                     false));
-    ps.Add(paddle::drr::Create<FusedWeightOnlyLinearNoBiasPattern>(context));
+    ps.Add(paddle::drr::Create<FusedWeightOnlyLinearWithBiasPattern>(
+        context, true, algo, sm_version_));
+    ps.Add(paddle::drr::Create<FusedWeightOnlyLinearWithBiasPattern>(
+        context, false, algo, sm_version_));
+    ps.Add(paddle::drr::Create<FusedWeightOnlyLinearNoBiasPattern>(
+        context, algo, sm_version_));
     return ps;
   }
 
@@ -228,15 +310,15 @@ class FusedWeightOnlyLinearPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation *op) const override {
-    int sm_version = getSMVersion();
-    if (sm_version != 70 && sm_version != 75 && sm_version != 80 &&
-        sm_version != 86) {
+    if (sm_version_ != 70 && sm_version_ != 75 && sm_version_ != 80 &&
+        sm_version_ != 86) {
       return false;
     }
     return op->num_regions() > 0;
   }
 
  private:
+  int sm_version_;
   pir::FrozenRewritePatternSet patterns_;
 };
 

@@ -61,6 +61,7 @@ class IR_API Block {
   ConstReverseIterator rend() const { return ops_.rend(); }
   ReverseIterator rbegin() { return ops_.rbegin(); }
   ReverseIterator rend() { return ops_.rend(); }
+  const OpListType &ops() const { return ops_; }
 
   Operation &back() { return *ops_.back(); }
   Operation &front() { return *ops_.front(); }
@@ -90,7 +91,7 @@ class IR_API Block {
   bool HasOneUse() const;
   BlockOperand *first_use_addr() { return &first_use_; }
 
-  // This is a unsafe funcion, please use it carefully.
+  // This is a unsafe function, please use it carefully.
   void ResetOpListOrder(const OpListType &new_op_list);
 
   ///

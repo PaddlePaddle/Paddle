@@ -16,9 +16,56 @@
 
 namespace symbol {
 
+TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
+    const TensorShapeOrDataDimExprs& shape_or_data,
+    const std::unordered_map<DimExpr, DimExpr>& substitution_pattern) {
+  auto SubstituteOneDimExpr =
+      [](const std::vector<DimExpr>& original_dim_expr,
+         const std::unordered_map<DimExpr, DimExpr>& substitution_pattern)
+      -> std::vector<DimExpr> {
+    std::vector<DimExpr> substituted_dim_expr{};
+    for (const DimExpr& dim_expr : original_dim_expr) {
+      const auto& tmp_dim_expr =
+          SubstituteDimExpr(dim_expr, substitution_pattern);
+      substituted_dim_expr.push_back(SimplifyDimExpr(tmp_dim_expr));
+    }
+    return substituted_dim_expr;
+  };
+
+  std::vector<DimExpr> substituted_shape =
+      SubstituteOneDimExpr(shape_or_data.shape(), substitution_pattern);
+  if (!shape_or_data.data().has_value()) {
+    return ShapeOrData<DimExpr>(substituted_shape);
+  } else {
+    std::vector<DimExpr> substituted_data = SubstituteOneDimExpr(
+        shape_or_data.data().value(), substitution_pattern);
+    return ShapeOrData<DimExpr>(substituted_shape, substituted_data);
+  }
+}
+
+ShapeOrDataDimExprs SubstituteShapeOrData(
+    const ShapeOrDataDimExprs& shape_or_data,
+    const std::unordered_map<DimExpr, DimExpr>& substitution_pattern) {
+  auto lambdas = common::Overloaded{
+      [&](const TensorShapeOrDataDimExprs& tensor_shape_or_data) {
+        return ShapeOrDataDimExprs(SubstituteTensorShapeOrData(
+            tensor_shape_or_data, substitution_pattern));
+      },
+      [&](const TensorListShapeOrDataDimExprs& tensor_list) {
+        TensorListShapeOrDataDimExprs substituted_tensor_list;
+        for (const TensorShapeOrDataDimExprs& tensor_shape_or_data :
+             tensor_list) {
+          substituted_tensor_list.push_back(SubstituteTensorShapeOrData(
+              tensor_shape_or_data, substitution_pattern));
+        }
+        return ShapeOrDataDimExprs(substituted_tensor_list);
+      }};
+  return std::visit(lambdas, shape_or_data.variant());
+}
+
 std::ostream& operator<<(std::ostream& stream,
                          const ShapeOrDataDimExprs& shape_or_data) {
-  auto lambdas = Overloaded{
+  auto lambdas = common::Overloaded{
       [&](const TensorShapeOrDataDimExprs& tensor_shape_data) {
         stream << "shape" << tensor_shape_data.shape();
         if (tensor_shape_data.data()) {

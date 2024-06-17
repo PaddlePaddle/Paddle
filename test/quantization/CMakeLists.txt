@@ -1,3 +1,4 @@
+include(../cpp/inference/test.cmake)
 file(
   GLOB TEST_OPS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -217,7 +218,6 @@ endfunction()
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_light_nas)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mnist)
-  list(REMOVE_ITEM TEST_OPS test_post_training_quantization_while)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mobilenetv1)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_resnet50)
   list(REMOVE_ITEM TEST_OPS test_post_training_quantization_program_resnet50)
@@ -244,7 +244,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_apply_per_channel_scale)
 endif()
 
-if(LINUX AND WITH_MKLDNN)
+if(LINUX AND WITH_ONEDNN)
 
   #### Image classification dataset: ImageNet (small)
   # The dataset should already be downloaded for INT8v2 unit tests
@@ -394,7 +394,7 @@ if(LINUX AND WITH_MKLDNN)
   set(NLP_DATA_ARCHIVE "Ernie_dataset.tar.gz")
   set(NLP_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_dataset")
   set(NLP_DATA_PATH "${NLP_DATA_DIR}/Ernie_dataset/1.8w.bs1")
-  set(NLP_LABLES_PATH "${NLP_DATA_DIR}/Ernie_dataset/label.xnli.dev")
+  set(NLP_LABELS_PATH "${NLP_DATA_DIR}/Ernie_dataset/label.xnli.dev")
   download_quant_data(${NLP_DATA_DIR} ${NLP_DATA_ARCHIVE}
                       e650ce0cbc1fadbed5cc2c01d4e734dc)
 
@@ -411,7 +411,7 @@ if(LINUX AND WITH_MKLDNN)
   inference_quant2_int8_nlp_test(
     test_quant2_int8_ernie_mkldnn ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float
     ${FP32_ERNIE_MODEL_DIR}/ernie_fp32_model ${NLP_DATA_PATH}
-    ${NLP_LABLES_PATH} ${QUANT2_ERNIE_OPS_TO_QUANTIZE})
+    ${NLP_LABELS_PATH} ${QUANT2_ERNIE_OPS_TO_QUANTIZE})
 
   # Quant2 GRU
   set(QUANT2_GRU_MODEL_DIR "${QUANT_INSTALL_DIR}/GRU_quant2")
@@ -461,16 +461,9 @@ list(REMOVE_ITEM TEST_OPS test_filter_pruning)
 # fix
 if(WIN32)
   set(SINGLE_CARD_TEST_OPS
-      test_user_defined_quantization
-      test_quantization_scale_pass
-      test_quantization_pass
-      test_moving_average_abs_max_scale_op
-      test_imperative_qat_channelwise
-      test_imperative_qat
-      test_imperative_qat_lsq
-      test_imperative_qat_matmul
-      test_imperative_out_scale
-      test_graph)
+      test_imperative_qat_channelwise test_imperative_qat
+      test_imperative_qat_lsq test_imperative_qat_matmul
+      test_imperative_out_scale)
   list(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
   foreach(src ${SINGLE_CARD_TEST_OPS})
     py_test(${src} SRCS ${src}.py ENVS CUDA_VISIBLE_DEVICES=0)
@@ -493,30 +486,15 @@ if(NOT WIN32)
                        PROPERTIES TIMEOUT 600 LABELS "RUN_TYPE=NIGHTLY")
   set_tests_properties(test_post_training_quantization_mnist PROPERTIES TIMEOUT
                                                                         150)
-  set_tests_properties(test_post_training_quantization_while PROPERTIES TIMEOUT
-                                                                        120)
   set_tests_properties(test_imperative_ptq PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_weight_quantization_mobilenetv1 PROPERTIES TIMEOUT
-                                                                       120)
-  set_tests_properties(test_quant_aware PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_quant_post_quant_aware PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_quant_aware_user_defined PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant_aware_config PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_quant_amp PROPERTIES TIMEOUT 200)
 endif()
 
-set_tests_properties(test_graph PROPERTIES TIMEOUT 120)
-set_tests_properties(test_quantization_pass PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_qat_channelwise PROPERTIES TIMEOUT 200)
-set_tests_properties(test_user_defined_quantization PROPERTIES TIMEOUT 200)
-set_tests_properties(test_imperative_qat PROPERTIES TIMEOUT 200)
-set_tests_properties(test_imperative_qat_fuse PROPERTIES TIMEOUT 200)
-set_tests_properties(test_imperative_out_scale PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_user_defined PROPERTIES TIMEOUT 200)
 set_tests_properties(test_imperative_qat_lsq PROPERTIES TIMEOUT 300)
 set_tests_properties(test_imperative_qat_matmul PROPERTIES TIMEOUT 300)
 
-if(LINUX AND WITH_MKLDNN)
+if(LINUX AND WITH_ONEDNN)
   set_tests_properties(test_quant2_int8_mobilenetv1_mkldnn PROPERTIES TIMEOUT
                                                                       120)
   set_tests_properties(convert_model2dot_ernie PROPERTIES TIMEOUT 120)
@@ -538,8 +516,5 @@ endif()
 if(APPLE)
   set_tests_properties(test_post_training_quantization_mnist PROPERTIES TIMEOUT
                                                                         300)
-  set_tests_properties(test_post_training_quantization_while PROPERTIES TIMEOUT
-                                                                        300)
   set_tests_properties(test_imperative_ptq PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_imperative_skip_op PROPERTIES TIMEOUT 300)
 endif()

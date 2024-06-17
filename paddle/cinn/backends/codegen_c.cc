@@ -26,7 +26,7 @@
 #include "paddle/cinn/runtime/cpu/thread_backend.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 //! Root of the builtin code.
 PD_DECLARE_string(cinn_x86_builtin_code_root);
 
@@ -205,7 +205,10 @@ void CodeGenC::Visit(const ir::For *op) {
     Expr num_task_var = Var("num_task");
     IrPrinter::Visit((op->extent + num_task_var - 1) / num_task_var);
     str_ += ";\n";
-    CHECK_EQ(min.as_int32(), 0);
+    PADDLE_ENFORCE_EQ(
+        min.as_int32(),
+        0,
+        phi::errors::InvalidArgument("The min of the for loop should be 0"));
     auto task_id = Var("task_id");
     auto n_per_task = Var("n_per_task");
     min = task_id * n_per_task;
@@ -370,7 +373,10 @@ void CodeGenC::PrintCallArgs(const ir::Call *op) {
 }
 
 void CodeGenC::PrintCall_buffer_malloc(const ir::Call *op) {
-  CHECK_EQ(op->read_args.size(), 2UL);
+  PADDLE_ENFORCE_EQ(
+      op->read_args.size(),
+      2UL,
+      phi::errors::InvalidArgument("The number of read_args should be 2"));
   str_ += op->name;
   str_ += "(";
   PrintCastExpr("void*", op->read_args[0]);
@@ -380,7 +386,10 @@ void CodeGenC::PrintCall_buffer_malloc(const ir::Call *op) {
 }
 
 void CodeGenC::PrintCall_cinn_pod_value_to_(const ir::Call *op) {
-  CHECK_EQ(op->read_args.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op->read_args.size(),
+      1UL,
+      phi::errors::InvalidArgument("The number of read_args should be 1"));
   str_ += op->name;
   str_ += "(";
   str_ += "&(";
@@ -390,7 +399,10 @@ void CodeGenC::PrintCall_cinn_pod_value_to_(const ir::Call *op) {
 }
 
 void CodeGenC::PrintCall_get_address(const ir::Call *op) {
-  CHECK_EQ(op->read_args.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op->read_args.size(),
+      1UL,
+      phi::errors::InvalidArgument("The number of read_args should be 1"));
   CHECK(op->write_args.empty());
   auto *read_var = op->read_args.front().as_var();
   auto *read_buf = op->read_args.front().as_buffer();
@@ -409,7 +421,10 @@ void CodeGenC::PrintCall_get_address(const ir::Call *op) {
 
 void CodeGenC::PrintCall_pod_values_to_array(const ir::Call *op) {
   CHECK(!op->read_args.empty());
-  CHECK_EQ(op->write_args.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op->write_args.size(),
+      1UL,
+      phi::errors::InvalidArgument("The number of write_args should be 1"));
   auto output_var = op->write_args.front().as_var_ref();
   CHECK(output_var.defined());
 
@@ -434,30 +449,37 @@ void CodeGenC::Visit(const ir::_Module_ *op) { CINN_NOT_IMPLEMENTED }
 void CodeGenC::Visit(const ir::_Var_ *op) { str_ += op->name; }
 
 void CodeGenC::Visit(const ir::Load *op) {
-  Expr dense_strided_ramp = detail::StridedRampBase(op->index(), 1);
+  ir::Expr offset = [&] {
+    if (load_to_offset_.count(op) == 0) {
+      load_to_offset_[op] = op->index();
+    }
+    return load_to_offset_.at(op);
+  }();
+
+  Expr dense_strided_ramp = detail::StridedRampBase(offset, 1);
   if (dense_strided_ramp.defined()) {  // Loading a continuous Ramp address.
     CHECK(op->type().is_vector());
-    PrintStackVecType(op->type().ElementOf(), op->index().type().lanes());
+    PrintStackVecType(op->type().ElementOf(), offset.type().lanes());
     str_ += "::";
     str_ += "Load(";
     str_ += op->tensor.As<ir::_Tensor_>()->name;
     str_ += ",";
     IrPrinter::Visit(dense_strided_ramp);
     str_ += ")";
-  } else if (op->index().type().is_vector()) {
+  } else if (offset.type().is_vector()) {
     // gather
     CHECK(op->type().is_vector());
-    PrintStackVecType(op->type().ElementOf(), op->index().type().lanes());
+    PrintStackVecType(op->type().ElementOf(), offset.type().lanes());
     str_ += "::Load(";
     str_ += op->tensor.As<ir::_Tensor_>()->name;
     str_ += ",";
-    IrPrinter::Visit(op->index());
+    IrPrinter::Visit(offset);
     str_ += ")";
   } else if (op->is_addr_tensor()) {
     auto *tensor = op->tensor.As<ir::_Tensor_>();
     str_ += tensor->name;
     str_ += "[";
-    IrPrinter::Visit(op->index());
+    IrPrinter::Visit(offset);
     str_ += "]";
   } else {
     IrPrinter::Visit(op);
@@ -466,12 +488,17 @@ void CodeGenC::Visit(const ir::Load *op) {
 
 void CodeGenC::Visit(const ir::Store *op) {
   CHECK(op->is_addr_tensor());
-
+  ir::Expr offset = [&] {
+    if (store_to_offset_.count(op) == 0) {
+      store_to_offset_[op] = op->index();
+    }
+    return store_to_offset_.at(op);
+  }();
   auto *tensor = op->tensor.As<ir::_Tensor_>();
   CHECK(tensor);
   str_ += tensor->name;
   str_ += "[";
-  IrPrinter::Visit(op->index());
+  IrPrinter::Visit(offset);
   str_ += "]";
   str_ += " = ";
   IrPrinter::Visit(op->value);
@@ -600,9 +627,12 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
 
   DoIndent();
 
-  CHECK_EQ(op->alloc_output_buffer_exprs.size(),
-           op->dealloc_output_buffer_exprs.size())
-      << "the count of allocation and deallocation expressions is not match";
+  PADDLE_ENFORCE_EQ(
+      op->alloc_output_buffer_exprs.size(),
+      op->dealloc_output_buffer_exprs.size(),
+      phi::errors::InvalidArgument(
+          "The count of allocation and deallocation expressions is not "
+          "match"));
 
   std::vector<Expr> new_body;
 

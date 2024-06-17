@@ -21,6 +21,8 @@ from paddle.base.backward import append_backward
 
 paddle.enable_static()
 
+paddle.pir_utils._switch_to_old_ir_()
+
 
 class TestOpTranslator(unittest.TestCase):
     def setUp(self):
@@ -63,6 +65,7 @@ class TestOpWithBackwardTranslator(unittest.TestCase):
         with paddle.static.scope_guard(self.new_scope):
             with paddle.static.program_guard(self.main_program):
                 out = self.append_op()
+                out.stop_gradient = False
                 append_backward(out)
 
     def check(self):

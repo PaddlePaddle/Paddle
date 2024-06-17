@@ -29,8 +29,3 @@ if((WITH_DISTRIBUTE)
                     test_fleet_with_asp_sharding ENVS ${dist_ENVS})
   endif()
 endif()
-
-set_tests_properties(test_asp_pruning_dynamic PROPERTIES TIMEOUT 30)
-set_tests_properties(test_asp_pruning_static PROPERTIES TIMEOUT 30)
-set_tests_properties(test_asp_optimize_dynamic PROPERTIES TIMEOUT 30)
-set_tests_properties(test_asp_optimize_static PROPERTIES TIMEOUT 30)

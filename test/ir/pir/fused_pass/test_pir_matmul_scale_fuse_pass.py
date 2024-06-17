@@ -60,7 +60,9 @@ class TestMatmulScaleFusePattern(PassTest):
                                         bias_after_scale=bias_after_scale,
                                     )
                                     out = paddle.assign(out)
-                                    self.pass_list = ['matmul_scale_fuse_pass']
+                                    self.pass_attr_list = [
+                                        {'matmul_scale_fuse_pass': {}}
+                                    ]
                                     self.feeds = {
                                         "x": np.random.random(x_shape).astype(
                                             "float32"

@@ -17,14 +17,33 @@ limitations under the License. */
 #include "paddle/fluid/framework/io/save_load_tensor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
+#include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/utils/pybind.h"
 
 namespace py = pybind11;
 namespace paddle {
 namespace pybind {
+template <typename PlaceType>
+void LoadCombine(const std::string &file_path,
+                 const std::vector<std::string> &names,
+                 std::vector<phi::DenseTensor *> *out,
+                 bool load_as_fp16,
+                 const PlaceType place) {
+  pir::LoadCombineFunction(file_path, names, out, load_as_fp16, place);
+}
 
+template <typename PlaceType>
+void Load(const std::string &file_path,
+          int64_t seek,
+          const std::vector<int64_t> &shape,
+          bool load_as_fp16,
+          phi::DenseTensor *out,
+          const PlaceType place) {
+  pir::LoadFunction(file_path, seek, shape, load_as_fp16, out, place);
+}
 void BindIO(pybind11::module *m) {
   m->def("save_lod_tensor",
          [](const phi::DenseTensor &tensor, const std::string &str_file_name) {
@@ -122,6 +141,35 @@ void BindIO(pybind11::module *m) {
     paddle::framework::LoadTensor(path, &tensor_load);
     return tensor_load;
   });
+
+  m->def("save_func", &pir::SaveFunction);
+
+  m->def("save_combine_func", &pir::SaveCombineFunction);
+
+  m->def("load_func", &Load<paddle::platform::CPUPlace>);
+  m->def("load_func", &Load<paddle::platform::CustomPlace>);
+  m->def("load_func", &Load<paddle::platform::XPUPlace>);
+  m->def("load_func", &Load<paddle::platform::CUDAPinnedPlace>);
+  m->def("load_func", &Load<paddle::platform::CUDAPlace>);
+  m->def("load_func", &Load<paddle::platform::IPUPlace>);
+  m->def("load_func", &Load<paddle::platform::Place>);
+  m->def("load_combine_func", &LoadCombine<paddle::platform::CPUPlace>);
+  m->def("load_combine_func", &LoadCombine<paddle::platform::CustomPlace>);
+  m->def("load_combine_func", &LoadCombine<paddle::platform::XPUPlace>);
+  m->def("load_combine_func", &LoadCombine<paddle::platform::CUDAPinnedPlace>);
+  m->def("load_combine_func", &LoadCombine<paddle::platform::CUDAPlace>);
+  m->def("load_combine_func", &LoadCombine<paddle::platform::IPUPlace>);
+  m->def("load_combine_func", &LoadCombine<paddle::platform::Place>);
+
+  m->def("serialize_pir_program",
+         &pir::WriteModule,
+         py::arg("program"),
+         py::arg("file_path"),
+         py::arg("pir_version"),
+         py::arg("overwrite") = true,
+         py::arg("readable") = false,
+         py::arg("trainable") = true);
+  m->def("deserialize_pir_program", &pir::ReadModule);
 }
 }  // namespace pybind
 }  // namespace paddle

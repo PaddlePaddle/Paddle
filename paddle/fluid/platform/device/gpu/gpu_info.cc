@@ -68,8 +68,7 @@ PADDLE_DEFINE_EXPORTED_uint64(cuda_memory_async_pool_realease_threshold,
                               "Amount of reserved memory in bytes to hold onto "
                               "before trying to release memory back to the OS");
 
-namespace paddle {
-namespace platform {
+namespace paddle::platform {
 
 void GpuMemoryUsage(size_t *available, size_t *total) {
   size_t actual_available, actual_total;
@@ -217,6 +216,7 @@ class RecordedGpuMallocHelper {
     CUDADeviceGuard guard(dev_id_);
     gpuError_t result;
 #ifdef PADDLE_WITH_HIP
+    phi::backends::gpu::CUDAGraphCaptureModeGuard capture_mode_guard;
     if (UNLIKELY(malloc_managed_memory)) {
       result = hipMallocManaged(ptr, size);
     } else {
@@ -503,11 +503,11 @@ class RecordedGpuMallocHelper {
   std::atomic<uint64_t> cur_size_{0};
 
 #if defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11020)
-  cudaMemPool_t memPool_;
+  cudaMemPool_t memPool_ = nullptr;
   static std::once_flag set_cudamempoolattr_once_flag_;
 #endif
 #if defined(PADDLE_WITH_HIP)
-  hipMemPool_t memPool_;
+  hipMemPool_t memPool_ = nullptr;
   static std::once_flag set_cudamempoolattr_once_flag_;
 #endif
 
@@ -718,5 +718,4 @@ void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream) {
   phi::backends::gpu::GpuMemsetAsync(dst, value, count, stream);
 }
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace paddle::platform

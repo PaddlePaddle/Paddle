@@ -26,7 +26,7 @@
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_op_list.h"
+#include "paddle/fluid/platform/onednn_op_list.h"
 #endif
 #include "paddle/common/flags.h"
 #include "paddle/fluid/framework/library_type.h"
@@ -39,8 +39,7 @@ COMMON_DECLARE_bool(check_nan_inf);
 PD_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(run_kp_kernel);
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 static const phi::Kernel empty_kernel;
 static const framework::RuntimeContext empty_ctx({}, {});
@@ -166,7 +165,7 @@ PreparedOp PrepareImpl(
   auto* dev_ctx = pool.Get(place);
 
 #ifdef PADDLE_WITH_DNNL
-  // MKLDNN variant of code reads attributes in some of GetKernelTypeForVar and
+  // OneDNN variant of code reads attributes in some of GetKernelTypeForVar and
   // GetKernelType functions, so we need to copy the attributes there.
   // Const qualifier of Attrs had to be discarded to overwrite it.
   if (FLAGS_use_mkldnn) {
@@ -190,13 +189,13 @@ PreparedOp PrepareImpl(
   phi::KernelSignature kernel_signature;
   std::string phi_kernel_name;
 
-// NOTE(jiahongyu): The registered MKLDNN kernel have library_type =
+// NOTE(jiahongyu): The registered OneDNN kernel have library_type =
 // LibraryType::kMKLDNN and data_layout_ = DataLayout::ONEDNN. But the default
 // values are kPlain, so we need to modify the library_type and data_layout_
 // here. There are three statements in if condition:
-// 1. Whether mkldnn kernel fallbacks to plain kernel;
+// 1. Whether onednn kernel fallbacks to plain kernel;
 // 2. Whether this op has specific implementation;
-// 3. Whether mkldnn kernel can be used.
+// 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
   if (!op.DnnFallback() && !paddle::platform::in_mkldnn_white_list(op.Type()) &&
       op.CanMKLDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.dtype())) {
@@ -752,5 +751,4 @@ void PreparedOp::Run(const NameVarMap<egr::EagerVariable>& ins,
   }
 }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative

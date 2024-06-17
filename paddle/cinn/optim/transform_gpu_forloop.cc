@@ -222,7 +222,13 @@ class ReplaceIndexToBindExpr : public ir::IRMutator<> {
         schedule_block_realize->schedule_block.As<ir::ScheduleBlock>()
             ->iter_vars;
 
-    CHECK_EQ(iter_values.size(), iter_vars.size());
+    PADDLE_ENFORCE_EQ(iter_values.size(),
+                      iter_vars.size(),
+                      phi::errors::InvalidArgument(
+                          "The size of iter values and iter vars is not equal,"
+                          "where iter values:%d but iter vars:%d.",
+                          iter_values.size(),
+                          iter_vars.size()));
     for (int idx = 0; idx < iter_values.size(); ++idx) {
       ReplaceVarWithExpr(&body, iter_vars[idx], iter_values[idx]);
     }
@@ -420,7 +426,7 @@ class ReplaceVarToZero : public ir::IRMutator<> {
 };
 
 void OptimizeExprGPU(Expr *expr) {
-  VLOG(2) << "Before Optimize Expr:\n" << *expr;
+  VLOG(4) << "Before Optimize Expr:\n" << *expr;
 
   // copy var nodes to prevent one modification leading to multiple changes
   RestructureVarNodes restructure_var_nodes;
@@ -452,7 +458,7 @@ void OptimizeExprGPU(Expr *expr) {
   ReplaceVarToZero replace_var_to_zero;
   replace_var_to_zero(expr);
 
-  VLOG(2) << "After Optimize Expr: \n" << *expr;
+  VLOG(4) << "After Optimize Expr: \n" << *expr;
 }
 
 }  // namespace optim

@@ -55,7 +55,7 @@ TEST(Vectorize, replace_var) {
   Expr func = optim::Optimize(funcs, cinn::common::DefaultHostTarget());
 
   Target target;
-  target.arch = Target::Arch ::X86;
+  target.arch = common::X86Arch{};
   target.bits = Target::Bit ::k32;
   target.os = Target::OS ::Linux;
 
@@ -80,7 +80,7 @@ void matmul(void* _args, int32_t num_args)
   float* C = ((float*)(_C->memory));
   for (int32_t i = 0; i < 100; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      C[StackVec<16,int32_t>::Ramp(((500 * i) + (16 * j)), 1, 16)] = (StackedVec<float,16>::Load(A,((500 * i) + (16 * j))) * StackedVec<float,16>::Load(B,((500 * i) + (16 * j))));
+      C[StackVec<16,int32_t>::Ramp(((16 * j) + (i * 500)), 1, 16)] = (StackedVec<float,16>::Load(A,((16 * j) + (i * 500))) * StackedVec<float,16>::Load(B,((16 * j) + (i * 500))));
     };
   };
   cinn_buffer_free((void*)(0), _C);
@@ -99,7 +99,7 @@ TEST(Vectorize, TestMarkVectorize) {
   Expr N(500);
 
   Target target;
-  target.arch = Target::Arch ::X86;
+  target.arch = common::X86Arch{};
   target.bits = Target::Bit ::k32;
   target.os = Target::OS ::Linux;
 

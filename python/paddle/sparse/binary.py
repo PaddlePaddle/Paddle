@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, in_dynamic_mode
-from paddle.base.framework import core, dygraph_only
+from paddle import _C_ops
+from paddle.base.framework import core, dygraph_only, in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
 
 from .unary import cast
@@ -270,7 +270,7 @@ def add(x, y, name=None):
     if y.dtype != x.dtype:
         y = cast(y, None, x.dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sparse_add(x, y)
     else:
         op_type = 'sparse_add'
@@ -452,3 +452,60 @@ def is_same_shape(x, y):
 
     """
     return x.is_same_shape(y)
+
+
+@dygraph_only
+def mask_as(x, mask, name=None):
+    r"""
+    Filter the input dense tensor `x` using the `indices` of the sparse matrix `mask`,
+    which in turn generates a sparse matrix of the corresponding format.
+    The input `x` and `mask` must have the same shape, and the sparse tensor returned has the same indices as `mask`
+    even `zero` values exist in the coresponding indices.
+
+    Args:
+        x (Tensor): The input tensor. It should be a DenseTensor.
+            The data type can be float32, float64, int32, int64, complex64, complex128, int8, int16, float16.
+        mask (Tensor): The input tensor. It can be SparseCooTensor or SparseCsrTensor.
+            It should be 2D or 3D when the mask is SparseCsrTensor.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A sparse tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.set_device('cpu')
+
+            >>> # csr sparse tensor
+            >>> crows = [0, 2, 3, 5]
+            >>> cols = [1, 3, 2, 0, 1]
+            >>> values = [1., 2., 3., 4., 5.]
+            >>> dense_shape = [3, 4]
+            >>> csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+            >>> paddle.seed(2024)
+            >>> x = paddle.rand(dense_shape).astype(csr.dtype)
+            >>> out = paddle.sparse.mask_as(x, csr)
+            >>> print(out)
+            Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+            crows=[0, 2, 3, 5],
+            cols=[1, 3, 2, 0, 1],
+            values=[0.23659813, 0.08467803, 0.64152628, 0.66596609, 0.90394485])
+
+            >>> # coo sparse tensor
+            >>> indices = [[0, 1, 2], [1, 2, 0]]
+            >>> values = [1.0, 2.0, 3.0]
+            >>> dense_shape = [3, 3]
+            >>> coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+            >>> paddle.seed(2024)
+            >>> x = paddle.rand(dense_shape).astype(coo.dtype)
+            >>> out = paddle.sparse.mask_as(x, coo)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+            indices=[[0, 1, 2],
+                     [1, 2, 0]],
+            values=[0.23659813, 0.40340215, 0.64152628])
+
+    """
+    return _C_ops.sparse_mask_as(x, mask)

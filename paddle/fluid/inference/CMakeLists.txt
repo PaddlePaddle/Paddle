@@ -26,10 +26,6 @@ if(TENSORRT_FOUND)
   add_subdirectory(tensorrt)
 endif()
 
-if(WITH_LITE)
-  add_subdirectory(lite)
-endif()
-
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
@@ -100,8 +96,11 @@ list(REMOVE_ITEM fluid_modules cinn_op_dialect)
 # shared library to prune library size.
 # list(REMOVE_ITEM fluid_modules ${not_infer_modules})
 
-set(SHARED_INFERENCE_DEPS phi common ${fluid_modules} analysis_predictor
-                          ${utils_modules})
+set(SHARED_INFERENCE_DEPS phi phi_core common ${fluid_modules}
+                          analysis_predictor ${utils_modules})
+if(WITH_GPU OR WITH_ROCM)
+  list(APPEND SHARED_INFERENCE_DEPS phi_gpu)
+endif()
 if(NOT WIN32)
   list(APPEND SHARED_INFERENCE_DEPS ${ir_targets})
 endif()

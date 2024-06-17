@@ -37,21 +37,21 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(table_dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dim size of the input tensor 'W' should be 2. "
                           "But received W's size = %d.",
                           table_dims.size()));
     PADDLE_ENFORCE_EQ(
         ids_dims[ids_dims.size() - 1],
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The last dimension of the input tensor 'Ids' should be 1. "
             "But received Ids's size in the last dimension = %d.",
             ids_dims[ids_dims.size() - 1]));
     // we only support sum now
     PADDLE_ENFORCE_EQ(combiner,
                       "sum",
-                      platform::errors::Unimplemented(
+                      phi::errors::Unimplemented(
                           "The pooling type of sequence_pool only support sum "
                           "now. So the 'combiner' must be 'sum'."));
 
@@ -61,7 +61,7 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
         PADDLE_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Ids")[0]);
     PADDLE_ENFORCE_EQ(ids_desc->GetLoDLevel(),
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "In compile time, the LoD Level of Ids should be 1. "
                           "But received the LoD Level of Ids = %d.",
                           ids_desc->GetLoDLevel()));

@@ -254,19 +254,19 @@ if(WIN32 OR APPLE)
 endif()
 
 set(WITH_MKLML ${WITH_MKL})
-if(NOT DEFINED WITH_MKLDNN)
+if(NOT DEFINED WITH_ONEDNN)
   if(WITH_MKL AND AVX2_FOUND)
-    set(WITH_MKLDNN ON)
+    set(WITH_ONEDNN ON)
   else()
     message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN.")
-    set(WITH_MKLDNN OFF)
+    set(WITH_ONEDNN OFF)
   endif()
 endif()
 
 if(WIN32)
   if(MSVC)
     if(MSVC_VERSION LESS 1920)
-      set(WITH_MKLDNN OFF)
+      set(WITH_ONEDNN OFF)
     endif()
   endif()
 endif()
@@ -303,7 +303,7 @@ if(WITH_CINN)
   if(WITH_MKL)
     add_definitions(-DCINN_WITH_MKL_CBLAS)
   endif()
-  if(WITH_MKLDNN)
+  if(WITH_ONEDNN)
     add_definitions(-DCINN_WITH_DNNL)
   endif()
   include(cmake/cinn/version.cmake)
@@ -362,14 +362,19 @@ elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
   list(APPEND third_party_deps extern_openblas)
 endif()
 
-if(WITH_MKLDNN)
-  include(external/mkldnn) # download, build, install mkldnn
-  list(APPEND third_party_deps extern_mkldnn)
+if(WITH_ONEDNN)
+  include(external/onednn) # download, build, install onednn
+  list(APPEND third_party_deps extern_onednn)
 endif()
 
 include(external/protobuf) # find first, then download, build, install protobuf
 if(TARGET extern_protobuf)
   list(APPEND third_party_deps extern_protobuf)
+endif()
+
+include(external/json) # find first, then build json
+if(TARGET extern_json)
+  list(APPEND third_party_deps extern_json)
 endif()
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
@@ -527,11 +532,6 @@ if(WITH_DGC)
   include(external/dgc) # download, build, install dgc
   add_definitions(-DPADDLE_WITH_DGC)
   list(APPEND third_party_deps extern_dgc)
-endif()
-
-if(WITH_LITE)
-  message(STATUS "Compile Paddle with Lite Engine.")
-  include(external/lite)
 endif()
 
 if(WITH_CRYPTO)

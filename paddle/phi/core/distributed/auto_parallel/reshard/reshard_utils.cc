@@ -23,8 +23,7 @@
 #include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 namespace {
 std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
@@ -244,8 +243,8 @@ std::vector<ProcessMesh> GetSubMeshes(const ProcessMesh& process_mesh) {
     std::vector<int64_t> sub_process_ids(process_ids.begin() + start_position,
                                          process_ids.begin() + end_position);
 
-    sub_process_meshes.emplace_back(ProcessMesh(
-        sub_process_mesh_shape, sub_process_ids, sub_process_mesh_dim_names));
+    sub_process_meshes.emplace_back(
+        sub_process_mesh_shape, sub_process_ids, sub_process_mesh_dim_names);
   }
   return sub_process_meshes;
 }
@@ -260,5 +259,4 @@ bool IsSubMesh(const ProcessMesh& global_mesh, const ProcessMesh& sub_mesh) {
   return false;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

@@ -15,9 +15,14 @@
 import numpy as np
 
 import paddle
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops
 from paddle.base.data_feeder import check_type, check_variable_and_dtype
-from paddle.base.framework import convert_np_dtype_to_dtype_, core, dygraph_only
+from paddle.base.framework import (
+    convert_np_dtype_to_dtype_,
+    core,
+    dygraph_only,
+    in_dynamic_or_pir_mode,
+)
 from paddle.common_ops_import import Variable
 from paddle.framework import LayerHelper
 
@@ -225,7 +230,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         dtype_flag = True
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sparse_sum(x, axis, dtype, keepdim)
     else:
         if axis is None:
@@ -648,7 +653,7 @@ def abs(x, name=None):
         out = |x|
 
     Parameters:
-        x (Tensor): The input Sparse Tensor with data type float32, float64.
+        x (Tensor): The input Sparse Tensor with data type float32, float64, complex64, complex128.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -862,7 +867,7 @@ def reshape(x, shape, name=None):
             [1, 2, 2, 3, 3]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sparse_reshape(x, shape)
     else:
         check_variable_and_dtype(
@@ -932,7 +937,7 @@ def isnan(x, name=None):
                    values=[False, False, False, True ])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sparse_isnan(x)
     else:
         op_type = 'sparse_isnan'
@@ -960,13 +965,13 @@ def slice(x, axes, starts, ends, name=None):
     Args:
         x (Tensor): The input Tensor (``SparseCooTensor`` or ``SparseCsrTensor``), it's data type should be ``float16``, ``float32``, ``float64``, ``int32``, ``int64``.
         axes (list|tuple|Tensor): The data type is ``int32``.If ``axes`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``axes`` is a Tensor, it should be a 1-D Tensor.
+                it should be integers or a 0-D Tensor with shape []. If ``axes`` is a Tensor, it should be a 1-D Tensor.
                 Axes that `starts` and `ends` apply to.
         starts (list|tuple|Tensor): The data type is ``int32``. If ``starts`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``starts`` is a Tensor, it should be a 1-D Tensor.
+                it should be integers or a 0-D Tensor with shape []. If ``starts`` is a Tensor, it should be a 1-D Tensor.
                 It represents starting indices of corresponding axis in ``axes``.
         ends (list|tuple|Tensor): The data type is ``int32``. If ``ends`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``ends`` is a Tensor, it should be a 1-D Tensor.
+                it should be integers or a 0-D Tensor with shape []. If ``ends`` is a Tensor, it should be a 1-D Tensor.
                 It represents ending indices of corresponding axis in ``axes``.
 
     Returns:
@@ -999,7 +1004,7 @@ def slice(x, axes, starts, ends, name=None):
                    values=[-4,  2])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sparse_slice(x, axes, starts, ends)
     else:
         attrs = {'axes': axes, 'starts': starts, 'ends': ends}

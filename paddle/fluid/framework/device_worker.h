@@ -44,7 +44,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 namespace paddle {
 namespace framework {
@@ -215,6 +215,8 @@ class DeviceWorker {
   virtual void SetDeviceContext(platform::DeviceContext* dev_ctx) {
     dev_ctx_ = dev_ctx;
   }
+
+  virtual platform::DeviceContext* GetDeviceContext() { return dev_ctx_; }
 
   virtual void SetThreadNum(int thread_num) { thread_num_ = thread_num; }
 

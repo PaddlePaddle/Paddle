@@ -19,8 +19,7 @@
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/src/core/op_result_impl.h"
 
-namespace pir {
-namespace detail {
+namespace pir::detail {
 
 uint32_t OpResultImpl::index() const {
   if (const auto *outline_result = dyn_cast<OpOutlineResultImpl>(this)) {
@@ -32,7 +31,9 @@ uint32_t OpResultImpl::index() const {
 OpResultImpl::~OpResultImpl() {
   if (!use_empty()) {
     PADDLE_FATAL(
-        "Destroyed a op_result that is still in use. The owner op type is : %s",
+        "Destroyed a op_result that is still in use by %d. The owner op type "
+        "is: %s",
+        first_use()->owner()->name(),
         owner()->name());
   }
 }
@@ -90,6 +91,15 @@ void OpResultImpl::set_attribute(const std::string &key, Attribute value) {
   owner->set_attribute(key, ArrayAttribute::get(owner->ir_context(), vec));
 }
 
+void *OpResultImpl::property(const std::string &key) const {
+  return owner()->value_property(key, index());
+}
+
+void OpResultImpl::set_property(const std::string &key, const Property &value) {
+  auto owner = this->owner();
+  owner->set_value_property(key, value, index());
+}
+
 OpInlineResultImpl::OpInlineResultImpl(Type type, uint32_t result_index)
     : OpResultImpl(type, result_index) {
   PADDLE_ENFORCE_LE(
@@ -100,5 +110,4 @@ OpInlineResultImpl::OpInlineResultImpl(Type type, uint32_t result_index)
           result_index));
 }
 
-}  // namespace detail
-}  // namespace pir
+}  // namespace pir::detail

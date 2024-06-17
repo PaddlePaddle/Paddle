@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/raw_tensor.h"
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
@@ -185,13 +185,13 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GT(inp_var_names.size(),
                       0UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The number of variables to be saved is %d, expect "
                           "it to be greater than 0.",
                           inp_var_names.size()));
 
     // get device context from pool
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto& dev_ctx = *pool.Get(place);
 
     if (inp_vars.size() > 0 && inp_vars[0]->IsType<phi::DenseTensor>()) {
@@ -199,12 +199,12 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < inp_vars.size(); i++) {
         PADDLE_ENFORCE_NOT_NULL(
             inp_vars[i],
-            platform::errors::InvalidArgument(
-                "Cannot find variable %s to save.", inp_var_names[i]));
+            phi::errors::InvalidArgument("Cannot find variable %s to save.",
+                                         inp_var_names[i]));
         PADDLE_ENFORCE_EQ(
             inp_vars[i]->IsType<phi::DenseTensor>(),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "SaveCombine operator only supports saving "
                 "phi::DenseTensor or Vocab variable, %s has wrong type.",
                 inp_var_names[i]));
@@ -222,12 +222,12 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < inp_vars.size(); i++) {
         PADDLE_ENFORCE_NOT_NULL(
             inp_vars[i],
-            platform::errors::InvalidArgument(
-                "Cannot find variable %s to save.", inp_var_names[i]));
+            phi::errors::InvalidArgument("Cannot find variable %s to save.",
+                                         inp_var_names[i]));
         PADDLE_ENFORCE_EQ(
             inp_vars[i]->IsType<framework::Vocab>(),
             true,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "SaveCombine operator only supports saving "
                 "phi::DenseTensor or Vocab variable, %s has wrong type.",
                 inp_var_names[i]));

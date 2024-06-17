@@ -37,20 +37,3 @@ function(inference_analysis_test TARGET)
     set_tests_properties(${TARGET} PROPERTIES LABELS "RUN_TYPE=INFER")
   endif()
 endfunction()
-
-if(NOT APPLE)
-  inference_analysis_test(
-    test_analyzer
-    SRCS
-    analyzer_tester.cc
-    EXTRA_DEPS
-    common
-    paddle_inference_shared
-    ARGS
-    --inference_model_dir=${WORD2VEC_MODEL_DIR})
-  if(WITH_ONNXRUNTIME AND WIN32)
-    # Copy onnxruntime for some c++ test in Windows, since the test will
-    # be build only in CI, so suppose the generator in Windows is Ninja.
-    copy_onnx(test_analyzer)
-  endif()
-endif()

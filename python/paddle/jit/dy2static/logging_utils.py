@@ -162,13 +162,9 @@ class TranslatorLogger:
         if self.has_code_level(level):
             source_code = ast_to_source_code(ast_node)
             if level == LOG_AllTransformer:
-                header_msg = "After the last level ast transformer: '{}', the transformed code:\n".format(
-                    transformer_name
-                )
+                header_msg = f"After the last level ast transformer: '{transformer_name}', the transformed code:\n"
             else:
-                header_msg = "After the level {} ast transformer: '{}', the transformed code:\n".format(
-                    level, transformer_name
-                )
+                header_msg = f"After the level {level} ast transformer: '{transformer_name}', the transformed code:\n"
 
             msg = header_msg + source_code
             self.logger.info(msg, *args, **kwargs)
@@ -184,7 +180,7 @@ class TranslatorLogger:
 _TRANSLATOR_LOGGER = TranslatorLogger()
 
 
-def set_verbosity(level=0, also_to_stdout=False):
+def set_verbosity(level: int = 0, also_to_stdout: bool = False) -> None:
     """
     Sets the verbosity level of log for dygraph to static graph. Logs can be output to stdout by setting `also_to_stdout`.
 
@@ -219,11 +215,13 @@ def set_verbosity(level=0, also_to_stdout=False):
     _TRANSLATOR_LOGGER.need_to_echo_log_to_stdout = also_to_stdout
 
 
-def get_verbosity():
+def get_verbosity() -> int:
     return _TRANSLATOR_LOGGER.verbosity_level
 
 
-def set_code_level(level=LOG_AllTransformer, also_to_stdout=False):
+def set_code_level(
+    level: int = LOG_AllTransformer, also_to_stdout: bool = False
+) -> None:
     """
     Sets the level to print code from specific level Ast Transformer. Code can be output to stdout by setting `also_to_stdout`.
 

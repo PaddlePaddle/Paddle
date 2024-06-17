@@ -34,23 +34,25 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
+#elif defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/phi/backends/xpu/xpu_info.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/distributed/bkcl_comm_context.h"
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
 #endif
-#ifdef PADDLE_WITH_XPU_BKCL
-#include "paddle/phi/backends/xpu/xpu_info.h"
-#include "paddle/phi/core/distributed/bkcl_comm_context.h"
-#endif
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 int CommContextManager::device_id = -1;
 
 void CommContextManager::SetDeviceId(int dev_id) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   phi::backends::gpu::SetDeviceId(dev_id);
+  CommContextManager::device_id = dev_id;
+#elif defined(PADDLE_WITH_XPU_BKCL)
+  phi::backends::xpu::SetXPUDeviceId(dev_id);
   CommContextManager::device_id = dev_id;
 #endif
 }
@@ -207,6 +209,30 @@ void CommContextManager::CreateBKCLCommContext(
   auto bkcl_comm_context =
       std::make_unique<BKCLCommContext>(rank, size, bkcl_id);
 
+  if (CommContextManager::device_id != -1) {
+    bool is_comm_context = 1;
+    std::unique_ptr<phi::XPUContext> dev_ctx(new phi::XPUContext(
+        phi::XPUPlace(CommContextManager::device_id), is_comm_context));
+    dev_ctx->SetAllocator(phi::memory_utils::GetAllocator(
+        CommContextManager::device_id, dev_ctx->stream()));
+    dev_ctx->SetHostAllocator(phi::memory_utils::GetHostAllocator());
+    dev_ctx->SetZeroAllocator(
+        phi::memory_utils::GetZeroAllocator(CommContextManager::device_id));
+    dev_ctx->SetHostZeroAllocator(phi::memory_utils::GetHostZeroAllocator());
+    // XPUs do not have the concept of pinned memory,
+    // so the get_pinned_allocator function is not set.
+
+    // It currently does not support dev_ctx->PartialInitWithAllocator().
+    auto compute_event =
+        phi::memory_utils::GetXpuEvent(CommContextManager::device_id);
+    auto comm_event =
+        phi::memory_utils::GetXpuEvent(CommContextManager::device_id);
+
+    bkcl_comm_context->SetDevContext(std::move(dev_ctx));
+    bkcl_comm_context->SetComputeEvent(std::move(compute_event));
+    bkcl_comm_context->SetCommEvent(std::move(comm_event));
+  }
+
   comm_context_manager.SetStore(store);
   comm_context_manager.Emplace(unique_comm_key, std::move(bkcl_comm_context));
 }
@@ -268,5 +294,4 @@ std::vector<int> CommContextManager::GetGroupRanks(
   return pg_key_ranks_.at(pg_key);
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

@@ -24,12 +24,14 @@ inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
     TensorListExprs list =
         shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
     for (size_t i = 0; i < list.size(); i++) {
+      CHECK(list[i].data().has_value());
       for (auto expr : list[i].data().value()) {
         result.emplace_back(expr);
       }
     }
     return result;
   } else {
+    CHECK(shapeordata.data().has_value());
     return shapeordata.data().value();
   }
 }
@@ -159,13 +161,19 @@ inline ShapeOrData SliceRawInferSymbolicShape(
     // Currently, we DO NOT support the case that any element in `axes` `starts`
     // or `ends` is a Symbol.
     auto vec_int64 = details::VecExpr2Int64(starts);
-    IR_ENFORCE(vec_int64.has_value(),
-               "for slice op, all the elements in `starts` must be int64_t");
+    PADDLE_ENFORCE_EQ(
+        vec_int64.has_value(),
+        true,
+        phi::errors::InvalidArgument(
+            "for slice op, all the elements in `starts` must be int64_t"));
     std::vector<int64_t> starts_int = vec_int64.value();
 
     vec_int64 = details::VecExpr2Int64(ends);
-    IR_ENFORCE(vec_int64.has_value(),
-               "for slice op, all the elements in `ends` must be int64_t");
+    PADDLE_ENFORCE_EQ(
+        vec_int64.has_value(),
+        true,
+        phi::errors::InvalidArgument(
+            "for slice op, all the elements in `ends` must be int64_t"));
     std::vector<int64_t> ends_int = vec_int64.value();
 
     const int64_t start =
@@ -180,7 +188,8 @@ inline ShapeOrData SliceRawInferSymbolicShape(
       out_data.push_back(in_shapeordata.data().value()[i]);
     }
 
-    const std::vector<symbol::DimExpr> shape{std::int64_t(out_data.size())};
+    const ExprVec shape = GetDecreasedDims(
+        ExprVec{static_cast<int64_t>(out_data.size())}, decrease_axis);
     return symbol::ShapeOrDataDimExprs{
         symbol::TensorShapeOrDataDimExprs(shape, out_data)};
   };

@@ -28,6 +28,7 @@
 namespace pir {
 class Block;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
+using PropertyMap = std::unordered_map<std::string, Property>;
 
 //===----------------------------------------------------------------------===//
 // OperationArgument

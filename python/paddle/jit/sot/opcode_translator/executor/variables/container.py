@@ -58,7 +58,7 @@ class ContainerVariable(VariableBase):
             "ContainerVariable.get_wrapped_items do not implement"
         )
 
-    def __len__(self):
+    def __len__(self) -> int:
         raise FallbackError('ContainerVariable.__len__ do not implement')
 
     def len(self):
@@ -113,7 +113,7 @@ class ListVariable(ContainerVariable):
 
     def __init__(
         self,
-        val_list: list[VariableBase],
+        val_list: list[Any],
         graph: FunctionGraph,
         tracker: Tracker,
     ):

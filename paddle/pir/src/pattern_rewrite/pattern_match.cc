@@ -91,8 +91,10 @@ void RewriterBase::ReplaceOpWithIf(
     const std::vector<Value>& new_values,
     bool* all_uses_replaced,
     const std::function<bool(OpOperand)>& functor) {
-  IR_ENFORCE(op->num_results() == new_values.size(),
-             "incorrect number of values to replace operation");
+  PADDLE_ENFORCE_EQ(op->num_results(),
+                    new_values.size(),
+                    phi::errors::InvalidArgument(
+                        "incorrect number of values to replace operation"));
   NotifyRootReplaced(op, new_values);
 
   // Replace each use of the results when the functor is true.
@@ -119,8 +121,10 @@ void RewriterBase::ReplaceOp(Operation* op,
   // Notify that the rewriter subclass we're about to replace this root.
   NotifyRootReplaced(op, new_values);
 
-  IR_ENFORCE(op->num_results() == new_values.size(),
-             "incorrect # of replacement values");
+  PADDLE_ENFORCE_EQ(
+      op->num_results(),
+      new_values.size(),
+      phi::errors::InvalidArgument("incorrect # of replacement values"));
   op->ReplaceAllUsesWith(new_values);
 
   NotifyOperationRemoved(op);
@@ -128,10 +132,12 @@ void RewriterBase::ReplaceOp(Operation* op,
 }
 
 void RewriterBase::EraseOp(Operation* op) {
-  IR_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       op->use_empty(),
-      "Erase op failed. op(%s) is used, the expectation is that it is not used",
-      op->name());
+      true,
+      phi::errors::InvalidArgument("Erase op failed. op(%s) is used, the "
+                                   "expectation is that it is not used",
+                                   op->name()));
   NotifyOperationRemoved(op);
   op->Erase();
 }
@@ -159,8 +165,10 @@ void RewriterBase::ReplaceUseIf(Value from,
 // 'op' and 'new_op' are known to have the same number of results
 void RewriterBase::ReplaceOpWithResultsOfAnotherOp(Operation* op,
                                                    Operation* new_op) {
-  IR_ENFORCE(op->num_results() == new_op->num_results(),
-             "replacement op doesn't match results of original op");
+  PADDLE_ENFORCE_EQ(op->num_results(),
+                    new_op->num_results(),
+                    phi::errors::InvalidArgument(
+                        "replacement op doesn't match results of original op"));
   // TODO(zhangbopd): Add unit test for this.
   if (op->num_results() == 1) {
     std::vector<Value> new_values;

@@ -1,6 +1,6 @@
 add_subdirectory(generator)
 
-set(EAGER_GENERETOR_DEPS
+set(EAGER_GENERATOR_DEPS
     ${GLOB_OP_LIB}
     ${GLOB_OPERATOR_DEPS}
     pybind
@@ -12,13 +12,17 @@ set(EAGER_GENERETOR_DEPS
     imperative_profiler
     imperative_flag)
 
+if(WITH_CINN)
+  list(REMOVE_ITEM EAGER_GENERATOR_DEPS imperative_flag)
+endif()
+
 if(WITH_CUSTOM_DEVICE)
-  set(EAGER_GENERETOR_DEPS ${EAGER_GENERETOR_DEPS}
+  set(EAGER_GENERATOR_DEPS ${EAGER_GENERATOR_DEPS}
                            custom_device_common_op_registry)
 endif()
 
 add_executable(eager_generator eager_generator.cc)
-target_link_libraries(eager_generator ${EAGER_GENERETOR_DEPS})
+target_link_libraries(eager_generator ${EAGER_GENERATOR_DEPS})
 
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(eager_generator ${os_dependency_modules})
@@ -58,6 +62,16 @@ if(WIN32)
       OUTPUT ${eager_generator_path}/phi.dll
       COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${eager_generator_path}
       DEPENDS phi)
+    add_custom_command(
+      OUTPUT ${eager_generator_path}/phi_core.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${PHI_CORE_LIB} ${eager_generator_path}
+      DEPENDS phi)
+    if(WITH_GPU OR WITH_ROCM)
+      add_custom_command(
+        OUTPUT ${eager_generator_path}/phi_gpu.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_GPU_LIB} ${eager_generator_path}
+        DEPENDS phi)
+    endif()
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/phi.dll)
   endif()
 
@@ -93,13 +107,13 @@ if(WIN32)
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/openblas.dll)
   endif()
 
-  if(WITH_MKLDNN)
+  if(WITH_ONEDNN)
     message("Copied mkldnn.dll for Eager AutoCodeGen")
     add_custom_command(
       OUTPUT ${eager_generator_path}/mkldnn.dll
-      COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB}
+      COMMAND ${CMAKE_COMMAND} -E copy ${ONEDNN_SHARED_LIB}
               ${eager_generator_path}
-      DEPENDS mkldnn)
+      DEPENDS onednn)
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/mkldnn.dll)
   endif()
 

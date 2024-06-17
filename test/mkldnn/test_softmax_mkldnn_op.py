@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 from op_test import OpTest
+
+sys.path.append("../deprecated/legacy_test")
 from test_softmax_op import (
     TestSoftmaxOp,
     TestSoftmaxOp2,
@@ -69,7 +72,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         }
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_output_with_place(
@@ -79,7 +82,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
             self.check_output(check_dygraph=False, check_pir_onednn=True)
 
     def test_check_grad(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.use_cudnn or self.dtype == np.float16:
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):

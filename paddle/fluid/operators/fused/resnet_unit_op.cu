@@ -15,10 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/fused/cudnn_bn_stats_finalize.cu.h"
-#include "paddle/fluid/operators/fused/cudnn_norm_conv.cu.h"
-#include "paddle/fluid/operators/fused/cudnn_scale_bias_add_relu.cu.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/kernels/fusion/gpu/cudnn_bn_stats_finalize.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/cudnn_norm_conv.cu.h"
+#include "paddle/phi/kernels/fusion/gpu/cudnn_scale_bias_add_relu.cu.h"
 
 namespace paddle {
 namespace operators {
@@ -28,12 +28,12 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
-        platform::errors::PreconditionNotMet("It must use CUDAPlace."));
-    PADDLE_ENFORCE_EQ(platform::CudnnDataType<T>::type,
+        phi::errors::PreconditionNotMet("It must use CUDAPlace."));
+    PADDLE_ENFORCE_EQ(phi::backends::gpu::CudnnDataType<T>::type,
                       CUDNN_DATA_HALF,
-                      platform::errors::Unavailable(
+                      phi::errors::Unavailable(
                           "ResNetUnitOp only supports float16 for now."));
 
     // input x
@@ -98,14 +98,14 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
     phi::DenseTensor sum_of_squares_x;
     sum_x.Resize(param_dims);
     sum_of_squares_x.Resize(param_dims);
-    CudnnNormConvolution<T> conv_x_op(dev_ctx,
-                                      input_x_shape,
-                                      filter_x_shape,
-                                      output_shape,
-                                      padding,
-                                      stride,
-                                      dilation,
-                                      group);
+    phi::fusion::CudnnNormConvolution<T> conv_x_op(dev_ctx,
+                                                   input_x_shape,
+                                                   filter_x_shape,
+                                                   output_shape,
+                                                   padding,
+                                                   stride,
+                                                   dilation,
+                                                   group);
     conv_x_op.Forward(
         dev_ctx, *input_x, *filter_x, conv_out_x, &sum_x, &sum_of_squares_x);
 
@@ -114,7 +114,7 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
     phi::DenseTensor equiv_bias_x;
     equiv_scale_x.Resize(param_dims);
     equiv_bias_x.Resize(param_dims);
-    CudnnBNStatsFinalize<T> bn_x_op(dev_ctx, param_shape);
+    phi::fusion::CudnnBNStatsFinalize<T> bn_x_op(dev_ctx, param_shape);
     bn_x_op.Forward(dev_ctx,
                     sum_x,
                     sum_of_squares_x,
@@ -132,13 +132,13 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
                     is_train);
 
     // 3. scale + bias + add + relu
-    CudnnScaleBiasAddRelu<T> sbar_op(dev_ctx,
-                                     act_type,
-                                     fuse_add,
-                                     has_shortcut,
-                                     output_shape,
-                                     param_shape,
-                                     bitmask_shape);
+    phi::fusion::CudnnScaleBiasAddRelu<T> sbar_op(dev_ctx,
+                                                  act_type,
+                                                  fuse_add,
+                                                  has_shortcut,
+                                                  output_shape,
+                                                  param_shape,
+                                                  bitmask_shape);
     if (has_shortcut) {
       // input z
       const phi::DenseTensor *input_z = ctx.Input<phi::DenseTensor>("Z");
@@ -165,14 +165,14 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
       phi::DenseTensor sum_of_squares_z;
       sum_z.Resize(param_dims);
       sum_of_squares_z.Resize(param_dims);
-      CudnnNormConvolution<T> conv_z_op(dev_ctx,
-                                        input_z_shape,
-                                        filter_z_shape,
-                                        output_shape,
-                                        padding,
-                                        stride_z,
-                                        dilation,
-                                        group);
+      phi::fusion::CudnnNormConvolution<T> conv_z_op(dev_ctx,
+                                                     input_z_shape,
+                                                     filter_z_shape,
+                                                     output_shape,
+                                                     padding,
+                                                     stride_z,
+                                                     dilation,
+                                                     group);
       conv_z_op.Forward(
           dev_ctx, *input_z, *filter_z, conv_out_z, &sum_z, &sum_of_squares_z);
 
@@ -181,7 +181,7 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
       phi::DenseTensor equiv_bias_z;
       equiv_scale_z.Resize(param_dims);
       equiv_bias_z.Resize(param_dims);
-      CudnnBNStatsFinalize<T> bn_z_op(dev_ctx, param_shape);
+      phi::fusion::CudnnBNStatsFinalize<T> bn_z_op(dev_ctx, param_shape);
       bn_z_op.Forward(dev_ctx,
                       sum_z,
                       sum_of_squares_z,
@@ -228,12 +228,12 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()),
+        ctx.GetPlace().GetType() == phi::AllocationType::GPU,
         true,
-        platform::errors::PreconditionNotMet("It must use CUDAPlace."));
-    PADDLE_ENFORCE_EQ(platform::CudnnDataType<T>::type,
+        phi::errors::PreconditionNotMet("It must use CUDAPlace."));
+    PADDLE_ENFORCE_EQ(phi::backends::gpu::CudnnDataType<T>::type,
                       CUDNN_DATA_HALF,
-                      platform::errors::Unavailable(
+                      phi::errors::Unavailable(
                           "ResNetUnitOp only supports float16 for now."));
 
     const phi::DenseTensor *y_grad =
@@ -286,13 +286,13 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
     // scale_x_grad, bias_x_grad
     phi::DenseTensor conv_out_x_grad;
     conv_out_x_grad.Resize(conv_out_x->dims());
-    CudnnScaleBiasAddRelu<T> sbar_x_op(dev_ctx,
-                                       act_type,
-                                       fuse_add,
-                                       has_shortcut,
-                                       output_shape,
-                                       param_shape,
-                                       bitmask_shape);
+    phi::fusion::CudnnScaleBiasAddRelu<T> sbar_x_op(dev_ctx,
+                                                    act_type,
+                                                    fuse_add,
+                                                    has_shortcut,
+                                                    output_shape,
+                                                    param_shape,
+                                                    bitmask_shape);
     if (has_shortcut) {
       //       X                   Z
       //       |                   |
@@ -343,7 +343,7 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
       // 1.2 bn backward for z, get conv_out_z_grad, dscale_z, dbias_z
       phi::DenseTensor conv_out_z_grad;
       conv_out_z_grad.Resize(conv_out_z->dims());
-      CudnnScaleBiasAddRelu<T> sbar_z_op(
+      phi::fusion::CudnnScaleBiasAddRelu<T> sbar_z_op(
           dev_ctx, "", false, false, output_shape, param_shape, bitmask_shape);
       sbar_z_op.Backward(dev_ctx,
                          z_grad_temp,
@@ -362,14 +362,14 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
       // 1.3 Backward of Conv for z, get z_grad and filter_z_grad
       auto z_shape = common::vectorize<int>(z->dims());
       auto filter_z_shape = common::vectorize<int>(filter_z->dims());
-      CudnnNormConvolutionGrad<T> conv_z_op(dev_ctx,
-                                            z_shape,
-                                            filter_z_shape,
-                                            output_shape,
-                                            padding,
-                                            stride_z,
-                                            dilation,
-                                            group);
+      phi::fusion::CudnnNormConvolutionGrad<T> conv_z_op(dev_ctx,
+                                                         z_shape,
+                                                         filter_z_shape,
+                                                         output_shape,
+                                                         padding,
+                                                         stride_z,
+                                                         dilation,
+                                                         group);
       conv_z_op.Backward(
           dev_ctx, *z, *filter_z, conv_out_z_grad, z_grad, filter_z_grad);
     } else {
@@ -395,14 +395,14 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
 
     // 2. Backward of Conv for x, get x_grad and filter_x_grad
     bool use_addto = ctx.Attr<bool>("use_addto");
-    CudnnNormConvolutionGrad<T> conv_x_op(dev_ctx,
-                                          x_shape,
-                                          filter_x_shape,
-                                          output_shape,
-                                          padding,
-                                          stride,
-                                          dilation,
-                                          group);
+    phi::fusion::CudnnNormConvolutionGrad<T> conv_x_op(dev_ctx,
+                                                       x_shape,
+                                                       filter_x_shape,
+                                                       output_shape,
+                                                       padding,
+                                                       stride,
+                                                       dilation,
+                                                       group);
     conv_x_op.Backward(dev_ctx,
                        *x,
                        *filter_x,
@@ -418,12 +418,12 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
 
 #if CUDNN_VERSION >= 8000
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 PD_REGISTER_STRUCT_KERNEL(
-    resnet_unit, GPU, ALL_LAYOUT, ops::ResNetUnitKernel, plat::float16) {}
+    resnet_unit, GPU, ALL_LAYOUT, ops::ResNetUnitKernel, phi::dtype::float16) {}
 PD_REGISTER_STRUCT_KERNEL(resnet_unit_grad,
                           GPU,
                           ALL_LAYOUT,
                           ops::ResNetUnitGradKernel,
-                          plat::float16) {}
+                          phi::dtype::float16) {}
 #endif

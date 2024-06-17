@@ -31,8 +31,7 @@ limitations under the License. */
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
 COMMON_DECLARE_bool(enable_ins_parser_file);
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 DLManager& global_dlmanager_pool() {
   static DLManager manager;
@@ -349,7 +348,22 @@ int PrivateQueueDataFeed<T>::Next() {
 template class PrivateQueueDataFeed<std::vector<MultiSlotType>>;
 
 template <typename T>
-InMemoryDataFeed<T>::InMemoryDataFeed() {
+InMemoryDataFeed<T>::InMemoryDataFeed()
+    : batch_float_feasigns_(),
+      batch_uint64_feasigns_(),
+      offset_(),
+      visit_(),
+      thread_id_(0),
+      thread_num_(0),
+      parse_ins_id_(false),
+      parse_uid_(false),
+      parse_content_(false),
+      parse_logkey_(false),
+      enable_pv_merge_(false),
+      input_pv_channel_(nullptr),
+      output_pv_channel_(nullptr),
+      consume_pv_channel_(nullptr),
+      batch_offsets_() {
   this->file_idx_ = nullptr;
   this->mutex_for_pick_file_ = nullptr;
   this->fp_ = nullptr;
@@ -572,15 +586,16 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
 
 template <typename T>
 void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
-#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
-    (defined PADDLE_WITH_PSLIB)
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS)
   VLOG(3) << "LoadIntoMemoryFromSo() begin, thread_id=" << thread_id_;
   int buf_len = 1024 * 1024 * 10;
   char* buf = reinterpret_cast<char*>(malloc(buf_len + 10));
   auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
 
+#ifdef PADDLE_WITH_PSLIB
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, slot_conf_);
+#endif
 
   std::string filename;
   while (this->PickOneFile(&filename)) {
@@ -589,6 +604,7 @@ void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
     platform::Timer timeline;
     timeline.Start();
     if (ps_gpu_ptr->UseAfsApi()) {
+#ifdef PADDLE_WITH_PSLIB
       auto afs_reader = ps_gpu_ptr->OpenReader(filename);
       int read_len = 0;
       char* cursor = buf;
@@ -604,6 +620,7 @@ void InMemoryDataFeed<T>::LoadIntoMemoryFromSo() {
         }
         cursor = buf + remain;
       }
+#endif
     } else {
       VLOG(0) << "Should Call InitAfsApi First";
     }
@@ -632,7 +649,7 @@ void MultiSlotDataFeed::Init(
       true,
       platform::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in MultiSlotDataFeed."));
-  paddle::framework::MultiSlotDesc multi_slot_desc =
+  const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
   // temporarily set queue size = batch size * 100
@@ -1038,7 +1055,7 @@ void MultiSlotInMemoryDataFeed::Init(
       true,
       platform::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in MultiSlotInMemoryDataFeed."));
-  paddle::framework::MultiSlotDesc multi_slot_desc =
+  const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
   size_t all_slot_num = multi_slot_desc.slots_size();
@@ -1608,7 +1625,7 @@ void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
       true,
       platform::errors::PreconditionNotMet(
           "Multi_slot_desc has not been set in PrivateInstantDataFeed."));
-  paddle::framework::MultiSlotDesc multi_slot_desc =
+  const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
   size_t all_slot_num = multi_slot_desc.slots_size();
@@ -1657,7 +1674,7 @@ bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
           "Fail to open file: %s in MultiSlotFileInstantDataFeed.",
           filename.c_str()));
 
-  struct stat sb;
+  struct stat sb = {};
   fstat(fd_, &sb);
   end_ = static_cast<size_t>(sb.st_size);
 
@@ -2026,7 +2043,7 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   PADDLE_ENFORCE(data_feed_desc.has_multi_slot_desc(),
                  platform::errors::PreconditionNotMet(
                      "Multi_slot_desc has not been set in data_feed_desc"));
-  paddle::framework::MultiSlotDesc multi_slot_desc =
+  const paddle::framework::MultiSlotDesc& multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
   size_t all_slot_num = multi_slot_desc.slots_size();
@@ -2168,8 +2185,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib() {
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile() {
-#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS) && \
-    (defined PADDLE_WITH_PSLIB)
+#if (defined _LINUX) && (defined PADDLE_WITH_HETERPS)
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, all_slots_info_);
   CHECK(parser != nullptr);
@@ -2206,6 +2222,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile() {
     auto ps_gpu_ptr = PSGPUWrapper::GetInstance();
     do {
       if (ps_gpu_ptr->UseAfsApi()) {
+#ifdef PADDLE_WITH_PSLIB
         auto afs_reader = ps_gpu_ptr->OpenReader(filename);
         is_ok = parser->ParseFileInstance(
             [this, afs_reader](char* buf, int len) {
@@ -2213,6 +2230,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile() {
             },
             pull_record_func,
             lines);
+#endif
       } else {
         int err_no = 0;
         this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_, true);
@@ -3248,5 +3266,4 @@ void MiniBatchGpuPack::transfer_to_gpu() {
 }
 #endif
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

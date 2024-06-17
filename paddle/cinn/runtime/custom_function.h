@@ -22,6 +22,7 @@
 #include "paddle/cinn/hlir/framework/tensor.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/utils/type_defs.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace runtime {
@@ -42,11 +43,16 @@ class AssertTrueMsgTool {
   template <typename T>
   const T& GetFlagValue(const std::string& param) {
     InitFlagInfo();
-    CHECK(flag_values_.count(param))
-        << "The FLAGS_cinn_check_fusion_accuracy_pass only support parameter "
-           "\"only_warning/rtol/atol/equal_nan\" now";
-    CHECK(absl::holds_alternative<T>(flag_values_.at(param)))
-        << "Try get value from a error type!";
+    PADDLE_ENFORCE_GT(
+        flag_values_.count(param),
+        0,
+        phi::errors::InvalidArgument(
+            "The FLAGS_cinn_check_fusion_accuracy_pass only support parameter "
+            "\"only_warning/rtol/atol/equal_nan\" now."));
+    PADDLE_ENFORCE_GT(
+        absl::holds_alternative<T>(flag_values_.at(param)),
+        0,
+        phi::errors::InvalidArgument("Try get value from a error type!"));
     return absl::get<T>(flag_values_.at(param));
   }
 
