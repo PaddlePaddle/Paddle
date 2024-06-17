@@ -2915,21 +2915,19 @@ void CudaSplitSchedule(cinn::common::CINNValuePack *arg_pack,
     if (i != axis) fused_shape = fused_shape * output_shapes[0][i];
   }
   int compute_at_level = 0;
-  target.arch.Visit(adt::match{
-      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::X86Arch) {},
-      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::NVGPUArch) {
-        if (fused_shape > target.max_num_threads()) {
-          stages[last_output]->Split(0, target.max_num_threads());
-          stages[last_output]->Bind(0, "blockIdx.x");
-          stages[last_output]->Bind(1, "threadIdx.x");
-          compute_at_level++;
-        } else {
-          stages[last_output]->Bind(0, "threadIdx.x");
-        }
-      },
-  });
+  target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                    [&](common::X86Arch) {},
+                    [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                    [&](common::NVGPUArch) {
+                      if (fused_shape > target.max_num_threads()) {
+                        stages[last_output]->Split(0, target.max_num_threads());
+                        stages[last_output]->Bind(0, "blockIdx.x");
+                        stages[last_output]->Bind(1, "threadIdx.x");
+                        compute_at_level++;
+                      } else {
+                        stages[last_output]->Bind(0, "threadIdx.x");
+                      }
+                    });
 
   for (int i = 0; i < out_tensors.size() - 1; i++) {
     stages[out_tensors[i]]->ComputeAt2(stages[last_output], compute_at_level);
