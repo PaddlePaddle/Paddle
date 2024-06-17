@@ -68,9 +68,7 @@ class TestLayer(TestBase):
                 stop_gradient=False,
             ),
             InputSpec(
-                
-                
-            # TODO(xiaoyao0115): -1 shape in first dim will bring while_op, skip it for now
+                # TODO(xiaoyao0115): -1 shape in first dim will bring while_op, skip it for now
                 shape=(49, -1),
                 dtype=paddle.int64,
                 name=None,
