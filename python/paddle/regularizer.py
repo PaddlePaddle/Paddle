@@ -15,6 +15,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from paddle import _C_ops, pir
 from paddle.base import framework
 from paddle.base.framework import in_dynamic_or_pir_mode
@@ -33,7 +35,7 @@ class WeightDecayRegularizer:
     of its implementations
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def __call__(self, param, grad, block):
@@ -112,7 +114,12 @@ class L1Decay(WeightDecayRegularizer):
         super().__init__()
         self._coeff = coeff
 
-    def __call__(self, param, grad, block):
+    def __call__(
+        self,
+        param: pir.Value | pir.core.ParameterMeta,
+        grad: Any,
+        block: pir.Block,
+    ):
         """Add L1 weight decay ops to network
 
         Adds L1 weight decay ops.
@@ -154,7 +161,7 @@ class L1Decay(WeightDecayRegularizer):
             )
             return decay
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "L1Decay, coeff=%f" % self._coeff
 
 
@@ -224,7 +231,12 @@ class L2Decay(WeightDecayRegularizer):
         super().__init__()
         self._coeff = coeff
 
-    def __call__(self, param, grad, block):
+    def __call__(
+        self,
+        param: pir.Value | pir.core.ParameterMeta,
+        grad: Any,
+        block: pir.Block,
+    ):
         """Add L2 weight decay ops to network
 
         Adds L2 weight decay ops.
@@ -259,5 +271,5 @@ class L2Decay(WeightDecayRegularizer):
 
             return decay
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "L2Decay, coeff=%f" % self._coeff
