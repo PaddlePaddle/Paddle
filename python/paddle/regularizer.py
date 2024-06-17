@@ -15,8 +15,7 @@
 
 from __future__ import annotations
 
-from typing import Any
-
+import paddle
 from paddle import _C_ops, pir
 from paddle.base import framework
 from paddle.base.framework import in_dynamic_or_pir_mode
@@ -116,8 +115,8 @@ class L1Decay(WeightDecayRegularizer):
 
     def __call__(
         self,
-        param: pir.Value | pir.core.ParameterMeta,
-        grad: Any,
+        param: paddle.Tensor,
+        grad: paddle.Tensor,
         block: pir.Block,
     ):
         """Add L1 weight decay ops to network
@@ -233,8 +232,8 @@ class L2Decay(WeightDecayRegularizer):
 
     def __call__(
         self,
-        param: pir.Value | pir.core.ParameterMeta,
-        grad: Any,
+        param: paddle.Tensor,
+        grad: paddle.Tensor,
         block: pir.Block,
     ):
         """Add L2 weight decay ops to network
