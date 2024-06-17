@@ -88,6 +88,9 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);
+      if (backend == phi::Backend::CUSTOM) {
+        device_type_id_ = 1;
+      }
       std::string device_type =
           phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
               device_type_id_);
