@@ -33,8 +33,7 @@ if(WITH_TESTING AND WITH_CINN)
   paddle_test(test_tile_config_searcher SRCS tile_config_searcher_test.cc DEPS
               schedule_config_search)
 
-  paddle_test(test_file_tile_config SRCS file_tile_config_test.cc DEPS
-              file_tile_database)
+  paddle_test(test_file_tile_config SRCS file_tile_config_test.cc)
 
   # DO NOT forget add test name here, otherwise it will not be executed in
   # CINN CI.

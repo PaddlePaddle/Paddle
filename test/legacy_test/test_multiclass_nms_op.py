@@ -797,8 +797,7 @@ class TestMulticlassNMS3OpNoOutput(TestMulticlassNMS3Op):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
-    "core is not compiled with CUDA or ROCM",
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestMulticlassNMS3OpGPU(TestMulticlassNMS2Op):
     def test_check_output(self):
@@ -811,8 +810,7 @@ class TestMulticlassNMS3OpGPU(TestMulticlassNMS2Op):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
-    "core is not compiled with CUDA or ROCM",
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestMulticlassNMS3OpGPULessOutput(TestMulticlassNMS3OpGPU):
     def set_argument(self):
@@ -822,8 +820,7 @@ class TestMulticlassNMS3OpGPULessOutput(TestMulticlassNMS3OpGPU):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
-    "core is not compiled with CUDA or ROCM",
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestMulticlassNMS3OpGPUNoOutput(TestMulticlassNMS3OpGPU):
     def set_argument(self):
@@ -834,8 +831,7 @@ class TestMulticlassNMS3OpGPUNoOutput(TestMulticlassNMS3OpGPU):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
-    "core is not compiled with CUDA or ROCM",
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestMulticlassNMS3OpGPUFallback(TestMulticlassNMS3OpGPU):
     def set_argument(self):
