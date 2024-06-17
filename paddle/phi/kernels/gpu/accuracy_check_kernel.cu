@@ -14,13 +14,13 @@
 
 #include "paddle/phi/kernels/accuracy_check_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/accuracy_check_kernel_impl.h"
 
 PD_REGISTER_KERNEL(accuracy_check,
-                   CPU,
+                   GPU,
                    ALL_LAYOUT,
                    phi::AccuracyCheckKernel,
                    float,
