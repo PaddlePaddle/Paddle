@@ -144,13 +144,13 @@ class LKJCholesky(distribution.Distribution):
             check_type(
                 dim,
                 "dim",
-                (int, Variable),
+                (int, Variable, paddle.pir.Value),
                 "LKJCholesky",
             )
             check_type(
                 concentration,
                 "concentration",
-                (float, list, tuple, Variable),
+                (float, list, tuple, Variable, paddle.pir.Value),
                 "LKJCholesky",
             )
 
@@ -170,8 +170,9 @@ class LKJCholesky(distribution.Distribution):
         elif not isinstance(self.dim, int):
             raise TypeError(f"Expected dim to be an integer. Found dim={dim}.")
 
-        if not paddle.all(self.concentration > 0):
-            raise ValueError("The arg of `concentration` must be positive.")
+        if in_dynamic_mode():
+            if not paddle.all(self.concentration > 0):
+                raise ValueError("The arg of `concentration` must be positive.")
 
         self.concentration = concentration
         if isinstance(self.concentration, float):

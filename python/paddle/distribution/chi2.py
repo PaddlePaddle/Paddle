@@ -44,7 +44,7 @@ class Chi2(Gamma):
             check_type(
                 df,
                 'df',
-                (float, Variable),
+                (float, Variable, paddle.pir.Value),
                 'Chi2',
             )
 
@@ -58,7 +58,8 @@ class Chi2(Gamma):
 
         self.rate = paddle.full_like(self.df, 0.5)
 
-        if not paddle.all(self.df > 0):
-            raise ValueError("The arg of `df` must be positive.")
+        if in_dynamic_mode():
+            if not paddle.all(self.df > 0):
+                raise ValueError("The arg of `df` must be positive.")
 
         super().__init__(self.df * 0.5, self.rate)
