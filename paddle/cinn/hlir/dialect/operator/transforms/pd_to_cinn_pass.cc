@@ -74,14 +74,14 @@ class SumOpPattern : public pir::OpRewritePattern<paddle::dialect::SumOp> {
     // get attribute value from full_int_array op
     const std::vector<int64_t> axis = GetVectorFromIntArrayAttribute<int64_t>(
         full_int_array_op.attribute("value").dyn_cast<pir::ArrayAttribute>());
-    const bool keep_dim =
-        op.attribute("keepdim").dyn_cast<::pir::BoolAttribute>().data();
     const auto &dtype = op.attribute("dtype")
                             .dyn_cast<paddle::dialect::DataTypeAttribute>()
                             .data();
+    const bool keepdim =
+        op.attribute("keepdim").dyn_cast<::pir::BoolAttribute>().data();
 
     auto cinn_reduce = rewriter.Build<cinn::dialect::ReduceSumOp>(
-        op->operand_source(0), axis, keep_dim, dtype);
+        op->operand_source(0), axis, dtype, keepdim);
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_reduce.result(0));
     rewriter.EraseOp(op);
     if (full_int_array_op->use_empty()) {
@@ -110,12 +110,12 @@ class ReduceMinMaxOpPattern : public pir::OpRewritePattern<SOURCE_OP> {
     const std::vector<int64_t> axis = GetVectorFromIntArrayAttribute<int64_t>(
         full_int_array_op.attribute("value")
             .template dyn_cast<pir::ArrayAttribute>());
-    const bool keep_dim = op.attribute("keepdim")
-                              .template dyn_cast<::pir::BoolAttribute>()
-                              .data();
+    const bool keepdim = op.attribute("keepdim")
+                             .template dyn_cast<::pir::BoolAttribute>()
+                             .data();
 
     auto cinn_reduce =
-        rewriter.Build<TARGET_OP>(op->operand_source(0), axis, keep_dim);
+        rewriter.Build<TARGET_OP>(op->operand_source(0), axis, keepdim);
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_reduce.result(0));
     rewriter.EraseOp(op);
     if (full_int_array_op->use_empty()) {
