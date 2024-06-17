@@ -68,7 +68,6 @@ class TestSliceOp(OpTest):
         self.out = self.input[1:3, 0:3, 2:4, :]
 
     def test_check_output(self):
-        print("start op test ")
         self.check_output(check_pir=True, check_symbol_infer=True)
 
     def test_check_grad_normal(self):

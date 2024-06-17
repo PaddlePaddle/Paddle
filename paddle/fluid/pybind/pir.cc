@@ -2560,68 +2560,41 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
               std::vector<int64_t> expect_shape,
               std::vector<int64_t> expect_data = {}) -> bool {
              VLOG(3) << "Start compare shape and data.";
+
+             const auto &compare_func =
+                 [&](const std::vector<int64_t> &expect,
+                     const std::vector<symbol::DimExpr> &actual) -> bool {
+               if (actual.size() != expect.size()) {
+                 LOG(ERROR) << "expect size " << expect.size()
+                            << " is not equal to actual size " << actual.size()
+                            << " .";
+                 return false;
+               } else if (actual.empty()) {
+                 return true;
+               }
+               for (size_t i = 0; i < actual.size(); i++) {
+                 if (!actual.at(i).isa<int64_t>()) {
+                   PADDLE_THROW(phi::errors::InvalidArgument(
+                       "In OpTest, only supports cases where the type of "
+                       "DimExpr "
+                       "is int64_t."));
+                   return false;
+                 }
+                 if (actual.at(i) != expect.at(i)) {
+                   LOG(ERROR) << "expect[" << i << "]: " << expect.at(i)
+                              << " is not equal to actual[" << i
+                              << "]: " << actual.at(i) << " .";
+                   return false;
+                 }
+               }
+               return true;
+             };
+
              // compare shape
              const std::vector<symbol::DimExpr> &actual_shape = self.shape();
-             if (actual_shape.size() != expect_shape.size()) {
-               VLOG(3) << "expect_shape size " << expect_shape.size()
-                       << " is not equal to actual_shape size " << actual_shape
-                       << " .";
-               return false;
-             } else if (actual_shape.size() == 0) {
-               return true;
-             }
-             symbol::DimExpr expr = actual_shape.at(0);
-             if (!expr.isa<int64_t>()) {
-               PADDLE_THROW(phi::errors::InvalidArgument(
-                   "In OpTest, only supports cases where the type of DimExpr "
-                   "is int64_t."));
-               return false;
-             }
-             for (size_t i = 0; i < actual_shape.size(); i++) {
-               if (actual_shape.at(i) != expect_shape.at(i)) {
-                 VLOG(3) << "expect_shape[" << i << "]: " << expect_shape.at(i)
-                         << " is not equal to actual_shape[" << i
-                         << "]: " << actual_shape.at(i) << " .";
-                 return false;
-               }
-             }
-             //  // compare data
-             //   const std::optional<std::vector<symbol::DimExpr>> &actual_data
-             //   =
-             //     self.data();
-             //  if (expect_data.size() == 0 && !actual_data.has_value())
-             //  {return true;} else {
-             //    if (!actual_data.has_value()) {
-             //       VLOG(3) << "expect_data size "<< actual_shape.size()<< "
-             //       is not equal to actual_data size 0.";
-             //     return false;
-             //    }
-             //    if (!actual_data.value().at(0).isa<int64_t>()) {
-             //      // rise error
-             //      VLOG(3) << "DimExpr value :" <<
-             //      symbol::ToString(actual_data.value().at(0));
-             //       PADDLE_THROW(phi::errors::InvalidArgument(
-             //       "In OpTest, only supports cases where the type of DimExpr
-             //       is int64_t."));
-             //      return false;
-             //    }
-             //    if (actual_data.value().size() != expect_data.size()) {
-             //      VLOG(3) << "expect_data size "<< expect_data.size()<<" is
-             //      not equal to actual_data size "
-             //              << actual_data.value().size() <<" .";
-             //      return false;
-             //    }
-             //    for (size_t i = 0; i < actual_data.value().size(); i++) {
-             //      if (actual_data.value().at(i) != expect_data.at(i)) {
-             //       VLOG(3) << "expect_data[" << i << "]: " <<
-             //       expect_data.at(i)
-             //              << " is not equal to actual_data[" << i << "]: "
-             //             << actual_data.value().at(i) << " .";
-             //        return false;
-             //      }
-             //    }
-             //  }
-             return true;
+
+             // TODO(gongshaotian): compare data
+             return compare_func(expect_shape, actual_shape);
            });
 }
 
