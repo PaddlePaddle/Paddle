@@ -179,6 +179,7 @@ class Adam(Optimizer):
             >>> adam.clear_grad()
 
     """
+    type: str
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
     _beta1_pow_acc_str = "beta1_pow_acc"

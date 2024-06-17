@@ -81,6 +81,8 @@ class SGD(Optimizer):
 
     """
 
+    type: str
+
     def __init__(
         self,
         learning_rate: float | LRScheduler = 0.001,
