@@ -3588,12 +3588,9 @@ OpTranslator::OpTranslator() {
   special_handlers["batch_norm"] = BatchNormOpTranscriber();
   special_handlers["range"] = ArangeOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
-<<<<<<< HEAD
   special_handlers["conv2d"] = Conv2dOpTranscriber();
-=======
   special_handlers["cross_entropy_with_softmax"] =
       CrossEntropyWithSoftmaxOpTranscriber();
->>>>>>> Add attribute for several ops for failed model
   special_handlers["data"] = DataOpTranscriber();
   special_handlers["depthwise_conv2d"] = DepthwiseConv2dOpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
