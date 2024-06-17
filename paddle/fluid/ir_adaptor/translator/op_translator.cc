@@ -1687,12 +1687,6 @@ struct MulOpTranscriber : public OpTranscriber {
                              TranslationContext* param_map,
                              const OpDesc& op_desc,
                              pir::Block* block) override {
-#ifdef PADDLE_WITH_DNNL
-    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
-      return &(static_cast<OpTranscriber&>(*this).operator()(
-          ctx, param_map, op_desc, block));
-    }
-#endif
     return OpTranscriber::operator()(ctx, param_map, op_desc, block);
   }
 
@@ -1861,12 +1855,6 @@ struct MulGradOpTranscriber : public OpTranscriber {
                              TranslationContext* param_map,
                              const OpDesc& op_desc,
                              pir::Block* block) override {
-#ifdef PADDLE_WITH_DNNL
-    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
-      return &(static_cast<OpTranscriber&>(*this).operator()(
-          ctx, param_map, op_desc, block));
-    }
-#endif
     return OpTranscriber::operator()(ctx, param_map, op_desc, block);
   }
 
