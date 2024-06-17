@@ -20,7 +20,6 @@ from typing_extensions import TypeAlias
 if TYPE_CHECKING:
     from .. import Tensor
 
-
 _DynamicShapeLike: TypeAlias = Union[
     Sequence[Union[int, "Tensor", None]],
     "Tensor",

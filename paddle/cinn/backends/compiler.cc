@@ -248,7 +248,7 @@ void Compiler::AppendCX86(const Module& module) {
 }
 
 std::string Compiler::GetSourceCode(const ir::Module& module) {
-  return target_.arch.Visit(adt::match{
+  return target_.arch.Match(
       [&](common::UnknownArch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::ARMArch) -> std::string { CINN_NOT_IMPLEMENTED; },
@@ -264,16 +264,14 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 #else
         CINN_NOT_IMPLEMENTED
 #endif
-      }});
+      });
 }
 
 void Compiler::BuildDefault(const Module& module) {
-  target_.arch.Visit(adt::match{
-      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::X86Arch) { CompileX86Module(module); },
-      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::NVGPUArch) { CompileCudaModule(module); },
-  });
+  target_.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                     [&](common::X86Arch) { CompileX86Module(module); },
+                     [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                     [&](common::NVGPUArch) { CompileCudaModule(module); });
 }
 
 namespace {
@@ -336,7 +334,7 @@ void Compiler::CompileCudaModule(const Module& module,
   RuntimeSymbols symbols;
   for (auto& fn : device_module.functions()) {
     std::string kernel_fn_name = fn->name;
-    auto fn_kernel = cuda_module_->GetFunction(0, kernel_fn_name);
+    auto fn_kernel = cuda_module_->GetFunction(kernel_fn_name);
     CHECK(fn_kernel);
 
     fn_ptr_.push_back(reinterpret_cast<void*>(fn_kernel));

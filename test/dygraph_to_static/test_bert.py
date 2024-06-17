@@ -271,8 +271,13 @@ class TestBert(Dy2StTestBase):
         return pred_res
 
     def predict_analysis_inference(self, data):
+        if use_pir_api():
+            model_filename = self.pir_model_filename
+        else:
+            model_filename = self.model_filename
+
         output = PredictorTools(
-            self.model_save_dir, self.model_filename, self.params_filename, data
+            self.model_save_dir, model_filename, self.params_filename, data
         )
         out = output()
         return out
@@ -311,51 +316,32 @@ class TestBert(Dy2StTestBase):
             dygraph_pred_res = self.predict_dygraph(self.bert_config, data)
             static_pred_res = self.predict_static(data)
             dygraph_jit_pred_res = self.predict_dygraph_jit(data)
-            if use_pir_api():
-                for dy_res, st_res, dy_jit_res in zip(
-                    dygraph_pred_res,
-                    static_pred_res,
-                    dygraph_jit_pred_res,
-                ):
-                    np.testing.assert_allclose(
-                        st_res,
-                        dy_res,
-                        rtol=1e-05,
-                        err_msg=f'dygraph_res: {dy_res[~np.isclose(st_res, dy_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_res)]}',
-                    )
-                    np.testing.assert_allclose(
-                        st_res,
-                        dy_jit_res,
-                        rtol=1e-05,
-                        err_msg=f'dygraph_jit_res: {dy_jit_res[~np.isclose(st_res, dy_jit_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_jit_res)]}',
-                    )
-            else:
-                predictor_pred_res = self.predict_analysis_inference(data)
+            predictor_pred_res = self.predict_analysis_inference(data)
 
-                for dy_res, st_res, dy_jit_res, predictor_res in zip(
-                    dygraph_pred_res,
-                    static_pred_res,
-                    dygraph_jit_pred_res,
-                    predictor_pred_res,
-                ):
-                    np.testing.assert_allclose(
-                        st_res,
-                        dy_res,
-                        rtol=1e-05,
-                        err_msg=f'dygraph_res: {dy_res[~np.isclose(st_res, dy_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_res)]}',
-                    )
-                    np.testing.assert_allclose(
-                        st_res,
-                        dy_jit_res,
-                        rtol=1e-05,
-                        err_msg=f'dygraph_jit_res: {dy_jit_res[~np.isclose(st_res, dy_jit_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_jit_res)]}',
-                    )
-                    np.testing.assert_allclose(
-                        st_res,
-                        predictor_res,
-                        rtol=1e-05,
-                        err_msg=f'dygraph_jit_res_predictor: {predictor_res[~np.isclose(st_res, predictor_res)]},\n static_res: {st_res[~np.isclose(st_res, predictor_res)]}',
-                    )
+            for dy_res, st_res, dy_jit_res, predictor_res in zip(
+                dygraph_pred_res,
+                static_pred_res,
+                dygraph_jit_pred_res,
+                predictor_pred_res,
+            ):
+                np.testing.assert_allclose(
+                    st_res,
+                    dy_res,
+                    rtol=1e-05,
+                    err_msg=f'dygraph_res: {dy_res[~np.isclose(st_res, dy_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_res)]}',
+                )
+                np.testing.assert_allclose(
+                    st_res,
+                    dy_jit_res,
+                    rtol=1e-05,
+                    err_msg=f'dygraph_jit_res: {dy_jit_res[~np.isclose(st_res, dy_jit_res)]},\n static_res: {st_res[~np.isclose(st_res, dy_jit_res)]}',
+                )
+                np.testing.assert_allclose(
+                    st_res,
+                    predictor_res,
+                    rtol=1e-05,
+                    err_msg=f'dygraph_jit_res_predictor: {predictor_res[~np.isclose(st_res, predictor_res)]},\n static_res: {st_res[~np.isclose(st_res, predictor_res)]}',
+                )
             break
 
 
