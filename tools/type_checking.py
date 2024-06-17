@@ -262,13 +262,15 @@ def get_test_results(
             )
 
     test_results = []
-    pool = multiprocessing.Pool(initializer=init_worker)
-    try:
-        test_results = pool.starmap(type_checker.run, codeblocks)
-
-    except KeyboardInterrupt:
-        pool.terminate()
-        pool.join()
+    with multiprocessing.Pool(initializer=init_worker) as pool:
+        try:
+            test_results = pool.starmap(type_checker.run, codeblocks)
+        except KeyboardInterrupt:
+            pool.terminate()
+        else:
+            pool.close()
+        finally:
+            pool.join()
 
     return list(test_results)
 
