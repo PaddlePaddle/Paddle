@@ -34,16 +34,58 @@
 #include "paddle/pir/include/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
-COMMON_DECLARE_double(accuracy_check_rtol);
-COMMON_DECLARE_double(accuracy_check_atol);
+COMMON_DECLARE_double(accuracy_check_rtol_fp32);  // default 1e-6
+COMMON_DECLARE_double(accuracy_check_atol_fp32);  // default 1e-6
+COMMON_DECLARE_double(accuracy_check_rtol_fp16);  // default 1e-3
+COMMON_DECLARE_double(accuracy_check_atol_fp16);  // default 1e-3
+COMMON_DECLARE_double(accuracy_check_rtol_bf16);  // default 1e-3
+COMMON_DECLARE_double(accuracy_check_atol_bf16);  // default 1e-3
 
 namespace cinn::dialect::ir {
 
-static double rtol =
-    FLAGS_accuracy_check_rtol;  // relative tolerance for accuracy check
-static double atol =
-    FLAGS_accuracy_check_atol;  // relative tolerance for accuracy check
 static constexpr bool equal_nan = false;  // whether to consider NaN as equal
+
+static void GetTolerance(pir::Value value, double* rtol, double* atol) {
+  const auto& GetValueDtype = [&](pir::Value value) -> phi::DataType {
+    if (value.type().isa<paddle::dialect::DenseTensorType>()) {
+      return paddle::dialect::TransToPhiDataType(
+          value.type().dyn_cast<paddle::dialect::DenseTensorType>().dtype());
+    } else if (value.type().isa<paddle::dialect::SelectedRowsType>()) {
+      return paddle::dialect::TransToPhiDataType(
+          value.type().dyn_cast<paddle::dialect::SelectedRowsType>().dtype());
+    } else if (value.type().isa<paddle::dialect::DenseTensorArrayType>()) {
+      return paddle::dialect::TransToPhiDataType(
+          value.type()
+              .dyn_cast<paddle::dialect::DenseTensorArrayType>()
+              .dtype());
+    } else if (value.type().isa<paddle::dialect::SparseCooTensorType>()) {
+      return paddle::dialect::TransToPhiDataType(
+          value.type()
+              .dyn_cast<paddle::dialect::SparseCooTensorType>()
+              .dtype());
+    } else if (value.type().isa<paddle::dialect::SparseCsrTensorType>()) {
+      return paddle::dialect::TransToPhiDataType(
+          value.type()
+              .dyn_cast<paddle::dialect::SparseCsrTensorType>()
+              .dtype());
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Currently, we can only get phi::DataType from DenseTensorType and "
+          "SelectedRowsType."));
+    }
+  };
+
+  if (GetValueDtype(value) == phi::DataType::FLOAT16) {
+    *rtol = FLAGS_accuracy_check_rtol_fp16;
+    *atol = FLAGS_accuracy_check_atol_fp16;
+  } else if (GetValueDtype(value) == phi::DataType::BFLOAT16) {
+    *rtol = FLAGS_accuracy_check_rtol_bf16;
+    *atol = FLAGS_accuracy_check_atol_bf16;
+  } else {
+    *rtol = FLAGS_accuracy_check_rtol_fp32;
+    *atol = FLAGS_accuracy_check_atol_fp32;
+  }
+}
 
 class AddAccuracyCheckPattern
     : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
@@ -66,8 +108,10 @@ class AddAccuracyCheckPattern
     ::pir::IrContext* ctx = ::pir::IrContext::Instance();
     ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
+    double rtol, atol;
     const auto& InsertAccuaryCheckOp = [&](::pir::Operation* op) -> void {
       for (size_t i = 0; i < op->num_operands(); ++i) {
+        GetTolerance(fusion_op.result(i), &rtol, &atol);
         rewriter.Build<paddle::dialect::AccuracyCheckOp>(
             fusion_op.result(i),
             ir_mapping.Lookup(op->operand_source(i)),

@@ -726,7 +726,7 @@ if('${WITH_SHARED_PHI}' == 'ON'):
     shutil.copy('${PHI_LIB}', libs_path)
     package_data['paddle.libs'] += [('libphi_core' if os.name != 'nt' else 'phi_core') + ext_name]
     shutil.copy('${PHI_CORE_LIB}', libs_path)
-    if('${WTIH_GPU}' == 'ON' or '${WTIH_ROCM}' == 'ON'):
+    if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
         package_data['paddle.libs'] += [('libphi_gpu' if os.name != 'nt' else 'phi_gpu') + ext_name]
         shutil.copy('${PHI_GPU_LIB}', libs_path)
 
