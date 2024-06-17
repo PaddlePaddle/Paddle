@@ -190,6 +190,7 @@ def apply_reshard_pass(dist_program):
                 op.operand_source(0),
                 op.result(0).type(),
             )
+            out_value.persistable = op.result(0).persistable
             if out_value is not None:
                 op.result(0).replace_all_uses_with(out_value)
             if op.result(0).use_empty():
@@ -215,6 +216,10 @@ def remove_other_rank_op_pass(dist_program):
                 0
             ).use_empty(), f'There should not have useful dist.reshard op in remove_other_rank_op_pass. but find : {op}'
             op.erase()
+
+    for key, arg in dist_program.global_block().kwargs().items():
+        if cur_rank not in arg.dist_attr().process_mesh.process_ids:
+            dist_program.global_block().erase_kwarg(key)
 
     # merge pd.data ops for
     lr_ops = []
@@ -280,23 +285,32 @@ def eliminate_transpose_by_reshape(program):
 
 
 def split_program_pass(main_program, last_fwd_op, last_bwd_op):
+    ops = main_program.global_block().ops
+    num_ops = len(ops)
+
     fwd_program = main_program.clone()
     bwd_program = main_program.clone()
     opt_program = main_program.clone()
-
-    ops = main_program.global_block().ops
     fwd_ops = fwd_program.global_block().ops
     bwd_ops = bwd_program.global_block().ops
     opt_ops = opt_program.global_block().ops
     opt_block = opt_program.global_block()
     bwd_block = bwd_program.global_block()
-    num_ops = len(ops)
+
     region = "opt"
     for i in range(num_ops - 1, -1, -1):
         if ops[i] == last_bwd_op:
             region = "bwd"
         if ops[i] == last_fwd_op:
             region = "fwd"
+
+        if (
+            ops[i].name() == "pd_op.data"
+            and "learning_rate" in ops[i].attrs()["name"]
+        ):
+            fwd_ops[i].erase()
+            bwd_ops[i].erase()
+            continue
 
         if region == "opt":
             fwd_ops[i].erase()
@@ -317,14 +331,6 @@ def split_program_pass(main_program, last_fwd_op, last_bwd_op):
                         bwd_ops[i].result(idx), name
                     )
                     bwd_ops[i].result(idx).persistable = True
-                    print(
-                        "op:",
-                        bwd_ops[i],
-                        " result:",
-                        bwd_ops[i].result(idx),
-                        " persistable:",
-                        bwd_ops[i].result(idx).persistable,
-                    )
                     new_result_var_in_opt = opt_block.add_kwarg(
                         name, result_in_opt.type()
                     )
@@ -351,19 +357,29 @@ def split_program_pass(main_program, last_fwd_op, last_bwd_op):
                         name = fwd_ops[i].result(idx).name
                         fwd_ops[i].result(idx).persistable = True
                     else:
-                        name = (
-                            "var_"
-                            + str(i)
-                            + "_"
-                            + ops[i].name()
-                            + "_"
-                            + str(idx)
-                        )
-                        paddle.pir.set_insertion_point_after(fwd_ops[i])
-                        paddle._C_ops.set_persistable_value(
-                            fwd_ops[i].result(idx), name
-                        )
-                        fwd_ops[i].result(idx).persistable = True
+                        result_value = ops[i].result(idx)
+                        used_ops = result_value.all_used_ops()
+                        shadow_output_op_used = None
+                        for used_op in used_ops:
+                            if used_op.name() == "builtin.shadow_output":
+                                shadow_output_op_used = used_op
+                        if shadow_output_op_used is not None:
+                            name = shadow_output_op_used.attrs()["output_name"]
+                            fwd_ops[i].result(idx).persistable = True
+                        else:
+                            name = (
+                                "var_"
+                                + str(i)
+                                + "_"
+                                + ops[i].name()
+                                + "_"
+                                + str(idx)
+                            )
+                            paddle.pir.set_insertion_point_after(fwd_ops[i])
+                            paddle._C_ops.set_persistable_value(
+                                fwd_ops[i].result(idx), name
+                            )
+                            fwd_ops[i].result(idx).persistable = True
                 if result_in_opt.use_empty() is False:
                     new_result_var_in_opt = opt_block.add_kwarg(
                         name, result_in_opt.type()

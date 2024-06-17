@@ -695,31 +695,30 @@ class Engine:
         else:
             raise ValueError("auto_mode [] is not supported yet.".format())
 
-        if self._strategy.pir_pipeline.enable:
-            fwd_program, bwd_program, opt_program = split_program_pass(
-                dist_program, last_fwd_op, last_bwd_op
-            )
-
         # Part 3: Graph partition
         # TODO(JZ-LIANG) Step 3.1: Partition Pass
         #   insert reshard op if operand tensor's placements if different from what the cumsumer op need.
         #   Partition the computation graph into different pipeline stage if need.
         apply_partition_pass(dist_program)
-        if self._strategy.pir_pipeline.enable:
-            apply_partition_pass(fwd_program)
-            apply_partition_pass(bwd_program)
-            apply_partition_pass(opt_program)
+        if self._strategy.pipeline.enable:
+            fwd_program, bwd_program, opt_program = split_program_pass(
+                dist_program, last_fwd_op, last_bwd_op
+            )
 
         # TODO(hitywt) Step 3.2: Reshard Pass
         #   resolute the reshard op into special collective operation.
         #   collect the communicator created during resolution.
         apply_reshard_pass(dist_program)
-        if self._strategy.pir_pipeline.enable:
+        if self._strategy.pipeline.enable:
             apply_reshard_pass(fwd_program)
             apply_reshard_pass(bwd_program)
             apply_reshard_pass(opt_program)
 
         remove_other_rank_op_pass(dist_program)
+        if self._strategy.pipeline.enable:
+            remove_other_rank_op_pass(fwd_program)
+            remove_other_rank_op_pass(bwd_program)
+            remove_other_rank_op_pass(opt_program)
 
         # Part 4: Optimization Pass
         # NOTE Only those Optimization Pass that related to Parallelism (need dist attr) should be placed here and all the Pass should be Optional.
@@ -743,7 +742,7 @@ class Engine:
         # NOTE All optimization pass that need dist_attr info should be called before Dist2Dense Pass.
         dense_program = dist_program.clone()
         paddle.base.libpaddle.pir.apply_dist2dense_pass(dense_program)
-        if self._strategy.pir_pipeline.enable:
+        if self._strategy.pipeline.enable:
             dense_fwd_program = fwd_program.clone()
             dense_bwd_program = bwd_program.clone()
             dense_opt_program = opt_program.clone()
@@ -752,7 +751,7 @@ class Engine:
             paddle.base.libpaddle.pir.apply_dist2dense_pass(dense_opt_program)
 
         remove_unuseful_comm_op_pass(dense_program)
-        if self._strategy.pir_pipeline.enable:
+        if self._strategy.pipeline.enable:
             remove_unuseful_comm_op_pass(dense_fwd_program)
             remove_unuseful_comm_op_pass(dense_bwd_program)
             remove_unuseful_comm_op_pass(dense_opt_program)
@@ -763,15 +762,6 @@ class Engine:
             self._pir_dense_fwd_progs[mode] = dense_fwd_program
             self._pir_dense_bwd_progs[mode] = dense_bwd_program
             self._pir_dense_opt_progs[mode] = dense_opt_program
-
-        # print("==== dense program ====")
-        # print(dense_program)
-        # print("==== fwd_program ====")
-        # print(dense_fwd_program)
-        # print("==== bwd_program ====")
-        # print(dense_bwd_program)
-        # print("==== opt_program ====")
-        # print(dense_opt_program)
 
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program
@@ -1900,9 +1890,14 @@ class Engine:
         if self._in_pir_mode:
             use_cache = False
             no_fetch = False  # not last rank should not fetch loss in pipeline parallel
-            loss_value = self.main_program.get_output_value_by_name(
-                self._loss_names[0]
-            )
+            if self._pir_dense_fwd_progs == {}:
+                loss_value = self.main_program.get_output_value_by_name(
+                    self._loss_names[0]
+                )
+            else:
+                loss_value = self._pir_dense_fwd_progs[
+                    self._mode
+                ].get_output_value_by_name(self._loss_names[0])
             if paddle.pir.is_fake_value(loss_value):
                 no_fetch = True
                 fetch_names = []

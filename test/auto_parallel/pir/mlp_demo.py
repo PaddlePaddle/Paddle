@@ -156,7 +156,48 @@ class TestMLPPipelineParallel(unittest.TestCase):
             loss = dist_model(image, label)
             print(batch_id, loss)
 
+    def test_split_program(self):
+        paddle.set_flags({'FLAGS_enable_pir_api': 1})
+        mesh1 = dist.ProcessMesh([0], dim_names=["x"])
+        mesh2 = dist.ProcessMesh([1], dim_names=["y"])
+        pp_layer = PPDemoNet(mesh1, mesh2)
+        opt = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=pp_layer.parameters()
+        )
+        loss_fn = nn.MSELoss()
+        loader = create_data_loader(
+            BATCH_SIZE, BATCH_NUM, IMAGE_SIZE, CLASS_NUM
+        )
+        strategy = dist.Strategy()
+        strategy.pipeline.enable = True
+        dist_loader = dist.shard_dataloader(loader, meshes=[mesh1, mesh2])
+        dist_model = dist.to_static(
+            pp_layer, dist_loader, loss_fn, opt, strategy
+        )
+        dist_model.train()
+        mode = "train"
+
+        # if strategy.pipeline.enable:
+        #     print("==== whole program ====")
+        #     print(dist_model._engine._pir_dense_main_progs[mode])
+        #     print("==== fwd program ====")
+        #     print(dist_model._engine._pir_dense_fwd_progs[mode])
+        #     print("==== bwd program ====")
+        #     print(dist_model._engine._pir_dense_bwd_progs[mode])
+        #     print("==== opt program ====")
+        #     print(dist_model._engine._pir_dense_opt_progs[mode])
+
+        # if dist.get_rank() == 1:
+        #     loss_in_fwd = dist_model._engine._pir_dense_fwd_progs[mode].global_block().ops[-1].result(0)
+        # else:
+        #     loss_in_fwd = None
+        for batch_id, (image, label) in enumerate(dist_loader()):
+            loss = dist_model(image, label)
+            print("===== step: %d =====" % batch_id)
+            print(batch_id, loss)
+
 
 if __name__ == "__main__":
     # unittest.main()
-    TestMLPPipelineParallel().test_to_static_program()
+    # TestMLPPipelineParallel().test_to_static_program()
+    TestMLPPipelineParallel().test_split_program()
