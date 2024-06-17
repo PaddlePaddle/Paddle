@@ -345,9 +345,6 @@ def _recompute_without_reentrant(
                 if holder_list[unpack_counter - 1]() is None:
                     return
 
-                print("================ in recompute.py =================")
-                print(inner_x.shape)
-                print("inner_x is dist: %s" % inner_x.is_dist())
                 if inner_x.is_dist():
                     # tmp_tensor = core.eager.Tensor(inner_x)
                     tmp_tensor = core.eager.Tensor(
@@ -359,6 +356,7 @@ def _recompute_without_reentrant(
                         inner_x.process_mesh,
                         inner_x.placements,
                     )
+                    inner_x._share_buffer_to(tmp_tensor)
                 else:
                     tmp_tensor = core.eager.Tensor(
                         inner_x.dtype,
