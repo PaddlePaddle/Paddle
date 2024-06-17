@@ -17,6 +17,7 @@ import struct
 import numpy as np
 
 from paddle import pir
+from paddle._typing.dtype_like import DTypeLike
 
 from ..pir import Value
 from ..pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE, ParameterMeta
@@ -89,7 +90,7 @@ def convert_uint16_to_float(data):
     return np.reshape(new_data, data.shape)
 
 
-def convert_dtype(dtype):
+def convert_dtype(dtype: DTypeLike) -> str:
     if isinstance(dtype, core.VarDesc.VarType):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]

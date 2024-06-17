@@ -373,6 +373,7 @@ template class FCFunctor<GPUContext, float16>;
 template class FCFunctor<GPUContext, float>;
 template class FCFunctor<GPUContext, double>;
 
+#ifndef PADDLE_WITH_HIP
 template <typename DeviceContext, typename T>
 void FCInt8Functor<DeviceContext, T>::operator()(
     const DeviceContext& context,
@@ -421,17 +422,10 @@ void FCInt8Functor<DeviceContext, T>::operator()(
   context.template Alloc<float>(&scale_weights_dev,
                                 scale_weights_dev.numel() * sizeof(float));
   float* scale_weights_dev_ptr = scale_weights_dev.data<float>();
-#ifdef PADDLE_WITH_HIP
-  hipMemcpyAsync(scale_weights_dev_ptr,
-                 scale_weights.data(),
-                 N * sizeof(float),
-                 hipMemcpyHostToDevice);
-#else
   cudaMemcpyAsync(scale_weights_dev_ptr,
                   scale_weights.data(),
                   N * sizeof(float),
                   cudaMemcpyHostToDevice);
-#endif
 
   phi::backends::gpu::GpuLaunchConfig config;
   if (N % DequantKernelVecSize == 0) {
@@ -461,6 +455,6 @@ void FCInt8Functor<DeviceContext, T>::operator()(
 template class FCInt8Functor<GPUContext, float16>;
 template class FCInt8Functor<GPUContext, float>;
 template class FCInt8Functor<GPUContext, double>;
-
+#endif
 }  // namespace funcs
 }  // namespace phi

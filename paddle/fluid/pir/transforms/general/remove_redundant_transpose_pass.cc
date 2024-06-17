@@ -65,7 +65,7 @@ class RemoveInvalidTransposePattern : public paddle::drr::DrrPatternBase {
     const auto &transpose =
         pat.Op("pd_op.transpose", {{"perm", pat.Attr("perm")}});
     pat.Tensor("ret") = transpose(pat.Tensor("arg_transpose"));
-    pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) {
       const auto &perm = match_ctx.Attr<std::vector<int>>("perm");
       std::vector<int> dst_vector(perm.size());
       std::iota(dst_vector.begin(), dst_vector.end(), 0);
