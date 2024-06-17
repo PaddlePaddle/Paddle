@@ -12,21 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import re
 import unittest
 
 import numpy as np
+from test_block_multihead_attention import (
+    RopeEmbedding,
+    block_cache_to_naive_cache,
+    create_attn_mask,
+    get_cuda_version,
+    get_padding_offset,
+    is_sm_supported,
+    remove_padding,
+)
 
 import paddle
 from paddle import base
 from paddle.framework import core
 from paddle.incubate.nn.functional import block_multihead_attention
 from paddle.static import Program, program_guard
-
-from test_block_multihead_attention import is_sm_supported, get_cuda_version, create_attn_mask, get_padding_offset, remove_padding, block_cache_to_naive_cache
-from test_block_multihead_attention import RopeEmbedding
-
 
 paddle.seed(2024)
 np.random.seed(2024)
