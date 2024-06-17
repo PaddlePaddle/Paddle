@@ -159,7 +159,13 @@ def OpNameNormalizerInitialization(
         "grad_bias_grad": "DDBias",
         "grad_out": "DY",
     }
-    op_arg_name_mappings["matmul"] = {"x": "X", "y": "Y", "out": "Out"}
+    op_arg_name_mappings["matmul"] = {
+        "x": "X",
+        "y": "Y",
+        "out": "Out",
+        "transpose_x": "transpose_X",
+        "transpose_y": "transpose_Y",
+    }
 
     op_arg_name_mappings["matrix_rank"] = {
         "x": "X",
