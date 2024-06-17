@@ -22,6 +22,7 @@ from typing import Any, Literal, Sequence
 from typing_extensions import TypeAlias
 
 from ..._typing import (
+    DataLayoutND,
     DataLayout1D,
     DataLayout2D,
     DataLayout3D,
@@ -57,7 +58,7 @@ def _get_default_param_initializer(num_channels: int, filter_size: int) -> paddl
     return Normal(0.0, std)
 
 
-def _reverse_repeat_list(t: Sequence[int], n: int) -> list:
+def _reverse_repeat_list(t: Sequence[int | str], n: int) -> list:
     """Reverse the order of `t` and repeat each element for `n` times.
     This can be used to translate padding arg used by Conv and Pooling modules
     to the ones used by `F.pad`.
@@ -68,20 +69,20 @@ def _reverse_repeat_list(t: Sequence[int], n: int) -> list:
 class _ConvNd(Layer):
     def __init__(
         self,
-        in_channels: Any,
-        out_channels: Any,
-        kernel_size: Any,
-        transposed: Any,
-        dims: Any,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int | IntSequence,
+        transposed: bool,
+        dims: int,
         stride: int | IntSequence = 1,
         padding: int | IntSequence = 0,
-        padding_mode: str = 'zeros',
-        output_padding: int | IntSequence = 0,
+        padding_mode: PaddingMode = 'zeros',
+        output_padding:  int | IntSequence | PaddingSizeStr = 0,
         dilation: int | IntSequence = 1,
         groups: int = 1,
         weight_attr: Any | None = None,
         bias_attr: Any | None = None,
-        data_format: str = "NCHW",
+        data_format: DataLayoutND = "NCHW",
     ) -> None:
         super().__init__()
         assert (
