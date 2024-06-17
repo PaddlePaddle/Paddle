@@ -147,12 +147,22 @@ class TestLKJCholeskyLogProb(unittest.TestCase):
                     feed=self.feeds,
                     fetch_list=self._paddle_lkj_cholesky.sample(),
                 )
+                if paddle.framework.use_pir_api():
+                    block = self.program.global_block()
+                    for op in block.ops:
+                        if op.name() == 'pd_op.fetch':
+                            block.remove_op(op)
                 sample = paddle.to_tensor(sample)
                 [log_prob] = self.executor.run(
                     self.program,
                     feed=self.feeds,
                     fetch_list=self._paddle_lkj_cholesky.log_prob(sample),
                 )
+                if paddle.framework.use_pir_api():
+                    block = self.program.global_block()
+                    for op in block.ops:
+                        if op.name() == 'pd_op.fetch':
+                            block.remove_op(op)
 
                 sample_tril = tril_matrix_to_vec(sample, diag=-1)
 
@@ -164,6 +174,12 @@ class TestLKJCholeskyLogProb(unittest.TestCase):
                     feed={'sample_tril': sample_tril},
                     fetch_list=self._compute_jacobian(sample_tril),
                 )
+                if paddle.framework.use_pir_api():
+                    block = self.program.global_block()
+                    for op in block.ops:
+                        if op.name() == 'pd_op.fetch':
+                            block.remove_op(op)
+
                 logabsdet.append(logabsdet_value[1])
 
                 log_probs.append(log_prob - logabsdet)
