@@ -19,8 +19,9 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/ir/group_schedule/config/database.h"
-#include "paddle/cinn/ir/group_schedule/config/filedatabase.h"
+#include "paddle/cinn/ir/group_schedule/config/file_database.h"
 #include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
+#include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 #include "paddle/cinn/ir/group_schedule/search/config_searcher.h"
 #include "paddle/cinn/ir/group_schedule/search/measurer.h"
 #include "paddle/cinn/utils/string.h"
@@ -206,7 +207,7 @@ TEST(ConfigSearcher, TestReduceDemo) {
           std::move(obj_func), candidate_range, constraints);
       auto search_res = searcher.Search();
 
-      // Step 6: Write the best candidate's config of each grid search to json
+      // Step 6: Save the best candidate's config of each grid search to json
       cinn::ir::FileTileConfigDatabase file_database;
       cinn::ir::ScheduleConfig::TileConfig tile_bestconfig;
       tile_bestconfig.warp_num = search_res.second[0];
