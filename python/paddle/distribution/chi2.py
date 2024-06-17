@@ -26,7 +26,7 @@ class Chi2(Gamma):
     This is exactly equivalent to Gamma(concentration=0.5*df, rate=0.5), :ref:`api_paddle_distribution_Gamma`.
 
     Args:
-        df (float or Tensor): shape parameter of the distribution
+        df (float or Tensor): The degree of freedom of the distribution, which should be non-negative. If the input data type is Tensor, it indicates the batch creation of distributions with multiple different parameters, and the `batch_shape` (refer to the :ref:`api_paddle_distribution_Distribution` base class) is the parameter.
 
     Example:
         .. code-block:: python
