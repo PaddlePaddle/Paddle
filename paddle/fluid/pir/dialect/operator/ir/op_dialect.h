@@ -81,13 +81,10 @@ class TensorRTOpDialect : public pir::Dialect {
 
   static const char* name() { return "trt_op"; }
 
-  void PrintType(pir::Type type,
-                 std::ostream& os) const override;  // 用于打印type有关信息
-  void PrintAttribute(pir::Attribute type, std::ostream& os)
-      const override;  // 用于打印attribute有关信息
+  void PrintType(pir::Type type, std::ostream& os) const override;
+  void PrintAttribute(pir::Attribute type, std::ostream& os) const override;
 
-  pir::OpPrintFn PrintOperation(
-      pir::Operation* op) const override;  // 用于打印operation有关信息
+  pir::OpPrintFn PrintOperation(pir::Operation* op) const override;
 };
 
 }  // namespace dialect
