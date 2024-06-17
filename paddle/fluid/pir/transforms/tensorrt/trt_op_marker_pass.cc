@@ -29,25 +29,26 @@ namespace {
 
 inline auto kCanRunTrtAttr = paddle::dialect::kCanRunTrtAttr;
 
-class MatmulOpPattern
-    : public pir::OpRewritePattern<paddle::dialect::MatmulOp> {
- public:
-  using pir::OpRewritePattern<paddle::dialect::MatmulOp>::OpRewritePattern;
-  bool MatchAndRewrite(
-      paddle::dialect::MatmulOp op,
-      pir::PatternRewriter &rewriter) const override {  // NOLINT
-    if (op->HasAttribute(kCanRunTrtAttr) &&
-        op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {
-      return false;
-    }
-    auto matmul_op = rewriter.Build<paddle::dialect::MatmulOp>(
-        op.x(), op.y(), op->attributes());
-    matmul_op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));
-    rewriter.ReplaceAllUsesWith(op.out(), matmul_op.out());
-    rewriter.EraseOp(op);
-    return true;
-  }
-};
+#define DEFINE_GENERAL_PATTERN(OpName, OpType)                            \
+  class OpName##OpPattern : public pir::OpRewritePattern<OpType> {        \
+   public:                                                                \
+    using pir::OpRewritePattern<OpType>::OpRewritePattern;                \
+    bool MatchAndRewrite(OpType op,                                       \
+                         pir::PatternRewriter &rewriter) const override { \
+      if (op->HasAttribute(kCanRunTrtAttr) &&                             \
+          op->attribute<pir::BoolAttribute>(kCanRunTrtAttr).data()) {     \
+        return false;                                                     \
+      }                                                                   \
+      op->set_attribute(kCanRunTrtAttr, rewriter.bool_attr(true));        \
+      return true;                                                        \
+    }                                                                     \
+  };
+
+DEFINE_GENERAL_PATTERN(Matmul, paddle::dialect::MatmulOp);
+DEFINE_GENERAL_PATTERN(BatchNorm, paddle::dialect::BatchNormOp);
+DEFINE_GENERAL_PATTERN(BatchNorm_, paddle::dialect::BatchNorm_Op);
+DEFINE_GENERAL_PATTERN(Softmax, paddle::dialect::SoftmaxOp);
+#undef DEFINE_GENERAL_PATTERN
 
 class TrtOpMarkerPass : public pir::PatternRewritePass {
  public:
@@ -55,7 +56,16 @@ class TrtOpMarkerPass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(std::make_unique<MatmulOpPattern>(context));
+
+#define ADD_PATTERN(OpName) \
+  ps.Add(std::make_unique<OpName##OpPattern>(context));
+
+    ADD_PATTERN(Matmul);
+    ADD_PATTERN(BatchNorm);
+    ADD_PATTERN(BatchNorm_);
+    ADD_PATTERN(Softmax);
+#undef ADD_PATTERN
+
     return ps;
   }
 };
