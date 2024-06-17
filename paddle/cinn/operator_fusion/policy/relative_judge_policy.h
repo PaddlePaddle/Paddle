@@ -32,6 +32,9 @@ class RelativeJudgePolicy final : public Policy<T> {
     index_expr_map_ = AnalysisIndexExprRelation(ops);
     VLOG(4) << "[relative_judge_policy] End AnalysisIndexExprRelation.";
   }
+
+  ShardableAxesInfoManager& GetAxesInfoManager() { return axes_info_; }
+
   bool CanFuse(const PatternNodePtr<T>& upstream,
                const PatternNodePtr<T>& downstream) override;
 

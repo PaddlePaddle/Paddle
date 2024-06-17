@@ -44,6 +44,14 @@ class PolicyManager {
       const PatternNodePtr<T>& upstream,
       const PatternNodePtr<T>& downstream) const;
 
+  PolicyPtr<T> find_policy(const std::string& name) const {
+    for (auto& p : policies_) {
+      VLOG(4) << "Find policy: " << p->Name();
+      if (p->Name() == name) return p;
+    }
+    return nullptr;
+  }
+
  private:
   std::vector<PolicyPtr<T>> policies_;
 };

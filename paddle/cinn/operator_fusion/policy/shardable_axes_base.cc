@@ -310,7 +310,10 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
       }
     }
   }
-
+  // update the name union.
+  for (const auto& [child, father] : name_union_) {
+    name_union_[child] = FindRoot(child);
+  }
   VLOG(4) << NameUnionDebugStr();
 }
 

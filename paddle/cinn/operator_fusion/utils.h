@@ -201,7 +201,7 @@ std::vector<T> UniqueConcatVector(const std::vector<T>& first,
 
 struct ValueDim {
   pir::Value v_;
-  size_t idx_;
+  size_t idx_ = -1;
   std::weak_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
   ValueDim(pir::Value v, size_t idx) : v_(v), idx_(idx) {
     // Just get a related op to get the shape analysis. It can be value's
@@ -233,6 +233,8 @@ struct ValueDim {
     PADDLE_ENFORCE_NOT_NULL(v_.impl(), "Empty value is not expected.");
     return shape_analysis().GetProductDimExpr(v_, {static_cast<int>(idx_)});
   }
+
+  bool empty() const { return idx_ == -1; }
 
   bool SymbolicEqualTo(const ValueDim& other) const {
     return shape_analysis().IsEqual(GetSymbolicDim(), other.GetSymbolicDim());
@@ -373,6 +375,22 @@ std::vector<T> VectorDiff(const std::vector<T>& left,
   std::vector<T> res;
   for (const auto& v : left) {
     if (!set.count(v)) res.push_back(v);
+  }
+  return res;
+}
+
+inline bool All(const std::vector<bool> a) {
+  bool res = true;
+  for (bool i : a) {
+    res &= i;
+  }
+  return res;
+}
+
+inline bool Any(const std::vector<bool> a) {
+  bool res = false;
+  for (bool i : a) {
+    res |= i;
   }
   return res;
 }

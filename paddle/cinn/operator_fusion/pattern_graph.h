@@ -361,9 +361,9 @@ struct InputOutputMaximumConstrain {
 
 template <typename T>
 struct HorizontalCheckMiddleOutputVar {
-  bool HaveMiddleVariable(const PatternGraph<T>& graph,
-                          const PatternNodePtr<T>& lhs,
-                          const PatternNodePtr<T>& rhs) {
+  bool DontHaveMiddleVariable(const PatternGraph<T>& graph,
+                              const PatternNodePtr<T>& lhs,
+                              const PatternNodePtr<T>& rhs) {
     for (const auto& i : lhs->downstream()) {
       if (i == rhs) return false;
     }
@@ -372,12 +372,81 @@ struct HorizontalCheckMiddleOutputVar {
     }
     return true;
   }
+
+  std::vector<ValueDim> SqueezedValueDim(const LoopValueDims& vdims) {
+    return FilterVector(vdims, [](const ValueDim& v) {
+      return !v.empty() && GetDimExprsFromValue(v.v_)[v.idx_] != 1;
+    });
+  }
+
+  bool IdenticalDep(const PatternGraph<T>& graph,
+                    const LoopValueDims& lhs_dims,
+                    const LoopValueDims& rhs_dims) {
+    PolicyPtr<T> p = graph.policy_manager().find_policy("RelativeJudgePolicy");
+    if (!p) {
+      PADDLE_THROW("Don't find ShardableAxesRRFusePolicy polices");
+    }
+    RelativeJudgePolicy<T>* sp =
+        reinterpret_cast<RelativeJudgePolicy<T>*>(p.get());
+    auto get_axes_from_valuedim = [&](const ValueDim& vdim) {
+      return (sp->GetAxesInfoManager()).GetAxes(vdim.v_).axis_names[vdim.idx_];
+    };
+    std::vector<ValueDim> lhs_squeeze_value_dim = SqueezedValueDim(lhs_dims);
+    std::vector<ValueDim> rhs_squeeze_value_dim = SqueezedValueDim(rhs_dims);
+
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << "lhs_squeeze_value_dim is : ";
+      for (int i = 0; i < lhs_squeeze_value_dim.size(); ++i) {
+        VLOG(4) << "    " << i << " = " << lhs_squeeze_value_dim[i].DebugStr();
+        VLOG(4) << "    "
+                << "shardable axes: "
+                << get_axes_from_valuedim(lhs_squeeze_value_dim[i]);
+      }
+      VLOG(4) << "lhs_squeeze_value_dim is : ";
+      if (VLOG_IS_ON(4)) {
+        for (int i = 0; i < rhs_squeeze_value_dim.size(); ++i) {
+          VLOG(4) << "    " << i << " = "
+                  << rhs_squeeze_value_dim[i].DebugStr();
+          VLOG(4) << "    "
+                  << "shardable axes: "
+                  << get_axes_from_valuedim(rhs_squeeze_value_dim[i]);
+        }
+      }
+    }
+
+    // compare non_one value dims of
+    PADDLE_ENFORCE_EQ(lhs_squeeze_value_dim.size(),
+                      rhs_squeeze_value_dim.size(),
+                      "lhs squeezed dims is not equal to rhs squeezed dims");
+    for (int i = 0; i < lhs_squeeze_value_dim.size(); ++i) {
+      if (get_axes_from_valuedim(lhs_squeeze_value_dim[i]) !=
+          get_axes_from_valuedim(rhs_squeeze_value_dim[i]))
+        return false;
+    }
+    return true;
+  }
+  bool IdenticalDepAll(const PatternGraph<T>& graph,
+                       const LoopValueDims& rhs_dims,
+                       const std::vector<LoopValueDims> lhs_dims_vec) {
+    std::function<bool(const LoopValueDims)> is_identical_dep =
+        [&](const LoopValueDims out) {
+          return IdenticalDep(graph, rhs_dims, out);
+        };
+    return All(MapVector(lhs_dims_vec, is_identical_dep));
+  }
   bool operator()(const PatternGraph<T>& graph,
                   const PatternNodePtr<T>& lhs,
                   const PatternNodePtr<T>& rhs) {
-    // Middle Variable Must be ( id-dependent )
-    return HaveMiddleVariable(graph, lhs, rhs);
-    // GetOutputOpsInPattern(lhs->stmt_pattern());
+    // Middle Variable Must be ( id-dependent ) to support horizontal fusion.
+    return DontHaveMiddleVariable(graph, lhs, rhs);
+    if (DontHaveMiddleVariable(graph, lhs, rhs)) return true;
+    const auto& left_dims_vec = GetLoopValueDims(lhs->stmt_pattern());
+    const auto& right_dims_vec = GetLoopValueDims(rhs->stmt_pattern());
+    bool identical_dep = true;
+    for (const auto& right_dims : right_dims_vec) {
+      identical_dep &= IdenticalDepAll(graph, right_dims, left_dims_vec);
+    }
+    return identical_dep;
   }
 };
 

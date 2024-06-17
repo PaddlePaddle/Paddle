@@ -75,24 +75,119 @@ std::vector<pir::Operation*> GetOutputOpsInPattern(
     }
     std::vector<pir::Operation*> operator()(
         const ReduceTreePlusTrivialPattern<T>& pattern) {
-      return {pattern.sink_trivial};
+      return {this->operator()(pattern.sink_trivial)};
     }
     std::vector<pir::Operation*> operator()(
         const HorizontalFusionPattern<T>& horizontal) {
-      std::vector<pir::Operation*> res;
-      for (const auto& pattern : horizontal.padding_patterns_) {
-        res.push_back(this->operator()(pattern.pattern));
-      }
-      return res;
+      using PaddingStmtPattern =
+          typename HorizontalFusionPattern<T>::PaddingStmtPattern;
+      return VectorFlatMap(horizontal.padding_patterns_,
+                           std::function<std::vector<pir::Operation*>(
+                               const PaddingStmtPattern& pattern)>(
+                               [](const PaddingStmtPattern& pattern) {
+                                 return std::visit(Visitor(),
+                                                   pattern.pattern.variant());
+                               }));
     }
   };
   return std::visit(Visitor(), pattern.variant());
 }
 
 using LoopFramework = std::vector<symbol::DimExpr>;
+using MaybeLoopFramework = LoopFramework;
+using LoopValueDims = std::vector<ValueDim>;
 
-// std::optional({}) means not sure.
-// std::optional will cause SegmentFault, TODO: fix this.
+template <typename T>
+std::vector<LoopValueDims> GetLoopValueDims(const StmtPattern<T>& pattern);
+
+template <typename T>
+struct LoopValueDimsVisitor {
+  std::vector<LoopValueDims> operator()(const ReducePattern<T>& pattern) {
+    pir::Operation* reduce_op = pattern.GetReduceOp();
+    const auto& flatten_loops = GetAllValueDimFromValue(reduce_op->result(0));
+    const auto& reduce_axes = GetReduceAxisIdx(reduce_op);
+    std::function<ValueDim(int64_t)> f = [&reduce_op](int64_t i) {
+      return ValueDim(reduce_op->operand(0).source(), i);
+    };
+    return {ConcatVector(flatten_loops, MapVector(reduce_axes, f))};
+  }
+
+  std::vector<LoopValueDims> operator()(const ReduceTreePattern<T>& pattern) {
+    return {GetLoopValueDims(StmtPattern<T>(pattern.GetRootPattern()))};
+  }
+
+  std::vector<LoopValueDims> operator()(const TrivialPattern<T>& pattern) {
+    pir::Operation* t_op = pattern.sink();
+    const auto& value_dims = GetAllValueDimFromValue(t_op->result(0));
+    return {value_dims};
+  }
+
+  std::vector<LoopValueDims> operator()(
+      const HorizontalFusionPattern<T>& pattern) {
+    // Horizontal Fusion must have the same loop framework.
+    VLOG(4) << "Get horizontal fusion pattern for loop framework.";
+    using PaddingStmt = typename HorizontalFusionPattern<T>::PaddingStmtPattern;
+    return VectorFlatMap(
+        pattern.padding_patterns_,
+        std::function<std::vector<LoopValueDims>(const PaddingStmt&)>(
+            [](const PaddingStmt& padding_stmt) {
+              const auto& base_vdims_vec =
+                  GetLoopValueDims(StmtPattern<T>(padding_stmt.pattern));
+              const auto& padding_vector = padding_stmt.padding_pos;
+              std::vector<LoopValueDims> res;
+              for (int i = 0; i < base_vdims_vec.size(); ++i) {
+                const auto& base_value_dims = base_vdims_vec[i];
+                LoopValueDims exprs(base_value_dims.size() +
+                                    padding_vector.size());
+                int pointer = 0;
+                for (int i = 0; i < exprs.size(); i++) {
+                  if (std::find(padding_vector.begin(),
+                                padding_vector.end(),
+                                i) == padding_vector.end()) {
+                    exprs[i] = base_value_dims[pointer++];
+                  }
+                }
+                res.push_back(exprs);
+              }
+              return res;
+            }));
+  }
+
+  std::vector<LoopValueDims> operator()(
+      const ReduceTreePlusTrivialPattern<T>& pattern) {
+    const auto& sink_trivial = pattern.sink_trivial;
+    const auto& trivial_loop =
+        GetLoopValueDims(StmtPattern<T>(pattern.sink_trivial));
+    if (pattern.fake_reduce_iter_idx.empty()) {
+      // we add reduce loop to the end;
+      int reduce_axes_len =
+          GetReduceAxisIdx(pattern.tree.GetRootPattern().GetReduceOp()).size();
+      const auto& reduce_loop =
+          GetLoopValueDims(StmtPattern<T>(pattern.tree.GetRootPattern()));
+      return {ConcatVector(
+          trivial_loop,
+          SliceVector(reduce_loop, -reduce_axes_len, reduce_loop.size()))};
+    } else {
+      // we always put fake into the end to make the loop framework consistent.
+      const auto& non_fake = GatherVector(
+          trivial_loop,
+          ExcludeIndex(trivial_loop.size(), pattern.fake_reduce_iter_idx));
+      const auto& fake =
+          GatherVector(trivial_loop, pattern.fake_reduce_iter_idx);
+      return {ConcatVector(non_fake, fake)};
+    }
+  }
+
+  std::vector<LoopValueDims> operator()(const UnsupportPattern<T>& pattern) {
+    PADDLE_ENFORCE(false, "Not support GetLoopRange.");
+  }
+};
+
+template <typename T>
+std::vector<LoopValueDims> GetLoopValueDims(const StmtPattern<T>& pattern) {
+  return std::visit(LoopValueDimsVisitor<T>(), pattern.variant());
+}
+
 using MaybeLoopFramework = LoopFramework;
 
 template <typename T>
@@ -115,7 +210,6 @@ struct LoopFrameworkVisitor {
 
   MaybeLoopFramework operator()(const TrivialPattern<T>& pattern) {
     pir::Operation* t_op = pattern.sink();
-    const auto& dims = GetDimExprsFromValue(t_op->result(0));
     const auto& exprs = GetDimExprsFromValue(t_op->result(0));
     return exprs;
   }
