@@ -199,6 +199,12 @@ class TestBlockGroupQueryAttnEncDec(unittest.TestCase):
             * self.batch_size,
         )
 
+        self.tgt_mask = paddle.randn(
+            [self.batch_size, self.q_num_head, 1, self.seq_len + 1],
+            dtype=self.dtype,
+        )
+        # self.tgt_mask = None
+
         self.scale = 1.0 / np.sqrt(self.q_shape[-1])
         self.cache_k = paddle.zeros(shape=self.cache_shape, dtype=self.dtype)
         self.cache_v = paddle.zeros(shape=self.cache_shape, dtype=self.dtype)
@@ -363,7 +369,7 @@ class TestBlockGroupQueryAttnEncDec(unittest.TestCase):
                 naive_cache_v,
                 None,
                 None,
-                None,
+                self.tgt_mask,
                 self.scale,
             )
             .transpose([0, 2, 1, 3])
@@ -395,7 +401,7 @@ class TestBlockGroupQueryAttnEncDec(unittest.TestCase):
             None,  # max_dec_len_this_time
             None,  # rotary_embs
             None,  # attn_mask
-            None,  # tgt_mask
+            self.tgt_mask,  # tgt_mask
             1,  # seq_len,
             self.blocksize,
             False,  # use_neox_rotary_style
@@ -481,6 +487,12 @@ class TestBlockGroupQueryAttnEncDecSkipGetMaxLen(unittest.TestCase):
             ]
             * self.batch_size,
         )
+
+        self.tgt_mask = paddle.randn(
+            [self.batch_size, self.q_num_head, 1, self.seq_len + 1],
+            dtype=self.dtype,
+        )
+        # self.tgt_mask = None
 
         self.scale = 1.0 / np.sqrt(self.q_shape[-1])
         self.cache_k = paddle.zeros(shape=self.cache_shape, dtype=self.dtype)
@@ -650,7 +662,7 @@ class TestBlockGroupQueryAttnEncDecSkipGetMaxLen(unittest.TestCase):
                 naive_cache_v,
                 None,
                 None,
-                None,
+                self.tgt_mask,
                 self.scale,
             )
             .transpose([0, 2, 1, 3])
@@ -682,7 +694,7 @@ class TestBlockGroupQueryAttnEncDecSkipGetMaxLen(unittest.TestCase):
             self.max_dec_len_this_time,  # max_dec_len_this_time
             None,  # rotary_embs
             None,  # attn_mask
-            None,  # tgt_mask
+            self.tgt_mask,  # tgt_mask
             1,  # seq_len,
             self.blocksize,
             False,  # use_neox_rotary_style

@@ -814,6 +814,18 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
 
   if (lane_id == 0) {
     qk *= params.inv_sqrt_dh;
+    const int hi = kv_hi * GQA_PARTITION_SIZE +
+                   gqa_sub_partition_id * GQA_SUB_PARTITION_SIZE + warp_id;
+    const int bhi = bi * params.q_num_head + hi;
+    if (params.attn_mask) {
+      auto mask_bhi = bhi;
+      if (params.mask_broadcast_num_heads) {
+        mask_bhi = bi;
+      }
+      T mask = params.attn_mask[mask_bhi * params.mask_length + act_time_step];
+      qk += static_cast<float>(mask);
+    }
+
     qk_max = qk;
     qk_smem[act_time_step * GQA_SUB_PARTITION_SIZE + warp_id] = qk;
   }
@@ -893,6 +905,16 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
       }
 
       float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k, params.inv_sqrt_dh);
+
+      if (params.attn_mask) {
+        const int bhi = bi * params.q_num_head + hi;
+        auto mask_bhi = bhi;
+        if (params.mask_broadcast_num_heads) {
+          mask_bhi = bi;
+        }
+        T mask = params.attn_mask[mask_bhi * params.mask_length + ti];
+        qk += static_cast<float>(mask);
+      }
 
       if (ti < act_time_step && tid % THREADS_PER_KEY == 0) {
         qk_maxs[local_hi] = fmaxf(qk_maxs[local_hi], qk);
