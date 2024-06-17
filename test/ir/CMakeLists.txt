@@ -14,11 +14,15 @@ if(WIN32 AND WIN_UNITTEST_LEVEL LESS 2)
   message(STATUS "Skip tests unrelated to CUDA/TRT")
 else()
   foreach(target ${TEST_IR_PASSES})
-    py_test_modules(${target} MODULES ${target})
+    if("${target}" STREQUAL test_inference_datatype_pir)
+      py_test_modules(${target} MODULES ${target} ENVS FLAGS_enable_pir_api=1)
+    else()
+      py_test_modules(${target} MODULES ${target})
+
+    endif()
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
   endforeach()
-  py_test_modules(test_inference_datatype_pir MODULES
-                  test_inference_datatype_pir ENVS FLAGS_enable_pir_api=1)
+
   add_subdirectory(pir)
   set_tests_properties(test_fuse_resnet_unit PROPERTIES TIMEOUT 120)
   set_tests_properties(test_convert_to_mixed_precision PROPERTIES TIMEOUT 300)
