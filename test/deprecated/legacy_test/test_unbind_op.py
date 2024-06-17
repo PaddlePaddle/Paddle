@@ -200,7 +200,9 @@ class TestUnbindOp(OpTest):
         self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_pir=True, check_prim_pir=True)
+        self.check_grad(
+            ['X'], ['out0', 'out1', 'out2'], check_pir=True, check_prim_pir=True
+        )
 
 
 class TestUnbindOp1(TestUnbindOp):
