@@ -153,7 +153,6 @@ TEST(ConfigSearcher, TestReduceDemo) {
           r_dimension_lower + reduce_tile_width - 1,
           "R",
           /* is_dynamic = */ is_reduce_dynamic});
-
       std::unique_ptr<cinn::ir::search::BaseObjectiveFunc> obj_func =
           std::make_unique<
               cinn::ir::search::WeightedSamplingTrailObjectiveFunc>(
