@@ -69,7 +69,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reduce_sum
-  args : (Tensor x, int64_t[] axis, bool keepdim=false, DataType dtype=DataType::UNDEFINED)
+  args : (Tensor x, int64_t[] axis, bool keepdim, DataType dtype=DataType::UNDEFINED)
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
