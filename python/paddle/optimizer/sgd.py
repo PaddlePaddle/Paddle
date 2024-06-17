@@ -89,7 +89,7 @@ class SGD(Optimizer):
         grad_clip: GradientClipBase | None = None,
         multi_precision: bool = False,
         name: str | None = None,
-    ):
+    ) -> None:
         if learning_rate is None:
             raise ValueError("learning_rate is not set")
         super().__init__(

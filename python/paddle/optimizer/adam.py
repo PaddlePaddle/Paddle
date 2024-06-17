@@ -162,16 +162,16 @@ class Adam(Optimizer):
             >>> out = linear_1(inp)
             >>> out = linear_2(out)
             >>> loss = paddle.mean(out)
-            >>> adam = paddle.optimizer.Adam( # type: ignore
+            >>> adam = paddle.optimizer.Adam(
             ...     learning_rate=0.1,
-            ...     parameters=[{
-            ...         'params': linear_1.parameters()
-            ...     }, {
-            ...         'params': linear_2.parameters(),
-            ...         'weight_decay': 0.001,
-            ...         'learning_rate': 0.1,
-            ...         'beta1': 0.8
-            ...     }],
+            ...     parameters=[{  # type: ignore
+            ...         'params': linear_1.parameters()  # type: ignore
+            ...     }, {  # type: ignore
+            ...         'params': linear_2.parameters(),  # type: ignore
+            ...         'weight_decay': 0.001,  # type: ignore
+            ...         'learning_rate': 0.1,  # type: ignore
+            ...         'beta1': 0.8  # type: ignore
+            ...     }],  # type: ignore
             ...     weight_decay=0.01,
             ...     beta1=0.9)
             >>> loss.backward()
@@ -199,7 +199,7 @@ class Adam(Optimizer):
         multi_precision: bool = False,
         use_multi_tensor: bool = False,
         name: str | None = None,
-    ):
+    ) -> None:
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
