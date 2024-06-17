@@ -147,14 +147,13 @@ TEST(ConfigSearcher, TestReduceDemo) {
           s_dimension_lower,
           s_dimension_lower + spatial_tile_width - 1,
           "S",
-          /* is_dynamic = */ is_spatial_dynamic,
-          std::vector<double>(spatial_tile_width, spatial_sampling_prob)});
+          /* is_dynamic = */ is_spatial_dynamic});
       bucket_info.space.push_back(cinn::ir::BucketInfo::Dimension{
           r_dimension_lower,
           r_dimension_lower + reduce_tile_width - 1,
           "R",
-          /* is_dynamic = */ is_reduce_dynamic,
-          std::vector<double>(reduce_tile_width, reduce_sampling_prob)});
+          /* is_dynamic = */ is_reduce_dynamic});
+
       std::unique_ptr<cinn::ir::search::BaseObjectiveFunc> obj_func =
           std::make_unique<
               cinn::ir::search::WeightedSamplingTrailObjectiveFunc>(
