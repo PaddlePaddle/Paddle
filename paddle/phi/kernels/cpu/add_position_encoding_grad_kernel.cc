@@ -12,7 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/impl/add_position_encoding_kernel_impl.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void AddPositionEncodingGradKernel(const Context& dev_ctx,
+                                   const DenseTensor& x_in,
+                                   const DenseTensor& out_grad,
+                                   float alpha,
+                                   float beta,
+                                   DenseTensor* x_grad) {
+  auto* dOut = &out_grad;
+  auto dout = phi::EigenVector<T>::Flatten(*dOut);
+
+  auto* dX = x_grad;
+  dev_ctx.template Alloc<T>(dX);
+  auto dx = phi::EigenVector<T>::Flatten(*dX);
+
+  auto* place = dev_ctx.eigen_device();
+  dx.device(*place) = dout * static_cast<T>(alpha);
+}
+}  // namespace phi
 
 PD_REGISTER_KERNEL(add_position_encoding_grad,
                    CPU,
