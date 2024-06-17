@@ -292,6 +292,23 @@ void CudnnLSTMInferMeta(
     MetaTensor* reserve,
     MetaTensor* state_out);
 
+void LSTMInferMeta(const MetaTensor& input,
+                   const MetaTensor& h0,
+                   const MetaTensor& c0,
+                   const MetaTensor& weight,
+                   const MetaTensor& bias,
+                   bool use_peepholes,
+                   bool is_reverse,
+                   bool is_test,
+                   const std::string& gate_activation,
+                   const std::string& cell_activation,
+                   const std::string& candidate_activation,
+                   MetaTensor* hidden,
+                   MetaTensor* cell,
+                   MetaTensor* batch_gate,
+                   MetaTensor* batch_cell_pre_act,
+                   MetaConfig config = MetaConfig());
+
 void DecayedAdagradInferMeta(const MetaTensor& param,
                              const MetaTensor& grad,
                              const MetaTensor& moment,
@@ -331,6 +348,19 @@ void DetectionMapInferMeta(const MetaTensor& detect_res,
                            MetaTensor* m_ap,
                            MetaConfig config = MetaConfig());
 
+void DgcInferMeta(const MetaTensor& u,
+                  const MetaTensor& v,
+                  const MetaTensor& grad,
+                  const MetaTensor& param,
+                  const MetaTensor& current_step_tensor,
+                  const MetaTensor& nranks_tensor,
+                  MetaTensor* u_out,
+                  MetaTensor* v_out,
+                  MetaTensor* encode_grad_out,
+                  MetaTensor* grad_out,
+                  MetaTensor* k_out,
+                  MetaTensor* gather_buff);
+
 void DGCMomentumInferMeta(const MetaTensor& param,
                           const MetaTensor& grad,
                           const MetaTensor& velocity,
@@ -357,6 +387,14 @@ void EditDistanceInferMeta(const MetaTensor& hyps,
                            bool normalized,
                            MetaTensor* sequencenum,
                            MetaTensor* out);
+
+void FakeChannelWiseDequantizeMaxAbsInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& scales,
+    const std::vector<int>& quant_bits,
+    int quant_axis,
+    int x_num_col_dims,
+    MetaTensor* out);
 
 void FakeQuantOrWithDequantMovingAverageAbsMaxInferMeta(
     const MetaTensor& x,
@@ -478,6 +516,33 @@ void GraphReindexInferMeta(const MetaTensor& x,
                            MetaTensor* reindex_src,
                            MetaTensor* reindex_dst,
                            MetaTensor* out_nodes);
+
+void GruInferMeta(const MetaTensor& input,
+                  const MetaTensor& h0,
+                  const MetaTensor& weight,
+                  const MetaTensor& bias,
+                  const std::string& activation,
+                  const std::string& gate_activation,
+                  bool is_reverse,
+                  bool origin_mode,
+                  bool is_test,
+                  MetaTensor* batch_gate,
+                  MetaTensor* batch_reset_hidden_prev,
+                  MetaTensor* batch_hidden,
+                  MetaTensor* hidden,
+                  MetaConfig config = MetaConfig());
+
+void GruUnitInferMeta(const MetaTensor& input,
+                      const MetaTensor& hidden_prev,
+                      const MetaTensor& weight,
+                      const MetaTensor& bias,
+                      int activation,
+                      int gate_activation,
+                      bool origin_mode,
+                      MetaTensor* gate,
+                      MetaTensor* reset_hidden_prev,
+                      MetaTensor* hidden,
+                      MetaConfig config = MetaConfig());
 
 void GraphSampleNeighborsInferMeta(const MetaTensor& row,
                                    const MetaTensor& col_ptr,
@@ -708,6 +773,27 @@ void PsroiPoolInferMeta(const MetaTensor& x,
                         int output_channels,
                         float spatial_scale,
                         MetaTensor* out);
+
+void PyramidHashInferMeta(const MetaTensor& x,
+                          const MetaTensor& w,
+                          const MetaTensor& white_list,
+                          const MetaTensor& black_list,
+                          int num_emb,
+                          int space_len,
+                          int pyramid_layer,
+                          int rand_len,
+                          float drop_out_percent,
+                          int is_training,
+                          bool use_filter,
+                          int white_list_len,
+                          int black_list_len,
+                          int seed,
+                          float lr,
+                          const std::string& distribute_update_vars,
+                          MetaTensor* out,
+                          MetaTensor* drop_pos,
+                          MetaTensor* x_temp_out,
+                          MetaConfig config = MetaConfig());
 
 void QuantizeLinearInferMeta(const MetaTensor& x,
                              const MetaTensor& scale,

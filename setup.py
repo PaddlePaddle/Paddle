@@ -379,10 +379,10 @@ def get_cudnn_version():
         return 'False'
 
 
-def get_xpu_version():
+def get_xpu_xre_version():
     with_xpu = env_dict.get("WITH_XPU")
     if with_xpu == 'ON':
-        return env_dict.get("XPU_BASE_DATE")
+        return env_dict.get("XPU_XRE_BASE_VERSION")
     else:
         return 'False'
 
@@ -448,7 +448,7 @@ nccl_version     = '%(nccl)d'
 rc               = '%(rc)d'
 cuda_version     = '%(cuda)s'
 cudnn_version    = '%(cudnn)s'
-xpu_version      = '%(xpu)s'
+xpu_xre_version  = '%(xpu_xre)s'
 xpu_xccl_version = '%(xpu_xccl)s'
 xpu_xhpc_version = '%(xpu_xhpc)s'
 is_tagged          = %(is_tagged)s
@@ -457,7 +457,7 @@ with_mkl         = '%(with_mkl)s'
 cinn_version      = '%(cinn)s'
 with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
 
-__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xccl', 'xpu_xhpc']
+__all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
@@ -480,7 +480,7 @@ def show():
 
         cudnn: the cudnn version of package. It will return `False` if CPU version paddle package is installed
 
-        xpu: the xpu version of package. It will return `False` if non-XPU version paddle package is installed
+        xpu_xre: the xpu xre version of package. It will return `False` if non-XPU version paddle package is installed
 
         xpu_xccl: the xpu xccl version of package. It will return `False` if non-XPU version paddle package is installed
 
@@ -503,7 +503,7 @@ def show():
             rc: 0
             cuda: '10.2'
             cudnn: '7.6.5'
-            xpu: '20230114'
+            xpu_xre: '4.32.0.1'
             xpu_xccl: '1.0.7'
             xpu_xhpc: '20231208'
             cinn: False
@@ -515,7 +515,7 @@ def show():
             commit: cfa357e984bfd2ffa16820e354020529df434f7d
             cuda: '10.2'
             cudnn: '7.6.5'
-            xpu: '20230114'
+            xpu_xre: '4.32.0.1'
             xpu_xccl: '1.0.7'
             xpu_xhpc: '20231208'
             cinn: False
@@ -532,7 +532,7 @@ def show():
     print('cuda:', cuda_version)
     print('cudnn:', cudnn_version)
     print('nccl:', nccl_version)
-    print('xpu:', xpu_version)
+    print('xpu_xre:', xpu_xre_version)
     print('xpu_xccl:', xpu_xccl_version)
     print('xpu_xhpc:', xpu_xhpc_version)
     print('cinn:', cinn_version)
@@ -595,7 +595,21 @@ def cudnn():
     return cudnn_version
 
 def xpu():
-    """Get xpu version of paddle package.
+    """Get xpu version of paddle package. The API is deprecated now, please use xpu_xhpc() instead.
+
+    Returns:
+        string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
+    Examples:
+        .. code-block:: python
+            >>> import paddle
+            >>> paddle.version.xpu()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '20230114'
+    """
+    return xpu_xhpc_version
+
+def xpu_xre():
+    """Get xpu xre version of paddle package.
 
     Returns:
         string: Return the version information of xpu. If paddle package is non-XPU version, it will return False.
@@ -605,12 +619,12 @@ def xpu():
 
             >>> import paddle
 
-            >>> paddle.version.xpu()
+            >>> paddle.version.xpu_xre()
             >>> # doctest: +SKIP('Different environments yield different output.')
-            '20230114'
+            '4.32.0.1'
 
     """
-    return xpu_version
+    return xpu_xre_version
 
 def xpu_xccl():
     """Get xpu xccl version of paddle package.
@@ -688,7 +702,7 @@ def cinn():
                 'version': env_dict.get("PADDLE_VERSION"),
                 'cuda': get_cuda_version(),
                 'cudnn': get_cudnn_version(),
-                'xpu': get_xpu_version(),
+                'xpu_xre': get_xpu_xre_version(),
                 'xpu_xccl': get_xpu_xccl_version(),
                 'xpu_xhpc': get_xpu_xhpc_version(),
                 'commit': commit,
@@ -955,34 +969,56 @@ def get_setup_requires():
 def get_paddle_extra_install_requirements():
     # (Note risemeup1): Paddle will install the pypi cuda package provided by Nvidia, which includes the cuda runtime, cudnn, and cublas, thereby making the operation of 'pip install paddle' no longer dependent on the installation of cuda and cudnn.
     if env_dict.get("WITH_PIP_CUDA_LIBRARIES") == "ON":
-        PADDLE_CUDA_INSTALL_REQUIREMENTS = {
-            "V11": (
-                "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cuda-cupti-cu11==11.8.87; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cudnn-cu11==8.7.0.84; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cublas-cu11==11.11.3.6; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cufft-cu11==10.9.0.58; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-curand-cu11==10.3.0.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cusolver-cu11==11.4.1.48; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cusparse-cu11==11.7.5.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-nccl-cu11==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-nvtx-cu11==11.8.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cuda-nvrtc-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64'"
-            ),
-            "V12": (
-                "nvidia-cuda-runtime-cu12==12.3.101; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cuda-cupti-cu12==12.3.101; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cudnn-cu12==9.0.0.312; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cublas-cu12==12.3.4.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cufft-cu12==11.2.1.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-curand-cu12==10.3.5.147; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cusolver-cu12==11.6.1.9; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cusparse-cu12==12.3.1.170; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-nccl-cu12==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-nvtx-cu12==12.4.127; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                "nvidia-cuda-nvrtc-cu12==12.3.107; platform_system == 'Linux' and platform_machine == 'x86_64'"
-            ),
-        }
+        if platform.system() == 'Linux':
+            PADDLE_CUDA_INSTALL_REQUIREMENTS = {
+                "V11": (
+                    "nvidia-cuda-runtime-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cuda-cupti-cu11==11.8.87; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cudnn-cu11==8.7.0.84; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cublas-cu11==11.11.3.6; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cufft-cu11==10.9.0.58; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-curand-cu11==10.3.0.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusolver-cu11==11.4.1.48; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusparse-cu11==11.7.5.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nccl-cu11==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nvtx-cu11==11.8.86; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cuda-nvrtc-cu11==11.8.89; platform_system == 'Linux' and platform_machine == 'x86_64'"
+                ),
+                "V12": (
+                    "nvidia-cuda-runtime-cu12==12.3.101; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cuda-cupti-cu12==12.3.101; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cudnn-cu12==9.0.0.312; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cublas-cu12==12.3.4.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cufft-cu12==11.2.1.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-curand-cu12==10.3.5.147; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusolver-cu12==11.6.1.9; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusparse-cu12==12.3.1.170; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nccl-cu12==2.19.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nvtx-cu12==12.4.127; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cuda-nvrtc-cu12==12.3.107; platform_system == 'Linux' and platform_machine == 'x86_64'"
+                ),
+            }
+        elif platform.system() == 'Windows':
+            PADDLE_CUDA_INSTALL_REQUIREMENTS = {
+                "V11": (
+                    "nvidia-cuda-runtime-cu11==11.8.89 | "
+                    "nvidia-cudnn-cu11==8.9.4.19 | "
+                    "nvidia-cublas-cu11==11.11.3.6 | "
+                    "nvidia-cufft-cu11==10.9.0.58 | "
+                    "nvidia-curand-cu11==10.3.0.86 | "
+                    "nvidia-cusolver-cu11==11.4.1.48 | "
+                    "nvidia-cusparse-cu11==11.7.5.86 "
+                ),
+                "V12": (
+                    "nvidia-cuda-runtime-cu12==12.3.101 | "
+                    "nvidia-cudnn-cu12==9.0.0.312 | "
+                    "nvidia-cublas-cu12==12.3.4.1 | "
+                    "nvidia-cufft-cu12==11.2.1.3 | "
+                    "nvidia-curand-cu12==10.3.5.147 | "
+                    "nvidia-cusolver-cu12==11.6.1.9 | "
+                    "nvidia-cusparse-cu12==12.3.1.170 "
+                ),
+            }
         try:
             output = subprocess.check_output(['nvcc', '--version']).decode(
                 'utf-8'
@@ -1039,6 +1075,18 @@ def get_package_data_and_package_dir():
             ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
         ]
         shutil.copy(env_dict.get("PHI_LIB"), libs_path)
+        package_data['paddle.libs'] += [
+            ('libphi_core' if os.name != 'nt' else 'phi_core') + ext_suffix
+        ]
+        shutil.copy(env_dict.get("PHI_CORE_LIB"), libs_path)
+        if (
+            env_dict.get("WITH_GPU") == "ON"
+            or env_dict.get("WITH_ROCM") == "ON"
+        ):
+            package_data['paddle.libs'] += [
+                ('libphi_gpu' if os.name != 'nt' else 'phi_gpu') + ext_suffix
+            ]
+            shutil.copy(env_dict.get("PHI_GPU_LIB"), libs_path)
 
     if env_dict.get("WITH_SHARED_IR") == "ON":
         package_data['paddle.libs'] += [
@@ -1200,6 +1248,15 @@ def get_package_data_and_package_dir():
         for xpu_rt_lib_file in xpu_rt_lib_list:
             shutil.copy(xpu_rt_lib_file, libs_path)
             package_data['paddle.libs'] += [os.path.basename(xpu_rt_lib_file)]
+        xpu_cuda_lib_list = glob.glob(env_dict.get("XPU_CUDA_LIB") + '*')
+        for xpu_cuda_lib_file in xpu_cuda_lib_list:
+            shutil.copy(xpu_cuda_lib_file, libs_path)
+            package_data['paddle.libs'] += [os.path.basename(xpu_cuda_lib_file)]
+
+        shutil.copy(env_dict.get("XPU_XBLAS_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XBLAS_LIB_NAME")]
+        shutil.copy(env_dict.get("XPU_XFA_LIB"), libs_path)
+        package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
 
     if env_dict.get("WITH_XPU_BKCL") == 'ON':
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)
@@ -1212,12 +1269,6 @@ def get_package_data_and_package_dir():
     if env_dict.get("WITH_XPTI") == 'ON':
         shutil.copy(env_dict.get("XPU_XPTI_LIB"), libs_path)
         package_data['paddle.libs'] += [env_dict.get("XPU_XPTI_LIB_NAME")]
-
-    if env_dict.get("WITH_XPU_XHPC") == 'ON':
-        shutil.copy(env_dict.get("XPU_XBLAS_LIB"), libs_path)
-        package_data['paddle.libs'] += [env_dict.get("XPU_XBLAS_LIB_NAME")]
-        shutil.copy(env_dict.get("XPU_XFA_LIB"), libs_path)
-        package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
 
     # remove unused paddle/libs/__init__.py
     if os.path.isfile(libs_path + '/__init__.py'):
@@ -1259,6 +1310,22 @@ def get_package_data_and_package_dir():
                         + '/python/paddle/libs/'
                         + env_dict.get("PHI_NAME")
                     )
+                    commands.append(
+                        "install_name_tool -add_rpath '@loader_path' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("PHI_CORE_NAME")
+                    )
+                    if (
+                        env_dict.get("WITH_GPU") == "ON"
+                        or env_dict.get("WITH_ROCM") == "ON"
+                    ):
+                        commands.append(
+                            "install_name_tool -add_rpath '@loader_path' "
+                            + env_dict.get("PADDLE_BINARY_DIR")
+                            + '/python/paddle/libs/'
+                            + env_dict.get("PHI_GPU_NAME")
+                        )
                 if env_dict.get("WITH_SHARED_IR") == "ON":
                     commands.append(
                         "install_name_tool -add_rpath '@loader_path' "
@@ -1281,6 +1348,23 @@ def get_package_data_and_package_dir():
                         + '/python/paddle/libs/'
                         + env_dict.get("PHI_NAME")
                     )
+                    commands.append(
+                        "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("PHI_CORE_NAME")
+                    )
+                    if (
+                        env_dict.get("WITH_GPU") == "ON"
+                        or env_dict.get("WITH_ROCM") == "ON"
+                    ):
+                        commands.append(
+                            "patchelf --set-rpath '$ORIGIN/../../nvidia/cuda_runtime/lib:$ORIGIN:$ORIGIN/../libs' "
+                            + env_dict.get("PADDLE_BINARY_DIR")
+                            + '/python/paddle/libs/'
+                            + env_dict.get("PHI_GPU_NAME")
+                        )
+
                 if env_dict.get("WITH_SHARED_IR") == "ON":
                     commands.append(
                         "patchelf --set-rpath '$ORIGIN:$ORIGIN/../libs' "
@@ -1295,7 +1379,7 @@ def get_package_data_and_package_dir():
                         raise Exception(
                             'patch '
                             + env_dict.get("FLUID_CORE_NAME")
-                            + '.%s failed' % ext_suffix,
+                            + '%s failed' % ext_suffix,
                             'command: %s' % command,
                         )
     # A list of extensions that specify c++ -written modules that compile source code into dynamically linked libraries
@@ -1317,6 +1401,9 @@ def get_package_data_and_package_dir():
     ) + ['*.pyi']
     package_data['paddle.base'] = package_data.get('paddle.base', []) + [
         '*.pyi'
+    ]
+    package_data['paddle.tensor'] = package_data.get('paddle.tensor', []) + [
+        'tensor.pyi'
     ]
 
     return package_data, package_dir, ext_modules
@@ -1465,7 +1552,15 @@ def get_headers():
 def get_setup_parameters():
     # get setup_requires
     setup_requires = get_setup_requires()
-    if platform.system() == 'Linux' and platform.machine() == 'x86_64':
+    if (
+        env_dict.get("WITH_GPU") == 'ON'
+        and platform.system() in ('Linux', 'Windows')
+        and platform.machine()
+        in (
+            'x86_64',
+            'AMD64',
+        )
+    ):
         paddle_cuda_requires = get_paddle_extra_install_requirements()
         setup_requires += paddle_cuda_requires
 
@@ -1763,6 +1858,25 @@ def check_submodules():
             sys.exit(1)
 
 
+def generate_tensor_stub(paddle_binary_dir, paddle_source_dir):
+    print('-' * 2, 'Generate stub file tensor.pyi ... ')
+    script_path = paddle_source_dir + '/tools/'
+    sys.path.append(script_path)
+    import gen_tensor_stub
+
+    gen_tensor_stub.generate_stub_file(
+        input_file=paddle_source_dir
+        + '/python/paddle/tensor/tensor.prototype.pyi',
+        output_file=paddle_binary_dir + '/python/paddle/tensor/tensor.pyi',
+    )
+
+    shutil.copy(
+        paddle_binary_dir + '/python/paddle/tensor/tensor.pyi',
+        paddle_source_dir + '/python/paddle/tensor/tensor.pyi',
+    )
+    print('-' * 2, 'End Generate stub file tensor.pyi ... ')
+
+
 def main():
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
@@ -1841,6 +1955,9 @@ def main():
             headers,
             package_data['paddle.libs'],
         )
+
+    # generate stub file `tensor.pyi`
+    generate_tensor_stub(paddle_binary_dir, paddle_source_dir)
 
     setup(
         name=package_name,

@@ -26,8 +26,7 @@
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 
 static std::map<int64_t, std::set<pid_t>> load_process_pids;
 
@@ -61,7 +60,7 @@ void EraseLoadProcessPIDs(int64_t key) {
 #define SIGNAL_HANDLE(SIGNAL)                               \
   do {                                                      \
     memory::allocation::MemoryMapFdSet::Instance().Clear(); \
-    struct sigaction sa;                                    \
+    struct sigaction sa = {};                               \
     sa.sa_handler = SIG_DFL;                                \
     sa.sa_flags = 0;                                        \
     if (sigemptyset(&sa.sa_mask) != 0 ||                    \
@@ -193,7 +192,6 @@ void ThrowErrorIfLoadProcessFailed() {
   }
 }
 
-}  // namespace imperative
-}  // namespace paddle
+}  // namespace paddle::imperative
 
 #endif

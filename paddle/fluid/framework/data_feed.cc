@@ -31,8 +31,7 @@ limitations under the License. */
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
 COMMON_DECLARE_bool(enable_ins_parser_file);
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 DLManager& global_dlmanager_pool() {
   static DLManager manager;
@@ -349,7 +348,22 @@ int PrivateQueueDataFeed<T>::Next() {
 template class PrivateQueueDataFeed<std::vector<MultiSlotType>>;
 
 template <typename T>
-InMemoryDataFeed<T>::InMemoryDataFeed() {
+InMemoryDataFeed<T>::InMemoryDataFeed()
+    : batch_float_feasigns_(),
+      batch_uint64_feasigns_(),
+      offset_(),
+      visit_(),
+      thread_id_(0),
+      thread_num_(0),
+      parse_ins_id_(false),
+      parse_uid_(false),
+      parse_content_(false),
+      parse_logkey_(false),
+      enable_pv_merge_(false),
+      input_pv_channel_(nullptr),
+      output_pv_channel_(nullptr),
+      consume_pv_channel_(nullptr),
+      batch_offsets_() {
   this->file_idx_ = nullptr;
   this->mutex_for_pick_file_ = nullptr;
   this->fp_ = nullptr;
@@ -3252,5 +3266,4 @@ void MiniBatchGpuPack::transfer_to_gpu() {
 }
 #endif
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -81,9 +81,14 @@ void ParallelCompiler::SplitTask() {
         context_->graph->fusion_groups.size() ==
             context_->lowered_funcs.size());
   int device_id = 0;
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  CUDA_CALL(cudaGetDevice(&device_id));
+        CUDA_CALL(cudaGetDevice(&device_id));
 #endif
+      });
   for (int group_id = 0; group_id < context_->graph->fusion_groups.size();
        ++group_id) {
     tasks_.emplace_back(device_id, group_id, this, context_);
@@ -132,9 +137,14 @@ void ParallelCompiler::RunTask() {
 
 void ParallelCompiler::LaunchTask() {
   int device_id = 0;
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  CUDA_CALL(cudaGetDevice(&device_id));
+        CUDA_CALL(cudaGetDevice(&device_id));
 #endif
+      });
   int num_threads = FLAGS_cinn_parallel_compile_thread;
 #if defined(PADDLE_WITH_DISTRIBUTE)
   if (device_id > 0) {
@@ -236,58 +246,66 @@ void ParallelCompiler::Task::CodegenAndJit() {
   }
 
   auto ir_module = builder.Build();
-  if (context->target == cinn::common::DefaultNVGPUTarget()) {
+  context->target.arch.Match(
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-    auto splited_module = backends::SplitDeviceAndHostModule(ir_module);
-    auto hmodule = std::get<0>(splited_module);
-    auto dmodule = std::get<1>(splited_module);
+        auto splited_module = backends::SplitDeviceAndHostModule(ir_module);
+        auto hmodule = std::get<0>(splited_module);
+        auto dmodule = std::get<1>(splited_module);
 
-    VLOG(4) << "Host Code:\n" << hmodule;
-    VLOG(4) << "Device Code:\n" << dmodule;
-    std::string cuda_c;
-    if (context->attached_source_code.empty()) {
-      backends::CodeGenCUDA_Dev codegen(context->target);
-      cuda_c = codegen.Compile(dmodule);
-    } else {
-      VLOG(4) << "Codegen and jit with attached source code.";
-      cuda_c = context->attached_source_code;
-    }
-    CHECK(!cuda_c.empty()) << "Compile CUDA C code failed from device module:\n"
-                           << dmodule;
-    backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(
-        cuda_c, group_id, device_id);
-    pcompiler->result_.SetSourceCode(group_id, cuda_c);
+        VLOG(4) << "Host Code:\n" << hmodule;
+        VLOG(4) << "Device Code:\n" << dmodule;
+        std::string cuda_c;
+        if (context->attached_source_code.empty()) {
+          backends::CodeGenCUDA_Dev codegen(context->target);
+          cuda_c = codegen.Compile(dmodule);
+        } else {
+          VLOG(4) << "Codegen and jit with attached source code.";
+          cuda_c = context->attached_source_code;
+        }
+        CHECK(!cuda_c.empty())
+            << "Compile CUDA C code failed from device module:\n"
+            << dmodule;
+        backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(
+            cuda_c, group_id, device_id);
+        pcompiler->result_.SetSourceCode(group_id, cuda_c);
 
-    cinn::backends::SourceCodePrint::GetInstance()->write(cuda_c);
+        cinn::backends::SourceCodePrint::GetInstance()->write(cuda_c);
 
-    using runtime::cuda::CUDAModule;
-    backends::nvrtc::Compiler compiler;
-    auto ptx = compiler(cuda_c);
-    CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << cuda_c;
-    backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(
-        ptx, group_id, device_id);
-    pcompiler->result_.SetSourcePtx(group_id, ptx);
-    // load cumodule
-    cumodule = std::make_unique<CUDAModule>(ptx,
-                                            compiler.compile_to_cubin()
-                                                ? CUDAModule::Kind::CUBIN
-                                                : CUDAModule::Kind::PTX);
+        using runtime::cuda::CUDAModule;
+        backends::nvrtc::Compiler compiler;
+        auto ptx = compiler(cuda_c);
+        CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n"
+                            << cuda_c;
+        backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(
+            ptx, group_id, device_id);
+        pcompiler->result_.SetSourcePtx(group_id, ptx);
+        // load cumodule
+        cumodule = std::make_unique<CUDAModule>(ptx,
+                                                compiler.compile_to_cubin()
+                                                    ? CUDAModule::Kind::CUBIN
+                                                    : CUDAModule::Kind::PTX);
 
-    // register kernel
-    backends::RuntimeSymbols symbols;
-    for (auto& fn : dmodule.functions()) {
-      auto cufunc = cumodule->GetFunction(device_id, fn->name);
-      CHECK(cufunc);
-      symbols.RegisterVar(fn->name + "_ptr_", reinterpret_cast<void*>(cufunc));
-    }
-    engine = backends::ExecutionEngine::Create(backends::ExecutionOptions(),
-                                               std::move(symbols));
-    engine->Link<backends::CodeGenCUDA_Host>(hmodule);
+        // register kernel
+        backends::RuntimeSymbols symbols;
+        for (auto& fn : dmodule.functions()) {
+          auto cufunc = cumodule->GetFunction(device_id, fn->name);
+          CHECK(cufunc);
+          symbols.RegisterVar(fn->name + "_ptr_",
+                              reinterpret_cast<void*>(cufunc));
+        }
+        engine = backends::ExecutionEngine::Create(backends::ExecutionOptions(),
+                                                   std::move(symbols));
+        engine->Link<backends::CodeGenCUDA_Host>(hmodule);
+#else
+        CINN_NOT_IMPLEMENTED;
 #endif
-  } else {
-    engine = backends::ExecutionEngine::Create(backends::ExecutionOptions());
-    engine->Link<backends::CodeGenX86>(ir_module);
-  }
+      },
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+        engine =
+            backends::ExecutionEngine::Create(backends::ExecutionOptions());
+        engine->Link<backends::CodeGenX86>(ir_module);
+      });
 }
 
 void ParallelCompiler::Task::BuildInstruction() {

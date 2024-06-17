@@ -123,9 +123,6 @@ DEFINE_GPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Expm1, CudaExpm1Functor)
 
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, CudaLeakyReluFunctor, alpha)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(LogitCUDA, CudaLogitFunctor, eps)
-DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
-                                     CudaThresholdedReluFunctor,
-                                     threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink,
                                      CudaHardShrinkFunctor,
                                      threshold)
@@ -148,6 +145,10 @@ DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      slope,
                                      offset)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Selu, CudaSeluFunctor, scale, alpha)
+DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(ThresholdedRelu,
+                                     CudaThresholdedReluFunctor,
+                                     threshold,
+                                     value)
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,

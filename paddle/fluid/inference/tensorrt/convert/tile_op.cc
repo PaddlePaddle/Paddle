@@ -101,7 +101,11 @@ class TileOpConverter : public OpConverter {
       layer->setInput(1, *start_tensor);
       layer->setInput(2, *output_shape_tensor);
       layer->setInput(3, *stride_tensor);
+#if IS_TRT_VERSION_GE(8600)
+      layer->setMode(nvinfer1::SampleMode::kWRAP);
+#else
       layer->setMode(nvinfer1::SliceMode::kWRAP);
+#endif
       ReplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
 
     } else {
@@ -132,7 +136,11 @@ class TileOpConverter : public OpConverter {
       }
       auto layer = TRT_ENGINE_ADD_LAYER(
           engine_, Slice, *input, input_shape, output_dim, output_stride);
+#if IS_TRT_VERSION_GE(8600)
+      layer->setMode(nvinfer1::SampleMode::kWRAP);
+#else
       layer->setMode(nvinfer1::SliceMode::kWRAP);
+#endif
       ReplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
     }
 

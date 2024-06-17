@@ -185,6 +185,10 @@ struct IsListLhsBeforeListRhsStruct {
   static bool Call(const Op<DimExpr>& lhs, const Op<DimExpr>& rhs) {
     const auto& [lhs_operands] = lhs;
     const auto& [rhs_operands] = rhs;
+    if (lhs_operands->empty() || rhs_operands->empty()) {
+      // 处理错误情况或抛出异常
+      throw std::runtime_error("Operands are uninitialized.");
+    }
     if (lhs_operands->size() < rhs_operands->size()) {
       return true;
     }
@@ -747,7 +751,7 @@ struct FoldOperandTrait<Broadcast> {
       PADDLE_ENFORCE_EQ(
           *value,
           expr_value,
-          phi::errors::InvalidArgument("The value (%d) should be equel to expr "
+          phi::errors::InvalidArgument("The value (%d) should be equal to expr "
                                        "(%d) when they are both not 1.",
                                        *value,
                                        expr_value));
@@ -883,7 +887,7 @@ struct FoldRedundantSymbolicBroadcast {
                 ret.value().value,
                 int64_value,
                 phi::errors::InvalidArgument(
-                    "The value of return (%d) should be equel to expr (%d) of "
+                    "The value of return (%d) should be equal to expr (%d) of "
                     "operands at index (%d) when they are both > 1.",
                     ret.value().value,
                     int64_value,
@@ -949,6 +953,68 @@ struct FoldRedundantBroadcast {
     return std::nullopt;
   }
 };
+
+/*
+ * Simplify Example:
+ * Broadcast(dim_expr0, Mul(dim_expr0, dim_expr1)) => Mul(dim_expr0, dim_expr1)
+ */
+struct SimplifyBroadcast {
+  using dim_expr_type = Broadcast<DimExpr>;
+
+  DimExpr Rewrite(const DimExpr& expr) {
+    auto [operands] = expr.Get<Broadcast<DimExpr>>();
+    while (operands->size() > 1) {
+      int pos_erasable = SearchErasable(operands);
+      if (pos_erasable < 0) break;
+      operands->erase(operands->begin() + pos_erasable);
+    }
+    if (operands->size() == 1) {
+      return operands->at(0);
+    } else {
+      return Broadcast<DimExpr>{operands};
+    }
+  }
+
+  bool IsLhsGreatThanRhs(const DimExpr& lhs, const DimExpr& rhs) {
+    auto LhsOperandsVisitor = common::Overloaded{
+        [&](const Mul<DimExpr>& mul) {
+          bool lhs_great_than_rhs = false;
+          for (const auto& expr : *mul.operands) {
+            if (expr == rhs)
+              lhs_great_than_rhs = true;
+            else if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
+              return false;
+          }
+          return lhs_great_than_rhs;
+        },
+        [&](const Add<DimExpr>& add) {
+          bool lhs_great_than_rhs = false;
+          for (const auto& expr : *add.operands) {
+            if (expr == rhs)
+              lhs_great_than_rhs = true;
+            else if (!expr.isa<std::int64_t>() && !expr.isa<std::string>())
+              return false;
+          }
+          return lhs_great_than_rhs;
+        },
+        [&](const auto& lhs) { return false; }};
+    return std::visit(LhsOperandsVisitor, lhs.variant());
+  }
+
+  int SearchErasable(const List<DimExpr>& operands) {
+    for (std::size_t i = 0; i < operands->size() - 1; ++i) {
+      for (std::size_t j = i + 1; j < operands->size(); ++j) {
+        if (IsLhsGreatThanRhs(operands->at(i), operands->at(j))) {
+          return j;
+        } else if (IsLhsGreatThanRhs(operands->at(j), operands->at(i))) {
+          return i;
+        }
+      }
+    }
+    return -1;
+  }
+};
+
 template <typename PassT>
 void DoPass(bool* rewrited, DimExpr* expr) {
   const auto old_expr = *expr;
@@ -986,6 +1052,7 @@ DimExpr Simplify(const DimExpr& expr) {
     DoPass<FoldInversedPairToUnit<Mul>>(&keep_rewrite, &ret);
     DoPass<FoldRedundantBroadcast>(&keep_rewrite, &ret);
     DoPass<FoldRedundantSymbolicBroadcast>(&keep_rewrite, &ret);
+    DoPass<SimplifyBroadcast>(&keep_rewrite, &ret);
   }
   return ret;
 }

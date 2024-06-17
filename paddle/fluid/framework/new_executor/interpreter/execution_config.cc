@@ -24,9 +24,7 @@
 
 PD_DECLARE_bool(new_executor_serial_run);
 
-namespace paddle {
-namespace framework {
-namespace interpreter {
+namespace paddle::framework::interpreter {
 
 static constexpr size_t kHostNumThreads = 4;
 static constexpr size_t kDeviceNumThreads = 1;
@@ -151,6 +149,4 @@ void ExecutionConfig::Log(int log_level) {
   VLOG(log_level) << log_str.str();
 }
 
-}  // namespace interpreter
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::interpreter

@@ -25,7 +25,7 @@ std::tuple<TensorDistAttr, TensorDistAttr> AlignExpandAsDistAttrs(
   auto x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   auto y_dist_attr_dst = CopyTensorDistAttrForOutput(y_dist_attr_src);
   auto x_dims_mapping_dst = x_dims_mapping_src;
-  auto y_dims_mapping_dst = y_dims_mapping_src;
+  const auto& y_dims_mapping_dst = y_dims_mapping_src;
   int dims_diff = y_ndim - x_ndim;
   for (int i = 0; i < y_ndim; ++i) {
     if (i >= dims_diff) {

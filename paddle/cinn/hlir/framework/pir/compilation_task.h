@@ -42,6 +42,8 @@ class GroupCompilationContext {
   const pir::OpLoweringGroupPtr& group_;
   std::vector<ir::SymbolicPredicate> predicates_;
   std::vector<ir::LoweredFunc> lowered_funcs_;
+  std::vector<ir::SymbolicPredicate> CX86_predicates_;
+  std::vector<ir::LoweredFunc> CX86_lowered_funcs_;
   ir::LoweredFunc infer_shape_lowered_func_;
 };
 
@@ -56,7 +58,7 @@ class CompilationTask {
   void Lowering();
   std::shared_ptr<pir::CompilationResult> CodegenAndJit();
   std::shared_ptr<pir::CompilationResult> BuildPirCINNKernelInfo(
-      const ir::Module& module);
+      const ir::Module& module, const ir::Module& CX86module);
 
   GroupCompilationContext* context_;
 };

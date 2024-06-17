@@ -39,7 +39,7 @@ class IR_API ModuleOp : public pir::Op<ModuleOp> {
   Block &block();
 
   //
-  // As the top operation, ModuleOp only support create&destroye through
+  // As the top operation, ModuleOp only support create&destroy through
   // below interface: "create"&"destroy".
   static ModuleOp Create(IrContext *context, Program *pointer);
   void Destroy();
@@ -84,7 +84,7 @@ class IR_API SetParameterOp : public pir::Op<SetParameterOp, SideEffectTrait> {
 };
 
 ///
-/// \brief ShdowOutputOp: ShdowOutputOp(OpOperand, {StrAttribute,
+/// \brief ShadowOutputOp: ShadowOutputOp(OpOperand, {StrAttribute,
 /// StrAttribute})
 ///
 class IR_API ShadowOutputOp

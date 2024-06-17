@@ -33,8 +33,7 @@
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 void NaiveExecutor::Prepare(Scope *scope,
                             const ProgramDesc &program_desc,
                             int block_id) {
@@ -46,6 +45,14 @@ void NaiveExecutor::Prepare(Scope *scope,
 
   VLOG(3) << "NaiveExecutor init with scope " << scope;
   CreateOps(program_desc, block_id);
+}
+
+void NaiveExecutor::Prepare(Scope *scope) {
+  if (!scope) {
+    scope_ = new framework::Scope;
+  } else {
+    scope_ = scope;
+  }
 }
 
 void NaiveExecutor::PrepareInterpreterCore(
@@ -331,5 +338,4 @@ void NaiveExecutor::ResetTrtOps(int num) {
 #endif
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

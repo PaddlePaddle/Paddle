@@ -28,8 +28,7 @@
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #endif
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 #ifdef PADDLE_WITH_DNNL
 
@@ -131,5 +130,4 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
 
 #endif
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

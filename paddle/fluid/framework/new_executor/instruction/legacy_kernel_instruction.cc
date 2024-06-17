@@ -29,8 +29,7 @@
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 LegacyKernelInstruction::LegacyKernelInstruction(
     size_t id,
@@ -177,13 +176,8 @@ LegacyKernelInstruction::LegacyKernelInstruction(
 }
 
 LegacyKernelInstruction::~LegacyKernelInstruction() {
-  if (kernel_context_ != nullptr) {
-    delete kernel_context_;
-  }
-
-  if (phi_kernel_ != nullptr) {
-    delete phi_kernel_;
-  }
+  delete kernel_context_;
+  delete phi_kernel_;
 }
 
 void LegacyKernelInstruction::Run() {
@@ -194,5 +188,4 @@ void LegacyKernelInstruction::Run() {
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
   (*(phi_kernel_))((kernel_context_));
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

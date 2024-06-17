@@ -564,6 +564,7 @@ def partial_concat(input, start_index=0, length=-1):
                 'float16',
                 'float32',
                 'float64',
+                'uint16',
                 'int32',
                 'int64',
                 'complex64',

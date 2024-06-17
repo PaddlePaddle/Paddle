@@ -21,11 +21,12 @@ fi
 
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 # If you want to add monitoring file modifications, please perform the. github/CODEOWNERS operation
-API_FILES=("tools/print_signatures.py"
-           "tools/sampcd_processor.py"
-           "tools/check_pr_approval.py"
-	   "tools/checkout_api_compatible.py"
-           )
+API_FILES=(
+    "tools/print_signatures.py"
+    "tools/sampcd_processor.py"
+    "tools/check_pr_approval.py"
+    "tools/checkout_api_compatible.py"
+)
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
 git_files=`git diff --numstat upstream/$BRANCH| wc -l`
@@ -59,6 +60,12 @@ changed_env_var_count=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/paddle | gre
 if [[ $changed_env_var_count -gt 0 ]]; then
     echo_line="You must have one RD (lanxianghit (Recommend), phlrain or luotao1 or Aurelius84) approval for changing the FLAGS, which manages the environment variables.\n"
     check_approval 1 lanxianghit phlrain luotao1 Aurelius84
+fi
+
+changed_deprecated_tests_count=$(expr $(git ls-tree -r --name-only HEAD ${PADDLE_ROOT}/test/deprecated | grep '^test' | wc -l) - $(git ls-tree -r --name-only upstream/$BRANCH ${PADDLE_ROOT}/test/deprecated | grep '^tes' | wc -l))
+if [[ $changed_deprecated_tests_count -gt 0 ]]; then
+    echo_line="You must have one RD (wanghuancoder (Recommend)) approval for add new test in test/deprecated direcotry.\n"
+    check_approval 1 wanghuancoder
 fi
 
 if [[ $git_files -gt 19 || $git_count -gt 999 ]];then

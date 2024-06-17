@@ -32,13 +32,13 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 using paddle::dialect::DistDenseTensorType;
 
 COMMON_DECLARE_bool(print_ir);
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 pir::Type CastToLocalType(pir::Type type) {
   if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
@@ -62,8 +62,9 @@ pir::Type CastToLocalType(pir::Type type) {
 inline bool IsDistType(pir::Type type) { return type.isa<DistTypeInterface>(); }
 
 void ProcessDistBlock(pir::Block* block) {
-  for (auto iter = block->begin(); iter != block->end(); ++iter) {
-    pir::Operation* op_item = &(*iter);
+  auto ctx = pir::IrContext::Instance();
+  for (auto& val : *block) {
+    pir::Operation* op_item = &val;
     VLOG(6) << "dist_to_dense main loop over op [" << op_item->name() << "].";
 
     for (size_t i = 0; i < op_item->num_results(); ++i) {
@@ -77,6 +78,29 @@ void ProcessDistBlock(pir::Block* block) {
       pir::Attribute attr_shape = IntArrayAttribute::get(
           pir::IrContext::Instance(), phi::IntArray(shape));
       op_item->set_attribute("shape", attr_shape);
+    } else if (op_item->isa<ReshapeOp>()) {
+      auto local_dims =
+          op_item->result_type(0).dyn_cast<pir::DenseTensorType>().dims();
+      auto shape_value = op_item->operand_source(1);
+      auto prev_op = shape_value.defining_op();
+      if (prev_op == nullptr || !(prev_op->isa<FullIntArrayOp>())) {
+        auto op_name = prev_op ? prev_op->name() : "nullptr";
+        PADDLE_THROW(common::errors::PreconditionNotMet(
+            "The reshape op's shape input mush be the result of  "
+            "FullIntArrayOp. but it is %s",
+            op_name));
+      }
+      auto array_attr = prev_op->attribute<pir::ArrayAttribute>("value");
+      PADDLE_ENFORCE_EQ(array_attr.size(),
+                        local_dims.size(),
+                        phi::errors::PreconditionNotMet(
+                            "The reshape's shape inputs element's size must "
+                            "equal to result's dim size."));
+      std::vector<pir::Attribute> new_dims;
+      for (int index = 0; index < local_dims.size(); ++index) {
+        new_dims.push_back(pir::Int64Attribute::get(ctx, local_dims[index]));
+      }
+      prev_op->set_attribute("value", pir::ArrayAttribute::get(ctx, new_dims));
     }
     // TODO(2024-Q2) not all op are dist type
     // PADDLE_ENFORCE_EQ(
@@ -101,8 +125,8 @@ void ProcessDistBlock(pir::Block* block) {
     3. no shard_tensor / reshard in block.
 */
 void VerifyDenseBlock(pir::Block* block) {
-  for (auto iter = block->begin(); iter != block->end(); ++iter) {
-    pir::Operation* op_item = &(*iter);
+  for (auto& val : *block) {
+    pir::Operation* op_item = &val;
 
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       auto result = op_item->result(i);
@@ -122,45 +146,21 @@ void VerifyDenseBlock(pir::Block* block) {
   }
 }
 
-void RemoveUnusefulCallgatherOp(pir::Block* block) {
-  std::vector<pir::Operation*> del_ops;
-  for (auto& op : *block) {
-    if (op.isa<CAllgatherOp>()) {
-      auto nrank = op.attribute<pir::Int32Attribute>("nranks").data();
-      if (nrank == 1) {
-        op.result(0).ReplaceAllUsesWith(op.operand_source(0));
-        del_ops.emplace_back(&op);
-      }
-    }
-  }
-  for (auto op : del_ops) {
-    op->Erase();
-  }
-}
-
-std::shared_ptr<pir::Program> DistToDensePass(pir::Program* prog) {
+void DistToDensePass(pir::Program* prog) {
   if (FLAGS_print_ir) {
     VLOG(0) << "IR before DistToDense Pass = " << *prog;
   }
-
-  pir::IrMapping mapper;
-  auto new_prog = prog->Clone(mapper);
 
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<OperatorDialect>();
   ctx->GetOrRegisterDialect<DistDialect>();
 
-  ProcessDistBlock(new_prog->block());
-  RemoveUnusefulCallgatherOp(new_prog->block());
-  VLOG(6) << "IR before VerifyDenseBlock Pass = " << *new_prog;
-  VerifyDenseBlock(new_prog->block());
+  ProcessDistBlock(prog->block());
+  VerifyDenseBlock(prog->block());
 
   if (FLAGS_print_ir) {
-    VLOG(0) << "IR after DistToDense Pass = " << *new_prog;
+    VLOG(0) << "IR after DistToDense Pass = " << *prog;
   }
-
-  return new_prog;
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
