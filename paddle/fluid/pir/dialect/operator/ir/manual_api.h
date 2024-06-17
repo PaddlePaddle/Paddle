@@ -103,7 +103,6 @@ pir::Value array_pop(pir::Value input, int index);
 pir::Value tensorrt_engine(
     const pir::Value& x,
     void* engine,
-    int max_batch_size,
     int64_t workspace_size,
     bool allow_build_at_runtime,
     std::vector<std::string> input_names,

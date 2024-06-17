@@ -23,8 +23,7 @@
 namespace paddle {
 namespace dialect {
 
-const char* TensorRTEngineOp::attributes_name[8] = {"engine",
-                                                    "max_batch_size",
+const char* TensorRTEngineOp::attributes_name[7] = {"engine",
                                                     "workspace_size",
                                                     "allow_build_at_runtime",
                                                     "input_names",
@@ -43,8 +42,6 @@ OpInfoTuple TensorRTEngineOp::GetOpInfo() {
 
   std::vector<paddle::dialect::OpAttributeInfo> attributes = {
       paddle::dialect::OpAttributeInfo("engine", "pir::PointerAttribute", ""),
-      paddle::dialect::OpAttributeInfo(
-          "max_batch_size", "pir::Int32Attribute", ""),
       paddle::dialect::OpAttributeInfo(
           "workspace_size", "pir::Int64Attribute", ""),
       paddle::dialect::OpAttributeInfo(
@@ -76,7 +73,6 @@ void TensorRTEngineOp::Build(
     pir::OperationArgument& argument,
     pir::Value x,
     void* engine,
-    int max_batch_size,
     int64_t workspace_size,
     bool allow_build_at_runtime,
     std::vector<std::string> input_names,
@@ -94,9 +90,6 @@ void TensorRTEngineOp::Build(
   pir::Attribute attr_engine =
       pir::PointerAttribute::get(pir::IrContext::Instance(), engine);
   argument.AddAttribute("engine", attr_engine);
-  pir::Attribute attr_max_batch_size =
-      pir::Int32Attribute::get(pir::IrContext::Instance(), max_batch_size);
-  argument.AddAttribute("max_batch_size", attr_max_batch_size);
   pir::Attribute attr_workspace_size =
       pir::Int64Attribute::get(pir::IrContext::Instance(), workspace_size);
   argument.AddAttribute("workspace_size", attr_workspace_size);
@@ -205,15 +198,6 @@ void TensorRTEngineOp::VerifySig() {
         true,
         phi::errors::InvalidArgument(
             "Type of attribute: engine is not pir::PointerAttribute."));
-    PADDLE_ENFORCE_GT(
-        attributes.count("max_batch_size"),
-        0,
-        phi::errors::InvalidArgument("max_batch_size does not exist."));
-    PADDLE_ENFORCE_EQ(
-        attributes.at("max_batch_size").isa<pir::Int32Attribute>(),
-        true,
-        phi::errors::InvalidArgument(
-            "Type of attribute: max_batch_size is not pir::Int32Attribute."));
     PADDLE_ENFORCE_GT(
         attributes.count("workspace_size"),
         0,

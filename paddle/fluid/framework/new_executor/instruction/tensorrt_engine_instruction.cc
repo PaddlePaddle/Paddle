@@ -22,7 +22,7 @@
 namespace paddle {
 namespace framework {
 
-using TensorRTEngine = paddle::inference::tensorrt::TensorRTEngine;
+using TensorRTEngine = paddle::platform::TensorRTEngine;
 
 TensorRTEngineInstruction::TensorRTEngineInstruction(
     size_t id,
@@ -33,8 +33,6 @@ TensorRTEngineInstruction::TensorRTEngineInstruction(
   auto op_attributes = op->attributes();
   trt_engine_ = static_cast<TensorRTEngine *>(
       op_attributes.at("engine").dyn_cast<pir::PointerAttribute>().data());
-  max_batch_size_ =
-      op_attributes.at("max_batch_size").dyn_cast<pir::Int32Attribute>().data();
   workspace_size_ =
       op_attributes.at("workspace_size").dyn_cast<pir::Int64Attribute>().data();
   allow_build_at_runtime_ = op_attributes.at("allow_build_at_runtime")
@@ -127,7 +125,7 @@ static void RuntimeDynamicShapeCheck(
                         max_input_shape_str));
 }
 
-static phi::DataType TRT2FluidDataType(nvinfer1::DataType type) {
+static phi::DataType TRT2PaddleDataType(nvinfer1::DataType type) {
   switch (type) {
     case nvinfer1::DataType::kFLOAT:
       return phi::DataType::FLOAT32;
@@ -397,12 +395,12 @@ void TensorRTEngineInstruction::BindInputTensor(
     } else {
       trt_context->setInputShape(
           input_name.c_str(),
-          inference::tensorrt::Vec2TRT_Dims(input_shape, input_name, true));
+          paddle::platform::Vec2TRT_Dims(input_shape, input_name, true));
     }
 #else
     trt_context->setBindingDimensions(
         bind_index,
-        inference::tensorrt::Vec2TRT_Dims(input_shape, input_name, true));
+        paddle::platform::Vec2TRT_Dims(input_shape, input_name, true));
     // If this x is a shape tensor, we need call setInputShapeBinding
     if (trt_engine_->engine()->isShapeBinding(bind_index) &&
         trt_engine_->engine()->bindingIsInput(bind_index)) {
@@ -439,7 +437,7 @@ void TensorRTEngineInstruction::BindInputTensor(
   VLOG(1) << "trt input [" << input_name << "] dtype is "
           << input_tensor.dtype();
 
-  auto indata_type = inference::tensorrt::PhiType2NvType(input_tensor.dtype());
+  auto indata_type = paddle::platform::PhiType2NvType(input_tensor.dtype());
   auto intrt_index = trt_engine_->engine()->getBindingIndex(input_name.c_str());
   auto intrt_type = trt_engine_->engine()->getBindingDataType(intrt_index);
   PADDLE_ENFORCE_EQ(indata_type,
@@ -560,9 +558,9 @@ void TensorRTEngineInstruction::BindOutputTensor(
   auto trt_type = trt_engine_->engine()->getBindingDataType(bind_index);
   // get adr and set type
   VLOG(1) << "trt output [" << output_name << "] dtype is "
-          << TRT2FluidDataType(trt_type);
+          << TRT2PaddleDataType(trt_type);
   buffers[bind_index] = static_cast<void *>(
-      fluid_t->mutable_data(dev_place, TRT2FluidDataType(trt_type)));
+      fluid_t->mutable_data(dev_place, TRT2PaddleDataType(trt_type)));
 }
 
 void TensorRTEngineInstruction::RunTrt() {
@@ -629,31 +627,6 @@ void TensorRTEngineInstruction::RunTrt() {
     }
   }
 
-  if (!trt_engine_->with_dynamic_shape()) {
-    PADDLE_ENFORCE_LE(
-        runtime_batch,
-        max_batch_size_,
-        phi::errors::InvalidArgument(
-            "The runtime batch size (%d) is greater than the max batch "
-            "size(%d).\n"
-            "There are two possible causes for this problem: \n"
-            "1. Check whether the runtime batch is larger than the max_batch "
-            "set by EnableTensorrtEngine()\n"
-            "2. Check whether the model you are running has multiple trt "
-            "subgraphs: \n "
-            "\tIf there are multiple trt subgraphs, you need to ensure that "
-            "the first dimension of the input tensor of these subgraphs is "
-            "consistent.\n"
-            "\tIf there are inconsistent subgraphs, you need to filter them "
-            "by "
-            "setting min_subgraph_size using EnableTensorrtEngine "
-            "interface.\n"
-            "\tThe min_subgraph_size should to be greater than the number "
-            "of "
-            "nodes in the inconsistent subgraph.\n",
-            runtime_batch,
-            max_batch_size_));
-  }
   // Execute the engine.
   trt_engine_->Execute(runtime_batch, &buffers, stream);
 

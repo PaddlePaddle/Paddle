@@ -45,7 +45,7 @@ if(WITH_CINN)
 endif()
 
 if(TENSORRT_FOUND AND WITH_TENSORRT)
-  set(standalone_executor_deps ${standalone_executor_deps} tensorrt_engine)
+  set(standalone_executor_deps ${standalone_executor_deps} trt_engine)
 endif()
 
 if(WITH_CUSTOM_DEVICE)

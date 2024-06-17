@@ -16,8 +16,8 @@
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
-#include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/tensorrt/engine.h"
 
 namespace pir {
 class Operation;
@@ -55,8 +55,7 @@ class TensorRTEngineInstruction : public InstructionBase {
                         int output_index,
                         std::vector<void*>& buffers,  // NOLINT
                         int* runtime_batch);
-  paddle::inference::tensorrt::TensorRTEngine* trt_engine_;  // not owned
-  int32_t max_batch_size_;
+  paddle::platform::TensorRTEngine* trt_engine_;  // not owned
   int64_t workspace_size_;
   bool allow_build_at_runtime_;
   std::vector<std::string> input_names_;

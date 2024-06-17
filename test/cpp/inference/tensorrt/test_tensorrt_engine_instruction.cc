@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/tensorrt_op.h"
@@ -31,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/fluid/platform/tensorrt/engine.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/pir/include/core/builtin_dialect.h"
@@ -59,17 +59,16 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
   dev_ctx->Alloc<float>(y_tensor);
 
   // 2. construct trt engine
-  paddle::inference::tensorrt::TensorRTEngine::ConstructionParams params;
+  paddle::platform::TensorRTEngine::ConstructionParams params;
   params.max_batch_size = 10;
   params.max_workspace_size = 1 << 10;
-  auto engine =
-      std::make_unique<paddle::inference::tensorrt::TensorRTEngine>(params);
+  auto engine = std::make_unique<paddle::platform::TensorRTEngine>(params);
   engine->InitNetwork();
 
   LOG(INFO) << "create weights";
-  paddle::inference::tensorrt::TensorRTEngine::Weight weight(
+  paddle::platform::TensorRTEngine::Weight weight(
       nvinfer1::DataType::kFLOAT, raw_weight, size);
-  paddle::inference::tensorrt::TensorRTEngine::Weight bias(
+  paddle::platform::TensorRTEngine::Weight bias(
       nvinfer1::DataType::kFLOAT, raw_bias, size);
   auto *x = engine->DeclareInput(
       "x", nvinfer1::DataType::kFLOAT, nvinfer1::Dims3{1, 1, 1});
@@ -119,7 +118,6 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction) {
       builder
           .Build<paddle::dialect::TensorRTEngineOp>(tensorrt_input,
                                                     engine.get(),
-                                                    10,
                                                     1 << 10,
                                                     false,
                                                     input_names,
@@ -184,7 +182,7 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction_dynamic) {
   std::map<std::string, std::vector<int>> optim_input_value = {
       {"shape", {18, 8, 4}}};
 
-  paddle::inference::tensorrt::TensorRTEngine::ConstructionParams params;
+  paddle::platform::TensorRTEngine::ConstructionParams params;
   params.max_batch_size = 16;
   params.max_workspace_size = 1 << 10;
   params.with_dynamic_shape = true;
@@ -195,8 +193,8 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction_dynamic) {
   params.max_shape_tensor = max_input_value;
   params.optim_shape_tensor = optim_input_value;
 
-  auto engine = std::make_unique<paddle::inference::tensorrt::TensorRTEngine>(
-      params, paddle::inference::tensorrt::NaiveLogger::Global());
+  auto engine = std::make_unique<paddle::platform::TensorRTEngine>(
+      params, paddle::platform::NaiveLogger::Global());
   engine->InitNetwork();
 
   std::cout << "with_dynamic_shape: " << engine->with_dynamic_shape()
@@ -263,7 +261,6 @@ TEST(TensorRTEngineInstructionTest, test_tensorrt_engine_instruction_dynamic) {
       builder
           .Build<paddle::dialect::TensorRTEngineOp>(tensorrt_input,
                                                     engine.get(),
-                                                    10,
                                                     1 << 10,
                                                     false,
                                                     input_names,
