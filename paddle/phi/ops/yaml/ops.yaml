@@ -2229,7 +2229,7 @@
     func: Im2sequenceInferMeta
   kernel:
     func: im2sequence
-  optional: "y"
+  optional: y
   backward: im2sequence_grad
 
 - op : imag

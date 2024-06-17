@@ -3523,7 +3523,7 @@
     param: [x]
   kernel:
     func: im2sequence_grad
-  optional: "y"
+  optional: y
 
 - backward_op: pyramid_hash_grad
   forward: pyramid_hash (Tensor x, Tensor w, Tensor white_list, Tensor black_list, int num_emb = 0,
