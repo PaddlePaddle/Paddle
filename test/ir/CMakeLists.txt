@@ -16,11 +16,13 @@ else()
   foreach(target ${TEST_IR_PASSES})
     if("${target}" STREQUAL test_inference_datatype_pir)
       py_test_modules(${target} MODULES ${target} ENVS FLAGS_enable_pir_api=1)
+      set_tests_properties(test_inference_datatype_pir
+                           PROPERTIES LABELS "RUN_TYPE=INFER" TIMEOUT 100)
     else()
       py_test_modules(${target} MODULES ${target})
-
+      set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
     endif()
-    set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
+
   endforeach()
 
   add_subdirectory(pir)
