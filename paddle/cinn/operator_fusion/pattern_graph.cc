@@ -109,7 +109,7 @@ void PatternGraph<T>::HorizontalFusion() {
 
   GraphTransformer<NodePairPattern,
                    T,
-                   HorizontalFusionConstrain<T>,
+                   And<HorizontalFusionConstrain<T>, HorizontalCheckMiddleOutputVar<T>>,
                    HorizontalFusionOperation>(this);
 }
 
