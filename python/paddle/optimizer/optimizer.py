@@ -179,13 +179,13 @@ class Optimizer:
             >>> loss = paddle.mean(out)
             >>> sgd = paddle.optimizer.SGD(
             ...     learning_rate=0.1,
-            ...     parameters=[{  # type: ignore
-            ...         'params': linear_1.parameters()  # type: ignore
-            ...     }, {  # type: ignore
+            ...     parameters=[{
+            ...         'params': linear_1.parameters()
+            ...     }, {
             ...         'params': linear_2.parameters(),  # type: ignore
-            ...         'weight_decay': 0.001,  # type: ignore
-            ...         'learning_rate': 0.1  # type: ignore
-            ...     }],  # type: ignore
+            ...         'weight_decay': 0.001,
+            ...         'learning_rate': 0.1
+            ...     }],
             ...     weight_decay=0.01)
             >>> loss.backward()
             >>> sgd.step()
