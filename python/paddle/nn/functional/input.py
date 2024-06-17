@@ -180,6 +180,9 @@ def embedding(
             to :math:`weight.shape[0] + padding\_idx` . It will output all-zero padding data whenever lookup
             encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
             If set None, it makes no effect to output. Default: None.
+        max_norm(float, optional): If provided, will renormalize the embedding vectors to have a norm larger than
+            :attr:`max\_norm` . It will inplace update the input embedding weight. Default: None.
+        norm_type(float, optional): The p of the p-norm to compute for the max_norm option. Default: 2.0.
         name(str|None, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
