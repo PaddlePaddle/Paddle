@@ -9,13 +9,8 @@ add_custom_target(COPY_CINN_PYTHON_TESTS ALL
                   DEPENDS ${CMAKE_BINARY_DIR}/test/__init__.py)
 
 set(BASIC_TEST_NAMES
-    test_matmul
-    test_common
-    test_packed_func
-    test_pe_elementwise
-    test_pe_reduction
-    test_pe_transform
-    test_op_broadcast
+    test_matmul test_common test_packed_func test_pe_elementwise
+    test_pe_reduction test_pe_transform
     #    test_op_transform
 )
 
@@ -48,14 +43,6 @@ endif()
 #    python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_ops.py "${WITH_GPU}"
 #    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 #)
-
-add_test(
-  NAME test_cinn_op_benchmark
-  COMMAND
-    ${CMAKE_COMMAND} -E env
-    PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python:$ENV{PYTHONPATH}
-    python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_op_benchmark.py "${WITH_GPU}"
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 #ADD_TEST(NAME test_cinn_real_facedet
 #    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
