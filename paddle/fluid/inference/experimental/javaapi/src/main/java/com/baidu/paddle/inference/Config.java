@@ -208,7 +208,7 @@ public class Config {
 
     private native int cpuMathLibraryNumThreads(long cppPaddleConfigPointer);
 
-    // 5. MKLDNN settings
+    // 5. OneDNN settings
 
     private native void enableMKLDNN(long cppPaddleConfigPointer);
 

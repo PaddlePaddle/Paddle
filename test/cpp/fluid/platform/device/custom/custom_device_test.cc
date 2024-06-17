@@ -85,17 +85,17 @@ void TestTensorMutableData(const paddle::platform::Place& place) {
   auto p1_holder = src_tensor.Holder();
   EXPECT_NE(p1, nullptr);
   // set src_tensor a new dim with large size
-  // momery is supposed to be re-allocated
+  // memory is supposed to be re-allocated
   p2 = src_tensor.mutable_data<float>(common::make_ddim({3, 1024}), place);
   auto p2_holder = src_tensor.Holder();
   EXPECT_NE(p2, nullptr);
   EXPECT_NE(p1_holder.get(), p2_holder.get());
   // set src_tensor a new dim with same size
-  // momery block is supposed to be unchanged
+  // memory block is supposed to be unchanged
   p1 = src_tensor.mutable_data<float>(common::make_ddim({2, 2, 3}), place);
   EXPECT_EQ(p1, p2);
   // set src_tensor a new dim with smaller size
-  // momery block is supposed to be unchanged
+  // memory block is supposed to be unchanged
   p2 = src_tensor.mutable_data<float>(common::make_ddim({2, 2}), place);
   EXPECT_EQ(p1, p2);
 }

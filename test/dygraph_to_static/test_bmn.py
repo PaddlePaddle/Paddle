@@ -29,6 +29,8 @@ from predictor_utils import PredictorTools
 import paddle
 from paddle.base import ParamAttr
 from paddle.base.framework import unique_name
+from paddle.framework import use_pir_api
+from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 SEED = 2000
@@ -642,6 +644,7 @@ class TestTrain(Dy2StTestBase):
         self.model_save_dir = os.path.join(self.temp_dir.name, 'inference')
         self.model_save_prefix = os.path.join(self.model_save_dir, 'bmn')
         self.model_filename = "bmn" + INFER_MODEL_SUFFIX
+        self.pir_model_filename = "bmn" + PIR_INFER_MODEL_SUFFIX
         self.params_filename = "bmn" + INFER_PARAMS_SUFFIX
         self.dy_param_path = os.path.join(self.temp_dir.name, 'bmn_dy_param')
 
@@ -717,11 +720,7 @@ class TestTrain(Dy2StTestBase):
                         loss_data += val_loss_data
 
                     if batch_id == args.train_batch_num:
-                        # TODO(@xiongkun): open after save / load supported in pir.
-                        if (
-                            to_static
-                            and not paddle.base.framework.use_pir_api()
-                        ):
+                        if to_static:
                             paddle.jit.save(bmn, self.model_save_prefix)
                         else:
                             paddle.save(
@@ -732,19 +731,6 @@ class TestTrain(Dy2StTestBase):
             return np.array(loss_data)
 
     @test_legacy_and_pt_and_pir
-    def test_train_pir(self):
-        with enable_to_static_guard(True):
-            static_res = self.train_bmn(self.args, to_static=True)
-        with enable_to_static_guard(False):
-            dygraph_res = self.train_bmn(self.args, to_static=False)
-        np.testing.assert_allclose(
-            dygraph_res,
-            static_res,
-            rtol=1e-05,
-            err_msg=f'dygraph_res: {dygraph_res[~np.isclose(dygraph_res, static_res)]},\n static_res: {static_res[~np.isclose(dygraph_res, static_res)]}',
-            atol=1e-8,
-        )
-
     def test_train(self):
         with enable_to_static_guard(True):
             static_res = self.train_bmn(self.args, to_static=True)
@@ -771,7 +757,6 @@ class TestTrain(Dy2StTestBase):
             dygraph_pred_res = self.predict_dygraph(video_data)
             dygraph_jit_pred_res = self.predict_dygraph_jit(video_data)
             predictor_pred_res = self.predict_analysis_inference(video_data)
-
             for dy_res, st_res, dy_jit_res, predictor_res in zip(
                 dygraph_pred_res,
                 static_pred_res,
@@ -818,6 +803,10 @@ class TestTrain(Dy2StTestBase):
     def predict_static(self, data):
         with static_guard():
             exe = paddle.static.Executor(self.place)
+            if use_pir_api():
+                model_filename = self.pir_model_filename
+            else:
+                model_filename = self.model_filename
             # load inference model
             [
                 inference_program,
@@ -826,7 +815,7 @@ class TestTrain(Dy2StTestBase):
             ] = paddle.static.io.load_inference_model(
                 self.model_save_dir,
                 executor=exe,
-                model_filename=self.model_filename,
+                model_filename=model_filename,
                 params_filename=self.params_filename,
             )
             pred_res = exe.run(
@@ -847,9 +836,14 @@ class TestTrain(Dy2StTestBase):
         return pred_res
 
     def predict_analysis_inference(self, data):
+        if use_pir_api():
+            model_filename = self.pir_model_filename
+        else:
+            model_filename = self.model_filename
+
         output = PredictorTools(
             self.model_save_dir,
-            self.model_filename,
+            model_filename,
             self.params_filename,
             [data],
         )

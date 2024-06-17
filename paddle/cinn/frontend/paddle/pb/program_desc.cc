@@ -17,12 +17,19 @@
 #include <algorithm>
 #include <limits>
 
+#include "paddle/common/enforce.h"
+
 namespace cinn::frontend::paddle::pb {
 
 template <>
 framework_proto::BlockDesc* ProgramDesc::GetBlock<framework_proto::BlockDesc>(
     int32_t idx) {
-  CHECK_LT(idx, BlocksSize()) << "idx >= blocks.size()";
+  PADDLE_ENFORCE_LT(
+      idx,
+      BlocksSize(),
+      phi::errors::InvalidArgument(
+          "The value of idx and blocks.size() is incorrect."
+          "Expected idx < blocks.size(), but receive idx >= blocks.size()."));
   return desc_->mutable_blocks(idx);
 }
 

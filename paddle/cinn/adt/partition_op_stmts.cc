@@ -21,7 +21,7 @@
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
 #include "paddle/cinn/adt/print.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::adt {
 
 AnchorIndex PickThenEraseAnchorIndex(
@@ -366,8 +366,10 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
     EraseCandidateAnchorIndexes(igroup_spec, candidate_anchor_indexes);
   }
 
-  CHECK_EQ(all_visited_op_stmts.size(), op_stmts->size())
-      << "Some fake_op_placeholders are not visited";
+  PADDLE_ENFORCE_EQ(all_visited_op_stmts.size(),
+                    op_stmts->size(),
+                    phi::errors::InvalidArgument(
+                        "Some fake_op_placeholders are not visited."));
   return anchor_index2igroup_spec;
 }
 

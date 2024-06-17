@@ -14,16 +14,12 @@
 
 #include "paddle/cinn/ir/group_schedule/dy_shape_group_scheduler.h"
 #include "paddle/cinn/common/cas.h"
-#include "paddle/cinn/ir/group_schedule/tactic/align_iter_space_tactic.h"
-#include "paddle/cinn/ir/group_schedule/tactic/arrange_storage_tactic.h"
-#include "paddle/cinn/ir/group_schedule/tactic/bind_cuda_tactic.h"
+#include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 #include "paddle/cinn/ir/group_schedule/tactic/compute_inline_tactic.h"
-#include "paddle/cinn/ir/group_schedule/tactic/loop_reorder_alignment_tactic.h"
-#include "paddle/cinn/ir/group_schedule/tactic/optimize_reduction_tactic.h"
 #include "paddle/cinn/ir/group_schedule/tactic/tile_first_general_tactic.h"
-#include "paddle/cinn/ir/group_schedule/tactic/tile_tactic.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
 
@@ -36,10 +32,10 @@ void DynamicShapeGroupScheduler::Init() {
   VLOG(4) << "original group func body: \n"
           << ir_sch_->GetModule().GetExprs()[0];
   InitBuckets();
-  tactics_.emplace_back(CreateLoopReorderAlignmentTactic());
-  VLOG(4) << "CreateLoopReorderAlignmentTactic End";
   tactics_.emplace_back(CreateTileFirstGeneralTactic());
   VLOG(4) << "CreateTileFirstGeneralTactic End";
+  tactics_.emplace_back(CreateComputeInlineTactic());
+  VLOG(4) << "CreateTileCreateComputeInlineTactic End";
 }
 
 void DynamicShapeGroupScheduler::InitBuckets() {
@@ -70,32 +66,49 @@ void DynamicShapeGroupScheduler::InitBuckets() {
             << iter_space_info.total_sp_extent;
     VLOG(4) << "iter_space_info.total_rb_extent: "
             << iter_space_info.total_rb_extent;
-    VLOG(4) << "bucket_info.sp_lower_bound: " << bucket_info.sp_lower_bound;
-    VLOG(4) << "bucket_info.sp_upper_bound: " << bucket_info.sp_upper_bound;
-    VLOG(4) << "bucket_info.rb_lower_bound: " << bucket_info.rb_lower_bound;
-    VLOG(4) << "bucket_info.rb_upper_bound: " << bucket_info.rb_upper_bound;
-    if (OutOfRange(iter_space_info.total_sp_extent,
-                   bucket_info.sp_lower_bound,
-                   bucket_info.sp_upper_bound) ||
-        OutOfRange(iter_space_info.total_rb_extent,
-                   bucket_info.rb_lower_bound,
-                   bucket_info.rb_upper_bound)) {
-      VLOG(4) << "Out of range";
-      return;
+    VLOG(4) << iter_space_info.PrintIterSpace();
+    VLOG(4) << bucket_info.ToString();
+    PADDLE_ENFORCE_EQ(
+        bucket_info.space.size(),
+        iter_space_info.memory_consistent_order_homogeneous_merged_space.size(),
+        ::common::errors::PreconditionNotMet(
+            "rank of bucket info should be same as rank of homogeneous merged "
+            "iter space"));
+    int rank = bucket_info.space.size();
+    for (int i = 0; i < rank; ++i) {
+      PADDLE_ENFORCE_EQ(
+          bucket_info.space[i].iter_type,
+          iter_space_info.memory_consistent_order_homogeneous_merged_space[i]
+              .first,
+          ::common::errors::PreconditionNotMet(
+              "iter type of bucket info should be same as homogeneous merged "
+              "iter space"));
     }
-    SymbolicPredicate sp_lower_bound_predicate = ir::GE::Make(
-        iter_space_info.total_sp_extent, ir::Expr(bucket_info.sp_lower_bound));
-    SymbolicPredicate sp_upper_bound_predicate = ir::LE::Make(
-        iter_space_info.total_sp_extent, ir::Expr(bucket_info.sp_upper_bound));
-    SymbolicPredicate rb_lower_bound_predicate = ir::GE::Make(
-        iter_space_info.total_rb_extent, ir::Expr(bucket_info.rb_lower_bound));
-    SymbolicPredicate rb_upper_bound_predicate = ir::LE::Make(
-        iter_space_info.total_rb_extent, ir::Expr(bucket_info.rb_upper_bound));
-    SymbolicPredicate sp_predicate =
-        ir::And::Make(sp_lower_bound_predicate, sp_upper_bound_predicate);
-    SymbolicPredicate rb_predicate =
-        ir::And::Make(rb_lower_bound_predicate, rb_upper_bound_predicate);
-    SymbolicPredicate predicate = ir::And::Make(sp_predicate, rb_predicate);
+    SymbolicPredicate predicate = ir::Expr(true);
+    for (int i = 0; i < rank; ++i) {
+      VLOG(4) << "bucket_info.space[" << i
+              << "].lower_bound= " << bucket_info.space[i].lower_bound;
+      VLOG(4) << "bucket_info.space[" << i
+              << "].upper_bound= " << bucket_info.space[i].upper_bound;
+      ir::Expr extent =
+          iter_space_info.memory_consistent_order_homogeneous_merged_space[i]
+              .second;
+      VLOG(4) << "extent = " << extent;
+      if (OutOfRange(extent,
+                     bucket_info.space[i].lower_bound,
+                     bucket_info.space[i].upper_bound)) {
+        VLOG(4) << "Dimension " << i << " Out of range";
+        return;
+      }
+
+      SymbolicPredicate lower_bound_predicate =
+          ir::GE::Make(extent, ir::Expr(bucket_info.space[i].lower_bound));
+      SymbolicPredicate upper_bound_predicate =
+          ir::LE::Make(extent, ir::Expr(bucket_info.space[i].upper_bound));
+      SymbolicPredicate curr_predicate =
+          ir::And::Make(lower_bound_predicate, upper_bound_predicate);
+      predicate = ir::And::Make(predicate, curr_predicate);
+    }
     ScheduleContext schedule_context{output_names,
                                      target_,
                                      std::move(iter_space_info),
@@ -108,8 +121,10 @@ void DynamicShapeGroupScheduler::InitBuckets() {
     bucket_contexts_.emplace_back(std::move(bucket_context));
   };
 
+  ScheduleConfigManager& schedule_config_manager =
+      ScheduleConfigManager::Instance();
   std::unordered_map<BucketInfo, ScheduleConfig, BucketInfoHash> configs =
-      BuildScheduleConfig(group_info_, target_);
+      schedule_config_manager.ExtractConfigs(target_, group_info_);
   for (std::pair<BucketInfo, ScheduleConfig>&& config : configs) {
     InitBucket(std::move(config.first), std::move(config.second));
   }
@@ -156,6 +171,14 @@ DynamicShapeGroupScheduler::GetIRs() {
   return irs;
 }
 
+std::vector<std::pair<SymbolicPredicate, ir::Expr>>
+DynamicShapeGroupScheduler::GetCX86IRs() {
+  std::vector<std::pair<SymbolicPredicate, ir::Expr>> irs(1);
+  irs[0].first = ir::EQ::Make(ir::Expr(1), ir::Expr(1));
+  irs[1].second = ir_sch_->GetModule().GetExprs()[0];
+  return irs;
+}
+
 IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
     ScheduleBlockNode* node) {
   VLOG(5) << "global master: " << node->id();
@@ -193,7 +216,10 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
           return find_reduce_var;
         },
         /* uniq_target = */ true);
-    CHECK_EQ(reduce_loads.size(), 1);
+    PADDLE_ENFORCE_EQ(reduce_loads.size(),
+                      1,
+                      ::common::errors::PreconditionNotMet(
+                          "Required reduce_loads shall be 1."));
 
     std::vector<ir::Expr> reduce_load_indices =
         reduce_loads.begin()->As<ir::Load>()->indices;
@@ -201,10 +227,16 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
     for (int i = 0; i < reduce_load_indices.size(); ++i) {
       ir::Expr& index = reduce_load_indices[i];
       if (index.is_constant()) continue;
-      CHECK_NOTNULL(index.as_var());
+      PADDLE_ENFORCE_NOT_NULL(index.as_var(),
+                              ::common::errors::PreconditionNotMet(
+                                  "Required index shall be var type."));
       ir::Var iter_var = index.as_var_ref();
       ir::Expr iter_value = iter_var2value.at(iter_var);
-      CHECK(iter_value.as_var() || iter_value.is_constant());
+      PADDLE_ENFORCE_EQ(
+          iter_value.as_var() || iter_value.is_constant(),
+          true,
+          ::common::errors::PreconditionNotMet(
+              "Required iter_value shall be var or constant type."));
       ir::For* for_node;
       if (iter_value.as_var()) {
         for (ir::Expr& loop : loops) {
@@ -215,17 +247,19 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
       } else if (iter_value.is_constant()) {
         for_node = loops.at(loop_idx).As<ir::For>();
       }
-      CHECK_NOTNULL(for_node);
+      PADDLE_ENFORCE_NOT_NULL(for_node,
+                              ::common::errors::PreconditionNotMet(
+                                  "Required for_node shall not be nullptr."));
       bool is_reduce_iter_var = reduce_iter_vars.count(iter_var) > 0;
       if (is_reduce_iter_var) {
         info.rb_space.emplace_back(for_node->extent,
                                    IterativeSpaceInfo::AxisType::kSerial);
-        info.memory_consistent_order_space.emplace_back(for_node->extent);
+        info.memory_consistent_order_space.emplace_back("R", for_node->extent);
         rb_iter_indices.push_back(loop_idx);
       } else {
         info.sp_space.emplace_back(for_node->extent,
                                    IterativeSpaceInfo::AxisType::kSerial);
-        info.memory_consistent_order_space.emplace_back(for_node->extent);
+        info.memory_consistent_order_space.emplace_back("S", for_node->extent);
         sp_iter_indices.push_back(loop_idx);
       }
       ++loop_idx;
@@ -239,12 +273,33 @@ IterativeSpaceInfo DynamicShapeGroupScheduler::ConstructIterSpaceInfo(
   } else {
     for (int i = 0; i < loops.size(); ++i) {
       ir::For* for_node = loops[i].As<ir::For>();
-      info.memory_consistent_order_space.emplace_back(for_node->extent);
+      info.memory_consistent_order_space.emplace_back("S", for_node->extent);
       info.sp_space.emplace_back(for_node->extent,
                                  IterativeSpaceInfo::AxisType::kSerial);
       info.rb_last_order.push_back(i);
     }
   }
+  // init memory_consistent_order_homogeneous_merged_space
+  for (int64_t i = 0; i < info.memory_consistent_order_space.size(); ++i) {
+    std::string iter_type = info.memory_consistent_order_space[i].first;
+    ir::Expr extent = info.memory_consistent_order_space[i].second;
+    if (extent.is_constant() && extent.get_constant() == 1) continue;
+    if (info.memory_consistent_order_homogeneous_merged_space.empty() ||
+        info.memory_consistent_order_homogeneous_merged_space.back().first !=
+            iter_type) {
+      info.memory_consistent_order_homogeneous_merged_space.emplace_back(
+          iter_type, extent);
+    } else {
+      info.memory_consistent_order_homogeneous_merged_space.back().second =
+          info.memory_consistent_order_homogeneous_merged_space.back().second *
+          extent;
+    }
+  }
+  if (info.memory_consistent_order_homogeneous_merged_space.empty()) {
+    info.memory_consistent_order_homogeneous_merged_space.emplace_back(
+        "S", ir::Expr(1));
+  }
+
   // init total extents
   ir::Expr sp_extent = ir::Expr(1);
   ir::Expr rb_extent = ir::Expr(1);

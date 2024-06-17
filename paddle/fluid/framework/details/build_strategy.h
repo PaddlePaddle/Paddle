@@ -141,8 +141,8 @@ struct BuildStrategy {
   // Fuse ResUnit
   bool fuse_resunit_{false};
   // mkldnn_enabled_op_types specify the operator type list to
-  // use MKLDNN acceleration. It is null in default, means
-  // that all the operators supported by MKLDNN will be
+  // use OneDNN acceleration. It is null in default, means
+  // that all the operators supported by OneDNN will be
   // accelerated. And it should not be set when
   // FLAGS_use_mkldnn=false
   std::unordered_set<std::string> mkldnn_enabled_op_types_;

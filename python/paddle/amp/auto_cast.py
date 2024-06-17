@@ -26,7 +26,6 @@ from paddle.base.framework import (
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.static.amp.decorator import OptimizerWithMixedPrecision
-from paddle.static.amp.fp16_lists import AutoMixedPrecisionLists
 
 from .amp_lists import black_list, white_list
 
@@ -144,6 +143,31 @@ def _is_gpu_bfloat16_supported():
     return prop[0] >= 8 and cuda_version_check
 
 
+def _is_xpu_float16_supported():
+    """
+    Judge whether current xpu device support float16 amp.
+    Only XPU2 and XPU3 support float16 amp.
+    """
+    place = _current_expected_place()
+    return (
+        core.get_xpu_device_version(place.get_device_id())
+        >= core.XPUVersion.XPU2
+    )
+
+
+def _is_xpu_bfloat16_supported():
+    """
+    Judge whether current xpu device support bfloat16 amp.
+    Only XPU3 support bfloat16 amp.
+    Although XPU2 supports bfloat16 computing, but XPU2's bfloat16 operators haven't been widely covered.
+    """
+    place = _current_expected_place()
+    return (
+        core.get_xpu_device_version(place.get_device_id())
+        >= core.XPUVersion.XPU3
+    )
+
+
 def _is_custom_device_bfloat16_supported():
     """
     Judge whether current custom device support bfloat16 amp.
@@ -252,7 +276,7 @@ def _pir_transform(t, dtype):
                 param = op.operand(0).source()
                 cast_param = paddle.cast(param, dtype)
                 cast_param.persistable = True
-                paddle._pir_ops.set_parameter(cast_param, t.name)
+                paddle._pir_ops.update_parameter(cast_param, t.name)
                 block.remove_op(op)
                 break
     main.set_parameters_from(startup)
@@ -498,9 +522,23 @@ def amp_guard(
             enable = False
         if enable:
             # For xpu:
-            if tracer._expected_place.is_xpu_place() and (dtype == 'bfloat16'):
-                warnings.warn('XPUPlace only support float16 amp.')
-                enable = False
+            if tracer._expected_place.is_xpu_place():
+                if (dtype == 'float16') and not _is_xpu_float16_supported():
+                    xpu_verion = core.get_xpu_device_version(
+                        tracer._expected_place.get_device_id()
+                    )
+                    warnings.warn(
+                        '%d does not support float16 amp.' % xpu_verion
+                    )
+                    enable = False
+                elif (dtype == 'bfloat16') and not _is_xpu_bfloat16_supported():
+                    xpu_verion = core.get_xpu_device_version(
+                        tracer._expected_place.get_device_id()
+                    )
+                    warnings.warn(
+                        '%d does not support bfloat16 amp.' % xpu_verion
+                    )
+                    enable = False
             # For custom device:
             if (
                 tracer._expected_place.is_custom_place()
@@ -551,7 +589,7 @@ def amp_guard(
 
             def master_grad_hook():
                 # NOTE(lizhiyu): To support semi-auto of dygraph mode, we must
-                # classify the params of model into different calsses according to their process_mesh.
+                # classify the params of model into different classes according to their process_mesh.
                 # Otherwise, fault will occur.
                 if not amp_global_state().already_classify_params_meshes:
                     for param in amp_global_state().model_parameters:
@@ -762,11 +800,14 @@ def amp_decorate(
         else:
             return models, optimizers
     # For xpu:
-    if tracer._expected_place.is_xpu_place() and (dtype == 'bfloat16'):
-        if optimizers is None:
-            return models
-        else:
-            return models, optimizers
+    if tracer._expected_place.is_xpu_place():
+        if (dtype == 'float16' and not _is_xpu_float16_supported()) or (
+            dtype == 'bfloat16' and not _is_xpu_bfloat16_supported()
+        ):
+            if optimizers is None:
+                return models
+            else:
+                return models, optimizers
     # For custom device:
     if (
         tracer._expected_place.is_custom_place()
@@ -1035,15 +1076,15 @@ def decorate(
                     amp_lists=None,
                     level=level,
                     dtype=dtype,
-                    init_loss_scaling=2.0**16,
-                    incr_every_n_steps=2000,
-                    decr_every_n_nan_or_inf=1,
-                    incr_ratio=2.0,
-                    decr_ratio=0.5,
+                    init_loss_scaling=1.0,
+                    incr_every_n_steps=None,
+                    decr_every_n_nan_or_inf=None,
+                    incr_ratio=None,
+                    decr_ratio=None,
                     use_dynamic_loss_scaling=False,
                     use_amp_guard=None,
                     use_master_grad=master_grad,
-                    use_promote=True,
+                    use_promote=None,
                 )
                 return models, optimizers
         elif level == 'O2':
@@ -1057,16 +1098,18 @@ def decorate(
             else:
                 optimizers = OptimizerWithMixedPrecision(
                     optimizer=optimizers,
-                    amp_lists=AutoMixedPrecisionLists(dtype=dtype),
+                    amp_lists=None,
                     level=level,
                     dtype=dtype,
-                    init_loss_scaling=2**15,
+                    init_loss_scaling=1.0,
+                    incr_every_n_steps=None,
+                    decr_every_n_nan_or_inf=None,
+                    incr_ratio=None,
+                    decr_ratio=None,
                     use_dynamic_loss_scaling=False,
-                    incr_every_n_steps=1000,
-                    decr_every_n_nan_or_inf=2,
-                    incr_ratio=2.0,
-                    decr_ratio=0.8,
+                    use_amp_guard=None,
                     use_master_grad=master_grad,
+                    use_promote=None,
                 )
                 return models, optimizers
         else:

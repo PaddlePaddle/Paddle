@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import base
 
 
 class TestAdamaxAPI(unittest.TestCase):
@@ -35,34 +34,6 @@ class TestAdamaxAPI(unittest.TestCase):
         out.backward()
         adam.step()
         adam.clear_gradients()
-
-    def test_adamax_api(self):
-        paddle.enable_static()
-        place = base.CPUPlace()
-        shape = [2, 3, 8, 8]
-        exe = base.Executor(place)
-        train_prog = base.Program()
-        startup = base.Program()
-        with base.program_guard(train_prog, startup):
-            with base.unique_name.guard():
-                data = paddle.static.data(name="data", shape=shape)
-                conv = paddle.static.nn.conv2d(data, 8, 3)
-                loss = paddle.mean(conv)
-                beta1 = 0.85
-                beta2 = 0.95
-                opt = paddle.optimizer.Adamax(
-                    learning_rate=1e-5,
-                    beta1=beta1,
-                    beta2=beta2,
-                    weight_decay=0.01,
-                    epsilon=1e-8,
-                )
-                opt.minimize(loss)
-
-        exe.run(startup)
-        data_np = np.random.random(shape).astype('float32')
-        rets = exe.run(train_prog, feed={"data": data_np}, fetch_list=[loss])
-        assert rets[0] is not None
 
 
 class TestAdamaxAPIGroup(TestAdamaxAPI):

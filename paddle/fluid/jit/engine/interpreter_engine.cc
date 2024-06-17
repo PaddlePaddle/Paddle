@@ -52,11 +52,11 @@ void InterpreterEngine::CreateInterpreterCore() {
       framework::ir::PassRegistry::Instance().Get("delete_dropout_op_x_pass");
   pass->Apply(&graph);
 #ifdef PADDLE_WITH_DNNL
-  auto mkldnn_pass =
-      framework::ir::PassRegistry::Instance().Get("mkldnn_placement_pass");
-  mkldnn_pass->Set("mkldnn_enabled_op_types",
+  auto onednn_pass =
+      framework::ir::PassRegistry::Instance().Get("onednn_placement_pass");
+  onednn_pass->Set("mkldnn_enabled_op_types",
                    new std::unordered_set<std::string>({}));
-  mkldnn_pass->Apply(&graph);
+  onednn_pass->Apply(&graph);
 #endif
 
   GraphToProgram(graph, &converted_prog_, nullptr);

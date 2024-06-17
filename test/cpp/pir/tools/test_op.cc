@@ -32,12 +32,16 @@ void BranchOp::Build(pir::Builder &builder,             // NOLINT
 }
 
 void BranchOp::VerifySig() const {
-  IR_ENFORCE((*this)->num_successors() == 1u,
-             "successors number must equal to 1.");
-  IR_ENFORCE((*this)->successor(0), "successor[0] can't be nullptr");
+  PADDLE_ENFORCE_EQ(
+      (*this)->num_successors(),
+      1u,
+      phi::errors::InvalidArgument("successors number must equal to 1."));
+  PADDLE_ENFORCE_NOT_NULL(
+      (*this)->successor(0),
+      phi::errors::InvalidArgument("successor[0] can't be nullptr"));
 }
 
-const char *Operation1::attributes_name[2] = {"op1_attr1",
+const char *Operation1::attributes_name[2] = {"op1_attr1",   // NOLINT
                                               "op1_attr2"};  // NOLINT
 
 void Operation1::Build(pir::Builder &builder,               // NOLINT

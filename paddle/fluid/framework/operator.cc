@@ -53,8 +53,8 @@ class DenseTensor;
 #endif
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/mkldnn_op_list.h"
+#include "paddle/fluid/platform/onednn_helper.h"
+#include "paddle/fluid/platform/onednn_op_list.h"
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -504,7 +504,7 @@ void RuntimeInferShapeContext::ShareLoD(const std::string& in,
   // Workaround:
   //    Skip set_layout() when input layout is kMKLDNN
   //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
-  //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
+  //    OPKernel. In all OneDNN OPkernel, set_layout(kMKLDNN) should be called
   //    in Compute()
   if (in_tensor.layout() != DataLayout::ONEDNN)
 #endif
@@ -1001,7 +1001,9 @@ OperatorBase::OperatorBase(const std::string& type,
       outputs_(outputs),
       attrs_(attrs),
       // NOTE(zjl): why op_info may be nullptr?
-      info_(OpInfoMap::Instance().GetNullable(type)) {
+      info_(OpInfoMap::Instance().GetNullable(type)),
+      output_hookfuncs_(),
+      input_hookfuncs_() {
   // In dygraph mode, all the OperatorBase will be constructed by function:
   // framework::OpRegistry::CreateOp(type, {}, {}, {}, false).
   // Inputs, outputs and attrs will be set to empty map
@@ -1124,7 +1126,7 @@ OperatorWithKernel::OperatorWithKernel(const std::string& type,
                                        const VariableNameMap& inputs,
                                        const VariableNameMap& outputs,
                                        const AttributeMap& attrs)
-    : OperatorBase(type, inputs, outputs, attrs) {}
+    : OperatorBase(type, inputs, outputs, attrs), impl_(nullptr) {}
 
 OperatorWithKernel::~OperatorWithKernel() = default;
 
@@ -1274,7 +1276,8 @@ struct OperatorWithKernel::CacheImpl {
       : kernel_ctx_(kernel_ctx),
         infer_shape_ctx_(infer_shape_ctx),
         tensors_(tensors),
-        not_allow_infer_shape_cache_(not_allow_infer_shape_cache) {}
+        not_allow_infer_shape_cache_(not_allow_infer_shape_cache),
+        last_ddims_() {}
 
   phi::KernelContext* getKernelContext() { return kernel_ctx_.get(); }
   RuntimeInferShapeContext* getRuntimeInferShapeContext() {
@@ -1571,12 +1574,12 @@ bool OperatorWithKernel::SupportsKernelType(
   }
 #endif
 
-// NOTE(jiahongyu): If MKLDNN can be used, the function SupportsKernelType needs
-// to check whether current op supports MKLDNN kernel. There are three
+// NOTE(jiahongyu): If OneDNN can be used, the function SupportsKernelType needs
+// to check whether current op supports OneDNN kernel. There are three
 // statements in if condition:
-// 1. Whether mkldnn kernel fallbacks to plain kernel;
+// 1. Whether onednn kernel fallbacks to plain kernel;
 // 2. Whether this op has specific implementation;
-// 3. Whether mkldnn kernel can be used.
+// 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
   if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
       this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
@@ -1771,7 +1774,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // TODO(chenweihang): Now we are still reusing a lot of the original fluid
   // implementation, this is a gradual replacement process
   // TODO(chenweihang): in the first phase of project, we only support CPU, CUDA
-  // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
+  // and RCOM backend, the XPU, NPU and OneDNN will be supported in the second
   // phase
   phi::KernelKey phi_kernel_key;
   std::string phi_kernel_name;
@@ -1846,13 +1849,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
     } else {
       phi_kernel_name = kernel_signature_->name;
-// NOTE(jiahongyu): The registered MKLDNN kernel have library_type =
+// NOTE(jiahongyu): The registered OneDNN kernel have library_type =
 // LibraryType::kMKLDNN and data_layout_ = DataLayout::ONEDNN. But the default
 // values are kPlain, so we need to modify the library_type and data_layout_
 // here. There are three statements in if condition:
-// 1. Whether mkldnn kernel fallbacks to plain kernel;
+// 1. Whether onednn kernel fallbacks to plain kernel;
 // 2. Whether this op has specific implementation;
-// 3. Whether mkldnn kernel can be used.
+// 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
       if (!this->DnnFallback() &&
           !paddle::platform::in_mkldnn_white_list(type_) &&
@@ -2121,7 +2124,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (FLAGS_enable_unused_var_check) {
-    // skip op that uses mkldnn because it has different memory reuse strategy.
+    // skip op that uses onednn because it has different memory reuse strategy.
     // use attr here because some GradMakers (like ActivationGradOpMaker) add
     // input when use_mkldnn=true;
     if (!(HasAttr("use_mkldnn") && Attr<bool>("use_mkldnn"))) {
@@ -2181,12 +2184,12 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
       framework::TransPhiKernelKeyToOpKernelType(phi_kernel_key);
 
 // NOTE(jiahongyu): PADDLE_WITH_DNNL codes are moved outside function
-// GetExpectedKernelType, so that if MKLDNN can be used, the library_type_ and
+// GetExpectedKernelType, so that if OneDNN can be used, the library_type_ and
 // data_layout_ of expected_kernel_key need to be adjusted. There are three
 // statements in if condition:
-// 1. Whether mkldnn kernel fallbacks to plain kernel;
+// 1. Whether onednn kernel fallbacks to plain kernel;
 // 2. Whether this op has specific implementation;
-// 3. Whether mkldnn kernel can be used.
+// 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
   if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
@@ -2815,7 +2818,7 @@ Scope* OperatorWithKernel::PrepareData(
       prepare_input_data(input_name, &ins_vector, &in_def, should_skip_input);
     }
 #ifdef PADDLE_WITH_DNNL
-    // For input that is Extra, only MKLDNN will use Extra Inputs
+    // For input that is Extra, only OneDNN will use Extra Inputs
     auto& extra_input_names =
         paddle::operators::ExtraInfoUtils::Instance().GetExtraInputNamesMap(
             Type());

@@ -15,8 +15,7 @@
 #include "paddle/fluid/distributed/ps/service/ps_local_client.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 int32_t PsLocalClient::Initialize() {
   const auto& downpour_param = _config.server_param().downpour_server_param();
   TableManager::Instance().Initialize();
@@ -322,5 +321,11 @@ int32_t PsLocalClient::Initialize() {
   table_ptr->Push(table_context);
   return done();
 }
-}  // namespace distributed
-}  // namespace paddle
+
+::std::future<int32_t> PsLocalClient::SetDayId(size_t table_id, int day_id) {
+  auto* table_ptr = GetTable(table_id);
+  table_ptr->SetDayId(day_id);
+  return done();
+}
+
+}  // namespace paddle::distributed

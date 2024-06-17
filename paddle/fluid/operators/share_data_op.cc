@@ -16,8 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class ShareDataOp : public framework::OperatorWithKernel {
  public:
@@ -33,12 +32,12 @@ class ShareDataOp : public framework::OperatorWithKernel {
         in_type == framework::proto::VarType::LOD_TENSOR ||
             in_type == framework::proto::VarType::SELECTED_ROWS,
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Type of Variable[X] must be phi::DenseTensor or SelectedRows!"));
     PADDLE_ENFORCE_EQ(
         in_type,
         out_type,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The type of input (X) and output (Out) are inconsistent."));
 
     ctx->ShareDim("X", "Out");
@@ -58,11 +57,10 @@ Return a tensor $Out$ that shares data with the input tensor $X$ and without ten
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 REGISTER_OPERATOR(
     share_data,
     ops::ShareDataOp,
@@ -80,4 +78,4 @@ PD_REGISTER_STRUCT_KERNEL(share_data,
                           int64_t,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

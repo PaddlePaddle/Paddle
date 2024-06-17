@@ -56,6 +56,8 @@ class NaiveExecutor {
   // Create variables.
   void Prepare(Scope* scope, const ProgramDesc& program_desc, int block_id);
 
+  void Prepare(Scope* scope);
+
   void PrepareInterpreterCore(
       Scope* scope,
       const ProgramDesc& program_desc,
@@ -92,8 +94,6 @@ class NaiveExecutor {
       const std::unordered_map<std::string, std::string>& reuse_table);
 
   void ResetTrtOps(int num);
-
-  void CloneLiteEngine(int num, void* stream);
 
   void RegisterOutputHook(const HookFunc& hookfunc);
   void RegisterInputHook(const HookFunc& hookfunc);

@@ -1,12 +1,7 @@
 add_definitions(-DIR_LIBRARY)
 set_property(GLOBAL PROPERTY IR_TARGETS "")
 
-file(
-  GLOB_RECURSE
-  PIR_CPP_SOURCES
-  "*.cc"
-  ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.cc
-)
+file(GLOB_RECURSE PIR_CPP_SOURCES "*.cc")
 
 if(WIN32)
   if(WITH_SHARED_IR)
@@ -55,4 +50,8 @@ else()
   get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
   set(ir_targets pir)
   set_property(GLOBAL PROPERTY IR_TARGETS "${ir_targets}")
+endif()
+
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+  set_target_properties(pir PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized")
 endif()

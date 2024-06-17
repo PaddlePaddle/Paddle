@@ -33,6 +33,7 @@ NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'fractional_max_pool3d',
     'norm',
     'pool3d',
+    'lp_pool2d',
     'reduce_prod',
     'selu',
     'sigmoid_cross_entropy_with_logits',
@@ -54,6 +55,7 @@ NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'solve',
     'qr',
     'layer_norm',
+    'cumprod',
     # 'expand_v2',
 ]
 

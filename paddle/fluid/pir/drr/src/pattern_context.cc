@@ -39,7 +39,7 @@ const Op& DrrPatternContext::SourceOpPattern(
     const std::string& op_type,
     const std::unordered_map<std::string, Attribute>& attributes) {
   owned_ops_.push_back(std::shared_ptr<drr::Op>(
-      new drr::Op(op_type, attributes, source_pattern_graph_.get())));
+      new drr::Op(op_type, source_pattern_graph_.get(), attributes)));
   return *owned_ops_.back();
 }
 
@@ -50,9 +50,10 @@ drr::Tensor& DrrPatternContext::SourceTensorPattern(const std::string& name) {
 
 const Op& DrrPatternContext::ResultOpPattern(
     const std::string& op_type,
-    const std::unordered_map<std::string, Attribute>& attributes) {
-  owned_ops_.push_back(std::shared_ptr<drr::Op>(
-      new drr::Op(op_type, attributes, result_pattern_graph_.get())));
+    const std::unordered_map<std::string, Attribute>& attributes,
+    const std::unordered_map<std::string, Attribute>& runtime_attributes) {
+  owned_ops_.push_back(std::shared_ptr<drr::Op>(new drr::Op(
+      op_type, result_pattern_graph_.get(), attributes, runtime_attributes)));
   return *owned_ops_.back();
 }
 
@@ -65,32 +66,17 @@ std::vector<Constraint> DrrPatternContext::constraints() const {
   return constraints_;
 }
 
-void DrrPatternContext::RequireEqual(const TensorShape& first,
-                                     const TensorShape& second) {
-  // Note: we capture the datas by value for constrain_fn
-  // because the datas are destructed before running constrain_fn.
-  auto constrain_fn = [=](const MatchContext& match_context) {
-    return pir::GetShapeFromValue(match_context.Tensor(first.tensor_name())) ==
-           pir::GetShapeFromValue(match_context.Tensor(second.tensor_name()));
-  };
-  constraints_.emplace_back(constrain_fn);
+void DrrPatternContext::AddConstraint(const ConstraintFunction& constraint_fn) {
+  constraints_.emplace_back(constraint_fn);
 }
 
-void DrrPatternContext::RequireEqual(const TensorDataType& first,
-                                     const TensorDataType& second) {
-  // Note: we capture the datas by value for constrain_fn
-  // because the datas are destructed before running constrain_fn.
-  auto constrain_fn = [=](const MatchContext& match_context) {
-    return pir::GetDataTypeFromValue(
-               match_context.Tensor(first.tensor_name())) ==
-           pir::GetDataTypeFromValue(
-               match_context.Tensor(second.tensor_name()));
-  };
-  constraints_.emplace_back(constrain_fn);
+std::vector<PostProcess> DrrPatternContext::post_processes() const {
+  return post_processes_;
 }
 
-void DrrPatternContext::RequireNativeCall(const ConstraintFunction& custom_fn) {
-  constraints_.emplace_back(custom_fn);
+void DrrPatternContext::AddPostProcess(
+    const PostProcessFunction& post_process_fn) {
+  post_processes_.emplace_back(post_process_fn);
 }
 
 void Op::operator()(const Tensor& arg, const Tensor* out) const {
@@ -145,13 +131,13 @@ Tensor& Op::operator()() const {
 thread_local int64_t Op::count = 0;
 const char* Op::prefix = "@drr_temp@_";
 
-const char Tensor::SOURCE_INPUT_NONE_TENSOR_NAME[] =
+const char Tensor::SOURCE_INPUT_NONE_TENSOR_NAME[] =  // NOLINT
     "__@source_input_none_tensor@__";
-const char Tensor::SOURCE_OUTPUT_NONE_TENSOR_NAME[] =
+const char Tensor::SOURCE_OUTPUT_NONE_TENSOR_NAME[] =  // NOLINT
     "__@source_output_none_tensor@__";
-const char Tensor::RESULT_INPUT_NONE_TENSOR_NAME[] =
+const char Tensor::RESULT_INPUT_NONE_TENSOR_NAME[] =  // NOLINT
     "__@result_input_none_tensor@__";
-const char Tensor::RESULT_OUTPUT_NONE_TENSOR_NAME[] =
+const char Tensor::RESULT_OUTPUT_NONE_TENSOR_NAME[] =  // NOLINT
     "__@result_output_none_tensor@__";
 
 void Tensor::Assign(const Tensor& other) {
@@ -174,8 +160,9 @@ void Tensor::operator=(const Tensor& other) const {  // NOLINT
 
 const drr::Op& ResultPattern::Op(
     const std::string& op_type,
-    const std::unordered_map<std::string, Attribute>& attributes) {
-  return ctx_->ResultOpPattern(op_type, attributes);
+    const std::unordered_map<std::string, Attribute>& attributes,
+    const std::unordered_map<std::string, Attribute>& runtime_attributes) {
+  return ctx_->ResultOpPattern(op_type, attributes, runtime_attributes);
 }
 
 drr::Tensor& ResultPattern::Tensor(const std::string& name) {
@@ -291,17 +278,12 @@ Attribute SourcePattern::Attr(const std::string& attr_name) const {
   return NormalAttribute(attr_name);
 }
 
-void SourcePattern::RequireEqual(const TensorShape& first,
-                                 const TensorShape& second) {
-  ctx_->RequireEqual(first, second);
-}
-void SourcePattern::RequireEqual(const TensorDataType& first,
-                                 const TensorDataType& second) {
-  ctx_->RequireEqual(first, second);
+void SourcePattern::AddConstraint(const ConstraintFunction& constraint_fn) {
+  ctx_->AddConstraint(constraint_fn);
 }
 
-void SourcePattern::RequireNativeCall(const ConstraintFunction& custom_fn) {
-  ctx_->RequireNativeCall(custom_fn);
+void SourcePattern::AddPostProcess(const PostProcessFunction& post_process_fn) {
+  ctx_->AddPostProcess(post_process_fn);
 }
 
 drr::Tensor& SourcePattern::InputNoneTensor() {

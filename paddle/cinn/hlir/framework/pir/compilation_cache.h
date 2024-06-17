@@ -19,7 +19,9 @@
 #include "paddle/cinn/backends/compiler.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/framework/pir/fusion_info.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::hlir::framework {
 
@@ -27,76 +29,84 @@ namespace pir {
 class OpLoweringGroup;
 class BackendResource final {
  public:
-  BackendResource(const Target& target) {
-    backend_compiler_ = backends::Compiler::Create(target);
-  }
-
   BackendResource(const Target& target,
                   const std::string& host_fn_name,
-                  const std::string& infer_fn_name)
-      : host_fn_name_(host_fn_name), infer_fn_name_(infer_fn_name) {
+                  const std::string& infer_fn_name,
+                  const std::map<int, CINNKernelInfo::ArgDimIdx>& int_args_map)
+      : host_fn_name_(host_fn_name),
+        infer_fn_name_(infer_fn_name),
+        int_args_map_(int_args_map) {
     backend_compiler_ = backends::Compiler::Create(target);
   }
 
   void* GetHostFuncPtr() const;
   void* GetInferFuncPtr() const;
-  pir::CINNKernelInfo GernerateKernelInfo(
-      const std::shared_ptr<pir::OpLoweringGroup>& group) const;
-  std::shared_ptr<backends::Compiler>& GetBackendCompiler();
-  const std::shared_ptr<backends::Compiler>& GetBackendCompiler() const;
-  void SetHostFnName(const std::string& name);
-  void SetInferFnName(const std::string& name);
+  void* GetCX86HostFuncPtr() const;
+  const std::map<int, CINNKernelInfo::ArgDimIdx>& GetIntArgsMap() const {
+    return int_args_map_;
+  }
+  const std::shared_ptr<backends::Compiler>& GetBackendCompiler() const {
+    return backend_compiler_;
+  }
+  pir::CINNKernelInfo GenerateKernelInfo() const;
 
  private:
   std::string host_fn_name_;
   std::string infer_fn_name_;
-  // std::string host_code_;
-  // std::vector<std::string> device_code_;
-  std::shared_ptr<backends::Compiler> backend_compiler_;
+  std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map_;
+
+  std::shared_ptr<backends::Compiler> backend_compiler_{nullptr};
 };
 
 class CompilationResult final {
  public:
-  explicit CompilationResult(const Target& target)
-      : target_(target), backend_resource_(target) {}
-
-  BackendResource& MutableBackendResource() { return backend_resource_; }
-  const BackendResource& GetBackendResource() const {
+  explicit CompilationResult(const Target& target) : target_(target) {}
+  const std::shared_ptr<BackendResource>& GetBackendResource() const {
     return backend_resource_;
   }
-  pir::CINNKernelInfo GetKernelInfo(
-      const std::shared_ptr<pir::OpLoweringGroup>& group) {
-    return backend_resource_.GernerateKernelInfo(group);
+
+  void SetBackendResource(const std::shared_ptr<BackendResource>& other) {
+    backend_resource_ = other;
+  }
+
+  pir::CINNKernelInfo GetKernelInfo() {
+    PADDLE_ENFORCE_NOT_NULL(backend_resource_,
+                            ::common::errors::PreconditionNotMet(
+                                "Found backend_resource_ is nullptr, please "
+                                "call SetBackendResource first."));
+    return backend_resource_->GenerateKernelInfo();
   }
 
  private:
   Target target_;
-  BackendResource backend_resource_;
+  std::shared_ptr<BackendResource> backend_resource_{nullptr};
 };
+
 }  // namespace pir
 
 class CompilationCache {
  public:
-  using CacheKey = std::shared_ptr<pir::OpLoweringGroup>;
+  using CacheKey = pir::FusionInfo;
   using CacheValue = std::shared_ptr<pir::CompilationResult>;
 
   static CompilationCache& Instance() {
-    static CompilationCache instance;
+    thread_local static CompilationCache instance;
     return instance;
   }
 
   bool Has(const CacheKey& key) const;
   const CacheValue& Get(const CacheKey& key) const;
-  pir::CINNKernelInfo GetKernelInfo(const CacheKey& key) const;
   void Insert(const CacheKey& key, const CacheValue& value);
   void Clear();
-  size_t KeyHash(const CacheKey& key) const;
+  size_t Size() const { return cache_.size(); }
+
+  pir::CINNKernelInfo GetKernelInfo(const CacheKey& key) const;
 
  private:
   CompilationCache() = default;
   CINN_DISALLOW_COPY_AND_ASSIGN(CompilationCache);
 
-  std::unordered_map<size_t, CacheValue> cache_;
+  std::unordered_map<CacheKey, CacheValue> cache_;
 };
 
 }  // namespace cinn::hlir::framework

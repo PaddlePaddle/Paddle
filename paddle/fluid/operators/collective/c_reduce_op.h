@@ -85,7 +85,7 @@ class CReduceOpCPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         gloo->IsInitialized(),
         true,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "You must initialize the gloo environment first to use it."));
     gloo::ReduceOptions opts(gloo->GetContext());
     opts.setInput(const_cast<T*>(send_buff), send_numel);
@@ -113,14 +113,14 @@ class CReduceOpCPUKernel : public framework::OpKernel<T> {
                 &gloo::product<T>));
         break;
       default:
-        PADDLE_ENFORCE_EQ(true,
-                          false,
-                          platform::errors::InvalidArgument(
-                              "Invalid reduce type: %d.", red_type));
+        PADDLE_ENFORCE_EQ(
+            true,
+            false,
+            phi::errors::InvalidArgument("Invalid reduce type: %d.", red_type));
     }
     gloo::reduce(opts);
 #else
-    PADDLE_THROW(platform::errors::Unavailable(
+    PADDLE_THROW(phi::errors::Unavailable(
         "PaddlePaddle should compile with GLOO by setting WITH_GLOO=ON"));
 #endif
   }
@@ -158,7 +158,7 @@ class CReduceOpXPUKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -169,7 +169,7 @@ class CReduceOpXPUKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "BKCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       stream = comm_ctx->GetStream();
@@ -180,10 +180,8 @@ class CReduceOpXPUKernel : public framework::OpKernel<T> {
       VLOG(3) << "old BKCLCommContext has rid " << rid;
     }
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
-                   ->x_context()
-                   ->xpu_stream;
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<phi::XPUContext*>(dev_ctx)->x_context()->xpu_stream;
     }
 
     BKCLOp bkcl_red_type = BKCL_ADD;
@@ -205,8 +203,8 @@ class CReduceOpXPUKernel : public framework::OpKernel<T> {
         break;
 
       default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Invalid reduce type: %d", red_type));
+        PADDLE_THROW(
+            phi::errors::InvalidArgument("Invalid reduce type: %d", red_type));
     }
 
     if (comm_ctx) {
@@ -222,7 +220,7 @@ class CReduceOpXPUKernel : public framework::OpKernel<T> {
                                              stream));
     }
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should be compiled with XPU."));
 #endif
   }
@@ -260,7 +258,7 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -271,7 +269,7 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       stream = comm_ctx->GetStream();
@@ -311,30 +309,30 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
 #endif
 
       default:
-        PADDLE_ENFORCE_EQ(true,
-                          false,
-                          platform::errors::InvalidArgument(
-                              "red_type must be one of kRedSum, "
-                              "kRedMax, kRedMin, kRedProd."));
+        PADDLE_ENFORCE_EQ(
+            true,
+            false,
+            phi::errors::InvalidArgument("red_type must be one of kRedSum, "
+                                         "kRedMax, kRedMin, kRedProd."));
     }
 
     if (comm_ctx) {
       comm_ctx->Reduce(out, *in, nccl_red_type, root, stream);
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(sendbuff,
-                                                               recvbuff,
-                                                               numel,
-                                                               dtype,
-                                                               nccl_red_type,
-                                                               root,
-                                                               comm->comm(),
-                                                               stream));
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclReduce(sendbuff,
+                                                          recvbuff,
+                                                          numel,
+                                                          dtype,
+                                                          nccl_red_type,
+                                                          root,
+                                                          comm->comm(),
+                                                          stream));
     }
 #else
-    PADDLE_ENFORCE_EQ(true,
-                      false,
-                      platform::errors::Unavailable(
-                          "PaddlePaddle should compile with GPU.."));
+    PADDLE_ENFORCE_EQ(
+        true,
+        false,
+        phi::errors::Unavailable("PaddlePaddle should compile with GPU.."));
 #endif
   }
 };

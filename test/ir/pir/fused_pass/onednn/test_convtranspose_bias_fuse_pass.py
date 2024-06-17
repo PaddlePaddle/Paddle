@@ -60,7 +60,7 @@ class TestConv2dTransposeAddFusePass(PassTest):
 
                 out = paddle.add(conv2d(x), bias)
                 out = paddle.assign(out)
-                self.pass_list = ['conv2d_transpose_bias_fuse_pass']
+                self.pass_attr_list = [{'conv2d_transpose_bias_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "bias": np.random.random(1).astype("float32"),
@@ -128,7 +128,7 @@ class TestConv2dTransposeAddFusePassWithAddParam(PassTest):
                 )
                 out = paddle.add(add_out, other_param)
                 out = paddle.assign(out)
-                self.pass_list = ['conv2d_transpose_bias_fuse_pass']
+                self.pass_attr_list = [{'conv2d_transpose_bias_fuse_pass': {}}]
                 self.feeds = {
                     "x": np.random.random((5, 5, 5, 5)).astype("float32"),
                     "bias": np.random.random(1).astype("float32"),

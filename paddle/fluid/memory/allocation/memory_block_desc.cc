@@ -17,9 +17,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/allocation/memory_block.h"
 
-namespace paddle {
-namespace memory {
-namespace detail {
+namespace paddle::memory::detail {
 
 MemoryBlock::Desc::Desc(MemoryBlock::Type t,
                         size_t i,
@@ -74,6 +72,4 @@ bool MemoryBlock::Desc::CheckGuards() const {
   return guard_begin == hash(*this, 1) && guard_end == hash(*this, 2);
 }
 
-}  // namespace detail
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::detail

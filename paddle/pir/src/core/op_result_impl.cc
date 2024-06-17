@@ -19,8 +19,7 @@
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/src/core/op_result_impl.h"
 
-namespace pir {
-namespace detail {
+namespace pir::detail {
 
 uint32_t OpResultImpl::index() const {
   if (const auto *outline_result = dyn_cast<OpOutlineResultImpl>(this)) {
@@ -32,7 +31,9 @@ uint32_t OpResultImpl::index() const {
 OpResultImpl::~OpResultImpl() {
   if (!use_empty()) {
     PADDLE_FATAL(
-        "Destroyed a op_result that is still in use. The owner op type is: %s",
+        "Destroyed a op_result that is still in use by %d. The owner op type "
+        "is: %s",
+        first_use()->owner()->name(),
         owner()->name());
   }
 }
@@ -109,5 +110,4 @@ OpInlineResultImpl::OpInlineResultImpl(Type type, uint32_t result_index)
           result_index));
 }
 
-}  // namespace detail
-}  // namespace pir
+}  // namespace pir::detail

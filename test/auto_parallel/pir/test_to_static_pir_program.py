@@ -91,11 +91,17 @@ class DemoNet(nn.Layer):
         return out
 
 
-def create_data_loader():
-    images = np.random.rand(BATCH_NUM, IMAGE_SIZE).astype('float32')
-    labels = np.random.rand(BATCH_NUM, CLASS_NUM).astype('float32')
-    dataset = RandomDataset(images, labels, BATCH_NUM)
-    loader = DataLoader(dataset, batch_size=BATCH_SIZE)
+def create_data_loader(
+    batch_size=BATCH_SIZE,
+    batch_num=BATCH_NUM,
+    image_size=IMAGE_SIZE,
+    class_num=CLASS_NUM,
+):
+    nsamples = batch_size * batch_num
+    images = np.random.rand(nsamples, image_size).astype('float32')
+    labels = np.random.rand(nsamples, class_num).astype('float32')
+    dataset = RandomDataset(images, labels, nsamples)
+    loader = DataLoader(dataset, batch_size=batch_size)
     return loader
 
 
@@ -128,7 +134,7 @@ class TestToStaticPirProgramTrain(unittest.TestCase):
             "pd_op.sgd_",
             "pd_op.sgd_",
             "pd_op.relu_grad",
-            "pd_op.c_allreduce_sum_",
+            "pd_op.c_allreduce_sum",
             "pd_op.matmul_grad",
             "pd_op.relu_grad",
             "pd_op.matmul_grad",

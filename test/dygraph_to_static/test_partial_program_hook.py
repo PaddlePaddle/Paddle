@@ -49,12 +49,15 @@ class TestPirPartiaProgramLayerHook(Dy2StTestBase):
 
     @test_ast_only
     def test_before_append_backward(self):
-        self.assertIsNone(self._hook.before_append_backward(None, None))
+        self.assertEqual(
+            self._hook.before_append_backward(None, None), (None, None)
+        )
 
     @test_ast_only
     def test_after_append_backward(self):
-        self.assertIsNone(
-            self._hook.after_append_backward(None, None, None, None, 0, 0)
+        self.assertEqual(
+            self._hook.after_append_backward(None, None, None, None, 0, 0),
+            (None, 0, None),
         )
 
     @test_ast_only
@@ -63,7 +66,7 @@ class TestPirPartiaProgramLayerHook(Dy2StTestBase):
 
 
 class TestPrimHook(Dy2StTestBase):
-    def setUp(self):
+    def init_test_params(self):
         core._set_prim_all_enabled(False)
 
         def f():
@@ -72,30 +75,33 @@ class TestPrimHook(Dy2StTestBase):
         concrete_program, partial_program = paddle.jit.to_static(
             f, full_graph=True
         ).get_concrete_program()
-        self._hook = program_translator.PrimHooker(
+        hook = program_translator.PrimHooker(
             concrete_program.main_program, None
         )
-        self._forward = partial_program.forward_program
-        self._whole = partial_program._train_program
+        forward = partial_program.forward_program
+        whole = partial_program._train_program
 
-        core._set_prim_all_enabled(True)
-
-    def tearDown(self):
-        core._set_prim_all_enabled(False)
+        return hook, forward, whole
 
     @test_ast_only
     def test_before_append_backward(self):
-        self._hook.before_append_backward(self._forward)
+        hook, forward, whole = self.init_test_params()
+        core._set_prim_all_enabled(True)
+        hook.before_append_backward(forward)
         self.assertNotIn(
-            'dropout', tuple(op.type for op in self._forward.blocks[0].ops)
+            'dropout', tuple(op.type for op in forward.blocks[0].ops)
         )
+        core._set_prim_all_enabled(False)
 
     @test_ast_only
     def test_after_append_backward(self):
-        self._hook.after_append_backward(self._whole, 0)
+        hook, forward, whole = self.init_test_params()
+        core._set_prim_all_enabled(True)
+        hook.after_append_backward(whole, 0)
         self.assertNotIn(
-            'dropout_grad', tuple(op.type for op in self._whole.blocks[0].ops)
+            'dropout_grad', tuple(op.type for op in whole.blocks[0].ops)
         )
+        core._set_prim_all_enabled(False)
 
 
 class TestPirPrimHook(Dy2StTestBase):

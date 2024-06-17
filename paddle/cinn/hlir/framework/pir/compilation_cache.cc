@@ -15,8 +15,6 @@
 #include "paddle/cinn/hlir/framework/pir/compilation_cache.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 
-#include "paddle/common/enforce.h"
-
 namespace cinn::hlir::framework {
 
 namespace pir {
@@ -24,7 +22,7 @@ void* BackendResource::GetHostFuncPtr() const {
   VLOG(4) << "Lookup kernel name: " << host_fn_name_;
   void* ptr = backend_compiler_->Lookup(host_fn_name_);
   PADDLE_ENFORCE_NOT_NULL(ptr,
-                          phi::errors::InvalidArgument(
+                          ::common::errors::InvalidArgument(
                               "Can't find kernel function %s", host_fn_name_));
   return ptr;
 }
@@ -34,43 +32,36 @@ void* BackendResource::GetInferFuncPtr() const {
   void* ptr = backend_compiler_->Lookup(infer_fn_name_);
   PADDLE_ENFORCE_NOT_NULL(
       ptr,
-      phi::errors::InvalidArgument("Can't find infer shape function %s",
-                                   infer_fn_name_));
+      ::common::errors::InvalidArgument("Can't find infer shape function %s",
+                                        infer_fn_name_));
   return ptr;
 }
 
-std::shared_ptr<backends::Compiler>& BackendResource::GetBackendCompiler() {
-  return backend_compiler_;
+void* BackendResource::GetCX86HostFuncPtr() const {
+  VLOG(4) << "Lookup kernel name: " << host_fn_name_ + "_CX86";
+  void* ptr = backend_compiler_->Lookup(host_fn_name_ + "_CX86");
+  PADDLE_ENFORCE_NOT_NULL(
+      ptr,
+      ::common::errors::InvalidArgument("Can't find kernel function %s",
+                                        host_fn_name_ + "_CX86"));
+  return ptr;
 }
 
-const std::shared_ptr<backends::Compiler>& BackendResource::GetBackendCompiler()
-    const {
-  return backend_compiler_;
-}
-
-void BackendResource::SetHostFnName(const std::string& name) {
-  host_fn_name_ = name;
-}
-
-void BackendResource::SetInferFnName(const std::string& name) {
-  infer_fn_name_ = name;
-}
-
-pir::CINNKernelInfo BackendResource::GernerateKernelInfo(
-    const std::shared_ptr<pir::OpLoweringGroup>& group) const {
+pir::CINNKernelInfo BackendResource::GenerateKernelInfo() const {
   pir::CINNKernelInfo kernel_info;
   kernel_info.fn_name = host_fn_name_;
   kernel_info.fn_ptr = GetHostFuncPtr();
   kernel_info.infer_shape_fn_ptr = GetInferFuncPtr();
-  kernel_info.int_args_map = group->int_args_map();
+  kernel_info.CX86_fn_ptr = GetCX86HostFuncPtr();
+  kernel_info.int_args_map = GetIntArgsMap();
   return kernel_info;
 }
 }  // namespace pir
 
 bool CompilationCache::Has(const CacheKey& key) const {
-  const bool has_existed = cache_.find(KeyHash(key)) != cache_.end();
-  VLOG(6) << "Check IsExisted in CompilationCache: " << key->FuncName() << " "
-          << has_existed;
+  const bool has_existed = cache_.find(key) != cache_.end();
+  VLOG(6) << "Check IsExisted in CompilationCache: " << has_existed << " - "
+          << key;
   return has_existed;
 }
 
@@ -79,24 +70,25 @@ const CompilationCache::CacheValue& CompilationCache::Get(
   PADDLE_ENFORCE_EQ(
       Has(key),
       true,
-      phi::errors::NotFound("%s is not in CompliatonCache.", key->FuncName()));
-  return cache_.at(KeyHash(key));
+      ::common::errors::NotFound("%s is not in CompliatonCache.", key));
+  return cache_.at(key);
 }
 
 pir::CINNKernelInfo CompilationCache::GetKernelInfo(const CacheKey& key) const {
-  return Get(key)->GetKernelInfo(key);
+  return Get(key)->GetKernelInfo();
 }
 
 void CompilationCache::Insert(const CacheKey& key, const CacheValue& value) {
-  VLOG(6) << "Insert CompilationCache for: " << key->FuncName();
-  cache_.insert({KeyHash(key), value});
+  VLOG(6) << "Insert CompilationCache for: " << key;
+  PADDLE_ENFORCE_EQ(Has(key),
+                    false,
+                    ::common::errors::PreconditionNotMet(
+                        "%s is already in CompliatonCache while calling "
+                        "CompilationCache::Insert().",
+                        key));
+  cache_.insert({key, value});
 }
 
 void CompilationCache::Clear() { cache_.clear(); }
-
-size_t CompilationCache::KeyHash(const CacheKey& key) const {
-  // TODO(Aurelius84): use a better hash function in next pr.
-  return std::hash<std::string>{}(key->FuncName());
-}
 
 }  // namespace cinn::hlir::framework

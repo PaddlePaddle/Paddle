@@ -107,6 +107,12 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
 
   if (x_dims != y_dims) {
     auto output_shape = GetOutputShape(x_dims, y_dims);
+    std::vector<symbol::DimExpr> out_dim;
+    out_dim.reserve(output_shape.size());
+    for (const auto shape_val : output_shape) {
+      out_dim.emplace_back(shape_val);
+    }
+
     if (!IsSameDim(x_dims, output_shape)) {
       // add broadcast to input 0
       if (auto full_op = op->operand_source(0)
@@ -244,7 +250,7 @@ class AddBroadcastToElementwisePass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->num_regions() > 0;
+    return op->num_regions() > 0 && op->isa<cinn::dialect::GroupOp>();
   }
 };
 

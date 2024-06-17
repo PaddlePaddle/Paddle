@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
-#include "paddle/fluid/inference/api/mkldnn_quantizer.h"
+#include "paddle/fluid/inference/api/onednn_quantizer.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 PD_DEFINE_string(dirname, "", "dirname to tests.");
@@ -25,7 +25,7 @@ namespace paddle {
 
 class MkldnnQuantizerTest : public testing::Test {
  public:
-  MkldnnQuantizerTest() {
+  MkldnnQuantizerTest() : predictor(nullptr), mkldnn_quantizer(nullptr) {
     AnalysisConfig config(FLAGS_dirname);
     predictor = CreatePaddlePredictor(config);
     auto* predictor_p = static_cast<AnalysisPredictor*>(predictor.get());

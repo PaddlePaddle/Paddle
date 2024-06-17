@@ -17,7 +17,7 @@ import logging
 import os
 import time
 
-from paddle.distributed.passes import PassManager, new_pass
+from paddle.distributed.passes.pass_base import PassManager, new_pass
 from paddle.framework import get_flags
 from paddle.static import append_backward, program_guard
 
@@ -32,10 +32,15 @@ from .utils import (
     use_new_executor,
 )
 
-NEW_IR_PASS = [
+PIR_PASS = [
     'fused_gemm_epilogue_pass',
     'fused_linear_param_grad_add_pass',
+    'fuse_allreduce_split_to_reducescatter_pass',
     'fused_dropout_add_pass',
+]
+
+PIR_PYTHON_PASS = [
+    'eliminate_transpose',
 ]
 
 
@@ -473,9 +478,12 @@ class Parallelizer:
             self._strategy.gradient_merge.avg = True
 
         # gradient_merge is then train-only optimization
+        grad_to_global_grad = {}
         if self.is_train and self._strategy.gradient_merge.enable:
             config = copy.deepcopy(self._strategy.gradient_merge.to_dict())
             config["dist_context"] = self._dist_context
+            config["grad_to_global_grad"] = grad_to_global_grad
+            config["pipeline_mode"] = self._strategy.pipeline.schedule_mode
             if gradient_sync_after_accumulate:
                 config["params_grads"] = global_params_grads
                 config[
@@ -513,13 +521,13 @@ class Parallelizer:
         ir_pass_list = []
         if self.is_train and self._strategy.fused_passes.enable:
             if len(self._strategy.fused_passes.fused_passes_list) > 0:
-                new_pass_list = []
+                program_pass_list = []
                 for p in self._strategy.fused_passes.fused_passes_list:
-                    if p in NEW_IR_PASS and enable_ir:
+                    if enable_ir and p in (PIR_PASS + PIR_PYTHON_PASS):
                         ir_pass_list.append(p)
                     else:
-                        new_pass_list.append(new_pass(p))
-                pass_manager = PassManager(new_pass_list)
+                        program_pass_list.append(new_pass(p))
+                pass_manager = PassManager(program_pass_list)
                 pass_manager.apply([main_program], [startup_program])
 
         main_program._pass_opt = {}
@@ -551,4 +559,6 @@ class Parallelizer:
                 "pp_stage": get_pp_stage(self._dist_context, rank),
                 "vpp_degree": self._strategy.pipeline.vpp_degree,
                 "dist_context": self._dist_context,
+                "split_backward": self._strategy.pipeline.split_backward,
+                "grad_to_global_grad": grad_to_global_grad,
             }

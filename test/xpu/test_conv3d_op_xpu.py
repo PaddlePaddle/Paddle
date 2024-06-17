@@ -31,14 +31,14 @@ def conv3d_forward_naive(
 ):
     if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
         raise ValueError(
-            "Unknown Attr(padding_algorithm): '%s'. "
-            "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+            f"Unknown Attr(padding_algorithm): '{str(padding_algorithm)}'. "
+            "It can only be 'SAME' or 'VALID'."
         )
 
     if data_format not in ["NCDHW", "NDHWC"]:
         raise ValueError(
-            "Unknown Attr(data_format): '%s' ."
-            "It can only be 'NCDHW' or 'NDHWC'." % str(data_format)
+            f"Unknown Attr(data_format): '{str(data_format)}' ."
+            "It can only be 'NCDHW' or 'NDHWC'."
         )
 
     channel_last = data_format == "NDHWC"
@@ -255,7 +255,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
-            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            # TODO(wangzhongpu): support onednn op in dygraph mode
             self.check_grad_with_place(
                 place,
                 {'Input', 'Filter'},
@@ -265,7 +265,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
 
         def test_check_grad_no_filter(self):
             place = paddle.XPUPlace(0)
-            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            # TODO(wangzhongpu): support onednn op in dygraph mode
             self.check_grad_with_place(
                 place,
                 ['Input'],
@@ -276,7 +276,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
 
         def test_check_grad_no_input(self):
             place = paddle.XPUPlace(0)
-            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            # TODO(wangzhongpu): support onednn op in dygraph mode
             self.check_grad_with_place(
                 place,
                 ['Filter'],

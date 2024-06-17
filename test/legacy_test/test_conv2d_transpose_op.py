@@ -21,7 +21,11 @@ import paddle
 from paddle import nn
 
 paddle.enable_static()
+import sys
+
 from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+
+sys.path.append("../deprecated/legacy_test")
 from test_attribute_var import UnittestBase
 from testsuite import create_op
 
@@ -33,8 +37,8 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
     padding_algorithm = attrs['padding_algorithm']
     if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
         raise ValueError(
-            "Unknown Attr(padding_algorithm): '%s'. "
-            "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+            f"Unknown Attr(padding_algorithm): '{str(padding_algorithm)}'. "
+            "It can only be 'SAME' or 'VALID'."
         )
 
     if attrs['data_format'] == 'NHWC':
@@ -223,7 +227,7 @@ class TestConv2DTransposeOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_output_with_place(

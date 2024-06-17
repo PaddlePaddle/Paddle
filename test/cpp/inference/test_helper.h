@@ -225,7 +225,7 @@ void TestInference(const std::string& dirname,
     fetch_targets[fetch_target_names[i]] = cpu_fetchs[i];
   }
 
-  // 6. If export Flags_use_mkldnn=True, use mkldnn related ops.
+  // 6. If export Flags_use_mkldnn=True, use onednn related ops.
   if (FLAGS_use_mkldnn) executor.EnableMKLDNN(*inference_program);
 
   // 7. Run the inference program

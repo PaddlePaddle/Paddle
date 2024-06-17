@@ -59,7 +59,7 @@ if(WITH_MKL)
   add_dependencies(cinn_mklml ${MKLML_PROJECT})
   add_definitions(-DCINN_WITH_MKL_CBLAS)
 endif()
-if(WITH_MKLDNN)
+if(WITH_ONEDNN)
   add_definitions(-DCINN_WITH_DNNL)
 endif()
 
@@ -160,11 +160,12 @@ cinn_cc_library(
   param_proto
   auto_schedule_proto
   schedule_desc_proto
+  tile_config_proto
   absl
   isl
   ginac
   pybind
-  group_cluster
+  op_fusion
   cinn_op_dialect
   ${jitify_deps})
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
@@ -177,9 +178,9 @@ target_link_libraries(cinnapi ${PYTHON_LIBRARIES})
 if(WITH_MKL)
   target_link_libraries(cinnapi cinn_mklml)
   add_dependencies(cinnapi cinn_mklml)
-  if(WITH_MKLDNN)
-    target_link_libraries(cinnapi ${MKLDNN_LIB})
-    add_dependencies(cinnapi ${MKLDNN_PROJECT})
+  if(WITH_ONEDNN)
+    target_link_libraries(cinnapi ${ONEDNN_LIB})
+    add_dependencies(cinnapi ${ONEDNN_PROJECT})
   endif()
 endif()
 
@@ -220,11 +221,12 @@ function(gen_cinncore LINKTYPE)
     param_proto
     auto_schedule_proto
     schedule_desc_proto
+    tile_config_proto
     absl
     isl
     ginac
     pybind
-    group_cluster
+    op_fusion
     cinn_op_dialect
     ${jitify_deps})
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
@@ -238,9 +240,9 @@ function(gen_cinncore LINKTYPE)
   if(WITH_MKL)
     target_link_libraries(${CINNCORE_TARGET} cinn_mklml)
     add_dependencies(${CINNCORE_TARGET} cinn_mklml)
-    if(WITH_MKLDNN)
-      target_link_libraries(${CINNCORE_TARGET} ${MKLDNN_LIB})
-      add_dependencies(${CINNCORE_TARGET} ${MKLDNN_PROJECT})
+    if(WITH_ONEDNN)
+      target_link_libraries(${CINNCORE_TARGET} ${ONEDNN_LIB})
+      add_dependencies(${CINNCORE_TARGET} ${ONEDNN_PROJECT})
     endif()
   endif()
 

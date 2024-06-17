@@ -16,8 +16,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 const phi::IntArray &IntArrayAttribute::data() const {
   return storage()->GetAsKey();
 }
@@ -30,7 +29,7 @@ phi::DataLayout DataLayoutAttribute::data() const {
   return storage()->GetAsKey();
 }
 
-phi::Scalar ScalarAttribute::data() {
+phi::Scalar ScalarAttribute::data() const {
   if (isa<pir::FloatAttribute>()) {
     return phi::Scalar(dyn_cast<pir::FloatAttribute>().data());
   } else if (isa<pir::DoubleAttribute>()) {
@@ -130,8 +129,7 @@ DataLayoutAttribute DataLayoutAttribute::Parse(
       parser.ctx, StringToDataLayoutMap().at(datalayout_token_val));
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IntArrayAttribute)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ScalarAttribute)

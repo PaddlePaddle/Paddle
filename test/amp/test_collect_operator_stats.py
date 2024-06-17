@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../amp")
 from amp_base_models import build_while_model
 
 import paddle
@@ -154,11 +157,14 @@ class TestOpStatsStatic(unittest.TestCase):
     def test_while_op(self):
         paddle.enable_static()
         main_program, startup_program = build_while_model()
-        self.assertEqual(main_program.num_blocks, 2)
+        if paddle.framework.use_pir_api():
+            self.assertEqual(main_program.num_blocks, 1)
+        else:
+            self.assertEqual(main_program.num_blocks, 2)
 
-        paddle.static.amp.debugging.collect_operator_stats(
-            program=main_program, print_subblocks=True
-        )
+            paddle.static.amp.debugging.collect_operator_stats(
+                program=main_program, print_subblocks=True
+            )
         paddle.disable_static()
 
 

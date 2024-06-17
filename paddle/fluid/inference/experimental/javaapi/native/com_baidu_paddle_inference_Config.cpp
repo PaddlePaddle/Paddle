@@ -122,7 +122,7 @@ Java_com_baidu_paddle_inference_Config_cpuMathLibraryNumThreads(
   return mathThreadsNum;
 }
 
-// 5. MKLDNN settings
+// 5. OneDNN settings
 
 JNIEXPORT void JNICALL Java_com_baidu_paddle_inference_Config_enableMKLDNN(
     JNIEnv* env, jobject obj, jlong cppPaddleConfigPointer) {

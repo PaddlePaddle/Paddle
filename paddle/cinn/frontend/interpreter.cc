@@ -14,8 +14,6 @@
 
 #include "paddle/cinn/frontend/interpreter.h"
 
-#include "paddle/cinn/auto_schedule/auto_tuner.h"
-#include "paddle/cinn/auto_schedule/tuning.h"
 #include "paddle/cinn/frontend/optimize.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph.h"
@@ -24,6 +22,7 @@
 #include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
 #include "paddle/cinn/runtime/flags.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_bool(enable_auto_tuner);
 
@@ -67,7 +66,11 @@ void Interpreter::LoadPaddleModel(const std::string& model_dir,
                                   bool params_combined,
                                   const std::string& model_name) {
   std::unordered_map<std::string, std::vector<int>> input_shape_map;
-  CHECK_EQ(impl_->input_names_.size(), impl_->input_shapes_.size());
+  PADDLE_ENFORCE_EQ(
+      impl_->input_names_.size() == impl_->input_shapes_.size(),
+      true,
+      phi::errors::InvalidArgument(
+          "input_names and input_shapes should have the same size"));
   for (int idx = 0; idx < impl_->input_names_.size(); ++idx) {
     input_shape_map[impl_->input_names_[idx]] = impl_->input_shapes_[idx];
   }
@@ -125,15 +128,7 @@ void Interpreter::Impl::Build(const Target& target,
 
   hlir::framework::CompilationContext context(graph, scope_, target);
   context.with_instantiate_variables = true;
-  if (FLAGS_enable_auto_tuner) {
-    VLOG(4) << "Compile with auto-tune";
-    auto_schedule::AutoTuner auto_tuner(target, graph.get());
-    auto_tuner.Initialize(auto_schedule::AutoTuner::Config(),
-                          graph_compiler_.get());
-    auto_schedule::TuningOptions tuning_options;
-    auto_schedule::TuningResult tuning_result = auto_tuner.Tune(tuning_options);
-    context.ApplyTuningResult(tuning_result);
-  }
+
   graph_compiler_ = std::make_unique<hlir::framework::GraphCompiler>(context);
   runtime_program_ = graph_compiler_->Build();
   runtime_program_->PreRun();

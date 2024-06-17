@@ -24,20 +24,14 @@
 
 #include "glog/logging.h"
 #include "paddle/common/enforce.h"
+#include "paddle/common/overloaded.h"
 #include "paddle/pir/include/core/dll_decl.h"
+#include "paddle/pir/include/core/utils.h"
 
 namespace symbol {
 
 #define SYMBOL_NOT_IMPLEMENTED \
   PADDLE_THROW(phi::errors::Unimplemented("Not Implemented"))
-
-template <class... Ts>
-struct Overloaded : Ts... {
-  using Ts::operator()...;
-};
-
-template <class... Ts>
-Overloaded(Ts...) -> Overloaded<Ts...>;
 
 template <typename T>
 struct UnaryDimExpr {
@@ -163,6 +157,12 @@ struct Equal final : public BinaryDimExpr<T> {
 template <typename T>
 struct Broadcastable final : public BinaryDimExpr<T> {
   using BinaryDimExpr<T>::BinaryDimExpr;
+  bool operator==(const Broadcastable& other) const {
+    return (this->data->lhs == other.data->lhs &&
+            this->data->rhs == other.data->rhs) ||
+           (this->data->lhs == other.data->rhs &&
+            this->data->rhs == other.data->lhs);
+  }
 };
 
 class DimExpr;
@@ -214,6 +214,8 @@ class IR_API DimExpr : public DimExprBase {
     return static_cast<const DimExprBase&>(*this);
   }
 
+  DEFINE_MATCH_METHOD();
+
   DimExpr operator+(const DimExpr& other) const;
   DimExpr operator-(const DimExpr& other) const;
   DimExpr operator*(const DimExpr& other) const;
@@ -243,6 +245,27 @@ template <>
 struct hash<symbol::DimExpr> {
   std::size_t operator()(const symbol::DimExpr& dim_expr) const {
     return symbol::GetHashValue(dim_expr);
+  }
+};
+
+template <>
+struct hash<std::vector<symbol::DimExpr>> {
+  std::size_t operator()(const std::vector<symbol::DimExpr>& dim_exprs) const {
+    std::size_t hash_value = 0;
+    const auto hash_func = std::hash<symbol::DimExpr>();
+    for (const auto& dim_expr : dim_exprs) {
+      hash_value = pir::detail::hash_combine(hash_value, hash_func(dim_expr));
+    }
+    return hash_value;
+  }
+};
+
+template <>
+struct hash<symbol::Broadcastable<symbol::DimExpr>> {
+  std::size_t operator()(
+      const symbol::Broadcastable<symbol::DimExpr>& broadcastable) const {
+    return pir::detail::hash_combine(GetHashValue(broadcastable.data->lhs),
+                                     GetHashValue(broadcastable.data->rhs));
   }
 };
 

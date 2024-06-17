@@ -17,6 +17,7 @@
 #include <memory>
 #include <unordered_map>
 
+#include "glog/logging.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/drr/include/drr_pattern_context.h"
 #include "paddle/fluid/pir/drr/src/attr_type_uilts.h"
@@ -37,10 +38,9 @@ class MatchContextImpl final {
     PADDLE_ENFORCE_NE(
         tensor_map_.count(tensor_name),
         0,
-        phi::errors::NotFound(
-            "Not found tensor."
-            "The Drr tensor [%s] must exist in pattern graph to be obtained.",
-            tensor_name));
+        phi::errors::NotFound("Not found tensor. The drr tensor [%s] must "
+                              "exist in pattern graph to be obtained.",
+                              tensor_name));
     return tensor_map_.at(tensor_name);
   }
 
@@ -48,10 +48,10 @@ class MatchContextImpl final {
     PADDLE_ENFORCE_NE(
         operation_map_.count(op_call),
         0,
-        phi::errors::NotFound("Not found operation."
-                              "The Drr operation [%s] must exist in the "
-                              "pattern graph to be obtained.",
-                              op_call->name()));
+        phi::errors::NotFound(
+            "Not found operation. The drr operation [%s] must exist in the "
+            "pattern graph to be obtained.",
+            op_call->name()));
     return operation_map_.at(op_call);
   }
 
@@ -65,10 +65,10 @@ class MatchContextImpl final {
     PADDLE_ENFORCE_NE(
         iter,
         tensor_map_.end(),
-        phi::errors::NotFound("Not found tensor."
-                              "The Drr tensor [%s] is not found in the map, "
-                              "unable to obtain the corresponding IrValue.",
-                              tensor_name));
+        phi::errors::NotFound(
+            "Not found tensor. The drr tensor [%s] is not found in the map, "
+            "unable to obtain the corresponding IrValue.",
+            tensor_name));
     return iter->second;
   }
 
@@ -77,10 +77,10 @@ class MatchContextImpl final {
     PADDLE_ENFORCE_NE(
         iter,
         attr_map_.end(),
-        phi::errors::NotFound("Not found attr."
-                              "The Drr attr [%s] is not found in the map, "
-                              "unable to obtain the corresponding Attribute.",
-                              attr_name));
+        phi::errors::NotFound(
+            "Not found attr. The drr attr [%s] is not found in the map, unable "
+            "to obtain the corresponding Attribute.",
+            attr_name));
     return iter->second;
   }
 
@@ -101,27 +101,32 @@ class MatchContextImpl final {
     tensor_map_.emplace(value_name, value);
   }
 
-  void BindIrOperation(const OpCall* op_call, pir::Operation* op) {
+  bool BindIrOperation(const OpCall* op_call, pir::Operation* op) {
     operation_map_.emplace(op_call, op);
     const auto& attrs = op_call->attributes();
     for (const auto& kv : attrs) {
-      std::visit(
+      bool bind_success = std::visit(
           [&](auto&& arg) {
             if constexpr (std::is_same_v<std::decay_t<decltype(arg)>,
                                          NormalAttribute>) {
-              PADDLE_ENFORCE(
-                  op->HasAttribute(kv.first),
-                  phi::errors::NotFound(
-                      "Not found attribute [%s] in Op [%s], please check the "
-                      "validity of the attribute name[%s].",
-                      kv.first,
-                      op->name(),
-                      kv.first));
-              BindIrAttr(arg.name(), op->attribute(kv.first));
+              if (op->HasAttribute(kv.first)) {
+                BindIrAttr(arg.name(), op->attribute(kv.first));
+                return true;
+              }
             }
+            return false;
           },
           kv.second);
+      if (!bind_success) {
+        LOG(WARNING) << "Not found attribute [" << kv.first << "] in Op ["
+                     << op->name()
+                     << "], please check the "
+                        "validity of the attribute name["
+                     << kv.first << "].";
+        return false;
+      }
     }
+    return true;
   }
 
  private:

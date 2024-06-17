@@ -41,7 +41,7 @@ class SendAndRecvKernel : public framework::OpKernel<T> {
     auto trainer_id = ctx.Attr<int>("trainer_id");
     auto mode = ctx.Attr<std::string>("mode");
 
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto& context = *pool.Get(place);
 
     distributed::HeterClient* rpc_client =
@@ -63,7 +63,7 @@ class SendAndRecvOp : public framework::OperatorWithKernel {
   phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return phi::KernelKey(data_type, platform::CPUPlace());
+    return phi::KernelKey(data_type, phi::CPUPlace());
   }
 };
 

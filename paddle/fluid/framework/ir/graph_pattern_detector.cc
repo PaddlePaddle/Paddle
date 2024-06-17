@@ -20,9 +20,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 size_t PDPattern::id_ = 0UL;
 
@@ -169,7 +167,7 @@ void GraphPatternDetector::ValidateByNodeRole(
 
 struct HitGroup {
   std::map<PDNode *, Node *> roles;
-
+  HitGroup() : roles(), nodes_() {}
   bool Match(Node *node, PDNode *pat) {
     if (nodes_.count(node)) {
       if (roles.count(pat) && roles[pat] == node) return true;
@@ -5450,6 +5448,21 @@ PDNode *patterns::BNAddActConvGrad::operator()(
   return bn1_grad;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+void patterns::SparseConvOptimPartern::operator()() {
+  auto sp_conv3d_x = pattern->NewNode(sp_conv3d_x_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("sparse_conv3d", "x");
+  auto sp_conv3d_kernel = pattern->NewNode(sp_conv3d_kernel_repr())
+                              ->AsInput()
+                              ->assert_is_op_input("sparse_conv3d", "kernel");
+  auto sp_conv3d_op =
+      pattern->NewNode(sp_conv3d_op_repr())->assert_is_op("sparse_conv3d");
+  auto sp_conv3d_out = pattern->NewNode(sp_conv3d_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("sparse_conv3d", "out");
+
+  sp_conv3d_op->LinksFrom({sp_conv3d_x, sp_conv3d_kernel})
+      .LinksTo({sp_conv3d_out});
+}
+
+}  // namespace paddle::framework::ir

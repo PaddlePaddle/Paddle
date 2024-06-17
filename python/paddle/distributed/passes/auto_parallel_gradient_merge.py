@@ -24,6 +24,7 @@ from paddle.distributed.auto_parallel.static.process_group import (
     get_world_process_group,
 )
 from paddle.distributed.auto_parallel.static.utils import (
+    is_backward_op,
     is_forward_op,
     is_optimize_op,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
@@ -37,6 +38,7 @@ from paddle.distributed.fleet.meta_optimizers.common import (
 from paddle.framework import core
 from paddle.static import device_guard
 
+from .auto_parallel_master_grad import _is_master_grad_cast_op
 from .pass_base import PassBase, PassType, register_pass
 
 world_process_group = get_world_process_group()
@@ -220,7 +222,7 @@ def _append_gradient_merge_backward_op(
                     outputs={"Out": startup_gradient_merge_var},
                     attrs={
                         "shape": grad.shape,
-                        "dtype": grad.dtype,
+                        "dtype": startup_gradient_merge_var.dtype,
                         "value": float(0),
                     },
                 )
@@ -305,6 +307,46 @@ def _move_reduce_to_optimizer_ops_block(
 
     main_block._sync_with_cpp()
     return optimize_ops_block
+
+
+def _remove_cast_for_master_grad(main_program, dist_context):
+    rename_var_map = {}
+    main_block = main_program.global_block()
+    for idx, op in reversed(list(enumerate(main_block.ops))):
+        if _is_master_grad_cast_op(main_block, op):
+            input_var_name = op.input_arg_names[0]
+            output_var_name = op.output_arg_names[0]
+            rename_var_map[input_var_name] = output_var_name
+            in_var = main_block.var(input_var_name)
+            out_var = main_block.var(output_var_name)
+            out_var.desc.set_dtype(in_var.dtype)
+            main_block._remove_op(idx, sync=False)
+            main_block._remove_var(input_var_name)
+
+    # rename "xxx@GRAD@master_grad_fp16" --> "xxx@GRAD"
+    if len(rename_var_map) > 0:
+        for op in reversed(main_block.ops):
+            if is_forward_op(op):
+                break
+            if is_backward_op(op):
+                output_var_names = op.output_arg_names
+                op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
+                for output_var_name in output_var_names:
+                    if output_var_name in rename_var_map:
+                        out_dims_mapping = op_dist_attr.get_output_dims_mapping(
+                            output_var_name
+                        )
+                        op.desc._rename_output(
+                            output_var_name, rename_var_map[output_var_name]
+                        )
+                        op_dist_attr.set_output_dims_mapping(
+                            rename_var_map[output_var_name], out_dims_mapping
+                        )
+                        del rename_var_map[output_var_name]
+        assert (
+            len(rename_var_map) == 0
+        ), f"rename_var_map must be empty, but it is: {rename_var_map}"
+    main_block._sync_with_cpp()
 
 
 def _create_cond_block_and_update_optimizer(
@@ -464,6 +506,8 @@ def parse_program(
             main_program, optimize_ops_block, params_grads
         )
 
+    _remove_cast_for_master_grad(main_program, dist_context)
+
     # 4 create gradient_merge_cond
     cond_var = _get_gm_cond_var(main_program, k_steps, dist_context)
 
@@ -478,6 +522,8 @@ def parse_program(
         avg,
         dist_context,
     )
+
+    return grad_to_gradient_merge
 
 
 @register_pass("auto_parallel_gradient_merge_pass")
@@ -506,8 +552,9 @@ class GradientMergePass(PassBase):
         gradient_sync_after_accumulate = self.get_attr(
             "gradient_sync_after_accumulate", False
         )
+        grad_to_global_grad = self.get_attr("grad_to_global_grad", {})
         with paddle.static.program_guard(main_program, startup_program):
-            parse_program(
+            grad_to_merge_grad = parse_program(
                 main_program,
                 startup_program,
                 params_grads,
@@ -518,3 +565,5 @@ class GradientMergePass(PassBase):
             )
 
         main_program._sync_with_cpp()
+        for k, v in grad_to_merge_grad.items():
+            grad_to_global_grad[k] = v

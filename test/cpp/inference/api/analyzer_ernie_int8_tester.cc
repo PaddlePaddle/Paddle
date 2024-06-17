@@ -58,7 +58,7 @@ void compare_int8(bool use_mkldnn = false) {
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), inputs);
 }
 
-TEST(Analyzer_ernie, compare_int8_mkldnn) {
+TEST(Analyzer_ernie, compare_int8_onednn) {
   compare_int8(true /* use_mkldnn */);
 }
 #endif

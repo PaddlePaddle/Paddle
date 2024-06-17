@@ -392,7 +392,7 @@ class PostTrainingQuantization:
         assert (
             activation_bits == weight_bits
         ), "activation_bits and weight_bits must be the same, other cases are not supported."
-        support_deploy_backend = [None, "tensorrt", "mkldnn", "arm"]
+        support_deploy_backend = [None, "tensorrt", "mkldnn", "onednn", "arm"]
         if not deploy_backend:
             self.quant_config = BaseQuantizer(
                 quantizable_op_type=quantizable_op_type,
@@ -403,7 +403,10 @@ class PostTrainingQuantization:
                 quantizable_op_type=quantizable_op_type,
                 quant_bits=weight_bits,
             )
-        elif deploy_backend.lower() == "mkldnn":
+        elif (
+            deploy_backend.lower() == "mkldnn"
+            or deploy_backend.lower() == "onednn"
+        ):
             self.quant_config = MKLDNNQuantizer(
                 quantizable_op_type=quantizable_op_type,
                 quant_bits=weight_bits,

@@ -18,6 +18,8 @@
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/complex_functors.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/index_calculator.h"
 
 namespace phi {
@@ -162,27 +164,56 @@ void CrossGradKernel(const Context& dev_ctx,
 
   const auto* input_x_data = input_x.data<T>();
   const auto* input_y_data = input_y.data<T>();
+  int64_t numel = x.numel();
   const auto* input_out_grad_data = input_out_grad.data<T>();
   auto* output_x_grad_data = dev_ctx.template Alloc<T>(x_grad);
   auto* output_y_grad_data = dev_ctx.template Alloc<T>(y_grad);
   auto index_calculator = phi::funcs::IndexCalculator(
       merged_dims.size() - 1, cal_dims, left_strides, full_strides);
 
-  int64_t numel = x.numel();
   backends::gpu::GpuLaunchConfig config =
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel / 3);
+  if (IsComplexType(x.dtype())) {
+    DenseTensor x_conj, y_conj;
+    DenseTensorMeta meta_xy(x.dtype(), x.dims());
+    x_conj.set_meta(meta_xy);
+    y_conj.set_meta(meta_xy);
 
-  CrossGrad<<<config.block_per_grid,
-              config.thread_per_block,
-              0,
-              dev_ctx.stream()>>>(input_x_data,
-                                  input_y_data,
-                                  input_out_grad_data,
-                                  output_x_grad_data,
-                                  output_y_grad_data,
-                                  full_strides[merge_axis],
-                                  numel / 3,
-                                  index_calculator);
+    auto* input_x_conj_data = dev_ctx.template Alloc<T>(&x_conj);
+    auto* input_y_conj_data = dev_ctx.template Alloc<T>(&y_conj);
+
+    phi::funcs::ForRange<Context> for_range(dev_ctx, numel);
+    phi::funcs::ConjFunctor<T> functor_x(
+        input_x_data, numel, input_x_conj_data);
+    phi::funcs::ConjFunctor<T> functor_y(
+        input_y_data, numel, input_y_conj_data);
+    for_range(functor_x);
+    for_range(functor_y);
+
+    CrossGrad<<<config.block_per_grid,
+                config.thread_per_block,
+                0,
+                dev_ctx.stream()>>>(input_x_conj_data,
+                                    input_y_conj_data,
+                                    input_out_grad_data,
+                                    output_x_grad_data,
+                                    output_y_grad_data,
+                                    full_strides[merge_axis],
+                                    numel / 3,
+                                    index_calculator);
+  } else {
+    CrossGrad<<<config.block_per_grid,
+                config.thread_per_block,
+                0,
+                dev_ctx.stream()>>>(input_x_data,
+                                    input_y_data,
+                                    input_out_grad_data,
+                                    output_x_grad_data,
+                                    output_y_grad_data,
+                                    full_strides[merge_axis],
+                                    numel / 3,
+                                    index_calculator);
+  }
 }
 }  // namespace phi
 
@@ -195,4 +226,6 @@ PD_REGISTER_KERNEL(cross_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

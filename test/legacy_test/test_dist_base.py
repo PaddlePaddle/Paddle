@@ -335,11 +335,7 @@ class TestDistRunnerBase:
 
         self.lr = args.lr
 
-        exec_strategy = base.ExecutionStrategy()
-        exec_strategy.num_threads = 1
-
         dist_strategy = DistributedStrategy()
-        dist_strategy.exec_strategy = exec_strategy
         dist_strategy.fuse_memory_size = 1  # MB
         dist_strategy.fuse_laryer_size = 1
         if args.use_local_sgd:
@@ -618,9 +614,6 @@ class TestDistRunnerBase:
         exe = base.Executor(place)
         exe.run(base.default_startup_program())
         print_to_err(type(self).__name__, "run worker startup program done.")
-
-        exec_strategy = base.ExecutionStrategy()
-        exec_strategy.num_threads = 1
 
         print_to_err(type(self).__name__, "begin to compile with data parallel")
         binary = compiler.CompiledProgram(
@@ -1047,7 +1040,7 @@ class TestDistBase(unittest.TestCase):
             ) as s:
                 s.bind(('', 0))
                 print_to_err(
-                    type(self).__name__, "socket name: %s" % s.getsockname()[1]
+                    type(self).__name__, f"socket name: {s.getsockname()[1]}"
                 )
                 return s.getsockname()[1]
 
@@ -1486,10 +1479,9 @@ class TestDistBase(unittest.TestCase):
     def _run_cluster_gloo(
         self, model, envs, update_method, check_error_log, log_name
     ):
-        assert update_method == "gloo", (
-            "_run_cluster_gloo must have update_method: gloo, but get %s"
-            % update_method
-        )
+        assert (
+            update_method == "gloo"
+        ), f"_run_cluster_gloo must have update_method: gloo, but get {update_method}"
         assert (
             not self._use_hallreduce
         ), "_run_cluster_gloo must have _use_hallreduce = false"
@@ -1558,9 +1550,7 @@ class TestDistBase(unittest.TestCase):
             if DIST_UT_PORT == 0:
                 # NOTE(wangxi). hallreduce test must use 4cards after nccl>=2.7
                 for i in range(0, 4):
-                    self._ps_endpoints += "127.0.0.1:%s," % (
-                        self._find_free_port()
-                    )
+                    self._ps_endpoints += f"127.0.0.1:{self._find_free_port()},"
             else:
                 for i in range(0, 4):
                     self._ps_endpoints += "127.0.0.1:%s," % (DIST_UT_PORT + i)
