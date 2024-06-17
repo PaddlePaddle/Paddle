@@ -584,12 +584,10 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
     Block_AttN_params<T> params, LoadFunc load_func, StoreFunc store_func) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const int bi = blockIdx.y;
-  int act_time_step = params.sequence_lengths[bi];
+  const int act_time_step = params.sequence_lengths[bi];
   if (act_time_step == 0) {
     return;
   }
-
-  act_time_step += params.pre_cache_length;
 
   const int *block_table =
       params.block_tables + bi * params.max_num_blocks_per_seq;
@@ -628,7 +626,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
   using QK_Packed_Int8_t = typename Packed_Int8_<Qk_vec, CACHE_TYPE>::Type;
 
   const int tid = threadIdx.x;
-  const int hi = blockIdx.x;  // head index
   const int kv_hi = blockIdx.x / GQA_NUM_SUB_PARTITIONS;
   const int gqa_sub_partition_id = blockIdx.x % GQA_NUM_SUB_PARTITIONS;
 
@@ -642,7 +639,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
   float v_dequant_scale =
       static_cast<float>(params.cache_v_dequant_scales[cache_id]);
 
-  const int bhi = bi * params.q_num_head + hi;
   const int ti =
       params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;
 
@@ -739,7 +735,7 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
                                k,
                                lane_id,
                                Dh,
-                               act_time_step - params.pre_cache_length,
+                               act_time_step,
                                params.inv_compression_ratio,
                                params.rope_theta);
       } else {
@@ -897,15 +893,6 @@ __global__ __launch_bounds__(THREADS_PER_BLOCK) void gqa_block_attention_kernel(
       }
 
       float qk = Qk_dot<T, THREADS_PER_KEY>::dot(q, k, params.inv_sqrt_dh);
-
-      if (params.attn_mask) {
-        auto mask_bhi = bhi;
-        if (params.mask_broadcast_num_heads) {
-          mask_bhi = bi;
-        }
-        T mask = params.attn_mask[mask_bhi * params.mask_length + ti];
-        qk += static_cast<float>(mask);
-      }
 
       if (ti < act_time_step && tid % THREADS_PER_KEY == 0) {
         qk_maxs[local_hi] = fmaxf(qk_maxs[local_hi], qk);
