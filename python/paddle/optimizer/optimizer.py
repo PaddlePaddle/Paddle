@@ -59,7 +59,6 @@ class _ParameterConfig(TypedDict):
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle.callbacks import Callback
     from paddle.nn.clip import GradientClipBase
 
     from ..base.framework import Operator, Program
@@ -397,7 +396,7 @@ class Optimizer:
                 >>> paddle.save(layer_state_dict, "emb.pdparams")
 
                 >>> scheduler = paddle.optimizer.lr.NoamDecay(
-                ...     d_model=0.01, warmup_steps=100, verbose=True)
+                ...     d_model=100, warmup_steps=100, verbose=True)
                 >>> adam = paddle.optimizer.Adam(
                 ...     learning_rate=scheduler,
                 ...     parameters=emb.parameters())
@@ -1369,7 +1368,13 @@ class Optimizer:
         startup_program: Program | None = None,
         parameters: list[Tensor] | list[str] | None = None,
         no_grad_set: set[Tensor] | set[str] | None = None,
-        callbacks: list[Callback] | None = None,
+        callbacks: list[
+            Callable[
+                [paddle.pir.Block, dict[str, Tensor | paddle.pir.Operation]],
+                None,
+            ]
+        ]
+        | None = None,
     ) -> list[tuple[Tensor, Tensor]]:
         """
         The first part of ``minimize``, do auto-diff to append backward operations for
@@ -1385,7 +1390,7 @@ class Optimizer:
                 will be updated.
             no_grad_set (set[Tensor]|set[str]|None, optional): Set of ``Tensor``  or ``Tensor.name`` that don't need
                 to be updated. The default value is None.
-            callbacks (list[Callback]|None, optional): list of callable objects to run when appending backward
+            callbacks (list|None, optional): list of callable objects to run when appending backward
                 operator for one parameter. The default value is None.
 
         Return:

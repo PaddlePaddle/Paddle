@@ -17,7 +17,7 @@ from __future__ import annotations
 import inspect
 import sys
 import warnings
-from typing import Callable, ContextManager, TypeVar
+from typing import Callable, ContextManager, TypeVar, overload
 
 import decorator
 from typing_extensions import ParamSpec
@@ -274,9 +274,17 @@ def _switch_tracer_mode_guard_(is_train=True):
         yield
 
 
-def no_grad(
-    func: Callable[_InputT, _RetT] | None = None
-) -> Callable[_InputT, _RetT] | ContextManager:
+@overload
+def no_grad(func: None = ...) -> ContextManager:
+    ...
+
+
+@overload
+def no_grad(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+    ...
+
+
+def no_grad(func=None):
     """
     :api_attr: imperative
 
