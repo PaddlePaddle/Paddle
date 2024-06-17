@@ -104,6 +104,9 @@ class TestReshardNdMeshCrossMesh:
         if rank_id in self._mesh0.process_ids:
             assert new_ops_name[2] == "pd_op.send_v2"
         else:
+            print(dist_program)
+            print(new_ops_name[-2])
+            print(new_ops_name, flush=True)
             assert new_ops_name[2] == "pd_op.recv_v2"
             assert new_ops_name[-2] == "pd_op.c_allreduce_sum"
             assert new_ops_name[-1] == "pd_op.c_allreduce_sum"
