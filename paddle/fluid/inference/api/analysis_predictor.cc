@@ -1054,7 +1054,6 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
                                                            tensor_out.end());
     pir::SaveCombineFunction(
         const_tensor_out, param_names, optimized_params_, true, false, true);
-    // Check if the contents of const_tensor_out and tensor_out are the same
   }
 
   if (config_.use_optimized_model_ && FileExists(optimized_params_)) {
