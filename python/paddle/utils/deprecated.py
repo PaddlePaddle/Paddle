@@ -15,12 +15,21 @@
 decorator to deprecate a function or class
 """
 
+from __future__ import annotations
+
 import functools
 import inspect
 import sys
 import warnings
+from typing import Callable, TypeVar
+
+from typing_extensions import ParamSpec
 
 import paddle
+
+_InputT = ParamSpec("_InputT")
+_RetT = TypeVar("_RetT")
+
 
 __all__ = []
 
@@ -35,7 +44,12 @@ class VisibleDeprecationWarning(UserWarning):
     """
 
 
-def deprecated(update_to="", since="", reason="", level=0):
+def deprecated(
+    update_to: str = "",
+    since: str = "",
+    reason: str = "",
+    level: int = 0,
+) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
     """Decorate a function to signify its deprecation.
 
     This function wraps a method that will soon be removed and does two things:
@@ -57,7 +71,7 @@ def deprecated(update_to="", since="", reason="", level=0):
         decorator: decorated function or class.
     """
 
-    def decorator(func):
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         """construct warning message, and return a decorated function or class."""
         assert isinstance(update_to, str), 'type of "update_to" must be str.'
         assert isinstance(since, str), 'type of "since" must be str.'
@@ -92,7 +106,7 @@ def deprecated(update_to="", since="", reason="", level=0):
             return func
 
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             """deprecated warning should be fired in 3 circumstances:
             1. current version is develop version, i.e. "0.0.0", because we assume develop version is always the latest version.
             2. since version is empty, in this case, API is deprecated in all versions.

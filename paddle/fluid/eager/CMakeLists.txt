@@ -1,5 +1,6 @@
 set(eager_deps
     phi
+    phi_core
     common
     hook_utils
     utils
@@ -14,7 +15,7 @@ set(eager_deps
     custom_operator_node)
 
 if(WITH_GPU OR WITH_ROCM)
-  set(eager_deps ${eager_deps} phi_kernel_gpu)
+  set(eager_deps ${eager_deps} phi_gpu)
 endif()
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))

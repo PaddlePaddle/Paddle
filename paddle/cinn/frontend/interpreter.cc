@@ -14,8 +14,6 @@
 
 #include "paddle/cinn/frontend/interpreter.h"
 
-#include "paddle/cinn/auto_schedule/auto_tuner.h"
-#include "paddle/cinn/auto_schedule/tuning.h"
 #include "paddle/cinn/frontend/optimize.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph.h"
@@ -130,15 +128,7 @@ void Interpreter::Impl::Build(const Target& target,
 
   hlir::framework::CompilationContext context(graph, scope_, target);
   context.with_instantiate_variables = true;
-  if (FLAGS_enable_auto_tuner) {
-    VLOG(4) << "Compile with auto-tune";
-    auto_schedule::AutoTuner auto_tuner(target, graph.get());
-    auto_tuner.Initialize(auto_schedule::AutoTuner::Config(),
-                          graph_compiler_.get());
-    auto_schedule::TuningOptions tuning_options;
-    auto_schedule::TuningResult tuning_result = auto_tuner.Tune(tuning_options);
-    context.ApplyTuningResult(tuning_result);
-  }
+
   graph_compiler_ = std::make_unique<hlir::framework::GraphCompiler>(context);
   runtime_program_ = graph_compiler_->Build();
   runtime_program_->PreRun();

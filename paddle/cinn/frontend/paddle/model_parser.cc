@@ -79,7 +79,7 @@ void TensorFromStream(std::istream &is,
   void *buf;
   size_t size = tensor->shape().numel() * SizeOfType(desc.data_type());
   // allocate memory
-  target.arch.Visit(adt::match{
+  target.arch.Match(
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) {
         switch (static_cast<int>(desc.data_type())) {
@@ -121,8 +121,7 @@ void TensorFromStream(std::istream &is,
         PADDLE_THROW(phi::errors::Fatal(
             "To use CUDA backends, you need to set WITH_CUDA ON!"));
 #endif
-      },
-  });
+      });
 }
 
 void LoadLoDTensor(std::istream &is,
