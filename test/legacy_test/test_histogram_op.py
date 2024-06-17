@@ -155,7 +155,7 @@ class TestHistogramOpError(unittest.TestCase):
             )
 
 
-class TestHistogramOpAPIWithWeight(unittest.TestCase):
+class TestHistogram(unittest.TestCase):
     """Test histogram api."""
 
     def setUp(self):
@@ -173,6 +173,7 @@ class TestHistogramOpAPIWithWeight(unittest.TestCase):
         self.min = 1
         self.max = 5
         self.density = False
+        self.is_weight = True
 
     @test_with_pir_api
     def test_static_graph(self):
@@ -182,32 +183,50 @@ class TestHistogramOpAPIWithWeight(unittest.TestCase):
             inputs = paddle.static.data(
                 name='input', dtype='float32', shape=self.in_shape
             )
-            weight = paddle.static.data(
-                name='weight', dtype='float32', shape=self.in_shape
-            )
-            output = paddle.histogram(
-                inputs,
-                bins=self.bins,
-                min=self.min,
-                max=self.max,
-                weight=weight,
-                density=self.density,
-            )
+            if self.is_weight:
+                weight = paddle.static.data(
+                    name='weight', dtype='float32', shape=self.in_shape
+                )
+                output = paddle.histogram(
+                    inputs,
+                    bins=self.bins,
+                    min=self.min,
+                    max=self.max,
+                    weight=weight,
+                    density=self.density,
+                )
+            else:
+                output = paddle.histogram(
+                    inputs,
+                    bins=self.bins,
+                    min=self.min,
+                    max=self.max,
+                    density=self.density,
+                )
             place = base.CPUPlace()
             if base.core.is_compiled_with_cuda():
                 place = base.CUDAPlace(0)
             exe = base.Executor(place)
-            res = exe.run(
-                feed={'input': self.input_np, 'weight': self.weight_np},
-                fetch_list=[output],
-            )
+            if self.is_weight:
+                res = exe.run(
+                    feed={
+                        'input': self.input_np,
+                        'weight': self.weight_np,
+                    },
+                    fetch_list=[output],
+                )
+            else:
+                res = exe.run(
+                    feed={'input': self.input_np}, fetch_list=[output]
+                )
+
             actual = np.array(res[0])
             Out, _ = np.histogram(
                 self.input_np,
                 bins=self.bins,
                 range=(self.min, self.max),
                 density=self.density,
-                weights=self.weight_np,
+                weights=self.weight_np if self.is_weight else None,
             )
             np.testing.assert_allclose(actual, Out, rtol=1e-58, atol=1e-5)
 
@@ -222,32 +241,73 @@ class TestHistogramOpAPIWithWeight(unittest.TestCase):
             ).astype(np.float32)
             weight = paddle.to_tensor(weight_np)
             actual = paddle.histogram(
-                inputs, bins=5, min=1, max=5, weight=weight
+                inputs,
+                bins=5,
+                min=1,
+                max=5,
+                weight=weight if self.is_weight else None,
+                density=self.density,
             )
             Out, _ = np.histogram(
-                inputs_np, bins=5, range=(1, 5), weights=weight_np
+                inputs_np,
+                bins=5,
+                range=(1, 5),
+                weights=weight_np if self.is_weight else None,
+                density=self.density,
             )
             np.testing.assert_allclose(
                 actual.numpy(), Out, rtol=1e-58, atol=1e-5
             )
 
 
-class TestHistogramOpAPIWithDensity(TestHistogramOpAPIWithWeight):
+class TestHistogramOpAPIWithDensity(TestHistogram):
     def init_test_case(self):
         self.in_shape = (10, 12)
         self.bins = 5
         self.min = 1
         self.max = 5
         self.density = True
+        self.is_weight = False
 
 
-class TestHistogramOp_ZeroDim(TestHistogramOpAPIWithWeight):
+class TestHistogramOpAPIWithWeight(TestHistogram):
+    def init_test_case(self):
+        self.in_shape = (10, 12)
+        self.bins = 5
+        self.min = 1
+        self.max = 5
+        self.density = False
+        self.is_weight = True
+
+
+class TestHistogramOpAPIWithWeightAndDensity(TestHistogram):
+    def init_test_case(self):
+        self.in_shape = (10, 12)
+        self.bins = 5
+        self.min = 1
+        self.max = 5
+        self.density = True
+        self.is_weight = True
+
+
+class TestHistogramOpAPIWithFloat32(TestHistogram):
+    def init_test_case(self):
+        self.in_shape = (10, 12)
+        self.bins = 5
+        self.min = 1
+        self.max = 5
+        self.density = False
+        self.is_weight = False
+
+
+class TestHistogramOp_ZeroDim(TestHistogram):
     def init_test_case(self):
         self.in_shape = []
         self.bins = 5
         self.min = 1
         self.max = 5
         self.density = False
+        self.is_weight = False
 
 
 if __name__ == "__main__":

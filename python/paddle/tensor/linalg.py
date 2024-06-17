@@ -2234,12 +2234,12 @@ def histogram(
             input, 'X', ['int32', 'int64', 'float32', 'float64'], 'histogram'
         )
 
-        if density or weight:
+        if weight is not None or (weight is not None and density):
             check_variable_and_dtype(
                 weight,
-                "Weight",
-                ["int32", "int64", "float32", "float64"],
-                "histogram",
+                'Weight',
+                ['int32', 'int64', 'float32', 'float64'],
+                'histogram',
             )
             out = helper.create_variable_for_type_inference(
                 dtype=VarDesc.VarType.FP32
