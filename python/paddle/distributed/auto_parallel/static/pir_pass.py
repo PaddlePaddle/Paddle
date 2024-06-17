@@ -277,3 +277,27 @@ def eliminate_transpose_by_reshape(program):
                 transpose_var.replace_all_uses_with(reshape_var)
                 op.erase()
     return program
+
+
+def remove_shadow_output(program):
+    block = program.global_block()
+    ops = block.ops
+    need_remove_ops = []
+    op_num = len(ops)
+    for idx in range(op_num - 2):
+        if (
+            ops[idx].name() == 'pd_op.c_reducescatter'
+            and ops[idx + 1].name() == "pd_op.assign"
+            and ops[idx + 2].name() == "pd_op.add"
+        ):
+            assign_output = ops[idx + 1].result(0)
+            for op in ops:
+                if (
+                    op.name() == 'builtin.shadow_output'
+                    and op in assign_output.all_used_ops()
+                ):
+                    need_remove_ops.append(op)
+
+    for op in need_remove_ops:
+        block.remove_op(op)
+    return program

@@ -86,6 +86,12 @@ class NCCLCommContext final : public CommContext {
                      ncclRedOp_t reduce_type,
                      gpuStream_t stream);
 
+  void ReduceScatterAdd(phi::DenseTensor* out_tensor,
+                        const phi::DenseTensor& in_tensor,
+                        const phi::DenseTensor& bias_tensor,
+                        ncclRedOp_t reduce_type,
+                        gpuStream_t stream);
+
   void AllGather(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,
                  gpuStream_t stream);

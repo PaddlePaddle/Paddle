@@ -1103,6 +1103,16 @@ class _ExecutorCache:
                     for job_type in plan.job_types():
                         ir_program = plan.ir_program(job_type)
                         eliminate_transpose_by_reshape(ir_program)
+
+                elif p == 'fuse_c_reducescatter_add_pass':
+                    from paddle.distributed.auto_parallel.static.pir_pass import (
+                        remove_shadow_output,
+                    )
+
+                    for job_type in plan.job_types():
+                        ir_program = plan.ir_program(job_type)
+                        remove_shadow_output(ir_program)
+                    pm.add_pass(p, {})
                 else:
                     pm.add_pass(p, {})
 
@@ -2538,6 +2548,7 @@ class Executor:
             and program._fleet_opt.get("use_ps_gpu", False)
             and program._fleet_opt.get("dump_fields_path", "") == ""
         )
+
         if reused_trainer is False:
             trainer_instance = (
                 self._default_executor.init_for_dataset(  # -->InitForDataset
