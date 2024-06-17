@@ -162,7 +162,7 @@ class Adam(Optimizer):
             >>> out = linear_1(inp)
             >>> out = linear_2(out)
             >>> loss = paddle.mean(out)
-            >>> adam = paddle.optimizer.Adam(
+            >>> adam = paddle.optimizer.Adam( # type: ignore
             ...     learning_rate=0.1,
             ...     parameters=[{
             ...         'params': linear_1.parameters()

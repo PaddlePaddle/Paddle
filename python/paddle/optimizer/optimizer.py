@@ -177,7 +177,7 @@ class Optimizer:
             >>> out = linear_1(inp)
             >>> out = linear_2(out)
             >>> loss = paddle.mean(out)
-            >>> sgd = paddle.optimizer.SGD(
+            >>> sgd = paddle.optimizer.SGD( # type: ignore
             ...     learning_rate=0.1,
             ...     parameters=[{
             ...         'params': linear_1.parameters()
