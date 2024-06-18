@@ -1015,7 +1015,7 @@ void LoopAssignReduce(
   // shape and axis.
   CHECK(shape_dict.count(reducer->inlinks_in_order()[0]->source()->id()));
   auto shape = shape_dict.at(reducer->inlinks_in_order()[0]->source()->id());
-  auto axes = absl::get<std::vector<int>>(reducer->attrs.attr_store.at("dim"));
+  auto axes = absl::get<std::vector<int>>(reducer->attrs.attr_store.at("axis"));
   if (axes.empty()) {
     for (int idx = 0; idx < shape.size(); idx++) {
       axes.push_back(idx);
@@ -1277,7 +1277,7 @@ void InsertSyncThread(
     const std::unordered_map<std::string, ir::Tensor>& tensor_map) {
   CHECK(shape_dict.count(node->inlinks_in_order()[0]->source()->id()));
   auto shape = shape_dict.at(node->inlinks_in_order()[0]->source()->id());
-  auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("dim"));
+  auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("axis"));
   if (axes.empty()) {
     for (int idx = 0; idx < shape.size(); idx++) {
       axes.push_back(idx);
@@ -1352,7 +1352,7 @@ void MergeReduceToReduce(
 
   CHECK(shape_dict.count(node->inlinks_in_order()[0]->source()->id()));
   auto shape = shape_dict.at(node->inlinks_in_order()[0]->source()->id());
-  auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("dim"));
+  auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("axis"));
   if (axes.empty()) {
     for (int idx = 0; idx < shape.size(); idx++) {
       axes.push_back(idx);

@@ -176,7 +176,7 @@ class FusionHelperBase {
         0,
         phi::errors::InvalidArgument("The input node should not be empty!"));
     auto inshape = shape_dict_.at(producers[0]->id());
-    auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("dim"));
+    auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("axis"));
     if (WithoutLastDimInReduce(inshape, axes)) {
       int lane = 1;
       for (int idx = axes.back() + 1; idx < inshape.size(); ++idx) {

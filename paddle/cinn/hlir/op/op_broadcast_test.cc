@@ -230,8 +230,8 @@ TEST(Operator, Operator_BroadcastTo_0) {
   std::vector<int> broadcast_axes = {0};
   attrs.attr_store["broadcast_axes"] = broadcast_axes;
 
-  std::vector<int> dim = {0, 2, 3};
-  attrs.attr_store["dim"] = dim;
+  std::vector<int> axis = {0, 2, 3};
+  attrs.attr_store["axis"] = axis;
 
   std::vector<Type> type{Float(32)};
   cinn::common::Target target = cinn::common::DefaultHostTarget();
@@ -275,6 +275,7 @@ TEST(Operator, Operator_BroadcastTo_0) {
   auto tensor_4 = out_4.as_tensor_ref();
   poly::StageMap stages_4 = rets_4.back();
 
+  attrs.attr_store.erase("axis");
   auto impl_3 = OpStrategy::SelectImpl(strategy[elementwise_add](
       attrs, {tensor_1, tensor_2}, type, {out_shape}, target));
   std::vector<cinn::common::CINNValue> cinn_inputs_3 = {
