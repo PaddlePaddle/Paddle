@@ -113,9 +113,6 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
     pat.Tensor("f") = split_with_num(pat.Tensor("d"), pat.Tensor("e"));
     pat.Tensor("g") = builtin_slice(pat.Tensor("f"));
     pat.Tensor("h") = assign(pat.Tensor("g"));
-    pat.Tensor("b_g"),
-        pat.Tensor("c_g") =
-            add_grad(pat.Tensor("b"), pat.Tensor("c"), pat.Tensor("grad"));
     add_grad({&pat.Tensor("b"), &pat.Tensor("c"), &pat.Tensor("grad")},
              {&pat.Tensor("b_g"), &pat.Tensor("c_g")});
 
@@ -148,7 +145,7 @@ class FuseAllreduceSplitToReducescatterPass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add(paddle::drr::Create<FusedAllReduceSplitPattern1>(context));
+    // ps.Add(paddle::drr::Create<FusedAllReduceSplitPattern1>(context));
     ps.Add(paddle::drr::Create<FusedAllReduceSplitPattern2>(context));
 
     return ps;
