@@ -129,6 +129,7 @@ struct SearchAlgorithm<NodePairPattern, Phrase, GraphMatcher, GraphOperation> {
       for (PatternNodePtr<Phrase> j : graph_->all_pattern_nodes()) {
         if (i == j) continue;
         const auto& pair = std::make_pair(i, j);
+        VLOG(4) << "Testing Matched Node Pair: (" << i << ", " << j << ")";
         if (GraphMatcher()(*graph_, i, j) && !visited_node_pair.count(pair)) {
           visited_node_pair.insert(pair);
           VLOG(4) << "Find Matched Node Pair: (" << i << ", " << j << ")";
@@ -391,6 +392,8 @@ struct HorizontalCheckMiddleOutputVar {
     auto get_axes_from_valuedim = [&](const ValueDim& vdim) {
       return (sp->GetAxesInfoManager()).GetAxes(vdim.v_).axis_names[vdim.idx_];
     };
+    VLOG(4) << "origin lhs_dims.size() = " << lhs_dims.size();
+    VLOG(4) << "origin rhs_dims.size() = " << rhs_dims.size();
     std::vector<ValueDim> lhs_squeeze_value_dim = SqueezedValueDim(lhs_dims);
     std::vector<ValueDim> rhs_squeeze_value_dim = SqueezedValueDim(rhs_dims);
 
@@ -438,7 +441,6 @@ struct HorizontalCheckMiddleOutputVar {
                   const PatternNodePtr<T>& lhs,
                   const PatternNodePtr<T>& rhs) {
     // Middle Variable Must be ( id-dependent ) to support horizontal fusion.
-    return DontHaveMiddleVariable(graph, lhs, rhs);
     if (DontHaveMiddleVariable(graph, lhs, rhs)) return true;
     const auto& left_dims_vec = GetLoopValueDims(lhs->stmt_pattern());
     const auto& right_dims_vec = GetLoopValueDims(rhs->stmt_pattern());
