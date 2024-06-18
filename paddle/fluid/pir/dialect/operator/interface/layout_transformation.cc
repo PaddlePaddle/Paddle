@@ -103,13 +103,8 @@ common::DataLayout PreferLayoutImpl<Conv2dOp>(pir::Operation* op) {
 }
 
 template <>
-std::vector<pir::Value> RelevantInputsImpl<Conv2dOp>(pir::Operation* op) {
-  // Note(lyk): We exhibit the layout transformation for filter of conv2d
-  // due to issues with its infermeta and kernel not functioning
-  // properly in NHWC layout. However, if the FLAGS_manually_trans_conv_filter
-  // is enabled, the transfer_layout_pass can also operate correctly.
-  auto concrete_op = op->dyn_cast<Conv2dOp>();
-  return {concrete_op.input()};
+bool CanBeModifiedImpl<Conv2dOp>(pir::Operation* op) {
+  return false;
 }
 
 template <>

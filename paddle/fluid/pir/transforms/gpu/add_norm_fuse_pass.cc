@@ -311,7 +311,7 @@ class AddGroupNormFusePattern : public paddle::drr::DrrPatternBase {
               ? add1(pat.Tensor("any_tensor"), pat.Tensor("add_out"))
               : add1(pat.Tensor("add_out"), pat.Tensor("any_tensor"));
     }
-    pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) {
       auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
       if (!x_dtype.isa<pir::Float16Type>() &&
           !x_dtype.isa<pir::BFloat16Type>()) {
@@ -361,7 +361,7 @@ class AddGroupNormWithActPattern : public paddle::drr::DrrPatternBase {
                             &pat.Tensor("mean_out_0"),
                             &pat.Tensor("variance_out_0")});
     pat.Tensor("silu_out") = silu(pat.Tensor("group_out"));
-    pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
+    pat.AddConstraint([](const paddle::drr::MatchContext &match_ctx) {
       auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
       if (!x_dtype.isa<pir::Float16Type>() &&
           !x_dtype.isa<pir::BFloat16Type>()) {
@@ -388,49 +388,6 @@ class AddGroupNormWithActPattern : public paddle::drr::DrrPatternBase {
                                 &res.Tensor("add_out"),
                                 &res.Tensor("mean_out"),
                                 &res.Tensor("variance_out")});
-  }
-};
-
-class GroupNormWithActPattern : public paddle::drr::DrrPatternBase {
- public:
-  uint32_t benefit() const override { return 1; }
-  std::string name() const override { return "GroupNormWithActPattern"; }
-
-  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-    paddle::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &group_norm = pat.Op(paddle::dialect::GroupNormOp::name(),
-                                    {{"epsilon", pat.Attr("epsilon")},
-                                     {"groups", pat.Attr("groups")},
-                                     {"data_format", pat.Attr("data_format")}});
-    const auto &silu = pat.Op(paddle::dialect::SiluOp::name());
-    group_norm({&pat.Tensor("x"), &pat.Tensor("scale"), &pat.Tensor("bias")},
-               {&pat.Tensor("group_out"),
-                &pat.Tensor("mean_out_0"),
-                &pat.Tensor("variance_out_0")});
-    pat.Tensor("silu_out") = silu(pat.Tensor("group_out"));
-    pat.AddConstraint([this](const paddle::drr::MatchContext &match_ctx) {
-      auto x_dtype = pir::GetDataTypeFromValue(match_ctx.Tensor("x"));
-      if (!x_dtype.isa<pir::Float16Type>() &&
-          !x_dtype.isa<pir::BFloat16Type>()) {
-        return false;
-      }
-      return true;
-    });
-    paddle::drr::ResultPattern res = pat.ResultPattern();
-    const auto &add_group_norm_silu_op =
-        res.Op(paddle::dialect::AddGroupNormSiluOp::name(),
-               {{"epsilon", pat.Attr("epsilon")},
-                {"groups", pat.Attr("groups")},
-                {"data_format", pat.Attr("data_format")},
-                {"activation", res.StrAttr("silu")}});
-    add_group_norm_silu_op({&res.Tensor("x"),
-                            &res.InputNoneTensor(),
-                            &res.Tensor("scale"),
-                            &res.Tensor("bias")},
-                           {&res.Tensor("silu_out"),
-                            &res.OutputNoneTensor(),
-                            &res.Tensor("mean_out"),
-                            &res.Tensor("variance_out")});
   }
 };
 
@@ -481,8 +438,7 @@ class AddNormFusePass : public pir::PatternRewritePass {
 
     // add_group_norm_silu-silu --->add_group_norm_silu
     ps.Add(paddle::drr::Create<AddGroupNormWithActPattern>(context));
-    // group-silu->add_group_norm_silu
-    ps.Add(paddle::drr::Create<GroupNormWithActPattern>(context));
+    // group-silu->add_group_norm_silu moved to group_norm_silu_fuse_pass
     return ps;
   }
 };

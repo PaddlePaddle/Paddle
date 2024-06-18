@@ -23,10 +23,21 @@ import threading
 import types
 import warnings
 from collections import OrderedDict
+from collections.abc import Sequence
 from contextlib import contextmanager
-from typing import Any
+from types import ModuleType
+from typing import Any, Callable, Protocol, TypedDict, TypeVar, overload
+
+from typing_extensions import (
+    Literal,
+    NotRequired,
+    ParamSpec,
+    TypeAlias,
+    Unpack,
+)
 
 import paddle
+from paddle._typing import NestedSequence
 from paddle.base import core, dygraph
 from paddle.base.compiler import (
     BuildStrategy,
@@ -45,6 +56,7 @@ from paddle.base.framework import (
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import use_pir_api
 from paddle.nn import Layer
+from paddle.static import InputSpec
 from paddle.static.io import save_inference_model
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
@@ -70,6 +82,13 @@ from .translated_layer import (
 )
 
 ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
+
+
+_F = TypeVar('_F', bound=Callable[..., Any])
+_LayerT = TypeVar("_LayerT", bound=Layer)
+_RetT = TypeVar("_RetT")
+_InputT = ParamSpec("_InputT")
+Backends: TypeAlias = Literal["CINN"]
 
 
 @contextmanager
@@ -98,13 +117,13 @@ def copy_decorator_attrs(original_func, decorated_obj):
     return decorated_obj
 
 
-def ignore_module(modules: list[Any]):
+def ignore_module(modules: list[ModuleType]) -> None:
     """
     Adds modules that ignore transcription.
     Builtin modules that have been ignored are collections, pdb, copy, inspect, re, numpy, logging, six
 
     Args:
-        modules (List[Any]): Ignored modules that you want to add
+        modules (list[ModuleType]): Ignored modules that you want to add
 
     Examples:
         .. code-block:: python
@@ -131,6 +150,67 @@ def _check_and_set_backend(backend, build_strategy):
         )
     if backend == 'CINN':
         build_strategy.build_cinn_pass = True
+
+
+class ToStaticOptions(TypedDict):
+    property: NotRequired[bool]
+    full_graph: NotRequired[bool]
+
+
+class ToStaticDecorator(Protocol):
+    @overload
+    def __call__(self, function: _LayerT) -> _LayerT:
+        ...
+
+    @overload
+    def __call__(
+        self, function: Callable[_InputT, _RetT]
+    ) -> StaticFunction[_InputT, _RetT]:
+        ...
+
+
+@overload
+def to_static(
+    function: _LayerT,
+    input_spec: NestedSequence[InputSpec] | None = ...,
+    build_strategy: BuildStrategy | None = ...,
+    backend: Backends | None = ...,
+    **kwargs: Unpack[ToStaticOptions],
+) -> _LayerT:
+    ...
+
+
+@overload
+def to_static(
+    function: Callable[_InputT, _RetT],
+    input_spec: NestedSequence[InputSpec] | None = ...,
+    build_strategy: BuildStrategy | None = ...,
+    backend: Backends | None = ...,
+    **kwargs: Unpack[ToStaticOptions],
+) -> StaticFunction[_InputT, _RetT]:
+    ...
+
+
+@overload
+def to_static(
+    function: Any,
+    input_spec: NestedSequence[InputSpec] | None = ...,
+    build_strategy: BuildStrategy | None = ...,
+    backend: Backends | None = ...,
+    **kwargs: Unpack[ToStaticOptions],
+) -> Any:
+    ...
+
+
+@overload
+def to_static(
+    function: None = ...,
+    input_spec: NestedSequence[InputSpec] | None = ...,
+    build_strategy: BuildStrategy | None = ...,
+    backend: Backends | None = ...,
+    **kwargs: Unpack[ToStaticOptions],
+) -> ToStaticDecorator:
+    ...
 
 
 def to_static(
@@ -252,6 +332,28 @@ def to_static(
 
     # for usage: `@to_static`
     return decorated
+
+
+class NotToStaticDecorator(Protocol):
+    @overload
+    def __call__(
+        self, func: Callable[_InputT, _RetT]
+    ) -> Callable[_InputT, _RetT]:
+        ...
+
+    @overload
+    def __call__(self, func: None = ...) -> NotToStaticDecorator:
+        ...
+
+
+@overload
+def not_to_static(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+    ...
+
+
+@overload
+def not_to_static(func: None = ...) -> NotToStaticDecorator:
+    ...
 
 
 def not_to_static(func=None):
@@ -393,7 +495,17 @@ class _SaveLoadConfig:
         self._keep_name_table = value
 
 
-def _parse_save_configs(configs):
+class _SaveLoadOptions(TypedDict):
+    output_spec: NotRequired[Sequence[InputSpec]]
+    with_hook: NotRequired[bool]
+    combine_params: NotRequired[bool]
+    clip_extra: NotRequired[bool]
+    skip_forward: NotRequired[bool]
+    input_names_after_prune: NotRequired[list[str]]
+    skip_prune_program: NotRequired[bool]
+
+
+def _parse_save_configs(configs: _SaveLoadOptions):
     supported_configs = [
         "output_spec",
         "with_hook",
@@ -750,14 +862,19 @@ def _remove_save_pre_hook(hook):
 
 
 @wrap_decorator
-def _run_save_pre_hooks(func):
-    def wrapper(layer, path, input_spec=None, **configs):
+def _run_save_pre_hooks(func: _F) -> _F:
+    def wrapper(
+        layer: Layer | Callable[..., Any],
+        path: str,
+        input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
+        **configs: Unpack[_SaveLoadOptions],
+    ) -> None:
         global _save_pre_hooks
         for hook in _save_pre_hooks:
             hook(layer, input_spec, configs)
         func(layer, path, input_spec, **configs)
 
-    return wrapper
+    return wrapper  # type: ignore
 
 
 def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
@@ -795,7 +912,12 @@ def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
 
 @_run_save_pre_hooks
 @switch_to_static_graph
-def save(layer, path, input_spec=None, **configs):
+def save(
+    layer: Layer | Callable[..., Any],
+    path: str,
+    input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
+    **configs: Unpack[_SaveLoadOptions],
+) -> None:
     """
     Saves input Layer or function as ``paddle.jit.TranslatedLayer``
     format model, which can be used for inference or fine-tuning after loading.
@@ -1362,7 +1484,9 @@ def save(layer, path, input_spec=None, **configs):
 
 
 @dygraph_only
-def load(path, **configs):
+def load(
+    path: str, **configs: Unpack[_SaveLoadOptions]
+) -> TranslatedLayer | PirTranslatedLayer:
     """
     :api_attr: imperative
 

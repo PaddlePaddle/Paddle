@@ -11,11 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import annotations
+
 import inspect
 import sys
 import warnings
+from typing import Callable, ContextManager, TypeVar, overload
 
 import decorator
+from typing_extensions import ParamSpec
 
 import paddle
 from paddle.base import core, framework
@@ -27,6 +32,9 @@ from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 from .tracer import Tracer
 
 __all__ = []
+
+_InputT = ParamSpec("_InputT")
+_RetT = TypeVar("_RetT")
 
 NON_PERSISTABLE_VAR_NAME_SUFFIX = "__non_persistable"
 
@@ -60,8 +68,10 @@ def to_static_unsupport_argument_warning(
             )
 
 
-def _switch_to_static_graph_(func):
-    def __impl__(*args, **kwargs):
+def _switch_to_static_graph_(
+    func: Callable[_InputT, _RetT]
+) -> Callable[_InputT, _RetT]:
+    def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         with framework._dygraph_guard(None):
             return func(*args, **kwargs)
 
@@ -264,6 +274,16 @@ def _switch_tracer_mode_guard_(is_train=True):
         yield
 
 
+@overload
+def no_grad(func: None = ...) -> ContextManager:
+    ...
+
+
+@overload
+def no_grad(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+    ...
+
+
 def no_grad(func=None):
     """
     :api_attr: imperative
@@ -320,7 +340,11 @@ def no_grad(func=None):
     else:
 
         @decorator.decorator
-        def __impl__(func, *args, **kwargs):
+        def __impl__(
+            func: Callable[_InputT, _RetT],
+            *args: _InputT.args,
+            **kwargs: _InputT.kwargs,
+        ) -> _RetT:
             with _switch_tracer_mode_guard_(is_train=False):
                 return func(*args, **kwargs)
 

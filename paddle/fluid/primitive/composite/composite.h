@@ -225,7 +225,12 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
       backend::full_with_tensor<T>(num_classes, 0, x.dtype());
 
   std::vector<int64_t> input_dim;
-  input_dim.push_back(x.shape()[0]);
+  int x_dims = 1;
+  for (size_t i = 0; i < x.shape().size(); i++) {
+    x_dims *= x.shape()[i];
+  }
+
+  input_dim.push_back(x_dims);
   input_dim.push_back(num_classes_tensor.shape()[0]);
   auto input_tensor = full<T>(input_dim, 0, x.dtype());
 
@@ -235,13 +240,13 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
   }
   output_dim.push_back(num_classes_tensor.shape()[0]);
 
-  auto end = full<T>({1}, x.shape()[0], x.dtype());
+  auto end = full<T>({1}, x_dims, x.dtype());
   auto start = full<T>({1}, 0, x.dtype());
   auto step = full<T>({1}, 1, x.dtype());
   auto arange_tensor =
       backend::arange_with_tensor<T>(start, end, step, x.dtype());
 
-  std::vector<int64_t> reshape_dim{x.shape()[0], 1};
+  std::vector<int64_t> reshape_dim{x_dims, 1};
   auto x_reshape = reshape<T>(x, reshape_dim);
   auto arange_tensor_reshape = reshape<T>(arange_tensor, reshape_dim);
 
@@ -250,7 +255,7 @@ Tensor one_hot_decomp(const Tensor& x, const Tensor& num_classes) {
   index_concat.push_back(x_reshape);
   auto index_tensor = concat<T>(index_concat, 1);
 
-  auto update_tensor = full<T>({x.shape()[0]}, 1, x.dtype());
+  auto update_tensor = full<T>({x_dims}, 1, x.dtype());
 
   auto ans = reshape<T>(
       cast<T>(scatter_nd_add<T>(input_tensor, index_tensor, update_tensor),
@@ -436,8 +441,10 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
     return std::make_tuple(
         y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space);
   } else {
+    Tensor batch_mean_none;
+    Tensor inv_std_none;
     return std::make_tuple(
-        y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space);
+        y, run_mean_, run_var_, batch_mean_none, inv_std_none, reserve_space);
   }
 }
 
@@ -618,6 +625,23 @@ std::vector<Tensor> meshgrid_decomp(const std::vector<Tensor>& x) {
     }
   }
 
+  return res;
+}
+
+template <typename T>
+std::vector<Tensor> unbind_decomp(const Tensor x, int axis) {
+  std::vector<Tensor> res;
+  if (axis < 0) {
+    axis = x.shape().size() + axis;
+  }
+  if (x.shape()[axis] == -1) {
+    PADDLE_THROW(phi::errors::Unimplemented("unbind axis must not be dynamic"));
+  }
+  size_t num = x.shape()[axis];
+  std::vector<Tensor> tmp = backend::split_with_num<T>(x, num, axis);
+  for (size_t i = 0; i < tmp.size(); i++) {
+    res.push_back(squeeze<T>(tmp[i], {axis}));
+  }
   return res;
 }
 
@@ -1038,12 +1062,17 @@ Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
   auto min_reshape = min;
   auto max_reshape = max;
 
+  if (x.shape().size() == 0) {
+    min_reshape = reshape<T>(min_reshape, {});
+    max_reshape = reshape<T>(max_reshape, {});
+  }
+
   if (has_dynamic_shape(x.shape())) {
-    min_reshape = backend::expand_with_tensor<T>(min, shape<T>(x));
-    max_reshape = backend::expand_with_tensor<T>(max, shape<T>(x));
+    min_reshape = backend::expand_with_tensor<T>(min_reshape, shape<T>(x));
+    max_reshape = backend::expand_with_tensor<T>(max_reshape, shape<T>(x));
   } else {
-    min_reshape = expand<T>(min, x.shape());
-    max_reshape = expand<T>(max, x.shape());
+    min_reshape = expand<T>(min_reshape, x.shape());
+    max_reshape = expand<T>(max_reshape, x.shape());
   }
   if (min_reshape.dtype() != x.dtype()) {
     min_reshape = cast<T>(min_reshape, x.dtype());

@@ -328,28 +328,26 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
         }
       }
     };
-    target.arch.Visit(adt::match{
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) {
-          std::vector<CINNValue> res{
-              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-          *ret = CINNValuePack{res};
-        },
-        [&](common::ARMArch) {
-          std::vector<CINNValue> res{
-              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-          *ret = CINNValuePack{res};
-        },
-        [&](common::NVGPUArch) {
-          if (!FLAGS_cinn_new_group_scheduler) {
-            ReduceSchedule();
-          } else {
-            std::vector<CINNValue> res{
-                CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-            *ret = CINNValuePack{res};
-          }
-        },
-    });
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) {
+                        std::vector<CINNValue> res{
+                            CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+                        *ret = CINNValuePack{res};
+                      },
+                      [&](common::ARMArch) {
+                        std::vector<CINNValue> res{
+                            CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+                        *ret = CINNValuePack{res};
+                      },
+                      [&](common::NVGPUArch) {
+                        if (!FLAGS_cinn_new_group_scheduler) {
+                          ReduceSchedule();
+                        } else {
+                          std::vector<CINNValue> res{
+                              CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+                          *ret = CINNValuePack{res};
+                        }
+                      });
   });
 
   auto strategy = std::make_shared<framework::OpStrategy>();

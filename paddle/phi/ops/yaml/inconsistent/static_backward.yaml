@@ -485,16 +485,6 @@
   composite : tile_grad(x, out_grad, repeat_times, x_grad)
   backward : tile_double_grad
 
-- backward_op: fused_elemwise_add_activation_grad
-  forward: fused_elemwise_add_activation(Tensor x, Tensor y, str[] functor_list, float scale=0.0, int axis=-1, bool save_intermediate_out=false) -> Tensor(out), Tensor(intermediate_out)
-  args: (Tensor x, Tensor y, Tensor out, Tensor intermediate_out, Tensor out_grad, str[] functor_list, float scale=0.0, int axis=-1, bool save_intermediate_out=false)
-  output: Tensor(x_grad), Tensor(y_grad)
-  infer_meta:
-    func: FusedElemwiseAddActivationGradInferMeta
-  kernel:
-    func: fused_elemwise_add_activation_grad
-  optional : x, intermediate_out
-
 - backward_op: match_matrix_tensor_grad
   forward: match_matrix_tensor (Tensor x, Tensor y, Tensor w, int dim_t=1) ->  Tensor(out), Tensor(tmp)
   args: (Tensor x, Tensor y, Tensor w, Tensor tmp, Tensor out_grad, int dim_t=1)
@@ -503,13 +493,3 @@
     func: MatchMatrixTensorGradInferMeta
   kernel:
     func: match_matrix_tensor_grad
-
-- backward_op: shuffle_batch_grad
-  forward: shuffle_batch (Tensor x, Tensor seed, int startup_seed=0) -> Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
-  args: (Tensor shuffle_idx, Tensor out_grad,int startup_seed=0)
-  output : Tensor(x_grad)
-  infer_meta:
-    func: ShuffleBatchGradInferMeta
-  kernel:
-    func: shuffle_batch_grad
-    data_type : out_grad

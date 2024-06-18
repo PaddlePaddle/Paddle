@@ -32,8 +32,7 @@ COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(enable_pir_api);
 COMMON_DECLARE_bool(pir_apply_inplace_pass);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                        const interpreter::Plan& plan,
                                        Scope* scope)
@@ -304,5 +303,4 @@ std::shared_ptr<framework::ProgramDesc> StandaloneExecutor::RunProfile(
   return copy_desc;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

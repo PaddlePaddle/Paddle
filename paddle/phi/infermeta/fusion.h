@@ -1049,4 +1049,29 @@ void FusedTokenPruneInferMeta(const MetaTensor& attn,
                               MetaTensor* slimmed_x,
                               MetaTensor* cls_inds);
 
+void FusedElemwiseActivationInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const std::vector<std::string>& functor_list,
+    int axis,
+    float scale,
+    bool save_intermediate_out,
+    MetaTensor* out,
+    MetaTensor* intermediate_out,
+    MetaConfig config = MetaConfig());
+
+void FusedElemwiseActivationGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const MetaTensor& out,
+    const MetaTensor& intermediate_out,
+    const MetaTensor& out_grad,
+    const std::vector<std::string>& functor_list,
+    int axis,
+    float scale,
+    bool save_intermediate_out,
+    MetaTensor* x_grad,
+    MetaTensor* y_grad,
+    MetaConfig config = MetaConfig());
+
 }  // namespace phi

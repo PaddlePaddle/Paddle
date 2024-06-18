@@ -16,7 +16,7 @@
 #include "paddle/cinn/common/dfs_topo_walker.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 
@@ -38,8 +38,10 @@ std::vector<Expr> ScheduleBlockNode::GetLoops() const {
 
 bool EdgeCompare(const cinn::common::Shared<cinn::common::GraphEdge>& a,
                  const cinn::common::Shared<cinn::common::GraphEdge>& b) {
-  CHECK_NOTNULL(a.get());
-  CHECK_NOTNULL(b.get());
+  PADDLE_ENFORCE_NOT_NULL(a.get(),
+                          phi::errors::InvalidArgument("The a is nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(b.get(),
+                          phi::errors::InvalidArgument("The b is nullptr."));
   return a->index() < b->index();
 }
 std::vector<cinn::common::Shared<cinn::common::GraphEdge>>
@@ -47,9 +49,10 @@ ScheduleBlockNode::OrderedInLinks() const {
   std::vector<cinn::common::Shared<cinn::common::GraphEdge>> ordered_links;
   for (auto& in_edge : this->inlinks()) {
     ordered_links.push_back(in_edge);
-    CHECK_GE(in_edge->index(), 0)
-        << "The index of a node's inlinks should be >= 0! Now index is: "
-        << in_edge->index() << ". Please check.";
+    PADDLE_ENFORCE_GE(in_edge->index(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The index of a node's inlinks should be >= 0!"));
   }
   std::sort(ordered_links.begin(), ordered_links.end(), EdgeCompare);
   return ordered_links;
@@ -60,9 +63,11 @@ ScheduleBlockNode::OrderedOutLinks() const {
   std::vector<cinn::common::Shared<cinn::common::GraphEdge>> ordered_links;
   for (auto& out_edge : this->outlinks()) {
     ordered_links.push_back(out_edge);
-    CHECK_GE(out_edge->index(), 0)
-        << "The index of a node's outlinks should be >= 0! Now index is: "
-        << out_edge->index() << ". Please check.";
+    PADDLE_ENFORCE_GE(
+        out_edge->index(),
+        0,
+        phi::errors::InvalidArgument("The index of a node's outlinks "
+                                     "should be >= 0!"));
   }
   std::sort(ordered_links.begin(), ordered_links.end(), EdgeCompare);
   return ordered_links;

@@ -59,16 +59,15 @@ std::shared_ptr<ComputationContext> CompileProgram(
 
   if (ctx->compile_options.use_default_passes) {
     hlir::framework::ApplyPass(ctx->graph.get(), "InferShape");
-    target.arch.Visit(adt::match{
-        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::X86Arch) {
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) {
 #ifndef CINN_WITH_CUDA
-          hlir::framework::ApplyPass(ctx->graph.get(), "AlterLayout");
+                        hlir::framework::ApplyPass(ctx->graph.get(),
+                                                   "AlterLayout");
 #endif
-        },
-        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-        [&](common::NVGPUArch) { CINN_NOT_IMPLEMENTED; },
-    });
+                      },
+                      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::NVGPUArch) { CINN_NOT_IMPLEMENTED; });
     hlir::framework::ApplyPass(ctx->graph.get(), "ConstPropagate");
     hlir::framework::ApplyPasses(ctx->graph.get(), DefaultOpFusionPasses());
   }
@@ -209,7 +208,7 @@ void CinnComputation::SetTensorData(hlir::framework::Tensor &t,
       true,
       phi::errors::InvalidArgument("The size of the input data is not equal to "
                                    "the size of the tensor."));
-  context_->target.arch.Visit(adt::match{
+  context_->target.arch.Match(
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { memcpy(tdata, data, size); },
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
@@ -219,8 +218,7 @@ void CinnComputation::SetTensorData(hlir::framework::Tensor &t,
 #else
         CINN_NOT_IMPLEMENTED;
 #endif
-      },
-  });
+      });
 }
 
 void CinnComputation::GetTensorData(hlir::framework::Tensor &t,
@@ -232,7 +230,7 @@ void CinnComputation::GetTensorData(hlir::framework::Tensor &t,
       true,
       phi::errors::InvalidArgument("The size of the input data is not equal to "
                                    "the size of the tensor."));
-  context_->target.arch.Visit(adt::match{
+  context_->target.arch.Match(
       [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) { memcpy(data, tdata, size); },
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
@@ -242,8 +240,7 @@ void CinnComputation::GetTensorData(hlir::framework::Tensor &t,
 #else
         CINN_NOT_IMPLEMENTED;
 #endif
-      },
-  });
+      });
 }
 
 void CinnComputation::GetTensorData(const std::string &tname,

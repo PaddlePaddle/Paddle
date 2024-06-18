@@ -271,13 +271,13 @@ bool DrrRewritePattern::MatchFromOutputToInput(
   std::queue<pir::Operation*> ir_q;
   // Initialize DRR matched queue.
   const auto& InitDrrQueue = [&]() -> void {
-    for (auto it = output_op_map.begin(); it != output_op_map.end(); ++it) {
-      VLOG(6) << "match (" << it->first->name() << " @" << it->first << " : @"
-              << it->second << ") in source_pattern_graph ";
-      drr_q.push(it->first);
-      drr_visited.insert(it->first);
-      ir_q.push(it->second);
-      ir_visited.insert(it->second);
+    for (const auto& [first, second] : output_op_map) {
+      VLOG(6) << "match (" << first->name() << " @" << first << " : @" << second
+              << ") in source_pattern_graph ";
+      drr_q.push(first);
+      drr_visited.insert(first);
+      ir_q.push(second);
+      ir_visited.insert(second);
     }
   };
   // Check whether DrrNode and Operation have the same Operands and Results

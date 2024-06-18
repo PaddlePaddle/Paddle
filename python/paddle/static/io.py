@@ -60,12 +60,12 @@ from .io_utils import (
 )
 from .pir_io import (
     get_pir_parameters,
+    load_inference_model_pir,
     load_pir,
-    load_pir_inference_model,
     load_vars_pir,
     normalize_pir_program,
+    save_inference_model_pir,
     save_pir,
-    save_pir_inference_model,
     save_vars_pir,
 )
 
@@ -526,7 +526,7 @@ def save_inference_model(
     """
 
     if in_pir_mode():
-        save_pir_inference_model(
+        save_inference_model_pir(
             path_prefix, feed_vars, fetch_vars, executor, **kwargs
         )
         return
@@ -852,7 +852,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
             # program to get the inference result.
     """
     if in_pir_mode():
-        return load_pir_inference_model(path_prefix, executor, **kwargs)
+        return load_inference_model_pir(path_prefix, executor, **kwargs)
     # check kwargs
     supported_args = ('model_filename', 'params_filename')
     deprecated_args = ('pserver_endpoints',)

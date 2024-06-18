@@ -132,6 +132,7 @@ pir::Attribute CvtToPirAttr(const phi::distributed::ArgDistAttr& dist_attr) {
     auto& vec = PADDLE_GET_CONST(std::vector<phi::distributed::TensorDistAttr>,
                                  dist_attr);
     std::vector<pir::Attribute> array;
+    array.reserve(vec.size());
     for (auto& attr : vec) {
       array.push_back(TensorDistAttribute::get(ctx,
                                                attr.process_mesh(),

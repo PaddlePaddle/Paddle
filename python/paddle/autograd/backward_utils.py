@@ -91,6 +91,7 @@ ALLOW_NO_GRAD_OPS = [
     "pd_op.gaussian",
     "pd_op.isnan",
     "pd_op.isinf",
+    "pd_op.multinomial",
     "pd_op.nextafter",
     "pd_op.nonzero",
     "pd_op.one_hot",
@@ -118,6 +119,12 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.rsqrt",
     "pd_op.sigmoid",
     "pd_op.silu",
+    "pd_op.sum",
+    "pd_op.mean",
+    "pd_op.add",
+    "pd_op.subtract",
+    "pd_op.concat",
+    "pd_op.split",
 ]
 
 

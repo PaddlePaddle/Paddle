@@ -93,11 +93,11 @@ void XToRShrinkReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   // Step 2: concat or reduce based on dist attr
   if (cur_global_rank == root_rank) {
     std::vector<const DenseTensor*> input_vec;
-    for (size_t i = 0; i < in_process_ids.size(); ++i) {
-      if (in_process_ids[i] == cur_global_rank) {
+    for (const auto& in_process_id : in_process_ids) {
+      if (in_process_id == cur_global_rank) {
         input_vec.emplace_back(&(in.value()));
       } else {
-        input_vec.emplace_back(&(rank_to_result[in_process_ids[i]]));
+        input_vec.emplace_back(&(rank_to_result[in_process_id]));
       }
     }
     if (in_dist_attr.is_shard()) {

@@ -38,8 +38,7 @@ using paddle::dialect::DistDenseTensorType;
 
 COMMON_DECLARE_bool(print_ir);
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 pir::Type CastToLocalType(pir::Type type) {
   if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
@@ -64,8 +63,8 @@ inline bool IsDistType(pir::Type type) { return type.isa<DistTypeInterface>(); }
 
 void ProcessDistBlock(pir::Block* block) {
   auto ctx = pir::IrContext::Instance();
-  for (auto iter = block->begin(); iter != block->end(); ++iter) {
-    pir::Operation* op_item = &(*iter);
+  for (auto& val : *block) {
+    pir::Operation* op_item = &val;
     VLOG(6) << "dist_to_dense main loop over op [" << op_item->name() << "].";
 
     for (size_t i = 0; i < op_item->num_results(); ++i) {
@@ -126,8 +125,8 @@ void ProcessDistBlock(pir::Block* block) {
     3. no shard_tensor / reshard in block.
 */
 void VerifyDenseBlock(pir::Block* block) {
-  for (auto iter = block->begin(); iter != block->end(); ++iter) {
-    pir::Operation* op_item = &(*iter);
+  for (auto& val : *block) {
+    pir::Operation* op_item = &val;
 
     for (size_t i = 0; i < op_item->num_results(); ++i) {
       auto result = op_item->result(i);
@@ -164,5 +163,4 @@ void DistToDensePass(pir::Program* prog) {
   }
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect

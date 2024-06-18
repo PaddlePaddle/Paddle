@@ -1881,7 +1881,7 @@ void SparseMomentumInferMeta(const MetaTensor& param,
                              MetaTensor* velocity_out,
                              MetaTensor* master_param_out) {
   auto lr_dims = common::product(learning_rate.dims());
-  PADDLE_ENFORCE_EQ(lr_dims != 0 && lr_dims == 1,
+  PADDLE_ENFORCE_EQ(lr_dims == 1,
                     true,
                     phi::errors::InvalidArgument(
                         "Learning_rate should be a scalar. But Received "

@@ -422,6 +422,12 @@
   get_expected_kernel_type :
     bincount : GetBincountExpectedKernelType
 
+- op : bipartite_match
+  inputs:
+    dist_mat : DistMat
+  outputs:
+    {col_to_row_match_indices : ColToRowMatchIndices, col_to_row_match_dist : ColToRowMatchDist}
+
 - op : bitwise_and
   inputs :
     {x : X, y : Y}
@@ -929,6 +935,9 @@
     fix_seed : fix_seed
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
+  scalar :
+    p :
+      support_tensor : true
 
 - op : dropout_nd
   backward : dropout_nd_grad
@@ -3575,6 +3584,17 @@
       data_type : int
       tensor_name : K
 
+- op : topk_v1 (top_k)
+  backward : topk_v1_grad (top_k_grad)
+  inputs :
+    x : X
+  outputs :
+    {out : Out, indices : Indices}
+  scalar :
+    k :
+      data_type : int
+      tensor_name : K
+
 - op : trace
   inputs :
     x : Input
@@ -4028,11 +4048,25 @@
   outputs:
     {out: Out}
 
+- op: fused_elemwise_activation
+  backward: fused_elemwise_activation_grad
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    {out : Out, intermediate_out : IntermediateOut}
+
 - op: fused_elemwise_add_activation
   backward: fused_elemwise_add_activation_grad
   inputs :
     {x: X, y: Y}
   outputs :
+    {out : Out, intermediate_out : IntermediateOut}
+
+- op: fused_elemwise_add_activation
+  backward: fused_elemwise_add_activation_grad
+  inputs:
+    {x : X, y : Y}
+  outputs:
     {out : Out, intermediate_out : IntermediateOut}
 
 - op: fused_matmul
@@ -4210,7 +4244,7 @@
   inputs:
     {gate_idx: GateIdx, expert_count: ExpertCount}
   outputs:
-    new_gate_idx: NewGateIdx
+    out_gate_idx: NewGateIdx
 
 - op: pyramid_hash
   backward: pyramid_hash_grad
@@ -4280,6 +4314,15 @@
     {padding_trainable : paddingTrainable, context_length : contextLength, context_start : contextStart, context_stride : contextStride}
   outputs:
     out : Out
+
+- op: sequence_pool
+  backward: sequence_pool_grad
+  inputs:
+    x : X
+  outputs:
+    {out : Out, max_index : MaxIndex}
+  extra:
+    attrs: [bool is_test = false]
 
 - op: set_value
   backward: set_value_grad

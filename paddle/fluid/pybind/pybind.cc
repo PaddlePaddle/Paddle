@@ -192,7 +192,6 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/pybind/bind.h"
-#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/pybind/test.h"
 #endif
 
@@ -361,15 +360,6 @@ bool IsCompiledWithCINN() {
   return false;
 #else
   return true;
-#endif
-}
-
-bool IsRunWithCINN() {
-#ifndef PADDLE_WITH_CINN
-  return false;
-#else
-  return framework::paddle2cinn::CinnCompiler::GetInstance()
-             ->real_compiled_num() > 0;
 #endif
 }
 
@@ -867,6 +857,13 @@ void BindVjp(pybind11::module *m) {
          const std::vector<std::vector<pir::Value>> &outputs,
          const std::vector<std::vector<pir::Value>> &out_grads,
          const std::vector<std::vector<bool>> &stop_gradients) {
+        // NOTE(dev): Prim decomposed rules will call paddle::dialect::xx
+        // api, which has amp strategy. But Prim already process cast operation
+        // and we need to disable amp strategy here.
+        paddle::imperative::AutoCastGuard guard(
+            egr::Controller::Instance().GetCurrentAmpAttrs(),
+            paddle::imperative::AmpLevel::O0);
+
         py::list res;
         std::vector<std::vector<pir::Value>> vjp_res;
 
@@ -1904,19 +1901,6 @@ All parameter, weight, gradient are variables in Paddle.
                    which contains the id pair of pruned block and corresponding
                    origin block.
            )DOC");
-  m.def("get_serialize_comile_key", [](int64_t compilation_key) {
-#ifdef PADDLE_WITH_CINN
-    auto compiler = framework::paddle2cinn::CinnCompiler::GetInstance();
-    auto s = compiler->SerializeKey(compilation_key);
-    VLOG(4) << s;
-    return s;
-#else
-    PADDLE_THROW(
-                 platform::errors::PermissionDenied(
-                 "Cannot get compilation key in non-CINN version, "
-                 "Please recompile or reinstall Paddle with CINN support."));
-#endif
-  });
   m.def("empty_var_name",
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",
@@ -2386,7 +2370,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
   m.def("is_compiled_with_distribute", IsCompiledWithDISTRIBUTE);
-  m.def("is_run_with_cinn", IsRunWithCINN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("_is_compiled_with_gpu_graph", IsCompiledWithGPUGRAPH);
   m.def("supports_bfloat16", SupportsBfloat16);
@@ -2955,7 +2938,6 @@ All parameter, weight, gradient are variables in Paddle.
 #endif  // PADDLE_WITH_CUDA
   m.def("clear_executor_cache", []() {
     pybind11::gil_scoped_release release;
-    framework::ExecutorInfoCache::Instance().Finalize();
     framework::InterpreterCoreInfoCache::Instance().Finalize();
   });
 
