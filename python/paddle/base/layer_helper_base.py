@@ -460,7 +460,7 @@ class LayerHelperBase:
 
     def create_variable_for_type_inference(
         self, dtype, stop_gradient=False, shape=None
-    ):
+    ) -> paddle.Tensor:
         """Create a temporary variable that should be type inferred layer.
 
         Note:

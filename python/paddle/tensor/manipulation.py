@@ -3361,7 +3361,7 @@ def unique(
         return tuple(outs)
 
 
-def unsqueeze(x, axis, name=None):
+def unsqueeze(x, axis, name=None) -> paddle.Tensor:
     """
     Insert single-dimensional entries to the shape of input Tensor ``x``. Takes one
     required argument axis, a dimension or list of dimensions that will be inserted.
