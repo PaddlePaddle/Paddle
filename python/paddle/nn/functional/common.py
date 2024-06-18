@@ -208,8 +208,9 @@ def interpolate(
     ] = 'nearest',
     align_corners: bool = False,
     align_mode: int = 0,
-    data_format: Literal["NCW", "NWC", "NCHW", "NHWC", "NCDHW", "NDHWC"]
-    | None = None,
+    data_format: (
+        Literal["NCW", "NWC", "NCHW", "NHWC", "NCDHW", "NDHWC"] | None
+    ) = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -2031,7 +2032,7 @@ def linear(
             [[ 0.06132207,  1.11349595],
              [ 0.41906244, -0.24858207],
              [-1.85169315, -1.50370061]])
-            >>> weight = paddle.full(shape=[2, 4], fill_value="0.5", dtype="float32", name="weight")
+            >>> weight = paddle.full(shape=[2, 4], fill_value=0.5, dtype="float32", name="weight")
             >>> print(weight)
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[0.50000000, 0.50000000, 0.50000000, 0.50000000],
@@ -2264,7 +2265,7 @@ def class_center_sample(
         >>> num_classes_list = [10, 10]
         >>> num_classes = paddle.sum(paddle.to_tensor(num_classes_list))
         >>> label = paddle.randint(low=0, high=num_classes.item(), shape=[batch_size], dtype='int64')
-        >>> label_list = []
+        >>> label_list = [] # type: ignore
         >>> dist.all_gather(label_list, label)
         >>> label = paddle.concat(label_list, axis=0)
         >>> remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(label, num_classes_list[rank_id], num_samples)
