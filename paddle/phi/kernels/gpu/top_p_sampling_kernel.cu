@@ -415,7 +415,6 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
         shared_max, topk, beam_max, &beam, &top_num, &count, tid, wid, lane);
   }
   if (tid == 0) {
-    // printf("offset: %d\n", (int)seed_offset);
     count_iter_begin[bid] = count_iter[bid];
     float top_p = top_ps[bid];
     float sum_prob = 0.0f;
