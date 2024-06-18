@@ -102,11 +102,11 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
 
 bool ReduceInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
-  bool keep_dim = GetBoolAttr(op, "keep_dim");
-  auto axis = paddle::dialect::details::GetVectorAttr(op, "dim");
+  bool keepdim = GetBoolAttr(op, "keepdim");
+  auto axis = paddle::dialect::details::GetVectorAttr(op, "axis");
   bool reduce_all = axis.size() == 0 ? true : false;
   return paddle::dialect::details::ReduceInferDim(
-      op, infer_context, axis, keep_dim, reduce_all);
+      op, infer_context, axis, keepdim, reduce_all);
 }
 
 bool ReduceMaxOpInferSymbolicShape(
