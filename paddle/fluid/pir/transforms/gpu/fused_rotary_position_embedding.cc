@@ -209,9 +209,12 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
         return true;
       };
 
+      bool all_checkes_passed = true;
+
       auto axis = match_ctx.Attr<std::vector<int64_t>>("full_13_value");
       auto axis_2 = match_ctx.Attr<std::vector<int64_t>>("full_12_value");
-      return check_axes(axis) && check_axes(axis_2);
+      all_checks_passed = all_checks_passed && check_axes(axis, {0, 2}) &&
+                          check_axes(axis_2, {0, 2});
 
       auto check_unsqueeze_axes = [&](const std::vector<int64_t> &axes) {
         std::vector<int64_t> expected_axes = {0};
@@ -234,10 +237,11 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
       auto unsqueeze_axis_3 =
           match_ctx.Attr<std::vector<int64_t>>("full_9_value");
 
-      return check_unsqueeze_axes(unsqueeze_axis) &&
-             check_unsqueeze_axes(unsqueeze_axis_1) &&
-             check_unsqueeze_axes(unsqueeze_axis_2) &&
-             check_unsqueeze_axes(unsqueeze_axis_3);
+      all_checks_passed = all_checks_passed &&
+                          check_axes(unsqueeze_axis, {0}) &&
+                          check_axes(unsqueeze_axis_1, {0}) &&
+                          check_axes(unsqueeze_axis_2, {0}) &&
+                          check_axes(unsqueeze_axis_3, {0});
 
       auto check_concat_axes = [&](const std::vector<int64_t> &axes) {
         std::vector<int64_t> expected_axes = {-1};
@@ -253,7 +257,9 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
       };
       auto concat_axis = match_ctx.Attr<std::vector<int64_t>>("full_op_3");
       auto concat_axis_1 = match_ctx.Attr<std::vector<int64_t>>("full_op_2");
-      return check_concat_axes(concat_axis) && check_concat_axes(concat_axis_1);
+      all_checks_passed = all_checks_passed && check_axes(concat_axis, {-1}) &&
+                          check_axes(concat_axis_1, {-1});
+      return all_checks_passed;
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
