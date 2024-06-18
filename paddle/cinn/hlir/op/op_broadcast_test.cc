@@ -275,6 +275,7 @@ TEST(Operator, Operator_BroadcastTo_0) {
   auto tensor_4 = out_4.as_tensor_ref();
   poly::StageMap stages_4 = rets_4.back();
 
+  attrs.attr_store.erase("axis");
   auto impl_3 = OpStrategy::SelectImpl(strategy[elementwise_add](
       attrs, {tensor_1, tensor_2}, type, {out_shape}, target));
   std::vector<cinn::common::CINNValue> cinn_inputs_3 = {
