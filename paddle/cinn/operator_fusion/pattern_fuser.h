@@ -42,7 +42,7 @@ StmtPattern ConvertToStmtPattern(const PatternContent& content) {
     auto result =
         ReducePattern({content.op}, std::make_shared<FusionTracker>());
     result.tracker_->append(
-        std::make_shared<InitPatternInstr>(content.op, result.name()));
+        std::make_shared<InitPatternInstr>(content.op, result.id()));
     return result;
   } else if (kind == hlir::framework::kElementWise ||
              kind == hlir::framework::kBroadcast ||
@@ -50,12 +50,13 @@ StmtPattern ConvertToStmtPattern(const PatternContent& content) {
     auto result = TrivialPattern(
         {content.op}, content.op, std::make_shared<FusionTracker>());
     result.tracker_->append(
-        std::make_shared<InitPatternInstr>(content.op, result.name()));
+        std::make_shared<InitPatternInstr>(content.op, result.id()));
     return result;
   } else {
     auto result =
         UnsupportPattern({content.op}, std::make_shared<FusionTracker>());
-    result.tracker_->append(std::make_shared<InitPatternInstr>(content.op));
+    result.tracker_->append(
+        std::make_shared<InitPatternInstr>(content.op, result.id()));
     return result;
   }
 }
@@ -166,12 +167,12 @@ StmtPattern MergePatternImpl(const ReduceTreePattern& first,
 // Anchor Fusion
 std::vector<ExprPromise> InitExprPromiseImpl(const TrivialPattern& pattern,
                                              pir::Value anchor) {
-  return {ExprPromise(anchor, pattern.name())};
+  return {ExprPromise(anchor, pattern.id())};
 }
 
 std::vector<ExprPromise> InitExprPromiseImpl(const ReducePattern& pattern,
                                              pir::Value anchor) {
-  return {ExprPromise(anchor, pattern.name())};
+  return {ExprPromise(anchor, pattern.id())};
 }
 
 std::vector<ExprPromise> InitExprPromiseImpl(const ReduceTreePattern& pattern,
@@ -179,7 +180,7 @@ std::vector<ExprPromise> InitExprPromiseImpl(const ReduceTreePattern& pattern,
   // TODO(@wuzhanfei) this is temporary
   // now we do not support anchor fusion for reduce op,
   // so, this is ok currently. but need to be redesigned later
-  return {ExprPromise(anchor, pattern.name())};
+  return {ExprPromise(anchor, pattern.id())};
 }
 
 template <typename PATTERN>
@@ -434,7 +435,7 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
 void SetReturnInstr(const StmtPattern& s) {
   std::visit(
       [](const auto& impl) {
-        impl.tracker_->append(std::make_shared<ReturnInstr>(impl.name()));
+        impl.tracker_->append(std::make_shared<ReturnInstr>(impl.id()));
       },
       s);
 }

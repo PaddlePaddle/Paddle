@@ -118,11 +118,11 @@ using AnchorTransformRoute = std::vector<AnchorTransform>;
 std::string DebugStrOfAnchorTransformRoute(const AnchorTransformRoute& route);
 
 struct ExprPromise {
-  explicit ExprPromise(const pir::Value& root, const std::string& name)
-      : root_value(root), name_(name) {}
+  explicit ExprPromise(const pir::Value& root, const std::string& id)
+      : root_value(root), id_(id) {}
   AnchorTransformRoute transform_route;
   pir::Value root_value;
-  std::string name_;
+  std::string id_;
 
   void update(const AnchorTransformRoute& route) {
     transform_route.insert(transform_route.end(), route.begin(), route.end());

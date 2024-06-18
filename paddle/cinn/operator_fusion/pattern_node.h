@@ -64,6 +64,7 @@ struct PatternNode {
   const std::vector<PatternNodePtr>& upstream() const { return upstream_; }
   const std::vector<PatternNodePtr>& downstream() const { return downstream_; }
   const std::string& name() const { return GetPatternName(stmt_pattern_); }
+  const std::string& id() const { return GetPatternId(stmt_pattern_); }
   void set_return() const { SetReturnInstr(stmt_pattern_); }
   void AddNodeToUpstream(PatternNodePtr node) { upstream_.push_back(node); }
   void AddNodeToDownstream(PatternNodePtr node) { downstream_.push_back(node); }

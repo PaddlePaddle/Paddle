@@ -32,29 +32,27 @@ struct PatternContent {
   bool operator==(const PatternContent& other) const { return op == other.op; }
 };
 
-struct StmtPattern;
-std::string GetPatternName(const StmtPattern& s);
-std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
-
 struct TrivialPattern {
   explicit TrivialPattern(const std::vector<pir::Operation*>& ops,
                           pir::Operation* sink_op,
                           const FusionTrackerPtr& tracker)
       : ops_(ops), sink_op_(sink_op), tracker_(tracker) {
-    name_ = UniqueName();
+    id_ = UniqueId();
   }
   std::vector<pir::Operation*> ops_;
   pir::Operation* sink_op_;
   std::vector<pir::Operation*> ops() const { return ops_; }
   pir::Operation* sink_op() const { return sink_op_; }
 
-  static std::string UniqueName() {
+  static std::string name() { return "Trivial"; }
+
+  static std::string UniqueId() {
     static std::atomic<int64_t> counter = 0;
     counter += 1;
-    return "T_" + std::to_string(counter);
+    return name() + "_" + std::to_string(counter);
   }
-  std::string name() const { return name_; }
-  std::string name_;
+  std::string id() const { return id_; }
+  std::string id_;
 
   FusionTrackerPtr tracker_;
   void update_tracker() const {}
@@ -64,19 +62,21 @@ struct ReducePattern {
   explicit ReducePattern(const std::vector<pir::Operation*>& ops,
                          const FusionTrackerPtr& tracker)
       : ops_(ops), tracker_(tracker) {
-    name_ = UniqueName();
+    id_ = UniqueId();
   }
   std::vector<pir::Operation*> ops_;
   std::vector<pir::Operation*> ops() const { return ops_; }
   pir::Operation* GetReduceOp() const { return ops_.back(); }
 
-  static std::string UniqueName() {
+  static std::string name() { return "Reduce"; }
+
+  static std::string UniqueId() {
     static std::atomic<int64_t> counter = 0;
     counter += 1;
-    return "T_" + std::to_string(counter);
+    return name() + "_" + std::to_string(counter);
   }
-  std::string name() const { return name_; }
-  std::string name_;
+  std::string id() const { return id_; }
+  std::string id_;
 
   FusionTrackerPtr tracker_;
   void update_tracker() const {}
@@ -87,7 +87,7 @@ struct ReduceTreePattern {
                              const ReducePattern& root,
                              const FusionTrackerPtr& tracker)
       : childs_(childs), root_(root), tracker_(tracker) {
-    name_ = UniqueName();
+    id_ = UniqueId();
   }
   const ReducePattern& GetRootPattern() const { return root_; }
   std::vector<pir::Operation*> ops() const {
@@ -108,18 +108,20 @@ struct ReduceTreePattern {
     return result;
   }
 
-  static std::string UniqueName() {
+  static std::string name() { return "ReduceTree"; }
+
+  static std::string UniqueId() {
     static std::atomic<int64_t> counter = 0;
     counter += 1;
-    return "RTree_" + std::to_string(counter);
+    return name() + "_" + std::to_string(counter);
   }
-  std::string name() const { return name_; }
-  std::string name_;
+  std::string id() const { return id_; }
+  std::string id_;
 
   FusionTrackerPtr tracker_;
 
   void update_tracker() const {
-    std::vector<std::string> tmp_names({GetRootPattern().name()});
+    std::vector<std::string> tmp_names({GetRootPattern().id()});
     int count = 0;
     auto hook = [tracker = tracker_, &tmp_names, &count](
                     const std::string& up, const std::string& down) {
@@ -129,13 +131,13 @@ struct ReduceTreePattern {
     };
     recursive_call(hook);
 
-    tracker_->append(std::make_shared<CombineInstr>(tmp_names, name()));
+    tracker_->append(std::make_shared<CombineInstr>(tmp_names, id()));
   }
 
   using Hook = std::function<void(const std::string&, const std::string&)>;
   void recursive_call(const Hook& hook) const {
     for (auto child : childs_) {
-      hook(child.GetRootPattern().name(), GetRootPattern().name());
+      hook(child.GetRootPattern().id(), GetRootPattern().id());
       child.recursive_call(hook);
     }
   }
@@ -150,7 +152,7 @@ struct ReduceTreePlusTrivialPattern {
                                         const TrivialPattern& sink_trivial,
                                         const FusionTrackerPtr& tracker)
       : tree(tree), sink_trivial(sink_trivial), tracker_(tracker) {
-    name_ = UniqueName();
+    id_ = UniqueId();
   }
   ReduceTreePattern tree;
   TrivialPattern sink_trivial;
@@ -159,23 +161,25 @@ struct ReduceTreePlusTrivialPattern {
   }
   std::vector<size_t> fake_reduce_iter_idx;
 
-  static std::string UniqueName() {
+  static std::string name() { return "ReduceTreePlusTrivial"; }
+
+  static std::string UniqueId() {
     static std::atomic<int64_t> counter = 0;
     counter += 1;
-    return "RTreeT_" + std::to_string(counter);
+    return name() + "_" + std::to_string(counter);
   }
-  std::string name() const { return name_; }
-  std::string name_;
+  std::string id() const { return id_; }
+  std::string id_;
 
   FusionTrackerPtr tracker_;
 
   void update_tracker() const {
     std::vector<std::string> tmp_names(
-        {sink_trivial.name(), tree.GetRootPattern().name()});
+        {sink_trivial.id(), tree.GetRootPattern().id()});
     tracker_->append(
-        std::make_shared<TmpTransformInstr>(tree.GetRootPattern().name(),
-                                            sink_trivial.name(),
-                                            tree.GetRootPattern().name(),
+        std::make_shared<TmpTransformInstr>(tree.GetRootPattern().id(),
+                                            sink_trivial.id(),
+                                            tree.GetRootPattern().id(),
                                             fake_reduce_iter_idx));
 
     int count = 0;
@@ -192,12 +196,12 @@ struct ReduceTreePlusTrivialPattern {
     tree.recursive_call(hook);
 
     tracker_->append(
-        std::make_shared<TrivialLoopAlignInstr>(tree.GetRootPattern().name(),
-                                                sink_trivial.name(),
-                                                sink_trivial.name(),
+        std::make_shared<TrivialLoopAlignInstr>(tree.GetRootPattern().id(),
+                                                sink_trivial.id(),
+                                                sink_trivial.id(),
                                                 fake_reduce_iter_idx));
 
-    tracker_->append(std::make_shared<CombineInstr>(tmp_names, name()));
+    tracker_->append(std::make_shared<CombineInstr>(tmp_names, id()));
   }
 };
 
@@ -210,7 +214,7 @@ struct AnchorPattern {
         anchor_(anchor),
         anchor_state(init_anchor_state),
         tracker_(tracker) {
-    name_ = UniqueName();
+    id_ = UniqueId();
   }
   AnchorState anchor_state;
 
@@ -237,13 +241,15 @@ struct AnchorPattern {
     return true;
   }
 
-  static std::string UniqueName() {
+  static std::string name() { return "Anchor"; }
+
+  static std::string UniqueId() {
     static std::atomic<int64_t> counter = 0;
     counter += 1;
-    return "Anchor_" + std::to_string(counter);
+    return name() + "_" + std::to_string(counter);
   }
-  std::string name() const { return name_; }
-  std::string name_;
+  std::string id() const { return id_; }
+  std::string id_;
 
   FusionTrackerPtr tracker_;
   void update_tracker() const {
@@ -253,9 +259,9 @@ struct AnchorPattern {
       std::string tmp_name = "tmp_" + std::to_string(i);
       tmp_names.emplace_back(tmp_name);
       tracker_->append(std::make_shared<AnchorTransformInstr>(
-          promise.name_, tmp_name, promise.transform_route));
+          promise.id_, tmp_name, promise.transform_route));
     }
-    tracker_->append(std::make_shared<CombineInstr>(tmp_names, name()));
+    tracker_->append(std::make_shared<CombineInstr>(tmp_names, id()));
   }
 
  private:
@@ -264,50 +270,26 @@ struct AnchorPattern {
 };
 
 struct HorizontalFusionPattern {
-  struct PaddingStmtPattern {
-    StmtPattern pattern;
-    std::vector<int> padding_pos;
-    PaddingStmtPattern(const StmtPattern& pattern,
-                       const std::vector<int>& padding_pos)
-        : pattern(pattern), padding_pos(padding_pos) {}
-  };
+  struct PaddingStmtPattern;
   explicit HorizontalFusionPattern(
       const std::vector<PaddingStmtPattern>& patterns,
       const FusionTrackerPtr& tracker)
       : padding_patterns_(patterns), tracker_(tracker) {
-    name_ = UniqueName();
+    id_ = UniqueId();
   }
   std::vector<PaddingStmtPattern> padding_patterns_;
-  std::vector<pir::Operation*> ops() const {
-    std::vector<pir::Operation*> result;
-    for (const auto& pattern : padding_patterns_) {
-      auto ops = GetOpsInPattern(pattern.pattern);
-      ExtendVector(&result, ops);
-    }
-    return result;
-  }
+  std::vector<pir::Operation*> ops() const;
 
-  static std::string UniqueName() {
+  static std::string name() { return "Horizontal"; }
+
+  static std::string UniqueId() {
     static std::atomic<int64_t> counter = 0;
     counter += 1;
-    return "Horizontal_" + std::to_string(counter);
+    return name() + "_" + std::to_string(counter);
   }
-  std::string name() const { return name_; }
-  std::string name_;
-  void update_tracker() const {
-    std::vector<std::string> tmp_names;
-    for (int i = 0; i < padding_patterns_.size(); i++) {
-      auto padding_pattern = padding_patterns_[i];
-      std::string tmp_name = "tmp_" + std::to_string(i);
-      tmp_names.emplace_back(tmp_name);
-      tracker_->append(std::make_shared<PaddingInstr>(
-          GetPatternName(padding_pattern.pattern),
-          tmp_name,
-          padding_pattern.padding_pos));
-    }
-    tracker_->append(std::make_shared<CombineInstr>(tmp_names, name()));
-  }
-
+  std::string id() const { return id_; }
+  std::string id_;
+  void update_tracker() const;
   FusionTrackerPtr tracker_;
 };
 
@@ -315,17 +297,20 @@ struct UnsupportPattern {
   explicit UnsupportPattern(const std::vector<pir::Operation*>& ops,
                             const FusionTrackerPtr& tracker)
       : ops_(ops), tracker_(tracker) {
-    name_ = UniqueName();
+    id_ = UniqueId();
   }
   std::vector<pir::Operation*> ops_;
   std::vector<pir::Operation*> ops() const { return ops_; }
-  static std::string UniqueName() {
+
+  static std::string name() { return "Unsupport"; }
+
+  static std::string UniqueId() {
     static std::atomic<int64_t> counter = 0;
     counter += 1;
-    return "Unsupport_" + std::to_string(counter);
+    return name() + "_" + std::to_string(counter);
   }
-  std::string name() const { return name_; }
-  std::string name_;
+  std::string id() const { return id_; }
+  std::string id_;
 
   FusionTrackerPtr tracker_;
   void update_tracker() const {}
@@ -339,6 +324,40 @@ using StmtPattern = std::variant<TrivialPattern,
                                  UnsupportPattern,
                                  AnchorPattern>;
 
+std::string GetPatternId(const StmtPattern& s);
+std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
+
+struct HorizontalFusionPattern::PaddingStmtPattern {
+  StmtPattern pattern;
+  std::vector<int> padding_pos;
+  PaddingStmtPattern(const StmtPattern& pattern,
+                     const std::vector<int>& padding_pos)
+      : pattern(pattern), padding_pos(padding_pos) {}
+};
+
+void HorizontalFusionPattern::update_tracker() const {
+  std::vector<std::string> tmp_names;
+  for (int i = 0; i < padding_patterns_.size(); i++) {
+    auto padding_pattern = padding_patterns_[i];
+    std::string tmp_name = "tmp_" + std::to_string(i);
+    tmp_names.emplace_back(tmp_name);
+    tracker_->append(
+        std::make_shared<PaddingInstr>(GetPatternId(padding_pattern.pattern),
+                                       tmp_name,
+                                       padding_pattern.padding_pos));
+  }
+  tracker_->append(std::make_shared<CombineInstr>(tmp_names, id()));
+}
+
+std::vector<pir::Operation*> HorizontalFusionPattern::ops() const {
+  std::vector<pir::Operation*> result;
+  for (const auto& pattern : padding_patterns_) {
+    auto ops = GetOpsInPattern(pattern.pattern);
+    ExtendVector(&result, ops);
+  }
+  return result;
+}
+
 std::string StmtPatternDebugStr(const StmtPattern& stmt) {
   std::stringstream ss;
   auto all_ops = GetOpsInPattern(stmt);
@@ -349,6 +368,10 @@ std::string StmtPatternDebugStr(const StmtPattern& stmt) {
 
 std::string GetPatternName(const StmtPattern& s) {
   return std::visit([](const auto& impl) { return impl.name(); }, s);
+}
+
+std::string GetPatternId(const StmtPattern& s) {
+  return std::visit([](const auto& impl) { return impl.id(); }, s);
 }
 
 FusionTrackerPtr GetFusionTracker(const StmtPattern& s) {

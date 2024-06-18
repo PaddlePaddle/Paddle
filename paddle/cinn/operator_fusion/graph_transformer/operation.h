@@ -50,7 +50,7 @@ struct MergeTrivialPatternOperation {
                 << downstream->DebugStr() << "\nmerged "
                 << merged_node->DebugStr();
         merged_node->AppendInstr(std::make_shared<TrivialInlineInstr>(
-            upstream->name(), downstream->name(), merged_node->name()));
+            upstream->id(), downstream->id(), merged_node->id()));
       } else {
         upstream->AddNodeToDownstream(downstream);
       }
@@ -115,33 +115,33 @@ struct MergeReduceTreeAndTrivialOperation {
 
 struct LiftReduceToReduceTreeOperation {
   PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
-    auto origin_name = node->name();
+    auto origin_name = node->id();
     const auto& reduce_pattern = std::get<ReducePattern>(node->stmt_pattern());
     node->set_stmt_pattern(ReduceTreePattern(
         {},
         reduce_pattern,
         std::make_shared<FusionTracker>(reduce_pattern.tracker_)));
-    node->AppendInstr(std::make_shared<CopyInstr>(origin_name, node->name()));
+    node->AppendInstr(std::make_shared<CopyInstr>(origin_name, node->id()));
     return node;
   }
 };
 
 struct LiftToHorizontalFusionPatternOperation {
   PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
-    auto origin_name = node->name();
+    auto origin_name = node->id();
     node->set_stmt_pattern(HorizontalFusionPattern(
         {typename HorizontalFusionPattern::PaddingStmtPattern(
             node->stmt_pattern(), {})},
         std::make_shared<FusionTracker>(
             GetFusionTracker(node->stmt_pattern()))));
-    node->AppendInstr(std::make_shared<CopyInstr>(origin_name, node->name()));
+    node->AppendInstr(std::make_shared<CopyInstr>(origin_name, node->id()));
     return node;
   }
 };
 
 struct LiftToAnchorPatternOperation {
   PatternNodePtr operator()(PatternGraph* graph, PatternNodePtr node) {
-    auto origin_name = node->name();
+    auto origin_name = node->id();
     std::vector<pir::Operation*> ops = GetOpsInPattern(node->stmt_pattern());
     // TODO(@wuzhanfei) move sink_op into pattern (currently, part of pattern
     // type has sink and the others not) then, update logic here
@@ -256,11 +256,11 @@ struct FuseDownstreamAnchorOperation {
 
 struct SplitRecomputeOperation {
   void operator()(PatternGraph* graph, PatternNodePtr upstream) {
-    auto origin_name = upstream->name();
+    auto origin_name = upstream->id();
     upstream->set_stmt_pattern(RecoverAnchorPatternToTrivial(
         std::get<AnchorPattern>(upstream->stmt_pattern())));
     upstream->AppendInstr(
-        std::make_shared<CopyInstr>(origin_name, upstream->name()));
+        std::make_shared<CopyInstr>(origin_name, upstream->id()));
     MergeTrivialPatternOperation()(graph, upstream);
   }
 };

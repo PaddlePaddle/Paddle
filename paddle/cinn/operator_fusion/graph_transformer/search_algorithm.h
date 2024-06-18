@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <queue>
 #include "paddle/cinn/operator_fusion/pattern_graph.h"
 
 namespace cinn::fusion {
