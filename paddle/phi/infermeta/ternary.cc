@@ -408,8 +408,8 @@ void FlashAttnInferMeta(const MetaTensor& q,
                         MetaTensor* softmax_lse,
                         MetaTensor* seed_offset) {
   auto out_dims = q.dims();
-  PADDLE_ENFORCE_EQ(out_dims.size() == 3 || out_dims.size() == 4,
-                    true,
+  PADDLE_ENFORCE_EQ(out_dims.size(),
+                    4,
                     phi::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
