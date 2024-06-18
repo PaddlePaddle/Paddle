@@ -47,14 +47,18 @@ BufferedReader::BufferedReader(
       thread_pool_(1),
       place_(place),
       buffer_size_(buffer_size),
-      pin_memory_(pin_memory) {
+      pin_memory_(pin_memory),
+      position_(),
+      cpu_buffer_(),
+      cuda_buffer_(),
+      xpu_buffer_(),
+      custom_device_buffer_() {
   VLOG(1) << "BufferedReader";
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (place_.GetType() == phi::AllocationType::GPU && !pin_memory) {
     int dev_idx = place_.device;  // NOLINT
     compute_stream_ =
-        ((phi::GPUContext *)(platform::DeviceContextPool::Instance().Get(
-             place_)))
+        ((phi::GPUContext *)(phi::DeviceContextPool::Instance().Get(place_)))
             ->stream();
     events_.resize(buffer_size);
     for (auto &event : events_) {
@@ -68,8 +72,7 @@ BufferedReader::BufferedReader(
   if (place_.GetType() == phi::AllocationType::XPU) {
     int dev_idx = place_.device;
     compute_stream_ =
-        ((phi::XPUContext *)(platform::DeviceContextPool::Instance().Get(
-             place_)))
+        ((phi::XPUContext *)(phi::DeviceContextPool::Instance().Get(place_)))
             ->stream();
     events_.resize(buffer_size);
     for (auto &event : events_) {
@@ -81,9 +84,10 @@ BufferedReader::BufferedReader(
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (place_.GetType() == phi::AllocationType::CUSTOM) {
-    auto stream = ((platform::CustomDeviceContext
-                        *)(platform::DeviceContextPool::Instance().Get(place_)))
-                      ->stream();
+    auto stream =
+        ((platform::CustomDeviceContext *)(phi::DeviceContextPool::Instance()
+                                               .Get(place_)))
+            ->stream();
     custom_device_compute_stream_ =
         std::make_shared<phi::stream::Stream>(place_, stream);
 

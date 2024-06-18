@@ -15,8 +15,7 @@
 #include "paddle/fluid/distributed/ps/service/ps_local_client.h"
 #include "paddle/fluid/distributed/ps/table/table.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 int32_t PsLocalClient::Initialize() {
   const auto& downpour_param = _config.server_param().downpour_server_param();
   TableManager::Instance().Initialize();
@@ -329,5 +328,4 @@ int32_t PsLocalClient::Initialize() {
   return done();
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

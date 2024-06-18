@@ -25,7 +25,7 @@
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass/lightware_fuse_pass.h"
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass/lightware_fuse_pass_ctx.h"
 #include "paddle/cinn/hlir/pass/general_fusion_merge_pass_utils.h"
-
+#include "paddle/common/enforce.h"
 PD_DECLARE_bool(enhance_vertical_fusion_with_recompute);
 
 namespace cinn {
@@ -840,7 +840,11 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
         }
       }
 
-      CHECK_GE(producer->consumer_groups().size(), candidates.size());
+      PADDLE_ENFORCE_GE(
+          producer->consumer_groups().size(),
+          candidates.size(),
+          phi::errors::Fatal("The number of candidates should be less than or "
+                             "equal to the number of consumers."));
       if (producer->consumer_groups().size() == 0 && candidates.size() == 0 &&
           output_nodes_set_.count(producer->CollectNodes()[0]) == 0) {
         producer->belong_groups.insert(*fusionable_consumers->begin());
@@ -1035,8 +1039,14 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
         CHECK(consumer->belong_groups.size());
         consumers.insert(*consumer->belong_groups.begin());
       }
-      CHECK_EQ(group->producer_groups().size(), producers.size());
-      CHECK_EQ(group->consumer_groups().size(), consumers.size());
+      PADDLE_ENFORCE_EQ(
+          group->producer_groups().size(),
+          producers.size(),
+          phi::errors::InvalidArgument("Producer size is not equal!"));
+      PADDLE_ENFORCE_EQ(
+          group->consumer_groups().size(),
+          consumers.size(),
+          phi::errors::InvalidArgument("Consumer size is not equal!"));
       (*group->mut_producer_groups()) = producers;
       (*group->mut_consumer_groups()) = consumers;
     }

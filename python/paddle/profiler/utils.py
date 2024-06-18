@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import functools
 import sys
+import types
 from contextlib import ContextDecorator, contextmanager
-from typing import Any
 from warnings import warn
 
 from paddle.base import core
@@ -82,7 +84,12 @@ class RecordEvent(ContextDecorator):
         self.begin()
         return self
 
-    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: types.TracebackType | None,
+    ):
         self.end()
 
     def begin(self):
@@ -248,3 +255,12 @@ def job_schedule_profiler_range(iter_id, start, end, exit_after_prof=True):
         if iter_id == end - 1:
             if exit_after_prof:
                 sys.exit()
+
+
+def switch_job_schedule_profiler(
+    model, iter_id, start, end, exit_after_prof=True
+):
+    with job_schedule_profiler_range(
+        iter_id, start, end, exit_after_prof
+    ) as status:
+        model._engine.enable_job_schedule_profiler = status

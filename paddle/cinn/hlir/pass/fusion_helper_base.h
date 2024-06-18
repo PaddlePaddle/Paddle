@@ -23,7 +23,7 @@
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace pass {
@@ -104,7 +104,10 @@ class FusionHelperBase {
 
   shape_t GetNodeInputShape(const Node* node) const {
     auto node_datas = GetProducerNodeData(node);
-    CHECK_GT(node_datas.size(), 0);
+    PADDLE_ENFORCE_GT(
+        node_datas.size(),
+        0,
+        phi::errors::InvalidArgument("The input node should not be empty!"));
     CHECK(shape_dict_.count(node_datas[0]->id()))
         << "Can't find " << node_datas[0]->id() << " 's shape!";
     return shape_dict_.at(node_datas[0]->id());
@@ -168,9 +171,12 @@ class FusionHelperBase {
 
   int GetSharedSize(const Node* node) const {
     auto producers = GetProducerNodeData(node);
-    CHECK_GT(producers.size(), 0);
+    PADDLE_ENFORCE_GT(
+        producers.size(),
+        0,
+        phi::errors::InvalidArgument("The input node should not be empty!"));
     auto inshape = shape_dict_.at(producers[0]->id());
-    auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("dim"));
+    auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("axis"));
     if (WithoutLastDimInReduce(inshape, axes)) {
       int lane = 1;
       for (int idx = axes.back() + 1; idx < inshape.size(); ++idx) {

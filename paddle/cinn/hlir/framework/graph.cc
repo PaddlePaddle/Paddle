@@ -321,9 +321,15 @@ void Graph::VisualizeGroupedGraph(
   for (int idx = 0; idx < groups.size(); ++idx) {
     // Create fusion_group_x folder
     int device_id = 0;
+    cinn::common::DefaultDeviceTarget().arch.Match(
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) {},
+        [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-    cudaGetDevice(&device_id);
+          cudaGetDevice(&device_id);
 #endif
+        });
     auto group_path =
         utils::StringFormat("%s/device_%d/fusion_group_%d",
                             FLAGS_cinn_fusion_groups_graphviz_dir.c_str(),

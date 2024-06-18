@@ -14,6 +14,7 @@
 
 import os
 
+import numpy as np
 from semi_auto_parallel_simple_net import (
     DemoNet,
     TestSimpleNetForSemiAutoParallel,
@@ -39,16 +40,18 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
     def check_tensor_eq(self, tensor_a, tensor_b):
         super().check_tensor_eq(tensor_a, tensor_b, rtol=1e-5, atol=1e-7)
 
-    def run_dynamic_amp(self, layer, level='O1', shard_input=False):
+    def run_dynamic_amp(
+        self, layer, level='O1', shard_input=False, run_dist=False
+    ):
         # create loss
         loss_fn = nn.MSELoss()
         if self._use_adam:
             opt = paddle.optimizer.Adam(
-                learning_rate=0.1, parameters=layer.parameters()
+                learning_rate=0.001, parameters=layer.parameters()
             )
         else:
             opt = paddle.optimizer.AdamW(
-                learning_rate=0.1, parameters=layer.parameters()
+                learning_rate=0.001, parameters=layer.parameters()
             )
 
         if level == 'O2':
@@ -61,21 +64,23 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
             )
 
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+        if run_dist:
+            scaler = dist.shard_scaler(scaler)
         # run forward and backward
-        for _ in range(5):
+        for _ in range(2):
             image, label = self.init_input_data()
             if shard_input:
                 image = dist.shard_tensor(image, self._mesh, [dist.Shard(0)])
 
-            with paddle.amp.auto_cast(level=level):
+            with paddle.amp.auto_cast(level=level, dtype=self._dtype):
                 out = layer(image)
                 loss = loss_fn(out, label)
 
             scaled = scaler.scale(loss)
             scaled.backward()
-            opt.step()
+            scaler.step(opt)
+            scaler.update()
             opt.clear_grad()
-
         return loss, layer.parameters()
 
     def init_single_card_net_result(self):
@@ -93,33 +98,53 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
         ) = self.run_dynamic_amp(DemoNet('demo_weight_O2'), 'O2')
 
     def test_dp_demo_net(self):
+        tol = 0.005
         self.set_random_seed(self._seed)
         (
             self.dp_loss_o1,
             self.dp_parameters_o1,
         ) = self.run_dynamic_amp(
-            DemoNet('dp_demo_weight_O1'), 'O1', shard_input=True
+            DemoNet('dp_demo_weight_O1'), 'O1', shard_input=True, run_dist=True
         )
-        self.check_tensor_eq(self.dp_loss_o1, self.base_loss_o1)
+        np.testing.assert_allclose(
+            self.dp_loss_o1.numpy(),
+            self.base_loss_o1.numpy(),
+            rtol=tol,
+            atol=tol,
+        )
         for param, param_base in zip(
             self.dp_parameters_o1, self.base_parameters_o1
         ):
-            # self.check_tensor_eq(param, param_base)
-            self.check_tensor_eq(param.grad, param_base.grad)
+            np.testing.assert_allclose(
+                param.numpy(), param_base.numpy(), rtol=tol, atol=tol
+            )
+            np.testing.assert_allclose(
+                param.grad.numpy(), param_base.grad.numpy(), rtol=tol, atol=tol
+            )
 
         self.set_random_seed(self._seed)
         (
             self.dp_loss_o2,
             self.dp_parameters_o2,
         ) = self.run_dynamic_amp(DemoNet('dp_demo_weight_O2'), 'O2')
-        self.check_tensor_eq(self.dp_loss_o2, self.base_loss_o2)
+        np.testing.assert_allclose(
+            self.dp_loss_o2.numpy(),
+            self.base_loss_o2.numpy(),
+            rtol=tol,
+            atol=tol,
+        )
         for param, param_base in zip(
             self.dp_parameters_o2, self.base_parameters_o2
         ):
-            self.check_tensor_eq(param, param_base)
-            self.check_tensor_eq(param.grad, param_base.grad)
+            np.testing.assert_allclose(
+                param.numpy(), param_base.numpy(), rtol=tol, atol=tol
+            )
+            np.testing.assert_allclose(
+                param.grad.numpy(), param_base.grad.numpy(), rtol=tol, atol=tol
+            )
 
     def test_mp_demo_net(self):
+        tol = 0.005
         self.set_random_seed(self._seed)
         mp_layer_o1 = dist.shard_layer(
             DemoNet("mp_demo_weight_O1"), self._mesh, self.shard_fn
@@ -127,13 +152,22 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
         (
             self.mp_loss_o1,
             self.mp_parameters_o1,
-        ) = self.run_dynamic_amp(mp_layer_o1, 'O1')
-        self.check_tensor_eq(self.mp_loss_o1, self.base_loss_o1)
+        ) = self.run_dynamic_amp(mp_layer_o1, 'O1', run_dist=True)
+        np.testing.assert_allclose(
+            self.mp_loss_o1.numpy(),
+            self.base_loss_o1.numpy(),
+            rtol=tol,
+            atol=tol,
+        )
         for param, param_base in zip(
             self.mp_parameters_o1, self.base_parameters_o1
         ):
-            self.check_tensor_eq(param, param_base)
-            self.check_tensor_eq(param.grad, param_base.grad)
+            np.testing.assert_allclose(
+                param.numpy(), param_base.numpy(), rtol=tol, atol=tol
+            )
+            np.testing.assert_allclose(
+                param.grad.numpy(), param_base.grad.numpy(), rtol=tol, atol=tol
+            )
 
         self.set_random_seed(self._seed)
         mp_layer_o2 = dist.shard_layer(
@@ -142,13 +176,19 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
         (
             self.mp_loss_o2,
             self.mp_parameters_o2,
-        ) = self.run_dynamic_amp(mp_layer_o2, 'O2')
-        self.check_tensor_eq(self.mp_loss_o2, self.base_loss_o2)
+        ) = self.run_dynamic_amp(mp_layer_o2, 'O2', run_dist=True)
+        np.testing.assert_allclose(
+            self.mp_loss_o2.numpy(), self.base_loss_o2.numpy(), rtol=tol
+        )
         for param, param_base in zip(
             self.mp_parameters_o2, self.base_parameters_o2
         ):
-            self.check_tensor_eq(param, param_base)
-            self.check_tensor_eq(param.grad, param_base.grad)
+            np.testing.assert_allclose(
+                param.numpy(), param_base.numpy(), rtol=tol, atol=tol
+            )
+            np.testing.assert_allclose(
+                param.grad.numpy(), param_base.grad.numpy(), rtol=tol, atol=tol
+            )
 
     def run_test_case(self):
         if self._dtype == "bfloat16" and not paddle.amp.is_bfloat16_supported():

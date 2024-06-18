@@ -5,8 +5,6 @@ if(WITH_GPU)
       test_sub_graph_2
       test_sub_graph_3
       test_sub_graph_5
-      test_sub_graph_7
-      test_sub_graph_9
       test_sub_graph_10
       test_sub_graph_12
       test_sub_graph_13
@@ -95,9 +93,9 @@ if(WITH_GPU)
         ${CMAKE_COMMAND} -E env
         PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
         FLAGS_prim_enable_dynamic=1 FLAGS_cinn_new_group_scheduler=1
-        FLAGS_enable_pir_api=1 FLAGS_cinn_bucket_compile=1
-        FLAGS_group_schedule_tiling_first=1 FLAGS_cudnn_deterministic=true
-        ${PYTHON_EXECUTABLE}
+        FLAGS_check_infer_symbolic=1 FLAGS_enable_pir_api=1
+        FLAGS_cinn_bucket_compile=1 FLAGS_group_schedule_tiling_first=1
+        FLAGS_cudnn_deterministic=true ${PYTHON_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/${cinn_sub_graph_test_name}.py
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
     set_tests_properties(${cinn_sub_graph_test_name} PROPERTIES LABELS

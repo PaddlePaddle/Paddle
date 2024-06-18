@@ -14,8 +14,10 @@
 from __future__ import annotations
 
 import collections
+import logging
 import warnings
 from collections.abc import Sequence
+from functools import lru_cache
 from typing import Any
 
 from paddle import pir
@@ -27,20 +29,21 @@ from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 # TODO: Consider a better way to mark these ops has no grad op.
 # Such as use a new trait to mark these ops.
+# Please keep them as alphabetical order.
 ALLOW_NO_GRAD_OPS = [
     # Compare ops
     "pd_op.equal",
     "pd_op.equal_",
-    "pd_op.not_equal",
-    "pd_op.not_equal_",
-    "pd_op.less_than",
-    "pd_op.less_than_",
-    "pd_op.less_equal",
-    "pd_op.less_equal_",
     "pd_op.greater_than",
     "pd_op.greater_than_",
     "pd_op.greater_equal",
     "pd_op.greater_equal_",
+    "pd_op.less_than",
+    "pd_op.less_than_",
+    "pd_op.less_equal",
+    "pd_op.less_equal_",
+    "pd_op.not_equal",
+    "pd_op.not_equal_",
     # Logical ops
     "pd_op.logical_and",
     "pd_op.logical_and_",
@@ -65,35 +68,40 @@ ALLOW_NO_GRAD_OPS = [
     "pd_op.bitwise_xor_",
     # Array ops
     "pd_op.assign_array",
-    "pd_op.array_length",
-    "pd_op.slice_array",
-    "pd_op.slice_array_dense",
-    "pd_op.assign_array",
     "pd_op.assign_array_",
-    "pd_op.create_array",
-    "pd_op.create_array_like",
+    "pd_op.array_length",
+    "pd_op.array_pop",
     "pd_op.array_read",
     "pd_op.array_write_",
-    "pd_op.array_pop",
+    "pd_op.create_array",
+    "pd_op.create_array_like",
+    "pd_op.slice_array",
+    "pd_op.slice_array_dense",
     # Others
-    "pd_op.remainder",
-    "pd_op.argmax",
-    "pd_op.print",
     "pd_op.accuracy",
-    "pd_op.randint",
-    "pd_op.uniform",
-    "pd_op.gaussian",
-    "pd_op.bernoulli",
-    "pd_op.full_like",
-    "pd_op.assign_value_",
-    "pd_op.nextafter",
-    "pd_op.isnan",
-    "pd_op.isinf",
     "pd_op.all",
     "pd_op.any",
-    "pd_op.prior_box",
-    "pd_op.share_data_",
+    "pd_op.argmax",
+    "pd_op.assign_value_",
+    "pd_op.bernoulli",
+    "pd_op.distribute_fpn_proposals",
     "pd_op.floor_divide",
+    "pd_op.full_like",
+    "pd_op.full_with_tensor",
+    "pd_op.gaussian",
+    "pd_op.isnan",
+    "pd_op.isinf",
+    "pd_op.multinomial",
+    "pd_op.nextafter",
+    "pd_op.nonzero",
+    "pd_op.one_hot",
+    "pd_op.print",
+    "pd_op.prior_box",
+    "pd_op.randint",
+    "pd_op.remainder",
+    "pd_op.shape",
+    "pd_op.share_data_",
+    "pd_op.uniform",
 ]
 
 
@@ -111,6 +119,12 @@ ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.rsqrt",
     "pd_op.sigmoid",
     "pd_op.silu",
+    "pd_op.sum",
+    "pd_op.mean",
+    "pd_op.add",
+    "pd_op.subtract",
+    "pd_op.concat",
+    "pd_op.split",
 ]
 
 
@@ -174,10 +188,20 @@ class ValueDict:
         for key, val in self._items.items():
             yield key._value, val
 
+    def get(self, key, default=None):
+        if not self.__contains__(key):
+            return default
+        return self._items[ValueWrapper(key)]
+
     def pop(self, key):
         if not self.__contains__(key):
             raise KeyError(f'{key} is not in ValueDict')
         return self._items.pop(ValueWrapper(key))
+
+    def setdefault(self, key, default=None):
+        if not self.__contains__(key):
+            self[key] = default
+        return self[key]
 
     def __setitem__(self, key, val: Any):
         self._items[ValueWrapper(key)] = val
@@ -650,3 +674,8 @@ def get_split_op(value):
         if op.name() == "builtin.split":
             return op
     return None
+
+
+@lru_cache
+def warning_once(message: str):
+    logging.warning(message)

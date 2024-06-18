@@ -26,17 +26,24 @@
 #include "paddle/cinn/ir/intrinsic_ops.h"
 #include "paddle/cinn/ir/registry.h"
 #include "paddle/cinn/lang/packed_func.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace codegen {
 
 template <int id, int arg_nums, bool add_float_suffix = true>
 inline void MakeFloatIntrinOp(lang::Args args, lang::RetValue *rv) {
-  CHECK_GE(args.size(), 1U);
+  PADDLE_ENFORCE_GE(args.size(),
+                    1U,
+                    phi::errors::InvalidArgument(
+                        "The number of args should be greater than 1."));
   Expr arg = args[0];
   ir::Call *node = arg->as<ir::Call>();
   CHECK(node);
-  CHECK_GE(node->read_args.size(), arg_nums);
+  PADDLE_ENFORCE_GE(
+      node->read_args.size(),
+      arg_nums,
+      phi::errors::InvalidArgument(
+          "The number of read args should be greater than arg_nums."));
   if (add_float_suffix) {
     CHECK(node->type().is_float());
     *rv = ir::intrinsics::BuiltinIntrin::Make(
@@ -85,7 +92,10 @@ void RegisterCpuIntrinRule() {
 
   ir::Registry::Register("lower_cpu_intrinsic_isfinite", true)
       .SetBody([](lang::Args args, lang::RetValue *rv) {
-        CHECK_GE(args.size(), 1U);
+        PADDLE_ENFORCE_GE(args.size(),
+                          1U,
+                          phi::errors::InvalidArgument(
+                              "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();
         CHECK(node);
@@ -96,7 +106,10 @@ void RegisterCpuIntrinRule() {
 
   ir::Registry::Register("lower_cpu_intrinsic_isinf", true)
       .SetBody([](lang::Args args, lang::RetValue *rv) {
-        CHECK_GE(args.size(), 1U);
+        PADDLE_ENFORCE_GE(args.size(),
+                          1U,
+                          phi::errors::InvalidArgument(
+                              "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();
         CHECK(node);
@@ -113,7 +126,10 @@ void RegisterCpuIntrinRule() {
 
   ir::Registry::Register("lower_cpu_intrinsic_rsqrt", true)
       .SetBody([](lang::Args args, lang::RetValue *rv) {
-        CHECK_GE(args.size(), 1U);
+        PADDLE_ENFORCE_GE(args.size(),
+                          1U,
+                          phi::errors::InvalidArgument(
+                              "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();
         CHECK(node);
@@ -124,7 +140,10 @@ void RegisterCpuIntrinRule() {
 
   ir::Registry::Register("lower_cpu_intrinsic_exp10", true)
       .SetBody([](lang::Args args, lang::RetValue *rv) {
-        CHECK_GE(args.size(), 1U);
+        PADDLE_ENFORCE_GE(args.size(),
+                          1U,
+                          phi::errors::InvalidArgument(
+                              "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();
         CHECK(node);
@@ -136,7 +155,10 @@ void RegisterCpuIntrinRule() {
 
   ir::Registry::Register("lower_cpu_intrinsic_tan", true)
       .SetBody([](lang::Args args, lang::RetValue *rv) {
-        CHECK_GE(args.size(), 1U);
+        PADDLE_ENFORCE_GE(args.size(),
+                          1U,
+                          phi::errors::InvalidArgument(
+                              "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();
         CHECK(node);
@@ -147,7 +169,10 @@ void RegisterCpuIntrinRule() {
 
   ir::Registry::Register("lower_cpu_intrinsic_tanh", true)
       .SetBody([](lang::Args args, lang::RetValue *rv) {
-        CHECK_GE(args.size(), 1U);
+        PADDLE_ENFORCE_GE(args.size(),
+                          1U,
+                          phi::errors::InvalidArgument(
+                              "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();
         CHECK(node);
@@ -168,7 +193,10 @@ void RegisterCpuIntrinRule() {
 
   ir::Registry::Register("lower_cpu_intrinsic_cosh", true)
       .SetBody([](lang::Args args, lang::RetValue *rv) {
-        CHECK_GE(args.size(), 1U);
+        PADDLE_ENFORCE_GE(args.size(),
+                          1U,
+                          phi::errors::InvalidArgument(
+                              "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();
         CHECK(node);
@@ -180,7 +208,10 @@ void RegisterCpuIntrinRule() {
 
   ir::Registry::Register("lower_cpu_intrinsic_sinh", true)
       .SetBody([](lang::Args args, lang::RetValue *rv) {
-        CHECK_GE(args.size(), 1U);
+        PADDLE_ENFORCE_GE(args.size(),
+                          1U,
+                          phi::errors::InvalidArgument(
+                              "The number of args should be greater than 1."));
         Expr arg0 = args[0];
         ir::Call *node = arg0->as<ir::Call>();
         CHECK(node);

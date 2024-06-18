@@ -103,7 +103,7 @@ void FleetWrapper::InitGFlag(const std::string& gflags) {
   }
   auto it = flags.begin();
   flags.insert(it, "exe default");
-  char* flags_ptr[flags.size()];
+  std::vector<char*> flags_ptr(flags.size());
   for (size_t i = 0; i < flags.size(); ++i) {
     flags_ptr[i] = (char*)(flags[i].c_str());  // NOLINT
   }
@@ -914,7 +914,7 @@ std::default_random_engine& FleetWrapper::LocalRandomEngine() {
     std::default_random_engine engine;
 
     engine_wrapper_t() {
-      struct timespec tp;
+      struct timespec tp = {0, 0};
       clock_gettime(CLOCK_REALTIME, &tp);
       double cur_time = tp.tv_sec + tp.tv_nsec * 1e-9;
       static std::atomic<uint64_t> x(0);

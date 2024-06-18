@@ -15,19 +15,28 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void Conv2dOpMapper(const paddle::cpp::OpDesc& op_desc,
                     const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("Input").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Input").size(),
+      1UL,
+      phi::errors::InvalidArgument("Input size of conv2d op should be 1."));
   auto x_name = op_desc.Input("Input").front();
-  CHECK_EQ(op_desc.Input("Filter").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Filter").size(),
+      1UL,
+      phi::errors::InvalidArgument("Filter size of conv2d op should be 1."));
   auto y_name = op_desc.Input("Filter").front();
 
-  CHECK_EQ(op_desc.Output("Output").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Output").size(),
+      1UL,
+      phi::errors::InvalidArgument("Output size of conv2d op should be 1."));
   auto out_name = op_desc.Output("Output").front();
 
   auto strides =
@@ -49,12 +58,16 @@ void Conv2dOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto x = ctx.GetVar(x_name);
   auto y = ctx.GetVar(y_name);
 
-  CHECK_EQ(x->shape.size(), 4) << "CINN conv2d operator only support 4-D "
-                                  "tensor now, but Input's shape is ["
-                               << cinn::utils::Join(x->shape, ", ") << "]";
-  CHECK_EQ(y->shape.size(), 4) << "CINN conv2d operator only support 4-D "
-                                  "tensor now, but Filter's shape is ["
-                               << cinn::utils::Join(y->shape, ", ") << "]";
+  PADDLE_ENFORCE_EQ(
+      x->shape.size(),
+      4UL,
+      phi::errors::InvalidArgument(
+          "CINN conv2d operator's x only support 4-D tensor now."));
+  PADDLE_ENFORCE_EQ(
+      y->shape.size(),
+      4,
+      phi::errors::InvalidArgument(
+          "CINN conv2d operator's y only support 4-D tensor now."));
   if (data_format == "NHWC") {
     // the weight in paddle always be NCHW, but cudnn need the same as input,
     // transpose before
@@ -82,12 +95,22 @@ void DepthwiseConv2dOpMapperImpl(common::UnknownArch,
 void DepthwiseConv2dOpMapperImpl(common::X86Arch,
                                  const paddle::cpp::OpDesc& op_desc,
                                  const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("Input").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Input size of depthwise_conv2d op should be 1."));
   auto x_name = op_desc.Input("Input").front();
-  CHECK_EQ(op_desc.Input("Filter").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Filter size of depthwise_conv2d op should be 1."));
+
   auto y_name = op_desc.Input("Filter").front();
 
-  CHECK_EQ(op_desc.Output("Output").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Output size of depthwise_conv2d op should be 1."));
   auto out_name = op_desc.Output("Output").front();
 
   auto strides =
@@ -131,12 +154,21 @@ void DepthwiseConv2dOpMapperImpl(common::ARMArch,
 void DepthwiseConv2dOpMapperImpl(common::NVGPUArch,
                                  const paddle::cpp::OpDesc& op_desc,
                                  const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("Input").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Input size of depthwise_conv2d op should be 1."));
   auto x_name = op_desc.Input("Input").front();
-  CHECK_EQ(op_desc.Input("Filter").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Filter size of depthwise_conv2d op should be 1."));
   auto y_name = op_desc.Input("Filter").front();
 
-  CHECK_EQ(op_desc.Output("Output").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Output size of depthwise_conv2d op should be 1."));
   auto out_name = op_desc.Output("Output").front();
 
   auto strides =
@@ -190,24 +222,39 @@ void DepthwiseConv2dOpMapper(const paddle::cpp::OpDesc& op_desc,
 void Conv2dGradOpMapper(const paddle::cpp::OpDesc& op_desc,
                         const OpMapperContext& ctx) {
   // get dy
-  CHECK_EQ(op_desc.Input(paddle::GradVarName("Output")).size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input(paddle::GradVarName("Output")).size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Input size of conv2d_grad op should be 1."));
   auto dy_name = op_desc.Input(paddle::GradVarName("Output")).front();
 
   // get intput input,filter
-  CHECK_EQ(op_desc.Input("Input").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Input size of conv2d_grad op should be 1."));
   auto x_name = op_desc.Input("Input").front();
-  CHECK_EQ(op_desc.Input("Filter").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Filter size of conv2d_grad op should be 1."));
   auto w_name = op_desc.Input("Filter").front();
 
   // get d_x
   std::string dx_name;
   bool has_dx = !op_desc.Output(paddle::GradVarName("Input")).empty();
   if (has_dx) {
-    CHECK_EQ(op_desc.Output(paddle::GradVarName("Input")).size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output(paddle::GradVarName("Input")).size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "Output size of conv2d_grad op should be 1."));
     dx_name = op_desc.Output(paddle::GradVarName("Input")).front();
   }
   // get d_filter
-  CHECK_EQ(op_desc.Output(paddle::GradVarName("Filter")).size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Output(paddle::GradVarName("Filter")).size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Output size of conv2d_grad op should be 1."));
   auto dw_name = op_desc.Output(paddle::GradVarName("Filter")).front();
 
   auto strides =
@@ -231,17 +278,22 @@ void Conv2dGradOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto x = ctx.GetVar(x_name);
   auto weight = ctx.GetVar(w_name);
 
-  CHECK_EQ(x->shape.size(), 4) << "CINN conv2d_grad operator only support 4-D "
-                                  "tensor now, but Input's shape is ["
-                               << cinn::utils::Join(x->shape, ", ") << "]";
-  CHECK_EQ(dy->shape.size(), 4)
-      << "CINN conv2d_grad operator only support 4-D tensor now, but "
-      << paddle::GradVarName("Output") << "'s shape is ["
-      << cinn::utils::Join(dy->shape, ", ") << "]";
-  CHECK_EQ(weight->shape.size(), 4)
-      << "CINN conv2d_grad operator only support 4-D tensor now, but Filter's "
-         "shape is ["
-      << cinn::utils::Join(weight->shape, ", ") << "]";
+  PADDLE_ENFORCE_EQ(
+      x->shape.size(),
+      4UL,
+      phi::errors::InvalidArgument(
+          "CINN conv2d_grad operator's x only support 4-D tensor now."));
+  PADDLE_ENFORCE_EQ(
+      dy->shape.size(),
+      4UL,
+      phi::errors::InvalidArgument(
+          "CINN conv2d_grad operator's dy only support 4-D tensor now."));
+  PADDLE_ENFORCE_EQ(
+      weight->shape.size(),
+      4UL,
+      phi::errors::InvalidArgument(
+          "CINN conv2d_grad operator's weight only support 4-D tensor now."));
+
   if (data_format == "NHWC") {
     // the weight in paddle always be NCHW, but cudnn need the same as input,
     // transpose before

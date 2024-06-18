@@ -221,6 +221,8 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       input_ptr = input.mutable_data<float>(ddim, place_);
     } else if (inputs[i].dtype == PaddleDType::INT32) {
       input_ptr = input.mutable_data<int32_t>(ddim, place_);
+    } else if (inputs[i].dtype == PaddleDType::BFLOAT16) {
+      input_ptr = input.mutable_data<bfloat16>(ddim, place_);
     } else {
       LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
       return false;

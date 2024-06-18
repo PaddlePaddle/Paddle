@@ -34,8 +34,7 @@
 #include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/value.h"
 
-namespace paddle {
-namespace inference {
+namespace paddle::inference {
 
 template <>
 std::string to_string<std::vector<float>>(
@@ -68,13 +67,13 @@ void RegisterAllCustomOperator(bool use_pir) {
           ::pir::IrContext::Instance()
               ->GetOrRegisterDialect<paddle::dialect::CustomOpDialect>();
       if (custom_dialect->HasRegistered(pair.first)) {
-        LOG(INFO) << "The operator `" << pair.first
-                  << "` has been registered. "
-                     "Therefore, we will not repeat the registration here.";
+        VLOG(3) << "The operator `" << pair.first
+                << "` has been registered. "
+                   "Therefore, we will not repeat the registration here.";
         continue;
       }
       for (const auto &meta_info : pair.second) {
-        LOG(INFO) << "register pir custom op: " << pair.first;
+        VLOG(3) << "register pir custom op: " << pair.first;
         custom_dialect->RegisterCustomOp(meta_info);
       }
 
@@ -140,8 +139,8 @@ void RegisterAllCustomOperator(bool use_pir) {
             for (size_t i = 0; i < meta_inputs.size(); ++i) {
               const auto &meta_input = meta_inputs.at(i);
               if (!inputs[i]) {
-                VLOG(6) << "Add un-initialized tensor "
-                           "because the optional input is None";
+                VLOG(6) << "Add un-initialized tensor because the optional "
+                           "input is None.";
                 if (paddle::framework::detail::IsDuplicableVar(meta_input)) {
                   std::vector<std::vector<int64_t>> vec_input_shape;
                   std::vector<DataType> vec_input_dtype;
@@ -422,9 +421,9 @@ void RegisterAllCustomOperator(bool use_pir) {
     if (all_op_kernels.find(pair.first) == all_op_kernels.end()) {
       framework::RegisterOperatorWithMetaInfo(pair.second);
     } else {
-      LOG(INFO) << "The operator `" << pair.first
-                << "` has been registered. "
-                   "Therefore, we will not repeat the registration here.";
+      VLOG(3) << "The operator `" << pair.first
+              << "` has been registered. Therefore, we will not repeat the "
+                 "registration here.";
     }
   }
 }
@@ -446,5 +445,4 @@ void InitGflagsFromEnv() {
   framework::InitGflags(gflags);
 }
 
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference

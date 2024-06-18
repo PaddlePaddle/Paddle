@@ -365,19 +365,19 @@ class TestParameter:
                 data = paddle.static.data(
                     name="X", shape=[-1, 1], dtype="float32"
                 )
-                out = eval("paddle.%s(data, name='Y')" % self.op_type)
+                out = eval(f"paddle.{self.op_type}(data, name='Y')")
                 place = base.CPUPlace()
                 exe = base.Executor(place)
                 (result,) = exe.run(feed={"X": np_x}, fetch_list=[out])
-                expected = eval("np.%s(np_x)" % self.op_type)
+                expected = eval(f"np.{self.op_type}(np_x)")
                 np.testing.assert_allclose(result, expected, rtol=1e-05)
 
     def test_dygraph(self):
         with base.dygraph.guard():
             np_x = np.array([0.1])
             x = paddle.to_tensor(np_x)
-            z = eval("paddle.%s(x).numpy()" % self.op_type)
-            z_expected = eval("np.%s(np_x)" % self.op_type)
+            z = eval(f"paddle.{self.op_type}(x).numpy()")
+            z_expected = eval(f"np.{self.op_type}(np_x)")
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
 
@@ -3287,26 +3287,34 @@ class TestHardSwish(TestActivation):
         self.check_grad(
             ['X'],
             'Out',
-            check_prim=True
-            if self.dtype not in [np.complex64, np.complex128]
-            else False,
+            check_prim=(
+                True
+                if self.dtype not in [np.complex64, np.complex128]
+                else False
+            ),
             only_check_prim=self.if_only_check_prim(),
             check_pir=True,
-            check_prim_pir=True
-            if self.dtype not in [np.complex64, np.complex128]
-            else False,
+            check_prim_pir=(
+                True
+                if self.dtype not in [np.complex64, np.complex128]
+                else False
+            ),
             check_pir_onednn=self.check_pir_onednn,
         )
 
     def test_check_output(self):
         self.check_output(
-            check_prim=True
-            if self.dtype not in [np.complex64, np.complex128]
-            else False,
+            check_prim=(
+                True
+                if self.dtype not in [np.complex64, np.complex128]
+                else False
+            ),
             check_pir=True,
-            check_prim_pir=True
-            if self.dtype not in [np.complex64, np.complex128]
-            else False,
+            check_prim_pir=(
+                True
+                if self.dtype not in [np.complex64, np.complex128]
+                else False
+            ),
             check_pir_onednn=self.check_pir_onednn,
         )
 
@@ -4880,8 +4888,8 @@ class TestSoftsignAPI(unittest.TestCase):
                     F.softsign(x_fp16)
 
 
-def ref_thresholded_relu(x, threshold=1.0):
-    out = (x > threshold) * x
+def ref_thresholded_relu(x, threshold=1.0, value=0.0):
+    out = (x > threshold) * x + (x <= threshold) * value
     return out
 
 
@@ -4893,15 +4901,16 @@ class TestThresholdedRelu(TestActivation):
         self.python_api = paddle.nn.functional.thresholded_relu
 
         threshold = 15
+        value = 5
 
         np.random.seed(1024)
         x = np.random.uniform(-20, 20, self.shape).astype(self.dtype)
         x[np.abs(x) < 0.005] = 0.02
-        out = ref_thresholded_relu(x, threshold)
+        out = ref_thresholded_relu(x, threshold, value)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"threshold": threshold}
+        self.attrs = {"threshold": threshold, "value": value}
         self.convert_input_output()
 
     def init_shape(self):
@@ -4929,6 +4938,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
     # test paddle.nn.ThresholdedReLU, paddle.nn.functional.thresholded_relu
     def setUp(self):
         self.threshold = 15
+        self.value = 5
         np.random.seed(1024)
         self.x_np = np.random.uniform(-20, 20, [10, 12]).astype(np.float64)
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
@@ -4943,22 +4953,30 @@ class TestThresholdedReluAPI(unittest.TestCase):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
-                out1 = F.thresholded_relu(x, self.threshold)
-                thresholded_relu = paddle.nn.ThresholdedReLU(self.threshold)
+                out1 = F.thresholded_relu(x, self.threshold, self.value)
+                thresholded_relu = paddle.nn.ThresholdedReLU(
+                    self.threshold, self.value
+                )
                 out2 = thresholded_relu(x)
                 exe = paddle.static.Executor(self.place)
                 res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
-            out_ref = ref_thresholded_relu(self.x_np, self.threshold)
+            out_ref = ref_thresholded_relu(
+                self.x_np, self.threshold, self.value
+            )
             for r in res:
                 np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_api(self):
         with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
-            out1 = F.thresholded_relu(x, self.threshold)
-            thresholded_relu = paddle.nn.ThresholdedReLU(self.threshold)
+            out1 = F.thresholded_relu(x, self.threshold, self.value)
+            thresholded_relu = paddle.nn.ThresholdedReLU(
+                self.threshold, self.value
+            )
             out2 = thresholded_relu(x)
-            out_ref = ref_thresholded_relu(self.x_np, self.threshold)
+            out_ref = ref_thresholded_relu(
+                self.x_np, self.threshold, self.value
+            )
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
@@ -5359,7 +5377,7 @@ def create_test_act_fp16_class(
     enable_cinn=False,
     check_pir=False,
     grad_atol=1e-2,
-    **kwargs
+    **kwargs,
 ):
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -5556,7 +5574,7 @@ def create_test_act_bf16_class(
     check_pir=False,
     check_prim_pir=False,
     grad_atol=1e-2,
-    **kwargs
+    **kwargs,
 ):
     @unittest.skipIf(
         not core.is_compiled_with_cuda()

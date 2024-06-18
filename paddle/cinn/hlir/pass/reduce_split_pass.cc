@@ -18,7 +18,7 @@
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/pass/infershape.h"
 #include "paddle/cinn/hlir/pe/nn_util.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace pass {
@@ -95,26 +95,30 @@ class ReduceSplitPass {
         auto* op = n->op();
         auto name = op->name;
 
-        auto dims = absl::get<std::vector<int>>(n->attrs.attr_store.at("dim"));
-        bool keep_dim = absl::get<bool>(n->attrs.attr_store.at("keep_dim"));
+        auto axis = absl::get<std::vector<int>>(n->attrs.attr_store.at("axis"));
+        bool keepdim = absl::get<bool>(n->attrs.attr_store.at("keepdim"));
         auto in = (*n->inlinks().begin())->source()->safe_as<NodeData>();
         auto out = (*n->outlinks().begin())->sink()->safe_as<NodeData>();
 
         auto in_shape = shape_dict.at(in->id());
         auto out_shape = shape_dict.at(out->id());
         // all preceding reduced
-        CHECK_GT(in_shape.size(), 1);
+        PADDLE_ENFORCE_GT(
+            in_shape.size(),
+            1,
+            phi::errors::InvalidArgument(
+                "The input shape size should be greater than 1."));
         // [NHWC]->[C], only the last dim kept
         bool all_preceding_dim_reduced = true;
         for (auto i = 0; i < in_shape.size() - 1; ++i) {
-          if (std::find(dims.begin(), dims.end(), i) == dims.end()) {
+          if (std::find(axis.begin(), axis.end(), i) == axis.end()) {
             all_preceding_dim_reduced = false;
           }
         }
         bool reduce_all =
             all_preceding_dim_reduced &&
-            std::find(dims.begin(), dims.end(), in_shape.size() - 1) !=
-                dims.end();
+            std::find(axis.begin(), axis.end(), in_shape.size() - 1) !=
+                axis.end();
         if (!all_preceding_dim_reduced || reduce_all) {
           continue;
         }
@@ -122,7 +126,10 @@ class ReduceSplitPass {
             in_shape.begin(), in_shape.end(), 1, std::multiplies<int>());
         int reduce_numel = std::accumulate(
             in_shape.begin(), in_shape.end() - 1, 1, std::multiplies<int>());
-        CHECK_GT(reduce_numel, 0);
+        PADDLE_ENFORCE_GT(reduce_numel,
+                          0,
+                          phi::errors::InvalidArgument(
+                              "The reduce_numel should be greater than 0."));
         // if the numel is not large enough, it is no need to split
         // if loop times is too large with reduce optimize
         int size = std::accumulate(
@@ -132,7 +139,10 @@ class ReduceSplitPass {
         auto shape = pe::GetFirstStepReduceShape(
             {size, in_shape.back()}, {0}, bound, tail);
         CHECK(bound);
-        CHECK_EQ(shape.size(), 3);
+        PADDLE_ENFORCE_EQ(shape.size(),
+                          3,
+                          phi::errors::InvalidArgument(
+                              "The shape size should be equal to 3."));
 
         auto res = DivideToClosetNum(reduce_numel);
         int reduce_numel0 = std::get<0>(res), reduce_numel1 = std::get<1>(res);
@@ -192,9 +202,9 @@ class ReduceSplitPass {
         // create reduce node0
         Node* reduce0 = new Node(
             Operator::Get(name), name, cinn::common::UniqName(name + "_split"));
-        reduce0->attrs.attr_store["dim"] = std::vector<int>{0};
-        reduce0->attrs.attr_store["keep_dim"] =
-            absl::get<bool>(n->attrs.attr_store.at("keep_dim"));
+        reduce0->attrs.attr_store["axis"] = std::vector<int>{0};
+        reduce0->attrs.attr_store["keepdim"] =
+            absl::get<bool>(n->attrs.attr_store.at("keepdim"));
         graph->RegisterNode(reduce0->id(), reduce0);
         reshape0_data->LinkTo(reduce0);
         auto reduce0_data = new NodeData(
@@ -202,21 +212,21 @@ class ReduceSplitPass {
         graph->RegisterNode(reduce0_data->id(), reduce0_data);
         reduce0->LinkTo(reduce0_data);
         shape_dict[reduce0_data->id()] =
-            keep_dim ? std::vector<int>{1,
-                                        reduce_numel1,
-                                        in_shape[in_shape.size() - 1]}
-                     : std::vector<int>{reduce_numel1,
-                                        in_shape[in_shape.size() - 1]};
+            keepdim ? std::vector<int>{1,
+                                       reduce_numel1,
+                                       in_shape[in_shape.size() - 1]}
+                    : std::vector<int>{reduce_numel1,
+                                       in_shape[in_shape.size() - 1]};
         dtype_dict[reduce0_data->id()] = cinn::common::Str2Type(
             cinn::common::Type2Str(dtype_dict[in->id()]));
 
         // create reduce node1
         Node* reduce1 = new Node(
             Operator::Get(name), name, cinn::common::UniqName(name + "_split"));
-        reduce1->attrs.attr_store["dim"] =
-            keep_dim ? std::vector<int>{0, 1} : std::vector<int>{0};
-        reduce1->attrs.attr_store["keep_dim"] =
-            absl::get<bool>(n->attrs.attr_store.at("keep_dim"));
+        reduce1->attrs.attr_store["axis"] =
+            keepdim ? std::vector<int>{0, 1} : std::vector<int>{0};
+        reduce1->attrs.attr_store["keepdim"] =
+            absl::get<bool>(n->attrs.attr_store.at("keepdim"));
         graph->RegisterNode(reduce1->id(), reduce1);
         reduce0_data->LinkTo(reduce1);
         auto reduce1_data = new NodeData(
@@ -224,8 +234,8 @@ class ReduceSplitPass {
         graph->RegisterNode(reduce1_data->id(), reduce1_data);
         reduce1->LinkTo(reduce1_data);
         shape_dict[reduce1_data->id()] =
-            keep_dim ? std::vector<int>{1, 1, in_shape[in_shape.size() - 1]}
-                     : std::vector<int>{in_shape[in_shape.size() - 1]};
+            keepdim ? std::vector<int>{1, 1, in_shape[in_shape.size() - 1]}
+                    : std::vector<int>{in_shape[in_shape.size() - 1]};
         dtype_dict[reduce1_data->id()] = cinn::common::Str2Type(
             cinn::common::Type2Str(dtype_dict[in->id()]));
 

@@ -169,7 +169,7 @@ class SelfAttentionFusePass : public pir::PatternRewritePass {
     return ps;
   }
 
-  bool CanApplyOn(pir::Operation *op) const {
+  bool CanApplyOn(pir::Operation *op) const override {
 #if !defined(PADDLE_WITH_AVX512F) || !defined(PADDLE_WITH_MKLML) || \
     !defined(PADDLE_WITH_DNNL)
     LOG(WARNING) << "No-avx512 or MKL or oneDNN supported!";

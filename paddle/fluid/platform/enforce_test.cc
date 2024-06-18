@@ -596,6 +596,7 @@ TEST(enforce, cannot_to_string_type) {
 TEST(GET_DATA_SAFELY_MACRO, SUCCESS) {
   int* a = new int(10);  // NOLINT
   GET_DATA_SAFELY(a, "Input", "X", "dummy");
+  delete a;
 }
 
 TEST(GET_DATA_SAFELY_MACRO, FAIL) {

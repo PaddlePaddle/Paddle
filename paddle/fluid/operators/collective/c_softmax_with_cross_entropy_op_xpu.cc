@@ -305,7 +305,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
       // NOTE(zhangxiaoci) use global calculate stream so that no sync is
       // required stream = comm->stream();
       stream = static_cast<phi::XPUContext*>(
-                   platform::DeviceContextPool::Instance().Get(place))
+                   phi::DeviceContextPool::Instance().Get(place))
                    ->stream();
       VLOG(3) << "old BKCLCommContext has ring_id " << rid;
     }

@@ -1157,9 +1157,8 @@ def dropout(
         )  # semantic transfer
 
         if in_dynamic_or_pir_mode():
-            if default_main_program().random_seed != 0:
-                seed = default_main_program().random_seed
-
+            if paddle.static.default_main_program().random_seed != 0:
+                seed = paddle.static.default_main_program().random_seed
             out = _C_ops.dropout(
                 x,
                 None,
@@ -2092,9 +2091,11 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     smooth_label = helper.create_variable_for_type_inference(label.dtype)
     helper.append_op(
         type="label_smooth",
-        inputs={"X": label, "PriorDist": prior_dist}
-        if prior_dist
-        else {"X": label},
+        inputs=(
+            {"X": label, "PriorDist": prior_dist}
+            if prior_dist
+            else {"X": label}
+        ),
         outputs={"Out": smooth_label},
         attrs={"epsilon": float(epsilon)},
     )

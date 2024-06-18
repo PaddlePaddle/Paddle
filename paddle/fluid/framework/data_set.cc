@@ -1215,7 +1215,7 @@ void DatasetImpl<T>::DestroyPreLoadReaders() {
 template <typename T>
 int64_t DatasetImpl<T>::GetMemoryDataSize() {
   if (gpu_graph_mode_) {
-    bool is_multi_node = 0, sage_mode = 0, gpu_graph_training = 1;
+    bool is_multi_node = false, sage_mode = false, gpu_graph_training = true;
     int64_t total_path_num = 0;
     for (int i = 0; i < thread_num_; i++) {
       is_multi_node = readers_[i]->GetMultiNodeMode();

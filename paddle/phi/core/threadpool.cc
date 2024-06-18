@@ -36,7 +36,7 @@ ThreadPool* ThreadPool::GetInstance() {
 }
 
 void ThreadPool::Init() {
-  if (threadpool_.get() == nullptr) {
+  if (threadpool_ == nullptr) {
     // TODO(Yancey1989): specify the max threads number
     int num_threads = static_cast<int>(std::thread::hardware_concurrency());
     if (FLAGS_dist_threadpool_size > 0) {
@@ -109,7 +109,7 @@ ThreadPool* ThreadPoolIO::GetInstanceIO() {
 }
 
 void ThreadPoolIO::InitIO() {
-  if (io_threadpool_.get() == nullptr) {
+  if (io_threadpool_ == nullptr) {
     // TODO(typhoonzero1986): make this configurable
     io_threadpool_ = std::make_unique<ThreadPool>(FLAGS_io_threadpool_size);
   }

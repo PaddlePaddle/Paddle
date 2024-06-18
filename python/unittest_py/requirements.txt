@@ -2,7 +2,7 @@ PyGithub
 coverage==5.5
 pycrypto ; platform_system != "Windows"
 mock
-gym==0.26.2
+gymnasium==0.29.1
 pygame==2.5.2
 hypothesis
 opencv-python<=4.2.0.32
@@ -11,7 +11,7 @@ paddle2onnx>=0.9.6
 scipy>=1.6, !=1.7.2, !=1.7.3
 prettytable
 distro
-numpy>=1.20
+numpy>=1.20, <2.0
 autograd==1.4
 librosa==0.8.1 ; python_version<"3.12"
 parameterized
@@ -19,3 +19,4 @@ wandb>=0.13 ; python_version<"3.12"
 xlsxwriter==3.0.9
 xdoctest==1.1.1
 ubelt==1.3.3 # just for xdoctest
+mypy==1.10.0

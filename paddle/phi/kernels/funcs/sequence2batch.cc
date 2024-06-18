@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
 
-namespace phi {
-namespace funcs {
+namespace phi::funcs {
 
 template <typename T>
 class CopyMatrixRowsFunctor<phi::CPUContext, T> {
@@ -76,5 +75,4 @@ template class LoDTensor2BatchFunctor<phi::CPUContext, double>;
 template class Batch2LoDTensorFunctor<phi::CPUContext, float>;
 template class Batch2LoDTensorFunctor<phi::CPUContext, double>;
 
-}  // namespace funcs
-}  // namespace phi
+}  // namespace phi::funcs

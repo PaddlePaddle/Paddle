@@ -826,6 +826,7 @@ template void Tensor::ORTCopyToCpu<int32_t>(int32_t *data) const;
 template void Tensor::ORTCopyToCpu<uint8_t>(uint8_t *data) const;
 template void Tensor::ORTCopyToCpu<int8_t>(int8_t *data) const;
 template void Tensor::ORTCopyToCpu<float16>(float16 *data) const;
+template void Tensor::ORTCopyToCpu<bfloat16>(bfloat16 *data) const;
 #endif
 
 namespace experimental {

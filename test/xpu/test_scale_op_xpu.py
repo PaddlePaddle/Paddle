@@ -20,6 +20,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16, convert_uint16_to_float
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -37,6 +38,7 @@ class XPUTestScaleOp(XPUOpTestWrapper):
             self.set_xpu()
             self.op_type = "scale"
             self.place = paddle.XPUPlace(0)
+            self.set_shape()
             self.set_inputs()
             self.set_attrs()
             self.set_output()
@@ -47,25 +49,27 @@ class XPUTestScaleOp(XPUOpTestWrapper):
             self.__class__.op_type = self.dtype
 
         def set_inputs(self):
-            self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
+            if self.dtype == np.uint16:
+                x = np.random.random((10, 10)).astype('float32')
+                self.inputs = {'X': convert_float_to_uint16(x)}
+            else:
+                self.inputs = {
+                    'X': np.random.random((10, 10)).astype(self.dtype)
+                }
 
         def set_output(self):
-            if "float16" == self.in_type:
-                output = self.inputs['X'] * np.float16(self.attrs['scale'])
-            elif "int64" == self.in_type:
-                output = self.inputs['X'] * np.int64(self.attrs['scale'])
+            if self.dtype == np.uint16:
+                output = (
+                    convert_uint16_to_float(self.inputs['X'])
+                    * self.attrs['scale']
+                )
             else:
-                output = self.inputs['X'] * np.float32(self.attrs['scale'])
+                output = self.inputs['X'] * self.attrs['scale']
 
             self.outputs = {'Out': output}
 
         def init_dtype(self):
-            if "float16" == self.in_type:
-                self.dtype = np.float16
-            if "float32" == self.in_type:
-                self.dtype = np.float32
-            if "int64" == self.in_type:
-                self.dtype = np.int64
+            self.dtype = self.in_type
 
         def set_attrs(self):
             self.attrs = {'scale': -2.3}
@@ -74,6 +78,9 @@ class XPUTestScaleOp(XPUOpTestWrapper):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_output_with_place(place)
+
+        def set_shape(self):
+            self.shape = [10, 10]
 
     class TestScaleOp1(TestScaleOp):
         def set_attrs(self):
@@ -94,6 +101,30 @@ class XPUTestScaleOp(XPUOpTestWrapper):
     class TestScaleOp5(TestScaleOp):
         def set_attrs(self):
             self.attrs = {'scale': -0.003}
+
+    # class TestScaleOpLargeShape1(TestScaleOp):
+    #     def set_shape(self):
+    #         self.shape = [64]
+
+    # class TestScaleOpLargeShape2(TestScaleOp):
+    #     def set_shape(self):
+    #         self.shape = [8192, 1]
+
+    # class TestScaleOpLargeShape3(TestScaleOp):
+    #     def set_shape(self):
+    #         self.shape = [1, 8192, 5, 64]
+
+    # class TestScaleOpLargeShape4(TestScaleOp):
+    #     def set_shape(self):
+    #         self.shape = [8192, 1920]
+
+    # class TestScaleOpLargeShape5(TestScaleOp):
+    #     def set_shape(self):
+    #         self.shape = [1024, 5120]
+
+    # class TestScaleOpLargeShape6(TestScaleOp):
+    #     def set_shape(self):
+    #         self.shape = [8192, 3456]
 
 
 class TestScaleApiStatic(unittest.TestCase):

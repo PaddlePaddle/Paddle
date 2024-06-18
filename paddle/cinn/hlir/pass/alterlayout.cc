@@ -20,7 +20,7 @@
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/layout.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace pass {
@@ -119,10 +119,26 @@ std::vector<framework::shape_t> UpdateInferInfos(
   CHECK(!infertypes.empty()) << node->op()->name << " finds no infertype";
   CHECK(!inferlayouts.empty()) << node->op()->name << " finds no inferlayout";
   auto outlinks = node->outlinks_in_order();
-  CHECK_EQ(infershapes.size(), infertypes.size());
-  CHECK_EQ(inferlayouts.size(), 2U);
-  CHECK_EQ(infertypes.size(), inferlayouts[0].size());
-  CHECK_EQ(outlinks.size(), infershapes.size());
+  PADDLE_ENFORCE_EQ(
+      infershapes.size(),
+      infertypes.size(),
+      phi::errors::InvalidArgument(
+          "The size of infershapes and infertypes should be equal"));
+  PADDLE_ENFORCE_EQ(inferlayouts.size(),
+                    2U,
+                    phi::errors::InvalidArgument(
+                        "The size of inferlayouts should be 2, but got %d",
+                        inferlayouts.size()));
+  PADDLE_ENFORCE_EQ(
+      infertypes.size(),
+      inferlayouts[0].size(),
+      phi::errors::InvalidArgument(
+          "The size of infertypes and inferlayouts[0] should be equal"));
+  PADDLE_ENFORCE_EQ(
+      outlinks.size(),
+      infershapes.size(),
+      phi::errors::InvalidArgument(
+          "The size of outlinks and infershapes should be equal"));
 
   for (int i = 0; i < outlinks.size(); i++) {
     auto* sink = outlinks[i]->sink();
@@ -181,7 +197,11 @@ void AlterLayoutPass(Graph* graph) {
               node->attrs.attr_store.at("dilation"));
         }
         const auto& conv_inlinks = node->inlinks_in_order();
-        CHECK_EQ(conv_inlinks.size(), 2U) << "conv2d should have 2 inputs";
+        PADDLE_ENFORCE_EQ(conv_inlinks.size(),
+                          2U,
+                          phi::errors::InvalidArgument(
+                              "conv2d should have 2 inputs, but got %d",
+                              conv_inlinks.size()));
         std::vector<std::vector<int>> inputs_shape;
         for (auto& link : conv_inlinks) {
           auto* source = link->source();
@@ -231,8 +251,11 @@ void AlterLayoutPass(Graph* graph) {
             input_nodes.push_back(source);
           }
           // get new layout: ic_bn, oc_bn
-          CHECK_EQ(input_nodes.size(), 2U)
-              << "conv2d should have 2 input nodes";
+          PADDLE_ENFORCE_EQ(input_nodes.size(),
+                            2U,
+                            phi::errors::InvalidArgument(
+                                "conv2d should have 2 input nodes, but got %d",
+                                input_nodes.size()));
           auto* input_node = input_nodes[0];
           auto* weight_node = input_nodes[1];
           CHECK(shape_dict.count(input_node->id()))
@@ -347,8 +370,11 @@ void AlterLayoutPass(Graph* graph) {
             conv2d_NCHWc_inputtypes.push_back(trans_out_dtypes);
             conv2d_NCHWc_inputlayouts.push_back(dst_input_layout);
           } else {
-            CHECK_EQ(input_shape.size(), 5U)
-                << "conv2d_NCHWc op's input shape dim should be 5";
+            PADDLE_ENFORCE_EQ(
+                input_shape.size(),
+                5U,
+                phi::errors::InvalidArgument(
+                    "conv2d_NCHWc op's input shape dim should be 5"));
             conv2d_NCHWc_inputshapes.push_back(input_shape);
             conv2d_NCHWc_inputtypes.push_back(input_type);
             CHECK(layout_dict.count(input_node->id()))
@@ -395,8 +421,11 @@ void AlterLayoutPass(Graph* graph) {
             conv2d_NCHWc_inputtypes.push_back(trans_out_dtypes);
             conv2d_NCHWc_inputlayouts.push_back(dst_kernel_layout);
           } else {
-            CHECK_EQ(weight_shape.size(), 6U)
-                << weight_node->id() << " shape dim should be 6";
+            PADDLE_ENFORCE_EQ(
+                weight_shape.size(),
+                6U,
+                phi::errors::InvalidArgument(
+                    "conv2d_NCHWc op's weight shape dim should be 6"));
             conv2d_NCHWc_inputshapes.push_back(weight_shape);
             conv2d_NCHWc_inputtypes.push_back(weight_type);
             CHECK(layout_dict.count(weight_node->id()))
@@ -477,12 +506,29 @@ void AlterLayoutPass(Graph* graph) {
               input_shapes, input_layouts, node->attrs, graph->target_);
           // if input inferred layouts is different from original's, expand dims
           // or do transformation.
-          CHECK_EQ(inferlayouts.size(), 2U);
+          PADDLE_ENFORCE_EQ(
+              inferlayouts.size(),
+              2U,
+              phi::errors::InvalidArgument(
+                  "The size of inferlayouts should be 2, but got %d",
+                  inferlayouts.size()));
           auto new_input_layouts = inferlayouts[1];
           auto inlinks = node->inlinks_in_order();
-          CHECK_EQ(input_layouts.size(), inlinks.size());
-          CHECK_EQ(input_layouts.size(), new_input_layouts.size());
-          CHECK_EQ(input_layouts.size(), input_shapes.size());
+          PADDLE_ENFORCE_EQ(
+              input_layouts.size(),
+              inlinks.size(),
+              phi::errors::InvalidArgument(
+                  "The size of input_layouts and inlinks should be equal"));
+          PADDLE_ENFORCE_EQ(input_layouts.size(),
+                            new_input_layouts.size(),
+                            phi::errors::InvalidArgument(
+                                "The size of input_layouts and "
+                                "new_input_layouts should be equal"));
+          PADDLE_ENFORCE_EQ(
+              input_layouts.size(),
+              input_shapes.size(),
+              phi::errors::InvalidArgument("The size of input_layouts and "
+                                           "input_shapes should be equal"));
           bool reset_axis = false;
           for (int i = 0; i < inlinks.size(); i++) {
             if (input_layouts[i] != new_input_layouts[i]) {

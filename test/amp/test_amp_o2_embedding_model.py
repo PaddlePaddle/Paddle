@@ -138,7 +138,12 @@ class TestUnittedEmbedding(AmpTestBase):
 
         max_iters = 5
         x = self._generate_feed_x()
-        place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
         exe = paddle.static.Executor(place)
         losses_o2 = _run(place, exe, x, max_iters, 'O2')
 

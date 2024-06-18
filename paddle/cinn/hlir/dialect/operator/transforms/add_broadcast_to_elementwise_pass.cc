@@ -107,12 +107,10 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
 
   if (x_dims != y_dims) {
     auto output_shape = GetOutputShape(x_dims, y_dims);
-    pir::ShapeConstraintIRAnalysis& shape_analysis =
-        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
     std::vector<symbol::DimExpr> out_dim;
     out_dim.reserve(output_shape.size());
-    for (auto d : output_shape) {
-      out_dim.emplace_back(d);
+    for (const auto shape_val : output_shape) {
+      out_dim.emplace_back(shape_val);
     }
 
     if (!IsSameDim(x_dims, output_shape)) {

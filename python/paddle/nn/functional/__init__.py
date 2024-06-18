@@ -95,6 +95,7 @@ from .flash_attention import (
 )
 from .input import embedding, one_hot
 from .loss import (
+    adaptive_log_softmax_with_loss,
     binary_cross_entropy,
     binary_cross_entropy_with_logits,
     cosine_embedding_loss,
@@ -144,6 +145,8 @@ from .pooling import (
     avg_pool3d,
     fractional_max_pool2d,
     fractional_max_pool3d,
+    lp_pool1d,
+    lp_pool2d,
     max_pool1d,
     max_pool2d,
     max_pool3d,
@@ -220,6 +223,8 @@ __all__ = [
     'avg_pool1d',
     'avg_pool2d',
     'avg_pool3d',
+    'lp_pool1d',
+    'lp_pool2d',
     'max_pool1d',
     'max_pool2d',
     'max_pool3d',
@@ -277,6 +282,7 @@ __all__ = [
     'rrelu',
     'triplet_margin_with_distance_loss',
     'triplet_margin_loss',
+    'adaptive_log_softmax_with_loss',
     'multi_margin_loss',
     'soft_margin_loss',
     'gaussian_nll_loss',

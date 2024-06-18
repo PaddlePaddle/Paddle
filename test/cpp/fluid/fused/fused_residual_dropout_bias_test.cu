@@ -17,8 +17,8 @@ limitations under the License. */
 #include <random>
 #include <vector>
 
-#include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_residual_dropout_bias.h"
 #include "test/cpp/fluid/fused/fused_dropout_test.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -197,10 +197,10 @@ struct FusedResidualDropoutBiasTester {
   void FusedForward() {
     const int VecSize = MAX_CACHE_BYTES / sizeof(T);
     auto config =
-        paddle::operators::Get1DBlocksAnd2DGrids(*ctx,
-                                                 static_cast<uint64_t>(rows),
-                                                 static_cast<uint64_t>(cols),
-                                                 VecSize);
+        phi::fusion::Get1DBlocksAnd2DGrids(*ctx,
+                                           static_cast<uint64_t>(rows),
+                                           static_cast<uint64_t>(cols),
+                                           VecSize);
 
     const int increment = ((cols - 1) / (config.thread_per_block.x *
                                          config.block_per_grid.x * VecSize) +
@@ -209,20 +209,19 @@ struct FusedResidualDropoutBiasTester {
 
     T *bias_ptr = has_bias ? bias.data<T>() : nullptr;
     T *residual_ptr = add_residual ? residual.data<T>() : nullptr;
-    paddle::operators::LaunchResidualDropoutBias<T, uint8_t>(
-        rows,
-        cols,
-        increment,
-        seed,
-        dropout_prob,
-        is_test,
-        is_upscale_in_train,
-        src.data<T>(),
-        residual_ptr,
-        bias_ptr,
-        mask.data<uint8_t>(),
-        out.data<T>(),
-        *ctx);
+    phi::fusion::LaunchResidualDropoutBias<T, uint8_t>(rows,
+                                                       cols,
+                                                       increment,
+                                                       seed,
+                                                       dropout_prob,
+                                                       is_test,
+                                                       is_upscale_in_train,
+                                                       src.data<T>(),
+                                                       residual_ptr,
+                                                       bias_ptr,
+                                                       mask.data<uint8_t>(),
+                                                       out.data<T>(),
+                                                       *ctx);
     ctx->Wait();
     PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
   }
@@ -233,16 +232,15 @@ struct FusedResidualDropoutBiasTester {
     }
 
     T *bias_ptr = has_bias ? dbias.data<T>() : nullptr;
-    paddle::operators::LaunchResidualDropoutBiasGrad<T, uint8_t>(
-        out.data<T>(),
-        mask.data<uint8_t>(),
-        dropout_prob,
-        is_upscale_in_train,
-        rows,
-        cols,
-        dsrc.data<T>(),
-        bias_ptr,
-        *ctx);
+    phi::fusion::LaunchResidualDropoutBiasGrad<T, uint8_t>(out.data<T>(),
+                                                           mask.data<uint8_t>(),
+                                                           dropout_prob,
+                                                           is_upscale_in_train,
+                                                           rows,
+                                                           cols,
+                                                           dsrc.data<T>(),
+                                                           bias_ptr,
+                                                           *ctx);
   }
 
   void Run() {

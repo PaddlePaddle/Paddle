@@ -20,18 +20,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 framework::proto::VarType::Type VarMessageToVarType(
     VariableMessage::Type type) {
@@ -343,5 +340,4 @@ std::string GetIntTypeEndpoint(const std::string& ip, const uint32_t& port) {
   return int_ip_port;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

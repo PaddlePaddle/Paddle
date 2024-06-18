@@ -16,8 +16,7 @@
 #include <string>
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace dynload {
+namespace phi::dynload {
 
 std::once_flag cutlass_dso_flag;
 void* cutlass_dso_handle;
@@ -53,5 +52,4 @@ void* GetCutlassConv2dHandle() {
   return cutlass_dso_handle;
 }
 
-}  // namespace dynload
-}  // namespace phi
+}  // namespace phi::dynload

@@ -35,12 +35,14 @@ class MyModel(nn.Layer):
         include_sublayers=True,
         structured_name_prefix="",
         use_hook=True,
+        keep_vars=True,
     ):
         st = super().state_dict(
             destination=destination,
             include_sublayers=include_sublayers,
             structured_name_prefix=structured_name_prefix,
             use_hook=use_hook,
+            keep_vars=keep_vars,
         )
         st["linear.new_weight"] = paddle.transpose(
             st.pop("linear.weight"), [1, 0]
@@ -75,6 +77,17 @@ def is_state_dict_equal(model1, model2):
     return True
 
 
+class MyModel3(nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.linear = nn.Linear(100, 300)
+        buffer = paddle.to_tensor([0.0])
+        self.register_buffer("model_buffer", buffer, persistable=True)
+
+    def forward(self, x):
+        return self.linear(x)
+
+
 class TestStateDictConvert(unittest.TestCase):
     def test_main(self):
         model1 = MyModel()
@@ -95,6 +108,34 @@ class TestStateDictReturn(unittest.TestCase):
         self.assertEqual(missing_keys[1], "linear.bias")
         self.assertEqual(len(unexpected_keys), 1)
         self.assertEqual(unexpected_keys[0], "unexpected_keys")
+
+
+class TestStateKeepVars(unittest.TestCase):
+    def test_true(self):
+        model = MyModel3()
+        x = paddle.randn([5, 100])
+        y = model(x)
+        y.backward()
+        st = model.state_dict()
+        has_grad = (
+            (st["linear.weight"].grad == model.linear.weight.grad).all()
+            and (st["linear.bias"].grad == model.linear.bias.grad).all()
+            and st["model_buffer"].grad == model.model_buffer.grad
+        )
+        self.assertEqual(has_grad, True)
+
+    def test_false(self):
+        model = MyModel3()
+        x = paddle.randn([5, 100])
+        y = model(x)
+        y.backward()
+        st = model.state_dict(keep_vars=False)
+        has_grad = (
+            (st["linear.weight"].grad is not None)
+            and (st["linear.bias"].grad is not None)
+            and (st["model_buffer"].grad is not None)
+        )
+        self.assertEqual(has_grad, False)
 
 
 if __name__ == "__main__":

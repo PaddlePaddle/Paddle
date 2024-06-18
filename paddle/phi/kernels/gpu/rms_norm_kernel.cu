@@ -1150,6 +1150,62 @@ void RmsNormKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void ResidualAddRmsNormWrapper(const Context& ctx,
+                               const T* x,
+                               const T* residual,
+                               const T* bias,
+                               const T* norm_weight,
+                               const T* norm_bias,
+                               const float epsilon,
+                               const int rows,
+                               const int cols,
+                               T* residual_output,
+                               T* output) {
+  using ComputeType = typename phi::dtype::MPTypeTrait<T>::Type;
+  ResidualAddBiasLoad<T, ComputeType> load(
+      x, residual, bias, residual_output, cols);
+  AffineStore<ComputeType, T> store(output, cols, norm_weight, norm_bias);
+  DispatchRmsNorm<decltype(load), decltype(store), ComputeType>(
+      ctx.stream(), load, store, rows, cols, epsilon, nullptr);
+}
+
+template void ResidualAddRmsNormWrapper(const phi::GPUContext& ctx,
+                                        const phi::dtype::float16* x,
+                                        const phi::dtype::float16* residual,
+                                        const phi::dtype::float16* bias,
+                                        const phi::dtype::float16* norm_weight,
+                                        const phi::dtype::float16* norm_bias,
+                                        const float epsilon,
+                                        const int rows,
+                                        const int cols,
+                                        phi::dtype::float16* residual_output,
+                                        phi::dtype::float16* output);
+
+template void ResidualAddRmsNormWrapper(const phi::GPUContext& ctx,
+                                        const phi::dtype::bfloat16* x,
+                                        const phi::dtype::bfloat16* residual,
+                                        const phi::dtype::bfloat16* bias,
+                                        const phi::dtype::bfloat16* norm_weight,
+                                        const phi::dtype::bfloat16* norm_bias,
+                                        const float epsilon,
+                                        const int rows,
+                                        const int cols,
+                                        phi::dtype::bfloat16* residual_output,
+                                        phi::dtype::bfloat16* output);
+
+template void ResidualAddRmsNormWrapper(const phi::GPUContext& ctx,
+                                        const float* x,
+                                        const float* residual,
+                                        const float* bias,
+                                        const float* norm_weight,
+                                        const float* norm_bias,
+                                        const float epsilon,
+                                        const int rows,
+                                        const int cols,
+                                        float* residual_output,
+                                        float* output);
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(rms_norm,

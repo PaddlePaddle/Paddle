@@ -21,7 +21,7 @@
 #include "paddle/cinn/common/float16.h"
 #endif
 #include <queue>
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -198,7 +198,9 @@ std::vector<int> GetInputShape(
                            << node->id() << "\"";
 
   auto* producer_data = in_links.front()->source()->safe_as<NodeData>();
-  CHECK_NOTNULL(producer_data);
+  PADDLE_ENFORCE_NOT_NULL(producer_data,
+                          phi::errors::InvalidArgument(
+                              "The input node data should not be nullptr."));
   return shape_dict.at(producer_data->id());
 }
 
@@ -585,7 +587,10 @@ void LoopOrderAssignReduce(ir::IRSchedule& ir_sch,  // NOLINT
         ir_sch.Split(loops[index], {-1, idx});
         break;
       }
-      CHECK_GT(idx, 1);
+      PADDLE_ENFORCE_GT(idx,
+                        1,
+                        phi::errors::InvalidArgument(
+                            "Cannot find the split factor for loop."));
     }
   }
 
@@ -777,7 +782,11 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
         --idx;
       } while (idx >= max_num_threads / 2);
       // if can't be divide by(1024, 512), it's shouldn't be fused.
-      CHECK_GE(idx, max_num_threads / 2) << "Check bounds exist, can't fuse!";
+      PADDLE_ENFORCE_GE(
+          idx,
+          max_num_threads / 2,
+          phi::errors::InvalidArgument(
+              "Error! Can't be divide by(1024, 512), Please check!"));
     } else {
       int axis = axes[index];
       int prefix = inshape[axis];
@@ -788,8 +797,11 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
           ir_sch.Split(block_name, axis, {-1, idx});
           break;
         }
-        CHECK_GT(idx, (max_num_threads / 2) / tail)
-            << "Error, it's shouldn't fuse!";
+        PADDLE_ENFORCE_GT(
+            idx,
+            (max_num_threads / 2) / tail,
+            phi::errors::InvalidArgument(
+                "Error! Can't be divide by(1024, 512), Please check!"));
       }
     }
     LoopOrderAssignReduce(ir_sch, block_name, first_axes, target);
@@ -1003,7 +1015,7 @@ void LoopAssignReduce(
   // shape and axis.
   CHECK(shape_dict.count(reducer->inlinks_in_order()[0]->source()->id()));
   auto shape = shape_dict.at(reducer->inlinks_in_order()[0]->source()->id());
-  auto axes = absl::get<std::vector<int>>(reducer->attrs.attr_store.at("dim"));
+  auto axes = absl::get<std::vector<int>>(reducer->attrs.attr_store.at("axis"));
   if (axes.empty()) {
     for (int idx = 0; idx < shape.size(); idx++) {
       axes.push_back(idx);
@@ -1227,8 +1239,16 @@ void MergeLoops(ir::Expr root,
   if (index < 0) {
     return;
   }
-  CHECK_GT(src.size(), index) << "\nindex -> " << index << "\n" << src[0];
-  CHECK_GT(dst.size(), index) << "\nindex -> " << index << "\n" << dst[0];
+  PADDLE_ENFORCE_GT(
+      src.size(),
+      index,
+      phi::errors::InvalidArgument(
+          "The index of src should be less than the size of src."));
+  PADDLE_ENFORCE_GT(
+      dst.size(),
+      index,
+      phi::errors::InvalidArgument(
+          "The index of dst should be less than the size of dst."));
 
   if (src[0] == dst[0]) {
     return;
@@ -1257,7 +1277,7 @@ void InsertSyncThread(
     const std::unordered_map<std::string, ir::Tensor>& tensor_map) {
   CHECK(shape_dict.count(node->inlinks_in_order()[0]->source()->id()));
   auto shape = shape_dict.at(node->inlinks_in_order()[0]->source()->id());
-  auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("dim"));
+  auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("axis"));
   if (axes.empty()) {
     for (int idx = 0; idx < shape.size(); idx++) {
       axes.push_back(idx);
@@ -1332,7 +1352,7 @@ void MergeReduceToReduce(
 
   CHECK(shape_dict.count(node->inlinks_in_order()[0]->source()->id()));
   auto shape = shape_dict.at(node->inlinks_in_order()[0]->source()->id());
-  auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("dim"));
+  auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("axis"));
   if (axes.empty()) {
     for (int idx = 0; idx < shape.size(); idx++) {
       axes.push_back(idx);
@@ -1393,7 +1413,10 @@ void MergeReduceToReduce(
             auto n_loops = ir_sch.GetLoops(n_tensor->name + "__reduce_init");
             auto m_loops = ir_sch.GetLoops(m_tensor->name + "__reduce_init");
 
-            CHECK_EQ(n_loops.size(), m_loops.size());
+            PADDLE_ENFORCE_EQ(n_loops.size(),
+                              m_loops.size(),
+                              phi::errors::InvalidArgument(
+                                  "The size of loops should be equal."));
             MergeLoops(ir_sch.GetModule().GetExprs().at(0),
                        n_loops,
                        m_loops,
@@ -1472,7 +1495,10 @@ void MergeReduceToReduce(
 
         auto n_loops = ir_sch.GetLoops(n_tensor->name);
         auto m_loops = ir_sch.GetLoops(m_tensor->name);
-        CHECK_EQ(n_loops.size(), m_loops.size());
+        PADDLE_ENFORCE_EQ(
+            n_loops.size(),
+            m_loops.size(),
+            phi::errors::InvalidArgument("The size of loops should be equal."));
 
         std::vector<ir::Var> src_vars;
         std::vector<ir::Expr> dst_vars;

@@ -21,9 +21,28 @@ struct DataRecord {
   std::vector<std::vector<int64_t>> title1, title2, title3, l1;
   std::vector<size_t> lod1, lod2, lod3, l1_lod;
   size_t batch_iter{0}, batch_size{1}, num_samples;  // total number of samples
-  DataRecord() = default;
+  DataRecord()
+      : title1(),
+        title2(),
+        title3(),
+        l1(),
+        lod1(),
+        lod2(),
+        lod3(),
+        l1_lod(),
+        batch_size(0),
+        num_samples(0) {}
   explicit DataRecord(const std::string &path, int batch_size = 1)
-      : batch_size(batch_size) {
+      : title1(),
+        title2(),
+        title3(),
+        l1(),
+        lod1(),
+        lod2(),
+        lod3(),
+        l1_lod(),
+        batch_size(batch_size),
+        num_samples(0) {
     Load(path);
   }
   DataRecord NextBatch() {

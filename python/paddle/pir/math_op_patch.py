@@ -577,6 +577,15 @@ def monkey_patch_value():
 
         return paddle._pir_ops.array_pop(self, idx)
 
+    def to_dense(self):
+        return _C_ops.sparse_to_dense(self)
+
+    def values(self):
+        return _C_ops.sparse_values(self)
+
+    def indices(self):
+        return _C_ops.sparse_indices(self)
+
     def set_shape(self, shape):
         assert (
             paddle.base.dygraph.base.in_to_static_mode()
@@ -614,6 +623,9 @@ def monkey_patch_value():
         ('pop', pop),
         ('set_shape', set_shape),
         ('__hash__', value_hash),
+        ('to_dense', to_dense),
+        ('indices', indices),
+        ('values', values),
         # For basic operators
         (
             '__add__',

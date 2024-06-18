@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
@@ -29,7 +29,10 @@ void BatchNormOpMapper(const paddle::cpp::OpDesc& op_desc,
               << op_desc.Type();
       return;
     }
-    CHECK_EQ(op_desc.Output(pd_param_name).size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Output(pd_param_name).size(),
+        1UL,
+        phi::errors::InvalidArgument("The output of batch_norm op must be 1."));
     auto output_name = op_desc.Output(pd_param_name).front();
 
     VLOG(4) << "The " << op_desc.Type() << "'s output " << pd_param_name
@@ -39,15 +42,30 @@ void BatchNormOpMapper(const paddle::cpp::OpDesc& op_desc,
     ctx.AddVarModelToProgram(output_name, out->id, can_inplace);
   };
 
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of batch_norm op must be 1."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Input("Scale").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Scale").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of batch_norm op must be 1."));
   auto scale_name = op_desc.Input("Scale").front();
-  CHECK_EQ(op_desc.Input("Bias").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Bias").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of batch_norm op must be 1."));
   auto bias_name = op_desc.Input("Bias").front();
-  CHECK_EQ(op_desc.Input("Mean").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Mean").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of batch_norm op must be 1."));
   auto mean_name = op_desc.Input("Mean").front();
-  CHECK_EQ(op_desc.Input("Variance").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Variance").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of batch_norm op must be 1."));
   auto variance_name = op_desc.Input("Variance").front();
 
   auto epsilon = utils::GetAttrOrDefault<float>(op_desc, "epsilon", 1e-5f);
@@ -105,8 +123,11 @@ void BatchNormOpMapper(const paddle::cpp::OpDesc& op_desc,
     add_output("VarianceOut", variance_out, true);
   } else {
     VLOG(4) << "Invoke batch_norm OpMapper with train mode";
-    CHECK_EQ(outs.size(), 5U)
-        << "batch_norm in train mode should only has 5 output! Please check.";
+    PADDLE_ENFORCE_EQ(outs.size(),
+                      5U,
+                      phi::errors::InvalidArgument(
+                          "batch_norm in train mode should only has 5 output! "
+                          "Please check."));
 
     add_output("Y", outs[0]);
     add_output("SavedMean", outs[1]);
@@ -122,7 +143,10 @@ void BatchNormGradOpMapper(const paddle::cpp::OpDesc& op_desc,
   std::unordered_map<std::string, std::string> input_names_map;
   auto get_input_var =
       [&op_desc, &ctx, &input_names_map](const std::string& op_name) {
-        CHECK_EQ(op_desc.Input(op_name).size(), 1UL);
+        PADDLE_ENFORCE_EQ(op_desc.Input(op_name).size(),
+                          1UL,
+                          phi::errors::InvalidArgument(
+                              "The input of batch_norm_grad op must be 1."));
         auto var_name = op_desc.Input(op_name).front();
         input_names_map.emplace(op_name, var_name);
         return ctx.GetVar(var_name);
@@ -132,12 +156,17 @@ void BatchNormGradOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto get_output_name =
       [&op_desc, &output_names_map](const std::string& op_name) -> std::string {
     if (op_desc.Output(op_name).empty()) {
-      CHECK_NE(op_name, paddle::GradVarName("X"))
-          << "The input X should not empty.";
+      PADDLE_ENFORCE_NE(
+          op_name,
+          paddle::GradVarName("X"),
+          phi::errors::InvalidArgument("The input X should not empty."));
       return "";
     }
 
-    CHECK_EQ(op_desc.Output(op_name).size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Output(op_name).size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "The output of batch_norm_grad op must be 1."));
     auto var_name = op_desc.Output(op_name).front();
     output_names_map.emplace(op_name, var_name);
     return var_name;
@@ -174,8 +203,10 @@ void BatchNormGradOpMapper(const paddle::cpp::OpDesc& op_desc,
   // batch norm grad, output(grad_x, grad_scale, grad_bias)
   auto outs = ctx.Builder()->BatchNormGrad(
       dy, x, scale, saved_mean, saved_variance, epsilon, data_layout);
-  CHECK_EQ(outs.size(), 3ul)
-      << "batch_norm_grad APIs should return 3 Variable!";
+  PADDLE_ENFORCE_EQ(outs.size(),
+                    3ul,
+                    phi::errors::InvalidArgument(
+                        "batch_norm_grad APIs should return 3 Variable!"));
 
   for (int i = 0; i < outs.size(); i++) {
     if (output_names[i].empty()) {

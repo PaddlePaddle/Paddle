@@ -53,7 +53,7 @@ static size_t GetCompitableRank(pir::Value value) {
 
 static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
   const size_t input_rank = GetCompitableRank(reduce_op->operand_source(0));
-  const auto& attr_val = reduce_op->attributes().at("dim");
+  const auto& attr_val = reduce_op->attributes().at("axis");
   CHECK(attr_val.isa<::pir::ArrayAttribute>());
   const auto& axis_attr = attr_val.dyn_cast<::pir::ArrayAttribute>();
   if (axis_attr.empty()) {
@@ -79,7 +79,7 @@ static std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
 }
 
 static bool GetReduceOpKeepDims(pir::Operation* reduce_op) {
-  const auto& attr_val = reduce_op->attributes().at("keep_dim");
+  const auto& attr_val = reduce_op->attributes().at("keepdim");
   CHECK(attr_val.isa<::pir::BoolAttribute>());
   return attr_val.dyn_cast<::pir::BoolAttribute>().data();
 }

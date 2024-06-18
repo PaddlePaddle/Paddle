@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
+#include "paddle/phi/kernels/funcs/fused_elemwise_activation_functor.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 
 namespace phi {
@@ -139,6 +140,7 @@ void FusedMultiTransformerInferMeta(
     const paddle::optional<std::vector<const MetaTensor*>>& cache_kvs,
     const paddle::optional<std::vector<const MetaTensor*>>& pre_caches,
     const MetaTensor& rotary_tensor,
+    const MetaTensor& beam_offset,
     const MetaTensor& time_step,
     const MetaTensor& seq_lengths,
     const MetaTensor& src_mask,
@@ -152,6 +154,7 @@ void FusedMultiTransformerInferMeta(
     const paddle::optional<std::vector<const MetaTensor*>>& ffn2_biases,
     bool pre_layer_norm,
     float epsilon,
+    float residual_alpha,
     float dropout_rate,
     int rotary_emb_dims,
     bool is_test,
@@ -159,6 +162,9 @@ void FusedMultiTransformerInferMeta(
     const std::string& act_method,
     bool trans_qkvw,
     int ring_id,
+    const std::string& norm_type,
+    bool use_neox_rotary_style,
+    int gqa_group_size,
     std::vector<MetaTensor*> cache_kv_outs,
     MetaTensor* out) {
   // x: qkv's input [batch_size, seq_len, dim_embed]
@@ -284,9 +290,15 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       MetaTensor* value_cache_out) {
   auto input_dims = qkv.dims();
   auto key_cache_dims = key_cache.dims();
-  const int num_head = key_cache_dims[1];
+  const int kv_num_head = key_cache_dims[1];
   const int dim_head = key_cache_dims[3];
+  const int total_num_head = qkv.dims()[qkv.dims().size() - 1] / dim_head;
+  const int q_num_head = total_num_head - 2 * kv_num_head;
 
+  PADDLE_ENFORCE_EQ(q_num_head % kv_num_head,
+                    0,
+                    errors::InvalidArgument(
+                        "The q num_head must be divisible by kv_num_head"));
   PADDLE_ENFORCE_EQ(
       input_dims.size(),
       2UL,
@@ -296,12 +308,12 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
       4UL,
       errors::InvalidArgument("The input(key_cache) must be a 4D Tensor."));
   PADDLE_ENFORCE_EQ(
-      3 * num_head * dim_head,
+      (2 * kv_num_head + q_num_head) * dim_head,
       input_dims[1],
-      errors::InvalidArgument(
-          "The input_dims[1] must be equal to 3 * num_head * dim_head"));
+      errors::InvalidArgument("The input_dims[1] must be equal to (2 * "
+                              "kv_num_head + q_num_head) * dim_head"));
 
-  fmha_out->set_dims({input_dims[0], num_head * dim_head});
+  fmha_out->set_dims({input_dims[0], q_num_head * dim_head});
   qkv_out->set_dims(qkv.dims());
   key_cache_out->set_dims(key_cache_dims);
   key_cache_out->set_dtype(key_cache.dtype());
@@ -370,6 +382,89 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
       fmha_out->set_dtype(qkv.dtype());
     }
   }
+}
+
+void BlockMultiheadAttentionInferXPUMeta(
+    const MetaTensor& qkv,
+    const MetaTensor& key_cache,
+    const MetaTensor& value_cache,
+    const MetaTensor& seq_lens_encoder,
+    const MetaTensor& seq_lens_decoder,
+    const MetaTensor& seq_lens_this_time,
+    const MetaTensor& padding_offsets,
+    const MetaTensor& cum_offsets,
+    const MetaTensor& cu_seqlens_q,
+    const MetaTensor& cu_seqlens_k,
+    const MetaTensor& cache_k_per_batch_maxs,
+    const MetaTensor& cache_v_per_batch_maxs,
+    const MetaTensor& block_tables,
+    const MetaTensor& pre_key_cache,
+    const MetaTensor& pre_value_cache,
+    const MetaTensor& rope_emb,
+    const MetaTensor& mask,
+    const MetaTensor& tgt_mask,
+    const MetaTensor& cache_k_quant_scales,
+    const MetaTensor& cache_v_quant_scales,
+    const MetaTensor& cache_k_dequant_scales,
+    const MetaTensor& cache_v_dequant_scales,
+    const MetaTensor& qkv_out_scale,
+    const MetaTensor& qkv_bias,
+    const MetaTensor& out_shift,
+    const MetaTensor& out_smooth,
+    const MetaTensor& max_enc_len_this_time,
+    const MetaTensor& max_dec_len_this_time,
+    int max_seq_len,
+    int block_size,
+    bool use_neox_style,
+    bool dynamic_cachekv_quant,
+    const int quant_round_type,
+    const float quant_max_bound,
+    const float quant_min_bound,
+    const float out_scale,
+    const std::string& compute_dtype,
+    MetaTensor* fmha_out,
+    MetaTensor* qkv_out,
+    MetaTensor* key_cache_out,
+    MetaTensor* value_cache_out) {
+  BlockMultiheadAttentionInferMeta(qkv,
+                                   key_cache,
+                                   value_cache,
+                                   seq_lens_encoder,
+                                   seq_lens_decoder,
+                                   seq_lens_this_time,
+                                   padding_offsets,
+                                   cum_offsets,
+                                   cu_seqlens_q,
+                                   cu_seqlens_k,
+                                   block_tables,
+                                   pre_key_cache,
+                                   pre_value_cache,
+                                   rope_emb,
+                                   mask,
+                                   tgt_mask,
+                                   cache_k_quant_scales,
+                                   cache_v_quant_scales,
+                                   cache_k_dequant_scales,
+                                   cache_v_dequant_scales,
+                                   qkv_out_scale,
+                                   qkv_bias,
+                                   out_shift,
+                                   out_smooth,
+                                   max_enc_len_this_time,
+                                   max_dec_len_this_time,
+                                   max_seq_len,
+                                   block_size,
+                                   use_neox_style,
+                                   dynamic_cachekv_quant,
+                                   quant_round_type,
+                                   quant_max_bound,
+                                   quant_min_bound,
+                                   out_scale,
+                                   compute_dtype,
+                                   fmha_out,
+                                   qkv_out,
+                                   key_cache_out,
+                                   value_cache_out);
 }
 
 void Conv1dXPUInferMeta(const MetaTensor& x,
@@ -924,6 +1019,7 @@ void FusedAttentionInferMeta(const MetaTensor& x,
   }
 
   out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
 }
 
 void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
@@ -998,19 +1094,19 @@ void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
                         "GradOp is only callable when is_test is false"));
 
   if (!pre_layer_norm) {
-    if (ln_scale_2_grad) {
+    if (ln_scale_2_grad && ln_scale_2) {
       ln_scale_2_grad->set_dims(ln_scale_2.dims());
     }
-    if (ln_bias_2_grad) {
+    if (ln_bias_2_grad && ln_bias_2) {
       ln_bias_2_grad->set_dims(ln_bias_2.dims());
     }
   }
 
-  if (pre_layer_norm) {
+  if (pre_layer_norm && ln_scale) {
     if (ln_scale_grad) {
       ln_scale_grad->set_dims(ln_scale.dims());
     }
-    if (ln_bias_grad) {
+    if (ln_bias_grad && ln_bias) {
       ln_bias_grad->set_dims(ln_bias.dims());
     }
   }
@@ -1019,7 +1115,7 @@ void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
     x_grad->set_dims(x.dims());
   }
 
-  if (out_linear_bias_grad) {
+  if (out_linear_bias_grad && out_linear_bias) {
     out_linear_bias_grad->set_dims(out_linear_bias.dims());
   }
 
@@ -1031,7 +1127,7 @@ void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
     qkv_weight_grad->set_dims(qkv_weight.dims());
   }
 
-  if (qkv_bias_grad) {
+  if (qkv_bias_grad && qkv_bias) {
     qkv_bias_grad->set_dims(qkv_bias.dims());
   }
 
@@ -1040,7 +1136,7 @@ void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
       ln_out_grad->set_dims(ln_out.dims());
     }
   } else {
-    if (bias_dropout_residual_out_grad) {
+    if (bias_dropout_residual_out_grad && bias_dropout_residual_out) {
       bias_dropout_residual_out_grad->set_dims(
           bias_dropout_residual_out.dims());
     }
@@ -1556,36 +1652,36 @@ void FusedFeedForwardGradInferMeta(const MetaTensor& out_grad,
                                    bool add_residual,
                                    int ring_id,
                                    MetaTensor* x_grad,
-                                   MetaTensor* ln1_scale_grad,
-                                   MetaTensor* ln1_bias_grad,
-                                   MetaTensor* ln2_scale_grad,
-                                   MetaTensor* ln2_bias_grad,
                                    MetaTensor* linear1_weight_grad,
                                    MetaTensor* linear1_bias_grad,
                                    MetaTensor* linear2_weight_grad,
-                                   MetaTensor* linear2_bias_grad) {
+                                   MetaTensor* linear2_bias_grad,
+                                   MetaTensor* ln1_scale_grad,
+                                   MetaTensor* ln1_bias_grad,
+                                   MetaTensor* ln2_scale_grad,
+                                   MetaTensor* ln2_bias_grad) {
   auto d_out_dim = out_grad.dims();
   x_grad->set_dims(d_out_dim);
-  if (ln1_scale_grad) {
+  if (ln1_scale_grad && ln1_scale) {
     ln1_scale_grad->set_dims(ln1_scale.dims());
   }
-  if (ln1_bias_grad) {
+  if (ln1_bias_grad && ln1_bias) {
     ln1_bias_grad->set_dims(ln1_bias.dims());
   }
-  if (ln2_scale_grad) {
+  if (ln2_scale_grad && ln2_scale) {
     ln2_scale_grad->set_dims(ln2_scale.dims());
   }
-  if (ln2_bias_grad) {
+  if (ln2_bias_grad && ln2_bias) {
     ln2_bias_grad->set_dims(ln2_bias.dims());
   }
 
   linear1_weight_grad->set_dims(linear1_weight.dims());
-  if (linear1_bias_grad) {
+  if (linear1_bias_grad && linear1_bias) {
     linear1_bias_grad->set_dims(linear1_bias.dims());
   }
 
   linear2_weight_grad->set_dims(linear2_weight.dims());
-  if (linear2_bias_grad) {
+  if (linear2_bias_grad && linear2_bias) {
     linear2_bias_grad->set_dims(linear2_bias.dims());
   }
 }
@@ -4475,6 +4571,122 @@ void FusedTokenPruneInferMeta(const MetaTensor& attn,
   cls_inds->set_dims({bsz, slim_seq_len});
   slimmed_x->set_dtype(x.dtype());
   cls_inds->set_dtype(DataType::INT64);
+}
+
+void FusedElemwiseActivationInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const std::vector<std::string>& functor_list,
+    int axis,
+    float scale,
+    bool save_intermediate_out,
+    MetaTensor* out,
+    MetaTensor* intermediate_out,
+    MetaConfig config) {
+  const auto& x_dim = x.dims();
+  const auto& y_dim = y.dims();
+
+  // Whether the shape of Y is a continuous subsequence of X,
+  // For more information please refer to the op's introduction.
+  bool bcast_y = phi::funcs::IsBcastY(x_dim, y_dim);
+
+  const auto& out_dim = bcast_y ? x_dim : y_dim;
+  const auto& out_lod = bcast_y ? x : y;
+  auto out_dtype = bcast_y ? x.dtype() : y.dtype();
+
+  if (save_intermediate_out) {
+    PADDLE_ENFORCE_EQ(
+        intermediate_out->initialized(),
+        true,
+        phi::errors::InvalidArgument(
+            "Output(IntermediateOut) of FusedElemwiseActivationOp "
+            "should not be null."));
+
+    if (phi::funcs::IsUnaryCompound(functor_list)) {
+      // for Unary(Binary(X, Y)), the shape and lod of out and
+      // intermediate_out are the same.
+      intermediate_out->set_dims(out_dim);
+      // set the lod of intermediate_out
+      intermediate_out->share_lod(out_lod);
+      intermediate_out->set_dtype(out_dtype);
+    } else {
+      // for Binary(X, Unary(Y)), the shape and lod of Y and
+      // intermediate_out are the same.
+      intermediate_out->set_dims(y_dim);
+      // set the lod of intermediate_out
+      intermediate_out->share_lod(y);
+      intermediate_out->set_dtype(y.dtype());
+    }
+  }
+  out->set_dims(out_dim);
+  out->share_lod(out_lod);
+  out->set_dtype(out_dtype);
+}
+
+void FusedElemwiseActivationGradInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& y,
+    const MetaTensor& out,
+    const MetaTensor& intermediate_out,
+    const MetaTensor& out_grad,
+    const std::vector<std::string>& functor_list,
+    int axis,
+    float scale,
+    bool save_intermediate_out,
+    MetaTensor* x_grad,
+    MetaTensor* y_grad,
+    MetaConfig config) {
+  PADDLE_ENFORCE_EQ(
+      out_grad.initialized(),
+      true,
+      phi::errors::InvalidArgument("Input(Out@Grad) should not be null."));
+
+  if (save_intermediate_out) {
+    PADDLE_ENFORCE_EQ(intermediate_out.initialized(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Input(IntermediateOut) should not be null."));
+  } else {
+    if (!phi::funcs::InputXCanBeAbsent(functor_list)) {
+      PADDLE_ENFORCE_EQ(
+          x.initialized(),
+          true,
+          phi::errors::InvalidArgument("Input(X) should not be null."));
+    }
+  }
+
+  if (x_grad != nullptr) {
+    if (x.initialized()) {
+      x_grad->set_dims(x.dims());
+      x_grad->share_lod(x);
+      x_grad->set_dtype(x.dtype());
+    } else {
+      // Currently, only when Binary is elementwise_add or elementwise_sub,
+      // the "X" could be absent.
+      PADDLE_ENFORCE_EQ(
+          phi::funcs::InputXCanBeAbsent(functor_list),
+          true,
+          phi::errors::InvalidArgument(
+              "Only when BinaryFunctor is elementwise_add, the 'X' "
+              "could be absent."));
+
+      // Node: If "X" is absence, the shape of Y should be a continuous
+      // subsequence of X, otherwise, we could not infer the shape of dx.
+      x_grad->set_dims(out_grad.dims());
+      x_grad->share_lod(out_grad);
+      x_grad->set_dtype(out_grad.dtype());
+    }
+  }
+
+  if (y_grad != nullptr) {
+    PADDLE_ENFORCE_EQ(
+        y.initialized(),
+        true,
+        phi::errors::InvalidArgument("Input(Y) should not be null."));
+    y_grad->set_dims(y.dims());
+    y_grad->share_lod(y);
+    y_grad->set_dtype(y.dtype());
+  }
 }
 
 }  // namespace phi

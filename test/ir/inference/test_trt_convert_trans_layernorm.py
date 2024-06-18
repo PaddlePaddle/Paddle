@@ -27,6 +27,10 @@ import paddle.inference as paddle_infer
 
 
 class TrtConvertTransLayernormTest(TrtLayerAutoScanTest):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.optimization_level = 5
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 

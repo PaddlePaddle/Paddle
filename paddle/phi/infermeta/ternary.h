@@ -149,6 +149,19 @@ void GlobalScatterInferMeta(const MetaTensor& x,
                             bool use_calc_stream,
                             MetaTensor* out);
 
+void AddGroupNormSiluInferMeta(const MetaTensor& x,
+                               const MetaTensor& residual,
+                               const MetaTensor& scale,
+                               const MetaTensor& bias,
+                               float epsilon,
+                               int groups,
+                               const std::string& data_layout,
+                               const std::string& activation,
+                               MetaTensor* y,
+                               MetaTensor* residual_out,
+                               MetaTensor* mean,
+                               MetaTensor* variance);
+
 void GroupNormInferMeta(const MetaTensor& x,
                         const MetaTensor& scale,
                         const MetaTensor& bias,
@@ -298,6 +311,15 @@ void SendURecvInferMeta(const MetaTensor& x,
                         const IntArray& out_size,
                         MetaTensor* out,
                         MetaTensor* dst_count);
+
+void SequenceConvInferMeta(const MetaTensor& x,
+                           const MetaTensor& padding_data,
+                           const MetaTensor& filter,
+                           int context_length,
+                           bool padding_trainable,
+                           int context_start,
+                           int context_stride,
+                           MetaTensor* out);
 
 void SparseMomentumInferMeta(const MetaTensor& param,
                              const MetaTensor& learning_rate,

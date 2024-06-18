@@ -11,17 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import warnings
+from typing import TYPE_CHECKING, Sequence
 
 from paddle import _C_ops
 
 from ..base import core, framework
 from ..base.dygraph import no_grad
 from ..base.framework import name_scope
+from .adam import _AdamParameterConfig
 from .optimizer import Optimizer
 
 __all__ = []
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.nn.clip import GradientClipBase
+    from paddle.regularizer import WeightDecayRegularizer
+
+    from .lr import LRScheduler
 
 
 class Adamax(Optimizer):
@@ -53,30 +63,32 @@ class Adamax(Optimizer):
     Args:
         learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a LRScheduler. The default value is 0.001.
-        beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
+        beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.9.
-        beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
+        beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
+        parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
             different parameter groups such as the learning rate, weight decay, etc,
             then the parameters are list of dict. Note that the learning_rate in parameter groups
             represents the scale of base learning_rate.
             The default value is None in static graph mode, at this time all parameters will be updated.
-        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
+        weight_decay (float|WeightDecayRegularizer|None, optional): The strategy of regularization.
             It can be a float value as coeff of L2 regularization or
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already,
             the regularization setting here in optimizer will be ignored for this parameter.
             Otherwise, the regularization setting here in optimizer will take effect.
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+        grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
             :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
-        name (str, optional): Normally there is no need for user to set this property.
+        name (str|None, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
 
@@ -117,7 +129,7 @@ class Adamax(Optimizer):
             >>> loss = paddle.mean(out)
             >>> adam = paddle.optimizer.Adamax(
             ...     learning_rate=0.1,
-            ...     parameters=[{
+            ...     parameters=[{  # type: ignore
             ...         'params': linear_1.parameters()
             ...     }, {
             ...         'params': linear_2.parameters(),
@@ -132,21 +144,24 @@ class Adamax(Optimizer):
             >>> adam.step()
             >>> adam.clear_grad()
     """
+    type: str
     _moment_acc_str = "moment"
     _inf_norm_acc_str = "inf_norm"
     _beta1_pow_acc_str = "beta1_pow_acc"
 
     def __init__(
         self,
-        learning_rate=0.001,
-        beta1=0.9,
-        beta2=0.999,
-        epsilon=1e-8,
-        parameters=None,
-        weight_decay=None,
-        grad_clip=None,
-        name=None,
-    ):
+        learning_rate: float | LRScheduler = 0.001,
+        beta1: float | Tensor = 0.9,
+        beta2: float | Tensor = 0.999,
+        epsilon: float = 1e-8,
+        parameters: Sequence[Tensor]
+        | Sequence[_AdamParameterConfig]
+        | None = None,
+        weight_decay: float | WeightDecayRegularizer | None = None,
+        grad_clip: GradientClipBase | None = None,
+        name: str | None = None,
+    ) -> None:
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None

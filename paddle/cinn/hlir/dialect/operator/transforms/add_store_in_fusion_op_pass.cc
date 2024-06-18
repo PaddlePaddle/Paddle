@@ -32,8 +32,6 @@ class AddYieldStoreInFusionOpPattern
 
   bool MatchAndRewrite(::pir::YieldOp op,
                        pir::PatternRewriter& rewriter) const override {
-    auto& shape_analysis =
-        pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
     for (auto i = 0; i < op->num_operands(); ++i) {
       if (op->operand_source(i).use_count() == 1) {
         continue;

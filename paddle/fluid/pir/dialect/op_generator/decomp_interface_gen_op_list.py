@@ -25,6 +25,7 @@ decomp_interface_declare_gen_op_list = [
     "batch_norm_",
     "bce_loss",
     "bmm",
+    "clip",
     "dropout",
     "elu",
     "embedding",
@@ -59,6 +60,7 @@ decomp_interface_declare_gen_op_list = [
     "squeeze",
     "stack",
     "unsqueeze",
+    "unbind",
     "huber_loss",
 ]
 
@@ -102,14 +104,73 @@ decomp_interface_implementation_gen_op_list = [
     "squeeze",
     "stack",
     "unsqueeze",
+    "unbind",
     "huber_loss",
 ]
 
 # xshape output will no longer used after decomp, but return none to keep output num the same as origin op
 decomp_ops_contain_unused_output = ["squeeze", "unsqueeze"]
 
-decomp_vjp_interface_declare_gen_op_list = [
-    "add_grad",
-    "matmul_grad",
-    "relu_grad",
+# prim op with one input and one output, with no attribute
+UNARY_PRIM_VJP_OPS = [
+    'abs_grad',
+    'erf_grad',
+    'exp_grad',
+    'floor_grad',
+    'log_grad',
+    'rsqrt_grad',
+    'sin_grad',
+    'cos_grad',
+    'tanh_grad',
 ]
+
+# prim op with two inputs and one output, with no attribute
+BINARY_PRIM_VJP_OPS = [
+    'matmul_grad',
+    'add_grad',
+    'divide_grad',
+    'subtract_grad',
+    'multiply_grad',
+    'elementwise_pow_grad',
+    'maximum_grad',
+    'reduce_as_grad',
+]
+
+OTHER_PRIM_VJP_OPS = [
+    'sum_grad',
+    'reshape_grad',
+    'roll_grad',
+    'transpose_grad',
+    'max_grad',
+    'squeeze_grad',
+    'unsqueeze_grad',
+]
+
+
+CUSTOM_VJP = [
+    'gelu_grad',
+    'hardswish_grad',
+    'leaky_relu_grad',
+    'mean_grad',
+    'minimum_grad',
+    'pow_grad',
+    'relu_grad',
+    'sigmoid_grad',
+    'silu_grad',
+    'softmax_grad',
+    'sqrt_grad',
+    'swiglu_grad',
+    'layer_norm_grad',
+    'group_norm_grad',
+]  # custom vjp list of composite op
+
+# declare belongs to codegen, but implementation not
+OTHER_VJP = ["concat_grad", "stack_grad", 'slice_grad']
+
+vjp_list = (
+    UNARY_PRIM_VJP_OPS + BINARY_PRIM_VJP_OPS + CUSTOM_VJP + OTHER_PRIM_VJP_OPS
+)
+
+decomp_vjp_interface_declare_gen_op_list = vjp_list + OTHER_VJP
+
+decomp_vjp_interface_implementation_gen_op_list = vjp_list

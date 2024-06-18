@@ -167,9 +167,9 @@ class IR_API Pass {
     Set<int64_t>("__match_count__", new int64_t{match_count});
   }
 
-  void AddStatistics(int64_t match_count, int64_t all_count) {
-    Set<int64_t>("__match_count__", new int64_t{match_count});
-    Set<int64_t>("__all_count__", new int64_t{all_count});
+  void AddStatistics(int64_t match_count_1, int64_t match_count_2) {
+    Set<int64_t>("__match_count_1__", new int64_t{match_count_1});
+    Set<int64_t>("__match_count_2__", new int64_t{match_count_2});
   }
 
   void AddStatistics(const std::string& custom_log) {

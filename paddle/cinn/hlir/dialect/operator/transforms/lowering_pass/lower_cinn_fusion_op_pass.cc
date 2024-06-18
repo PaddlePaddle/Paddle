@@ -30,10 +30,8 @@
 
 namespace cinn::dialect::ir::details {
 
-pir::Operation* ProcessDyShapeGroup(
-    const OpLoweringGroupPtr& group,
-    pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
-    pir::PatternRewriter& rewriter) {                // NOLINT
+pir::Operation* ProcessDyShapeGroup(const OpLoweringGroupPtr& group,
+                                    pir::PatternRewriter& rewriter) {  // NOLINT
   // NOTE(dev): Need UpdateShapeOrDataExprs firstly and the logic
   // will be migated into BucketLower later.
   UpdateGroupShapeOrDataExprs(const_cast<OpLoweringGroupPtr&>(group));
@@ -53,7 +51,6 @@ pir::Operation* ProcessDyShapeGroup(
     }
     return CompileBroadcastTreeToConditionBlock(group,
                                                 *broadcast_tree,
-                                                shape_analysis,
                                                 value_to_dim_expr_idx,
                                                 group_inputs,
                                                 output_types,
@@ -85,7 +82,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
     // TODO(zhangyuqin1998): Replace pir::Group with a new structure
     OpLoweringGroupPtr group = GetGroup(fusion_op);
-    pir::Operation* compiled_op = ProcessGroup(group, shape_analysis, rewriter);
+    pir::Operation* compiled_op = ProcessGroup(group, rewriter);
 
     for (size_t i = 0; i < fusion_op.num_results(); ++i) {
       rewriter.ReplaceAllUsesWith(fusion_op.result(i), compiled_op->result(i));
@@ -104,8 +101,7 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
 
   virtual pir::Operation* ProcessGroup(
       const OpLoweringGroupPtr& group,
-      pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
-      pir::PatternRewriter& rewriter) const {          // NOLINT
+      pir::PatternRewriter& rewriter) const {  // NOLINT
     auto group_inputs = GetBlockOutsideInput(group->ops());
     // compile group to jit_kernel_op
     std::vector<pir::Type> output_types;
@@ -156,9 +152,8 @@ class DyShapeFusionOpPattern : public FusionOpPattern {
  protected:
   virtual pir::Operation* ProcessGroup(
       const OpLoweringGroupPtr& group,
-      pir::ShapeConstraintIRAnalysis& shape_analysis,  // NOLINT
-      pir::PatternRewriter& rewriter) const {          // NOLINT
-    return ProcessDyShapeGroup(group, shape_analysis, rewriter);
+      pir::PatternRewriter& rewriter) const {  // NOLINT
+    return ProcessDyShapeGroup(group, rewriter);
   }
 };
 

@@ -38,8 +38,7 @@
 #include "paddle/pir/include/core/op_result.h"
 #include "paddle/pir/include/core/value.h"
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 class OpAttrTypeMap {
  public:
@@ -56,7 +55,7 @@ class OpAttrTypeMap {
   }
 
  private:
-  OpAttrTypeMap() = default;
+  OpAttrTypeMap() : ops_attrtype_map_() {}
   std::unordered_map<
       std::string,
       std::unordered_map<std::string, paddle::framework::proto::AttrType>>
@@ -1147,5 +1146,4 @@ ssize_t GetIdxFromCoreOpsInfoMap(
   return -1;
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

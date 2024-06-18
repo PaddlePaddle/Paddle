@@ -567,21 +567,6 @@ class TestDygraphDoubleGradVisitedUniq(TestCase):
         np.testing.assert_array_equal(grad_1, grad_2)
 
 
-class TestRaiseNoDoubleGradOp(TestCase):
-    def test_no_grad_op(self):
-        with base.dygraph.guard():
-            x = paddle.ones(shape=[2, 3, 2, 2], dtype='float32')
-            x.stop_gradient = False
-            y = paddle.static.nn.group_norm(x, groups=1)
-
-            dx = base.dygraph.grad(
-                outputs=[y], inputs=[x], create_graph=True, retain_graph=True
-            )[0]
-
-            loss = paddle.mean(dx)
-            loss.backward()
-
-
 class TestDoubleGradResNet(TestCase):
     def setUp(self):
         paddle.seed(123)

@@ -15,7 +15,7 @@
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/schedule/factorize_reduction.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
-
+#include "paddle/common/enforce.h"
 /** \brief A macro that guards the beginning of each implementation of schedule
  */
 #define CINN_IR_SCHEDULE_BEGIN() try {
@@ -90,7 +90,10 @@ Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop,
   Expr original_update_stmt;
   CHECK(original_update_body.As<Block>() || original_update_body.As<Store>());
   if (original_update_body.As<Block>()) {
-    CHECK_EQ(original_update_body.As<Block>()->stmts.size(), 1);
+    PADDLE_ENFORCE_EQ(original_update_body.As<Block>()->stmts.size(),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The size of original_update_body should be 1!"));
     original_update_stmt = original_update_body.As<Block>()->stmts[0];
   } else if (original_update_body.As<Store>()) {
     original_update_stmt = original_update_body;
@@ -168,7 +171,10 @@ Expr StScheduleImpl::FactorizeReduction(const Expr& rf_loop,
   // Collect the loops of the block.
   // Construct a map from loop var names to corresponding loops.
   std::vector<Expr> original_loops = this->GetLoops(original_block);
-  CHECK_GT(original_loops.size(), 0);
+  PADDLE_ENFORCE_GT(original_loops.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The size of original_loops should be great than 0!"));
   VLOG(3) << "before FactorizeReduction, original computational body of the "
              "reduction is:\n"
           << original_loops[0];
@@ -190,7 +196,10 @@ Expr StScheduleImpl::FactorizeReduction(const Expr& rf_loop,
   Expr original_update_stmt;
   CHECK(original_update_body.As<Block>() || original_update_body.As<Store>());
   if (original_update_body.As<Block>()) {
-    CHECK_EQ(original_update_body.As<Block>()->stmts.size(), 1);
+    PADDLE_ENFORCE_EQ(original_update_body.As<Block>()->stmts.size(),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The size of original_update_body should be 1!"));
     original_update_stmt = original_update_body.As<Block>()->stmts[0];
   } else if (original_update_body.As<Store>()) {
     original_update_stmt = original_update_body;
