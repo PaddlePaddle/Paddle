@@ -841,8 +841,8 @@ bool SplitWithNumOpInferSymbolicShape(
           "In InferSymbolicShape, data of axis should be one dimension"));
   if (!axis_data[0].isa<int64_t>()) {
     PADDLE_THROW(
-        phi::errors::Unimplemented("InferSymbolicShape, "
-                                   "axis of SplitWithNumOp is not int64"));
+        phi::errors::InvalidArgument("InferSymbolicShape, "
+                                     "axis of SplitWithNumOp is not int64"));
   }
   int64_t axis = axis_data[0].dyn_cast<int64_t>();
 
