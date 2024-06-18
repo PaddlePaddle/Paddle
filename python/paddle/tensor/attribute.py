@@ -168,7 +168,9 @@ def is_complex(x: Tensor) -> bool:
             >>> print(paddle.is_complex(x))
             False
     """
-    if not isinstance(x, (Tensor, paddle.static.Variable, paddle.pir.Value)):
+    if not isinstance(
+        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.Value)
+    ):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
     is_complex_dtype = (
@@ -202,7 +204,9 @@ def is_floating_point(x: Tensor) -> bool:
             >>> print(paddle.is_floating_point(y))
             False
     """
-    if not isinstance(x, (Tensor, paddle.static.Variable, paddle.pir.Value)):
+    if not isinstance(
+        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.Value)
+    ):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
     is_fp_dtype = (
@@ -244,7 +248,9 @@ def is_integer(x: Tensor) -> bool:
             >>> print(paddle.is_integer(x))
             True
     """
-    if not isinstance(x, (Tensor, paddle.static.Variable, paddle.pir.Value)):
+    if not isinstance(
+        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.Value)
+    ):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
 
