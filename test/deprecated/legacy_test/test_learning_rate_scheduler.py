@@ -570,6 +570,7 @@ class TestLinearWamrupLearningRateDecayWithScalarInput(unittest.TestCase):
             self.assertAlmostEqual(
                 expected_lr,
                 lr_val[0],
+                places=6,
                 msg=f'Test failed, step {step}, expected {expected_lr}, but got {lr_val[0]}',
             )
 

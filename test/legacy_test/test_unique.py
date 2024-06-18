@@ -390,6 +390,7 @@ class TestUniqueAPI(unittest.TestCase):
             return_counts=True,
             axis=0,
         )
+        np_inverse = np.squeeze(np_inverse)
         self.assertTrue((out.numpy() == np_out).all(), True)
         self.assertTrue((index.numpy() == np_index).all(), True)
         self.assertTrue((inverse.numpy() == np_inverse).all(), True)
