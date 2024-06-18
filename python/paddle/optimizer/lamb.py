@@ -118,11 +118,15 @@ class Lamb(Optimizer):
         epsilon: float = 1e-6,
         parameters: Sequence[Tensor] | Sequence[_ParameterConfig] | None = None,
         grad_clip: GradientClipBase | None = None,
-        exclude_from_weight_decay_fn: Callable | None = None,
+        exclude_from_weight_decay_fn: Callable[[Tensor], bool] | None = None,
         multi_precision: bool = False,
         always_adapt: bool = False,
         name: str | None = None,
-    ):
+    ) -> None:
+        assert learning_rate is not None
+        assert beta1 is not None
+        assert beta2 is not None
+        assert epsilon is not None
         super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
