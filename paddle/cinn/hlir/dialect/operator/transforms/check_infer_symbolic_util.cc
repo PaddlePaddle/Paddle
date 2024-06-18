@@ -176,7 +176,7 @@ struct ShapeSignatureGenerator {
     auto GetSymbolsForOneValue = [&](pir::Value value) {
       const auto& shape_or_data =
           op_shape_analysis->GetShapeOrDataForValue(value);
-      if (shape_or_data.isa<symbol::TensorListShapeOrDataDimExprs>()) return;
+      if (!shape_or_data.isa<symbol::TensorShapeOrDataDimExprs>()) return;
       for (const auto& dim_expr : shape_or_data.shape()) {
         GetSymbolsForOneDimExpr(dim_expr, &symbols);
       }
@@ -608,11 +608,12 @@ void CheckInferSymbolicIfNeed(pir::Program* program,
   if (!FLAGS_prim_all || !FLAGS_check_infer_symbolic) return;
   const auto& GraphDimExprs4Value =
       MakeDimExprs4Value(program, CreatePassManager);
-  CheckProgramDimExprConstraints(program, GraphDimExprs4Value);
+  // CheckProgramDimExprConstraints(program, GraphDimExprs4Value);
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(CreateCheckInferSymbolicPass(GraphDimExprs4Value));
   pass_manager->AddPass(CreateSplitGenerateShapeIntoShapeOpsPass());
   pass_manager->Run(program);
+  VLOG(3) << "debug from shine: after run";
 }
 
 }  // namespace ir

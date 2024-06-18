@@ -71,18 +71,22 @@ bool OperationShapeInfo::operator==(const OperationShapeInfo &other) const {
 
 std::ostream &operator<<(std::ostream &os, const OperationShapeInfo &info) {
   os << "OperationShapeInfo - " << info.op_name_ << std::endl;
-  os << "  attrs: {";
-  for (std::size_t i = 0; i < info.attributes_.size() - 1; ++i) {
-    ::pir::IrPrinter(os).PrintAttribute(info.attributes_[i].second);
-    os << ", ";
+  if (!info.attributes_.empty()) {
+    os << "  attrs: {";
+    for (std::size_t i = 0; i < info.attributes_.size() - 1; ++i) {
+      ::pir::IrPrinter(os).PrintAttribute(info.attributes_[i].second);
+      os << ", ";
+    }
+    ::pir::IrPrinter(os).PrintAttribute(info.attributes_.back().second);
+    os << std::endl;
   }
-  ::pir::IrPrinter(os).PrintAttribute(info.attributes_.back().second);
-  os << std::endl;
-  os << "  input_shape_or_datas: {";
-  for (std::size_t i = 0; i < info.input_shape_or_datas_.size() - 1; ++i) {
-    os << info.input_shape_or_datas_[i] << ", ";
+  if (!info.input_shape_or_datas_.empty()) {
+    os << "  input_shape_or_datas: {";
+    for (std::size_t i = 0; i < info.input_shape_or_datas_.size() - 1; ++i) {
+      os << info.input_shape_or_datas_[i] << ", ";
+    }
+    os << info.input_shape_or_datas_.back() << "}" << std::endl;
   }
-  os << info.input_shape_or_datas_.back() << "}" << std::endl;
   return os;
 }
 
