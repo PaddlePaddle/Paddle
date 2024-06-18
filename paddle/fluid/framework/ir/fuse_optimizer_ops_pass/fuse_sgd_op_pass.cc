@@ -20,9 +20,7 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Node;
 
@@ -68,8 +66,6 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
     return graph->CreateOpNode(&Sgd_desc);
   }
 };
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(fuse_sgd_op_pass, paddle::framework::ir::FuseSgdOpPass);

@@ -91,6 +91,7 @@ class TestLayer(TestBase):
             paddle.randint(low=0, high=10, shape=[49, 49], dtype=paddle.int64),
         )
         self.net = LayerCase
+        self.with_train = False
         self.with_cinn = False
 
     # NOTE prim + cinn lead to error

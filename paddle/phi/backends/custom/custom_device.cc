@@ -587,7 +587,7 @@ class CustomDevice : public DeviceInterface {
 #undef return_result
   }
 
-  C_DataType ToCDatatType(phi::DataType data_type) {
+  C_DataType ToCDataType(phi::DataType data_type) {
 #define return_result(in, ret) \
   case in:                     \
     return C_DataType::ret
@@ -669,7 +669,7 @@ class CustomDevice : public DeviceInterface {
         send_buf,
         recv_buf,
         count,
-        ToCDatatType(data_type),
+        ToCDataType(data_type),
         ToXCCLReduceOp(op),
         reinterpret_cast<C_CCLComm>(comm),
         reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -685,7 +685,7 @@ class CustomDevice : public DeviceInterface {
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_broadcast(
         buf,
         count,
-        ToCDatatType(data_type),
+        ToCDataType(data_type),
         root,
         reinterpret_cast<C_CCLComm>(comm),
         reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -704,7 +704,7 @@ class CustomDevice : public DeviceInterface {
         pimpl_->xccl_reduce(in_data,
                             out_data,
                             num,
-                            ToCDatatType(data_type),
+                            ToCDataType(data_type),
                             ToXCCLReduceOp(reduce_op),
                             root_id,
                             reinterpret_cast<C_CCLComm>(comm),
@@ -722,7 +722,7 @@ class CustomDevice : public DeviceInterface {
         send_buf,
         recv_buf,
         count,
-        ToCDatatType(data_type),
+        ToCDataType(data_type),
         reinterpret_cast<C_CCLComm>(comm),
         reinterpret_cast<C_Stream>(stream.raw_stream())));
   }
@@ -739,7 +739,7 @@ class CustomDevice : public DeviceInterface {
         send_buf,
         recv_buf,
         count,
-        ToCDatatType(data_type),
+        ToCDataType(data_type),
         ToXCCLReduceOp(reduce_op),
         reinterpret_cast<C_CCLComm>(comm),
         reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -767,7 +767,7 @@ class CustomDevice : public DeviceInterface {
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->xccl_send(send_buf,
                           count,
-                          ToCDatatType(data_type),
+                          ToCDataType(data_type),
                           dest_rank,
                           reinterpret_cast<C_CCLComm>(comm),
                           reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -783,7 +783,7 @@ class CustomDevice : public DeviceInterface {
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->xccl_recv(recv_buf,
                           count,
-                          ToCDatatType(data_type),
+                          ToCDataType(data_type),
                           src_rank,
                           reinterpret_cast<C_CCLComm>(comm),
                           reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -802,8 +802,8 @@ class CustomDevice : public DeviceInterface {
     if (pimpl_->xccl_all_to_all) {
       std::vector<C_DataType> c_send_dtype, c_recv_dtype;
       for (size_t i = 0; i < nranks; ++i) {
-        c_send_dtype.push_back(ToCDatatType(send_dtype[i]));
-        c_recv_dtype.push_back(ToCDatatType(recv_dtype[i]));
+        c_send_dtype.push_back(ToCDataType(send_dtype[i]));
+        c_recv_dtype.push_back(ToCDataType(recv_dtype[i]));
       }
       PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_all_to_all(
           send_buf,
@@ -823,7 +823,7 @@ class CustomDevice : public DeviceInterface {
         PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
             pimpl_->xccl_recv(recv_buf[i],
                               recv_count[i],
-                              ToCDatatType(recv_dtype[i]),
+                              ToCDataType(recv_dtype[i]),
                               i,
                               reinterpret_cast<C_CCLComm>(comm),
                               reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -833,7 +833,7 @@ class CustomDevice : public DeviceInterface {
           PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->xccl_send(
               const_cast<void*>(send_buf[i]),
               send_count[i],
-              ToCDatatType(send_dtype[i]),
+              ToCDataType(send_dtype[i]),
               i,
               reinterpret_cast<C_CCLComm>(comm),
               reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -848,7 +848,7 @@ class CustomDevice : public DeviceInterface {
         PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
             pimpl_->xccl_recv(recv_buf[i],
                               recv_count[i],
-                              ToCDatatType(recv_dtype[i]),
+                              ToCDataType(recv_dtype[i]),
                               i,
                               reinterpret_cast<C_CCLComm>(comm),
                               reinterpret_cast<C_Stream>(stream.raw_stream())));
@@ -872,7 +872,7 @@ class CustomDevice : public DeviceInterface {
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
         pimpl_->blas_axpby(device,
                            reinterpret_cast<C_Stream>(stream.raw_stream()),
-                           ToCDatatType(dtype),
+                           ToCDataType(dtype),
                            numel,
                            alpha,
                            x,

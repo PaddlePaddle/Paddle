@@ -19,7 +19,7 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/common/layout.h"
-#include "paddle/phi/backends/device_memory_aligment.h"
+#include "paddle/phi/backends/device_memory_alignment.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -1347,6 +1347,115 @@ void CudnnLSTMInferMeta(
 
   reserve->set_dtype(phi::DataType::UINT8);
   state_out->set_dtype(phi::DataType::UINT8);
+}
+
+void LSTMInferMeta(const MetaTensor& input,
+                   const MetaTensor& h0,
+                   const MetaTensor& c0,
+                   const MetaTensor& weight,
+                   const MetaTensor& bias,
+                   bool use_peepholes,
+                   bool is_reverse,
+                   bool is_test,
+                   const std::string& gate_activation,
+                   const std::string& cell_activation,
+                   const std::string& candidate_activation,
+                   MetaTensor* hidden,
+                   MetaTensor* cell,
+                   MetaTensor* batch_gate,
+                   MetaTensor* batch_cell_pre_act,
+                   MetaConfig config) {
+  const auto& in_dims = input.dims();
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Input(X)'s rank must be 2, but received %d.", in_dims.size()));
+
+  if (h0) {
+    PADDLE_ENFORCE_EQ(
+        c0.initialized(),
+        true,
+        phi::errors::NotFound("Input(Cell) and Input(Hidden) of LSTM "
+                              "should not be null at the same time."));
+    const auto& h_dims = h0.dims();
+    const auto& c_dims = c0.dims();
+    PADDLE_ENFORCE_EQ(h_dims,
+                      c_dims,
+                      phi::errors::InvalidArgument(
+                          "The dimension of Input(H0) and Input(C0) should "
+                          "be the same, but received [%s] (H0) vs [%s] (C0).",
+                          h_dims,
+                          c_dims));
+  }
+
+  int frame_size = static_cast<int>(in_dims[1] / 4);
+  const auto& w_dims = weight.dims();
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "The rank of Input(Weight) should be 2, but received %d.",
+          w_dims.size()));
+  PADDLE_ENFORCE_EQ(w_dims[0],
+                    frame_size,
+                    phi::errors::InvalidArgument(
+                        "The first dimension of Input(Weight) should be %d, "
+                        "but received %d.",
+                        frame_size,
+                        w_dims[0]));
+  PADDLE_ENFORCE_EQ(w_dims[1],
+                    4 * frame_size,
+                    phi::errors::InvalidArgument(
+                        "The second dimension of Input(Weight) should be 4 * "
+                        "%d, but received %d.",
+                        frame_size,
+                        w_dims[1]));
+
+  const auto& b_dims = bias.dims();
+  PADDLE_ENFORCE_EQ(b_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The rank of Input(Bias) should be 2, but received %d.",
+                        b_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      b_dims[0],
+      1,
+      phi::errors::InvalidArgument(
+          "The first dimension of Input(Bias) should be 1, but received %d.",
+          b_dims[0]));
+
+  if (use_peepholes) {
+    PADDLE_ENFORCE_EQ(
+        b_dims[1],
+        7 * frame_size,
+        phi::errors::InvalidArgument(
+            "The second dimension of Input(Bias) should be 7 * %d if enable "
+            "peepholes connection, but received %d.",
+            frame_size,
+            b_dims[1]));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        b_dims[1],
+        4 * frame_size,
+        phi::errors::InvalidArgument(
+            "The second dimension of Input(Bias) should be 4 * %d if disable "
+            "peepholes connection, but received %d.",
+            frame_size,
+            b_dims[1]));
+  }
+
+  phi::DDim out_dims({in_dims[0], frame_size});
+  hidden->set_dims(out_dims);
+  cell->set_dims(out_dims);
+  if (!is_test) {
+    batch_gate->set_dims(in_dims);
+    batch_cell_pre_act->set_dims(out_dims);
+  }
+  hidden->share_lod(input);
+  cell->share_lod(input);
+  hidden->set_dtype(input.dtype());
+  cell->set_dtype(input.dtype());
 }
 
 void DecayedAdagradInferMeta(const MetaTensor& param,

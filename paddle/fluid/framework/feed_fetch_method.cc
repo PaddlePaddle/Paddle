@@ -25,8 +25,7 @@ namespace phi {
 class DenseTensor;
 }  // namespace phi
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class Variable;
 
@@ -130,5 +129,4 @@ phi::DenseTensor& GetVariableTensor(const Scope& scope,
   return *var->GetMutable<phi::DenseTensor>();
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

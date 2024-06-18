@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/pass/fusion_merge_pass_util.h"
-
+#include "paddle/common/enforce.h"
 PD_DECLARE_bool(enhance_vertical_fusion_with_recompute);
 
 namespace cinn {
@@ -705,7 +705,11 @@ class FusionMergePassHelper : public FusionHelperBase {
         }
       }
 
-      CHECK_GE(producer->consumer_groups().size(), candidates.size());
+      PADDLE_ENFORCE_GE(producer->consumer_groups().size(),
+                        candidates.size(),
+                        phi::errors::InvalidArgument(
+                            "The number of candidates should be less than or "
+                            "equal to the number of consumer groups!"));
       if (producer->consumer_groups().size() == 0 && candidates.size() == 0 &&
           output_nodes_set_.count(producer->CollectNodes()[0]) == 0) {
         producer->belong_groups.insert(*fusionable_consumers->begin());
@@ -959,8 +963,16 @@ class FusionMergePassHelper : public FusionHelperBase {
         CHECK(consumer->belong_groups.size());
         consumers.insert(*consumer->belong_groups.begin());
       }
-      CHECK_EQ(group->producer_groups().size(), producers.size());
-      CHECK_EQ(group->consumer_groups().size(), consumers.size());
+      PADDLE_ENFORCE_EQ(group->producer_groups().size(),
+                        producers.size(),
+                        phi::errors::InvalidArgument(
+                            "The number of producers should be equal to the "
+                            "number of producer groups!"));
+      PADDLE_ENFORCE_EQ(group->consumer_groups().size(),
+                        consumers.size(),
+                        phi::errors::InvalidArgument(
+                            "The number of consumers should be equal to the "
+                            "number of consumer groups!"));
       (*group->mut_producer_groups()) = producers;
       (*group->mut_consumer_groups()) = consumers;
     }

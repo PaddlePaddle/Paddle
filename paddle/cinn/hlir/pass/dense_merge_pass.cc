@@ -15,7 +15,7 @@
 #include "paddle/cinn/common/graph_utils.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/pass/fusion_helper_base.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace pass {
@@ -100,7 +100,13 @@ class DenseMergePassHelper : public FusionHelperBase {
     std::unordered_map<std::string, std::vector<Node*>> dense_op_map;
     for (auto dense_op : dense_ops) {
       const auto& in_links = dense_op->inlinks_in_order();
-      CHECK_GT(in_links.size(), pos);
+      PADDLE_ENFORCE_GT(in_links.size(),
+                        pos,
+                        phi::errors::InvalidArgument(
+                            "The input link size of dense op should be greater "
+                            "than %d, but got %d.",
+                            pos,
+                            in_links.size()));
       auto sign = GenOpSign(in_links[pos]->source()->safe_as<NodeData>(),
                             dense_op->attrs);
       if (dense_op_map.count(sign)) {
@@ -131,7 +137,14 @@ class DenseMergePassHelper : public FusionHelperBase {
         const auto& in_links = op->inlinks_in_order();
         node->UnLinkSingleTo(op);
         // link to new node
-        CHECK_GT(in_links.size(), pos);
+        PADDLE_ENFORCE_GT(
+            in_links.size(),
+            pos,
+            phi::errors::InvalidArgument("The input link size of dense "
+                                         "op should be greater than %d, "
+                                         "but got %d.",
+                                         pos,
+                                         in_links.size()));
         in_links[pos]->source()->LinkTo(node_tmp);
         // unlink old dense node
         in_links[pos]->source()->UnLinkSingleTo(op);

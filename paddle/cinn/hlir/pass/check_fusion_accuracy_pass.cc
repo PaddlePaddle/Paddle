@@ -27,7 +27,7 @@
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
 #include "paddle/cinn/hlir/pass/fusion_helper_base.h"
 #include "paddle/cinn/runtime/custom_function.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::hlir::pass {
 
 using framework::Graph;
@@ -529,8 +529,10 @@ std::vector<Node*> CheckFusionAccuracyPass::TopologicalOrder(
     }
   }
 
-  CHECK_EQ(ordered_nodes.size(), nodes.size())
-      << "There has circle in group! Please check.";
+  PADDLE_ENFORCE_EQ(
+      ordered_nodes.size(),
+      nodes.size(),
+      phi::errors::InvalidArgument("There has circle in group! Please check."));
 
   return ordered_nodes;
 }

@@ -23,8 +23,7 @@
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 VariableScope::VariableScope(Scope* scope)
     : var_list_(), name2id_(), vec_meta_info_(), data_transfer_added_vars_() {
@@ -353,5 +352,4 @@ void Instruction::UpdateRecordStreamForGcInfo() {
 }
 #endif
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

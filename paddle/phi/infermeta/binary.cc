@@ -3573,6 +3573,45 @@ void TakeAlongAxisInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void TdmChildInferMeta(const MetaTensor& x,
+                       const MetaTensor& tree_info,
+                       int child_nums,
+                       DataType dtype,
+                       MetaTensor* child,
+                       MetaTensor* leaf_mask) {
+  PADDLE_ENFORCE_GT(
+      child_nums,
+      0,
+      phi::errors::InvalidArgument(
+          "ValueError: The value of the 'child_nums' must greater than 0. "
+          "But received child_nums value = %d, ",
+          child_nums));
+
+  const auto& info_dims = tree_info.dims();
+  const auto& input_dims = x.dims();
+
+  PADDLE_ENFORCE_EQ(
+      info_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: The dimensions of the 'tree info' must be 2. "
+          "But received tree info's dimensions = %d, "
+          "tree info's shape = [%s].",
+          info_dims.size(),
+          info_dims));
+
+  auto output_dims = common::vectorize(input_dims);
+  output_dims.push_back(child_nums);
+  if (child != nullptr) {
+    child->set_dims(common::make_ddim(output_dims));
+    leaf_mask->set_dims(common::make_ddim(output_dims));
+    child->share_lod(x);
+    leaf_mask->share_lod(x);
+    child->set_dtype(x.dtype());
+    leaf_mask->set_dtype(x.dtype());
+  }
+}
+
 void TriangularSolveInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               bool upper,

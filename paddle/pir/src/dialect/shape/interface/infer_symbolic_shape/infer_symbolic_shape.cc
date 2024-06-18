@@ -18,7 +18,7 @@
 // cinn operators.
 
 // Add `interfaces : pir::InferSymbolicShapeInterface` in relative
-// yaml file to conresponding op.
+// yaml file to corresponding op.
 
 // Since necessary checks have been done in the Op's `InferMeta` and `VeriySig`,
 // no more repetitive work here.

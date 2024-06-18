@@ -18,7 +18,7 @@
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/pass/infershape.h"
 #include "paddle/cinn/hlir/pe/nn_util.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace pass {
@@ -103,7 +103,11 @@ class ReduceSplitPass {
         auto in_shape = shape_dict.at(in->id());
         auto out_shape = shape_dict.at(out->id());
         // all preceding reduced
-        CHECK_GT(in_shape.size(), 1);
+        PADDLE_ENFORCE_GT(
+            in_shape.size(),
+            1,
+            phi::errors::InvalidArgument(
+                "The input shape size should be greater than 1."));
         // [NHWC]->[C], only the last dim kept
         bool all_preceding_dim_reduced = true;
         for (auto i = 0; i < in_shape.size() - 1; ++i) {
@@ -122,7 +126,10 @@ class ReduceSplitPass {
             in_shape.begin(), in_shape.end(), 1, std::multiplies<int>());
         int reduce_numel = std::accumulate(
             in_shape.begin(), in_shape.end() - 1, 1, std::multiplies<int>());
-        CHECK_GT(reduce_numel, 0);
+        PADDLE_ENFORCE_GT(reduce_numel,
+                          0,
+                          phi::errors::InvalidArgument(
+                              "The reduce_numel should be greater than 0."));
         // if the numel is not large enough, it is no need to split
         // if loop times is too large with reduce optimize
         int size = std::accumulate(
@@ -132,7 +139,10 @@ class ReduceSplitPass {
         auto shape = pe::GetFirstStepReduceShape(
             {size, in_shape.back()}, {0}, bound, tail);
         CHECK(bound);
-        CHECK_EQ(shape.size(), 3);
+        PADDLE_ENFORCE_EQ(shape.size(),
+                          3,
+                          phi::errors::InvalidArgument(
+                              "The shape size should be equal to 3."));
 
         auto res = DivideToClosetNum(reduce_numel);
         int reduce_numel0 = std::get<0>(res), reduce_numel1 = std::get<1>(res);

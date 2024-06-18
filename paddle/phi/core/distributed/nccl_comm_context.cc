@@ -24,8 +24,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
@@ -251,5 +250,4 @@ void NCCLCommContext::RedOpDestroy(ncclRedOp_t op) {
 }
 #endif
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

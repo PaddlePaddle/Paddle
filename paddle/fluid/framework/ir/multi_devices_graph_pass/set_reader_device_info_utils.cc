@@ -17,9 +17,7 @@
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 static std::unordered_set<std::string> ReaderOpSet() {
   return {"create_py_reader"};
@@ -78,6 +76,4 @@ void SetReaderOpDeviceInfo(Graph *graph, size_t dev_cnt, size_t dev_idx) {
   VLOG(10) << "Found op number " << found_op_num;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

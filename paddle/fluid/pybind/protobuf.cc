@@ -35,8 +35,7 @@ limitations under the License. */
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 PyTypeObject *g_vartype_pytype = nullptr;
 PyTypeObject *g_blockdesc_pytype = nullptr;
@@ -547,5 +546,4 @@ void BindJitProperty(pybind11::module *m) {
       .def("parse_from_string", DeserializeMessage<jit::Property>);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

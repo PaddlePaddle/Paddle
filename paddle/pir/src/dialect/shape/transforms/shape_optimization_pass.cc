@@ -126,37 +126,15 @@ void DebugPrintOpInfo(pir::Operation* op,
   std::ostringstream print_stream;
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     const auto& res = op->result(i);
+    if (!res || !res.type()) {
+      continue;
+    }
+
     print_stream << "\tresult(" << res.dyn_cast<pir::OpResult>().index() << ") "
                  << "ShapeOrData: {";
 
     if (infer_context != nullptr) {
-      auto shape_data = infer_context->GetShapeOrDataForValue(res);
-      if (shape_data.isa<symbol::TensorListShapeOrDataDimExprs>()) continue;
-      print_stream << "shape: [";
-
-      for (size_t i = 0; i < shape_data.shape().size(); ++i) {
-        if (i != shape_data.shape().size() - 1) {
-          print_stream << symbol::ToString(shape_data.shape()[i]) << ",";
-        } else {
-          print_stream << symbol::ToString(shape_data.shape()[i]);
-        }
-      }
-
-      print_stream << "], data: [";
-      if (shape_data.data().has_value()) {
-        for (size_t i = 0; i < shape_data.data().value().size(); ++i) {
-          if (i != shape_data.data().value().size() - 1) {
-            print_stream << symbol::ToString(shape_data.data().value()[i])
-                         << ",";
-          } else {
-            print_stream << symbol::ToString(shape_data.data().value()[i]);
-          }
-        }
-      } else {
-        print_stream << "nullopt";
-      }
-
-      print_stream << "]";
+      print_stream << infer_context->GetShapeOrDataForValue(res);
     }
     print_stream << " }\n";
   }
@@ -170,6 +148,10 @@ void CheckInferSymWithInferMeta(
     pir::InferSymbolicShapeContext* infer_context = nullptr) {
   for (uint32_t i = 0; i < op->num_results(); ++i) {
     const auto& res = op->result(i);
+    if (!res || !res.type()) {
+      continue;
+    }
+
     std::ostringstream print_stream;
 
     // InferMeta funcs of some Ops are not corrrect now, we don't check them.
@@ -299,7 +281,7 @@ void InferSymExprForBlock(const Block& block,
                    << " DOES NOT have InferSymbolicShapeInterface!";
       }
       for (uint32_t i = 0; i < op.num_results(); ++i) {
-        infer_context->SetStaticShapeForValue(op.result(i));
+        infer_context->SetSymbolForValueByStaticShape(op.result(i));
       }
     }
     DebugPrintOpInfo(&op, infer_context);
@@ -310,13 +292,29 @@ void InferSymExprForBlock(const Block& block,
 void InferSymExprForAllValues(ModuleOp module_op) {
   ShapeConstraintIRAnalysis& shape_analysis =
       ShapeAnalysisManager::Instance().Get(module_op.program());
+  auto* infer_context = shape_analysis.MutInferSymbolicShapeContext();
+
+  // hold the kwargs symbol shape info to avoid be cleared when call init.
+  const std::unordered_map<pir::Value, symbol::ShapeOrDataDimExprs>
+      symbol_shape_map = [&] {
+        std::unordered_map<pir::Value, symbol::ShapeOrDataDimExprs>
+            symbol_shape_map;
+        for (const auto& [_, value] : module_op.block().kwargs()) {
+          if (infer_context->HasShapeOrDataForValue(value)) {
+            symbol_shape_map.emplace(
+                value, infer_context->GetShapeOrDataForValue(value));
+          }
+        }
+        return symbol_shape_map;
+      }();
+
   shape_analysis.Init();
-  auto infer_context = shape_analysis.MutInferSymbolicShapeContext();
-  for (uint32_t i = 0; i < module_op->num_regions(); i++) {
-    for (auto& block : module_op->region(i)) {
-      InferSymExprForBlock(block, infer_context);
-    }
+  // init the kwarg symbol shape info
+  for (const auto& kv : symbol_shape_map) {
+    infer_context->SetShapeOrDataForValue(kv.first, kv.second);
   }
+
+  InferSymExprForBlock(module_op.block(), infer_context);
 }
 
 std::unique_ptr<Pass> CreateShapeOptimizationPass() {
@@ -352,7 +350,7 @@ void AddShapeOptimizationPass(
     pir::Program& program) {                          // NOLINT
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-  if (HasDynamicShape(program) && FLAGS_pir_apply_shape_optimization_pass) {
+  if (FLAGS_pir_apply_shape_optimization_pass) {
     pass_manager->AddPass(pir::CreateShapeOptimizationPass());
   }
 }

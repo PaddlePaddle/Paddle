@@ -23,8 +23,7 @@
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 void MessageBus::Init(
     int64_t rank,
@@ -250,5 +249,4 @@ bool MessageBus::SendInterRank(int64_t dst_rank,
 
 #endif
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

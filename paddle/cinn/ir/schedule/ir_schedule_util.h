@@ -33,7 +33,7 @@
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/random_engine.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 struct IterRange;
@@ -410,13 +410,20 @@ struct RfMutator : public ir::IRMutator<> {
     auto& iter_values = node->iter_values;
     CHECK(old_rf_loop_var_.defined());
     CHECK(new_rf_loop_var_.defined());
-    CHECK_EQ(iter_values.size(), block_vars.size());
+    PADDLE_ENFORCE_EQ(
+        iter_values.size(),
+        block_vars.size(),
+        phi::errors::InvalidArgument(
+            "The size of iter_values and block_vars should be the same."));
     int rf_index = -1;
     for (int i = 0; i < iter_values.size(); ++i) {
       // substitute the old rfactor loop var to new rfactor loop var
       if (ContainVar({iter_values[i]}, old_rf_loop_var_->name)) {
-        CHECK_EQ(rf_index, -1)
-            << "only one block var can bind the rfactor loop var";
+        PADDLE_ENFORCE_EQ(
+            rf_index,
+            -1,
+            phi::errors::InvalidArgument(
+                "only one block var can bind the rfactor loop var"));
         CHECK(iter_values[i].As<_Var_>())
             << "rfactor loop var not support composite bindings";
         rf_index = i;
@@ -447,8 +454,10 @@ struct RfMutator : public ir::IRMutator<> {
     CHECK(tensor);
     if (tensor->name == "rf_" + old_output_name_) {
       int size = node->indices.size();
-      CHECK_LE(rf_axis_, size)
-          << "rf_axis should not be greater than indice size " << size;
+      PADDLE_ENFORCE_LE(rf_axis_,
+                        size,
+                        phi::errors::InvalidArgument(
+                            "rf_axis should not be greater than indice size"));
       CHECK(new_rf_itervar_.defined());
       CHECK(!ContainVar(node->indices, new_rf_itervar_->name))
           << "original output tensor " << old_output_name_
@@ -467,8 +476,10 @@ struct RfMutator : public ir::IRMutator<> {
       find_tensor_ = true;
       tensor->name = "rf_" + tensor->name;
       int size = node->indices.size();
-      CHECK_LE(rf_axis_, size)
-          << "rf_axis should not be greater than indice size " << size;
+      PADDLE_ENFORCE_LE(rf_axis_,
+                        size,
+                        phi::errors::InvalidArgument(
+                            "rf_axis should not be greater than indice size"));
       CHECK(!ContainVar(node->indices, new_rf_itervar_->name))
           << "original output tensor " << old_output_name_
           << " should not have the new rfactor index " << new_rf_itervar_;
@@ -479,12 +490,16 @@ struct RfMutator : public ir::IRMutator<> {
       auto extent = cinn::common::AutoSimplify(rf_for->extent);
       auto& shape = tensor->shape;
       auto& domain = tensor->domain;
-      CHECK_LE(rf_axis_, shape.size())
-          << "rf_axis should not be greater than tensor shape size "
-          << shape.size();
-      CHECK_LE(rf_axis_, domain.size())
-          << "rf_axis should not be greater than tensor domain size "
-          << domain.size();
+      PADDLE_ENFORCE_LE(
+          rf_axis_,
+          shape.size(),
+          phi::errors::InvalidArgument(
+              "rf_axis should not be greater than tensor shape size"));
+      PADDLE_ENFORCE_LE(
+          rf_axis_,
+          domain.size(),
+          phi::errors::InvalidArgument(
+              "rf_axis should not be greater than tensor domain size"));
       shape.insert(shape.begin() + rf_axis_, extent);
       domain.insert(domain.begin() + rf_axis_, extent);
       if (tensor->buffer.defined()) {
@@ -739,13 +754,18 @@ struct FinalMutator : public ir::IRMutator<> {
     CHECK(node);
     auto* tensor = node->tensor.As<_Tensor_>();
     CHECK(tensor);
-    CHECK_EQ(tensor->name, output_name_)
-        << "store name should be same with the schedule block name";
+    PADDLE_ENFORCE_EQ(
+        tensor->name,
+        output_name_,
+        phi::errors::InvalidArgument(
+            "store name should be same with the schedule block name"));
     if (!visit_init_block_) {
       new_rf_indice_ = node->indices;
-      CHECK_LE(rf_axis_, new_rf_indice_.size())
-          << "rf_axis_ should not be greater than tensor indice size "
-          << new_rf_indice_.size();
+      PADDLE_ENFORCE_LE(
+          rf_axis_,
+          new_rf_indice_.size(),
+          phi::errors::InvalidArgument(
+              "rf_axis_ should not be greater than tensor indice size"));
       CHECK(old_rf_iter_var_.defined());
       new_rf_indice_.insert(new_rf_indice_.begin() + rf_axis_,
                             old_rf_iter_var_);
@@ -1196,8 +1216,10 @@ struct RfCreater : public ir::IRMutator<> {
     CHECK(root_block);
     Expr root_loop = ir::ir_utils::IRCopy(root_block->body);
     if (auto block = root_loop.As<Block>()) {
-      CHECK_EQ(block->stmts.size(), 1U)
-          << "rfactor root should only have one block stmt";
+      PADDLE_ENFORCE_EQ(block->stmts.size(),
+                        1U,
+                        phi::errors::InvalidArgument(
+                            "rfactor root should only have one block stmt"));
       root_loop = block->stmts[0];
     }
     auto* root_for = root_loop.As<For>();

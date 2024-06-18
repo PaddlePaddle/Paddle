@@ -442,9 +442,6 @@ class PartialProgramLayer:
     @LazyInitialized
     def _train_program_id(self):
         program_id = paddle.utils._hash_with_id(self._train_program, self)
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
-        )
         return program_id
 
     @LazyInitialized
@@ -454,9 +451,6 @@ class PartialProgramLayer:
     @LazyInitialized
     def _train_amp_program_id(self):
         program_id = paddle.utils._hash_with_id(self._train_amp_program, self)
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
-        )
         return program_id
 
     @LazyInitialized
@@ -467,9 +461,6 @@ class PartialProgramLayer:
     def _train_pure_fp16_program_id(self):
         program_id = paddle.utils._hash_with_id(
             self._train_pure_fp16_program, self
-        )
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
         )
         return program_id
 
@@ -1108,8 +1099,7 @@ class PartialProgramLayer:
         """
         if not isinstance(self._params, (list, tuple)):
             raise TypeError(
-                "Type of self._params in PartialProgramLayer should be list or tuple, but received %s."
-                % type(self._params)
+                f"Type of self._params in PartialProgramLayer should be list or tuple, but received {type(self._params)}."
             )
 
         param_and_buffer_names_set = set()
@@ -1127,12 +1117,11 @@ class PartialProgramLayer:
                     if name not in param_and_buffer_names_set:
                         raise ValueError(
                             "\n\tWe don't support to define layer with parameters in the function decorated by `@to_static`."
-                            "\n\tBut we found parameter(%s) was created in the decorated function."
+                            f"\n\tBut we found parameter({name}) was created in the decorated function."
                             "\n"
                             "\n\tRevise suggestion: "
                             "\n\t\t1. Please ensure all your sublayers are inherited from nn.Layer."
                             "\n\t\t2. Please use nn.ParameterList and nn.LayerList as container instead of using a native Python container such as List"
-                            % name
                         )
 
     def _valid_vars(self, vars):

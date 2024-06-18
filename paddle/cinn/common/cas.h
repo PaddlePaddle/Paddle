@@ -22,7 +22,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
 
@@ -37,7 +37,10 @@ Expr ReplaceMaxToConstant(Expr expr);
 struct CasInterval {
   template <typename T>
   CasInterval(T l, T r) : l(l), r(r) {
-    CHECK_LE(l, r) << "left should not be larger than right";
+    PADDLE_ENFORCE_LE(
+        l,
+        r,
+        phi::errors::InvalidArgument("left should not be larger than right"));
   }
 
   /**
@@ -51,12 +54,12 @@ struct CasInterval {
    * 1 <= iterator_i <= 5
    */
   CasInterval(Expr expr_l, Expr expr_r) {
-    VLOG(2) << "CasInterval is : [" << expr_l << ", " << expr_r << "].";
+    VLOG(6) << "CasInterval is : [" << expr_l << ", " << expr_r << "].";
     expr_r = detail::ReplaceMinToConstant(expr_r);
     expr_l = detail::ReplaceMaxToConstant(expr_l);
     optim::Simplify(&expr_l);
     optim::Simplify(&expr_r);
-    VLOG(2) << "After simplify, CasInterval is : [" << expr_l << ", " << expr_r
+    VLOG(6) << "After simplify, CasInterval is : [" << expr_l << ", " << expr_r
             << "].";
 
     if (expr_l.is_constant() && expr_r.is_constant()) {

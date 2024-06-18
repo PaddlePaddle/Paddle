@@ -42,8 +42,7 @@ COMMON_DECLARE_bool(enable_async_trace);
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
 constexpr int64_t kWaitBlockTImeout = 10;
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 using phi::distributed::CheckSizeOnEachRank;
 using phi::distributed::IsP2POP;
@@ -1045,5 +1044,4 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetCommContext(
   return comm_context;
 }
 
-}  //  namespace distributed
-}  //  namespace paddle
+}  // namespace paddle::distributed

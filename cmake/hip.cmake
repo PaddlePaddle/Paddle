@@ -136,11 +136,7 @@ list(APPEND HIP_CXX_FLAGS -Wno-unused-local-typedef)
 list(APPEND HIP_CXX_FLAGS -Wno-missing-braces)
 list(APPEND HIP_CXX_FLAGS -Wno-sometimes-uninitialized)
 
-if(WITH_CINN)
-  list(APPEND HIP_CXX_FLAGS -std=c++14)
-else()
-  list(APPEND HIP_CXX_FLAGS -std=c++17)
-endif()
+list(APPEND HIP_CXX_FLAGS -std=c++17)
 list(APPEND HIP_CXX_FLAGS --gpu-max-threads-per-block=1024)
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)

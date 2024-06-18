@@ -21,8 +21,7 @@
 #include <windows.h>
 #endif  // !_WIN32
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
     const std::vector<Instruction>& vec_instruction)
@@ -214,5 +213,4 @@ void InterpreterCoreEventGarbageCollector::FreeGarbages() {
   events_.clear();
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

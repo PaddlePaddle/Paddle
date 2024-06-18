@@ -19,7 +19,7 @@
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
-
+#include "paddle/common/enforce.h"
 PD_DECLARE_bool(cinn_new_group_scheduler);
 
 namespace cinn {
@@ -102,18 +102,36 @@ TEST(ScheduleBlockGraph, elementwise) {
   LOG(INFO) << GetIR(ir_sch);
   ScheduleBlockGraph sbg(ir_sch);
   LOG(INFO) << sbg.Visualize();
-  CHECK_EQ(sbg.BlockIdsInOrder().size(), 6);
-  CHECK_EQ(sbg.nodes().size(), 6);
+  PADDLE_ENFORCE_EQ(
+      sbg.BlockIdsInOrder().size(),
+      6,
+      phi::errors::InvalidArgument("The size of BlockIdsInOrder should be 6!"));
+  PADDLE_ENFORCE_EQ(
+      sbg.nodes().size(),
+      6,
+      phi::errors::InvalidArgument("The size of nodes should be 6!"));
 
   ScheduleBlockNode* v2 = sbg.RetrieveNode("var_2");
   CHECK(v2);
-  CHECK_EQ(v2->UpstreamNodes().size(), 1);
-  CHECK_EQ(v2->DownstreamNodes().size(), 1);
+  PADDLE_ENFORCE_EQ(
+      v2->UpstreamNodes().size(),
+      1,
+      phi::errors::InvalidArgument("The size of UpstreamNodes should be 1!"));
+  PADDLE_ENFORCE_EQ(
+      v2->DownstreamNodes().size(),
+      1,
+      phi::errors::InvalidArgument("The size of DownstreamNodes should be 1!"));
 
   ScheduleBlockNode* v4 = sbg.RetrieveNode("var_4");
   CHECK(v4);
-  CHECK_EQ(v4->UpstreamNodes().size(), 3);
-  CHECK_EQ(v4->DownstreamNodes().size(), 0);
+  PADDLE_ENFORCE_EQ(
+      v4->UpstreamNodes().size(),
+      3,
+      phi::errors::InvalidArgument("The size of UpstreamNodes should be 3!"));
+  PADDLE_ENFORCE_EQ(
+      v4->DownstreamNodes().size(),
+      0,
+      phi::errors::InvalidArgument("The size of DownstreamNodes should be 0!"));
 
   std::vector<std::string> reverse_dfs_topo_order_ids;
   sbg.DFSTopoWalk([&reverse_dfs_topo_order_ids](const ScheduleBlockNode* node) {
@@ -122,7 +140,10 @@ TEST(ScheduleBlockGraph, elementwise) {
   for (const std::string& id : reverse_dfs_topo_order_ids) {
     LOG(INFO) << id;
   }
-  CHECK_EQ(reverse_dfs_topo_order_ids.size(), 6);
+  PADDLE_ENFORCE_EQ(reverse_dfs_topo_order_ids.size(),
+                    6,
+                    phi::errors::InvalidArgument(
+                        "The size of reverse_dfs_topo_order_ids should be 6!"));
 
   std::vector<std::string> dfs_topo_order_ids;
   sbg.DFSTopoWalk(
@@ -133,7 +154,10 @@ TEST(ScheduleBlockGraph, elementwise) {
   for (const std::string& id : dfs_topo_order_ids) {
     LOG(INFO) << id;
   }
-  CHECK_EQ(dfs_topo_order_ids.size(), 6);
+  PADDLE_ENFORCE_EQ(dfs_topo_order_ids.size(),
+                    6,
+                    phi::errors::InvalidArgument(
+                        "The size of dfs_topo_order_ids should be 6!"));
 }
 
 #ifdef CINN_WITH_CUDA
@@ -145,18 +169,36 @@ TEST(ScheduleBlockGraph, reduce) {
     ScheduleBlockGraph sbg(ir_sch);
     LOG(INFO) << GetIR(ir_sch);
     LOG(INFO) << sbg.Visualize();
-    CHECK_EQ(sbg.BlockIdsInOrder().size(), 5);
-    CHECK_EQ(sbg.nodes().size(), 5);
+    PADDLE_ENFORCE_EQ(sbg.BlockIdsInOrder().size(),
+                      5,
+                      phi::errors::InvalidArgument(
+                          "The size of BlockIdsInOrder should be 5!"));
+    PADDLE_ENFORCE_EQ(
+        sbg.nodes().size(),
+        5,
+        phi::errors::InvalidArgument("The size of nodes should be 5!"));
 
     ScheduleBlockNode* v_reduce_init = sbg.RetrieveNode("var_2__reduce_init");
     CHECK(v_reduce_init);
-    CHECK_EQ(v_reduce_init->UpstreamNodes().size(), 0);
-    CHECK_EQ(v_reduce_init->DownstreamNodes().size(), 3);
+    PADDLE_ENFORCE_EQ(
+        v_reduce_init->UpstreamNodes().size(),
+        0,
+        phi::errors::InvalidArgument("The size of UpstreamNodes should be 0!"));
+    PADDLE_ENFORCE_EQ(v_reduce_init->DownstreamNodes().size(),
+                      3,
+                      phi::errors::InvalidArgument(
+                          "The size of DownstreamNodes should be 3!"));
 
     ScheduleBlockNode* v = sbg.RetrieveNode("var_2");
     CHECK(v);
-    CHECK_EQ(v->UpstreamNodes().size(), 2);
-    CHECK_EQ(v->DownstreamNodes().size(), 2);
+    PADDLE_ENFORCE_EQ(
+        v->UpstreamNodes().size(),
+        2,
+        phi::errors::InvalidArgument("The size of UpstreamNodes should be 2!"));
+    PADDLE_ENFORCE_EQ(v->DownstreamNodes().size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The size of DownstreamNodes should be 2!"));
 
     std::vector<std::string> reverse_dfs_topo_order_ids;
     sbg.DFSTopoWalk(
@@ -166,7 +208,11 @@ TEST(ScheduleBlockGraph, reduce) {
     for (const std::string& id : reverse_dfs_topo_order_ids) {
       LOG(INFO) << id;
     }
-    CHECK_EQ(reverse_dfs_topo_order_ids.size(), 5);
+    PADDLE_ENFORCE_EQ(
+        reverse_dfs_topo_order_ids.size(),
+        5,
+        phi::errors::InvalidArgument(
+            "The size of reverse_dfs_topo_order_ids should be 5!"));
 
     std::vector<std::string> dfs_topo_order_ids;
     sbg.DFSTopoWalk(
@@ -177,7 +223,10 @@ TEST(ScheduleBlockGraph, reduce) {
     for (const std::string& id : dfs_topo_order_ids) {
       LOG(INFO) << id;
     }
-    CHECK_EQ(dfs_topo_order_ids.size(), 5);
+    PADDLE_ENFORCE_EQ(dfs_topo_order_ids.size(),
+                      5,
+                      phi::errors::InvalidArgument(
+                          "The size of dfs_topo_order_ids should be 5!"));
   }
 }
 
@@ -192,18 +241,36 @@ TEST(ScheduleBlockGraph, arg_max) {
   LOG(INFO) << GetIR(ir_sch);
   ScheduleBlockGraph sbg(ir_sch);
   LOG(INFO) << sbg.Visualize();
-  CHECK_EQ(sbg.BlockIdsInOrder().size(), 3);
-  CHECK_EQ(sbg.nodes().size(), 3);
+  PADDLE_ENFORCE_EQ(
+      sbg.BlockIdsInOrder().size(),
+      3,
+      phi::errors::InvalidArgument("The size of BlockIdsInOrder should be 3!"));
+  PADDLE_ENFORCE_EQ(
+      sbg.nodes().size(),
+      3,
+      phi::errors::InvalidArgument("The size of nodes should be 3!"));
 
   ScheduleBlockNode* v0_idx = sbg.RetrieveNode("var_0_index");
   CHECK(v0_idx);
-  CHECK_EQ(v0_idx->UpstreamNodes().size(), 1);
-  CHECK_EQ(v0_idx->DownstreamNodes().size(), 1);
+  PADDLE_ENFORCE_EQ(
+      v0_idx->UpstreamNodes().size(),
+      1,
+      phi::errors::InvalidArgument("The size of UpstreamNodes should be 1!"));
+  PADDLE_ENFORCE_EQ(
+      v0_idx->DownstreamNodes().size(),
+      1,
+      phi::errors::InvalidArgument("The size of DownstreamNodes should be 1!"));
 
   ScheduleBlockNode* v0 = sbg.RetrieveNode("var_0");
   CHECK(v0);
-  CHECK_EQ(v0->UpstreamNodes().size(), 2);
-  CHECK_EQ(v0->DownstreamNodes().size(), 0);
+  PADDLE_ENFORCE_EQ(
+      v0->UpstreamNodes().size(),
+      2,
+      phi::errors::InvalidArgument("The size of UpstreamNodes should be 2!"));
+  PADDLE_ENFORCE_EQ(
+      v0->DownstreamNodes().size(),
+      0,
+      phi::errors::InvalidArgument("The size of DownstreamNodes should be 0!"));
 
   std::vector<std::string> reverse_dfs_topo_order_ids;
   sbg.DFSTopoWalk([&reverse_dfs_topo_order_ids](const ScheduleBlockNode* node) {
@@ -212,7 +279,10 @@ TEST(ScheduleBlockGraph, arg_max) {
   for (const std::string& id : reverse_dfs_topo_order_ids) {
     LOG(INFO) << id;
   }
-  CHECK_EQ(reverse_dfs_topo_order_ids.size(), 3);
+  PADDLE_ENFORCE_EQ(reverse_dfs_topo_order_ids.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The size of reverse_dfs_topo_order_ids should be 3!"));
 
   std::vector<std::string> dfs_topo_order_ids;
   sbg.DFSTopoWalk(
@@ -223,7 +293,10 @@ TEST(ScheduleBlockGraph, arg_max) {
   for (const std::string& id : dfs_topo_order_ids) {
     LOG(INFO) << id;
   }
-  CHECK_EQ(dfs_topo_order_ids.size(), 3);
+  PADDLE_ENFORCE_EQ(dfs_topo_order_ids.size(),
+                    3,
+                    phi::errors::InvalidArgument(
+                        "The size of dfs_topo_order_ids should be 3!"));
 }
 #endif
 

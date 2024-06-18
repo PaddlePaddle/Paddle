@@ -16,7 +16,7 @@
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/pass/infershape.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace pass {
@@ -368,9 +368,12 @@ class DotMergerPass {
           input_operand(merge_nodes[i - 1], axis)->id());
       auto shape_b =
           builder->shape_dict().at(input_operand(merge_nodes[i], axis)->id());
-      CHECK_EQ(shape_a[1 - axis], shape_b[1 - axis])
-          << "The shape of matmul is error. " << shape_a.size() << ", "
-          << shape_b.size();
+      PADDLE_ENFORCE_EQ(
+          shape_a[1 - axis],
+          shape_b[1 - axis],
+          phi::errors::InvalidArgument("The shape of matmul is error. %d, %d",
+                                       shape_a.size(),
+                                       shape_b.size()));
       concat_nodes.push_back(input_operand(merge_nodes[i], axis));
     }
     auto* concat_out = builder->Concat(axis, concat_nodes);
@@ -444,9 +447,12 @@ class DotMergerPass {
     auto shape_shared = builder->shape_dict().at(shared_input->id());
     auto shape_a = builder->shape_dict().at(input_a->id());
     auto shape_b = builder->shape_dict().at(input_b->id());
-    CHECK_EQ(shape_a[1 - axis], shape_b[1 - axis])
-        << "The shape of matmul is error. " << shape_a.size() << ", "
-        << shape_b.size();
+    PADDLE_ENFORCE_EQ(
+        shape_a[1 - axis],
+        shape_b[1 - axis],
+        phi::errors::InvalidArgument("The shape of matmul is error. %d, %d",
+                                     shape_a.size(),
+                                     shape_b.size()));
     auto* concat_out = builder->Concat(axis, {input_a, input_b});
     NodeData* matmul_out{};
     if (!lhs) {

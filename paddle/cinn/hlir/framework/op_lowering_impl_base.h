@@ -31,6 +31,8 @@ struct BucketLoweredFuncsWrapper {
   std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>>
       predicate2funcs;
   ir::LoweredFunc infer_shape_func;
+  std::vector<std::pair<ir::SymbolicPredicate, ir::LoweredFunc>>
+      predicate2funcsCX86;
 };
 
 template <typename T>

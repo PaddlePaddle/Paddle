@@ -15,8 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/common/float16.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 // Shape of bitmask
 static phi::DDim GetBitmaskDims(std::vector<int> out_shape) {
@@ -450,8 +449,7 @@ class ResNetUnitOpInferVarType
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(resnet_unit,

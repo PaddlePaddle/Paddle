@@ -72,8 +72,7 @@ typedef SSIZE_T ssize_t;
 COMMON_DECLARE_bool(set_to_1d);
 COMMON_DECLARE_bool(use_stride_kernel);
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 extern void InitTensorWithNumpyValue(TensorObject* self,
                                      const pybind11::object& array,
@@ -3518,5 +3517,4 @@ PyMethodDef string_tensor_variable_methods[] = {  // NOLINT
      nullptr},
     // TODO(zhoushunjie): Need to add _copy_to, copy_ for StringTensor.
     {nullptr, nullptr, 0, nullptr}};
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

@@ -250,6 +250,7 @@ class ReshapeOpPattern
     auto cinn_reshape = rewriter.Build<cinn::dialect::ReshapeOp>(
         op->operand_source(0), vec_out_shape);
     rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
+    rewriter.ReplaceAllUsesWith(op.result(1), cinn_reshape.result(1));
     rewriter.EraseOp(op);
   }
 };
@@ -894,6 +895,7 @@ class SqueezeOpPattern
           op->operand_source(0), output_shape);
 
       rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
+      rewriter.ReplaceAllUsesWith(op.result(1), cinn_reshape.result(1));
 
       rewriter.EraseOp(op);
 
@@ -941,6 +943,7 @@ class UnsqueezeOpPattern
           op->operand_source(0), output_shape);
 
       rewriter.ReplaceAllUsesWith(op.result(0), cinn_reshape.result(0));
+      rewriter.ReplaceAllUsesWith(op.result(1), cinn_reshape.result(1));
 
       rewriter.EraseOp(op);
 
@@ -1035,6 +1038,7 @@ class FlattenOpPattern
     reshape_op.result(0).set_type(op.result(0).type());
 
     rewriter.ReplaceAllUsesWith(op.result(0), reshape_op.result(0));
+    rewriter.ReplaceAllUsesWith(op.result(1), reshape_op.result(1));
 
     rewriter.EraseOp(op);
   }
