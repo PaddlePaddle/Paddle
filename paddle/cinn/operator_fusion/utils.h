@@ -175,7 +175,7 @@ bool IsAnyFirstInSecond(const std::vector<T>& first,
 
 template <typename T>
 std::vector<T> UniqueVectorBySet(const std::vector<T>& v) {
-  std::set<T> unique(v.begin(), v.end());
+  std::unordered_set<T> unique(v.begin(), v.end());
   return std::vector<T>(unique.begin(), unique.end());
 }
 
@@ -201,7 +201,7 @@ std::vector<T> UniqueConcatVector(const std::vector<T>& first,
 
 struct ValueDim {
   pir::Value v_;
-  size_t idx_;
+  size_t idx_ = -1;
   std::weak_ptr<pir::ShapeConstraintIRAnalysis> shape_analysis_;
   ValueDim(pir::Value v, size_t idx) : v_(v), idx_(idx) {
     // Just get a related op to get the shape analysis. It can be value's
@@ -233,6 +233,8 @@ struct ValueDim {
     PADDLE_ENFORCE_NOT_NULL(v_.impl(), "Empty value is not expected.");
     return shape_analysis().GetProductDimExpr(v_, {static_cast<int>(idx_)});
   }
+
+  bool empty() const { return idx_ == -1; }
 
   bool SymbolicEqualTo(const ValueDim& other) const {
     return shape_analysis().IsEqual(GetSymbolicDim(), other.GetSymbolicDim());
@@ -345,4 +347,52 @@ std::vector<U> VectorFlatMap(
   }
   return result;
 }
+
+inline std::vector<pir::Value> GetInputsValue(
+    const std::vector<pir::Operation*>& ops) {
+  // include middle value.
+  std::function<std::vector<pir::Value>(pir::Operation* const&)> get_inputs =
+      [](const pir::Operation* const& in) { return in->operands_source(); };
+  const auto& all_inputs =
+      VectorFlatMap<pir::Operation*, pir::Value>(ops, get_inputs);
+  return UniqueVectorBySet(all_inputs);
+}
+
+inline std::vector<pir::Value> GetOutputsValue(
+    const std::vector<pir::Operation*>& ops) {
+  // include middle value.
+  std::function<std::vector<pir::Value>(pir::Operation* const&)> get_outputs =
+      [](const pir::Operation* const& in) { return in->results(); };
+  const auto& all_outputs =
+      VectorFlatMap<pir::Operation*, pir::Value>(ops, get_outputs);
+  return UniqueVectorBySet(all_outputs);
+}
+
+template <typename T>
+std::vector<T> VectorDiff(const std::vector<T>& left,
+                          const std::vector<T>& right) {
+  const auto& set = ToSet(right);
+  std::vector<T> res;
+  for (const auto& v : left) {
+    if (!set.count(v)) res.push_back(v);
+  }
+  return res;
+}
+
+inline bool All(const std::vector<bool> a) {
+  bool res = true;
+  for (bool i : a) {
+    res &= i;
+  }
+  return res;
+}
+
+inline bool Any(const std::vector<bool> a) {
+  bool res = false;
+  for (bool i : a) {
+    res |= i;
+  }
+  return res;
+}
+
 }  // namespace cinn::fusion
