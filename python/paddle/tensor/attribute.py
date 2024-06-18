@@ -28,7 +28,7 @@ from .creation import _complex_to_real_dtype, assign
 __all__ = []
 
 
-def rank(input):
+def rank(input: paddle.Tensor) -> paddle.Tensor:
     """
 
     Returns the number of dimensions for a tensor, which is a 0-D int32 Tensor.
@@ -56,7 +56,7 @@ def rank(input):
     return out
 
 
-def shape(input):
+def shape(input: paddle.Tensor) -> paddle.Tensor:
     """
     Get the shape of the input.
 
@@ -137,7 +137,7 @@ def shape(input):
         return out
 
 
-def is_complex(x):
+def is_complex(x: paddle.Tensor) -> bool:
     """Return whether x is a tensor of complex data type(complex64 or complex128).
 
     Args:
@@ -177,7 +177,7 @@ def is_complex(x):
     return is_complex_dtype
 
 
-def is_floating_point(x):
+def is_floating_point(x: paddle.Tensor) -> bool:
     """
     Returns whether the dtype of `x` is one of paddle.float64, paddle.float32, paddle.float16, and paddle.bfloat16.
 
@@ -217,7 +217,7 @@ def is_floating_point(x):
     return is_fp_dtype
 
 
-def is_integer(x):
+def is_integer(x: paddle.Tensor) -> bool:
     """Return whether x is a tensor of integral data type.
 
     Args:
@@ -270,13 +270,13 @@ def is_integer(x):
     return is_int_dtype
 
 
-def real(x, name=None):
+def real(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
     """
     Returns a new Tensor containing real values of the input Tensor.
 
     Args:
         x (Tensor): the input Tensor, its data type could be complex64 or complex128.
-        name (str, optional): The default value is None. Normally there is no need for
+        name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
@@ -318,13 +318,13 @@ def real(x, name=None):
         return out
 
 
-def imag(x, name=None):
+def imag(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
     """
     Returns a new tensor containing imaginary values of input tensor.
 
     Args:
         x (Tensor): the input tensor, its data type could be complex64 or complex128.
-        name (str, optional): The default value is None. Normally there is no need for
+        name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
