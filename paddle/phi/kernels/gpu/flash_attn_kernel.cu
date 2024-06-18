@@ -562,13 +562,13 @@ void FlashAttnWithSparseMaskKernel(
 }
 
 template <typename T, typename Context>
-void ReduceAttnScoresKernel(const Context& ctx,
-                            const DenseTensor& q,
-                            const DenseTensor& k,
-                            const DenseTensor& softmax_lse,
-                            bool return_softmax,
-                            DenseTensor* reduced_scores,
-                            DenseTensor* softmax) {
+void CalcReducedAttnScoresKernel(const Context& ctx,
+                                 const DenseTensor& q,
+                                 const DenseTensor& k,
+                                 const DenseTensor& softmax_lse,
+                                 bool return_softmax,
+                                 DenseTensor* reduced_scores,
+                                 DenseTensor* softmax) {
 #ifdef PADDLE_WITH_FLASHATTN
   if (!reduced_scores->IsInitialized())
     ctx.template Alloc<float>(reduced_scores);
@@ -585,21 +585,23 @@ void ReduceAttnScoresKernel(const Context& ctx,
   const float softmax_scale = 1.0f / std::sqrt(head_size);
   const float softmax_unscale = std::sqrt(head_size);
 
-  ReduceScoresParams params = ReduceScoresParams(ctx,
-                                                 batch_size,
-                                                 seqlen_q,
-                                                 seqlen_k,
-                                                 num_heads,
-                                                 num_heads_k,
-                                                 head_size,
-                                                 softmax_scale,
-                                                 return_softmax,
-                                                 q.dtype(),
-                                                 softmax);
+  using Params = CalcReducedAttnScoresParams;
+
+  Params params = Params(ctx,
+                         batch_size,
+                         seqlen_q,
+                         seqlen_k,
+                         num_heads,
+                         num_heads_k,
+                         head_size,
+                         softmax_scale,
+                         return_softmax,
+                         q.dtype(),
+                         softmax);
 
   cudaStream_t stream = ctx.stream();
 
-  bool succ = phi::dynload::reduce_attn_scores(
+  bool succ = phi::dynload::calc_reduced_attn_scores(
       q.data(),
       k.data(),
       softmax_lse.data(),
@@ -683,10 +685,10 @@ PD_REGISTER_KERNEL(flash_attn_with_sparse_mask,
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }
 
-PD_REGISTER_KERNEL(reduce_attn_scores,
+PD_REGISTER_KERNEL(calc_reduced_attn_scores,
                    GPU,
                    ALL_LAYOUT,
-                   phi::ReduceAttnScoresKernel,
+                   phi::CalcReducedAttnScoresKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);

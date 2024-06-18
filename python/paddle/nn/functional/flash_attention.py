@@ -984,7 +984,7 @@ def flash_attention_with_sparse_mask(
         return outputs
 
 
-def reduce_attn_scores(query, key, softmax_lse):
+def calc_reduced_attention_scores(query, key, softmax_lse):
     r"""
     Warning:
         This API only supports inputs with dtype float16 and bfloat16.
@@ -1014,7 +1014,7 @@ def reduce_attn_scores(query, key, softmax_lse):
             >>> import numpy as np
             >>> import paddle._C_ops as _C_ops
             >>> from paddle.nn.functional.flash_attention import (
-            >>>     reduce_attn_scores
+            >>>     calc_reduced_attention_scores
             >>> )
             >>> np.random.seed(2024)
             >>> q_shape = (5,1024,16,128)
@@ -1040,7 +1040,7 @@ def reduce_attn_scores(query, key, softmax_lse):
             >>>     False,#is_test
             >>>     ""#rng_name
             >>> )
-            >>> reduced_attn_scores = reduce_attn_scores(
+            >>> reduced_attn_scores = calc_reduced_attention_scores(
             >>>     q,
             >>>     k,
             >>>     softmax_lse,
@@ -1049,12 +1049,12 @@ def reduce_attn_scores(query, key, softmax_lse):
     """
     # TODO(umiswing): add assert to disable bwd.
     if in_dynamic_mode():
-        (reduced_scores, _) = _C_ops.reduce_attn_scores(
+        (reduced_scores, _) = _C_ops.calc_reduced_attn_scores(
             query, key, softmax_lse, False
         )
         return reduced_scores
 
-    helper = LayerHelper('reduce_attn_scores', **locals())
+    helper = LayerHelper('calc_reduced_attn_scores', **locals())
     reduced_scores = helper.create_variable_for_type_inference(paddle.float32)
     softmax = helper.create_variable_for_type_inference(paddle.float32)
     inputs = {
@@ -1067,7 +1067,7 @@ def reduce_attn_scores(query, key, softmax_lse):
         'softmax': softmax,
     }
     helper.append_op(
-        type='reduce_attn_scores',
+        type='calc_reduced_attn_scores',
         inputs=inputs,
         outputs=outputs,
         attrs={

@@ -352,21 +352,21 @@ struct FlashAttnBwdParamsV2 : public FlashAttnParamsBase {
   }
 };
 
-struct ReduceScoresParams : public FlashAttnParamsBase {
+struct CalcReducedAttnScoresParams : public FlashAttnParamsBase {
   bool return_softmax;
   DenseTensor* softmax;
 
-  ReduceScoresParams(const GPUContext& ctx,
-                     const int _batch_size,
-                     const int64_t _max_seqlen_q,
-                     const int64_t _max_seqlen_k,
-                     const int _num_heads,
-                     const int _num_heads_k,
-                     const int _head_size,
-                     const float _scale,
-                     const bool _return_softmax,
-                     const DataType q_dtype,
-                     DenseTensor* _softmax)
+  CalcReducedAttnScoresParams(const GPUContext& ctx,
+                              const int _batch_size,
+                              const int64_t _max_seqlen_q,
+                              const int64_t _max_seqlen_k,
+                              const int _num_heads,
+                              const int _num_heads_k,
+                              const int _head_size,
+                              const float _scale,
+                              const bool _return_softmax,
+                              const DataType q_dtype,
+                              DenseTensor* _softmax)
       : FlashAttnParamsBase(_batch_size,
                             _max_seqlen_q,
                             _max_seqlen_k,

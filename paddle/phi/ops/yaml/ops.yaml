@@ -499,6 +499,16 @@
     data_type : input
   backward: broadcast_tensors_grad
 
+- op : calc_reduced_attn_scores
+  args : (Tensor q, Tensor k, Tensor softmax_lse, bool return_softmax = false)
+  output : Tensor(reduced_scores), Tensor(softmax)
+  infer_meta :
+    func : CalcReducedAttnScoresInferMeta
+    param : [q, k]
+  kernel :
+    func : calc_reduced_attn_scores
+    data_type : q
+
 - op : ceil
   args : (Tensor x)
   output : Tensor(out)
@@ -2597,16 +2607,6 @@
     func : reduce_as
     data_type : x
   backward : reduce_as_grad
-
-- op : reduce_attn_scores
-  args : (Tensor q, Tensor k, Tensor softmax_lse, bool return_softmax = false)
-  output : Tensor(reduced_scores), Tensor(softmax)
-  infer_meta :
-    func : ReduceAttnScoresInferMeta
-    param : [q, k]
-  kernel :
-    func : reduce_attn_scores
-    data_type : q
 
 - op : reindex_graph
   args : (Tensor x, Tensor neighbors, Tensor count, Tensor hashtable_value, Tensor hashtable_index)

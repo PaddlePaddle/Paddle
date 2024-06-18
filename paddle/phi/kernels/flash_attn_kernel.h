@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 
@@ -79,11 +80,11 @@ void FlashAttnWithSparseMaskKernel(
     DenseTensor* seed_offset);
 
 template <typename T, typename Context>
-void ReduceAttnScoresKernel(const Context& ctx,
-                            const DenseTensor& q,
-                            const DenseTensor& k,
-                            const DenseTensor& softmax_lse,
-                            bool return_softmax,
-                            DenseTensor* reduced_scores,
-                            DenseTensor* softmax);
+void CalcReducedAttnScoresKernel(const Context& ctx,
+                                 const DenseTensor& q,
+                                 const DenseTensor& k,
+                                 const DenseTensor& softmax_lse,
+                                 bool return_softmax,
+                                 DenseTensor* reduced_scores,
+                                 DenseTensor* softmax);
 }  // namespace phi

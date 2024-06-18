@@ -462,14 +462,14 @@ void FlashAttnQKVPackedInferMeta(const MetaTensor& qkv,
   }
 }
 
-void ReduceAttnScoresInferMeta(const MetaTensor& q,
-                               const MetaTensor& k,
-                               MetaTensor* reduced_scores,
-                               MetaTensor* softmax) {
+void CalcReducedAttnScoresInferMeta(const MetaTensor& q,
+                                    const MetaTensor& k,
+                                    MetaTensor* reduced_scores,
+                                    MetaTensor* softmax) {
   const auto& dims = q.dims();
   PADDLE_ENFORCE(dims.size() == 4,
                  phi::errors::InvalidArgument(
-                     "reduce_attn_scores receive input with dim "
+                     "calc_reduced_attn_scores receive input with dim "
                      "[batch_size, seq_len, num_heads, head_dim]"));
   int batch_size = q.dims()[0];
   int num_heads = q.dims()[2];

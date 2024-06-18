@@ -24,12 +24,12 @@ import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
 from paddle.nn.functional.flash_attention import (
+    calc_reduced_attention_scores,
     flash_attention,
     flash_attention_with_sparse_mask,
     flash_attn_qkvpacked,
     flash_attn_unpadded,
     flash_attn_varlen_qkvpacked,
-    reduce_attn_scores,
     scaled_dot_product_attention,
 )
 from paddle.pir_utils import test_with_pir_api
@@ -1381,7 +1381,7 @@ class TestFlashAttentionQKVPackedDeter(TestFlashAttentionQKVPackedGQADeter):
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
     "and device's compute capability must be 8.x or 90",
 )
-class TestReduceAttnScores(unittest.TestCase):
+class TestCalcReducedAttentionScores(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.batch_size = 1
@@ -1408,7 +1408,7 @@ class TestReduceAttnScores(unittest.TestCase):
         product = paddle.sum(product, axis=-2, keepdim=True)
         return product
 
-    def test_reduce_attn_scores(self):
+    def test_calc_reduced_attention_scores(self):
         paddle.disable_static()
 
         q_shape = [
@@ -1449,7 +1449,7 @@ class TestReduceAttnScores(unittest.TestCase):
             "",
         )
 
-        reduced_scores = reduce_attn_scores(q, k, softmax_lse)
+        reduced_scores = calc_reduced_attention_scores(q, k, softmax_lse)
 
         np.testing.assert_allclose(
             reduced_scores.numpy(),
@@ -1467,7 +1467,9 @@ class TestReduceAttnScores(unittest.TestCase):
                 name="softmax_lse", shape=softmax_lse.shape, dtype='float32'
             )
 
-            reduced_scores = reduce_attn_scores(qs, ks, softmax_lse_s)
+            reduced_scores = calc_reduced_attention_scores(
+                qs, ks, softmax_lse_s
+            )
             exe = base.Executor(self.place)
             fetches_result = exe.run(
                 feed={
@@ -1491,7 +1493,7 @@ class TestReduceAttnScores(unittest.TestCase):
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
     "and device's compute capability must be 8.x or 90",
 )
-class TestReduceAttnScoresGQA(TestReduceAttnScores):
+class TestCalcReducedAttentionScoresGQA(TestCalcReducedAttentionScores):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
         self.batch_size = 1
