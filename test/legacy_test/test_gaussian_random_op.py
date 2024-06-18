@@ -409,17 +409,19 @@ class TestComplexRandnAPI(unittest.TestCase):
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
-        with base.dygrpah.guard(place):
+        with base.dygraph.guard(place):
             for dtype in ['complex64', 'complex128']:
                 out = paddle.randn([5000, 2], dtype=dtype)
                 mean = out.numpy().mean()
-                np.testing.assert_allclose(mean, 0.0 + 0.0j, rtol=0.2, atol=0.2)
+                np.testing.assert_allclose(
+                    mean, 0.0 + 0.0j, rtol=0.02, atol=0.02
+                )
                 var = out.numpy().var()
                 var_real = out.numpy().real.var()
                 var_imag = out.numpy().imag.var()
-                np.testing.assert_allclose(var, 1.0, rtol=0.2, atol=0.2)
-                np.testing.assert_allclose(var_real, 0.5, rtol=0.2, atol=0.2)
-                np.testing.assert_allclose(var_imag, 0.5, rtol=0.2, atol=0.2)
+                np.testing.assert_allclose(var, 1.0, rtol=0.02, atol=0.02)
+                np.testing.assert_allclose(var_real, 0.5, rtol=0.02, atol=0.02)
+                np.testing.assert_allclose(var_imag, 0.5, rtol=0.02, atol=0.02)
 
     @test_with_pir_api
     def test_static(self):
@@ -437,13 +439,15 @@ class TestComplexRandnAPI(unittest.TestCase):
                     ret = exe.run(fetch_list=[out])
 
                 mean = ret[0].mean()
-                np.testing.assert_allclose(mean, 0.0 + 0.0j, rtol=0.2, atol=0.2)
+                np.testing.assert_allclose(
+                    mean, 0.0 + 0.0j, rtol=0.02, atol=0.02
+                )
                 var = ret[0].var()
                 var_real = ret[0].real.var()
                 var_imag = ret[0].imag.var()
-                np.testing.assert_allclose(var, 1.0, rtol=0.2, atol=0.2)
-                np.testing.assert_allclose(var_real, 0.5, rtol=0.2, atol=0.2)
-                np.testing.assert_allclose(var_imag, 0.5, rtol=0.2, atol=0.2)
+                np.testing.assert_allclose(var, 1.0, rtol=0.02, atol=0.02)
+                np.testing.assert_allclose(var_real, 0.5, rtol=0.02, atol=0.02)
+                np.testing.assert_allclose(var_imag, 0.5, rtol=0.02, atol=0.02)
 
 
 class TestRandomValue(unittest.TestCase):
