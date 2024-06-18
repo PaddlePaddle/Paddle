@@ -71,11 +71,8 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
                                   {"place", pat.Attr("place")}});
     const auto &full_op_1 = pat.Op(paddle::dialect::FullOp::name(),
                                    {{"value", pat.Attr("full_op_1")}});
-    const auto &full_op_2 = pat.Op(paddle::dialect::FullOp::name(),
-                                   {{"value", pat.Attr("full_op_2")}});
-    const auto &full_op_3 = pat.Op(paddle::dialect::FullOp::name(),
-                                   {{"value", pat.Attr("full_op_3")}});
-    // const auto &shape = pat.Op(paddle::dialect::ShapeOp::name());
+    const auto &full_op_2 = pat.Op(paddle::dialect::FullOp::name());
+    const auto &full_op_3 = pat.Op(paddle::dialect::FullOp::name());
 
     const auto &scale_op = pat.Op(paddle::dialect::ScaleOp::name());
 
