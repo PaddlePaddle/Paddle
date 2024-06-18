@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/frontend/decomposer_registry.h"
+#pragma once
 
-#include <gtest/gtest.h>
+#include <memory>
+#include "paddle/pir/include/core/dll_decl.h"
 
-#include "paddle/cinn/frontend/decomposer/use_decomposer.h"
+namespace pir {
 
-namespace cinn::frontend {
+class Pass;
 
-TEST(InstrDecomposerRegistry, basic) {
-  cinn::common::Target target = cinn::common::DefaultHostTarget();
-  ASSERT_EQ(InstrDecomposerRegistry::Global()->Find("conv", target), nullptr);
-  ASSERT_NE(InstrDecomposerRegistry::Global()->Find("relu", target), nullptr);
-}
+IR_API std::unique_ptr<Pass> CreateDeleteWeightDequantLinearOpPass();
 
-}  // namespace cinn::frontend
+}  // namespace pir

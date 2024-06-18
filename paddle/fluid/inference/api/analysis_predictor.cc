@@ -802,8 +802,8 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     pir::IrContext *ctx = pir::IrContext::Instance();
     ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
     ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-    auto pass_manager =
-        std::make_shared<::pir::PassManager>(::pir::IrContext::Instance(), 2);
+    auto pass_manager = std::make_shared<::pir::PassManager>(
+        ::pir::IrContext::Instance(), config_.pm_opt_level_);
     if (!config_.glog_info_disabled()) {
       pass_manager->EnablePrintStatistics();
     }
@@ -874,6 +874,10 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     }
   }
 
+  for (auto &pass : pass_pm.passes()) {
+    pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
+  }
+
   if (!config_.glog_info_disabled()) {
     pass_pm.EnablePrintStatistics();
   }
@@ -882,12 +886,20 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
         std::make_unique<pir::PassManager::IRPrinterOption>(
             ir_printing_conditions, ir_printing_conditions));
   }
+  // set attr
+  for (const auto &pass : pass_pm.passes()) {
+    if (pass->name() == "matmul_add_act_fuse_pass" ||
+        pass->name() == "conv2d_add_act_fuse_pass" ||
+        pass->name() == "conv2d_add_fuse_pass") {
+      pass->Set("use_cutlass", new bool(config_.use_cutlass_));
+    }
+  }
   pass_pm.Run(pir_program_.get());
 
   // Apply some basic passes required by the framework
   ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
                                    config_.pm_opt_level_);
-
+  basic_pass_pm.AddPass(::pir::CreateCommonSubexpressionEliminationPass());
   auto params_sync_among_devices_pass =
       ::pir::CreateParamsSyncAmongDevicesPass();
   params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
@@ -918,6 +930,9 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
   ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
+  auto remove_shadow_feed_pass = ::pir::CreateRemoveShadowFeedPass();
+  remove_shadow_feed_pass->Set("used_for_inference", new bool(true));
+  lowered_pm.AddPass(std::move(remove_shadow_feed_pass));
   if (FLAGS_pir_apply_inplace_pass) {
     lowered_pm.AddPass(::pir::CreateInplacePass());
   }
@@ -1081,9 +1096,10 @@ bool AnalysisPredictor::PrepareProgram(
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
 
   if (config_.new_ir_enabled()) {
-    if (pir_program_ != nullptr) {
-      PADDLE_FATAL("pir_program_ must be nullptr");
-    }
+    PADDLE_ENFORCE_EQ(
+        pir_program_,
+        nullptr,
+        platform::errors::Fatal("Here, pir_program must be a nullptr!"));
     pir_program_ = paddle::TranslateLegacyProgramToProgram(*inference_program_);
     OptimizeInferencePirProgram();
   }

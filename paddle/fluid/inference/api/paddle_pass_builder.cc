@@ -601,6 +601,8 @@ IpuPassStrategy::IpuPassStrategy() : PassStrategy({}) {
 
 const std::vector<std::string> kPirGpuPasses{
     // Functional pass
+    "delete_quant_dequant_linear_op_pass",
+    "delete_weight_dequant_linear_op_pass",
     "map_op_to_another_pass",
     "identity_op_clean_pass",
     // Operator fusion pass
@@ -623,16 +625,20 @@ const std::vector<std::string> kPirGpuPasses{
     "transfer_layout_pass",
 };
 
-const std::vector<std::string> kPirXpuPasses{// Functional pass
-                                             "map_op_to_another_pass",
-                                             "identity_op_clean_pass",
-                                             // Operator fusion pass
-                                             "add_layernorm_xpu_fuse_pass",
-                                             "conv2d_bn_xpu_fuse_pass",
-                                             "group_norm_silu_fuse_pass"};
+const std::vector<std::string> kPirXpuPasses{
+    // Functional pass
+    "delete_quant_dequant_linear_op_pass",
+    "delete_weight_dequant_linear_op_pass",
+    "map_op_to_another_pass",
+    "identity_op_clean_pass",
+    // Operator fusion pass
+    "add_layernorm_xpu_fuse_pass",
+    "conv2d_bn_xpu_fuse_pass",
+    "group_norm_silu_fuse_pass"};
 
 const std::vector<std::string> kPirMkldnnPasses {
-  "depthwise_conv_onednn_pass",              //
+  "delete_quant_dequant_linear_op_pass", "delete_weight_dequant_linear_op_pass",
+      "depthwise_conv_onednn_pass",
       "squeeze_transpose_onednn_fuse_pass",  //
       "conv2d_bn_onednn_fuse_pass",          //
       "conv2d_bias_fuse_pass",               //
@@ -663,6 +669,8 @@ const std::vector<std::string> kPirMkldnnPasses {
       "onednn_placement_pass"                     //
 };
 
-const std::vector<std::string> kPirCpuPasses{};
+const std::vector<std::string> kPirCpuPasses{
+    "delete_quant_dequant_linear_op_pass",
+    "delete_weight_dequant_linear_op_pass"};
 
 }  // namespace paddle

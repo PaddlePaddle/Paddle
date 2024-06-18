@@ -19,7 +19,6 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/frontend/decomposer/use_decomposer.h"
 #include "paddle/cinn/frontend/program_pass.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph.h"
