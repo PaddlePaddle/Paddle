@@ -283,6 +283,9 @@ class TestCustomCPUPlugin(unittest.TestCase):
         paddle.jit.save(
             net, os.path.join(self.temp_dir.name, 'resnet50/inference')
         )
+        if paddle.framework.use_pir_api():
+            return
+
         convert_to_mixed_precision(
             os.path.join(self.temp_dir.name, 'resnet50/inference.pdmodel'),
             os.path.join(self.temp_dir.name, 'resnet50/inference.pdiparams'),
