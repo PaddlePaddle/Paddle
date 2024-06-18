@@ -731,12 +731,12 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
   void Visit(const For *forloop, Expr *expr) {
     auto *node = expr->As<For>();
     auto loop_var_name = forloop->loop_var->name;
-    if (forloop->extent.As<IntImm>()) {
-      var_intervals.emplace(
-          loop_var_name,
-          cinn::common::CasInterval{static_cast<int64_t>(0),
-                                    forloop->extent.as_int64() - 1});
-    } else {
+    auto *extern_i = forloop->extent.As<IntImm>();
+    if (extern_i && extern_i->value > 0) {
+      var_intervals.emplace(loop_var_name,
+                            cinn::common::CasInterval{static_cast<int64_t>(0),
+                                                      extern_i->value - 1});
+    } else if (!extern_i) {
       var_intervals.emplace(
           loop_var_name,
           cinn::common::CasInterval{Expr(0), forloop->extent - 1});
@@ -962,6 +962,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     auto *extent_ptr = forloop->extent.As<IntImm>();
     Expr times;
     if (extent_ptr) {
+      if (extent_ptr->value == 0) return Expr();
       int extent_int = forloop->extent.as_int32();
       int extent_trunc = extent_int / factor;
       int extent_times =
@@ -978,10 +979,10 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     forloop->set_vectorized(false);
 
     forloop->extent = times;
-    if (times_int && forloop->extent.as_int32() >= 1) {
-      var_intervals.emplace(
-          forloop->loop_var->name,
-          cinn::common::CasInterval{0, forloop->extent.as_int32() - 1});
+    if (times_int) {
+      var_intervals.emplace(forloop->loop_var->name,
+                            cinn::common::CasInterval{static_cast<int64_t>(0),
+                                                      times_int->value - 1});
     } else {
       var_intervals.erase(forloop->loop_var->name);
       var_intervals.emplace(
