@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define functions to get tensor attributes
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -26,10 +27,13 @@ from ..common_ops_import import Variable
 from ..framework import LayerHelper, core
 from .creation import _complex_to_real_dtype, assign
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 __all__ = []
 
 
-def rank(input: paddle.Tensor) -> paddle.Tensor:
+def rank(input: Tensor) -> Tensor:
     """
 
     Returns the number of dimensions for a tensor, which is a 0-D int32 Tensor.
@@ -57,7 +61,7 @@ def rank(input: paddle.Tensor) -> paddle.Tensor:
     return out
 
 
-def shape(input: paddle.Tensor) -> paddle.Tensor:
+def shape(input: Tensor) -> Tensor:
     """
     Get the shape of the input.
 
@@ -138,7 +142,7 @@ def shape(input: paddle.Tensor) -> paddle.Tensor:
         return out
 
 
-def is_complex(x: paddle.Tensor) -> bool:
+def is_complex(x: Tensor) -> bool:
     """Return whether x is a tensor of complex data type(complex64 or complex128).
 
     Args:
@@ -164,9 +168,7 @@ def is_complex(x: paddle.Tensor) -> bool:
             >>> print(paddle.is_complex(x))
             False
     """
-    if not isinstance(
-        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.Value)
-    ):
+    if not isinstance(x, (Tensor, paddle.static.Variable, paddle.pir.Value)):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
     is_complex_dtype = (
@@ -178,7 +180,7 @@ def is_complex(x: paddle.Tensor) -> bool:
     return is_complex_dtype
 
 
-def is_floating_point(x: paddle.Tensor) -> bool:
+def is_floating_point(x: Tensor) -> bool:
     """
     Returns whether the dtype of `x` is one of paddle.float64, paddle.float32, paddle.float16, and paddle.bfloat16.
 
@@ -200,9 +202,7 @@ def is_floating_point(x: paddle.Tensor) -> bool:
             >>> print(paddle.is_floating_point(y))
             False
     """
-    if not isinstance(
-        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.Value)
-    ):
+    if not isinstance(x, (Tensor, paddle.static.Variable, paddle.pir.Value)):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
     is_fp_dtype = (
@@ -218,7 +218,7 @@ def is_floating_point(x: paddle.Tensor) -> bool:
     return is_fp_dtype
 
 
-def is_integer(x: paddle.Tensor) -> bool:
+def is_integer(x: Tensor) -> bool:
     """Return whether x is a tensor of integral data type.
 
     Args:
@@ -244,9 +244,7 @@ def is_integer(x: paddle.Tensor) -> bool:
             >>> print(paddle.is_integer(x))
             True
     """
-    if not isinstance(
-        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.Value)
-    ):
+    if not isinstance(x, (Tensor, paddle.static.Variable, paddle.pir.Value)):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
 
@@ -271,7 +269,7 @@ def is_integer(x: paddle.Tensor) -> bool:
     return is_int_dtype
 
 
-def real(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
+def real(x: Tensor, name: str | None = None) -> Tensor:
     """
     Returns a new Tensor containing real values of the input Tensor.
 
@@ -319,7 +317,7 @@ def real(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
         return out
 
 
-def imag(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
+def imag(x: Tensor, name: str | None = None) -> Tensor:
     """
     Returns a new tensor containing imaginary values of input tensor.
 
