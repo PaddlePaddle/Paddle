@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import unittest
 
 import paddle
 import paddle.distributed as dist
@@ -100,8 +99,8 @@ class TestReshardNdMesh:
         new_ops_name = [op.name() for op in dist_program.global_block().ops]
 
         rank_id = dist.get_rank()
-        assert new_ops_name[-2] == "pd_op.c_allreduce_sum_"
-        assert new_ops_name[-1] == "pd_op.c_allreduce_sum_"
+        assert new_ops_name[-2] == "pd_op.c_allreduce_sum"
+        assert new_ops_name[-1] == "pd_op.c_allreduce_sum"
 
         # check the first allreduce_sum
         op = new_ops[-2]
@@ -152,11 +151,11 @@ class TestReshardNdMesh:
         new_ops_name = [op.name() for op in dist_program.global_block().ops]
 
         rank_id = dist.get_rank()
-        assert "pd_op.c_allreduce_sum_" in new_ops_name
+        assert "pd_op.c_allreduce_sum" in new_ops_name
         assert new_ops_name[-1] == "pd_op.slice"
 
         # check the allreduce_sum
-        op = new_ops[new_ops_name.index("pd_op.c_allreduce_sum_")]
+        op = new_ops[new_ops_name.index("pd_op.c_allreduce_sum")]
         if rank_id == 0 or rank_id == 2:
             process_ids = [0, 2]
         elif rank_id == 1 or rank_id == 3:
@@ -183,14 +182,11 @@ class TestReshardNdMesh:
         tgt_out_value = (self._mesh.process_ids, [-1, 1, -1], {})
 
     def run_pr_to_ss_case(self):
-        # [Partial(), Replicate()] --> [Shard(0), Shard(1)]
-        # raise NotImplementedError
-        with unittest.TestCase().assertRaises(NotImplementedError):
-            self.create_program(
-                [self.BATCH_SIZE, self.SEQ_LEN, self.HIDDEN_SIZE],
-                [dist.Partial(dist.ReduceType.kRedSum), dist.Replicate()],
-                [dist.Shard(0), dist.Shard(1)],
-            )
+        self.create_program(
+            [self.BATCH_SIZE, self.SEQ_LEN, self.HIDDEN_SIZE],
+            [dist.Partial(dist.ReduceType.kRedSum), dist.Replicate()],
+            [dist.Shard(0), dist.Shard(1)],
+        )
 
     def run_ss_to_ss_case(self):
         # [Shard(0), Shard(1)] --> [Shard(1), Shard(0)]
@@ -282,11 +278,11 @@ class TestReshardNdMesh:
 
         ops = dist_program.global_block().ops
         op_names = [op.name() for op in ops]
-        assert "pd_op.c_allreduce_sum_" in op_names
+        assert "pd_op.c_allreduce_sum" in op_names
         assert "pd_op.c_allgather" in op_names
         assert "pd_op.slice" in op_names
 
-        allreduce_sum_op = ops[op_names.index("pd_op.c_allreduce_sum_")]
+        allreduce_sum_op = ops[op_names.index("pd_op.c_allreduce_sum")]
         allgather_op = ops[op_names.index("pd_op.c_allgather")]
         slice_op = ops[op_names.index("pd_op.slice")]
 

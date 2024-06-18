@@ -18,6 +18,7 @@ import numpy as np
 from op_test_xpu import XPUOpTest
 
 import paddle
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -33,6 +34,11 @@ def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
     return out
 
 
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "logsumexp do not support XPU3 currently.",
+)
 class XPUTestLogsumexp(XPUOpTest):
     def setUp(self):
         self.op_type = 'logsumexp'

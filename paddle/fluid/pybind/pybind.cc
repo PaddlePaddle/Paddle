@@ -36,6 +36,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/compiled_program.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/data_layout.h"
@@ -61,7 +62,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/raw_tensor.h"
@@ -144,7 +144,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/pybind/parallel_executor.h"
+#include "paddle/fluid/pybind/compiled_program.h"
 #include "paddle/fluid/pybind/place.h"
 #include "paddle/fluid/pybind/protobuf.h"
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
@@ -192,7 +192,6 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CINN
 #include "paddle/cinn/pybind/bind.h"
-#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/pybind/test.h"
 #endif
 
@@ -205,6 +204,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
+#include "paddle/fluid/pir/dialect/operator/interface/decomp_vjp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
@@ -360,15 +360,6 @@ bool IsCompiledWithCINN() {
   return false;
 #else
   return true;
-#endif
-}
-
-bool IsRunWithCINN() {
-#ifndef PADDLE_WITH_CINN
-  return false;
-#else
-  return framework::paddle2cinn::CinnCompiler::GetInstance()
-             ->real_compiled_num() > 0;
 #endif
 }
 
@@ -866,6 +857,13 @@ void BindVjp(pybind11::module *m) {
          const std::vector<std::vector<pir::Value>> &outputs,
          const std::vector<std::vector<pir::Value>> &out_grads,
          const std::vector<std::vector<bool>> &stop_gradients) {
+        // NOTE(dev): Prim decomposed rules will call paddle::dialect::xx
+        // api, which has amp strategy. But Prim already process cast operation
+        // and we need to disable amp strategy here.
+        paddle::imperative::AutoCastGuard guard(
+            egr::Controller::Instance().GetCurrentAmpAttrs(),
+            paddle::imperative::AmpLevel::O0);
+
         py::list res;
         std::vector<std::vector<pir::Value>> vjp_res;
 
@@ -1025,6 +1023,42 @@ void BindDecomp(pybind11::module *m) {
 
   m->def("has_decomp", [](pir::Operation &fwd_op) {
     return paddle::has_decomp_rule(fwd_op);
+  });
+}
+
+void BindDecompVjp(pybind11::module *m) {
+  m->def("call_decomp_vjp", [](pir::Operation &vjp_op) {
+    py::list res;
+    paddle::dialect::DecompVjpInterface decomp_vjp_interface =
+        vjp_op.dyn_cast<paddle::dialect::DecompVjpInterface>();
+    PADDLE_ENFORCE(
+        decomp_vjp_interface,
+        phi::errors::InvalidArgument(
+            "[Prim] The decomp_vjp function is not registered in %s vjp_op ",
+            vjp_op.name()));
+    std::vector<std::vector<pir::Value>> decomp_res =
+        decomp_vjp_interface.DecompVjp(&vjp_op);
+
+    for (size_t i = 0; i < decomp_res.size(); ++i) {
+      py::list sub_res;
+      for (size_t j = 0; j < decomp_res[i].size(); ++j) {
+        if (!decomp_res[i][j]) {
+          sub_res.append(nullptr);
+        } else {
+          sub_res.append(decomp_res[i][j]);
+        }
+      }
+      res.append(sub_res);
+    }
+    return res;
+  });
+
+  m->def("has_decomp_vjp", [](pir::Operation &vjp_op) {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    pir::OpInfo vjp_op_info = ctx->GetRegisteredOpInfo(vjp_op.name());
+    auto decomp_vjp_interface_impl =
+        vjp_op_info.GetInterfaceImpl<paddle::dialect::DecompVjpInterface>();
+    return decomp_vjp_interface_impl != nullptr;
   });
 }
 
@@ -1867,19 +1901,6 @@ All parameter, weight, gradient are variables in Paddle.
                    which contains the id pair of pruned block and corresponding
                    origin block.
            )DOC");
-  m.def("get_serialize_comile_key", [](int64_t compilation_key) {
-#ifdef PADDLE_WITH_CINN
-    auto compiler = framework::paddle2cinn::CinnCompiler::GetInstance();
-    auto s = compiler->SerializeKey(compilation_key);
-    VLOG(4) << s;
-    return s;
-#else
-    PADDLE_THROW(
-                 platform::errors::PermissionDenied(
-                 "Cannot get compilation key in non-CINN version, "
-                 "Please recompile or reinstall Paddle with CINN support."));
-#endif
-  });
   m.def("empty_var_name",
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",
@@ -2349,7 +2370,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
   m.def("is_compiled_with_distribute", IsCompiledWithDISTRIBUTE);
-  m.def("is_run_with_cinn", IsRunWithCINN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("_is_compiled_with_gpu_graph", IsCompiledWithGPUGRAPH);
   m.def("supports_bfloat16", SupportsBfloat16);
@@ -2918,7 +2938,6 @@ All parameter, weight, gradient are variables in Paddle.
 #endif  // PADDLE_WITH_CUDA
   m.def("clear_executor_cache", []() {
     pybind11::gil_scoped_release release;
-    framework::ExecutorInfoCache::Instance().Finalize();
     framework::InterpreterCoreInfoCache::Instance().Finalize();
   });
 
@@ -3159,7 +3178,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
   BindFleetWrapper(&m);
   BindIO(&m);
-  BindParallelExecutor(m);
+  BindCompiledProgram(m);
   BindPlace(m);
   BindTensor(m);
 
@@ -3262,6 +3281,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindPir(&m);
   BindVjp(&m);
   BindDecomp(&m);
+  BindDecompVjp(&m);
 #ifdef PADDLE_WITH_DISTRIBUTE
   BindDistApi(&m);
 #endif

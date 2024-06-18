@@ -13,25 +13,25 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import List, Tuple, Union
+from typing import TYPE_CHECKING, List, Sequence, Tuple, Union
 
 from typing_extensions import TypeAlias
 
-from .. import Tensor
+if TYPE_CHECKING:
+    from .. import Tensor
 
-DynamicShapeLike: TypeAlias = Union[
-    Tuple[Union[int, Tensor, None], ...],
-    List[Union[int, Tensor, None]],
-    Tensor,
+_DynamicShapeLike: TypeAlias = Union[
+    Sequence[Union[int, "Tensor", None]],
+    "Tensor",
 ]
 
 
-ShapeLike: TypeAlias = Union[
-    Tuple[int, ...],
-    List[int],
-    Tensor,
+_StaticShapeLike: TypeAlias = Union[
+    Sequence[int],
+    "Tensor",
 ]
 
+ShapeLike: TypeAlias = Union[_DynamicShapeLike, _StaticShapeLike]
 
 # for size parameters, eg, kernel_size, stride ...
 Size1: TypeAlias = Union[int, Tuple[int], List[int]]

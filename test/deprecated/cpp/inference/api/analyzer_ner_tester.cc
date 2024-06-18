@@ -21,9 +21,9 @@ struct DataRecord {
   std::vector<std::vector<int64_t>> word, mention;
   std::vector<size_t> lod;  // two inputs have the same lod info.
   size_t batch_iter{0}, batch_size{1}, num_samples;  // total number of samples
-  DataRecord() = default;
+  DataRecord() : word(), mention(), lod(), num_samples(0) {}
   explicit DataRecord(const std::string &path, int batch_size = 1)
-      : batch_size(batch_size) {
+      : word(), mention(), lod(), batch_size(batch_size), num_samples(0) {
     Load(path);
   }
   DataRecord NextBatch() {

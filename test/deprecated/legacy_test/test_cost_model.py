@@ -33,26 +33,6 @@ class TestCostModel(unittest.TestCase):
         )
         self.assertEqual(cost_data.get_whole_time_ms(), 0)
 
-    def test_profiler_measure_program(self):
-        main_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program, startup_program):
-            # TODO(zhhsplendid): support paddle.static.data, which is uninitialized data
-            data = paddle.ones(name='X', shape=[16, 100], dtype='float32')
-            hidden = paddle.static.nn.fc(data, 10)
-            loss = paddle.mean(hidden)
-        cost_model = core.CostModel()
-        cost_data = cost_model.profile_measure(
-            main_program, startup_program, device, ["time"]
-        )
-        fc_op_time = cost_data.get_op_time_ms(0)
-        mean_op_time = cost_data.get_op_time_ms(1)
-        self.assertGreater(fc_op_time, 0)
-        self.assertGreater(mean_op_time, 0)
-        self.assertGreaterEqual(
-            cost_data.get_whole_time_ms(), fc_op_time + mean_op_time
-        )
-
     def test_static_op_benchmark_cost_model(self):
         op_name = "abs"
         cost_model = CostModel()

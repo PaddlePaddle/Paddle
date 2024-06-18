@@ -89,41 +89,41 @@ def OpNameNormalizerInitialization(
                         ].insert(0, v)
 
         _, legacy_name = insert_new_mappings(op_compat_item["op"])
-        legacy_backward_op_names = []
+        dygraph_backward_op_names = []
         if "backward" in op_compat_item:
             backward_op_name_mapping_paris = op_compat_item["backward"].split(
                 ","
             )
             for pair in backward_op_name_mapping_paris:
-                _, legacy_backward_op_name = insert_new_mappings(pair)
-                legacy_backward_op_names.append(legacy_backward_op_name)
+                _, dygraph_backward_op_name = insert_new_mappings(pair)
+                dygraph_backward_op_names.append(dygraph_backward_op_name)
 
         if "inputs" in op_compat_item:
             insert_new_arg_mappings(legacy_name, op_compat_item["inputs"])
-            for backward_op in legacy_backward_op_names:
+            for backward_op in dygraph_backward_op_names:
                 insert_new_arg_mappings(backward_op, op_compat_item["inputs"])
 
         if "attrs" in op_compat_item:
             insert_new_arg_mappings(legacy_name, op_compat_item["attrs"])
-            for backward_op in legacy_backward_op_names:
+            for backward_op in dygraph_backward_op_names:
                 insert_new_arg_mappings(backward_op, op_compat_item["attrs"])
         if "outputs" in op_compat_item:
             insert_new_arg_mappings(legacy_name, op_compat_item["outputs"])
-            for backward_op in legacy_backward_op_names:
+            for backward_op in dygraph_backward_op_names:
                 insert_new_arg_mappings(backward_op, op_compat_item["outputs"])
 
         if "int_array" in op_compat_item:
             insert_new_mutable_attributes(
                 legacy_name, op_compat_item["int_array"]
             )
-            for backward_op in legacy_backward_op_names:
+            for backward_op in dygraph_backward_op_names:
                 insert_new_mutable_attributes(
                     backward_op, op_compat_item["int_array"]
                 )
 
         if "scalar" in op_compat_item:
             insert_new_mutable_attributes(legacy_name, op_compat_item["scalar"])
-            for backward_op in legacy_backward_op_names:
+            for backward_op in dygraph_backward_op_names:
                 insert_new_mutable_attributes(
                     backward_op, op_compat_item["scalar"]
                 )
@@ -159,7 +159,13 @@ def OpNameNormalizerInitialization(
         "grad_bias_grad": "DDBias",
         "grad_out": "DY",
     }
-    op_arg_name_mappings["matmul"] = {"x": "X", "y": "Y", "out": "Out"}
+    op_arg_name_mappings["matmul"] = {
+        "x": "X",
+        "y": "Y",
+        "out": "Out",
+        "transpose_x": "transpose_X",
+        "transpose_y": "transpose_Y",
+    }
 
     op_arg_name_mappings["matrix_rank"] = {
         "x": "X",

@@ -30,13 +30,11 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/utils/string/pretty_log.h"
 
-namespace paddle {
-namespace inference {
-namespace analysis {
+namespace paddle::inference::analysis {
 using string::PrettyLogEndl;
 using string::Style;
 
-IRPassManager::IRPassManager(Argument *argument) {
+IRPassManager::IRPassManager(Argument *argument) : passes_() {
   disable_logs_ = argument->disable_logs();
 
   ARGUMENT_CHECK_FIELD(argument, ir_analysis_passes);
@@ -341,6 +339,4 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
   return graph;
 }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

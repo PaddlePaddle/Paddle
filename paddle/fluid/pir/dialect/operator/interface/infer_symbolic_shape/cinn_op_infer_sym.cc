@@ -17,6 +17,7 @@
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_sym_utils.h"
 
 namespace cinn::dialect {
+using paddle::dialect::details::CreateShapeOrDataForXShape;
 
 bool BroadcastOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
@@ -143,21 +144,6 @@ bool ReshapeOpInferSymbolicShape(
     return true;
   };
 
-  const auto &IsZero = [&](const symbol::DimExpr &dim_expr) {
-    if (dim_expr.isa<int64_t>()) {
-      return dim_expr.dyn_cast<int64_t>() == static_cast<int64_t>(0);
-    }
-    return false;
-  };
-
-  const auto &target_shape = [&] {
-    std::vector<symbol::DimExpr> target_shape;
-    for (int dim : shape) {
-      target_shape.emplace_back(static_cast<std::int64_t>(dim));
-    }
-    return target_shape;
-  }();
-
   const symbol::ShapeOrDataDimExprs &x_dim_expr =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
 
@@ -166,6 +152,17 @@ bool ReshapeOpInferSymbolicShape(
   const auto &out_dims = [&] {
     const auto &numel =
         GetProduct(original_shape, [](const auto &) { return true; });
+    const auto &target_shape = [&] {
+      std::vector<symbol::DimExpr> target_shape;
+      for (size_t i = 0; i < shape.size(); ++i) {
+        if (shape[i] == 0) {
+          target_shape.emplace_back(original_shape[i]);
+        } else {
+          target_shape.emplace_back(static_cast<std::int64_t>(shape[i]));
+        }
+      }
+      return target_shape;
+    }();
 
     const auto &product_exclude_minus_one =
         GetProduct(target_shape, IsNotMinusOne);
@@ -176,7 +173,6 @@ bool ReshapeOpInferSymbolicShape(
       auto out_dim_expr = IsNotMinusOne(target_shape[i])
                               ? target_shape[i]
                               : (numel / product_exclude_minus_one);
-      out_dim_expr = IsZero(target_shape[i]) ? original_shape[i] : out_dim_expr;
       out_dims.emplace_back(out_dim_expr);
     }
 
@@ -192,6 +188,11 @@ bool ReshapeOpInferSymbolicShape(
   }();
 
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
+  // NOTE(Aureliue84): Parse XShape symbolic expression which is used for
+  // backward process. It will be removed after normolizing ReshapeGrad(out,
+  // xshape) into ReshapeGrad(out, x).
+  infer_context->SetShapeOrDataForValue(op->result(1),
+                                        CreateShapeOrDataForXShape(x_dim_expr));
 
   return true;
 }

@@ -24,12 +24,14 @@ inline ExprVec GetExprVecFromData(const ShapeOrData &shapeordata) {
     TensorListExprs list =
         shapeordata.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
     for (size_t i = 0; i < list.size(); i++) {
+      CHECK(list[i].data().has_value());
       for (auto expr : list[i].data().value()) {
         result.emplace_back(expr);
       }
     }
     return result;
   } else {
+    CHECK(shapeordata.data().has_value());
     return shapeordata.data().value();
   }
 }
@@ -186,7 +188,8 @@ inline ShapeOrData SliceRawInferSymbolicShape(
       out_data.push_back(in_shapeordata.data().value()[i]);
     }
 
-    const std::vector<symbol::DimExpr> shape{std::int64_t(out_data.size())};
+    const ExprVec shape = GetDecreasedDims(
+        ExprVec{static_cast<int64_t>(out_data.size())}, decrease_axis);
     return symbol::ShapeOrDataDimExprs{
         symbol::TensorShapeOrDataDimExprs(shape, out_data)};
   };

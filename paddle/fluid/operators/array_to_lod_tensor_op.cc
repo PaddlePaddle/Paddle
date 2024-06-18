@@ -51,7 +51,7 @@ struct ArrayToLoDFunctor {
 
   template <typename Place>
   void operator()(Place place) const {
-    auto &pool = platform::DeviceContextPool::Instance();
+    auto &pool = phi::DeviceContextPool::Instance();
     if (std::is_same<Place, phi::CPUPlace>::value) {
       Apply(static_cast<phi::CPUContext *>(pool.Get(place)));
     } else {

@@ -360,8 +360,8 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
   // NOTE(Aurelius84): In which case use_mkldnn = true?
   attr_map["use_mkldnn"] = false;
 
-  // 3. Create transfer_dtype_op
-  std::string op_type("transfer_dtype");
+  // 3. Create cast op
+  std::string op_type("cast");
   auto& op_info = OpInfoMap::Instance().Get(op_type);
   auto op = std::shared_ptr<OperatorBase>(
       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));

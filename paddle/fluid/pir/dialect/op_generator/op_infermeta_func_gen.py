@@ -168,8 +168,6 @@ def GenBuildOutputsPart2(
                                                       {name}.dims(),
                                                       {name}.non_zero_dims(),
                                                       {name}.data_layout(),
-                                                      {name}.non_zero_elements(),
-                                                      {name}.non_zero_indices(),
                                                       {name}.coalesced());
   VLOG(4) << "Builder construction  meta_{name}";
   paddle::dialect::IrMetaTensor meta_{name}(&ir_tensor_{name});
@@ -225,8 +223,6 @@ def GenBuildOutputsPart2(
                                                         {name}.dims(),
                                                         {name}.non_zero_dims(),
                                                         {name}.data_layout(),
-                                                        {name}.non_zero_elements(),
-                                                        {name}.non_zero_indices(),
                                                         {name}.coalesced());
     VLOG(4) << "Builder construction  meta_{name}";
     meta_{name} = paddle::dialect::IrMetaTensor(&ir_tensor_{name});
@@ -937,6 +933,10 @@ def gen_infermeta_func_str(args, op_info):
                 spmd_params = op_info.kernel_map['param']
         else:
             spmd_params = op_info.input_name_list
+        # TODO(GhostScreaming): specialized case for reshape_grad
+        # xshape is not kernel params, but inferspmd needs it.
+        if "reshape_grad" in op_info.kernel_map['func'][0]:
+            spmd_params = ["xshape"] + spmd_params
     op_info.spmd_params = spmd_params
 
     infermeta_inputs_str = get_infermeta_inputs_str(

@@ -15,11 +15,9 @@
 # repo: PaddleClas
 # model: ppcls^configs^ImageNet^GhostNet^GhostNet_x0_5
 # api:paddle.nn.functional.pooling.adaptive_avg_pool2d
-import unittest
+from base import *  # noqa: F403
 
-import numpy as np
-
-import paddle
+from paddle.static import InputSpec
 
 
 class AdaptiveAvgPool2dCase(paddle.nn.Layer):
@@ -36,38 +34,23 @@ class AdaptiveAvgPool2dCase(paddle.nn.Layer):
         return var_1
 
 
-class TestAdaptiveAvgPool2d(unittest.TestCase):
-    def setUp(self):
+class TestAdaptiveAvgPool2d(TestBase):
+    def init(self):
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            )
+        ]
         self.inputs = (
             paddle.rand(shape=[22, 480, 7, 7], dtype=paddle.float32),
         )
-        self.net = AdaptiveAvgPool2dCase()
-
-    def train(self, net, to_static, with_prim=False, with_cinn=False):
-        if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
-            if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
-            else:
-                net = paddle.jit.to_static(net, full_graph=True)
-        paddle.seed(123)
-        outs = net(*self.inputs)
-        return outs
+        self.net = AdaptiveAvgPool2dCase
+        self.with_train = False
 
     # NOTE prim + cinn lead to error
-    def test_ast_prim_cinn(self):
-        st_out = self.train(self.net, to_static=True)
-        cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=True
-        )
-        for st, cinn in zip(
-            paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
-        ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-6)
 
 
 if __name__ == '__main__':
