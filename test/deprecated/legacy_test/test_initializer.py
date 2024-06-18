@@ -443,7 +443,7 @@ class TestNormalInitializer(unittest.TestCase):
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
-        self.assertAlmostEqual(init_op.attr('mean'), 2.2 + 2.2j, delta=DELTA)
+        self.assertAlmostEqual(init_op.attr('mean'), 2.2, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('std'), 1.9, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 123)
         return block

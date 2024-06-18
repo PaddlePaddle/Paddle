@@ -426,9 +426,7 @@ class TestNormal(unittest.TestCase):
             self.assertEqual(len(block.ops), num_ops)
             init_op = block.ops[0]
             self.assertEqual(init_op.type, 'gaussian_random')
-            self.assertAlmostEqual(
-                init_op.attr('mean'), 2.3 + 2.3j, delta=DELTA
-            )
+            self.assertAlmostEqual(init_op.attr('mean'), 2.3, delta=DELTA)
             self.assertAlmostEqual(init_op.attr('std'), 1.9, delta=DELTA)
 
         return block
