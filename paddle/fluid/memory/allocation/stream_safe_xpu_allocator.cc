@@ -56,7 +56,15 @@ bool StreamSafeXPUAllocation::CanBeFreed() {
        it != outstanding_event_map_.end();
        ++it) {
     XPUEvent& event = it->second;
-
+#if XPURT_VERSION >= 500000
+    int err = xpu_event_query(event);
+    if (err != XPU_SUCCESS) {
+      VLOG(9) << "Event " << event << " for " << ptr() << " is not completed";
+      outstanding_event_map_.erase(outstanding_event_map_.begin(), it);
+      return false;
+    }
+    PADDLE_ENFORCE_XRE_SUCCESS(err);
+#endif
     PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_destroy(event));
     VLOG(8) << "Destroy event " << event;
   }
