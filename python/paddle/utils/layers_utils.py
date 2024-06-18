@@ -451,6 +451,11 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
     """
     from paddle.tensor import fill_constant
 
+    if _contain_var(old_list):
+        for ele in old_list:
+            if isinstance(ele, paddle.pir.Value):
+                dtype = ele.dtype
+
     new_list_tensor = []
     for ele in old_list:
         if isinstance(ele, (Variable, paddle.pir.Value)):
