@@ -1584,7 +1584,7 @@ def conv2d_transpose(
         op_type = 'depthwise_conv2d_transpose'
 
     helper = LayerHelper(op_type, **locals())
-    if not isinstance(input, Variable, paddle.pir.Value):
+    if not isinstance(input, （Variable, paddle.pir.Value）):
         raise TypeError("Input of conv2d_transpose must be Tensor")
 
     stride = paddle.utils.convert_to_list(stride, 2, 'stride')
