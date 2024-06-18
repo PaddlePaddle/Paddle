@@ -246,7 +246,7 @@ class Pod:
         return r
 
 
-def get_logger(log_level=20, name="root"):
+def get_logger(log_level=20, name="pproot"):
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
 
