@@ -453,8 +453,10 @@ bool AnalysisPredictor::Init(
     std::string optimized_params =
         optimized_model_path + "/" + "_optimized.pdiparams";
     if (FileExists(optimized_model) && FileExists(optimized_params)) {
-      LOG(INFO) << "Load Optimized model from " << optimized_model;
       config_.SetModel(optimized_model, optimized_params);
+      LOG(INFO) << "Load Optimized model from " << optimized_model
+                << " and Load Optimized optimized_params from "
+                << optimized_params;
     } else {
       LOG(WARNING)
           << "The optimized model is not found, fallback to original model. "
@@ -905,6 +907,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       std::string optimized_model =
           GetOptimizedModelPath() + "/" + "_optimized.json";
       pir::WriteModule(*pir_program_, optimized_model, 1, true, false, true);
+      LOG(INFO) << "Optimized model saved to " << optimized_model;
       SaveOrLoadPirParameters(true);
     }
   }
@@ -1046,6 +1049,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
                                                            tensor_out.end());
     pir::SaveCombineFunction(
         const_tensor_out, param_names, optimized_params, true, false, true);
+    LOG(INFO) << "Optimized params saved to " << optimized_params;
   } else {
     pir::LoadCombineFunction(
         config_.params_file(), param_names, &tensor_out, false, place_);
