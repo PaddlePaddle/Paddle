@@ -288,7 +288,6 @@ class TestGRUBackward(unittest.TestCase):
                 seq_len_data = paddle.static.data(
                     "seq_len", [self.batch_size], dtype="int64"
                 )
-
                 pre_h_data.stop_gradient = False
                 rnn_in_data.stop_gradient = False
 
@@ -302,8 +301,34 @@ class TestGRUBackward(unittest.TestCase):
                 )
                 loss = paddle.sum(st_out)
                 sgd = paddle.optimizer.SGD(0.0)
-                sgd.minimize(loss)
-                self.fetch_list = [st_out, st_last_h, "pre_h@GRAD", "x@GRAD"]
+
+                if paddle.framework.in_pir_mode():
+                    rnn_in_data.persistable = True
+                    pre_h_data.persistable = True
+                    params_grads = paddle.base.backward.append_backward(loss)
+                    pre_h_data_grad = None
+                    rnn_in_data_grad = None
+                    for p, g in params_grads:
+                        if p.is_same(rnn_in_data):
+                            rnn_in_data_grad = g
+                        elif p.is_same(pre_h_data):
+                            pre_h_data_grad = g
+                    print(rnn_in_data_grad)
+                    print(pre_h_data_grad)
+                    self.fetch_list = [
+                        st_out,
+                        st_last_h,
+                        pre_h_data_grad,
+                        rnn_in_data_grad,
+                    ]
+                else:
+                    sgd.minimize(loss)
+                    self.fetch_list = [
+                        st_out,
+                        st_last_h,
+                        "pre_h@GRAD",
+                        "x@GRAD",
+                    ]
 
                 self.exe.run(paddle.static.default_startup_program())
 
