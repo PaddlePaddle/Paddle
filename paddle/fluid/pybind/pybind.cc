@@ -857,6 +857,13 @@ void BindVjp(pybind11::module *m) {
          const std::vector<std::vector<pir::Value>> &outputs,
          const std::vector<std::vector<pir::Value>> &out_grads,
          const std::vector<std::vector<bool>> &stop_gradients) {
+        // NOTE(dev): Prim decomposed rules will call paddle::dialect::xx
+        // api, which has amp strategy. But Prim already process cast operation
+        // and we need to disable amp strategy here.
+        paddle::imperative::AutoCastGuard guard(
+            egr::Controller::Instance().GetCurrentAmpAttrs(),
+            paddle::imperative::AmpLevel::O0);
+
         py::list res;
         std::vector<std::vector<pir::Value>> vjp_res;
 

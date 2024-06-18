@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_CUDA
 PD_REGISTER_KERNEL(matmul,
                    GPU,
                    ALL_LAYOUT,

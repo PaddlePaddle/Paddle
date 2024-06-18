@@ -56,9 +56,9 @@ using runtime::cuda::CUDAModule;
 
 std::pair<ir::Module, std::string> GenReduceCode(
     const std::vector<int>& shape,
-    const std::vector<int>& dim,
+    const std::vector<int>& axis,
     const std::string& func_name,
-    bool keep_dim = false,
+    bool keepdim = false,
     const std::string& op_name = "reduce_sum") {
   // code gen
   Context::Global().ResetNameId();
@@ -75,15 +75,15 @@ std::pair<ir::Module, std::string> GenReduceCode(
 
   // set attrs
   NodeAttr attrs;
-  attrs.attr_store["dim"] = dim;
-  attrs.attr_store["keep_dim"] = keep_dim;
+  attrs.attr_store["axis"] = axis;
+  attrs.attr_store["keepdim"] = keepdim;
   std::vector<ir::Tensor> inputs{X.tensor()};
   std::vector<Type> out_type{Float(32)};
 
   std::vector<int> output_shape;
   for (int idx = 0; idx < shape.size(); ++idx) {
-    if (std::find(dim.begin(), dim.end(), idx) != dim.end()) {
-      if (keep_dim) {
+    if (std::find(axis.begin(), axis.end(), idx) != axis.end()) {
+      if (keepdim) {
         output_shape.push_back(1);
       }
     } else {
@@ -131,150 +131,150 @@ std::pair<ir::Module, std::string> GenReduceCode(
 // last dimension not in reduce
 TEST(Operator, Operator_Reduce_Without_Last_Channel_Case_5) {
   std::vector<int> shape = {128, 112, 112, 128};
-  std::vector<int> dim = {0, 1, 2};
+  std::vector<int> axis = {0, 1, 2};
 
-  GenReduceCode(shape, dim, "Reduce_Without_Last_Channel_Case_5");
+  GenReduceCode(shape, axis, "Reduce_Without_Last_Channel_Case_5");
 }
 
 // last dimension not in reduce
 TEST(Operator, Operator_Reduce_Without_Last_Channel_Case_4) {
   std::vector<int> shape = {16, 16, 8, 8, 16, 16};
-  std::vector<int> dim = {0, 2, 3};
+  std::vector<int> axis = {0, 2, 3};
 
-  GenReduceCode(shape, dim, "Reduce_Without_Last_Channel_Case_4");
+  GenReduceCode(shape, axis, "Reduce_Without_Last_Channel_Case_4");
 }
 // case 3
 TEST(Operator, Operator_Reduce_Without_Last_Channel_Case_3) {
   std::vector<int> shape = {16, 16, 16, 16, 16};
-  std::vector<int> dim = {0, 2};
+  std::vector<int> axis = {0, 2};
 
-  GenReduceCode(shape, dim, "Reduce_Without_Last_Channel_Case_3");
+  GenReduceCode(shape, axis, "Reduce_Without_Last_Channel_Case_3");
 }
 // case 2
 TEST(Operator, Operator_Reduce_Without_Last_Channel_Case_2) {
   std::vector<int> shape = {16, 16, 16, 16};
-  std::vector<int> dim = {0, 1};
+  std::vector<int> axis = {0, 1};
 
-  GenReduceCode(shape, dim, "Reduce_Without_Last_Channel_Case_2");
+  GenReduceCode(shape, axis, "Reduce_Without_Last_Channel_Case_2");
 }
 // case 1
 TEST(Operator, Operator_Reduce_Without_Last_Channel_Case_1) {
   std::vector<int> shape = {16, 16, 16, 16};
-  std::vector<int> dim = {1};
+  std::vector<int> axis = {1};
 
-  GenReduceCode(shape, dim, "Reduce_Without_Last_Channel_Case_1");
+  GenReduceCode(shape, axis, "Reduce_Without_Last_Channel_Case_1");
 }
 // case 0
 TEST(Operator, Operator_Reduce_Without_Last_Channel_Case_0) {
   std::vector<int> shape = {16, 16, 32};
-  std::vector<int> dim = {1};
+  std::vector<int> axis = {1};
 
-  GenReduceCode(shape, dim, "Reduce_Without_Last_Channel_Case_0");
+  GenReduceCode(shape, axis, "Reduce_Without_Last_Channel_Case_0");
 }
 
 TEST(Operator, Operator_Reduction_Case_Last_Dim_1) {
   std::vector<int> shape = {10, 100, 1};
-  std::vector<int> dim = {0, 2};
+  std::vector<int> axis = {0, 2};
 
-  GenReduceCode(shape, dim, "reduce_cast_with_last_dim_1");
+  GenReduceCode(shape, axis, "reduce_cast_with_last_dim_1");
 }
 
 TEST(Operator, Operator_Reduction_Case_0) {
   std::vector<int> shape = {16, 16, 8, 16};
-  std::vector<int> dim = {2, 3};
+  std::vector<int> axis = {2, 3};
 
-  GenReduceCode(shape, dim, "reduce_cast_0");
+  GenReduceCode(shape, axis, "reduce_cast_0");
 }
 
 TEST(Operator, Operator_Reduction_Case_0_0) {
   std::vector<int> shape = {16, 16, 8, 16};
-  std::vector<int> dim = {2, 3};
+  std::vector<int> axis = {2, 3};
 
-  GenReduceCode(shape, dim, "reduce_cast_0_0", true);
+  GenReduceCode(shape, axis, "reduce_cast_0_0", true);
 }
 
 TEST(Operator, Operator_Reduction_Case_1) {
   std::vector<int> shape = {16, 16, 32, 32};
-  std::vector<int> dim = {2, 3};
+  std::vector<int> axis = {2, 3};
 
-  GenReduceCode(shape, dim, "reduce_cast_1");
+  GenReduceCode(shape, axis, "reduce_cast_1");
 }
 
 TEST(Operator, Operator_Reduction_Case_1_1) {
   std::vector<int> shape = {16, 16, 32, 32};
-  std::vector<int> dim = {2, 3};
+  std::vector<int> axis = {2, 3};
 
-  GenReduceCode(shape, dim, "reduce_cast_1_1", true);
+  GenReduceCode(shape, axis, "reduce_cast_1_1", true);
 }
 
 TEST(Operator, Operator_Reduction_Case_2) {
   std::vector<int> shape = {16, 16, 32, 32};
-  std::vector<int> dim = {1};
+  std::vector<int> axis = {1};
 
-  GenReduceCode(shape, dim, "reduce_cast_2", true);
+  GenReduceCode(shape, axis, "reduce_cast_2", true);
 }
 
 TEST(Operator, Operator_Reduction_Case_2_1) {
   std::vector<int> shape = {16, 16, 32, 32};
-  std::vector<int> dim = {-1};
+  std::vector<int> axis = {-1};
 
-  GenReduceCode(shape, dim, "reduce_cast_2_1", true);
+  GenReduceCode(shape, axis, "reduce_cast_2_1", true);
 }
 
 TEST(Operator, Operator_Reduction_Case_3) {
   std::vector<int> shape = {16, 16, 64, 64};
-  std::vector<int> dim = {1};
+  std::vector<int> axis = {1};
 
-  GenReduceCode(shape, dim, "reduce_cast_3");
+  GenReduceCode(shape, axis, "reduce_cast_3");
 }
 
 TEST(Operator, Operator_Reduction_Case_4) {
   std::vector<int> shape = {16, 16, 16, 16};
-  std::vector<int> dim = {0, 2, 3};
+  std::vector<int> axis = {0, 2, 3};
 
-  GenReduceCode(shape, dim, "reduce_cast_4");
+  GenReduceCode(shape, axis, "reduce_cast_4");
 }
 
 TEST(Operator, Operator_Reduction_Case_4_4) {
   std::vector<int> shape = {16, 16, 16, 16};
-  std::vector<int> dim = {0, 2, 3};
+  std::vector<int> axis = {0, 2, 3};
 
-  GenReduceCode(shape, dim, "reduce_cast_4_4", true);
+  GenReduceCode(shape, axis, "reduce_cast_4_4", true);
 }
 
 TEST(Operator, Operator_Reduction_Case_5) {
   std::vector<int> shape = {16, 16, 16, 16, 16, 32};
-  std::vector<int> dim = {1, 3, 5};
+  std::vector<int> axis = {1, 3, 5};
 
-  GenReduceCode(shape, dim, "reduce_cast_5");
+  GenReduceCode(shape, axis, "reduce_cast_5");
 }
 
 TEST(Operator, Operator_Reduction_Case_5_5) {
   std::vector<int> shape = {16, 16, 16, 16, 16, 32};
-  std::vector<int> dim = {1, 3, 5};
+  std::vector<int> axis = {1, 3, 5};
 
-  GenReduceCode(shape, dim, "reduce_cast_5_5", true);
+  GenReduceCode(shape, axis, "reduce_cast_5_5", true);
 }
 
 TEST(Operator, Operator_Reduction_Case_6_0) {
   std::vector<int> shape = {32, 32, 32};
-  std::vector<int> dim = {0, 1, 2};
+  std::vector<int> axis = {0, 1, 2};
 
-  GenReduceCode(shape, dim, "reduce_cast_6_0", false);
+  GenReduceCode(shape, axis, "reduce_cast_6_0", false);
 }
 
 TEST(Operator, Operator_Reduction_Case_6_00) {
   std::vector<int> shape = {32, 32, 32, 32};
-  std::vector<int> dim = {0, 1, 2};
+  std::vector<int> axis = {0, 1, 2};
 
-  GenReduceCode(shape, dim, "reduce_cast_6_00", false);
+  GenReduceCode(shape, axis, "reduce_cast_6_00", false);
 }
 
 TEST(Operator, Operator_Reduction_Case_6_10) {
   std::vector<int> shape = {32, 32, 32};
-  std::vector<int> dim = {-2, -1, 0};
+  std::vector<int> axis = {-2, -1, 0};
 
-  GenReduceCode(shape, dim, "reduce_cast_6_10", true);
+  GenReduceCode(shape, axis, "reduce_cast_6_10", true);
 }
 
 struct SumOp {
@@ -334,11 +334,11 @@ void TestCaseForReduce(const float init_val,
                        const std::string& test_name,
                        const std::string& op_name) {
   std::vector<int> shape = {n, c, h, w};
-  std::vector<int> dim = {0, 2, 3};
+  std::vector<int> axis = {0, 2, 3};
 
   // get source code
   auto source_code =
-      GenReduceCode(shape, dim, test_name, false, op_name).second;
+      GenReduceCode(shape, axis, test_name, false, op_name).second;
 
   // nv jit compile to ptx
   backends::nvrtc::Compiler compiler;
@@ -420,11 +420,11 @@ TEST(Operator, Operator_Reduction_Case_6_4) {
 TEST(Operator, Operator_Reduction_Case_7) {
   int n = 32, c = 32, h = 16, w = 16;
   std::vector<int> shape = {n, c, h, w};
-  std::vector<int> dim = {0, 1};
+  std::vector<int> axis = {0, 1};
 
   std::string func_name = "reduce_cast_7";
   // get source code
-  auto host_source = GenReduceCode(shape, dim, func_name);
+  auto host_source = GenReduceCode(shape, axis, func_name);
 
   // compile to ptx
   backends::nvrtc::Compiler compiler;
@@ -490,44 +490,44 @@ TEST(Operator, Operator_Reduction_Case_7) {
 
 TEST(Operator, Operator_Reduction_Case_8) {
   std::vector<int> shape = {128, 1};
-  std::vector<int> dim = {0};
+  std::vector<int> axis = {0};
 
-  GenReduceCode(shape, dim, "Operator_Reduction_Case_8");
+  GenReduceCode(shape, axis, "Operator_Reduction_Case_8");
 }
 
 TEST(Operator, Operator_Reduction_Case_88) {
   std::vector<int> shape = {128, 1};
-  std::vector<int> dim = {0};
+  std::vector<int> axis = {0};
 
-  GenReduceCode(shape, dim, "Operator_Reduction_Case_88", true);
+  GenReduceCode(shape, axis, "Operator_Reduction_Case_88", true);
 }
 
 TEST(Operator, Operator_Reduction_Case_9) {
   std::vector<int> shape = {2560, 1};
-  std::vector<int> dim = {0};
+  std::vector<int> axis = {0};
 
-  GenReduceCode(shape, dim, "Operator_Reduction_Case_9");
+  GenReduceCode(shape, axis, "Operator_Reduction_Case_9");
 }
 
 TEST(Operator, Operator_Reduction_Case_99) {
   std::vector<int> shape = {2560, 1};
-  std::vector<int> dim = {0};
+  std::vector<int> axis = {0};
 
-  GenReduceCode(shape, dim, "Operator_Reduction_Case_99", true);
+  GenReduceCode(shape, axis, "Operator_Reduction_Case_99", true);
 }
 
 TEST(Operator, Operator_Reduction_Case_10) {
   std::vector<int> shape = {16, 2560, 1};
-  std::vector<int> dim = {1};
+  std::vector<int> axis = {1};
 
-  GenReduceCode(shape, dim, "Operator_Reduction_Case_10");
+  GenReduceCode(shape, axis, "Operator_Reduction_Case_10");
 }
 
 TEST(Operator, Operator_Reduction_Case_11) {
   std::vector<int> shape = {16, 128, 128, 1};
-  std::vector<int> dim = {1, 2};
+  std::vector<int> axis = {1, 2};
 
-  GenReduceCode(shape, dim, "Operator_Reduction_Case_11");
+  GenReduceCode(shape, axis, "Operator_Reduction_Case_11");
 }
 
 TEST(Operator, Operator_Reduction_Case_Warp_Reduce) {
@@ -537,9 +537,9 @@ TEST(Operator, Operator_Reduction_Case_Warp_Reduce) {
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
 
   std::vector<int> shape = {warp_reduce_threshold + 10, 256};
-  std::vector<int> dim = {1};
+  std::vector<int> axis = {1};
 
-  auto res = GenReduceCode(shape, dim, "Operator_Reduction_Case_Warp_Reduce");
+  auto res = GenReduceCode(shape, axis, "Operator_Reduction_Case_Warp_Reduce");
   if (!FLAGS_cinn_new_group_scheduler)
     CHECK(res.second.find("threadIdx.x < 32") != std::string::npos);
 }
@@ -551,9 +551,9 @@ TEST(Operator, Operator_Reduction_Case_Block_Reduce) {
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
 
   std::vector<int> shape = {warp_reduce_threshold - 10, 33};
-  std::vector<int> dim = {1};
+  std::vector<int> axis = {1};
 
-  auto res = GenReduceCode(shape, dim, "Operator_Reduction_Case_Block_Reduce");
+  auto res = GenReduceCode(shape, axis, "Operator_Reduction_Case_Block_Reduce");
   if (!FLAGS_cinn_new_group_scheduler)
     CHECK(res.second.find("threadIdx.x < 32") == std::string::npos);
 }
@@ -565,10 +565,10 @@ TEST(Operator, Operator_Reduction_Case_Warp_Reduce_Case_1) {
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
 
   std::vector<int> shape = {(warp_reduce_threshold + 32) / 2, 2, 10, 256};
-  std::vector<int> dim = {2, 3};
+  std::vector<int> axis = {2, 3};
 
   auto res =
-      GenReduceCode(shape, dim, "Operator_Reduction_Case_Warp_Reduce_Case_1");
+      GenReduceCode(shape, axis, "Operator_Reduction_Case_Warp_Reduce_Case_1");
   if (!FLAGS_cinn_new_group_scheduler)
     CHECK(res.second.find("threadIdx.x < 32") != std::string::npos);
 }
@@ -580,10 +580,10 @@ TEST(Operator, Operator_Reduction_Case_Block_Reduce_Case_1) {
   int warp_reduce_threshold = sm_count * max_threads_per_sm / 32;
 
   std::vector<int> shape = {(warp_reduce_threshold - 32) / 2, 2, 10, 33};
-  std::vector<int> dim = {2, 3};
+  std::vector<int> axis = {2, 3};
 
   auto res =
-      GenReduceCode(shape, dim, "Operator_Reduction_Case_Block_Reduce_Case_2");
+      GenReduceCode(shape, axis, "Operator_Reduction_Case_Block_Reduce_Case_2");
   if (!FLAGS_cinn_new_group_scheduler)
     CHECK(res.second.find("threadIdx.x < 32") == std::string::npos);
 }

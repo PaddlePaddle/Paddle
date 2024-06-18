@@ -27,14 +27,15 @@
     data_type : x
 
 - op : accuracy_check
-  args : (Tensor x, Tensor y, str fn_name, int64_t res_idx)
+  args : (Tensor x, Tensor y, str fn_name, double rtol=1e-5, double atol=1e-8,  bool equal_nan=false)
   output : Tensor(out)
   infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
+    func : ValueCompareInferMeta
+    param: [x, y]
   kernel :
     func : accuracy_check
-  traits : pir::SideEffectTrait, pir::ImmutableLayoutTrait
+    data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : acos
   args : (Tensor x)
