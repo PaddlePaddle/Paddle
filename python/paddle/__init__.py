@@ -564,6 +564,18 @@ from .pir_utils import IrGuard
 ir_guard = IrGuard()
 ir_guard._switch_to_pir()
 
+# Applying custom device monkey patch by import paddle_custom_device
+for custom_device_type in paddle.device.get_all_custom_device_type():
+    import logging
+    from importlib import import_module
+
+    try:
+        import_module(f'paddle_custom_device.{custom_device_type}')
+    except ImportError:
+        logging.warning(
+            f"No module named 'paddle_custom_device.{custom_device_type}'"
+        )
+
 __all__ = [
     'iinfo',
     'finfo',
