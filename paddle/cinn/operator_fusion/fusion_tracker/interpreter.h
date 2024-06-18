@@ -32,12 +32,6 @@ struct ScopeElement {
 };
 using ScopeElementPtr = std::shared_ptr<ScopeElement>;
 
-ScopeElementPtr CombineScopeElement(const ScopeElementPtr& a,
-                                    const ScopeElementPtr& b) {
-  return std::make_shared<ScopeElement>(
-      ConcatVector(a->fusion_ops, b->fusion_ops));
-}
-
 struct FusionInterpreter {
   FusionInterpreter(const FusionTrackerPtr& tracker,
                     const std::unordered_map<pir::Operation*, FusibleOp>&

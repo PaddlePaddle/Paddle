@@ -14,9 +14,8 @@
 
 #include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
 #include <variant>
-#include "paddle/cinn/operator_fusion/backend/pattern.h"
-#include "paddle/cinn/operator_fusion/backend/pattern_fuser.h"
 #include "paddle/cinn/operator_fusion/group_cluster.h"
+#include "paddle/cinn/operator_fusion/pattern.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
@@ -346,7 +345,7 @@ int GetTensorCounter() {
 std::vector<FusibleOp> TransformReduceLoopRange(
     const ReduceOp& upstream,
     FusibleOp* downstream,
-    std::vector<size_t> fake_reduce_iter_idx) {
+    const std::vector<size_t>& fake_reduce_iter_idx) {
   // downstream will be mutated by this transform.
   VLOG(4) << "RRTransform begin";
   VLOG(4) << "RRTransform Upstream is \n" << _GetRootExpr(upstream);
@@ -598,23 +597,25 @@ std::vector<ir::Var> GetAllForIters(const ir::Expr& expr) {
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& ops,
     const std::vector<ir::Expr>& op_compute_bodies,
-    FusionTrackerPtr fusion_tracker_ptr) {
+    cinn::fusion::FusionTrackerPtr fusion_tracker_ptr) {
   PADDLE_ENFORCE(FLAGS_group_schedule_tiling_first,
                  ::common::errors::PreconditionNotMet(
                      "TrivialFusion must be used with tiling first, set "
                      "FLAGS_group_schedule_tiling_first=1"));
 
-  const std::unordered_map<pir::Operation*, trivial_fusion_detail::FusibleOp>
+  std::unordered_map<::pir::Operation*, trivial_fusion_detail::FusibleOp>
       initialized_lowered_op;
   for (int i = 0; i < ops.size(); i++) {
     initialized_lowered_op[ops[i]] =
         trivial_fusion_detail::IsReduceBody(op_compute_bodies[i])
-            ? ReduceOp(op_compute_bodies[i])
-            : TrivialOp(op_compute_bodies[i]);
+            ? trivial_fusion_detail::FusibleOp(
+                  trivial_fusion_detail::ReduceOp(op_compute_bodies[i]))
+            : trivial_fusion_detail::FusibleOp(
+                  trivial_fusion_detail::TrivialOp(op_compute_bodies[i]));
   }
 
-  auto interpreter =
-      FusionInterpreter(fusion_tracker_ptr, initialized_lowered_op);
+  auto interpreter = cinn::fusion::FusionInterpreter(fusion_tracker_ptr,
+                                                     initialized_lowered_op);
   auto output = interpreter.Run();
 
   VLOG(4) << "Fusion Result: output size is " << output.size();
@@ -628,11 +629,11 @@ FusionGroupInfo GetFusionGroupInfo(
     const std::vector<ir::Expr>& op_compute_bodies) {
   using trivial_fusion_detail::AppendBound;
   using trivial_fusion_detail::GetAllForIters;
+  using trivial_fusion_detail::IsReduceBody;
   using trivial_fusion_detail::ReduceOp;
   using trivial_fusion_detail::ComposeUtils::ConcatVector;
-  using trivial_fusion_detail::IsReduceBody
 
-      FusionGroupInfo group_info = FusionGroupInfo();
+  FusionGroupInfo group_info = FusionGroupInfo();
 
   for (const auto& body : op_compute_bodies) {
     if (IsReduceBody(body)) {

@@ -29,6 +29,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/operator_fusion/fusion_tracker/interpreter.h"
 #include "paddle/cinn/operator_fusion/pattern_graph.h"
 #include "paddle/cinn/optim/schedule_block_dce.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
@@ -183,7 +184,7 @@ FusionGroupInfo GetFusionGroupInfo(
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& ops,
     const std::vector<ir::Expr>& op_compute_bodies,
-    FusionTrackerPtr fusion_tracker_ptr);
+    cinn::fusion::FusionTrackerPtr fusion_tracker_ptr);
 
 }  // namespace pir
 }  // namespace framework

@@ -14,10 +14,8 @@
 
 #pragma once
 
-#include "glog/logging.h"
-
-#include "paddle/cinn/operator_fusion/fusion_tracker/expr_utils.h"
 #include "paddle/cinn/operator_fusion/fusion_tracker/interpreter.h"
+#include "glog/logging.h"
 
 namespace cinn::fusion {
 
@@ -30,15 +28,14 @@ void RunCopyInstr(const std::shared_ptr<CopyInstr>& instr,
 
 void RunCombineInstr(const std::shared_ptr<CombineInstr>& instr,
                      FusionInterpreter* interpreter) {
-  interpreter->scope[instr->result_] = CombineScopeElement(
-      interpreter->scope[instr->first_], interpreter->scope[instr->second_]);
+  // TODO(@wuzhanfei)
 }
 
 void RunInitPatternInstr(const std::shared_ptr<InitPatternInstr>& instr,
                          FusionInterpreter* interpreter) {
   ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
   new_pattern->fusion_ops.emplace_back(
-      (interpreter->initialized_lowered_op)[instr->op_]);
+      interpreter->initialized_lowered_op.at(instr->op_));
   interpreter->scope[instr->result_] = new_pattern;
 }
 
@@ -48,11 +45,16 @@ void RunTrivialInlineInstr(const std::shared_ptr<TrivialInlineInstr>& instr,
   auto upstream_op = std::get<TrivialOp>(
       interpreter->scope[instr->upstream_]->fusion_ops.front());
   ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
+
+  auto DoTrivialFusion = [upstream_op](const auto& downstream_op) -> FusibleOp {
+    return cinn::hlir::framework::pir::trivial_fusion_detail::
+        TrivalxOther_Fusion(upstream_op, downstream_op);
+  };
+
   for (auto downstream_op :
        interpreter->scope[instr->downstream_]->fusion_ops) {
     new_pattern->fusion_ops.emplace_back(
-        cinn::hlir::framework::pir::trivial_fusion_detail::TrivalxOther_Fusion(
-            upstream_op, downstream_op));
+        std::visit(DoTrivialFusion, downstream_op));
   }
   interpreter->scope[instr->result_] = new_pattern;
 }
@@ -67,10 +69,9 @@ void RunTmpTransformInstr(const std::shared_ptr<TmpTransformInstr>& instr,
   auto downstream_op =
       interpreter->scope[instr->downstream_]->fusion_ops.front();
   ScopeElementPtr new_pattern = std::make_shared<ScopeElement>();
-  new_pattern->fusion_ops.emplace_back(
-      cinn::hlir::framework::pir::trivial_fusion_detail::
-          TransformReduceLoopRange(
-              upstream_op, &downstream_op, instr->fake_reduce_iter_idx_););
+  new_pattern->fusion_ops = cinn::hlir::framework::pir::trivial_fusion_detail::
+      TransformReduceLoopRange(
+          upstream_op, &downstream_op, instr->fake_reduce_iter_idx_);
   interpreter->scope[instr->result_] = new_pattern;
 }
 
@@ -108,7 +109,8 @@ void RunAnchorTransformInstr(const std::shared_ptr<AnchorTransformInstr>& instr,
       FusibleOp2Expr(), interpreter->scope[instr->target_]->fusion_ops.front());
   for (auto expr : candidate_exprs) {
     auto transformed_expr = do_transform(expr);
-    if (IsReduceBody(transformed_expr)) {
+    if (cinn::hlir::framework::pir::trivial_fusion_detail::IsReduceBody(
+            transformed_expr)) {
       new_pattern->fusion_ops.emplace_back(ReduceOp(transformed_expr));
     } else {
       new_pattern->fusion_ops.emplace_back(TrivialOp(transformed_expr));
