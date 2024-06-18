@@ -132,8 +132,8 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
 
     c_reducescatter({&res.Tensor("a")}, {&res.Tensor("b")});
     add1({&res.Tensor("b"), &res.Tensor("c")}, {&res.Tensor("h")});
-    add_grad1({&pat.Tensor("b"), &pat.Tensor("c"), &pat.Tensor("grad")},
-              {&pat.Tensor("b_g"), &pat.Tensor("c_g")});
+    add_grad1({&res.Tensor("b"), &res.Tensor("c"), &res.Tensor("grad")},
+              {&res.Tensor("b_g"), &res.Tensor("c_g")});
   }
 };
 
