@@ -442,16 +442,28 @@ bool AnalysisPredictor::Init(
   load_pir_model_ =
       model_path.substr(model_path.find_last_of(".") + 1) == "json";
   // Use Optimized model to inference
-  if (!load_pir_model_) {
-    if (config_.use_optimized_model_) {
-      std::string optimized_model_path = GetOptimizedModelPath();
+  if (config_.use_optimized_model_) {
+    optimized_model_path_ = GetOptimizedModelPath();
+    std::string optimized_params =
+        optimized_model_path_ + "/" + "_optimized.pdiparams";
+    if (load_pir_model_) {
+      optimized_model_name_ = optimized_model_path_ + "/" + "_optimized.json";
+      if (FileExists(optimized_model_name_) && FileExists(optimized_params)) {
+        config_.SetModel(optimized_model_name_, optimized_params);
+      } else {
+        LOG(WARNING)
+            << "The optimized model is not found, fallback to original model. "
+               "EnableSaveOptimModel will be turned on and the optimized model "
+               "can be available next time.";
+        config_.EnableSaveOptimModel(true);
+        config_.UseOptimizedModel(false);
+      }
+    } else {
       std::string optimized_model =
-          optimized_model_path + "/" + "_optimized.pdmodel";
-      std::string optimized_params =
-          optimized_model_path + "/" + "_optimized.pdiparams";
+          optimized_model_path_ + "/" + "_optimized.pdmodel";
       if (FileExists(optimized_model) && FileExists(optimized_params)) {
         config_.SetModel(optimized_model, optimized_params);
-        LOG(INFO) << "Load Optimized model from " << optimized_model_path;
+        LOG(INFO) << "Load Optimized model from " << optimized_model_path_;
       } else {
         LOG(WARNING)
             << "The optimized model is not found, fallback to original model. "
@@ -1070,9 +1082,6 @@ bool AnalysisPredictor::PreparePirProgram() {
       platform::errors::Fatal("Here, pir_program must be a nullptr!"));
 
   pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
-
-  optimized_model_path_ = GetOptimizedModelPath();
-  optimized_model_name_ = optimized_model_path_ + "/" + "_optimized.json";
 
   if (FileExists(optimized_model_name_) && config_.use_optimized_model_) {
     pir::ReadModule(

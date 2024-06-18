@@ -568,7 +568,6 @@ class TestTensorAxis(unittest.TestCase):
                 )
                 config.enable_new_ir()
                 config.enable_new_executor()
-                config.enable_save_optim_model(True)
                 config.use_optimized_model(True)
             else:
                 config = paddle_infer.Config(
