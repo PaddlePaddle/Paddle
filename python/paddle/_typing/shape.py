@@ -33,7 +33,6 @@ _StaticShapeLike: TypeAlias = Union[
 
 ShapeLike: TypeAlias = Union[_DynamicShapeLike, _StaticShapeLike]
 
-
 # for size parameters, eg, kernel_size, stride ...
 Size1: TypeAlias = Union[int, Tuple[int], List[int]]
 Size2: TypeAlias = Union[int, Tuple[int, int], List[int]]
