@@ -18,9 +18,11 @@ import unittest
 from test_attribute_var_deprecated import UnittestBase
 
 import paddle
-from paddle.base.framework import Program, program_guard
 
 paddle.enable_static()
+
+from paddle.framework import in_pir_mode
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSqueeze2AxesTensor(UnittestBase):
@@ -28,10 +30,11 @@ class TestSqueeze2AxesTensor(UnittestBase):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, 'squeeze_tensor')
 
+    @test_with_pir_api
     def test_static(self):
-        main_prog = Program()
-        startup_prog = Program()
-        with program_guard(main_prog, startup_prog):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([2, 3, 4])
             x.stop_gradient = False
@@ -44,7 +47,8 @@ class TestSqueeze2AxesTensor(UnittestBase):
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
-            self.assertTrue("Var[" in str(main_prog))
+            if not in_pir_mode():
+                self.assertTrue("Var[" in str(main_prog))
 
             exe = paddle.static.Executor()
             exe.run(startup_prog)
@@ -64,10 +68,11 @@ class TestSqueeze2AxesTensorList(UnittestBase):
         self.shapes = [[2, 3, 4]]
         self.save_path = os.path.join(self.temp_dir.name, 'squeeze_tensor')
 
+    @test_with_pir_api
     def test_static(self):
-        main_prog = Program()
-        startup_prog = Program()
-        with program_guard(main_prog, startup_prog):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(4, 10)
             x = paddle.randn([2, 3, 4])
             x.stop_gradient = False
@@ -83,7 +88,8 @@ class TestSqueeze2AxesTensorList(UnittestBase):
 
             sgd = paddle.optimizer.SGD()
             sgd.minimize(paddle.mean(out))
-            self.assertTrue("Vars[" in str(main_prog))
+            if not in_pir_mode():
+                self.assertTrue("Vars[" in str(main_prog))
 
             exe = paddle.static.Executor()
             exe.run(startup_prog)
