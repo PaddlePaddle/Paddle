@@ -105,7 +105,7 @@ def gen_build_scripts(name, cuda_major_version, paddle_version):
             ),
         }
     elif platform.system() == 'Windows':
-        build_filename = "build.bat"
+        build_filename = "bld.bat"
         PADDLE_CUDA_INSTALL_REQUIREMENTS = {
             "cuda11.8": (
                 "nvidia-cuda-runtime-cu11==11.8.89 | "
