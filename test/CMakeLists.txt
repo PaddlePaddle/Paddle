@@ -160,6 +160,7 @@ if(WITH_TESTING)
     endif()
   endif()
 
+  add_subdirectory(_typing)
   add_subdirectory(book)
   # add_subdirectory(composite_ops)
   add_subdirectory(contrib)
