@@ -968,6 +968,7 @@ bool AnalysisPredictor::LoadPirParameters() {
       std::string data_name =
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
       idx2feeds_[feed_idx] = data_name;
+      feed_names_[data_name] = feed_idx;
       feed_idx++;
       pir_feeds_.emplace_back(op);
     }

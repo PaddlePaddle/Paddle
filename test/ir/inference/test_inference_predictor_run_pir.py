@@ -165,7 +165,7 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         output = self.get_inorder_output(predictor)
         self.pir_setup()
         pir_predictor = self.init_pir_predictor()
-        pir_output = self.get_inorder_output(pir_predictor)
+        pir_output = self.get_disorder_output(pir_predictor)
 
         np.testing.assert_allclose(
             output.numpy().flatten(), pir_output.numpy().flatten()
