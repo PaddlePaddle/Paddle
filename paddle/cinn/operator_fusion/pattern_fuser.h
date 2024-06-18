@@ -409,6 +409,8 @@ inline auto GetPaddingVector(const MaybeLoopFramework& first,
   std::function<void(int, int, int)> RecursivePadding =
       [&first, &second, &padding_f, &padding_s, &RecursivePadding](
           int pf, int ps, int padding_size) {
+        VLOG(4) << "Padding Process: " << pf << " " << ps << " "
+                << padding_size;
         if (pf == first.size() && ps == second.size()) {
           return;
         } else if (pf == first.size()) {
@@ -424,7 +426,7 @@ inline auto GetPaddingVector(const MaybeLoopFramework& first,
         } else if (second[ps] == 1) {
           padding_f.push_back(padding_size);
           RecursivePadding(pf, ps + 1, padding_size + 1);
-        } else if (first[ps] == 1) {
+        } else if (first[pf] == 1) {
           padding_s.push_back(padding_size);
           RecursivePadding(pf + 1, ps, padding_size + 1);
         } else {
