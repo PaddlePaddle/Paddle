@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Backport
+from .backport import EllipsisType as EllipsisType
+
 # Basic
 from .basic import (
     IntSequence as IntSequence,
@@ -19,6 +22,7 @@ from .basic import (
     NestedSequence as NestedSequence,
     Numberic as Numberic,
     NumbericSequence as NumbericSequence,
+    TensorIndex as TensorIndex,
     TensorLike as TensorLike,
     TensorOrTensors as TensorOrTensors,
 )
@@ -44,7 +48,6 @@ from .layout import (
 
 # Shape
 from .shape import (
-    DynamicShapeLike as DynamicShapeLike,
     ShapeLike as ShapeLike,
     Size1 as Size1,
     Size2 as Size2,
