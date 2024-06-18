@@ -1817,14 +1817,25 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : logsumexp_grad
-  forward : logsumexp(Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int64_t[] axis,  bool keepdim,  bool reduce_all)
+  forward : logsumexp(Tensor x, int[] axis={0},  bool keepdim=false,  bool reduce_all=false) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int[] axis,  bool keepdim,  bool reduce_all)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
   kernel :
     func : logsumexp_grad
+
+- backward_op : lp_pool2d_grad
+  forward : lp_pool2d(Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm, float norm_type)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [x]
+  kernel :
+    func : lp_pool2d_grad
+    param : [x, out, out_grad, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm, norm_type]
 
 - backward_op : lstm_grad
   forward: lstm (Tensor input, Tensor h0, Tensor c0, Tensor weight, Tensor bias, bool use_peepholes
@@ -2678,6 +2689,19 @@
     data_type: out_grad
   optional: padding_data
 
+- backward_op : sequence_pool_grad
+  forward: sequence_pool(Tensor x, bool is_test = false, str pooltype = "AVERAGE", float pad_value = 0.0) -> Tensor (out), Tensor (max_index)
+  args: (Tensor x, Tensor max_index, Tensor out_grad, bool is_test, str pooltype, float pad_value)
+  output: Tensor (x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: sequence_pool_grad
+    data_type: out_grad
+  optional: max_index
+  no_need_buffer: x
+
 - backward_op : set_value_with_tensor_grad
   forward: set_value_with_tensor (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes) -> Tensor(out)
   args : (Tensor values,Tensor out_grad, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
@@ -3210,8 +3234,8 @@
     func : tensor_unfold_grad
 
 - backward_op : thresholded_relu_grad
-  forward : thresholded_relu (Tensor x, float threshold) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, float threshold)
+  forward : thresholded_relu (Tensor x, float threshold, float value) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, float threshold, float value)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

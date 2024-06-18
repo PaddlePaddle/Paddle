@@ -196,7 +196,7 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
   std::stringstream ss;
   ss << this
      << std::chrono::high_resolution_clock::now().time_since_epoch().count();
-  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), execution_config_, value_exe_info_.get());
 }
 
 PirInterpreter::PirInterpreter(
@@ -285,7 +285,7 @@ PirInterpreter::PirInterpreter(
   std::stringstream ss;
   ss << this
      << std::chrono::high_resolution_clock::now().time_since_epoch().count();
-  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), execution_config_, value_exe_info_.get());
 }
 
 PirInterpreter::~PirInterpreter() {

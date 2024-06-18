@@ -22,6 +22,7 @@ from paddle.base.framework import (
     _get_paddle_place,
     core,
     dygraph_only,
+    in_pir_mode,
 )
 from paddle.base.layer_helper import LayerHelper
 from paddle.tensor import max, to_tensor
@@ -115,7 +116,6 @@ def sparse_coo_tensor(
 
     if in_dynamic_mode():
         place = _get_place(place)
-
         if not isinstance(indices, core.eager.Tensor):
             indices = to_tensor(
                 indices, dtype=None, place=place, stop_gradient=True
@@ -161,7 +161,10 @@ def sparse_coo_tensor(
                 )
 
         return _C_ops.sparse_sparse_coo_tensor(values, indices, shape)
-
+    elif in_pir_mode():
+        return _C_ops.sparse_sparse_coo_tensor(values, indices, shape)
+        if shape[0] is None:
+            shape[0] = -1
     else:
         op_type = 'sparse_sparse_coo_tensor'
         inputs = {'values': values, 'indices': indices}

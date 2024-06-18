@@ -103,7 +103,7 @@ pir::Operation* ProgramReader::ReadParameterOp(Json* op_json) {
   Json& opresult_json = op_json->at(OPRESULTS);
   std::vector<pir::Type> output_types;
 
-  int64_t value_id_ = opresult_json.at(ID).template get<int64_t>();
+  int64_t value_id_ = opresult_json.at(VALUE_ID).template get<int64_t>();
   output_types.push_back(ReadType(&(opresult_json.at(TYPE_TYPE))));
   VLOG(6) << "Finish Read value " << value_id_ << ".";
 
@@ -147,12 +147,13 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
   if (op_name == PARAMETEROP) {
     return ReadParameterOp(op_json);
   }
+  GetDecompressOpName(&op_name);
   VLOG(4) << "Read op_name = " << op_name << ".";
   // deserialize opoperands (find value)
   Json& operands_json = op_json->at(OPOPERANDS);
   std::vector<pir::Value> inputs;
   for (auto& operand_json : operands_json) {
-    int64_t id = operand_json.at(ID).template get<int64_t>();
+    int64_t id = operand_json.at(VALUE_ID).template get<int64_t>();
     inputs.push_back(id_value_map[id]);
   }
   VLOG(6) << "Finish Read OP's OpOperand.";
@@ -161,7 +162,7 @@ pir::Operation* ProgramReader::ReadOp(Json* op_json) {
   std::vector<pir::Type> output_types;
   std::vector<int64_t> output_ids;
   for (auto& opresult_json : opresults_json) {
-    int64_t value_id_ = opresult_json.at(ID).template get<int64_t>();
+    int64_t value_id_ = opresult_json.at(VALUE_ID).template get<int64_t>();
     output_ids.push_back(value_id_);
     output_types.push_back(ReadType(&(opresult_json.at(TYPE_TYPE))));
     VLOG(6) << "Finish Read value " << value_id_ << ".";

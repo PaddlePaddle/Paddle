@@ -18,8 +18,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/utils/string/string_helper.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 int CtrDymfAccessor::Initialize() {
   auto name = _config.embed_sgd_param().name();
@@ -447,5 +446,4 @@ void CtrDymfAccessor::UpdatePassId(float* value, uint16_t pass_id) {
 }
 #endif
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

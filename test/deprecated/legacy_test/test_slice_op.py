@@ -1011,15 +1011,6 @@ class TestImperativeVarBaseGetItem(unittest.TestCase):
 
 
 class TestInferShape(unittest.TestCase):
-    def test(self):
-        with paddle_static_guard():
-            x = paddle.ones(shape=[3, 4, 5])
-            x.desc.set_shape([3, -1, 5])
-            self.assertEqual(x.shape, (3, -1, 5))
-
-            out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
-            self.assertEqual(out0.shape, (3, -1, 5))
-
     def test_pir(self):
         with paddle.pir_utils.IrGuard():
             x = paddle.static.data('x', shape=[3, -1, 5])

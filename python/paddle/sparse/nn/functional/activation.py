@@ -14,8 +14,8 @@
 
 __all__ = []
 
-from paddle import _C_ops, in_dynamic_mode
-from paddle.base.framework import dygraph_only
+from paddle import _C_ops
+from paddle.base.framework import dygraph_only, in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
 
 
@@ -48,7 +48,7 @@ def relu(x, name=None):
                    indices=[[0, 2]],
                    values=[0., 1.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sparse_relu(x)
     else:
         op_type = 'sparse_relu'
@@ -130,7 +130,7 @@ def softmax(x, axis=-1, name=None):
                    values=[0.62680405, 0.37319589, 0.43255258, 0.29261294, 0.27483445,
                            0.45284092, 0.54715902])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sparse_softmax(x, axis)
     else:
         op_type = 'sparse_softmax'

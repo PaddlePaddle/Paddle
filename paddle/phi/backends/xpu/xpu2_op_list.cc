@@ -1009,6 +1009,10 @@ XPUOpMap& get_kl2_ops() {
       {"swish", XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"swish_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"swiglu",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
+      {"swiglu_grad",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"take_along_axis",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"tanh_grad",
@@ -1250,6 +1254,8 @@ XPUOpMap& get_kl2_ops() {
       {"sequence_unpad_xpu",
        XPUKernelSet({phi::DataType::FLOAT16, phi::DataType::FLOAT32})},
       {"block_multihead_attention_xpu", XPUKernelSet({phi::DataType::FLOAT16})},
+      {"blha_get_max_len",
+       XPUKernelSet({phi::DataType::INT32, phi::DataType::INT64})},
   };
 
   return s_xpu2_kernels;
