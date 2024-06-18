@@ -13,7 +13,22 @@
 // limitations under the License.
 
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/batch_fc_kernel_impl.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void BatchFCKernel(const Context &dev_ctx,
+                   const DenseTensor &input,
+                   const DenseTensor &w,
+                   const DenseTensor &bias,
+                   DenseTensor *out) {
+  PADDLE_ENFORCE_EQ(
+      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
+      true,
+      phi::errors::Unimplemented("BatchFC only supports GPU now."));
+}
+
+}  // namespace phi
 
 PD_REGISTER_KERNEL(
     batch_fc, CPU, ALL_LAYOUT, phi::BatchFCKernel, float, double) {}
