@@ -30,8 +30,8 @@ from ..framework import (
 )
 
 if TYPE_CHECKING:
+    import paddle
     from paddle import Tensor
-    from paddle.base.libpaddle import DataType
 
 __all__ = []
 
@@ -91,7 +91,7 @@ def generate_layer_fn(op_type: str):
     o_name = not_intermediate_outputs[0].name
     intermediate_output_names = [output.name for output in intermediate_outputs]
 
-    def infer_and_check_dtype(op_proto, *args, **kwargs) -> DataType:
+    def infer_and_check_dtype(op_proto, *args, **kwargs) -> paddle.dtype:
         """
         This function performs the sanity check for dtype and
         instance type.
