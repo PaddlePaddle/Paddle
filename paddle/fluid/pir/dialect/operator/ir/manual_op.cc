@@ -3355,6 +3355,56 @@ std::vector<pir::Type> ExpandOp::InferMeta(
         auto tmp = ParseValueShape(item, is_from_tensor);
         vec_shape.insert(vec_shape.end(), tmp.begin(), tmp.end());
       }
+    } else if (shape.isa<pir::OpResult>() &&
+               shape.defining_op()->isa<paddle::dialect::ShapeOp>() &&
+               shape.type().isa<paddle::dialect::DenseTensorType>()) {
+      VLOG(0) << "ParseValueShape in op ****************** 4 is_from_tensor "
+              << *is_from_tensor;
+
+      pir::Value inputs = shape.defining_op()->operand_source(0);
+      vec_shape = common::vectorize(
+          inputs.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+      *is_from_tensor = true;
+    } else if (shape.isa<pir::OpResult>() &&
+               shape.defining_op()->isa<paddle::dialect::ConcatOp>() &&
+               shape.type().isa<paddle::dialect::DenseTensorType>()) {
+      VLOG(0) << "ParseValueShape in op ****************** 4 is_from_tensor "
+              << *is_from_tensor;
+
+      std::vector<pir::Value> inputs = shape.defining_op()
+                                           ->operand_source(0)
+                                           .defining_op()
+                                           ->operands_source();
+      auto shape_dim =
+          shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      VLOG(0) << "inputs.size() ====== " << inputs.size()
+              << ". compare ==== " << shape_dim;
+
+      if (shape_dim.size() == 1 && shape_dim[0] == inputs.size()) {
+        for (auto item : inputs) {
+          if (item.defining_op()->isa<paddle::dialect::ShapeOp>()) {
+            pir::Value shape_input = item.defining_op()->operand_source(0);
+            vec_shape.push_back(
+                shape_input.type()
+                    .dyn_cast<paddle::dialect::DenseTensorType>()
+                    .dims()[0]);
+            // VLOG(0) << " *********** 0.
+            // "<<shape_input.type().dyn_cast<paddle::dialect::DenseTensorType>().dims()[0];
+          } else if (shape.defining_op()->isa<paddle::dialect::FullOp>()) {
+            auto shape_item = shape.defining_op()
+                                  ->dyn_cast<paddle::dialect::FullOp>()
+                                  .attribute("value")
+                                  .dyn_cast<pir::FloatAttribute>()
+                                  .data();
+            VLOG(0) << " *********** 1. " << static_cast<int64_t>(shape_item);
+            vec_shape.push_back(static_cast<int64_t>(shape_item));
+          } else {
+            VLOG(0) << " *********** 2. ";
+            vec_shape.push_back(-1);
+          }
+        }
+      }
+      *is_from_tensor = true;
     } else if (shape.type().isa<pir::VectorType>()) {
       size_t shape_size = shape.type().dyn_cast<pir::VectorType>().size();
       vec_shape = std::vector<int64_t>(shape_size, -2);
