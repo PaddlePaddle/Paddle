@@ -893,6 +893,9 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       }
     }
 
+    for (auto &pass : pass_pm.passes()) {
+      pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
+    }
     if (!config_.glog_info_disabled()) {
       pass_pm.EnablePrintStatistics();
     }

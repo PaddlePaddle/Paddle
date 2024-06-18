@@ -43,9 +43,16 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
   const auto input_values = op->operands_source();
   const auto input_size = input_values.size();
 
-  if (infer_context->GetShapeOrDataForValue(input_values[0])
-          .data()
-          .has_value()) {
+  const auto IsAllDataValue = [&]() -> bool {
+    for (const auto &value : input_values) {
+      if (!infer_context->GetShapeOrDataForValue(value).data().has_value()) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  if (IsAllDataValue()) {
     std::vector<symbol::DimExpr> out_data;
     for (const auto &value : input_values) {
       const auto &shape_or_data = infer_context->GetShapeOrDataForValue(value);
@@ -144,13 +151,6 @@ bool ReshapeOpInferSymbolicShape(
     return true;
   };
 
-  const auto &IsZero = [&](const symbol::DimExpr &dim_expr) {
-    if (dim_expr.isa<int64_t>()) {
-      return dim_expr.dyn_cast<int64_t>() == static_cast<int64_t>(0);
-    }
-    return false;
-  };
-
   const symbol::ShapeOrDataDimExprs &x_dim_expr =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
 
@@ -180,7 +180,6 @@ bool ReshapeOpInferSymbolicShape(
       auto out_dim_expr = IsNotMinusOne(target_shape[i])
                               ? target_shape[i]
                               : (numel / product_exclude_minus_one);
-      out_dim_expr = IsZero(target_shape[i]) ? original_shape[i] : out_dim_expr;
       out_dims.emplace_back(out_dim_expr);
     }
 
