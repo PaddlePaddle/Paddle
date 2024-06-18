@@ -95,17 +95,19 @@ TEST(ConfigSearcher, TestReducePipeline) {
   constexpr int reduce_right_bound = 32;
   constexpr bool is_spatial_dynamic = false;
   constexpr bool is_reduce_dynamic = true;
+  // now each has the same weight
+  constexpr double s_w = 0.05;
+  constexpr double r_w = 0.05;
+  constexpr double sampling_prob = 1.0;
+  constexpr int kMaxSamplingTimes = 65536;
+  constexpr int kRepeats = 80;
 
-  // Define the initial grid size for the spatial and reduction dimensions of
-  // the search space table.
-  int spatial_tile_config =
-      (is_spatial_dynamic ? get_tile_size_config(spatial_left_bound)
-                          : get_tile_size_config(spatial_left_bound) - 1);
-  int reduce_tile_config =
-      (is_reduce_dynamic ? get_tile_size_config(reduce_left_bound)
-                         : get_tile_size_config(reduce_left_bound) - 1);
-  int spatial_tile_width = (is_spatial_dynamic ? spatial_tile_config : 1);
-  int reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
+  // Define the initial grid size for the spatial and reduction dimensions
+  int spatial_tile_config = 0, reduce_tile_config = 0;
+  int spatial_tile_width = 0, reduce_tile_width = 0;
+  // Define weight for each dimension
+  double s_weight = (is_spatial_dynamic ? s_w : 1.0);
+  double r_weight = (is_reduce_dynamic ? r_w : 1.0);
 
   for (int s_dimension_lower = spatial_left_bound;
        s_dimension_lower <= spatial_right_bound;
@@ -119,6 +121,11 @@ TEST(ConfigSearcher, TestReducePipeline) {
       // adjust the tile size for the reduce dimension dymaically
       reduce_tile_config = get_tile_size_config(r_dimension_lower);
       reduce_tile_width = (is_reduce_dynamic ? reduce_tile_config : 1);
+
+      std::vector<double> s_weights =
+          std::vector<double>(spatial_tile_width, s_weight);
+      std::vector<double> r_weights =
+          std::vector<double>(reduce_tile_width, r_weight);
 
       // Step 1: Construct pir::Program.
       ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -153,7 +160,12 @@ TEST(ConfigSearcher, TestReducePipeline) {
       std::unique_ptr<cinn::ir::search::BaseObjectiveFunc> obj_func =
           std::make_unique<
               cinn::ir::search::WeightedSamplingTrailObjectiveFunc>(
-              program.get(), bucket_info);
+              program.get(),
+              bucket_info,
+              sampling_prob,
+              kMaxSamplingTimes,
+              kRepeats,
+              std::vector<std::vector<double>>{s_weights, r_weights});
 
       // Step 4: Construct config candidate range and constraints.
       std::vector<std::pair<int, int>> candidate_range{
