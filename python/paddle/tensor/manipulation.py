@@ -14,6 +14,8 @@
 
 # TODO: define functions to manipulate a tensor
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 import paddle
@@ -38,6 +40,9 @@ from ..framework import (
     in_pir_mode,
 )
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 
@@ -3361,7 +3366,11 @@ def unique(
         return tuple(outs)
 
 
-def unsqueeze(x, axis, name=None) -> paddle.Tensor:
+def unsqueeze(
+    x: Tensor,
+    axis: int | list[Tensor] | tuple[Tensor] | Tensor,
+    name: str | None = None,
+) -> Tensor:
     """
     Insert single-dimensional entries to the shape of input Tensor ``x``. Takes one
     required argument axis, a dimension or list of dimensions that will be inserted.

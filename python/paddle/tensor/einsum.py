@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import collections
 import itertools
@@ -322,7 +323,7 @@ def diagonalize(labels: str, operand: Tensor) -> tuple[str, Tensor]:
 
 
 def plan_reduce(
-    plan: "Plan", op: int, reduce_dims: list[int], keepdim: bool
+    plan: Plan, op: int, reduce_dims: list[int], keepdim: bool
 ) -> None:
     '''
     Add reduce to the plan
@@ -334,7 +335,7 @@ def plan_reduce(
     plan.add_step(step)
 
 
-def plan_scalar_prod(plan: "Plan", op1: int, op2: int) -> None:
+def plan_scalar_prod(plan: Plan, op1: int, op2: int) -> None:
     varnames = [f'op{op1}', f'op{op2}']
     f = lambda var1, var2: paddle_sum(var1) * var2
     # f = lambda var1, var2: var1 * var2
@@ -343,7 +344,7 @@ def plan_scalar_prod(plan: "Plan", op1: int, op2: int) -> None:
 
 
 def plan_matmul(
-    plan: "Plan",
+    plan: Plan,
     g_view: list[list[int]],
     op1: int,
     op2: int,
@@ -497,7 +498,7 @@ def plan_matmul(
 
 
 def plan_summation(
-    plan: "Plan",
+    plan: Plan,
     g_view: list[list[int]],
     op1: int,
     op2: int,
@@ -560,7 +561,7 @@ def rearrange(axes: list[int]) -> tuple[list[int], list[int]]:
 
 
 def plan_broadcast(
-    plan: "Plan", operands: Sequence[Tensor], nop_axes: list[list[int]]
+    plan: Plan, operands: Sequence[Tensor], nop_axes: list[list[int]]
 ) -> None:
     '''
     Plan broadcast across
