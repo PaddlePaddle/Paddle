@@ -237,25 +237,25 @@ class TestBitwiseLeftShiftAPI_INT64_broadcast2(TestBitwiseLeftShiftAPI):
 
 class TestBitwiseLeftShiftAPI_special_case1(TestBitwiseLeftShiftAPI):
     def init_input(self):
-        self.x = np.array([0b11111111], dtype='int8')
+        self.x = np.array([-1], dtype='int8')
         self.y = np.array([1], dtype='int8')
 
 
 class TestBitwiseLeftShiftAPI_special_case2(TestBitwiseLeftShiftAPI):
     def init_input(self):
-        self.x = np.array([0b11111111], dtype='int8')
+        self.x = np.array([-1], dtype='int8')
         self.y = np.array([10], dtype='int8')
 
 
 class TestBitwiseLeftShiftAPI_special_case3(TestBitwiseLeftShiftAPI):
     def init_input(self):
-        self.x = np.array([0b11111111], dtype='uint8')
+        self.x = np.array([-1], dtype='uint8')
         self.y = np.array([1], dtype='uint8')
 
 
 class TestBitwiseLeftShiftAPI_special_case4(TestBitwiseLeftShiftAPI):
     def init_input(self):
-        self.x = np.array([0b11111111], dtype='uint8')
+        self.x = np.array([-1], dtype='uint8')
         self.y = np.array([10], dtype='uint8')
 
 
@@ -435,25 +435,25 @@ class TestBitwiseRightShiftAPI_INT64_broadcast2(TestBitwiseRightShiftAPI):
 
 class TestBitwiseRightShiftAPI_special_case1(TestBitwiseRightShiftAPI):
     def init_input(self):
-        self.x = np.array([0b11111111]).astype('int8')
+        self.x = np.array([-1]).astype('int8')
         self.y = np.array([1]).astype('int8')
 
 
 class TestBitwiseRightShiftAPI_special_case2(TestBitwiseRightShiftAPI):
     def init_input(self):
-        self.x = np.array([0b11111111]).astype('int8')
+        self.x = np.array([-1]).astype('int8')
         self.y = np.array([10]).astype('int8')
 
 
 class TestBitwiseRightShiftAPI_special_case3(TestBitwiseRightShiftAPI):
     def init_input(self):
-        self.x = np.array([0b11111111], dtype='uint8')
+        self.x = np.array([-1], dtype='uint8')
         self.y = np.array([1], dtype='uint8')
 
 
 class TestBitwiseRightShiftAPI_special_case4(TestBitwiseRightShiftAPI):
     def init_input(self):
-        self.x = np.array([0b11111111], dtype='uint8')
+        self.x = np.array([-1], dtype='uint8')
         self.y = np.array([10], dtype='uint8')
 
 
