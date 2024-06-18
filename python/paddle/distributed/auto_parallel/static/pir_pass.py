@@ -400,3 +400,40 @@ def split_program_pass(main_program, last_fwd_op, last_bwd_op):
             bwd_ops[i].erase()
 
     return fwd_program, bwd_program, opt_program
+
+
+def pipeline_pass(
+    fwd_program, bwd_program, opt_program, pass_name, pass_attr={}
+):
+    """
+    Pipeline schedule pass for auto parallel. Enables the pipeline parallel scheduling
+    strategies like FThenB, 1F1B, etc.
+    TODO (zhangyichen): Now splitting program is performed on the original dist program.
+    We should move the splitting program process to this pipeline pass and perform the
+    splitting program pass on dense program instead.
+    """
+    import os
+    import sys
+
+    sys.path.append("../..")
+    from pass_base import PassContext, new_pass
+
+    assert pass_name in [
+        "FThenB",
+    ], f"pipeline scheduler only support FThenB now, but receive {pass_name}"
+
+    if pass_name == "1F1B":
+        # TODO(Ruibiao): Move FLAGS_1f1b_backward_forward_overlap and
+        # FLAGS_mp_async_allreduce_in_backward to auto parallel Strategy
+        # after these two optimizations are available.
+        pass_attr["enable_backward_forward_overlap"] = int(
+            os.environ.get("FLAGS_1f1b_backward_forward_overlap", 0)
+        )
+
+    pipeline_pass = new_pass("pipeline_scheduler_" + pass_name, pass_attr)
+    pass_context = PassContext()
+    pipeline_pass.apply(
+        [fwd_program, bwd_program, opt_program], [], pass_context
+    )
+    plan = pass_context.get_attr("plan")
+    return plan

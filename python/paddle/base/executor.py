@@ -873,6 +873,7 @@ class _ExecutorCache:
             self.fetch_var_name = fetch_var_name
             self.place = place
             self.scope = scope
+            self.plan = None
 
             # NOTE(Ruibiao): Not all changeable item is considered for key at present,
             # ONLY: program, feed, and fetch_list
@@ -1148,9 +1149,12 @@ class _ExecutorCache:
         place = cached_data.place
         scope = cached_data.scope
 
-        default_job = core.Job("default")
-        type_to_program = {"default": program}
-        plan = core.Plan([default_job], type_to_program)
+        if cached_data.plan is None:
+            default_job = core.Job("default")
+            type_to_program = {"default": program}
+            plan = core.Plan([default_job], type_to_program)
+        else:
+            plan = cached_data.plan
 
         new_exe = _StandaloneExecutor(place, plan, scope)
 
@@ -1337,6 +1341,8 @@ class Executor:
     def _feed_data(self, program, feed, feed_var_name, scope):
         # feed var to framework
         global_block = program.global_block()
+        print("==== program in feed_data ====")
+        print(program)
         for op in global_block.ops:
             if op.desc.type() == 'feed':
                 feed_target_name = op.desc.output('Out')[0]

@@ -58,6 +58,7 @@ from .parallelizer_v2 import Parallelizer
 from .pir_pass import (
     apply_partition_pass,
     apply_reshard_pass,
+    pipeline_pass,
     remove_other_rank_op_pass,
     remove_unuseful_comm_op_pass,
     split_program_pass,
@@ -762,6 +763,15 @@ class Engine:
             self._pir_dense_fwd_progs[mode] = dense_fwd_program
             self._pir_dense_bwd_progs[mode] = dense_bwd_program
             self._pir_dense_opt_progs[mode] = dense_opt_program
+
+            if self._strategy.pipeline.schedule_mode is not None:
+                plan = pipeline_pass(
+                    dense_fwd_program,
+                    dense_bwd_program,
+                    dense_opt_program,
+                    self._strategy.pipeline.schedule_mode,
+                )
+                self._executor = self._create_executor(self.place, plan)
 
         self._pir_dense_main_progs[mode] = dense_program
         self._pir_dist_main_progs[mode] = dist_program

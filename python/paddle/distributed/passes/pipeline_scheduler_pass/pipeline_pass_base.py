@@ -85,3 +85,27 @@ class PipelinePassBase(PassBase):
 
         plan = core.Plan(jobs, type_to_program)
         context.set_attr("plan", plan)
+
+    def _apply_impl(self, main_programs, startup_programs, context):
+        self._apply_pir_impl(*main_programs, context)
+
+    def _apply_pir_impl(self, fwd_prog, bwd_prog, opt_prog, context):
+        job_types, sub_programs = self._partial_pir_programs(
+            fwd_prog, bwd_prog, opt_prog
+        )
+
+        for i in range(len(job_types)):
+            logger.debug(
+                f"sub_program type: {job_types[i]}, sum_program:\n{sub_programs[i]}"
+            )
+
+        jobs = self._create_job_list()
+        type_to_program = set_skip_gc_vars(
+            self.get_attr("num_micro_batches"), job_types, sub_programs, jobs
+        )
+
+        # for type in type_to_program.keys():
+        #     type_to_program[type] = type_to_program[type].desc
+
+        plan = core.Plan(jobs, type_to_program)
+        context.set_attr("plan", plan)

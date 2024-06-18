@@ -61,3 +61,10 @@ class PipelineFThenBPass(PipelinePassBase):
             program, enable_send_recv_overlap
         )
         return types, sub_program_list
+
+    def _partial_pir_programs(self, fwd_prog, bwd_prog, opt_prog):
+        # NOTE: The flag "enable_send_recv_overlap" may increase the reserved memory of GPUs.
+        enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
+        types = [FORWARD, BACKWARD, OPT]
+        sub_program_list = [fwd_prog, bwd_prog, opt_prog]
+        return types, sub_program_list
