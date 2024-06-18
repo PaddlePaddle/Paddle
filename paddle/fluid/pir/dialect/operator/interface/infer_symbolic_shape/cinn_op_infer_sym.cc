@@ -43,9 +43,16 @@ bool ConcatOpInferSymbolicShape(pir::Operation *op,
   const auto input_values = op->operands_source();
   const auto input_size = input_values.size();
 
-  if (infer_context->GetShapeOrDataForValue(input_values[0])
-          .data()
-          .has_value()) {
+  const auto IsAllDataValue = [&]() -> bool {
+    for (const auto &value : input_values) {
+      if (!infer_context->GetShapeOrDataForValue(value).data().has_value()) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  if (IsAllDataValue()) {
     std::vector<symbol::DimExpr> out_data;
     for (const auto &value : input_values) {
       const auto &shape_or_data = infer_context->GetShapeOrDataForValue(value);

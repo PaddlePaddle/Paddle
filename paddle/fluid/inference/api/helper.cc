@@ -421,9 +421,9 @@ void RegisterAllCustomOperator(bool use_pir) {
     if (all_op_kernels.find(pair.first) == all_op_kernels.end()) {
       framework::RegisterOperatorWithMetaInfo(pair.second);
     } else {
-      LOG(INFO) << "The operator `" << pair.first
-                << "` has been registered. "
-                   "Therefore, we will not repeat the registration here.";
+      VLOG(3) << "The operator `" << pair.first
+              << "` has been registered. Therefore, we will not repeat the "
+                 "registration here.";
     }
   }
 }
