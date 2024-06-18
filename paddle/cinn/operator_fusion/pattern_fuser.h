@@ -166,10 +166,12 @@ struct LoopValueDimsVisitor {
       // we add reduce loop to the end;
       int reduce_axes_len =
           GetReduceAxisIdx(pattern.tree.GetRootPattern().GetReduceOp()).size();
-      const auto& reduce_loop = GetLoopValueDims(StmtPattern<T>(pattern.tree.GetRootPattern()));
+      const auto& reduce_loop =
+          GetLoopValueDims(StmtPattern<T>(pattern.tree.GetRootPattern()));
       res.emplace_back(ConcatVector(
           trivial_loop[0],
-          SliceVector(reduce_loop[0], -reduce_axes_len, reduce_loop[0].size())));
+          SliceVector(
+              reduce_loop[0], -reduce_axes_len, reduce_loop[0].size())));
     } else {
       // we always put fake into the end to make the loop framework consistent.
       const auto& non_fake = GatherVector(

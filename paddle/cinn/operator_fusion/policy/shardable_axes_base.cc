@@ -281,8 +281,10 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
         ::common::errors::PreconditionNotMet(
             "Required root and non_root shall have same size of axis_names."));
     for (int i = 0; i < non_root.axis_names.size(); i++) {
-      VLOG(4) << "Link " << non_root.axis_names[i] << " -> " << FindRoot(root.axis_names[i]);
-      name_union_[FindRoot(non_root.axis_names[i])] = FindRoot(root.axis_names[i]);
+      VLOG(4) << "Link " << non_root.axis_names[i] << " -> "
+              << FindRoot(root.axis_names[i]);
+      name_union_[FindRoot(non_root.axis_names[i])] =
+          FindRoot(root.axis_names[i]);
     }
   };
 
