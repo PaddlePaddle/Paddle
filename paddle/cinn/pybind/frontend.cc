@@ -20,7 +20,6 @@
 #include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/frontend/computation.h"
-#include "paddle/cinn/frontend/decomposer/use_decomposer.h"
 #include "paddle/cinn/frontend/decomposer_registry.h"
 #include "paddle/cinn/frontend/interpreter.h"
 #include "paddle/cinn/frontend/net_builder.h"
