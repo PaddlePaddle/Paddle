@@ -107,7 +107,6 @@ using DimUsageRelation =
 
 DimUsageRelation AnalysisIndexExprRelation(
     const std::vector<pir::Operation*>& ops);
-const size_t GetUsageIdx(const pir::Value& v, pir::Operation* op);
 ValueUsage GetValueUsage(const pir::Value& v, const size_t usage_idx);
 std::string RelationDebugStr(const DimUsageRelation& relation);
 

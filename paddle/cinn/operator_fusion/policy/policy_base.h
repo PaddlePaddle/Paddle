@@ -13,17 +13,23 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/operator_fusion/pattern_node.h"
-#include "paddle/cinn/operator_fusion/policy/policy_base.h"
+#include <memory>
+#include <unordered_map>
 
 namespace cinn::fusion {
 
-class GeneralTopoPolicy final : public PolicyBase {
- public:
-  static constexpr PolicyKind Kind = PolicyKind::GeneralTopo;
-  bool CanFuse(const PatternNodePtr& upstream,
-               const PatternNodePtr& downstream);
-  std::string Name() { return "GeneralTopoPolicy"; }
+enum PolicyKind { GeneralTopo = 1, RelativeJudge = 2, AnchorSearch = 3 };
+
+struct PolicyKindHash {
+  std::size_t operator()(const PolicyKind& t) const {
+    return static_cast<std::size_t>(t);
+  }
 };
+
+class PolicyBase {};
+
+using PolicyPtr = std::shared_ptr<PolicyBase>;
+
+using PolicyMap = std::unordered_map<PolicyKind, PolicyPtr, PolicyKindHash>;
 
 }  // namespace cinn::fusion

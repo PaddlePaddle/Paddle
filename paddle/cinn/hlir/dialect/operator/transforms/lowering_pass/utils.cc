@@ -110,6 +110,7 @@ OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
                           : group_op_kind;
     }
   }
+
   PADDLE_ENFORCE_GT(fusion_op.attributes().count("group_info"),
                     0UL,
                     phi::errors::InvalidArgument(
@@ -120,7 +121,8 @@ OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
                         .data();
 
   const auto& fn_name = attr.fn_name;
-  auto group = std::make_shared<OpLoweringGroup>(ops, fn_name);
+  auto group = std::make_shared<OpLoweringGroup>(
+      ops, fn_name, fusion_op_ptr->attribute("fusion_tracker"));
 
   group_op_kind =
       static_cast<int>(attr.op_pattern_kind) > static_cast<int>(group_op_kind)

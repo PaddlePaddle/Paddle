@@ -212,7 +212,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   // =========== OpFusion ============
 
   // VLOG(4) << "Bucket Lower output values is : " << group->output_values();
-  func_bodies = OperationFusion(ops, func_bodies, group->output_values());
+  func_bodies = OperationFusion(ops, func_bodies, group->fusion_tracker_ptr);
   const auto& fusion_group_info = GetFusionGroupInfo(func_bodies);
 
   // =========== CodeGen And Optimizer ================

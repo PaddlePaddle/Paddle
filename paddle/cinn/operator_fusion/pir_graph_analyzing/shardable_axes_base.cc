@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/operator_fusion/policy/shardable_axes_base.h"
-
+#include "paddle/cinn/operator_fusion/pir_graph_analyzing/shardable_axes_base.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn::fusion {
@@ -89,9 +89,6 @@ std::optional<ShardableAxesSignature> CreateSignatureForSpecialOps(
   if (op->name() == "cinn_op.generate_shape") {
     return CreateDefaultSignature(op);
   }
-  if (op->name() == "cinn_op.yield_store") {
-    return CreateDefaultSignature(op);
-  }
   if (op->name() == "cinn_op.reshape") {
     return CreateDefaultSignature(op);
   }
@@ -116,8 +113,8 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
   auto input_axes = CreateNewNamesWithRank(input_rank);
 
   const auto reduce_axis_idx = [&]() -> decltype(auto) {
-    const std::vector<int64_t> axis_idx = GetReduceAxisIdx(reduce_op);
-    return std::unordered_set<int64_t>(axis_idx.begin(), axis_idx.end());
+    const std::vector<size_t> axis_idx = GetReduceAxisIdx(reduce_op);
+    return std::unordered_set<size_t>(axis_idx.begin(), axis_idx.end());
   }();
   PADDLE_ENFORCE_NE(
       reduce_axis_idx.size(),
@@ -268,7 +265,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
 
   const auto CombineAxes = [&](const ShardableAxes& root,
                                const ShardableAxes& non_root) {
-    VLOG(4) << "start CombineAxes: " << root.DebugStr() << " with "
+    VLOG(5) << "start CombineAxes: " << root.DebugStr() << " with "
             << non_root.DebugStr();
     PADDLE_ENFORCE_EQ(
         root.axis_names.size(),
@@ -284,7 +281,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     for (int i = 0; i < op->num_operands(); ++i) {
       auto value = op->operand_source(i);
       auto axes = axes_signature.inputs[i];
-      VLOG(4) << op->name() << " " << i << "-th input " << value.impl()
+      VLOG(5) << op->name() << " " << i << "-th input " << value.impl()
               << " axes: " << axes.DebugStr();
       if (value_axes_map_.find(value) == value_axes_map_.end()) {
         value_axes_map_[value] = axes;
@@ -298,7 +295,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     for (int i = 0; i < op->num_results(); ++i) {
       auto value = op->result(i);
       auto axes = axes_signature.outputs[i];
-      VLOG(4) << op->name() << " " << i << "-th output " << value.impl()
+      VLOG(5) << op->name() << " " << i << "-th output " << value.impl()
               << " axes: " << axes.DebugStr();
       if (value_axes_map_.find(value) == value_axes_map_.end()) {
         value_axes_map_[value] = axes;
@@ -311,7 +308,7 @@ ShardableAxesInfoManager::ShardableAxesInfoManager(
     }
   }
 
-  VLOG(4) << NameUnionDebugStr();
+  VLOG(5) << NameUnionDebugStr();
 }
 
 std::string ShardableAxes::DebugStr() const {
