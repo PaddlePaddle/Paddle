@@ -308,7 +308,7 @@ PD_REGISTER_KERNEL(log1p,
                    phi::dtype::complex<double>) {}
 
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(hardswish, HardSwishKernel)
-PD_REGISTER_KERNEL(round, CPU, ALL_LAYOUT, phi::RoundKernel, float, double) {}
+PD_REGISTER_ACTIVATION_KERNEL(round, RoundKernel)
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
 PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)
 PD_REGISTER_KERNEL(negative,

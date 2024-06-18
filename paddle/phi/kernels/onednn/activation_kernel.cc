@@ -148,7 +148,6 @@ DEFINE_ONEDNN_ACTIVATION_KERNEL(Sqrt, SqrtOneDNNFunctor)
 DEFINE_ONEDNN_ACTIVATION_KERNEL(Tanh, TanhOneDNNFunctor)
 
 // round eltwise primitive doesn't support BF16, nor does it support grad
-// DEFINE_ONEDNN_ACTIVATION_KERNEL(Round, RoundOneDNNFunctor)
 template <typename T, typename Context>
 void RoundKernel(const Context& dev_ctx,
                  const DenseTensor& x,
