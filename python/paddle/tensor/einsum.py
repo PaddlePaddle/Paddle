@@ -16,7 +16,7 @@ import collections
 import itertools
 import re
 import string
-from typing import Sequence
+from typing import NamedTuple, Sequence
 
 import numpy as np
 import opt_einsum
@@ -809,12 +809,13 @@ def preprocess(
     return lhs, rhs, labels, new_operands
 
 
-shaped = collections.namedtuple('shaped', ['shape'])
+class Shaped(NamedTuple):
+    shape: list[int]
 
 
 def parse_fake_shape(
     equation: str, operands: Sequence[Tensor], labels: Sequence[str]
-) -> list[shaped]:
+) -> list[Shaped]:
     """
 
     this shape is just used for operands planning. may differ with the original shape.
@@ -828,7 +829,7 @@ def parse_fake_shape(
     """
     origin_labels = (x.strip() for x in equation.split(','))
 
-    def fake_shape(ori_label: str, label: str, op: Tensor) -> shaped:
+    def fake_shape(ori_label: str, label: str, op: Tensor) -> Shaped:
         """
         1. ori_label is the original labels, not aligned by '....'
         2. if the '...' is evaluated to empty list, there is no '.' in label
@@ -841,7 +842,7 @@ def parse_fake_shape(
         fakes = list(map(abs, fakes))  # make -1 -> 1
         if '.' in ori_label:
             fakes.insert(ori_label.index('.'), 1)
-        return shaped(fakes)
+        return Shaped(fakes)
 
     out = list(map(fake_shape, origin_labels, labels, operands))
     return out
