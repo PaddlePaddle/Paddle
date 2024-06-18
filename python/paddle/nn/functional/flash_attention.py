@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import paddle
 import paddle.nn.functional as F
 from paddle import _C_ops, in_dynamic_mode
@@ -984,7 +986,9 @@ def flash_attention_with_sparse_mask(
         return outputs
 
 
-def calc_reduced_attention_scores(query, key, softmax_lse):
+def calc_reduced_attention_scores(
+    query: paddle.Tensor, key: paddle.Tensor, softmax_lse: paddle.Tensor
+) -> paddle.Tensor:
     r"""
     Warning:
         This API only supports inputs with dtype float16 and bfloat16.
