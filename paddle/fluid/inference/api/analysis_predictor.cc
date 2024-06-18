@@ -443,35 +443,26 @@ bool AnalysisPredictor::Init(
       model_path.substr(model_path.find_last_of(".") + 1) == "json";
   // Use Optimized model to inference
   if (config_.use_optimized_model_) {
-    optimized_model_path_ = GetOptimizedModelPath();
-    std::string optimized_params =
-        optimized_model_path_ + "/" + "_optimized.pdiparams";
+    std::string optimized_model_path = GetOptimizedModelPath();
+    std::string optimized_model;
     if (load_pir_model_) {
-      optimized_model_name_ = optimized_model_path_ + "/" + "_optimized.json";
-      if (FileExists(optimized_model_name_) && FileExists(optimized_params)) {
-        config_.SetModel(optimized_model_name_, optimized_params);
-      } else {
-        LOG(WARNING)
-            << "The optimized model is not found, fallback to original model. "
-               "EnableSaveOptimModel will be turned on and the optimized model "
-               "can be available next time.";
-        config_.EnableSaveOptimModel(true);
-        config_.UseOptimizedModel(false);
-      }
+      optimized_model = optimized_model_path + "/" + "_optimized.json";
     } else {
-      std::string optimized_model =
-          optimized_model_path_ + "/" + "_optimized.pdmodel";
-      if (FileExists(optimized_model) && FileExists(optimized_params)) {
-        config_.SetModel(optimized_model, optimized_params);
-        LOG(INFO) << "Load Optimized model from " << optimized_model_path_;
-      } else {
-        LOG(WARNING)
-            << "The optimized model is not found, fallback to original model. "
-               "EnableSaveOptimModel will be turned on and the optimized model "
-               "can be available next time.";
-        config_.EnableSaveOptimModel(true);
-        config_.UseOptimizedModel(false);
-      }
+      optimized_model = optimized_model_path + "/" + "_optimized.pdmodel";
+    }
+    std::string optimized_params =
+        optimized_model_path + "/" + "_optimized.pdiparams";
+    if (FileExists(optimized_model) && FileExists(optimized_params)) {
+      LOG(INFO) << "Load Optimized model from " << optimized_model;
+      LOG(INFO) << "Load Optimized pdiparams from " << optimized_params;
+      config_.SetModel(optimized_model, optimized_params);
+    } else {
+      LOG(WARNING)
+          << "The optimized model is not found, fallback to original model. "
+             "EnableSaveOptimModel will be turned on and the optimized model "
+             "can be available next time.";
+      config_.EnableSaveOptimModel(true);
+      config_.UseOptimizedModel(false);
     }
   }
 
@@ -811,10 +802,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
                      pass->name()) != this->config_.ir_debug_passes_.end();
   };
 
-  if (FileExists(optimized_model_name_) && FileExists(optimized_params_)) {
-    LOG(INFO) << "Optimized model and parameters found. Skipping optimization "
-                 "passes.";
-  } else {
+  if (!config_.use_optimized_model_) {
 #ifdef PADDLE_WITH_CINN
     auto CreatePassMgr = [&] {
       pir::IrContext *ctx = pir::IrContext::Instance();
@@ -893,9 +881,16 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       }
     }
 
-    for (auto &pass : pass_pm.passes()) {
+    // set attr
+    for (const auto &pass : pass_pm.passes()) {
       pass->SetNotOwned(pir::Pass::kParamScopeAttr, sub_scope_);
+      if (pass->name() == "matmul_add_act_fuse_pass" ||
+          pass->name() == "conv2d_add_act_fuse_pass" ||
+          pass->name() == "conv2d_add_fuse_pass") {
+        pass->Set("use_cutlass", new bool(config_.use_cutlass_));
+      }
     }
+
     if (!config_.glog_info_disabled()) {
       pass_pm.EnablePrintStatistics();
     }
@@ -904,24 +899,15 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
           std::make_unique<pir::PassManager::IRPrinterOption>(
               ir_printing_conditions, ir_printing_conditions));
     }
-    // set attr
-    for (const auto &pass : pass_pm.passes()) {
-      if (pass->name() == "matmul_add_act_fuse_pass" ||
-          pass->name() == "conv2d_add_act_fuse_pass" ||
-          pass->name() == "conv2d_add_fuse_pass") {
-        pass->Set("use_cutlass", new bool(config_.use_cutlass_));
-      }
-    }
+
     pass_pm.Run(pir_program_.get());
-  }
-  if (load_pir_model_ && config_.save_optimized_model_ &&
-      !FileExists(optimized_model_name_)) {
-    pir::WriteModule(
-        *pir_program_, optimized_model_name_, 1, true, false, true);
-  }
-  if (load_pir_model_ && config_.save_optimized_model_ &&
-      !FileExists(optimized_params_)) {
-    LoadPirParameters(true);
+
+    if (config_.save_optimized_model_) {
+      std::string optimized_model =
+          GetOptimizedModelPath() + "/" + "_optimized.json";
+      pir::WriteModule(*pir_program_, optimized_model, 1, true, false, true);
+      SaveOrLoadPirParameters(true);
+    }
   }
 
   // Apply some basic passes required by the framework
@@ -977,7 +963,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
   LOG(INFO) << "======= pir optimization completed =======";
 }
 
-bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
+bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
   std::vector<std::pair<std::string, pir::Value>> param_name_var_pairs;
   int feed_idx = 0;
   for (auto op : pir_program_->block()->ops()) {
@@ -1035,7 +1021,7 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
     auto *var = sub_scope_->FindVar(param_names[i]);
     pir::Value value = vars[i];
     if (var == nullptr) {
-      if (value.type().isa<pir::DenseTensorType>()) {
+      if (value && value.type().isa<pir::DenseTensorType>()) {
         var = sub_scope_->Var(param_names[i]);
         auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
         tensor_temp->Resize(common::make_ddim(pir::GetShapeFromValue(value)));
@@ -1046,32 +1032,25 @@ bool AnalysisPredictor::LoadPirParameters(bool save_optimized) {
         phi::DataType type_data = paddle::dialect::TransToPhiDataType(type_);
         dev_ctx->Alloc(tensor_temp, type_data);
       } else {
-        PADDLE_THROW(platform::errors::Unavailable("Only support DenseTensor"));
+        PADDLE_THROW(platform::errors::Unavailable(
+            "Only support parameter data of type DenseTensor."));
       }
     }
     auto *tensor_temp = var->GetMutable<phi::DenseTensor>();
     tensor_out.push_back(tensor_temp);
   }
 
-  CreateFeedFetchVar(sub_scope_);
-
-  optimized_params_ = optimized_model_path_ + "/" + "_optimized.pdiparams";
-  if (save_optimized && config_.save_optimized_model_ &&
-      !FileExists(optimized_params_)) {
+  if (for_save) {
+    std::string optimized_params =
+        GetOptimizedModelPath() + "/" + "_optimized.pdiparams";
     std::vector<const phi::DenseTensor *> const_tensor_out(tensor_out.begin(),
                                                            tensor_out.end());
     pir::SaveCombineFunction(
-        const_tensor_out, param_names, optimized_params_, true, false, true);
-  }
-
-  if (config_.use_optimized_model_ && FileExists(optimized_params_)) {
-    pir::LoadCombineFunction(
-        optimized_params_, param_names, &tensor_out, false, place_);
+        const_tensor_out, param_names, optimized_params, true, false, true);
   } else {
     pir::LoadCombineFunction(
         config_.params_file(), param_names, &tensor_out, false, place_);
   }
-
   return true;
 }
 
@@ -1086,13 +1065,8 @@ bool AnalysisPredictor::PreparePirProgram() {
 
   pir_program_ = std::make_shared<pir::Program>(pir::IrContext::Instance());
 
-  if (FileExists(optimized_model_name_) && config_.use_optimized_model_) {
-    pir::ReadModule(
-        optimized_model_name_, pir_program_.get(), 1 /*pir_version*/);
-  } else {
-    pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
-  }
-  if (!LoadPirParameters()) {
+  pir::ReadModule(config_.prog_file(), pir_program_.get(), 1 /*pir_version*/);
+  if (!SaveOrLoadPirParameters(false)) {
     return false;
   }
   OptimizeInferencePirProgram();

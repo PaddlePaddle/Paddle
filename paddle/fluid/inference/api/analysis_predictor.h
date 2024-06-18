@@ -393,11 +393,11 @@ class AnalysisPredictor : public PaddlePredictor {
   bool LoadParameters();
 
   ///
-  /// \brief Load model parameters.
+  /// \brief Save or Load pir model parameters.
   ///
   /// \return Whether the function executed successfully
   ///
-  bool LoadPirParameters(bool save_optimized = false);
+  bool SaveOrLoadPirParameters(bool for_save);
 
   ///
   /// \brief Prepare input data, only used in Run()
