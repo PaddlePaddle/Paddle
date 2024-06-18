@@ -17,9 +17,10 @@
 import argparse
 import os
 import platform
+import string
+import yaml
 
 package_path = os.getenv('PACKAGEPATH', default='/package')
-
 
 def parse_args():
     parser = argparse.ArgumentParser("conda build for paddlepaddle version")
@@ -36,351 +37,168 @@ def parse_args():
 
 class ConstantVar:
     def __init__(self):
-        self.build = r"""
-build:
-  number: '0'
-  string: """
-
-        self.requirement_build = r"""
-requirements:
-  build:
-    - numpy>=1.13
-    - cython
-    - setuptools
-"""
-
-        self.requirement_run = r"""
-  run:
-    - httpx
-    - numpy>=1.13
-    - protobuf>=3.20.2
-    - Pillow
-    - decorator
-    - astor
-    - opt_einsum==3.3.0
-"""
-
-        self.requirement_run_windows = r"""
-  run:
-    - httpx
-    - numpy>=1.13
-    - Pillow
-    - decorator
-    - astor
-    - opt_einsum==3.3.0
-"""
-        self.test = r"""
-test:
-  import:
-    paddle
-"""
-
-        self.about = r"""
-about:
-  home: http://www.paddlepaddle.org/
-  license: APACHE 2.0
-  license_family: APACHE
-  summary: an easy-to-use, efficient, flexible and scalable deep learning platform
-"""
-
-        self.build_const = r"""
-"""
-        self.blt_const = r"""
-pip install protobuf===3.20.2 -f C:\package
-"""
-
-        self.python38 = r"    - python>=3.8, <3.9"
-        self.python39 = r"    - python>=3.9, <3.10"
-        self.python310 = r"    - python>=3.10, <3.11"
-        self.python311 = r"    - python>=3.11, <3.12"
-        self.python312 = r"    - python>=3.12, <3.13"
-
-        self.python_version = [
-            self.python38,
-            self.python39,
-            self.python310,
-            self.python311,
-            self.python312,
-        ]
-
-        self.cuda112 = r"""
-    - cudatoolkit>=11.2, <11.3
-    - cudnn>=8.2, <8.3
-    """
-        self.cuda116 = r"""
-    - cudatoolkit>=11.6, <11.7
-    - cudnn>=8.4, <8.5
-    """
-
-        self.cuda117 = r"""
-    - cudatoolkit>=11.7, <11.8
-    - cudnn>=8.4, <8.5
-    """
-        self.cuda_info = [
-            (self.cuda112, "cuda11.2", ".post112"),
-            (self.cuda116, "cuda11.6", ".post116"),
-            (self.cuda117, "cuda11.7", ".post117"),
-        ]
         self.py_str = ["py38", "py39", "py310", "py311", "py312"]
-        self.pip_end = ".whl --no-deps"
-        self.pip_prefix_linux = "pip install {}/paddlepaddle".format(
-            package_path
-        )
-        self.pip_prefix_windows = r"pip install C:\package\paddlepaddle"
-        self.pip_gpu = "_gpu-"
-        self.pip_cpu = "-"
-        self.mac_pip = [
-            "-cp38-cp38-macosx_10_9_x86_64",
-            "-cp39-cp39-macosx_10_9_x86_64",
-            "-cp310-cp310-macosx_10_9_x86_64",
-            "-cp311-cp311-macosx_10_9_x86_64",
-            "-cp312-cp312-macosx_10_9_x86_64",
-        ]
-        self.mac_pip_arm = [
-            "-cp38-cp38-macosx_11_0_arm64",
-            "-cp39-cp39-macosx_11_0_arm64",
-            "-cp310-cp310-macosx_11_0_arm64",
-            "-cp311-cp311-macosx_11_0_arm64",
-            "-cp312-cp312-macosx_11_0_arm64",
-        ]
-        self.linux_pip = [
-            "-cp38-cp38-linux_x86_64",
-            "-cp39-cp39-linux_x86_64",
-            "-cp310-cp310-linux_x86_64",
-            "-cp311-cp311-linux_x86_64",
-            "-cp312-cp312-linux_x86_64",
-        ]
-        self.windows_pip = [
-            "-cp38-cp38-win_amd64",
-            "-cp39-cp39-win_amd64",
-            "-cp310-cp310-win_amd64",
-            "-cp311-cp311-win_amd64",
-            "-cp312-cp312-win_amd64",
-        ]
+        self.cuda_info = ["cuda11.8", "cuda12.3"]
+        self.py_ver = {
+            "py38":"python>=3.8, <3.9",
+            "py39":"python>=3.9, <3.10",
+            "py310":"python>=3.10, <3.11",
+            "py311":"python>=3.11, <3.12",
+            "py312":"python>=3.12, <3.13"
+        }
 
 
-def meta_build_mac(var, python_str, paddle_version, build_var, build_name_str):
-    package_str = (
-        """
-package:
-  name: paddlepaddle
-  version: """
-        + paddle_version
-    )
-    requirement = (
-        var.requirement_build + python_str + var.requirement_run + python_str
-    )
-    meta_build = var.build + build_name_str
-    meta_str = package_str + meta_build + requirement + var.test + var.about
-    build_str = var.build_const + build_var
+def template_full(name, version, packages_string, python_version):
+    # 读取模板文件
+    with open('conda_build_template.yaml', 'r') as template_file:
+        template_content = template_file.read()
 
-    meta_filename = "meta.yaml"
-    build_filename = "build.sh"
-    with open(meta_filename, 'w') as f:
-        f.write(meta_str)
-    with open(build_filename, 'w') as f:
-        f.write(build_str)
+    # 使用字典填充模板
+    data = {
+        'name': name,
+        'version': version,
+        'packages_string': packages_string,
+        'python_version':python_version
+    }
+
+    # 使用 str.format 进行占位符替换
+    filled_content = template_content.format(**data)
+
+    # 将填充后的内容解析为YAML
+    filled_yaml = yaml.safe_load(filled_content)
+
+    # 将填充后的内容写入新的YAML文件
+    with open('meta.yaml', 'w') as new_file:
+        yaml.safe_dump(filled_yaml, new_file, default_flow_style=False, sort_keys=False)
 
 
-def meta_build_linux(
-    var, python_str, paddle_version, build_var, build_name_str, cuda_str=None
-):
-    if cuda_str is None:
-        package_str = (
-            """
-package:
-  name: paddlepaddle
-  version: """
-            + paddle_version
-        )
+def gen_build_scripts(name, cuda_major_version, paddle_version):
+    sysstr = platform.system()
+    if sysstr == "Linux":
+        PADDLE_CUDA_INSTALL_REQUIREMENTS = {
+            "cuda11.8": (
+                "nvidia-cuda-runtime-cu11==11.8.89 | "
+                "nvidia-cuda-cupti-cu11==11.8.87 | "
+                "nvidia-cudnn-cu11==8.7.0.84 | "
+                "nvidia-cublas-cu11==11.11.3.6 | "
+                "nvidia-cufft-cu11==10.9.0.58 | "
+                "nvidia-curand-cu11==10.3.0.86 | "
+                "nvidia-cusolver-cu11==11.4.1.48 | "
+                "nvidia-cusparse-cu11==11.7.5.86 | "
+                "nvidia-nccl-cu11==2.19.3 | "
+                "nvidia-nvtx-cu11==11.8.86 | "
+                "nvidia-cuda-nvrtc-cu11==11.8.89"
+            ),
+            "cuda12.3": (
+                "nvidia-cuda-runtime-cu12==12.3.101 | "
+                "nvidia-cuda-cupti-cu12==12.3.101 | "
+                "nvidia-cudnn-cu12==9.0.0.312 | "
+                "nvidia-cublas-cu12==12.3.4.1 | "
+                "nvidia-cufft-cu12==11.2.1.3 | "
+                "nvidia-curand-cu12==10.3.5.147 | "
+                "nvidia-cusolver-cu12==11.6.1.9 | "
+                "nvidia-cusparse-cu12==12.3.1.170 | "
+                "nvidia-nccl-cu12==2.19.3 | "
+                "nvidia-nvtx-cu12==12.4.127 | "
+                "nvidia-cuda-nvrtc-cu12==12.3.107"
+            ),
+        }
+    elif platform.system() == 'Windows':
+        PADDLE_CUDA_INSTALL_REQUIREMENTS = {
+            "cuda11.8": (
+                "nvidia-cuda-runtime-cu11==11.8.89 | "
+                "nvidia-cudnn-cu11==8.9.4.19 | "
+                "nvidia-cublas-cu11==11.11.3.6 | "
+                "nvidia-cufft-cu11==10.9.0.58 | "
+                "nvidia-curand-cu11==10.3.0.86 | "
+                "nvidia-cusolver-cu11==11.4.1.48 | "
+                "nvidia-cusparse-cu11==11.7.5.86 "
+            ),
+            "cuda12.3": (
+                "nvidia-cuda-runtime-cu12==12.3.101 | "
+                "nvidia-cudnn-cu12==9.0.0.312 | "
+                "nvidia-cublas-cu12==12.3.4.1 | "
+                "nvidia-cufft-cu12==11.2.1.3 | "
+                "nvidia-curand-cu12==10.3.5.147 | "
+                "nvidia-cusolver-cu12==11.6.1.9 | "
+                "nvidia-cusparse-cu12==12.3.1.170 "
+            ),
+        }
+    
+    if cuda_major_version in PADDLE_CUDA_INSTALL_REQUIREMENTS:
+        paddle_cuda_requires = PADDLE_CUDA_INSTALL_REQUIREMENTS[
+                cuda_major_version
+            ].split("|")
     else:
-        package_str = (
-            """
-package:
-  name: paddlepaddle-gpu
-  version: """
-            + paddle_version
-        )
-    requirement = (
-        var.requirement_build + python_str + var.requirement_run + python_str
-    )
-    meta_build = var.build + build_name_str
-    meta_str = package_str + meta_build + requirement
-    if not (cuda_str is None):
-        meta_str = meta_str + cuda_str
-    meta_str = meta_str + var.test + var.about
+        paddle_cuda_requires = []
 
-    build_str = var.build_const + build_var
-
-    meta_filename = "meta.yaml"
-    build_filename = "build.sh"
-    with open(meta_filename, 'w') as f:
-        f.write(meta_str)
-    with open(build_filename, 'w') as f:
-        f.write(build_str)
-
-
-def meta_build_windows(
-    var, python_str, paddle_version, blt_var, build_name_str, cuda_str=None
-):
-    if cuda_str is None:
-        package_str = (
-            """
-package:
-  name: paddlepaddle
-  version: """
-            + paddle_version
-        )
+    if cuda_major_version == 'V11':
+        index_url = "https://www.paddlepaddle.org.cn/packages/stable/cu118/"
+    elif cuda_major_version == 'V12':
+        index_url = "https://www.paddlepaddle.org.cn/packages/stable/cu123/"
     else:
-        package_str = (
-            """
-package:
-  name: paddlepaddle-gpu
-  version: """
-            + paddle_version
-        )
+        index_url = "https://www.paddlepaddle.org.cn/packages/stable/cpu/"
 
-    requirement = (
-        var.requirement_build
-        + python_str
-        + var.requirement_run_windows
-        + python_str
-    )
-    meta_build = var.build + build_name_str
-    meta_str = package_str + meta_build + requirement
-
-    if not (cuda_str is None):
-        meta_str = meta_str + cuda_str
-
-    blt_str = var.blt_const + blt_var
-
-    meta_str = meta_str + var.test + var.about
-    meta_filename = "meta.yaml"
-    build_filename = "bld.bat"
-    with open(meta_filename, 'w') as f:
-        f.write(meta_str)
+    build_filename = "build.sh"
     with open(build_filename, 'w') as f:
-        f.write(blt_str)
+        for item in paddle_cuda_requires:
+            f.write(f"pip install {item} -i {index_url}\n")
+        f.write(f"pip install {name}=={paddle_version} --no-deps -i {index_url} \n")
+
 
 
 def conda_build(paddle_version, var):
+    python_version_lists = []
     sysstr = platform.system()
-    if sysstr == "Windows":
-        os.system("mkdir paddle")
-        os.chdir(r"./paddle")
-        for i in range(len(var.python_version)):
-            blt_var = (
-                var.pip_prefix_windows
-                + var.pip_cpu
-                + paddle_version
-                + var.windows_pip[i]
-                + var.pip_end
-            )
-            name = var.py_str[i] + "_cpu_windows"
-            python_str = var.python_version[i]
-            meta_build_windows(var, python_str, paddle_version, blt_var, name)
+    if sysstr == "Linux":
+        # cpu安装包编译
+        name = 'paddlepaddle'
+        for i in range(len(var.py_str)):
+            break
+            packages_string = var.py_str[i] + "_cpu_many_linux"
+            python_version = var.py_ver[var.py_str[i]]
+            template_full(name, paddle_version, packages_string, python_version)
+            gen_build_scripts(name, 'cpu', paddle_version)
             os.system("conda build .")
 
-        for i in range(len(var.python_version)):
+        # gpu安装包编译
+        name = 'paddlepaddle-gpu'
+        for i in range(len(var.py_str)):
             for cuda_str in var.cuda_info:
-                post = cuda_str[2]
-                blt_var = (
-                    var.pip_prefix_windows
-                    + var.pip_gpu
-                    + paddle_version
-                    + post
-                    + var.windows_pip[i]
-                    + var.pip_end
-                )
-                name = var.py_str[i] + "_gpu_" + cuda_str[1] + "_windows"
-                cuda_cudnn_str = cuda_str[0]
-                python_str = var.python_version[i]
-                meta_build_windows(
-                    var,
-                    python_str,
-                    paddle_version,
-                    blt_var,
-                    name,
-                    cuda_cudnn_str,
-                )
+                packages_string = var.py_str[i] + "_gpu_" + cuda_str + "_many_linux"
+                python_version = var.py_ver[var.py_str[i]]
+                template_full(name, paddle_version, packages_string, python_version)
+                gen_build_scripts(name, cuda_str, paddle_version)
                 os.system("conda build .")
 
-    elif sysstr == "Linux":
-        os.system("mkdir paddle")
-        os.chdir(r"./paddle")
-        for i in range(len(var.python_version)):
-            build_var = (
-                var.pip_prefix_linux
-                + var.pip_cpu
-                + paddle_version
-                + var.linux_pip[i]
-                + var.pip_end
-            )
-            name = var.py_str[i] + "_cpu_many_linux"
-            python_str = var.python_version[i]
-            meta_build_linux(var, python_str, paddle_version, build_var, name)
+    elif sysstr == "Windows":
+        # cpu安装包编译
+        name = 'paddlepaddle'
+        for i in range(len(var.py_str)):
+            packages_string = var.py_str[i] + "_cpu_windows"
+            python_version = var.py_ver[var.py_str[i]]
+            template_full(name, paddle_version, packages_string, python_version)
+            gen_build_scripts(name, 'cpu', paddle_version)
             os.system("conda build .")
 
-        for i in range(len(var.python_version)):
+        # gpu安装包编译
+        name = 'paddlepaddle-gpu'
+        for i in range(len(var.py_str)):
             for cuda_str in var.cuda_info:
-                post = cuda_str[2]
-                build_var = (
-                    var.pip_prefix_linux
-                    + var.pip_gpu
-                    + paddle_version
-                    + post
-                    + var.linux_pip[i]
-                    + var.pip_end
-                )
-                name = var.py_str[i] + "_gpu_" + cuda_str[1] + "_many_linux"
-                cuda_cudnn_str = cuda_str[0]
-                python_str = var.python_version[i]
-                meta_build_linux(
-                    var,
-                    python_str,
-                    paddle_version,
-                    build_var,
-                    name,
-                    cuda_cudnn_str,
-                )
-                os.system("conda build .")
-
-        os.system("cd ..")
-
+                packages_string = var.py_str[i] + "_gpu_" + cuda_str + "_windows"
+                python_version = var.py_ver[var.py_str[i]]
+                template_full(name, paddle_version, packages_string, python_version)
+                gen_build_scripts(name, cuda_str, paddle_version)
+                os.system("conda build .")   
     elif sysstr == "Darwin":
-        if platform.machine() == "x86_64":
-            os.system("mkdir paddle")
-            os.chdir(r"./paddle")
-            for i in range(len(var.python_version)):
-                build_var = (
-                    var.pip_prefix_linux
-                    + var.pip_cpu
-                    + paddle_version
-                    + var.mac_pip[i]
-                    + var.pip_end
-                )
-                name = var.py_str[i] + "_mac"
-                python_str = var.python_version[i]
-                meta_build_mac(var, python_str, paddle_version, build_var, name)
-                os.system("conda build .")
-        else:
-            os.system("mkdir paddle")
-            os.chdir(r"./paddle")
-            for i in range(len(var.python_version)):
-                # The mac-arm version does not support python3.7
-                build_var = (
-                    var.pip_prefix_linux
-                    + var.pip_cpu
-                    + paddle_version
-                    + var.mac_pip_arm[i]
-                    + var.pip_end
-                )
-                name = var.py_str[i] + "_mac"
-                python_str = var.python_version[i]
-                meta_build_mac(var, python_str, paddle_version, build_var, name)
-                os.system("conda build .")
-
-        os.system("cd ..")
+        # cpu安装包编译
+        name = 'paddlepaddle'
+        for i in range(len(var.py_str)):
+            packages_string = var.py_str[i] + "_mac"
+            python_version = var.py_ver[var.py_str[i]]
+            template_full(name, paddle_version, packages_string, python_version)
+            gen_build_scripts(name, 'cpu', paddle_version)
+            os.system("conda build .")
 
 
 if __name__ == "__main__":

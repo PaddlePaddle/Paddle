@@ -1,0 +1,33 @@
+
+package:
+  name: {name}
+  version: {version}
+build:
+  number: '0'
+  string: {packages_string}
+requirements:
+  build:
+    - numpy>=1.13
+    - cython
+    - setuptools
+    - {python_version}
+  run:
+    - httpx
+    - numpy>=1.13
+    - protobuf>=3.20.2
+    - Pillow
+    - decorator
+    - astor
+    - opt_einsum==3.3.0
+    - typing_extensions
+    - networkx
+    - {python_version}
+test:
+  import:
+    paddle
+
+about:
+  home: http://www.paddlepaddle.org/
+  license: APACHE 2.0
+  license_family: APACHE
+  summary: an easy-to-use, efficient, flexible and scalable deep learning platform
