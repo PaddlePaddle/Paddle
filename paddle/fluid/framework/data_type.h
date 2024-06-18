@@ -20,10 +20,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/complex.h"
-#include "paddle/fluid/platform/e4m3.h"
-#include "paddle/fluid/platform/e5m2.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/fp8_e4m3fn.h"
+#include "paddle/fluid/platform/fp8_e5m2.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/utils/test_macros.h"
 

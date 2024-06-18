@@ -33,15 +33,9 @@ void CastKernel(const Context& dev_ctx,
 
   if (out->IsSharedWith(x)) {
     auto x_origin = x;
-    PD_CAST_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
-                              CastCUDAKernelImpl<T, data_t>(
-                                  dev_ctx, x_origin, out_dtype, out);
-                            }));
+    CastCUDAKernel<T>(dev_ctx, x_origin, out_dtype, out);
   } else {
-    PD_CAST_VISIT_ALL_TYPES(out_dtype, "CastCUDAKernelImpl", ([&] {
-                              CastCUDAKernelImpl<T, data_t>(
-                                  dev_ctx, x, out_dtype, out);
-                            }));
+    CastCUDAKernel<T>(dev_ctx, x, out_dtype, out);
   }
 }
 }  // namespace phi

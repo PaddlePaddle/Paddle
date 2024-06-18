@@ -44,9 +44,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/e4m3.h"
-#include "paddle/fluid/platform/e5m2.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/fp8_e4m3fn.h"
+#include "paddle/fluid/platform/fp8_e5m2.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/common/pstring.h"
@@ -225,8 +225,8 @@ struct npy_format_descriptor<paddle::platform::float8_e4m3fn> {
   }
 
   static std::string format() {
-    // Note: "E4M3" represents float8_e4m3fn.
-    return "c";
+    // Note: "E4M3FN" represents float8_e4m3fn.
+    return "E4M3FN";
   }
   static constexpr auto name = _("float8_e4m3fn");
 };
@@ -240,7 +240,7 @@ struct npy_format_descriptor<paddle::platform::float8_e5m2> {
 
   static std::string format() {
     // Note: "E5M2" represents float8_e5m2.
-    return "E4M3";
+    return "E5M2";
   }
   static constexpr auto name = _("float8_e5m2");
 };
