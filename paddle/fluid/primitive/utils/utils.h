@@ -203,5 +203,22 @@ static bool has_dynamic_shape(const std::vector<int64_t>& shape,
   return flag;
 }
 
+static int64_t size_to_axis(const int axis, const std::vector<int64_t>& dims) {
+  int64_t size = 1;
+  for (int i = 0; i < axis; i++) {
+    size *= dims[i];
+  }
+  return size;
+}
+
+static int64_t size_from_axis(const int axis,
+                              const std::vector<int64_t>& dims) {
+  int64_t size = 1;
+  for (size_t i = axis; i < dims.size(); i++) {
+    size *= dims[i];
+  }
+  return size;
+}
+
 }  // namespace primitive
 }  // namespace paddle

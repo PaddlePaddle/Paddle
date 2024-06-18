@@ -172,6 +172,30 @@ def meshgrid_net(x, y):
     return paddle.meshgrid(x, y)
 
 
+def softmax_with_cross_entropy_net1(x, y):
+    return paddle.nn.functional.softmax_with_cross_entropy(
+        x,
+        y,
+        soft_label=False,
+        ignore_index=-100,
+        numeric_stable_mode=True,
+        return_softmax=True,
+        axis=-1,
+    )
+
+
+def softmax_with_cross_entropy_net2(x, y):
+    return paddle.nn.functional.softmax_with_cross_entropy(
+        x,
+        y,
+        soft_label=True,
+        ignore_index=-100,
+        numeric_stable_mode=True,
+        return_softmax=True,
+        axis=-1,
+    )
+
+
 class TestPrimBase(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
@@ -594,6 +618,43 @@ class TestPrimMeshgrid(TestPrimTwo):
         self.y = np.random.random(self.shape_y).astype(self.dtype_y)
         self.net = meshgrid_net
         self.necessary_ops = "pd_op.meshgrid"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSoftmaxWithCrossEntropy1(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [10, 20, 5]
+        self.shape_y = [10, 20, 1]
+        self.dtype_x = "float32"
+        self.dtype_y = "int64"
+        self.init_x_shape = [None, None, 5]
+        self.init_y_shape = [None, None, 1]
+        self.x = np.random.uniform(0.1, 1.0, self.shape_x).astype(self.dtype_x)
+        self.y = np.random.randint(
+            0, self.shape_x[-1], self.shape_y, dtype=self.dtype_y
+        )
+        self.net = softmax_with_cross_entropy_net1
+        self.necessary_ops = "pd_op.c_softmax_with_cross_entropy"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
+class TestPrimSoftmaxWithCrossEntropy2(TestPrimTwo):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [10, 20, 5]
+        self.shape_y = [10, 20, 5]
+        self.dtype_x = "float32"
+        self.dtype_y = "float32"
+        self.init_x_shape = [None, None, 5]
+        self.init_y_shape = [None, None, 5]
+        self.x = np.random.uniform(0.1, 1.0, self.shape_x).astype(self.dtype_x)
+        self.y = np.random.uniform(0.1, 1.0, self.shape_y).astype(self.dtype_y)
+        self.y = self.y / np.sum(self.y, axis=-1, keepdims=True)
+        self.net = softmax_with_cross_entropy_net2
+        self.necessary_ops = "pd_op.c_softmax_with_cross_entropy"
         self.enable_cinn = False
         self.tol = 1e-6
 

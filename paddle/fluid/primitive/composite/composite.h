@@ -1407,6 +1407,117 @@ Tensor elu_decomp(const Tensor& x, const float alpha) {
   }
 }
 
+template <typename T>
+std::tuple<Tensor, Tensor> cross_entropy_with_softmax_decomp(
+    const Tensor& logits,
+    const Tensor& label,
+    bool soft_label,
+    bool use_softmax,
+    bool numeric_stable_mode,
+    int ignore_index,
+    int axis) {
+  Tensor softmax, loss;
+  const int rank = logits.dims().size();
+  const int axis_v = axis < 0 ? axis + rank : axis;
+
+  Tensor x = logits;
+  softmax = x;
+  if (use_softmax) {
+    softmax = softmax_decomp<T>(x, axis);
+    x = softmax;
+  }
+
+  Tensor x_2d, label_2d, out_2d;
+  if (has_dynamic_shape(logits.shape())) {
+    label_2d = label;
+    Tensor x_shape = shape<T>(logits);
+    Tensor axis_shape = get_slice<T>(x_shape, axis_v);
+    Tensor n = full<T>({1}, 1, axis_shape.dtype());
+    Tensor d = full<T>({1}, 1, axis_shape.dtype());
+    for (int i = 0; i < logits.dims().size(); i++) {
+      if (i < axis_v) {
+        n = n * get_slice<T>(x_shape, i);
+      } else {
+        d = d * get_slice<T>(x_shape, i);
+      }
+    }
+    Tensor label_shape = shape<T>(label);
+    Tensor label_shape_num = full<T>({1}, 1, label_shape.dtype());
+    for (int i = 0; i < label.dims().size(); i++) {
+      label_shape_num = label_shape_num * get_slice<T>(label_shape, i);
+    }
+    label_shape_num = label_shape_num / n;
+    x_2d = backend::reshape<T>(x, concat<T>({n, d}));
+    Tensor num_remain = d / axis_shape;
+    Tensor new_shape = concat<T>({n, axis_shape, num_remain});
+    Tensor one = full<T>({1}, 1, x_shape.dtype());
+
+    if (soft_label) {
+      label_2d = backend::reshape<T>(label, concat<T>({n, label_shape_num}));
+      out_2d = label_2d * log<T>(x_2d);
+      out_2d = backend::reshape<T>(out_2d, new_shape);
+      out_2d = -sum<T>(out_2d, {1}, x_2d.dtype(), false);
+    } else {
+      if (label.dtype() != DataType::INT64) {
+        label_2d = cast<T>(label, DataType::INT64);
+      }
+      label_2d =
+          backend::reshape<T>(label_2d, concat<T>({n, one, label_shape_num}));
+      Tensor zeros =
+          backend::full_with_tensor<T>(shape<T>(label_2d), 0, x_2d.dtype());
+      Tensor ignore_index_tensor = backend::full_with_tensor<T>(
+          shape<T>(label_2d), ignore_index, label_2d.dtype());
+      out_2d = backend::reshape<T>(x_2d, new_shape);
+      out_2d = take_along_axis<T>(out_2d, label_2d, 1);
+      out_2d =
+          where<T>(label_2d == ignore_index_tensor, zeros, -log<T>(out_2d));
+    }
+    std::vector<Tensor> loss_shape;
+    for (int i = 0; i < logits.dims().size(); i++) {
+      if (i == axis_v) {
+        loss_shape.push_back(one);
+      } else {
+        loss_shape.push_back(get_slice<T>(x_shape, i));
+      }
+    }
+    loss = backend::reshape<T>(out_2d, concat<T>(loss_shape));
+  } else {
+    label_2d = label;
+    int axis_dim = static_cast<int>(logits.dims()[axis_v]);
+    const int n = size_to_axis(axis_v, logits.shape());
+    const int d = size_from_axis(axis_v, logits.shape());
+
+    x_2d = reshape<T>(x, {n, d});
+    const int64_t batch_size = static_cast<const int64_t>(x_2d.shape()[0]);
+    const int64_t num_classes = static_cast<const int64_t>(x_2d.shape()[1]);
+    const int64_t num_remain = num_classes / axis_dim;
+    std::vector<int64_t> new_shape = {batch_size, axis_dim, num_remain};
+
+    if (soft_label) {
+      label_2d = reshape<T>(label, {n, label.numel() / n});
+      out_2d = label_2d * log<T>(x_2d);
+      out_2d = reshape<T>(out_2d, new_shape);
+      out_2d = -sum<T>(out_2d, {1}, x_2d.dtype(), false);
+    } else {
+      if (label.dtype() != DataType::INT64) {
+        label_2d = cast<T>(label, DataType::INT64);
+      }
+      label_2d = reshape<T>(label_2d, {n, 1, label.numel() / n});
+      Tensor zeros = full<T>(label_2d.shape(), 0, x_2d.dtype());
+      Tensor ignore_index_tensor =
+          full<T>(label_2d.shape(), ignore_index, label_2d.dtype());
+      out_2d = reshape<T>(x_2d, new_shape);
+      out_2d = take_along_axis<T>(out_2d, label_2d, 1);
+      out_2d =
+          where<T>(label_2d == ignore_index_tensor, zeros, -log<T>(out_2d));
+    }
+    std::vector<int64_t> loss_shape = logits.shape();
+    loss_shape[axis_v] = 1;
+    loss = reshape<T>(out_2d, loss_shape);
+  }
+  return std::make_tuple(softmax, loss);
+}
+
 }  // namespace details
 
 }  // namespace primitive
