@@ -112,6 +112,9 @@ bool AsRealOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
+bool AsignOpInferSymbolicShape(pir::Operation *op,
+                               pir::InferSymbolicShapeContext *infer_context) {}
+
 bool CummaxOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
@@ -825,13 +828,43 @@ bool SplitOpInferSymbolicShape(pir::Operation *op,
 
 bool SplitWithNumOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  int64_t axis = op->operand_source(1)
-                     .defining_op<paddle::dialect::FullOp>()
-                     .attributes()
-                     .at("value")
-                     .dyn_cast<paddle::dialect::ScalarAttribute>()
-                     .data()
-                     .to<int64_t>();
+  auto axis_gen_op = op->operand_source(1).defining_op();
+  int64_t axis;
+  if (axis_gen_op->isa<paddle::dialect::FullOp>()) {
+    // axis generator op is Full
+    axis = axis_gen_op->attributes()
+               .at("value")
+               .dyn_cast<paddle::dialect::ScalarAttribute>()
+               .data()
+               .to<int64_t>();
+  } else if (axis_gen_op->isa<paddle::dialect::AssignOp>()) {
+    // axis generator op is Assign
+    const symbol::ShapeOrDataDimExprs &axis_shape_data =
+        infer_context->GetShapeOrDataForValue(axis_gen_op->operand_source(0));
+    PADDLE_ENFORCE_EQ(
+        axis_shape_data.data().has_value(),
+        true,
+        phi::errors::InvalidArgument(
+            "In InferSymbolicShape, axis of SplitWithNumOp is null"));
+    const std::vector<symbol::DimExpr> &axis_data =
+        axis_shape_data.data().value();
+    PADDLE_ENFORCE_EQ(
+        axis_data.size() == 1,
+        true,
+        phi::errors::InvalidArgument(
+            "In InferSymbolicShape, data of axis should be one dimension"));
+    if (!axis_data[0].isa<int64_t>()) {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("InferSymbolicShape, "
+                                     "axis of SplitWithNumOp is not int64"));
+    }
+    axis = axis_data[0].dyn_cast<int64_t>();
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("SplitWithNumOpInferSymbolicShape: "
+                                   "only support FullOp and AssignOp"));
+  }
+
   const auto &attributes = op->attributes();
   int num = attributes.at("num").dyn_cast<pir::Int32Attribute>().data();
   const auto &x_s_or_d =
