@@ -202,6 +202,7 @@ performance-trivially-destructible,
 performance-type-promotion-in-math-fn,
 performance-unnecessary-copy-initialization,
 readability-container-size-empty,
+clang-diagnostic-error,
 '
 HeaderFilterRegex: '^(paddle/(?!cinn)).*$'
 AnalyzeTemporaryDtors: false
