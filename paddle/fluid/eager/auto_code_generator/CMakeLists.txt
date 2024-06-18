@@ -12,6 +12,10 @@ set(EAGER_GENERATOR_DEPS
     imperative_profiler
     imperative_flag)
 
+if(WITH_CINN)
+  list(REMOVE_ITEM EAGER_GENERATOR_DEPS imperative_flag)
+endif()
+
 if(WITH_CUSTOM_DEVICE)
   set(EAGER_GENERATOR_DEPS ${EAGER_GENERATOR_DEPS}
                            custom_device_common_op_registry)
@@ -58,6 +62,16 @@ if(WIN32)
       OUTPUT ${eager_generator_path}/phi.dll
       COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${eager_generator_path}
       DEPENDS phi)
+    add_custom_command(
+      OUTPUT ${eager_generator_path}/phi_core.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${PHI_CORE_LIB} ${eager_generator_path}
+      DEPENDS phi)
+    if(WITH_GPU OR WITH_ROCM)
+      add_custom_command(
+        OUTPUT ${eager_generator_path}/phi_gpu.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_GPU_LIB} ${eager_generator_path}
+        DEPENDS phi)
+    endif()
     list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/phi.dll)
   endif()
 

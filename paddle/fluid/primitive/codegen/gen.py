@@ -34,15 +34,23 @@ sys.path.append(
     str(pathlib.Path(__file__).resolve().parents[2] / 'pir/dialect/op_generator')
 )
 
+from decomp_interface_gen_op_list import (
+    decomp_vjp_interface_implementation_gen_op_list,
+)
+from gen_utils import attr_types_map, to_pascal_case
+from type_mapping import output_type_map
+
 # fmt: on
 
 
 VJPS_BLACK_LIST = [
     'reshape_grad',
     'add_n_grad',
+    'fused_attention_grad',
 ]
 
 BACKENDS_BLACK_LIST = [
+    'accuracy_check',
     'copy_to',
     'add_n_grad',
     "allclose",
@@ -97,6 +105,7 @@ OTHER_PRIM_VJP_OPS = [
     'pad_grad',
     'prod_grad',
     'max_grad',
+    'masked_select_grad',
     'scale_grad',
     'scatter_grad',
     'scatter_nd_add_grad',
@@ -193,6 +202,54 @@ def render(src_dir: pathlib.Path, dst_dir: pathlib.Path, *args, **kwargs):
             env.get_template(tpl).render(*args, **kwargs),
             dst_dir / tpl.rstrip('.j2'),
         )
+
+
+def render_decomp_vjp(
+    src_dir: pathlib.Path, dst_dir: pathlib.Path, *args, **kwargs
+):
+    """Render and save Jinja2 templates to the destination directory.
+
+    Args:
+        src_dir (pathlib.Path): The source directory containing Jinja2 templates.
+        dst_dir (pathlib.Path): The destination directory to save rendered files.
+        *args: Additional positional arguments passed to the `render` function.
+        **kwargs: Additional keyword arguments passed to the `render` function.
+
+    Returns:
+        None
+    """
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(src_dir),
+        keep_trailing_newline=True,
+        trim_blocks=True,
+        lstrip_blocks=True,
+        undefined=jinja2.StrictUndefined,
+        extensions=['jinja2.ext.do'],
+    )
+    env.filters.update(
+        {
+            'to_paddle_attr_type': op_gen_filters.to_paddle_attr_type,
+            'to_paddle_input_type': op_gen_filters.to_paddle_input_type,
+            'to_paddle_output_type': op_gen_filters.to_paddle_output_type,
+            'trip_intermediate': op_gen_filters.filter_intermediate,
+        }
+    )
+    env.tests.update(
+        {
+            'scalar': op_gen_tests.is_scalar,
+            'intarray': op_gen_tests.is_intarray,
+            'datatype': op_gen_tests.is_datatype,
+            'exist_mutable_attribute': op_gen_tests.exist_mutable_attribute,
+            'mutable_attribute': op_gen_tests.is_mutable_attribute,
+            'only_composite_op': op_gen_tests.is_only_composite_op,
+        }
+    )
+
+    decomp_temp = "decomp/generated_decomp_vjp.j2"
+    save(
+        env.get_template(decomp_temp).render(*args, **kwargs),
+        pathlib.Path(dst_dir),
+    )
 
 
 def save(content: str, path: pathlib.Path):
@@ -377,6 +434,7 @@ def gen(
     sparse_rev_op_path: pathlib.Path,
     templates_dir: pathlib.Path,
     destination_dir: pathlib.Path,
+    decomp_vjp_destination_dir: pathlib.Path,
 ):
     """The `gen` load jinja2 templates and relative config info, use jinja2
     templating engine to generate c++ code, and save the code into destination.
@@ -462,6 +520,30 @@ def gen(
     apis = apis + get_inplace_api(apis)
     process_backward_invoke_info(apis)
     process_optional_output_info(apis)
+
+    apis = [
+        {**api, **{'class_name': to_pascal_case(api["name"]) + "Op"}}
+        for api in apis
+    ]
+
+    for item in apis:
+        for attr_item in item["attrs"]:
+            if attr_item["typename"] not in attr_types_map.keys():
+                raise TypeError
+            attr_item["mapped_type"] = attr_types_map[attr_item["typename"]]
+        for out_item in item["outputs"]:
+            if out_item["typename"] not in output_type_map.keys():
+                name = out_item["typename"]
+                raise TypeError(f"err type {name}")
+            if out_item["optional"]:
+                out_item["mapped_type"] = (
+                    "paddle::optional<"
+                    + output_type_map[out_item["typename"]]
+                    + ">"
+                )
+            else:
+                out_item["mapped_type"] = output_type_map[out_item["typename"]]
+
     render(
         templates_dir,
         destination_dir,
@@ -469,6 +551,15 @@ def gen(
         backend_black_list=BACKENDS_BLACK_LIST,
         vjp_black_list=VJPS_BLACK_LIST,
         vjp_comp_white_list=VJP_COMPS,
+    )
+    render_decomp_vjp(
+        templates_dir,
+        decomp_vjp_destination_dir,
+        apis=apis,
+        backend_black_list=BACKENDS_BLACK_LIST,
+        vjp_black_list=VJPS_BLACK_LIST,
+        vjp_comp_white_list=VJP_COMPS,
+        decomp_vjp_white_list=decomp_vjp_interface_implementation_gen_op_list,
     )
 
 
@@ -537,6 +628,11 @@ if __name__ == "__main__":
         type=str,
         help='Destination base directory for generated file.',
     )
+    parser.add_argument(
+        '--decomp_vjp_destination_dir',
+        type=str,
+        help='Destination base directory for generated file.',
+    )
     args = parser.parse_args()
 
     gen(
@@ -553,4 +649,5 @@ if __name__ == "__main__":
         pathlib.Path(args.sparse_rev_op_path),
         pathlib.Path(args.templates_dir),
         pathlib.Path(args.destination_dir),
+        pathlib.Path(args.decomp_vjp_destination_dir),
     )

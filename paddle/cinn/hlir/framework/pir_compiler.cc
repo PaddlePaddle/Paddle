@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
+#include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/runtime/arch_device.h"
 #include "paddle/cinn/utils/multi_threading.h"
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
@@ -23,7 +25,6 @@ PD_DECLARE_bool(enable_cinn_compile_cache);
 PD_DECLARE_int64(cinn_compile_thread_num);
 
 namespace cinn::hlir::framework {
-
 class CompilationContextMapper {
  public:
   CompilationContextMapper(const Target& target,
@@ -73,10 +74,18 @@ std::vector<pir::CINNKernelInfo> PirCompiler::Build(
   const size_t thread_size = GetThreadNum(task_size);
   VLOG(5) << "Found " << task_size << " new groups parsed from "
           << groups.size() << " and compiles with " << thread_size;
+  cinn::ir::InitScheduleConfig();
   if (task_size > 0) {
+    // See
+    // https://developer.nvidia.com/blog/cuda-pro-tip-always-set-current-device-avoid-multithreading-bugs/
+    // for details.
+    const auto device_id = runtime::GetArchDevice(target_);
     auto worker_fn = [&](int index) {
+      runtime::SetArchDevice(target_, device_id);
       CompilationTask task(&group_compilation_contexts[index]);
       compilation_results[index] = task();
+      // Triggering llvm compilation in thread
+      compilation_results[index]->GetKernelInfo();
     };
     utils::parallel_run(worker_fn,
                         utils::SequenceDispatcher(0, task_size),

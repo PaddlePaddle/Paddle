@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
+#include "paddle/fluid/pir/dialect/operator/interface/layout_transformation.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
@@ -37,8 +38,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
 #endif
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 struct CombineOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
@@ -238,6 +238,9 @@ OperatorDialect::OperatorDialect(pir::IrContext* ctx)
   info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
                                CombineOpInferSymbolicShapeInterfaceModel>());
+  info.AttachInterface(pir::InterfaceValue::Get<
+                       LayoutTransformationInterface,
+                       LayoutTransformationInterface::Model<pir::CombineOp>>());
 
   info = ctx->GetRegisteredOpInfo(pir::ParameterOp::name());
   info.AttachInterface(
@@ -437,7 +440,9 @@ class IdManager {
     return instance;
   }
 
-  ~IdManager() {
+  IdManager() : ids_() {}
+
+  ~IdManager() {  // NOLINT
     for (auto id : ids_) {
       delete id;
     }
@@ -463,7 +468,7 @@ class AttributeManager {
 
   AttributeManager() : char_pointers_(), pointers_size_() {}
 
-  ~AttributeManager() {
+  ~AttributeManager() {  // NOLINT
     for (size_t i = 0; i < char_pointers_.size(); i++) {
       for (size_t j = 0; j < pointers_size_[i]; j++) {
         delete char_pointers_[i][j];
@@ -725,8 +730,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     // Construct custom grad op inputs
     int input_index = 0;
     int vec_input_index = 0;
-    for (size_t i = 0; i < bwd_inputs_name.size(); ++i) {
-      const auto& bwd_input_name = bwd_inputs_name.at(i);
+    for (const auto& bwd_input_name : bwd_inputs_name) {
       const auto input_location = GetInputLocation(bwd_input_name);
       std::vector<pir::Value> input_values;
       if (input_location.first == 0) {
@@ -781,8 +785,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     }
     argument.AddInputs(argument_inputs);
     // Construct custom grad op attr
-    for (size_t i = 0; i < fwd_attrs_name.size(); ++i) {
-      const auto& fwd_attr = fwd_attrs_name.at(i);
+    for (const auto& fwd_attr : fwd_attrs_name) {
       std::vector<std::string> attr_name_and_type =
           paddle::ParseAttrStr(fwd_attr);
       auto fwd_attr_name = attr_name_and_type[0];
@@ -810,8 +813,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
     size_t all_values_num = 0;
     // output name -> value num (that output should hold)
     std::unordered_map<std::string, size_t> output_name2value_num;
-    for (size_t i = 0; i < bwd_outputs_name.size(); ++i) {
-      const auto& bwd_output_name = bwd_outputs_name.at(i);
+    for (const auto& bwd_output_name : bwd_outputs_name) {
       const auto& bwd_input =
           paddle::framework::detail::NoGrad(bwd_output_name, is_double_grad_op);
 
@@ -852,8 +854,7 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
             output_dtypes.size()));
     // Construct custom grad op outputs
     size_t value_index = 0;
-    for (size_t i = 0; i < bwd_outputs_name.size(); ++i) {
-      const auto& bwd_output_name = bwd_outputs_name.at(i);
+    for (const auto& bwd_output_name : bwd_outputs_name) {
       auto value_num = output_name2value_num[bwd_output_name];
       if (value_num == 0) {
         // Optional value condition
@@ -933,9 +934,9 @@ struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
       size_t input_index =
           std::distance(fwd_inputs_name.begin(), fwd_inputs_name_iter);
       for (size_t i = 0; i < input_index; ++i) {
-        for (size_t j = 0; j < bwd_outputs_name.size(); j++) {
+        for (const auto& bwd_output_name : bwd_outputs_name) {
           const auto& fwd_input_name_tmp = paddle::framework::detail::NoGrad(
-              bwd_outputs_name[j], is_double_grad_op);
+              bwd_output_name, is_double_grad_op);
           if (fwd_input_name_tmp == fwd_inputs_name[i]) {
             // find forward input that need calculate gradient
             gradient_vec_index++;
@@ -1058,8 +1059,7 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
                                verify_func,
                                verify_func);
 }
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OperatorDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomOpDialect)

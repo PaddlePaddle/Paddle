@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+import paddle
 from paddle import _C_ops, pir
 
 from ...base import core, framework, unique_name
@@ -36,7 +39,9 @@ class NormalInitializer(Initializer):
 
     """
 
-    def __init__(self, loc=0.0, scale=1.0, seed=0):
+    def __init__(
+        self, loc: float = 0.0, scale: float = 1.0, seed: int = 0
+    ) -> None:
         assert loc is not None
         assert scale is not None
         assert seed is not None
@@ -45,12 +50,14 @@ class NormalInitializer(Initializer):
         self._std_dev = scale
         self._seed = seed
 
-    def forward(self, var, block=None):
+    def forward(
+        self, var: paddle.Tensor, block: pir.Block | None = None
+    ) -> paddle.Tensor | None:
         """Initialize the input tensor with Normal distribution.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
-            block(Block, optional): The block in which initialization ops
+            block(Block|None, optional): The block in which initialization ops
                    should be added. Used in static graph only, default None.
 
         Returns:
@@ -119,7 +126,7 @@ class Normal(NormalInitializer):
     Args:
         mean (float, optional): mean of the normal distribution. Default is 0.0.
         std (float, optional): standard deviation of the normal distribution. Default is 1.0.
-        name(str, optional): The default value is None. Normally there is no need for user to set this
+        name(str|None, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
 
     Returns:
@@ -156,7 +163,9 @@ class Normal(NormalInitializer):
              [[ 1.0754838 -4.071067 ]]])
     """
 
-    def __init__(self, mean=0.0, std=1.0, name=None):
+    def __init__(
+        self, mean: float = 0.0, std: float = 1.0, name: str | None = None
+    ) -> None:
         assert mean is not None, 'mean should not be None'
         assert std is not None, 'std should not be None'
         super().__init__(loc=mean, scale=std, seed=0)
@@ -178,7 +187,14 @@ class TruncatedNormalInitializer(Initializer):
 
     """
 
-    def __init__(self, loc=0.0, scale=1.0, seed=0, a=-2.0, b=2.0):
+    def __init__(
+        self,
+        loc: float = 0.0,
+        scale: float = 1.0,
+        seed: int = 0,
+        a: float = -2.0,
+        b: float = 2.0,
+    ) -> None:
         assert loc is not None
         assert scale is not None
         assert seed is not None
@@ -191,12 +207,14 @@ class TruncatedNormalInitializer(Initializer):
         self._a = a
         self._b = b
 
-    def forward(self, var, block=None):
+    def forward(
+        self, var: paddle.Tensor, block: pir.Block | None = None
+    ) -> paddle.Tensor | None:
         """Initialize the input tensor with TruncatedNormal distribution.
 
         Args:
             var(Tensor): Tensor that needs to be initialized.
-            block(Block, optional): The block in which initialization ops
+            block(Block|None, optional): The block in which initialization ops
                    should be added. Used in static graph only, default None.
 
         Returns:
@@ -289,7 +307,7 @@ class TruncatedNormal(TruncatedNormalInitializer):
         std (float, optional): Standard deviation of the normal distribution. Default is :math:`1.0`.
         a (float, optional): The minimum cutoff value. Default is -2.0.
         b (float, optional): The maximum cutoff value. Default is 2.0.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         A parameter initialized by truncated normal distribution (Gaussian distribution).
@@ -325,7 +343,14 @@ class TruncatedNormal(TruncatedNormalInitializer):
              [[-0.11380529 -3.0696259 ]]])
     """
 
-    def __init__(self, mean=0.0, std=1.0, a=-2.0, b=2.0, name=None):
+    def __init__(
+        self,
+        mean: float = 0.0,
+        std: float = 1.0,
+        a: float = -2.0,
+        b: float = 2.0,
+        name: str | None = None,
+    ) -> None:
         assert mean is not None, 'mean should not be None'
         assert std is not None, 'std should not be None'
         assert a is not None, 'a should not be None'

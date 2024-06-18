@@ -36,13 +36,17 @@ class IR_API InferSymbolicShapeContext {
   InferSymbolicShapeContext(InferSymbolicShapeContext&&) = delete;
   void Init();
 
+  // Note: Only initialize the symbol info, the value info is not update.
+  void RegisterSymbolConstraintFromContext(
+      const InferSymbolicShapeContext& other);
+
   const std::string GetNextSymName();
 
   bool HasShapeOrDataForValue(Value val) const;
 
   const symbol::ShapeOrDataDimExprs& GetShapeOrDataForValue(Value val) const;
 
-  void SetStaticShapeForValue(Value val);
+  void SetSymbolForValueByStaticShape(Value val);
 
   void SetShapeOrDataForValue(Value val,
                               const symbol::ShapeOrDataDimExprs& shape_or_data);
@@ -74,6 +78,7 @@ class IR_API InferSymbolicShapeContext {
   void SubstituteDimExpr(const symbol::DimExpr& origin,
                          const symbol::DimExpr& substituted);
 
+  int64_t sym_idx_begin_ = 0;
   int64_t next_sym_idx_ = 0;
 
   std::unordered_map<uint64_t, symbol::ShapeOrDataDimExprs>
@@ -93,6 +98,9 @@ class IR_API ShapeConstraintIRAnalysis final
   ShapeConstraintIRAnalysis(const ShapeConstraintIRAnalysis&) = delete;
   ShapeConstraintIRAnalysis(ShapeConstraintIRAnalysis&&) = delete;
   void Init();
+
+  void RegisterSymbolConstraintFromShapeAnalysis(
+      const ShapeConstraintIRAnalysis& other);
 
   const std::string GetNextSymName();
 
@@ -150,7 +158,7 @@ class IR_API ShapeConstraintIRAnalysis final
 
   friend void InferSymExprForAllValues(ModuleOp module_op);
 
-  void SetStaticShapeForValue(Value val);
+  void SetSymbolForValueByStaticShape(Value val);
 
   void InferShapeOrDataForValue(Value val);
 

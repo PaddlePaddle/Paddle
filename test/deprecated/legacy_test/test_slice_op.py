@@ -68,7 +68,7 @@ class TestSliceOp(OpTest):
         self.out = self.input[1:3, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -127,7 +127,9 @@ class TestSliceZerosShapeTensor(OpTest):
         self.out = self.input[1:2]
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.CPUPlace(), check_pir=True)
+        self.check_output_with_place(
+            paddle.CPUPlace(), check_pir=True, check_symbol_infer=True
+        )
 
 
 # 1.2 with attr(decrease)
@@ -159,7 +161,7 @@ class TestSliceOp_decs_dim(OpTest):
         self.out = self.input[1:2, 0:3, 2:4, :]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -205,7 +207,7 @@ class TestSliceOp_starts_ListTensor(OpTest):
         self.starts_infer = [-1, 0, -1]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -1011,15 +1013,6 @@ class TestImperativeVarBaseGetItem(unittest.TestCase):
 
 
 class TestInferShape(unittest.TestCase):
-    def test(self):
-        with paddle_static_guard():
-            x = paddle.ones(shape=[3, 4, 5])
-            x.desc.set_shape([3, -1, 5])
-            self.assertEqual(x.shape, (3, -1, 5))
-
-            out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
-            self.assertEqual(out0.shape, (3, -1, 5))
-
     def test_pir(self):
         with paddle.pir_utils.IrGuard():
             x = paddle.static.data('x', shape=[3, -1, 5])

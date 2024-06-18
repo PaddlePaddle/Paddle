@@ -15,11 +15,9 @@
 # repo: PaddleDetection
 # model: configs^ppyoloe^ppyoloe_crn_l_300e_coco_single_dy2st_train
 # method:astype||method:unsqueeze||method:tile||method:astype||api:paddle.tensor.search.masked_select||method:reshape||api:paddle.tensor.search.masked_select||method:reshape||method:sum||api:paddle.tensor.search.masked_select||method:unsqueeze||api:paddle.nn.functional.loss.l1_loss||api:paddle.tensor.manipulation.split||api:paddle.tensor.manipulation.split||api:paddle.tensor.math.maximum||api:paddle.tensor.math.maximum||api:paddle.tensor.math.minimum||api:paddle.tensor.math.minimum||method:__sub__||method:clip||method:__sub__||method:clip||method:__mul__||method:__sub__||method:__sub__||method:__mul__||method:__sub__||method:__sub__||method:__mul__||method:__add__||method:__sub__||method:__add__||method:__truediv__||api:paddle.tensor.math.minimum||api:paddle.tensor.math.minimum||api:paddle.tensor.math.maximum||api:paddle.tensor.math.maximum||method:__sub__||method:__sub__||method:__mul__||method:__add__||method:__sub__||method:__truediv__||method:__sub__||method:__rsub__||method:__mul__||method:__mul__||method:sum||method:__truediv__||method:unsqueeze||method:astype||method:tile||method:astype||api:paddle.tensor.search.masked_select||method:reshape||api:paddle.tensor.manipulation.split||method:__sub__||method:__sub__||api:paddle.tensor.manipulation.concat||method:clip||api:paddle.tensor.search.masked_select||method:reshape||method:floor||api:paddle.tensor.manipulation.cast||method:__add__||method:astype||method:__sub__||method:__rsub__||method:__sub__||api:paddle.nn.functional.loss.cross_entropy||method:__mul__||method:__sub__||api:paddle.nn.functional.loss.cross_entropy||method:__mul__||method:__add__||method:mean||method:__mul__||method:sum||method:__truediv__
-import unittest
+from base import *  # noqa: F403
 
-import numpy as np
-
-import paddle
+from paddle.static import InputSpec
 
 
 class LayerCase(paddle.nn.Layer):
@@ -126,8 +124,43 @@ class LayerCase(paddle.nn.Layer):
         return var_18, var_61, var_92
 
 
-class TestLayer(unittest.TestCase):
-    def setUp(self):
+class TestLayer(TestBase):
+    def init(self):
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1), dtype=paddle.bool, name=None, stop_gradient=True
+            ),
+            InputSpec(
+                shape=(-1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            ),
+            InputSpec(
+                shape=(-1, -1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=False,
+            ),
+            InputSpec(
+                shape=(-1, -1),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            ),
+        ]
         self.inputs = (
             paddle.randint(
                 low=0, high=2, shape=[1, 2541], dtype=paddle.int32
@@ -139,33 +172,11 @@ class TestLayer(unittest.TestCase):
             paddle.rand(shape=[1, 2541, 68], dtype=paddle.float32),
             paddle.rand(shape=[2541, 2], dtype=paddle.float32),
         )
-        self.net = LayerCase()
-
-    def train(self, net, to_static, with_prim=False, with_cinn=False):
-        if to_static:
-            paddle.set_flags({'FLAGS_prim_all': with_prim})
-            if with_cinn:
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.build_cinn_pass = True
-                net = paddle.jit.to_static(
-                    net, build_strategy=build_strategy, full_graph=True
-                )
-            else:
-                net = paddle.jit.to_static(net, full_graph=True)
-        paddle.seed(123)
-        outs = net(*self.inputs)
-        return outs
+        self.net = LayerCase
+        self.with_train = False
+        self.with_cinn = False
 
     # NOTE cinn lead to error
-    def test_ast_prim_cinn(self):
-        st_out = self.train(self.net, to_static=True)
-        cinn_out = self.train(
-            self.net, to_static=True, with_prim=True, with_cinn=False
-        )
-        for st, cinn in zip(
-            paddle.utils.flatten(st_out), paddle.utils.flatten(cinn_out)
-        ):
-            np.testing.assert_allclose(st.numpy(), cinn.numpy(), atol=1e-8)
 
 
 if __name__ == '__main__':
