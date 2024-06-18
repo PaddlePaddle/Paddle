@@ -3368,7 +3368,7 @@ def unique(
 
 def unsqueeze(
     x: Tensor,
-    axis: int | list[Tensor] | tuple[Tensor] | Tensor,
+    axis: int | Sequence[Tensor] | Tensor,
     name: str | None = None,
 ) -> Tensor:
     """
