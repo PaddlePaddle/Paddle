@@ -510,13 +510,31 @@ void concat_grad(const std::vector<Tensor>& x,
     axis_value = axis_value + rank;
   }
   axis_value = axis_value > 0 ? axis_value : 0;
-  std::vector<int> sections;
+
   int x_num = x.size();
-  for (int i = 0; i < x_num; ++i) {
-    sections.push_back(x[i].dims()[axis_value]);
+  std::vector<Tensor> x_grad_tmp;
+  if (has_dynamic_shape(x[0].shape())) {
+    std::vector<Tensor> sections;
+    for (int i = 0; i < x_num; i++) {
+      sections.push_back(slice<T>(shape<T>(x[i]),
+                                  {0},
+                                  {int64_t(axis_value)},
+                                  {int64_t(axis_value) + 1},
+                                  {1},
+                                  {}));
+    }
+    Tensor sections_tensor = concat<T>(sections);
+    x_grad_tmp =
+        backend::split<T>(out_grad,
+                          sections_tensor,
+                          full<T>({1}, axis_value, sections_tensor.dtype()));
+  } else {
+    std::vector<int> sections;
+    for (int i = 0; i < x_num; ++i) {
+      sections.push_back(x[i].dims()[axis_value]);
+    }
+    x_grad_tmp = split<T>(out_grad, IntArray(sections), axis_value);
   }
-  std::vector<Tensor> x_grad_tmp =
-      split<T>(out_grad, IntArray(sections), axis_value);
   for (int i = 0; i < x_num; ++i) {
     if (x_grad[i]) {
       set_output<T>(x_grad_tmp.at(i), x_grad.at(i));

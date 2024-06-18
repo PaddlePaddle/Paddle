@@ -1045,12 +1045,17 @@ Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
   auto min_reshape = min;
   auto max_reshape = max;
 
+  if (x.shape().size() == 0) {
+    min_reshape = reshape<T>(min_reshape, {});
+    max_reshape = reshape<T>(max_reshape, {});
+  }
+
   if (has_dynamic_shape(x.shape())) {
-    min_reshape = backend::expand_with_tensor<T>(min, shape<T>(x));
-    max_reshape = backend::expand_with_tensor<T>(max, shape<T>(x));
+    min_reshape = backend::expand_with_tensor<T>(min_reshape, shape<T>(x));
+    max_reshape = backend::expand_with_tensor<T>(max_reshape, shape<T>(x));
   } else {
-    min_reshape = expand<T>(min, x.shape());
-    max_reshape = expand<T>(max, x.shape());
+    min_reshape = expand<T>(min_reshape, x.shape());
+    max_reshape = expand<T>(max_reshape, x.shape());
   }
   if (min_reshape.dtype() != x.dtype()) {
     min_reshape = cast<T>(min_reshape, x.dtype());

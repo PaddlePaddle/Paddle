@@ -248,7 +248,7 @@ void Compiler::AppendCX86(const Module& module) {
 }
 
 std::string Compiler::GetSourceCode(const ir::Module& module) {
-  return target_.arch.Visit(adt::match{
+  return target_.arch.Match(
       [&](common::UnknownArch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::X86Arch) -> std::string { CINN_NOT_IMPLEMENTED; },
       [&](common::ARMArch) -> std::string { CINN_NOT_IMPLEMENTED; },
@@ -264,16 +264,14 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 #else
         CINN_NOT_IMPLEMENTED
 #endif
-      }});
+      });
 }
 
 void Compiler::BuildDefault(const Module& module) {
-  target_.arch.Visit(adt::match{
-      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::X86Arch) { CompileX86Module(module); },
-      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-      [&](common::NVGPUArch) { CompileCudaModule(module); },
-  });
+  target_.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                     [&](common::X86Arch) { CompileX86Module(module); },
+                     [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                     [&](common::NVGPUArch) { CompileCudaModule(module); });
 }
 
 namespace {

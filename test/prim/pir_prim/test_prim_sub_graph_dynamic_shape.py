@@ -286,6 +286,19 @@ class TestPrimClip(TestPrimBase):
         self.tol = 1e-6
 
 
+class TestPrimClip2(TestPrimBase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.dtype = "float32"
+        self.x_shape = []
+        self.init_x_shape = []
+        self.x = np.random.random(self.x_shape).astype(self.dtype)
+        self.net = clip_net
+        self.necessary_ops = "pd_op.clip"
+        self.enable_cinn = False
+        self.tol = 1e-6
+
+
 class TestPrimSquaredL2Norm(TestPrimBase):
     def setUp(self):
         np.random.seed(2023)

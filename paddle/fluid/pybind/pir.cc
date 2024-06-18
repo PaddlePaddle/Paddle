@@ -123,7 +123,6 @@ using pybind11::return_value_policy;
 
 COMMON_DECLARE_bool(print_ir);
 COMMON_DECLARE_bool(pir_apply_shape_optimization_pass);
-COMMON_DECLARE_bool(logging_pir_py_code_dump_symbolic_dims);
 
 namespace paddle {
 namespace pybind {
@@ -2465,23 +2464,12 @@ std::shared_ptr<Program> ApplyFusedBnAddActPass(
   return program;
 }
 
-void DumpPirPyCodeIfNeed(const std::shared_ptr<Program> &program,
-                         const std::string &file_name) {
-#ifdef PADDLE_WITH_CINN
-  ::cinn::dialect::ir::PirToPyCodeConverter(program.get())
-      .file_name(file_name)
-      .dump_symbolic_shape(FLAGS_logging_pir_py_code_dump_symbolic_dims)
-      .SaveIfFlagEnabled();
-#endif
-}
-
 void BindIrPass(pybind11::module *m) {
   m->def("apply_cinn_pass", ApplyCinnPass);
   m->def("check_infer_symbolic_if_need", CheckInferSymbolicIfNeed);
   m->def("infer_symbolic_shape_pass", InferSymbolicShapePass);
   m->def("apply_cse_pass", ApplyCommonSubexpressionEliminationPass);
   m->def("apply_bn_add_act_pass", ApplyFusedBnAddActPass);
-  m->def("dump_pir_py_code_if_need", DumpPirPyCodeIfNeed);
 
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",
@@ -2561,7 +2549,48 @@ void BindShapeOrDataDimExprs(pybind11::module *m) {
            return_value_policy::reference)
       .def("data",
            &symbol::ShapeOrDataDimExprs::data,
-           return_value_policy::reference);
+           return_value_policy::reference)
+      .def("is_equal",
+           [](symbol::ShapeOrDataDimExprs &self,
+              std::vector<int64_t> expect_shape,
+              std::vector<int64_t> expect_data = {}) -> bool {
+             VLOG(3) << "Start compare shape and data.";
+
+             const auto &compare_func =
+                 [&](const std::vector<int64_t> &expect,
+                     const std::vector<symbol::DimExpr> &actual) -> bool {
+               if (actual.size() != expect.size()) {
+                 LOG(ERROR) << "expect size " << expect.size()
+                            << " is not equal to actual size " << actual.size()
+                            << " .";
+                 return false;
+               } else if (actual.empty()) {
+                 return true;
+               }
+               for (size_t i = 0; i < actual.size(); i++) {
+                 if (!actual.at(i).isa<int64_t>()) {
+                   PADDLE_THROW(phi::errors::InvalidArgument(
+                       "In OpTest, only supports cases where the type of "
+                       "DimExpr "
+                       "is int64_t."));
+                   return false;
+                 }
+                 if (actual.at(i) != expect.at(i)) {
+                   LOG(ERROR) << "expect[" << i << "]: " << expect.at(i)
+                              << " is not equal to actual[" << i
+                              << "]: " << actual.at(i) << " .";
+                   return false;
+                 }
+               }
+               return true;
+             };
+
+             // compare shape
+             const std::vector<symbol::DimExpr> &actual_shape = self.shape();
+
+             // TODO(gongshaotian): compare data
+             return compare_func(expect_shape, actual_shape);
+           });
 }
 
 void BindShapeConstraintIRAnalysis(pybind11::module *m) {
