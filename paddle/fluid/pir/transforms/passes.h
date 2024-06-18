@@ -43,6 +43,7 @@ USE_PIR_PASS(fused_dot_product_attention_pass);
 USE_PIR_PASS(fused_flash_attn_pass);
 USE_PIR_PASS(remove_redundant_transpose_pass);
 USE_PIR_PASS(transfer_layout_pass);
+USE_PIR_PASS(fused_rotary_position_embedding_pass);
 
 #ifdef PADDLE_WITH_DNNL
 USE_PIR_PASS(depthwise_conv_onednn_pass);
