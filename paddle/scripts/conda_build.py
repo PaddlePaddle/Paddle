@@ -154,7 +154,6 @@ def conda_build(paddle_version, var):
         # cpu安装包编译
         name = 'paddlepaddle'
         for i in range(len(var.py_str)):
-            break
             packages_string = var.py_str[i] + "_cpu_many_linux"
             python_version = var.py_ver[var.py_str[i]]
             template_full(name, paddle_version, packages_string, python_version)
