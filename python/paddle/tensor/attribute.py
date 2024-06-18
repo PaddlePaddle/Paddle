@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # TODO: define functions to get tensor attributes
+from __future__ import annotations
 
 import numpy as np
 
