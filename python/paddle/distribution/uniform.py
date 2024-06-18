@@ -105,13 +105,29 @@ class Uniform(distribution.Distribution):
             check_type(
                 low,
                 'low',
-                (int, float, np.ndarray, Variable, list, tuple),
+                (
+                    int,
+                    float,
+                    np.ndarray,
+                    Variable,
+                    paddle.pir.Value,
+                    list,
+                    tuple,
+                ),
                 'Uniform',
             )
             check_type(
                 high,
                 'high',
-                (int, float, np.ndarray, Variable, list, tuple),
+                (
+                    int,
+                    float,
+                    np.ndarray,
+                    Variable,
+                    paddle.pir.Value,
+                    list,
+                    tuple,
+                ),
                 'Uniform',
             )
 

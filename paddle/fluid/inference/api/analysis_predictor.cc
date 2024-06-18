@@ -802,8 +802,8 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
     pir::IrContext *ctx = pir::IrContext::Instance();
     ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
     ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
-    auto pass_manager =
-        std::make_shared<::pir::PassManager>(::pir::IrContext::Instance(), 2);
+    auto pass_manager = std::make_shared<::pir::PassManager>(
+        ::pir::IrContext::Instance(), config_.pm_opt_level_);
     if (!config_.glog_info_disabled()) {
       pass_manager->EnablePrintStatistics();
     }
@@ -882,12 +882,20 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
         std::make_unique<pir::PassManager::IRPrinterOption>(
             ir_printing_conditions, ir_printing_conditions));
   }
+  // set attr
+  for (const auto &pass : pass_pm.passes()) {
+    if (pass->name() == "matmul_add_act_fuse_pass" ||
+        pass->name() == "conv2d_add_act_fuse_pass" ||
+        pass->name() == "conv2d_add_fuse_pass") {
+      pass->Set("use_cutlass", new bool(config_.use_cutlass_));
+    }
+  }
   pass_pm.Run(pir_program_.get());
 
   // Apply some basic passes required by the framework
   ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
                                    config_.pm_opt_level_);
-
+  basic_pass_pm.AddPass(::pir::CreateCommonSubexpressionEliminationPass());
   auto params_sync_among_devices_pass =
       ::pir::CreateParamsSyncAmongDevicesPass();
   params_sync_among_devices_pass->SetNotOwned(pir::Pass::kPlaceAttr, &place_);
@@ -918,6 +926,9 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_);
 
   ::pir::PassManager lowered_pm(::pir::IrContext::Instance(), 3);
+  auto remove_shadow_feed_pass = ::pir::CreateRemoveShadowFeedPass();
+  remove_shadow_feed_pass->Set("used_for_inference", new bool(true));
+  lowered_pm.AddPass(std::move(remove_shadow_feed_pass));
   if (FLAGS_pir_apply_inplace_pass) {
     lowered_pm.AddPass(::pir::CreateInplacePass());
   }
@@ -941,8 +952,9 @@ bool AnalysisPredictor::LoadPirParameters() {
     // put pd-op.data and pd-op.fetch into idx2feeds and idx2feeds
     if (op->isa<paddle::dialect::FetchOp>()) {
       int idx = op->attribute("col").dyn_cast<pir::Int32Attribute>().data();
-      if (fetches_.size() <= static_cast<size_t>(idx)) {
-        fetches_.resize(idx + 1);
+      if (pir_fetches_.size() <= static_cast<size_t>(idx)) {
+        pir_fetches_.resize(idx + 1);
+        pir_fetches_[idx] = op;
         std::string fetch_name =
             op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
         idx2fetches_[idx] = fetch_name;
@@ -953,6 +965,7 @@ bool AnalysisPredictor::LoadPirParameters() {
           op->attribute("name").dyn_cast<pir::StrAttribute>().AsString();
       idx2feeds_[feed_idx] = data_name;
       feed_idx++;
+      pir_feeds_.emplace_back(op);
     }
     for (auto var : op->results()) {
       std::string var_name;
@@ -1079,9 +1092,10 @@ bool AnalysisPredictor::PrepareProgram(
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
 
   if (config_.new_ir_enabled()) {
-    if (pir_program_ != nullptr) {
-      PADDLE_FATAL("pir_program_ must be nullptr");
-    }
+    PADDLE_ENFORCE_EQ(
+        pir_program_,
+        nullptr,
+        platform::errors::Fatal("Here, pir_program must be a nullptr!"));
     pir_program_ = paddle::TranslateLegacyProgramToProgram(*inference_program_);
     OptimizeInferencePirProgram();
   }
@@ -1759,12 +1773,22 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
                                 framework::Scope *scope) {
   VLOG(3) << "Predictor::set_feed";
-  PADDLE_ENFORCE_EQ(inputs.size(),
-                    feeds_.size(),
-                    platform::errors::InvalidArgument(
-                        "wrong feed input size, need %d but get %d.",
-                        feeds_.size(),
-                        inputs.size()));
+  if (load_pir_model_) {
+    PADDLE_ENFORCE_EQ(inputs.size(),
+                      pir_feeds_.size(),
+                      platform::errors::InvalidArgument(
+                          "wrong feed input size, need %d but get %d.",
+                          pir_feeds_.size(),
+                          inputs.size()));
+  } else {
+    PADDLE_ENFORCE_EQ(inputs.size(),
+                      feeds_.size(),
+                      platform::errors::InvalidArgument(
+                          "wrong feed input size, need %d but get %d.",
+                          feeds_.size(),
+                          inputs.size()));
+  }
+
   for (const auto &input : inputs) {
     PADDLE_ENFORCE_EQ(input.defined(),
                       true,
@@ -1864,6 +1888,16 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 bool AnalysisPredictor::GetFetch(std::vector<paddle::Tensor> *outputs,
                                  framework::Scope *scope) {
   VLOG(3) << "Predictor::get_fetch";
+  if (load_pir_model_) {
+    outputs->resize(pir_fetches_.size());
+    for (size_t i = 0; i < pir_fetches_.size(); ++i) {
+      auto const &name = idx2fetches_[i];
+      auto &t = framework::GetVariableTensor(*scope, name);
+      (*outputs)[i] =
+          paddle::Tensor(std::make_shared<phi::DenseTensor>(t), name);
+    }
+    return true;
+  }
   outputs->resize(fetches_.size());
   for (size_t i = 0; i < fetches_.size(); ++i) {
     auto const &name = idx2fetches_[i];

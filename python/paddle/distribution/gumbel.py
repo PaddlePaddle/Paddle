@@ -83,13 +83,17 @@ class Gumbel(TransformedDistribution):
     """
 
     def __init__(self, loc, scale):
-        if not isinstance(loc, (numbers.Real, framework.Variable)):
+        if not isinstance(
+            loc, (numbers.Real, framework.Variable, paddle.pir.Value)
+        ):
             raise TypeError(
-                f"Expected type of loc is Real|Variable, but got {type(loc)}"
+                f"Expected type of loc is Real|Variable|Value, but got {type(loc)}"
             )
-        if not isinstance(scale, (numbers.Real, framework.Variable)):
+        if not isinstance(
+            scale, (numbers.Real, framework.Variable, paddle.pir.Value)
+        ):
             raise TypeError(
-                f"Expected type of scale is Real|Variable, but got {type(scale)}"
+                f"Expected type of scale is Real|Variable|Value, but got {type(scale)}"
             )
 
         if isinstance(loc, numbers.Real):

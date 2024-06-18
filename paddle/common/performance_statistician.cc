@@ -77,23 +77,46 @@ std::vector<TimeDuration> PerformanceReporter::TopK(
   return top_k;
 }
 
+TimeDuration PerformanceReporter::TrimMean(
+    const std::vector<TimeDuration>& durations) {
+  int top_count = durations.size();
+  if (top_count == 0) return TimeDuration::zero();
+  auto top_k = TopK(durations, top_count);
+  int remove_num = top_count / 10;
+  auto avg_time = std::accumulate(top_k.begin() + remove_num,
+                                  top_k.end() - remove_num,
+                                  TimeDuration::zero());
+  return avg_time / (top_count - 2 * remove_num);
+}
+
 std::string PerformanceReporter::Report(
     const std::vector<TimePointInfo>& records) {
   if (records.empty()) return "[No Record]";
   std::stringstream ss;
   std::string unit = "us";
   auto durations = ExtractDuration(records);
+  int top_count = durations.size();
   auto total_time = std::chrono::duration_cast<TimeDuration>(Sum(durations));
   auto mean_time = std::chrono::duration_cast<TimeDuration>(Mean(durations));
+  auto trim_mean_time =
+      std::chrono::duration_cast<TimeDuration>(TrimMean(durations));
   auto max_time = std::chrono::duration_cast<TimeDuration>(Max(durations));
   auto min_time = std::chrono::duration_cast<TimeDuration>(Min(durations));
-  int top_count = 10;
   auto top_k = TopK(durations, top_count);
   ss << "Call Count = " << durations.size()
      << "\t Total Time = " << total_time.count() << unit
      << "\t Mean Time = " << mean_time.count() << unit
+     << "\t TrimMean Time = " << trim_mean_time.count() << unit
      << "\t Max Time = " << max_time.count() << unit
      << "\t Min Time = " << min_time.count() << unit << "\n";
+
+  ss << "Records " << top_count << ": [";
+  for (size_t i = 0; i < durations.size(); ++i) {
+    ss << i + 1 << ": "
+       << std::chrono::duration_cast<TimeDuration>(durations[i]).count() << unit
+       << "  ";
+  }
+  ss << "]\n";
   ss << "Top " << top_count << ": [";
   for (size_t i = 0; i < top_k.size(); ++i) {
     ss << i + 1 << ": "
@@ -101,6 +124,7 @@ std::string PerformanceReporter::Report(
        << "  ";
   }
   ss << "]\n";
+
   return ss.str();
 }
 

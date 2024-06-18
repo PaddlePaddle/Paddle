@@ -76,10 +76,6 @@ class Poisson(distribution.Distribution):
         self.dtype = paddle.get_default_dtype()
         self.rate = self._to_tensor(rate)
 
-        if not self._check_constraint(self.rate):
-            raise ValueError(
-                'Every element of input parameter `rate` should be nonnegative.'
-            )
         if self.rate.shape == []:
             batch_shape = (1,)
         else:
@@ -98,17 +94,6 @@ class Poisson(distribution.Distribution):
         else:
             self.dtype = rate.dtype
         return rate
-
-    def _check_constraint(self, value):
-        """Check the constraint for input parameters
-
-        Args:
-            value (Tensor)
-
-        Returns:
-            bool: pass or not.
-        """
-        return (value >= 0).all()
 
     @property
     def mean(self):
@@ -188,16 +173,35 @@ class Poisson(distribution.Distribution):
         Returns:
             Tensor: the bounded approximation of the support
         """
-        s_max = (
-            paddle.sqrt(paddle.max(rate))
-            if paddle.greater_equal(
-                paddle.max(rate), paddle.to_tensor(1.0, dtype=self.dtype)
+        if paddle.framework.in_dynamic_mode():
+            s_max = (
+                paddle.sqrt(paddle.max(rate))
+                if paddle.greater_equal(
+                    paddle.max(rate), paddle.to_tensor(1.0, dtype=self.dtype)
+                )
+                else paddle.ones_like(rate, dtype=self.dtype)
             )
-            else paddle.ones_like(rate, dtype=self.dtype)
-        )
-        upper = paddle.max(paddle.cast(rate + 30 * s_max, dtype="int32"))
-        values = paddle.arange(0, upper, dtype=self.dtype)
-        return values
+            upper = paddle.max(paddle.cast(rate + 30 * s_max, dtype="int32"))
+            values = paddle.arange(0, upper, dtype=self.dtype)
+            return values
+        else:
+
+            def true_func():
+                return paddle.sqrt(paddle.max(rate))
+
+            def false_func():
+                return paddle.to_tensor(1.0, dtype=self.dtype)
+
+            s_max = paddle.static.nn.cond(
+                paddle.greater_equal(
+                    paddle.max(rate), paddle.to_tensor(1.0, dtype=self.dtype)
+                ),
+                true_func,
+                false_func,
+            )
+            upper = paddle.max(paddle.cast(rate + 30 * s_max, dtype="int32"))
+            values = paddle.arange(0, upper, dtype=self.dtype)
+            return values
 
     def log_prob(self, value):
         """Log probability density/mass function.
@@ -209,10 +213,6 @@ class Poisson(distribution.Distribution):
           Tensor: log probability. The data type is the same as `rate`.
         """
         value = paddle.cast(value, dtype=self.dtype)
-        if not self._check_constraint(value):
-            raise ValueError(
-                'Every element of input parameter `value` should be nonnegative.'
-            )
         eps = paddle.finfo(self.rate.dtype).eps
         return paddle.nan_to_num(
             (

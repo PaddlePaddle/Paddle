@@ -449,9 +449,13 @@ class AffineTransform(Transform):
     _type = Type.BIJECTION
 
     def __init__(self, loc, scale):
-        if not isinstance(loc, paddle.base.framework.Variable):
+        if not isinstance(
+            loc, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
             raise TypeError(f"Expected 'loc' is a Tensor, but got {type(loc)}")
-        if not isinstance(scale, paddle.base.framework.Variable):
+        if not isinstance(
+            scale, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
             raise TypeError(
                 f"Expected scale is a Tensor, but got {type(scale)}"
             )
@@ -799,7 +803,9 @@ class PowerTransform(Transform):
     _type = Type.BIJECTION
 
     def __init__(self, power):
-        if not isinstance(power, paddle.base.framework.Variable):
+        if not isinstance(
+            power, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
             raise TypeError(
                 f"Expected 'power' is a tensor, but got {type(power)}"
             )

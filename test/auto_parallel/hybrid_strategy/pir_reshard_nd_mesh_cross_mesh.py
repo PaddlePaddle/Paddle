@@ -105,8 +105,8 @@ class TestReshardNdMeshCrossMesh:
             assert new_ops_name[2] == "pd_op.send_v2"
         else:
             assert new_ops_name[2] == "pd_op.recv_v2"
-            assert new_ops_name[-2] == "pd_op.c_allreduce_sum_"
-            assert new_ops_name[-1] == "pd_op.c_allreduce_sum_"
+            assert new_ops_name[-2] == "pd_op.c_allreduce_sum"
+            assert new_ops_name[-1] == "pd_op.c_allreduce_sum"
 
             # check the first allreduce_sum
             op = new_ops[-2]

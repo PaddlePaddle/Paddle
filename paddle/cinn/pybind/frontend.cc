@@ -20,13 +20,11 @@
 #include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/frontend/computation.h"
-#include "paddle/cinn/frontend/decomposer/use_decomposer.h"
 #include "paddle/cinn/frontend/decomposer_registry.h"
 #include "paddle/cinn/frontend/interpreter.h"
 #include "paddle/cinn/frontend/net_builder.h"
 #include "paddle/cinn/frontend/optimize.h"
 #include "paddle/cinn/frontend/paddle_model_convertor.h"
-#include "paddle/cinn/frontend/pass/use_program_pass.h"
 #include "paddle/cinn/frontend/program_pass.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph.h"
@@ -225,7 +223,7 @@ void BindFrontend(pybind11::module *m) {
                                     "The size of tensor [%d] is different with "
                                     "the input data's size! Please check.",
                                     tensor_inputs[i]->id));
-              target.arch.Visit(adt::match{
+              target.arch.Match(
                   [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
                   [&](common::X86Arch) {
                     memcpy(data,
@@ -245,8 +243,7 @@ void BindFrontend(pybind11::module *m) {
      PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
      "you need to set WITH_CUDA ON!"));
 #endif
-                  },
-              });
+                  });
             }
             program->Execute();
 
@@ -327,7 +324,7 @@ void BindFrontend(pybind11::module *m) {
                        "The size of tensor [%d] is different with "
                        "the input data's size! Please check.",
                        tensor_inputs[i]->id));
-               target.arch.Visit(adt::match{
+               target.arch.Match(
                    [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
                    [&](common::X86Arch) {
                      for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
@@ -347,8 +344,7 @@ void BindFrontend(pybind11::module *m) {
      PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
      "you need to set WITH_CUDA ON!"));
 #endif
-                   },
-               });
+                   });
              }
              VLOG(3) << info;
              program->ExecuteTest(repeat_);
@@ -385,7 +381,7 @@ void BindFrontend(pybind11::module *m) {
                        "The size of tensor [%d] is different with "
                        "the input data's size! Please check.",
                        tensor_inputs[i]->id));
-               target.arch.Visit(adt::match{
+               target.arch.Match(
                    [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
                    [&](common::X86Arch) {
                      for (size_t j = 0; j < in_tensor->shape().numel(); j++) {
@@ -405,8 +401,7 @@ void BindFrontend(pybind11::module *m) {
      PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
      "you need to set WITH_CUDA ON!"));
 #endif
-                   },
-               });
+                   });
              }
              VLOG(3) << info;
              program->ExecuteTest(repeat_);

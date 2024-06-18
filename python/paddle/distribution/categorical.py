@@ -98,7 +98,7 @@ class Categorical(distribution.Distribution):
             check_type(
                 logits,
                 'logits',
-                (np.ndarray, Variable, list, tuple),
+                (np.ndarray, Variable, paddle.pir.Value, list, tuple),
                 'Categorical',
             )
 
