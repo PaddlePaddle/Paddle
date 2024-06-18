@@ -49,6 +49,8 @@ class InferMetaContext {
   void EmplaceBackOutputs(
       paddle::small_vector<MetaTensor, phi::kOutputSmallVectorSize> outputs);
 
+  void UpdataInput(size_t idx, MetaTensor input) { inputs_[idx] = input; }
+
   TEST_API virtual const MetaTensor& InputAt(size_t idx) const;
 
   TEST_API virtual std::vector<const MetaTensor*> InputsBetween(
@@ -67,6 +69,10 @@ class InferMetaContext {
 
   const std::pair<int, int>& InputRangeAt(size_t idx) const;
   TEST_API const std::pair<int, int>& OutputRangeAt(size_t idx) const;
+
+  size_t InputsSize() const { return inputs_.size(); }
+  size_t OutputsSize() const { return outputs_.size(); }
+  size_t AttrsSize() const { return attrs_.size(); }
 
   virtual ~InferMetaContext() = default;
 

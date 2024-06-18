@@ -19,8 +19,8 @@ void {op_name}::VerifySig() {{
   VLOG(4) << "Verifying inputs:";
   {{
   auto input_size = num_operands();
-  IR_ENFORCE(input_size == {inputs_size}u,
-                    "The size %d of inputs must be equal to {inputs_size}.", input_size);{inputs_type_check}
+  PADDLE_ENFORCE_EQ(input_size , {inputs_size}, common::errors::InvalidArgument(
+                    "The size of inputs must be equal to {inputs_size}."));{inputs_type_check}
   }}
   VLOG(4) << "Verifying attributes:";
   {{{attributes_check}
@@ -28,8 +28,8 @@ void {op_name}::VerifySig() {{
   VLOG(4) << "Verifying outputs:";
   {{
   auto output_size = num_results();
-  IR_ENFORCE(output_size == {outputs_size}u,
-                    "The size %d of outputs must be equal to {outputs_size}.", output_size);{outputs_type_check}
+  PADDLE_ENFORCE_EQ(output_size, {outputs_size}, common::errors::InvalidArgument(
+                    "The size of outputs must be equal to {outputs_size}."));{outputs_type_check}
   }}
   VLOG(4) << "End Verifying for: {op_name}.";
 }}
@@ -40,83 +40,83 @@ void {op_name}::VerifySig() {{}}
 """
 
 INPUT_TYPE_CHECK_TEMPLATE = """
-  IR_ENFORCE((*this)->operand_source({index}).type().isa<{standard}>(),
-                  "Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type());"""
+  PADDLE_ENFORCE_EQ((*this)->operand_source({index}).type().isa<{standard}>(), true,
+                  phi::errors::InvalidArgument("Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type()));"""
 INPUT_VECTORTYPE_CHECK_TEMPLATE = """
   if (auto vec_type = (*this)->operand_source({index}).type().dyn_cast<pir::VectorType>()) {{
       for (size_t i = 0; i < vec_type.size(); ++i) {{
-        IR_ENFORCE(vec_type[i].isa<{standard}>(),
-                       "Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type());
+        PADDLE_ENFORCE_EQ(vec_type[i].isa<{standard}>(), true, phi::errors::InvalidArgument(
+                       "Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type()));
       }}
   }}
   else {{
-    IR_ENFORCE((*this)->operand_source({index}).type().isa<{standard}>(),
-                   "Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type());
+    PADDLE_ENFORCE_EQ((*this)->operand_source({index}).type().isa<{standard}>(), true, phi::errors::InvalidArgument(
+                   "Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type()));
   }}"""
 INPUT_OPTIONAL_TYPE_CHECK_TEMPLATE = """
   if (auto val = (*this)->operand({index})) {{
-    IR_ENFORCE(val.type().isa<{standard}>(),
-                   "Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type());
+    PADDLE_ENFORCE_EQ(val.type().isa<{standard}>(), true, phi::errors::InvalidArgument(
+                   "Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type()));
   }}"""
 INPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """
   if (auto val =  (*this)->operand({index})) {{
     if (auto vec_type = val.type().dyn_cast<pir::VectorType>()) {{
       for (size_t i = 0; i < vec_type.size(); i++) {{
-        IR_ENFORCE(vec_type[i].isa<{standard}>(),
-                          "Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type());
+        PADDLE_ENFORCE_EQ(vec_type[i].isa<{standard}>(), true, phi::errors::InvalidArgument(
+                          "Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type()));
       }}
     }}
     else {{
-      IR_ENFORCE(val.type().isa<{standard}>(),
-                        "Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type());
+      PADDLE_ENFORCE_EQ(val.type().isa<{standard}>(), true, phi::errors::InvalidArgument(
+                        "Type validation failed for the {index}th input, got %s.", (*this)->operand_source({index}).type()));
     }}
   }}"""
 ATTRIBUTE_CHECK_TEMPLATE = """
-  IR_ENFORCE(attributes.count("{attribute_name}")>0,
-                 "{attribute_name} does not exist.");
-  IR_ENFORCE(attributes.at("{attribute_name}").isa<{standard}>(),
-                 "Type of attribute: {attribute_name} is not {standard}.");
+  PADDLE_ENFORCE_GT(attributes.count("{attribute_name}"), 0, phi::errors::InvalidArgument(
+                 "{attribute_name} does not exist."));
+  PADDLE_ENFORCE_EQ(attributes.at("{attribute_name}").isa<{standard}>(), true, phi::errors::InvalidArgument(
+                 "Type of attribute: {attribute_name} is not {standard}."));
 """
 ATTRIBUTE_VECTOR_CHECK_TEMPLATE = """
-  IR_ENFORCE(attributes.count("{attribute_name}")>0,
-                 "{attribute_name} does not exist.");
-  IR_ENFORCE(attributes.at("{attribute_name}").isa<pir::ArrayAttribute>(),
-                 "Type of attribute: {attribute_name} is not pir::ArrayAttribute.");
+  PADDLE_ENFORCE_GT(attributes.count("{attribute_name}"), 0, phi::errors::InvalidArgument(
+                 "{attribute_name} does not exist."));
+  PADDLE_ENFORCE_EQ(attributes.at("{attribute_name}").isa<pir::ArrayAttribute>(), true, phi::errors::InvalidArgument(
+                 "Type of attribute: {attribute_name} is not pir::ArrayAttribute."));
   for (size_t i = 0; i < attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().size(); i++) {{
-    IR_ENFORCE(attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().at(i).isa<{standard}>(),
-                   "Type of attribute: {attribute_name} is not right.");
+    PADDLE_ENFORCE_EQ(attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().at(i).isa<{standard}>(), true, phi::errors::InvalidArgument(
+                   "Type of attribute: {attribute_name} is not right."));
   }}"""
 OUTPUT_TYPE_CHECK_TEMPLATE = """
-  IR_ENFORCE((*this)->result({index}).type().isa<{standard}>(),
-                 "Type validation failed for the {index}th output.");"""
+  PADDLE_ENFORCE_EQ((*this)->result({index}).type().isa<{standard}>(), true, phi::errors::InvalidArgument(
+                 "Type validation failed for the {index}th output."));"""
 OUTPUT_VECTORTYPE_CHECK_TEMPLATE = """
   auto output_{index}_type = (*this)->result({index}).type();
   if (auto vec_type = output_{index}_type.dyn_cast<pir::VectorType>()) {{
     for (size_t i = 0; i < vec_type.size(); i++) {{
-      IR_ENFORCE(vec_type[i].isa<{standard}>(),
-                     "Type validation failed for the {index}th output.");
+      PADDLE_ENFORCE_EQ(vec_type[i].isa<{standard}>(), true, phi::errors::InvalidArgument(
+                     "Type validation failed for the {index}th output."));
     }}
   }}
   else {{
-    IR_ENFORCE(output_{index}_type.isa<{standard}>(),
-                   "Type validation failed for the {index}th output.");
+    PADDLE_ENFORCE_EQ(output_{index}_type.isa<{standard}>(), true, phi::errors::InvalidArgument(
+                   "Type validation failed for the {index}th output."));
   }}"""
 OUTPUT_OPTIONAL_TYPE_CHECK_TEMPLATE = """
   if (auto output_{index}_type = (*this)->result({index}).type()) {{
-    IR_ENFORCE(output_{index}_type.isa<{standard}>(),
-                   "Type validation failed for the {index}th output.");
+    PADDLE_ENFORCE_EQ(output_{index}_type.isa<{standard}>(),true, phi::errors::InvalidArgument(
+                   "Type validation failed for the {index}th output."));
   }}"""
 OUTPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """
   if (auto output_{index}_type = (*this)->result({index}).type()) {{
     if (auto vec_type = output_{index}_type.dyn_cast<pir::VectorType>()) {{
       for (size_t i = 0; i < vec_type.size(); ++i) {{
-        IR_ENFORCE(vec_type[i].isa<{standard}>(),
-                       "Type validation failed for the {index}th output.");
+        PADDLE_ENFORCE_EQ(vec_type[i].isa<{standard}>(), true, phi::errors::InvalidArgument(
+                       "Type validation failed for the {index}th output."));
       }}
     }}
     else {{
-      IR_ENFORCE(output_{index}_type.isa<{standard}>(),
-                     "Type validation failed for the {index}th output.");
+      PADDLE_ENFORCE_EQ(output_{index}_type.isa<{standard}>(), true, phi::errors::InvalidArgument(
+                     "Type validation failed for the {index}th output."));
     }}
   }}"""
 

@@ -21,7 +21,11 @@ import paddle
 from paddle import nn
 
 paddle.enable_static()
+import sys
+
 from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+
+sys.path.append("../deprecated/legacy_test")
 from test_attribute_var import UnittestBase
 from testsuite import create_op
 
@@ -33,8 +37,8 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
     padding_algorithm = attrs['padding_algorithm']
     if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
         raise ValueError(
-            "Unknown Attr(padding_algorithm): '%s'. "
-            "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+            f"Unknown Attr(padding_algorithm): '{str(padding_algorithm)}'. "
+            "It can only be 'SAME' or 'VALID'."
         )
 
     if attrs['data_format'] == 'NHWC':
@@ -82,10 +86,10 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
         pad_h_0, pad_h_1 = pad[0], pad[1]
         pad_w_0, pad_w_1 = pad[2], pad[3]
 
-    d_bolck_h = dilations[0] * (f_h - 1) + 1
-    d_bolck_w = dilations[1] * (f_w - 1) + 1
-    out_h = (in_h - 1) * stride[0] + d_bolck_h
-    out_w = (in_w - 1) * stride[1] + d_bolck_w
+    d_block_h = dilations[0] * (f_h - 1) + 1
+    d_block_w = dilations[1] * (f_w - 1) + 1
+    out_h = (in_h - 1) * stride[0] + d_block_h
+    out_w = (in_w - 1) * stride[1] + d_block_w
     if 'output_size' in attrs:
         output_size = attrs['output_size']
         out_h = output_size[0] + pad_h_0 + pad_h_1
@@ -117,8 +121,8 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
                             ],
                             axis=0,
                         )
-                        i1, i2 = i * stride[0], i * stride[0] + d_bolck_h
-                        j1, j2 = j * stride[1], j * stride[1] + d_bolck_w
+                        i1, i2 = i * stride[0], i * stride[0] + d_block_h
+                        j1, j2 = j * stride[1], j * stride[1] + d_block_w
                         out[
                             n,
                             g * f_out_c + k,
@@ -223,7 +227,7 @@ class TestConv2DTransposeOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_output_with_place(
@@ -1356,8 +1360,8 @@ class TestTensorOutputSize1(UnittestBase):
 
     def test_static(self):
         main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        startup_prog = Program()
+        with program_guard(main_prog, startup_prog):
             fc = paddle.nn.Linear(8, 8)
             x = paddle.randn([2, 3, 8, 8])
             x.stop_gradient = False
@@ -1369,7 +1373,7 @@ class TestTensorOutputSize1(UnittestBase):
             self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
+            exe.run(startup_prog)
             res = exe.run(fetch_list=[feat, out])
             np.testing.assert_allclose(res[1].shape, (2, 6, 17, 17))
 

@@ -176,5 +176,24 @@ class TestDistPPMainGrad(TestDistPPTraining):
         return scheduler, optimizer
 
 
+class TestDistPPTrainingNonBatchedMode(TestDistPPTraining):
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        self.model_parallel_size = 1
+        self.data_parallel_size = 1
+        self.pipeline_parallel_size = 2
+        strategy.hybrid_configs = {
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": self.pipeline_parallel_size,
+            "pp_configs": {"non_batch_p2p_comm": True},
+        }
+        strategy.pipeline_configs = {
+            "accumulate_steps": batch_size // micro_batch_size,
+            "micro_batch_size": micro_batch_size,
+        }
+        fleet.init(is_collective=True, strategy=strategy)
+
+
 if __name__ == "__main__":
     unittest.main()

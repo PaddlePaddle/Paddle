@@ -26,20 +26,12 @@ if(TENSORRT_FOUND)
   add_subdirectory(tensorrt)
 endif()
 
-if(WITH_LITE)
-  add_subdirectory(lite)
-endif()
-
 # fluid_modules exclude API-interface of inference/api and inference/capi_exp
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
 get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
 get_property(not_infer_modules GLOBAL PROPERTY NOT_INFER_MODULES)
-set(utils_modules pretty_log string_helper benchmark utf8proc)
-
-if(NOT WITH_GFLAGS)
-  set(utils_modules ${utils_modules} paddle_flags)
-endif()
+set(utils_modules pretty_log string_helper utf8proc)
 
 add_subdirectory(api)
 
@@ -70,14 +62,8 @@ if(WIN32)
   cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
-  create_static_lib(
-    paddle_inference
-    ${phi_modules}
-    ${fluid_modules}
-    ${ir_targets}
-    ${STATIC_INFERENCE_API}
-    ${utils_modules}
-    common_static)
+  create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
+                    ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
 
 if(NOT APPLE)
@@ -103,15 +89,18 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc)
 
-# NOTE(Aurelius84): For inference library, some DEPS is usless
+# NOTE(Aurelius84): For inference library, some DEPS is useless
 # such as non-infer operator related targets et.al.
 list(REMOVE_ITEM fluid_modules cinn_op_dialect)
 # NOTE(Aurelisu84): Remove pir dialect related target DEPS for inference
 # shared library to prune library size.
 # list(REMOVE_ITEM fluid_modules ${not_infer_modules})
 
-set(SHARED_INFERENCE_DEPS phi common ${fluid_modules} analysis_predictor
-                          ${utils_modules})
+set(SHARED_INFERENCE_DEPS phi phi_core common ${fluid_modules}
+                          analysis_predictor ${utils_modules})
+if(WITH_GPU OR WITH_ROCM)
+  list(APPEND SHARED_INFERENCE_DEPS phi_gpu)
+endif()
 if(NOT WIN32)
   list(APPEND SHARED_INFERENCE_DEPS ${ir_targets})
 endif()

@@ -14,22 +14,34 @@
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void Pool2dOpMapper(const paddle::cpp::OpDesc& op_desc,
                     const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of pool2d op should be one."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of pool2d op should be one."));
   auto out_name = op_desc.Output("Out").front();
 
-  CHECK(op_desc.HasAttr("pooling_type"));
+  PADDLE_ENFORCE_EQ(op_desc.HasAttr("pooling_type"),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The pool2d op should have pooling_type attribute."));
   auto pooling_type =
       utils::GetAttrOrDefault<std::string>(op_desc, "pooling_type");
-  CHECK(op_desc.HasAttr("ksize"));
+  PADDLE_ENFORCE_EQ(op_desc.HasAttr("ksize"),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The pool2d op should have ksize attribute."));
   auto ksize = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "ksize");
 
   auto strides =
@@ -65,20 +77,39 @@ void Pool2dOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void Pool2dGradOpMapper(const paddle::cpp::OpDesc& op_desc,
                         const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The input of pool2d_grad op should be one."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Input("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Out").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The input of pool2d_grad op should be one."));
   auto y_name = op_desc.Input("Out").front();
-  CHECK_EQ(op_desc.Input(paddle::GradVarName("Out")).size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input(paddle::GradVarName("Out")).size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The input of pool2d_grad op should be one."));
   auto dy_name = op_desc.Input(paddle::GradVarName("Out")).front();
 
-  CHECK_EQ(op_desc.Output(paddle::GradVarName("X")).size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Output(paddle::GradVarName("X")).size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The output of pool2d_grad op should be one."));
   auto dx_name = op_desc.Output(paddle::GradVarName("X")).front();
 
-  CHECK(op_desc.HasAttr("pooling_type"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("pooling_type"),
+      true,
+      phi::errors::InvalidArgument(
+          "The pool2d_grad op should have pooling_type attribute."));
   auto pooling_type =
       utils::GetAttrOrDefault<std::string>(op_desc, "pooling_type");
-  CHECK(op_desc.HasAttr("ksize"));
+  PADDLE_ENFORCE_EQ(op_desc.HasAttr("ksize"),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The pool2d_grad op should have ksize attribute."));
   auto ksize = utils::GetAttrOrDefault<std::vector<int>>(op_desc, "ksize");
 
   auto strides =

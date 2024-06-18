@@ -20,8 +20,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/operators/detection/bbox_util.cu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/mixed_vector.h"
+#include "paddle/phi/kernels/funcs/detection/bbox_util.cu.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -44,7 +45,7 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
     float eta) {
   // 1. pre nms
   phi::DenseTensor scores_sort, index_sort;
-  SortDescending<T>(ctx, scores, &scores_sort, &index_sort);
+  phi::funcs::SortDescending<T>(ctx, scores, &scores_sort, &index_sort);
   int num = scores.numel();
   int pre_nms_num = (pre_nms_top_n <= 0 || pre_nms_top_n > num) ? scores.numel()
                                                                 : pre_nms_top_n;
@@ -56,13 +57,13 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   proposals.mutable_data<T>({pre_nms_num, 4}, ctx.GetPlace());
 
   {
-    platform::ForRange<phi::GPUContext> for_range(ctx, pre_nms_num);
-    for_range(BoxDecodeAndClipFunctor<T>{anchors.data<T>(),
-                                         bbox_deltas.data<T>(),
-                                         variances.data<T>(),
-                                         index_sort.data<int>(),
-                                         im_info.data<T>(),
-                                         proposals.data<T>()});
+    phi::funcs::ForRange<phi::GPUContext> for_range(ctx, pre_nms_num);
+    for_range(phi::funcs::BoxDecodeAndClipFunctor<T>{anchors.data<T>(),
+                                                     bbox_deltas.data<T>(),
+                                                     variances.data<T>(),
+                                                     index_sort.data<int>(),
+                                                     im_info.data<T>(),
+                                                     proposals.data<T>()});
   }
 
   // 3. filter
@@ -71,20 +72,21 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
   keep_num_t.mutable_data<int>({1}, ctx.GetPlace());
   min_size = std::max(min_size, 1.0f);
   auto stream = ctx.stream();
-  FilterBBoxes<T, 512><<<1, 512, 0, stream>>>(proposals.data<T>(),
-                                              im_info.data<T>(),
-                                              min_size,
-                                              pre_nms_num,
-                                              keep_num_t.data<int>(),
-                                              keep_index.data<int>());
+  phi::funcs::FilterBBoxes<T, 512>
+      <<<1, 512, 0, stream>>>(proposals.data<T>(),
+                              im_info.data<T>(),
+                              min_size,
+                              pre_nms_num,
+                              keep_num_t.data<int>(),
+                              keep_index.data<int>());
   int keep_num;
   const auto gpu_place = ctx.GetPlace();
-  memory::Copy(platform::CPUPlace(),
-               &keep_num,
-               gpu_place,
-               keep_num_t.data<int>(),
-               sizeof(int),
-               ctx.stream());
+  phi::memory_utils::Copy(phi::CPUPlace(),
+                          &keep_num,
+                          gpu_place,
+                          keep_num_t.data<int>(),
+                          sizeof(int),
+                          ctx.stream());
   ctx.Wait();
   keep_index.Resize({keep_num});
 
@@ -109,7 +111,7 @@ static std::pair<phi::DenseTensor, phi::DenseTensor> ProposalForOneImage(
 
   // 4. nms
   phi::DenseTensor keep_nms;
-  NMS<T>(ctx, proposals_filter, keep_index, nms_thresh, &keep_nms);
+  phi::funcs::NMS<T>(ctx, proposals_filter, keep_index, nms_thresh, &keep_nms);
   if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
     keep_nms.Resize({post_nms_top_n});
   }
@@ -151,7 +153,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     float eta = context.Attr<float>("eta");
     PADDLE_ENFORCE_GE(eta,
                       1.,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Not support adaptive NMS. The attribute 'eta' "
                           "should not less than 1. But received eta=[%d]",
                           eta));
@@ -191,7 +193,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     T *rpn_roi_probs_data = rpn_roi_probs->data<T>();
 
     auto place = dev_ctx.GetPlace();
-    auto cpu_place = platform::CPUPlace();
+    auto cpu_place = phi::CPUPlace();
 
     int64_t num_proposals = 0;
     std::vector<size_t> offset(1, 0);
@@ -221,18 +223,18 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       phi::DenseTensor &proposals = box_score_pair.first;
       phi::DenseTensor &scores = box_score_pair.second;
 
-      memory::Copy(place,
-                   rpn_rois_data + num_proposals * 4,
-                   place,
-                   proposals.data<T>(),
-                   sizeof(T) * proposals.numel(),
-                   dev_ctx.stream());
-      memory::Copy(place,
-                   rpn_roi_probs_data + num_proposals,
-                   place,
-                   scores.data<T>(),
-                   sizeof(T) * scores.numel(),
-                   dev_ctx.stream());
+      phi::memory_utils::Copy(place,
+                              rpn_rois_data + num_proposals * 4,
+                              place,
+                              proposals.data<T>(),
+                              sizeof(T) * proposals.numel(),
+                              dev_ctx.stream());
+      phi::memory_utils::Copy(place,
+                              rpn_roi_probs_data + num_proposals,
+                              place,
+                              scores.data<T>(),
+                              sizeof(T) * scores.numel(),
+                              dev_ctx.stream());
       num_proposals += proposals.dims()[0];
       offset.emplace_back(num_proposals);
       tmp_num.push_back(proposals.dims()[0]);
@@ -241,12 +243,12 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       auto *rpn_rois_num = context.Output<phi::DenseTensor>("RpnRoisNum");
       rpn_rois_num->mutable_data<int>({num}, context.GetPlace());
       int *num_data = rpn_rois_num->data<int>();
-      memory::Copy(place,
-                   num_data,
-                   cpu_place,
-                   &tmp_num[0],
-                   sizeof(int) * num,
-                   dev_ctx.stream());
+      phi::memory_utils::Copy(place,
+                              num_data,
+                              cpu_place,
+                              &tmp_num[0],
+                              sizeof(int) * num,
+                              dev_ctx.stream());
       rpn_rois_num->Resize({num});
     }
     framework::LoD lod;

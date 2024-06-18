@@ -55,14 +55,17 @@ ir::Tensor Resize(const ir::Tensor &input,
                   const std::string &mode,
                   const std::string &output_name) {
   std::string func_name;
-
-  if (target.arch == cinn::common::Target::Arch::NVGPU) {
-    func_name.assign("cinn_cuda_resize_");
-  } else if (target.arch == cinn::common::Target::Arch::X86) {
-    func_name.assign("cinn_host_resize_");
-  } else {
-    LOG(FATAL) << "Resize only supports X86 and NVGPU ! Please Check.\n";
-  }
+  target.arch.Match(
+      [&](common::UnknownArch) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Resize only supports X86 and NVGPU ! Please Check.\n"));
+      },
+      [&](common::X86Arch) { func_name.assign("cinn_host_resize_"); },
+      [&](common::ARMArch) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "Resize only supports X86 and NVGPU ! Please Check.\n"));
+      },
+      [&](common::NVGPUArch) { func_name.assign("cinn_cuda_resize_"); });
 
   if (mode == "bilinear") {
     func_name.append("bilinear");
@@ -240,11 +243,16 @@ std::shared_ptr<framework::OpStrategy> StrategyForResize(
                                         1,
                                         std::multiplies<int>());
     if (prod_size > 1) {
-      if (target.arch == Target::Arch::NVGPU) {
-        pe::IRCudaScheduleInjective(ir_sch, output_shapes.front(), target);
-      } else if (target.arch == Target::Arch::X86) {
-        pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
-      }
+      target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                        [&](common::X86Arch) {
+                          pe::IRScheduleInjectiveCPU(
+                              ir_sch, output_shapes.front(), target, true);
+                        },
+                        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                        [&](common::NVGPUArch) {
+                          pe::IRGpuScheduleInjective(
+                              ir_sch, output_shapes.front(), target);
+                        });
     }
     std::vector<cinn::common::CINNValue> res{
         cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};

@@ -40,25 +40,41 @@ static void MatMulXPUFunction(const DenseTensor& x,
   int k = mat_dim_a.width_;
   int batch_size = mat_dim_a.batch_size_;
   // batch matmul
-  int r = xpu::fc_batched<XPUType, XPUType, XPUType, FCT>(
-      xpu_ctx,                                        // Context* ctx,
-      batch_size,                                     // int batch_size,
-      mat_dim_a.trans_,                               // bool x_trans,
-      mat_dim_b.trans_,                               // bool w_trans,
-      m,                                              // int m,
-      n,                                              // int n,
-      k,                                              // int k,
-      1.0,                                            // float alpha,
-      reinterpret_cast<const XPUType*>(x.data<T>()),  // const TX* x,
-      mat_dim_a.stride_,                              // int stride_a,
-      reinterpret_cast<const XPUType*>(y.data<T>()),  // const TW* w,
-      mat_dim_b.stride_,                              // int stride_b,
-      0.0,                                            // float beta,
-      reinterpret_cast<XPUType*>(data_c),             // TY* y,
-      m * n,                                          // int stride_c,
-      nullptr,                                        // const float* x_maxptr,
-      nullptr);                                       // const float* w_maxptr
+  int fc_calc_type = FCCalcType<XPUType>();
+  decltype(&xblas_fc_batch_wrapper<XPUType, int16_t, float>)
+      xblas_fc_batch_api_list[6] = {
+          &xblas_fc_batch_wrapper<XPUType, int16_t, float>,
+          &xblas_fc_batch_wrapper<XPUType, int32_t, float>,
+          &xblas_fc_batch_wrapper<XPUType, float, float>,
+          &xblas_fc_batch_wrapper<XPUType, int_with_ll_t, float>,
+          &xblas_fc_batch_wrapper<XPUType, tfloat32, float>,
+          &xblas_fc_batch_wrapper<XPUType, XPUTypeFP16, float>,
+      };
 
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_batched");
+  auto xblas_fc_batch_api = xblas_fc_batch_api_list[fc_calc_type];
+  if (fc_calc_type == XPUFCCalcType::FC_FLOAT16 &&
+      std::getenv("XPU_PADDLE_FC_FLOAT16") != nullptr) {
+    xblas_fc_batch_api =
+        &xblas_fc_batch_wrapper<XPUType, XPUTypeFP16, XPUTypeFP16>;
+  }
+
+  xblas_fc_batch_api(xpu_ctx,
+                     batch_size,
+                     mat_dim_a.trans_,
+                     mat_dim_b.trans_,
+                     m,
+                     n,
+                     k,
+                     1.0,
+                     reinterpret_cast<const XPUType*>(x.data<T>()),
+                     mat_dim_a.stride_,
+                     reinterpret_cast<const XPUType*>(y.data<T>()),
+                     mat_dim_b.stride_,
+                     0.0,
+                     reinterpret_cast<XPUType*>(data_c),
+                     m * n,
+                     nullptr,
+                     nullptr);
 }
+
 }  // namespace phi

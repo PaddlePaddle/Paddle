@@ -80,6 +80,15 @@ void RandpermInferMeta(int n, DataType dtype, MetaTensor* out);
 void RandintInferMeta(
     int low, int high, const IntArray& shape, DataType dtype, MetaTensor* out);
 
+void PartialRecvInferMeta(int ring_id,
+                          int peer,
+                          DataType dtype,
+                          const std::vector<int>& out_shape,
+                          bool use_calc_stream,
+                          int num,
+                          int id,
+                          MetaTensor* out);
+
 void PRecvInferMeta(int peer, DataType dtype, MetaTensor* out);
 
 void PRecvArrayInferMeta(int peer,
@@ -100,6 +109,8 @@ void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       float mean,
                                       float std,
                                       int seed,
+                                      float a,
+                                      float b,
                                       DataType dtype,
                                       MetaTensor* out);
 

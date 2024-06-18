@@ -133,8 +133,8 @@ class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
         config = self.create_inference_config(
             use_mkldnn=True,
             passes=[
-                'matmul_elementwise_add_mkldnn_fuse_pass',
-                'matmul_activation_mkldnn_fuse_pass',
+                'matmul_elementwise_add_onednn_fuse_pass',
+                'matmul_activation_onednn_fuse_pass',
             ],
         )
         yield config, ['fused_matmul'], (1e-5, 1e-5)
@@ -143,8 +143,8 @@ class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             passes=[
-                'matmul_elementwise_add_mkldnn_fuse_pass',
-                'matmul_activation_mkldnn_fuse_pass',
+                'matmul_elementwise_add_onednn_fuse_pass',
+                'matmul_activation_onednn_fuse_pass',
             ],
         )
 

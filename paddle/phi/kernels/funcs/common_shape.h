@@ -52,7 +52,6 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
           "Axis should be less than or equal to %d, but received axis is %d.",
           max_dim,
           axis));
-
   if (x_dims.size() > y_dims.size()) {
     std::fill(y_dims_array, y_dims_array + axis, 1);
     if (axis + y_dims.size() < max_dim) {
@@ -68,7 +67,6 @@ inline void GetBroadcastDimsArrays(const DDim &x_dims,
     std::copy(x_dims.Get(), x_dims.Get() + x_dims.size(), x_dims_array + axis);
     std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array);
   }
-
   for (int i = 0; i < max_dim; ++i) {
     PADDLE_ENFORCE_EQ(
         x_dims_array[i] == y_dims_array[i] || x_dims_array[i] <= 1 ||
@@ -177,7 +175,7 @@ static inline std::vector<int64_t> MatrixGetBroadcastBatchPortion(
 
 // Just For Matrix OP, for example:
 // x's dim = [5, 3, 2, M, M] ; y's dim = [3, 1, M, N]
-// out shoule be [5, 3, 2, M, M] + [5, 3, 2, M, N], and [5, 3, 2] is
+// out should be [5, 3, 2, M, M] + [5, 3, 2, M, N], and [5, 3, 2] is
 // batch_size of matrix
 static inline std::tuple<std::vector<int64_t>, std::vector<int64_t>>
 MatrixGetBroadcastDims(const DenseTensor &x, const DenseTensor &y) {
@@ -295,6 +293,38 @@ inline void FCOutputSize(const DDim &in_dims,
     out_dims.push_back(in_dims[i]);
   }
   out_dims.push_back(w_dims1);
+}
+
+inline std::vector<int64_t> GetReduceDims(const DenseTensor &in,
+                                          const DenseTensor &out) {
+  std::vector<int64_t> reduce_dims;
+  auto in_dims = in.dims();
+  auto out_dims = out.dims();
+  int diff = in_dims.size() - out_dims.size();
+  for (int i = 0; i < diff; ++i) {
+    reduce_dims.push_back(i);
+  }
+  for (int i = 0; i < out_dims.size(); ++i) {
+    if (out_dims[i] == 1 && in_dims[i + diff] != 1) {
+      reduce_dims.push_back(i + diff);
+    } else {
+      PADDLE_ENFORCE_EQ(
+          in_dims[i + diff],
+          out_dims[i],
+          phi::errors::InvalidArgument(
+              "ReduceDims dimension mismatch. Operands could "
+              "not be broadcast together with the shape of in_dims = [%s] and "
+              "the shape of out_dims = [%s]. Received [%d] in X is not equal "
+              "to "
+              "[%d] in Y at i:%d.",
+              in_dims,
+              out_dims,
+              in_dims[i + diff],
+              out_dims[i],
+              i));
+    }
+  }
+  return reduce_dims;
 }
 
 }  // namespace funcs

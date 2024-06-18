@@ -27,8 +27,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 namespace {
 ProcessMesh GetSubProcessMesh(const ProcessMesh& mesh, int64_t axis) {
@@ -40,9 +39,11 @@ ProcessMesh GetSubProcessMesh(const ProcessMesh& mesh, int64_t axis) {
   std::vector<int64_t> process_ids;
   for (int64_t i = 0; i < shape_of_axis; ++i) {
     coord[axis] = i;
-    int64_t rank = coord.back();
-    for (int64_t j = static_cast<int64_t>(coord.size() - 2); j >= 0; --j) {
-      rank += coord[j] * mesh.dim_size(j + 1);
+    int64_t rank = 0;
+    int64_t degree = 1;
+    for (int64_t j = static_cast<int64_t>(coord.size() - 1); j >= 0; --j) {
+      rank += coord[j] * degree;
+      degree *= mesh.dim_size(j);
     }
     process_ids.emplace_back(mesh.process_ids()[rank]);
   }
@@ -90,7 +91,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                      const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr,
                                      DistTensor* out) {
-  VLOG(3) << "Call SameNdMeshReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
   const auto& in_dist_attr = in.dist_attr();
   const auto& process_mesh = out_dist_attr.process_mesh();
 
@@ -228,7 +229,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       bool is_partial = in_partial_status.count(out_mesh_axis) != 0;
 
       VLOG(3) << "Step4: out_mesh axis : " << out_mesh_axis
-              << "; paratial state :" << is_partial;
+              << "; partial state :" << is_partial;
       // 4.1 Calculate the dist_attr after this transform
       TensorDistAttr real_out_dist_attr(out->dist_attr());
       std::vector<int64_t> real_dims_mapping =
@@ -273,8 +274,11 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
 
 bool CrossNdMeshReshardFunction::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
-  RESHARD_SHORTCUT_IF_FALSE(in.dist_attr().process_mesh() !=
-                            out_dist_attr.process_mesh());
+  const ProcessMesh& in_process_mesh = in.dist_attr().process_mesh();
+  const ProcessMesh& out_process_mesh = out_dist_attr.process_mesh();
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh != out_process_mesh);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.shape() ==
+                            out_process_mesh.shape());
   RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.process_mesh().ndim() > 1);
 
   // check the input and output dims_mapping is not equal
@@ -287,10 +291,12 @@ void CrossNdMeshReshardFunction::Eval(DeviceContext* dev_ctx,
                                       const DistTensor& in,
                                       const TensorDistAttr& out_dist_attr,
                                       DistTensor* out) {
-  VLOG(3) << "Call CrossNdMeshReshardFunction Eval";
+  VLOG(3) << "Call " << Name();
   const auto& in_dist_attr = in.dist_attr();
 
-  DistTensor tmp_result;
+  // Construct a `DistTensor` by `dtype` of `in` tensor to avoid using default
+  // dtype `float32`. The default dtype `float32` may cause error in amp.
+  DistTensor tmp_result(in.dtype());
   TensorDistAttr in_dist_attr_shard = in_dist_attr;
   in_dist_attr_shard.set_partial_status(out_dist_attr.partial_status());
   in_dist_attr_shard.set_dims_mapping(out_dist_attr.dims_mapping());
@@ -319,5 +325,4 @@ void CrossNdMeshReshardFunction::Eval(DeviceContext* dev_ctx,
   same_status_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

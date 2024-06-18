@@ -69,7 +69,7 @@ enum class EventSortingKey {
   kGPUTime
 };
 
-struct MemoryProfierReport {
+struct MemoryProfilerReport {
   size_t alloc_times{0};
   size_t alloc_size{0};
   size_t free_times{0};
@@ -101,7 +101,7 @@ struct OverHead {
   std::vector<EventItem> sub_memcpy_items;
 };
 
-struct MemEvenRecorder {
+struct MemEventRecorder {
  public:
   void PushMemRecord(const void* ptr, const Place& place, size_t size);
   void PopMemRecord(const void* ptr, const Place& place);
@@ -122,7 +122,7 @@ struct MemEvenRecorder {
                     uint64_t peak_allocated,
                     uint64_t peak_reserved);
   void Flush();
-  static MemEvenRecorder& Instance() { return recorder; }
+  static MemEventRecorder& Instance() { return recorder; }
 
  private:
   struct RecordMemEvent {
@@ -137,13 +137,13 @@ struct MemEvenRecorder {
     std::string free_in_;
   };
 
-  static MemEvenRecorder recorder;
+  static MemEventRecorder recorder;
   std::map<Place,
            std::unordered_map<const void*, std::unique_ptr<RecordMemEvent>>>
       address_memevent_;
   std::mutex mtx_;
-  MemEvenRecorder() {}
-  DISABLE_COPY_AND_ASSIGN(MemEvenRecorder);
+  MemEventRecorder() {}
+  DISABLE_COPY_AND_ASSIGN(MemEventRecorder);
 };
 
 struct RecordBlock {

@@ -111,9 +111,10 @@ std::vector<shape_t> InferShapeForBitcastConvert(
   } else {
     if (output_shape.back().back() !=
         (output_data_type.bits() / input_data_type.bits())) {
-      LOG(FATAL) << "The rightmost dimension of input must be equal to "
-                    "sizeof(output_data_type)/sizeof(input_data_type) when "
-                    "sizeof(output_data_type) > sizeof(input_data_type)";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The rightmost dimension of input must be equal to "
+          "sizeof(output_data_type)/sizeof(input_data_type) when "
+          "sizeof(output_data_type) > sizeof(input_data_type)"));
     }
     output_shape.back().pop_back();
   }

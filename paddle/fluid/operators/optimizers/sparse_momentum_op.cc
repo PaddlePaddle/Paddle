@@ -16,8 +16,7 @@
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class SparseMomentumOpInferVarType : public framework::VarTypeInference {
  public:
@@ -25,7 +24,7 @@ class SparseMomentumOpInferVarType : public framework::VarTypeInference {
     auto in_var_type = ctx->GetInputType("Param");
     PADDLE_ENFORCE_EQ(in_var_type == framework::proto::VarType::LOD_TENSOR,
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Only support LodTensor, Unexpected Input Type."));
 
     ctx->SetOutputType("ParamOut", in_var_type, framework::ALL_ELEMENTS);
@@ -107,8 +106,7 @@ $$
 )DOC");
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(

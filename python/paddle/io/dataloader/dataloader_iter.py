@@ -26,10 +26,11 @@ import numpy as np
 import paddle
 from paddle import profiler
 from paddle.base.framework import _current_expected_place, _set_expected_place
+from paddle.pir.core import datatype_to_vartype
 from paddle.profiler.timer import benchmark
 from paddle.profiler.utils import in_profiler_mode
 
-from ...framework import core, in_dynamic_mode
+from ...framework import core, in_dynamic_mode, in_pir_mode
 from ..multiprocess_utils import (
     MP_STATUS_CHECK_INTERVAL,
     CleanupFuncRegistrar,
@@ -49,11 +50,11 @@ from .worker import (
 # NOTE: fix `terminate called without an active exception`
 # if for loop break and program exit immediately(with no model
 # layers processing) after iterate **the first few data** in
-# distributed lauch mode, distributed launch will call
+# distributed launch mode, distributed launch will call
 # terminate() to kill main process on each devices, but thread
 # is still iterating to fullfill blocking queue caches, which
 # may cause thread error `terminate called without an active
-# exception` for terminate is a strong singal and `__del__`
+# exception` for terminate is a strong signal and `__del__`
 # of DataLoader may not be called, so we add a global link to
 # the last DataLoader instance to call `__del__` to clean up
 # resources
@@ -164,7 +165,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._drop_last,
         )
 
-        # NOTE: _structrue_infos used to record the data structure of
+        # NOTE: _structure_infos used to record the data structure of
         # batch to restore batch structure after reading Tensor
         # from blocking_queue in single-process mode. Note that
         # only single process is used in single-process mode, we
@@ -188,10 +189,16 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     def _init_thread(self):
         self._var_names = [v.name for v in self._feed_list]
         self._shapes = [v.shape for v in self._feed_list]
-        self._dtypes = [v.dtype for v in self._feed_list]
-        self._need_check_feed = [
-            v.desc.need_check_feed() for v in self._feed_list
-        ]
+        if in_pir_mode():
+            self._need_check_feed = [False for v in self._feed_list]
+            self._dtypes = [
+                datatype_to_vartype[v.dtype] for v in self._feed_list
+            ]
+        else:
+            self._need_check_feed = [
+                v.desc.need_check_feed() for v in self._feed_list
+            ]
+            self._dtypes = [v.dtype for v in self._feed_list]
         # if only 1 place, do not need to keep order
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
             core.Variable(),
@@ -486,10 +493,16 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
     def _init_thread(self):
         self._var_names = [v.name for v in self._feed_list]
         self._shapes = [v.shape for v in self._feed_list]
-        self._dtypes = [v.dtype for v in self._feed_list]
-        self._need_check_feed = [
-            v.desc.need_check_feed() for v in self._feed_list
-        ]
+        if in_pir_mode():
+            self._need_check_feed = [False for v in self._feed_list]
+            self._dtypes = [
+                datatype_to_vartype[v.dtype] for v in self._feed_list
+            ]
+        else:
+            self._need_check_feed = [
+                v.desc.need_check_feed() for v in self._feed_list
+            ]
+            self._dtypes = [v.dtype for v in self._feed_list]
         # if only 1 place, do not need to keep order
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
             core.Variable(), self._outstanding_capacity, len(self._places) > 1
@@ -704,10 +717,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 if len(failed_workers) > 0:
                     self._exit_thread_unexpectedly()
                     pids = ', '.join(str(w.pid) for w in failed_workers)
-                    raise RuntimeError(
+                    logging.warning(
                         f"DataLoader {len(failed_workers)} workers exit unexpectedly, "
                         f"pids: {pids}"
                     )
+                    return
 
                 # get(timeout) will call _poll(timeout) and may raise IOError
                 if isinstance(e, (IOError, queue.Empty)):

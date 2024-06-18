@@ -24,12 +24,30 @@ set(WARPRNNT_TAG 7ea6bfe748779c245a0fcaa5dd9383826273eff2)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/warprnnt)
 set(WARPRNNT_PATCH_COMMAND "")
 set(WARPRNNT_CCBIN_OPTION "")
+if(WIN32)
+  set(WARPCTC_PATCH_CUDA_COMMAND
+      ${CMAKE_COMMAND} -E copy_if_different
+      ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.cuda.patch
+      "<SOURCE_DIR>/")
+else()
+  set(WARPCTC_PATCH_CUDA_COMMAND
+      git checkout -- . && git checkout ${WARPRNNT_TAG} && patch -Nd
+      ${SOURCE_DIR} <
+      ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.cuda.patch)
+endif()
+if(WITH_ROCM)
+  set(WARPRNNT_PATCH_ROCM_COMMAND
+      patch -p1 <
+      ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.rocm.patch)
+endif()
 if(NOT WIN32 AND WITH_GPU)
   if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
                                                   VERSION_GREATER 12.0)
     file(TO_NATIVE_PATH
          ${PADDLE_SOURCE_DIR}/patches/warprnnt/CMakeLists.txt.patch native_src)
-    set(WARPRNNT_PATCH_COMMAND patch -d ${SOURCE_DIR} < ${native_src})
+    set(WARPRNNT_PATCH_COMMAND
+        git checkout -- . && git checkout ${WARPRNNT_TAG} && patch -Nd
+        ${SOURCE_DIR} < ${native_src})
     set(WARPRNNT_CCBIN_OPTION -DCCBIN_COMPILER=${CCBIN_COMPILER})
   endif()
 endif()
@@ -85,7 +103,9 @@ ExternalProject_Add(
   SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${WARPRNNT_PREFIX_DIR}
   UPDATE_COMMAND ""
-  PATCH_COMMAND ""
+  PATCH_COMMAND
+  COMMAND ${WARPCTC_PATCH_CUDA_COMMAND}
+  COMMAND ${WARPRNNT_PATCH_ROCM_COMMAND}
   #BUILD_ALWAYS    1
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
@@ -99,6 +119,7 @@ ExternalProject_Add(
              -DWITH_GPU=${WITH_GPU}
              -DWITH_ROCM=${WITH_ROCM}
              -DWITH_OMP=${USE_OMP}
+             -DNVCC_FLAGS_EXTRA=${NVCC_FLAGS_EXTRA}
              -DBUILD_SHARED=ON
              -DBUILD_TESTS=OFF
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON

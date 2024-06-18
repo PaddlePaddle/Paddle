@@ -14,10 +14,10 @@
 
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_string(allocator_strategy);
+COMMON_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace memory {
@@ -37,7 +37,7 @@ static AllocatorStrategy GetStrategyFromFlag() {
   }
 
   PADDLE_THROW(platform::errors::InvalidArgument(
-      "Unsupported allocator strategy: %s, condicates are naive_best_fit, "
+      "Unsupported allocator strategy: %s, candidates are naive_best_fit, "
       "auto_growth or thread_local.",
       FLAGS_allocator_strategy));
 }

@@ -30,10 +30,11 @@
 #include "paddle/cinn/hlir/framework/pir/group.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/runtime/flags.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 
 #include "glog/logging.h"
+#include "paddle/common/enforce.h"
 
 PD_DECLARE_bool(cinn_enable_map_expr);
 PD_DECLARE_bool(cinn_map_expr_enable_dynamic_shape);
@@ -102,15 +103,20 @@ bool HasDynamicShape(const ::pir::Value& tensor) {
   const auto& shape = hlir::framework::pir::CompatibleInfo::ValueShape(tensor);
   for (int dim : shape) {
     if (dim < 0) {
-      CHECK_EQ(dim, -1);
+      PADDLE_ENFORCE_EQ(
+          dim,
+          -1UL,
+          phi::errors::InvalidArgument(
+              "The dynamic shape dim should be -1, but got %d.", dim));
       return true;
     }
   }
   return false;
 }
 
-List<Arg> MakeOpStmtInputList(const ::pir::Operation* op,
-                              const hlir::framework::pir::Group* group) {
+List<Arg> MakeOpStmtInputList(
+    const ::pir::Operation* op,
+    const hlir::framework::pir::OpLoweringGroup* group) {
   List<Arg> ret{};
 
   VisitEachInputTensor(op, [&](const ::pir::Value& tensor) {
@@ -131,8 +137,9 @@ void VisitEachOutputTensor(const ::pir::Operation* op, const DoEachT& DoEach) {
   }
 }
 
-List<Arg> MakeOpStmtOutputList(const ::pir::Operation* op,
-                               const hlir::framework::pir::Group* group) {
+List<Arg> MakeOpStmtOutputList(
+    const ::pir::Operation* op,
+    const hlir::framework::pir::OpLoweringGroup* group) {
   List<Arg> ret{};
 
   VisitEachOutputTensor(op, [&](const ::pir::Value& tensor) {
@@ -147,9 +154,10 @@ List<Arg> MakeOpStmtOutputList(const ::pir::Operation* op,
 }
 
 template <typename DoEachT>
-void VisitEachOpStmt(const std::shared_ptr<hlir::framework::pir::Group>& group,
-                     const DoEachT& DoEach) {
-  for (const auto* op : group->CollectOps()) {
+void VisitEachOpStmt(
+    const std::shared_ptr<hlir::framework::pir::OpLoweringGroup>& group,
+    const DoEachT& DoEach) {
+  for (const auto* op : group->ops()) {
     DoEach(OpStmt{MakeOp(op),
                   MakeOpStmtInputList(op, group.get()),
                   MakeOpStmtOutputList(op, group.get())});
@@ -160,7 +168,8 @@ hlir::framework::OpPatternKind GetOpPatternKind(const ::pir::Operation* node) {
   return hlir::framework::pir::CompatibleInfo::OpKind(*node);
 }
 
-bool CollectRewritedReductionOpStmts(const OpStmt& op_stmt, List<OpStmt>* ret) {
+bool CollectRewrittenReductionOpStmts(const OpStmt& op_stmt,
+                                      List<OpStmt>* ret) {
   const auto& [op, inputs, outputs] = op_stmt.tuple();
   CHECK(op.Has<const ::pir::Operation*>());
   if (GetOpPatternKind(op.Get<const ::pir::Operation*>()) ==
@@ -178,19 +187,19 @@ bool CollectRewritedReductionOpStmts(const OpStmt& op_stmt, List<OpStmt>* ret) {
   }
 }
 
-void CollectRewritedOpStmts(const OpStmt& op_stmt, List<OpStmt>* ret) {
-  if (CollectRewritedReductionOpStmts(op_stmt, ret)) {
+void CollectRewrittenOpStmts(const OpStmt& op_stmt, List<OpStmt>* ret) {
+  if (CollectRewrittenReductionOpStmts(op_stmt, ret)) {
     return;
   }
   (*ret)->emplace_back(op_stmt);
 }
 
 List<OpStmt> MakeOpStmts(
-    const std::shared_ptr<hlir::framework::pir::Group>& group) {
+    const std::shared_ptr<hlir::framework::pir::OpLoweringGroup>& group) {
   List<OpStmt> ret{};
 
   VisitEachOpStmt(group, [&](const auto& op_stmt) {
-    CollectRewritedOpStmts(op_stmt, &ret);
+    CollectRewrittenOpStmts(op_stmt, &ret);
   });
 
   return ret;
@@ -222,7 +231,7 @@ std::shared_ptr<IGroup> MakeIGroup(const AnchorGroup& igroup_spec) {
 }
 
 std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
-    const std::shared_ptr<hlir::framework::pir::Group>& group) {
+    const std::shared_ptr<hlir::framework::pir::OpLoweringGroup>& group) {
   std::vector<std::shared_ptr<IGroup>> ret{};
 
   List<OpStmt> op_stmts = MakeOpStmts(group);
@@ -236,9 +245,13 @@ std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
 }
 
 std::shared_ptr<KGroup> GenerateKGroups(
-    const std::shared_ptr<hlir::framework::pir::Group>& group,
+    const std::shared_ptr<hlir::framework::pir::OpLoweringGroup>& group,
     const std::vector<std::shared_ptr<IGroup>>& igroups) {
-  CHECK_EQ(igroups.size(), 1);
+  PADDLE_ENFORCE_EQ(
+      igroups.size(),
+      1UL,
+      phi::errors::InvalidArgument(
+          "The size of igroups should be 1, but got %d.", igroups.size()));
   return std::make_shared<KGroup>(group, igroups);
 }
 
@@ -311,7 +324,14 @@ TensorIteratorExpr4TensorT MakeGetterTensorIteratorExpr4Tensor(
 
 LoopDescriptor4IterVarT MakeGetterLoopDescriptor4IterVar(
     const LoopIterators& loop_iters, const LoopDescriptors& sd) {
-  CHECK_EQ(loop_iters->size(), sd->size());
+  PADDLE_ENFORCE_EQ(
+      loop_iters->size(),
+      sd->size(),
+      phi::errors::InvalidArgument(
+          "The size of loop iterators and loop descriptors should be equal, "
+          "but got loop iterators size = %d, loop descriptors size = %d.",
+          loop_iters->size(),
+          sd->size()));
   using Cache = std::unordered_map<Iterator, LoopDescriptor>;
   const auto& sd_iter2sd = std::make_shared<Cache>();
   for (std::size_t i = 0; i < loop_iters->size(); ++i) {
@@ -341,7 +361,11 @@ MapStmt<Stmt> MakeMapStmt(const MapIrList& map_irs) {
     const TreeMerger<Stmt>& tree_merger = MakeTreeMerger(map_ir);
     MergeTrees(tree_merger, &stmts, map_ir.op_stmts());
   }
-  CHECK_EQ(stmts->size(), 1);
+  PADDLE_ENFORCE_EQ(
+      stmts->size(),
+      1UL,
+      phi::errors::InvalidArgument("The size of stmts should be 1, but got %d.",
+                                   stmts->size()));
   CHECK(stmts->at(0).Has<MapStmt<Stmt>>());
   return stmts->at(0).Get<MapStmt<Stmt>>();
 }
@@ -351,7 +375,7 @@ Tensor GetAnchorTensor(const std::shared_ptr<IGroup>& igroup) {
 }
 
 template <typename DoEachT>
-void VisitInputTensor(const hlir::framework::pir::Group& group,
+void VisitInputTensor(const hlir::framework::pir::OpLoweringGroup& group,
                       const DoEachT& DoEach) {
   for (const ::pir::Value& node_data : group.GetInputOpValues()) {
     DoEach(node_data);
@@ -359,7 +383,7 @@ void VisitInputTensor(const hlir::framework::pir::Group& group,
 }
 
 template <typename DoEachT>
-void VisitOutputTensor(const hlir::framework::pir::Group& group,
+void VisitOutputTensor(const hlir::framework::pir::OpLoweringGroup& group,
                        const DoEachT& DoEach) {
   for (const ::pir::Value& node_data : group.GetOutputOpValues()) {
     DoEach(node_data);
@@ -443,7 +467,7 @@ MapExpr GenerateMapExpr(const std::shared_ptr<KGroup>& kgroup) {
 }  // namespace
 
 MapExpr GenerateMapExpr(
-    const std::shared_ptr<hlir::framework::pir::Group>& group) {
+    const std::shared_ptr<hlir::framework::pir::OpLoweringGroup>& group) {
   const auto& igroups = GenerateIGroups(group);
 
   const auto& kgroup = GenerateKGroups(group, igroups);
@@ -452,13 +476,14 @@ MapExpr GenerateMapExpr(
 }
 
 void TryGenerateMapExprFromGroup(
-    const std::shared_ptr<hlir::framework::pir::Group>& fusion_group) {
+    const std::shared_ptr<hlir::framework::pir::OpLoweringGroup>&
+        fusion_group) {
   if (!FLAGS_cinn_enable_map_expr) {
     return;
   }
   const auto& map_expr = GenerateMapExpr(fusion_group);
   VLOG(4) << "Generate MapExpr: \n"
-          << ToTxtString(map_expr, fusion_group->group_id);
+          << ToTxtString(map_expr, fusion_group->group_id());
   fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));
 }
 

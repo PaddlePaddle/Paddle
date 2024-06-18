@@ -185,9 +185,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     num_cast_ops = 0
 
     for in_name in op.input_names:
-        if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(
-            op, in_name
-        ):
+        if src_dtype == paddle.float32 and _keep_fp32_input(op, in_name):
             continue
         for in_var_name in op.input(in_name):
             in_var = block._find_var_recursive(in_var_name)
@@ -210,10 +208,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                     # set cast_op device to `all`, can reduce send cast_var.
                     # TODO: need remove this after we unified the dynamic
                     # and static pipeline interface.
-                    if (
-                        src_dtype == core.VarDesc.VarType.FP32
-                        and in_var.stop_gradient
-                    ):
+                    if src_dtype == paddle.float32 and in_var.stop_gradient:
                         prev_op = None
                         if in_var.op is op:
                             prev_op = find_true_prev_op(
@@ -240,7 +235,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                     )
 
                     # Only forward program will be inserted cast op, but some ops
-                    # has no op_role attr, so here set it direcly. eg. resnet_unit.
+                    # has no op_role attr, so here set it directly. eg. resnet_unit.
                     op_role = (
                         int(core.op_proto_and_checker_maker.OpRole.Forward)
                         if not op.has_attr('op_role')
@@ -422,7 +417,7 @@ SUPPORT_FLOAT_TYPES = {
 def set_var_dst_dtype(
     op, var_names, block, global_block, dtype, need_set_dtype
 ):
-    low_precison_var_names = set()
+    low_precision_var_names = set()
     for var_name in var_names:
         var = None
         try:
@@ -439,17 +434,15 @@ def set_var_dst_dtype(
             continue
 
         if var.dtype in FLOAT_TYPES:
-            low_precison_var_names.add(var_name)
+            low_precision_var_names.add(var_name)
             if need_set_dtype:
                 var.desc.set_dtype(dtype)
 
         _logger.debug(
-            "---- op type: {}, var name: {}, var dtype: {} ----".format(
-                op.type, var_name, var.dtype
-            )
+            f"---- op type: {op.type}, var name: {var_name}, var dtype: {var.dtype} ----"
         )
 
-    return low_precison_var_names
+    return low_precision_var_names
 
 
 def set_param_dtype(program, dtype, amp_lists, use_fp16_guard, level):
@@ -462,7 +455,7 @@ def set_param_dtype(program, dtype, amp_lists, use_fp16_guard, level):
         ops = block.ops
         for op in ops:
             # Currently, lookup_table is in black_list and unsupport_list, it's weight will be
-            # set to fp32 in setp 1 of cast_model_tp_fp16. But the weight may be used as matmul's
+            # set to fp32 in step 1 of cast_model_tp_fp16. But the weight may be used as matmul's
             # input in transformer, so the weight is also in to_fp16_var_names.
             # TODO(zhangting2020): consider fix auto_parallel_fp16 and remove lookup_table
             # from black_list and unsupport_list.
@@ -527,7 +520,7 @@ def get_promote_dtype(op, amp_dtype, block):
         if in_name:
             for in_var_name in op.input(in_name):
                 in_var = block._find_var_recursive(in_var_name)
-                if in_var and in_var.dtype == core.VarDesc.VarType.FP32:
+                if in_var and in_var.dtype == paddle.float32:
                     dst_dtype = core.VarDesc.VarType.FP32
                     break
         else:
@@ -581,8 +574,8 @@ def get_amp_dst_dtype(
 
 
 def process_op_input_and_outputs(op, block, global_block, dtype):
-    low_precison_var_names = set()
-    # Get the FP16 input because the low_precison_var_names is required for the parameter casting.
+    low_precision_var_names = set()
+    # Get the FP16 input because the low_precision_var_names is required for the parameter casting.
     # The dtype of the input is not set to fp16, because it is done in the step 3 of cast_model_to_fp16.
     for in_name in op.input_names:
         # for ipu, all inputs must be converted to fp16
@@ -596,7 +589,7 @@ def process_op_input_and_outputs(op, block, global_block, dtype):
             dtype,
             need_set_dtype=False,
         )
-        low_precison_var_names = low_precison_var_names.union(in_vars)
+        low_precision_var_names = low_precision_var_names.union(in_vars)
     # Set the output to FP16 because its consumer OP needs to determine if the dtype needs
     # to be promoted.
     for out_name in op.output_names:
@@ -611,7 +604,7 @@ def process_op_input_and_outputs(op, block, global_block, dtype):
             dtype,
             need_set_dtype=True,
         )
-    return low_precison_var_names
+    return low_precision_var_names
 
 
 def map_block(block, fn, parent_op=None):
@@ -775,7 +768,7 @@ def cast_model_to_fp16(
                     "---- Add into keep_fp16_ops because the op in white_list ----"
                 )
             else:
-                # if cast in orgin program, we only modifiy attr and output's dtype to avoid dtype mismatch errors.
+                # if cast in origin program, we only modify attr and output's dtype to avoid dtype mismatch errors.
                 if op.type == 'cast':
                     in_var = block._find_var_recursive(op.input('X')[0])
                     out_var = block._find_var_recursive(op.output('Out')[0])
@@ -915,7 +908,7 @@ def cast_parameters_to_fp16(
             if var_scope.find_var(param.name):
                 param_t = var_scope.find_var(param.name).get_tensor()
                 data = np.array(param_t)
-                if dest_type == core.VarDesc.VarType.BF16:
+                if dest_type == paddle.bfloat16:
                     p_array = _convert_float_to_bfloat16(place, data)
                     param_t.set(p_array, place)
                 else:
@@ -952,7 +945,7 @@ def update_role_var_grad(main_prog, params_grads):
     OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
     for p, g in params_grads:
         op = g.op
-        if g.dtype == core.VarDesc.VarType.FP32 and op.type == 'cast':
+        if g.dtype == paddle.float32 and op.type == 'cast':
             role = op.attr('op_role')
             if role & int(BACKWARD) and op.has_attr('op_role_var'):
                 op._remove_attr("op_role_var")

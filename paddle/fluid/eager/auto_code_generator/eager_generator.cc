@@ -26,15 +26,14 @@
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/pybind/eager_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 // phi
 #include "paddle/phi/kernels/declarations.h"
 
 #define NUM_CREATED_DUP_INPUTS 4
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 // To handle append_op at python-level
 std::unordered_map<std::string, std::vector<std::string>>
@@ -126,11 +125,6 @@ static void PrepareAttrMapForOps() {
   operators_with_attrs["cast"]["out_dtype"] = 5;
   operators_with_attrs["cast"]["in_dtype"] = 5;
 
-  // Handle "transfer_dtype"
-  operators_with_attrs["transfer_dtype"] = {};
-  operators_with_attrs["transfer_dtype"]["out_dtype"] = 5;
-  operators_with_attrs["transfer_dtype"]["in_dtype"] = 5;
-
   // Handle "c_split"
   operators_with_attrs["c_split"] = {};
   operators_with_attrs["c_split"]["nranks"] = 1;
@@ -139,6 +133,11 @@ static void PrepareAttrMapForOps() {
 /* --- Helper Objects --- */
 class ForwardGenerationInfo {
  public:
+  ForwardGenerationInfo()
+      : fwd_inputs_name_pos_map_(),
+        fwd_outputs_name_pos_map_(),
+        in_vars_(),
+        out_vars_() {}
   const std::string& GetOpType() const { return op_type_; }
   void SetOpType(const std::string& op_type) { op_type_ = op_type; }
 
@@ -266,6 +265,7 @@ class GradNodeGenerationInfo {
   };
 
  public:
+  GradNodeGenerationInfo() : op_base_infos_() {}
   const std::string& GetFwdOpType() const { return fwd_op_type_; }
   void SetFwdOpType(const std::string& op_type) { fwd_op_type_ = op_type; }
 
@@ -621,7 +621,7 @@ static bool BeSameAsInput(const std::string& output_name,
 static void PurifyForwardOpProto(const proto::OpProto& op_proto,
                                  ForwardGenerationInfo* fwd_info) {
   // Op Name
-  const std::string op_name = op_proto.type();
+  const std::string& op_name = op_proto.type();
 
   auto* in_vars = fwd_info->GetMutableInVars();
   auto* out_vars = fwd_info->GetMutableOutVars();
@@ -829,7 +829,7 @@ static bool CollectGradInformationFromOpInfo(
     for (size_t i = 0; i < NUM_CREATED_DUP_INPUTS; i++) {
       ins[in_name].emplace_back(std::make_shared<paddle::imperative::VarBase>(
           "auto_" + in_name + "_" + std::to_string(i)));
-      ins[in_name][i]->SetOverridedStopGradient(false);
+      ins[in_name][i]->SetOverriddenStopGradient(false);
       ins[in_name][i]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
   } else {
@@ -853,7 +853,7 @@ static bool CollectGradInformationFromOpInfo(
 
       ins[in_name] = {
           std::make_shared<paddle::imperative::VarBase>("auto_" + in_name)};
-      ins[in_name][0]->SetOverridedStopGradient(false);
+      ins[in_name][0]->SetOverriddenStopGradient(false);
       ins[in_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
     }
   }
@@ -871,7 +871,7 @@ static bool CollectGradInformationFromOpInfo(
     // however, simply identifying the slot name order would be enough
     outs[out_name] = {
         std::make_shared<paddle::imperative::VarBase>("auto_" + out_name)};
-    outs[out_name][0]->SetOverridedStopGradient(false);
+    outs[out_name][0]->SetOverriddenStopGradient(false);
     outs[out_name][0]->MutableVar()->GetMutable<phi::DenseTensor>();
   }
   VLOG(6) << "Prepared Forward Outs Map, size = " << outs.size();
@@ -1204,7 +1204,7 @@ static std::string GenerateGradNodeCreationContent(
     for (auto& kv : grad_ins_fwd_slotname_map) {
       const std::string& tensor_wrapper_name = kv.second;
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
-          "      grad_node->SetTensorWrapper%s(%s);\n";
+          "      grad_node->SetTensorWrapper_%s(%s);\n";
       // Replace output directly with input in inplace op.
       if (!forward_inplace_map.empty() &&
           forward_inplace_map.count(tensor_wrapper_name)) {
@@ -1751,7 +1751,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
       amp_logic_str += "\n";
       const char* GET_AMP_GET_DST_DTYPE_CONTEXT =
           "    auto amp_dst_dtype = "
-          "egr::GetAmpDestDtype(\"%s\", "
+          "paddle::imperative::GetAmpDestDtype(\"%s\", "
           "amp_tensors_vector);\n";
       amp_logic_str +=
           paddle::string::Sprintf(GET_AMP_GET_DST_DTYPE_CONTEXT, op_type);
@@ -1763,7 +1763,7 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
     const char* CALL_BACK_TEMPLATE =
         "    {\n"
         "      paddle::imperative::AutoCastGuard "
-        "guard(egr::Controller::Instance().GetCurrentTracer(), "
+        "guard(egr::Controller::Instance().GetCurrentAmpAttrs(), "
         "paddle::imperative::AmpLevel::O0);\n"
         "      return %s_dygraph_function(%s);\n"
         "    }";
@@ -2373,7 +2373,7 @@ static std::string GenerateSingleOpBase(
                   GradOut
 
           Its grad output "GradOut" corresponds to forward output "Out",
-          where there is a hiden inplace involved. So we find "GradOut"'s
+          where there is a hidden inplace involved. So we find "GradOut"'s
          index
          in
           grads, and perform the inplace operation by constructing outs =
@@ -2534,7 +2534,7 @@ static std::string GenerateSingleOpBase(
   std::string grad_attrs_str =
       paddle::string::Sprintf(ATTRS_TEMPLATE, attrs_name);
   if (fwd_op_type == "cast") {
-    // swtich in out dtype
+    // switch in out dtype
     const char* CAST_GRAD =
         "  auto temp_type = %s[\"in_dtype\"];\n"
         "  %s[\"in_dtype\"] = %s[\"out_dtype\"];\n"
@@ -2941,7 +2941,7 @@ static std::string GenerateGradNodeHeaderContents(
             CLEAR_TENSOR_WRAPPER_TEMPLATE, struct_tensor_wrapper_name);
       }
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
-          "   void SetTensorWrapper%s(%s) {\n    %s\n  }\n";
+          "   void SetTensorWrapper_%s(%s) {\n    %s\n  }\n";
       set_tensor_wrappers_str +=
           paddle::string::Sprintf(SET_TENSOR_WRAPPER_TEMPLATE,
                                   tensor_wrapper_name,
@@ -3018,7 +3018,7 @@ static void GenerateForwardDygraphFile(const std::string& forward_cc_path,
       "#include "
       "\"paddle/fluid/eager/api/generated/fluid_generated/nodes/nodes.h\"\n"
       "#include \"paddle/fluid/eager/api/utils/global_utils.h\"\n"
-      "#include \"paddle/fluid/eager/amp_utils.h\"\n"
+      "#include \"paddle/fluid/imperative/amp_utils.h\"\n"
       "#include \"paddle/fluid/eager/amp_auto_cast.h\"\n"
       "#include \"paddle/fluid/platform/profiler/event_tracing.h\"\n\n";
 
@@ -3309,8 +3309,7 @@ static void DygraphCodeGeneration(const std::string& output_dir,
   GenerateNodeHFile(node_h_path, grad_node_h_str);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 int main(int argc, char* argv[]) {  // NOLINT
   if (argc != 3) {

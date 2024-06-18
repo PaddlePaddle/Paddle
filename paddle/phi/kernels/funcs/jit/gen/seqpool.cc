@@ -18,9 +18,7 @@
 #include "paddle/phi/kernels/funcs/jit/gen/act.h"  // for exp_float_consts ones
 #include "paddle/phi/kernels/funcs/jit/registry.h"
 
-namespace phi {
-namespace jit {
-namespace gen {
+namespace phi::jit::gen {
 
 void SeqPoolJitCode::genCode() {
   constexpr int block = YMM_FLOAT_BLOCK;
@@ -51,7 +49,8 @@ void SeqPoolJitCode::genCode() {
   }
   // part of rest_w * height
   const int rest = w_ % block;
-  pool_height_of_rest_width(rest, (w_ - rest) * sizeof(float), max_num_regs);
+  pool_height_of_rest_width(
+      rest, static_cast<int>((w_ - rest) * sizeof(float)), max_num_regs);
   ret();
 }
 
@@ -84,9 +83,7 @@ class SeqPoolCreator : public JitCodeCreator<seq_pool_attr_t> {
   }
 };
 
-}  // namespace gen
-}  // namespace jit
-}  // namespace phi
+}  // namespace phi::jit::gen
 
 namespace gen = phi::jit::gen;
 

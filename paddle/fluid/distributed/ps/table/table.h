@@ -32,7 +32,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace distributed {
@@ -151,8 +151,8 @@ class Table {
     return InitializeShard();
   }
 
-  inline std::shared_ptr<ValueAccessor> ValueAccesor() {
-    return _value_accesor;
+  inline std::shared_ptr<ValueAccessor> GetValueAccessor() {
+    return _value_accessor;
   }
 
   virtual void *GetShard(size_t shard_idx) = 0;
@@ -162,6 +162,8 @@ class Table {
   // for patch model
   virtual void Revert() {}
   virtual void CheckSavePrePatchDone() {}
+
+  virtual void SetDayId(int day_id) {}
 
  protected:
   virtual int32_t Initialize() = 0;
@@ -176,7 +178,7 @@ class Table {
   size_t _shard_num;  // table 分片总数
   TableParameter _config;
   float *_global_lr = nullptr;
-  std::shared_ptr<ValueAccessor> _value_accesor;
+  std::shared_ptr<ValueAccessor> _value_accessor;
   AfsClient _afs_client;
 };
 REGISTER_PSCORE_REGISTERER(Table);

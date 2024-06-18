@@ -23,8 +23,7 @@
 #include "paddle/fluid/distributed/fleet_executor/global.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 void MessageBus::Init(
     int64_t rank,
@@ -193,7 +192,7 @@ void MessageBus::ListenPort() {
   int interval = 100;
   while (server_.Start(ip_for_brpc, &options) != 0) {
     ++retry_times;
-    LOG(INFO) << "Message bus is retring for starting brpc for " << retry_times
+    LOG(INFO) << "Message bus is retrying for starting brpc for " << retry_times
               << " times. And will retry after " << interval / 1000
               << " seconds.";
     std::this_thread::sleep_for(std::chrono::milliseconds(interval));
@@ -228,10 +227,10 @@ bool MessageBus::SendInterRank(int64_t dst_rank,
   brpc::Controller ctrl;
   ctrl.set_log_id(0);
   if (interceptor_message.ctrl_message()) {
-    stub.IncreaseBarrierCount(&ctrl, &interceptor_message, &response, NULL);
+    stub.IncreaseBarrierCount(&ctrl, &interceptor_message, &response, nullptr);
   } else {
     stub.ReceiveInterceptorMessage(
-        &ctrl, &interceptor_message, &response, NULL);
+        &ctrl, &interceptor_message, &response, nullptr);
   }
   if (!ctrl.Failed()) {
     if (response.rst()) {
@@ -250,5 +249,4 @@ bool MessageBus::SendInterRank(int64_t dst_rank,
 
 #endif
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

@@ -23,6 +23,7 @@ from paddle.base import (
     program_guard,
     unique_name,
 )
+from paddle.base.framework import in_pir_mode
 
 from .amp_nn import check_finite_and_unscale, update_loss_scaling
 from .fp16_lists import AutoMixedPrecisionLists, check_amp_dtype
@@ -40,9 +41,7 @@ def _set_multi_precision(optimizer, multi_precision):
         (paddle.optimizer.Optimizer),
     ):
         raise RuntimeError(
-            "Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer, but receive {}.".format(
-                type(optimizer)
-            )
+            f"Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer, but receive {type(optimizer)}."
         )
 
     if multi_precision and hasattr(optimizer, "_multi_precision"):
@@ -118,9 +117,15 @@ class OptimizerWithMixedPrecision:
                 warnings.warn(
                     "Dynamic loss scaling for bfloat16 amp training is disabled, and the init_loss_scaling is changed to 1.0 automatically by PaddlePaddle."
                 )
-            self._amp_vartype = core.VarDesc.VarType.BF16
+            if in_pir_mode():
+                self._amp_vartype = core.DataType.BFLOAT16
+            else:
+                self._amp_vartype = core.VarDesc.VarType.BF16
         else:
-            self._amp_vartype = core.VarDesc.VarType.FP16
+            if in_pir_mode():
+                self._amp_vartype = core.DataType.FLOAT16
+            else:
+                self._amp_vartype = core.VarDesc.VarType.FP16
 
         self._learning_rate = optimizer._learning_rate
         self._learning_rate_map = optimizer._learning_rate_map
@@ -163,6 +168,39 @@ class OptimizerWithMixedPrecision:
         return getattr(self._optimizer, "_supports_check_nan_inf", False)
 
     def _init_amp_var(self):
+        if in_pir_mode():
+            if self._use_dynamic_loss_scaling:
+                self._num_good_steps = paddle.pir.core.create_persistable_value(
+                    dtype='int32',
+                    shape=[1],
+                    name=unique_name.generate("num_good_steps"),
+                    initializer=paddle.nn.initializer.ConstantInitializer(
+                        value=0
+                    ),
+                )
+                self._num_bad_steps = paddle.pir.core.create_persistable_value(
+                    dtype='int32',
+                    shape=[1],
+                    name=unique_name.generate("num_bad_steps"),
+                    initializer=paddle.nn.initializer.ConstantInitializer(
+                        value=0
+                    ),
+                )
+
+            if isinstance(self._optimizer._learning_rate, float):
+                self._optimizer._learning_rate_map[
+                    paddle.static.default_main_program()
+                ] = paddle.pir.core.create_persistable_value(
+                    dtype='float32',
+                    shape=[1],
+                    name=unique_name.generate("learning_rate"),
+                    initializer=paddle.nn.initializer.ConstantInitializer(
+                        value=float(self._optimizer._learning_rate)
+                    ),
+                )
+
+            return
+
         self._loss_scaling = paddle.static.create_global_var(
             name=unique_name.generate("loss_scaling"),
             shape=[1],
@@ -227,6 +265,22 @@ class OptimizerWithMixedPrecision:
         train_program = loss.block.program
         self._train_program = train_program
         self._float_status = None
+
+        if in_pir_mode():
+            with paddle.static.program_guard(
+                self._train_program, startup_program
+            ):
+                self._init_amp_var()
+                if self._scaled_loss is None:
+                    self._scaled_loss = loss
+                params_grads = self._optimizer.backward(
+                    self._scaled_loss,
+                    startup_program,
+                    parameter_list,
+                    no_grad_set,
+                    callbacks,
+                )
+                return params_grads
 
         with program_guard(self._train_program, startup_program):
             self._init_amp_var()
@@ -353,7 +407,7 @@ class OptimizerWithMixedPrecision:
                 ...         init_loss_scaling=128.0,
                 ...         use_dynamic_loss_scaling=True,
                 ...         use_pure_fp16=True)
-                ...     # If you don't use the default_startup_program(), you sholud pass
+                ...     # If you don't use the default_startup_program(), you should pass
                 ...     # your defined `startup_program` into `minimize`.
                 ...     optimizer.minimize(loss)
                 ...     exe.run(paddle.static.default_startup_program())
@@ -415,31 +469,44 @@ class OptimizerWithMixedPrecision:
 
         global_block = self._train_program.global_block()
         target_block = global_block
-        current_block = self._train_program.current_block()
-        if current_block.idx != global_block.idx:
-            target_block = self._train_program.blocks[
-                current_block.backward_block_idx
-            ]
+        if not in_pir_mode():
+            current_block = self._train_program.current_block()
+            if current_block.idx != global_block.idx:
+                target_block = self._train_program.blocks[
+                    current_block.backward_block_idx
+                ]
         params_master_grads = []
 
-        assert isinstance(target_block, paddle.base.framework.Block)
-        # create
-        for p, g in param_grads:
-            if g.name not in self._optimizer._master_grads.keys():
-                if self._optimizer._is_dtype_fp16_or_bf16(g.dtype):
-                    master_g = self._optimizer._create_master_grad(g)
-                    params_master_grads.append((p, master_g))
-                    target_block.append_op(
-                        type="cast",
-                        inputs={"X": [g]},
-                        outputs={"Out": [master_g]},
-                        attrs={
-                            "in_dtype": g.dtype,
-                            "out_dtype": master_g.dtype,
-                        },
-                    )
-                else:
-                    params_master_grads.append((p, g))
+        assert isinstance(
+            target_block, (paddle.base.framework.Block, paddle.pir.Block)
+        )
+
+        if in_pir_mode():
+            for p, g in param_grads:
+                if g not in self._optimizer._master_grads:
+                    if self._optimizer._is_dtype_fp16_or_bf16(g.dtype):
+                        master_g = self._optimizer._create_master_grad(g)
+                        params_master_grads.append((p, master_g))
+                    else:
+                        params_master_grads.append((p, g))
+        else:
+            # create
+            for p, g in param_grads:
+                if g.name not in self._optimizer._master_grads.keys():
+                    if self._optimizer._is_dtype_fp16_or_bf16(g.dtype):
+                        master_g = self._optimizer._create_master_grad(g)
+                        params_master_grads.append((p, master_g))
+                        target_block.append_op(
+                            type="cast",
+                            inputs={"X": [g]},
+                            outputs={"Out": [master_g]},
+                            attrs={
+                                "in_dtype": g.dtype,
+                                "out_dtype": master_g.dtype,
+                            },
+                        )
+                    else:
+                        params_master_grads.append((p, g))
 
         return params_master_grads
 
@@ -455,9 +522,10 @@ class OptimizerWithMixedPrecision:
             A list of optimize operators.
         """
 
-        # Change the op_role_var attr for some ops, so that gradients
-        # transferred across GPUs can be FP16.
-        update_role_var_grad(self._train_program, params_grads)
+        if not in_pir_mode():
+            # Change the op_role_var attr for some ops, so that gradients
+            # transferred across GPUs can be FP16.
+            update_role_var_grad(self._train_program, params_grads)
 
         # Create master grad and add cast op into program
         params_grads = self._append_cast_to_master_grad_op(params_grads)
@@ -478,9 +546,9 @@ class OptimizerWithMixedPrecision:
             return optimize_ops
 
         found_inf = self._check_finite_and_unscale(params_grads)
-        if (
-            self._use_dynamic_loss_scaling
-            and self._amp_vartype == core.VarDesc.VarType.FP16
+        if self._use_dynamic_loss_scaling and (
+            self._amp_vartype == paddle.float16
+            or self._amp_vartype == core.DataType.FLOAT16
         ):
             self._add_dynamic_loss_scaling(params_grads, found_inf)
 
@@ -507,7 +575,11 @@ class OptimizerWithMixedPrecision:
 
     def _split_grads(self, params_grads):
         grads = [g for _, g in params_grads]
-        fp32_grads = [g for g in grads if g.dtype == core.VarDesc.VarType.FP32]
+        fp32_grads = [
+            g
+            for g in grads
+            if g.dtype == paddle.float32 or g.dtype == core.DataType.FLOAT32
+        ]
         fp16_grads = [g for g in grads if g.dtype == self._amp_vartype]
         assert len(fp32_grads) + len(fp16_grads) == len(
             grads
@@ -635,7 +707,7 @@ class OptimizerWithMixedPrecision:
 
     def apply_optimize(self, loss, startup_program, params_grads):
         program = loss.block.program
-        with program_guard(program, startup_program):
+        with paddle.static.program_guard(program, startup_program):
             optimize_ops = self.apply_gradients(params_grads)
         return optimize_ops
 
@@ -778,7 +850,7 @@ def decorate(
             ...         init_loss_scaling=128.0,
             ...         use_dynamic_loss_scaling=True,
             ...         use_pure_fp16=True)
-            ...     # If you don't use the default_startup_program(), you sholud pass
+            ...     # If you don't use the default_startup_program(), you should pass
             ...     # your defined `startup_program` into `minimize`.
             ...     optimizer.minimize(loss)
             ...     exe.run(paddle.static.default_startup_program())
@@ -846,10 +918,10 @@ def decorate(  # noqa: F811
              will be converted to float16/bfloat16, and that have any float32 input will be converted to float32. For the OD level, operators in
              default white list will compute in float16/bfloat16, and the others will compute in float32. Default is O1.
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
-        master_weight(bool, optinal): For level='O2', whether to use multi-precision
+        master_weight(bool, optional): For level='O2', whether to use multi-precision
             during weight updating. If master_weight is None, in O2 level optimizer
             will use multi-precision. Default is None.
-        master_grad(bool, optinal): For level='O2', whether to use master_grad
+        master_grad(bool, optional): For level='O2', whether to use master_grad
             during weight updating. If master_grad is False, in O2 level optimizer
             will not use master grad. Default is False.
         init_loss_scaling(float, optional): The initial loss scaling factor.

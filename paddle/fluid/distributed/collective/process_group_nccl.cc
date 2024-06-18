@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -28,21 +29,20 @@
 #include "paddle/phi/core/distributed/nccl_tools.h"
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-PHI_DECLARE_bool(benchmark);
-PHI_DECLARE_bool(benchmark_nccl);
-PHI_DECLARE_bool(nccl_blocking_wait);
-PHI_DECLARE_bool(use_stream_safe_cuda_allocator);
-PHI_DECLARE_bool(enable_async_trace);
+COMMON_DECLARE_bool(benchmark);
+COMMON_DECLARE_bool(benchmark_nccl);
+COMMON_DECLARE_bool(nccl_blocking_wait);
+COMMON_DECLARE_bool(use_stream_safe_cuda_allocator);
+COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
+COMMON_DECLARE_bool(enable_async_trace);
 
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
 constexpr int64_t kWaitBlockTImeout = 10;
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 using phi::distributed::CheckSizeOnEachRank;
 using phi::distributed::IsP2POP;
@@ -122,11 +122,21 @@ ProcessGroupNCCL::ProcessGroupNCCL(
     int rank,
     int size,
     int gid,
-    int64_t timeout)
+    int64_t timeout,
+    int nccl_comm_init_option)
     : ProcessGroupWithStream(rank, size, gid),
       store_(store),
-      pg_timeout_(timeout) {
+      place_to_calc_event_(),
+      place_to_calc_ctx_(),
+      place_to_comm_ctx_(),
+      p2p_comm_seq_(),
+      place_to_group_key_(),
+      pg_timeout_(timeout),
+      nccl_comm_init_option_(nccl_comm_init_option),
+      allocation_stream_pairs() {
   LOG(INFO) << "ProcessGroupNCCL pg_timeout_ " << pg_timeout_;
+  LOG(INFO) << "ProcessGroupNCCL nccl_comm_init_option_ "
+            << nccl_comm_init_option_;
 }
 ProcessGroupNCCL::~ProcessGroupNCCL() {
   LOG(INFO) << "ProcessGroupNCCL destruct ";
@@ -527,7 +537,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
     size_t offset = 0;
     size_t numel = out_tensor->numel() / size_;
     for (auto i = 0; i < size_; i++) {
-      partial_tensors.push_back(GetPartialTensor(*out_tensor, offset, numel));
+      partial_tensors.push_back(GetPartialTensor(*out_tensor,
+                                                 static_cast<int64_t>(offset),
+                                                 static_cast<int64_t>(numel)));
       offset += numel;
     }
   }
@@ -717,7 +729,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   phi::distributed::P2POption p2p_opts({is_p2p_op, p2p_rank, num_ranks, rank});
   phi::distributed::CommContextManager::CreateNCCLCommContext(
-      store_, store_key, rank_, size_, "", &p2p_opts);
+      store_, store_key, rank_, size_, "", &p2p_opts, nccl_comm_init_option_);
 
   NCCL_CHECK(phi::dynload::ncclGroupEnd());
 
@@ -859,7 +871,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   }
 
   if (!use_calc_stream) {
-    if (FLAGS_use_stream_safe_cuda_allocator) {
+    if (FLAGS_use_stream_safe_cuda_allocator ||
+        FLAGS_use_cuda_malloc_async_allocator) {
       memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
     }
     task->UpdateWaitChain(*comm_ctx);
@@ -974,7 +987,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
   }
 
   if (!use_calc_stream) {
-    if (FLAGS_use_stream_safe_cuda_allocator) {
+    if (FLAGS_use_stream_safe_cuda_allocator ||
+        FLAGS_use_cuda_malloc_async_allocator) {
       memory::RecordStream(tensor_tmp.Holder(), nccl_stream);
     }
     task->UpdateWaitChain(*comm_ctx);
@@ -1006,9 +1020,10 @@ std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
     int rank,
     int size,
     int gid,
-    int64_t timeout) {
-  auto process_group =
-      std::make_shared<ProcessGroupNCCL>(store, rank, size, gid, timeout);
+    int64_t timeout,
+    int nccl_comm_init_option) {
+  auto process_group = std::make_shared<ProcessGroupNCCL>(
+      store, rank, size, gid, timeout, nccl_comm_init_option);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
   return process_group;
 }
@@ -1029,5 +1044,4 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetCommContext(
   return comm_context;
 }
 
-}  //  namespace distributed
-}  //  namespace paddle
+}  // namespace paddle::distributed

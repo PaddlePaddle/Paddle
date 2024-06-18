@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class SumOpConverter : public OpConverter {
  public:
@@ -43,12 +41,10 @@ class SumOpConverter : public OpConverter {
       }
     }
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "sum", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "sum", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(sum, SumOpConverter);

@@ -17,7 +17,7 @@
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
 #include "paddle/cinn/frontend/paddle/cpp/desc_api.h"
 #include "paddle/cinn/frontend/var_type_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
@@ -75,11 +75,20 @@ ELTWISE_SPEC(EltwiseType::kMin, NetBuilder::Min);
 
 void AddOpMapper(const paddle::cpp::OpDesc& op_desc,
                  const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("Input(X) of add op should be 1."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Input("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("Input(Y) of add op should be 1."));
   auto y_name = op_desc.Input("Y").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("Output(Out) of add op should be 1."));
   auto out_name = op_desc.Output("Out").front();
 
   VLOG(4) << out_name << " = " << x_name << " + " << y_name;
@@ -96,11 +105,20 @@ template <EltwiseType Type>
 void ElementwiseOpMapper(const paddle::cpp::OpDesc& op_desc,
                          const OpMapperContext& ctx) {
   VLOG(5) << "Elementwise operator mapping type: " << static_cast<int>(Type);
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("Input(X) of elementwise op should be 1."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Input("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("Input(Y) of elementwise op should be 1."));
   auto y_name = op_desc.Input("Y").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Output(Out) of elementwise op should be 1."));
   auto out_name = op_desc.Output("Out").front();
 
   auto axis = utils::GetAttrOrDefault<int>(op_desc, "axis", -1);
@@ -118,11 +136,21 @@ void ElementwiseOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void ElementwiseAddGradOpMapper(const paddle::cpp::OpDesc& op_desc,
                                 const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Input(X) of elementwise_add_grad op should be 1."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Input("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Input(Y) of elementwise_add_grad op should be 1."));
   auto y_name = op_desc.Input("Y").front();
-  CHECK_EQ(op_desc.Input(paddle::GradVarName("Out")).size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input(paddle::GradVarName("Out")).size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Input(Out@GRAD) of elementwise_add_grad op should be "
+                        "1."));
   auto dout_name = op_desc.Input(paddle::GradVarName("Out")).front();
 
   std::string dx_name, dy_name;
@@ -145,7 +173,10 @@ void ElementwiseAddGradOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto y = ctx.GetVar(y_name);
   auto dout = ctx.GetVar(dout_name);
   auto outs = ctx.Builder()->ElementwiseAddGrad(dout, x, y, axis);
-  CHECK_EQ(outs.size(), 2) << "elementwise_add_grad should return 2 variables";
+  PADDLE_ENFORCE_EQ(outs.size(),
+                    2UL,
+                    phi::errors::InvalidArgument(
+                        "elementwise_add_grad should return 2 variables"));
 
   if (has_dx) {
     auto dx = outs.front();
@@ -161,9 +192,15 @@ void ElementwiseAddGradOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void SumOpMapper(const paddle::cpp::OpDesc& op_desc,
                  const OpMapperContext& ctx) {
-  CHECK_GE(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_GE(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("Input(X) of sum op should be at least 1."));
   auto x_names = op_desc.Input("X");
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("Output(Out) of sum op should be 1."));
   auto out_name = op_desc.Output("Out").front();
 
   std::vector<Variable> xs;
@@ -181,13 +218,21 @@ void SumOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void CastOpMapper(const paddle::cpp::OpDesc& op_desc,
                   const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("Input(X) of cast op should be 1."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("Output(Out) of cast op should be 1."));
   auto out_name = op_desc.Output("Out").front();
 
-  CHECK(op_desc.HasAttr("out_dtype"))
-      << "The cast op should has [out_dtype] attribute!";
+  PADDLE_ENFORCE_EQ(op_desc.HasAttr("out_dtype"),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The cast op should has [out_dtype] attribute!"));
   auto dtype = utils::GetPaddleDtype(
       op_desc, "out_dtype", paddle::cpp::VarDescAPI::Type::FP32);
   CHECK(!dtype.empty()) << "The op \"cast\"'s attribute \"out_dtype\" should "
@@ -205,16 +250,25 @@ void CastOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void PowOpMapper(const paddle::cpp::OpDesc& op_desc,
                  const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("Input(X) of pow op should be 1."));
   auto x_name = op_desc.Input("X").front();
   auto x = ctx.GetVar(x_name);
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("Output(Out) of pow op should be 1."));
   auto out_name = op_desc.Output("Out").front();
 
   absl::optional<Variable> y;
   if (op_desc.HasInput("FactorTensor") &&
       !op_desc.Input("FactorTensor").empty()) {
-    CHECK_EQ(op_desc.Input("FactorTensor").size(), 1UL);
+    PADDLE_ENFORCE_EQ(op_desc.Input("FactorTensor").size(),
+                      1UL,
+                      phi::errors::InvalidArgument(
+                          "Input(FactorTensor) of pow op should be 1."));
     auto y_name = op_desc.Input("FactorTensor").front();
     y = ctx.GetVar(y_name);
 
@@ -225,14 +279,17 @@ void PowOpMapper(const paddle::cpp::OpDesc& op_desc,
                                     cinn::UniqName(x_name + "_factor"),
                                     cinn::common::Type2Str(x->type));
   } else {
-    LOG(FATAL) << "Cannot found [FactorTensor] input or [factor] attribute in "
-                  "paddle.pow! Please check.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Cannot found [FactorTensor] input or [factor] attribute in "
+        "paddle.pow! Please check."));
   }
 
   VLOG(4) << out_name << " = pow(" << x_name << ", " << y.value()->id << ")";
-  CHECK_EQ(x->type, y.value()->type)
-      << "The data type of pow's inputs should be equal, but here x:" << x->type
-      << " != y:" << y.value()->type;
+  PADDLE_ENFORCE_EQ(
+      x->type,
+      y.value()->type,
+      phi::errors::InvalidArgument(
+          "The data type of pow's inputs x should be equal to y."));
 
   auto out = ctx.Builder()->Pow(x, y.value());
 
@@ -242,19 +299,34 @@ void PowOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void FloorDivideOpMapper(const paddle::cpp::OpDesc& op_desc,
                          const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("Input(X) of floor_divide op should be 1."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Input("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("Input(Y) of floor_divide op should be 1."));
   auto y_name = op_desc.Input("Y").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Output(Out) of floor_divide op should be 1."));
   auto out_name = op_desc.Output("Out").front();
 
   auto x = ctx.GetVar(x_name);
   auto y = ctx.GetVar(y_name);
 
   VLOG(4) << out_name << " = ⌊ " << x_name << " / " << y_name << " ⌋";
-  CHECK_EQ(x->type, y->type) << "Type of input x and y must be the same.";
-  CHECK(x->type.is_int()) << "Type of inputs must be int32 or int64.";
+  PADDLE_ENFORCE_EQ(
+      x->type,
+      y->type,
+      phi::errors::InvalidArgument("Type of input x and y must be the same."));
+  PADDLE_ENFORCE_EQ(
+      x->type.is_int(),
+      true,
+      phi::errors::InvalidArgument("Type of inputs must be int32 or int64."));
 
   auto out = ctx.Builder()->FloorDivide(x, y);
 

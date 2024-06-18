@@ -21,8 +21,7 @@
 #include "paddle/fluid/distributed/ps/table/table.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 std::vector<std::string> GraphPyService::split(const std::string& str,
                                                const char pattern) {
   std::vector<std::string> res;
@@ -52,7 +51,7 @@ void GraphPyService::add_table_feat_conf(std::string table_name,
     VLOG(0) << "table_name " << table_name << " mapping id " << idx;
     VLOG(0) << " feat name " << feat_name << " feat id" << feat_idx;
     if (static_cast<size_t>(feat_idx) < table_feat_conf_feat_name[idx].size()) {
-      // overide
+      // override
       table_feat_conf_feat_name[idx][feat_idx] = feat_name;
       table_feat_conf_feat_dtype[idx][feat_idx] = feat_dtype;
       table_feat_conf_feat_shape[idx][feat_idx] = feat_shape;
@@ -285,7 +284,7 @@ void GraphPyClient::load_edge_file(std::string name,
     status.wait();
   }
   // if (this->table_id_map.count(name)) {
-  //   VLOG(0) << "loadding data with type " << name << " from " << filepath;
+  //   VLOG(0) << "loading data with type " << name << " from " << filepath;
   //   uint32_t table_id = this->table_id_map[name];
   //   auto status =
   //       get_ps_client()->Load(table_id, std::string(filepath), params);
@@ -507,5 +506,4 @@ void GraphPyClient::StopServer() {
   if (status.get() == 0) stoped_ = true;
 }
 void GraphPyClient::FinalizeWorker() { this->worker_ptr->FinalizeWorker(); }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

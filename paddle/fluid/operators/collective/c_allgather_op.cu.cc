@@ -16,11 +16,11 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/framework/convert_utils.h"
@@ -67,7 +67,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -78,7 +78,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       stream = comm_ctx->GetStream();
@@ -88,7 +88,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           nranks,
           comm->nranks(),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "nranks: %s should equal to %s", nranks, comm->nranks()));
       stream = comm->stream();
       VLOG(3) << "old NCCLCommContext has rid " << rid;
@@ -103,16 +103,16 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
       comm_ctx->AllGather(out, *in, stream);
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::ncclAllGather(send_buff,
-                                           recv_buff,
-                                           send_numel,
-                                           static_cast<ncclDataType_t>(dtype),
-                                           comm->comm(),
-                                           stream));
+          phi::dynload::ncclAllGather(send_buff,
+                                      recv_buff,
+                                      send_numel,
+                                      static_cast<ncclDataType_t>(dtype),
+                                      comm->comm(),
+                                      stream));
     }
 
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
 #endif
   }
@@ -122,7 +122,6 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_allgather,
                           GPU,
@@ -131,12 +130,12 @@ PD_REGISTER_STRUCT_KERNEL(c_allgather,
                           float,
                           double,
 #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-                          plat::bfloat16,
+                          phi::dtype::bfloat16,
 #endif
                           int,
                           uint8_t,
                           int8_t,
                           int64_t,
                           bool,
-                          plat::float16) {
+                          phi::dtype::float16) {
 }

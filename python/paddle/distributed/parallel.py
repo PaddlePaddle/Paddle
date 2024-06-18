@@ -291,7 +291,7 @@ class DataParallel(layers.Layer):
         ``PyLayer`` is not supported in DataParallel. To solve problems of this kind,
         it's recommended to skip gradient synchronization among multiple cards by 'no_sync',
         and manually implement 'all_reduce' before model optimization. There is an example
-        showing specific implemetation processing.
+        showing specific implementation processing.
 
     Examples:
 
@@ -451,7 +451,9 @@ class DataParallel(layers.Layer):
             return False
 
         is_sparse_gradient = [
-            check_layer_sparse(sublayer) for sublayer, _ in layers_param
+            check_layer_sparse(sublayer)
+            for sublayer, param in layers_param
+            if not getattr(param, "no_sync", False)
         ]
 
         if in_dynamic_mode():
@@ -567,7 +569,7 @@ class DataParallel(layers.Layer):
             destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
 
-        Retruns:
+        Returns:
             dict: a dict contains all the parameters and persistable buffers.
 
         Examples:
@@ -1011,7 +1013,7 @@ def init_parallel_env():
         )
         return
     # NOTE(xiongkun): support cpu gloo only, add this environment variable to
-    #                 enable cpu only gloo prarllel training)
+    #                 enable cpu only gloo parallel training)
     backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
     is_cpu_only = _is_cpuonly(backend)
     # 1. gpu xpu check, must be gpu or xpu,
@@ -1122,17 +1124,19 @@ def init_parallel_env():
 
         if int(os.getenv("FLAGS_eager_communication_connection", 0)) == 1:
             paddle.distributed.all_reduce(
-                paddle.zeros([1], dtype=paddle.uint8), group=group, sync_op=True
+                paddle.zeros([1], dtype=paddle.float32),
+                group=group,
+                sync_op=True,
             )
         return group
 
     node_num = {i.split(":")[0] for i in parallel_env.trainer_endpoints}
-    # 3: init gloo context (step 1: httpsever start)
+    # 3: init gloo context (step 1: httpserver start)
     init_gloo = int(os.getenv("PADDLE_WITH_GLOO", "0"))
     if is_cpu_only or init_gloo or backend == "heter":
         ep_rank_0 = parallel_env.trainer_endpoints[0].split(":")
         manager = Manager()
-        # glboal dict to store status
+        # global dict to store status
         http_server_d = manager.dict()
         http_server_d["running"] = False
         if parallel_env.rank == 0:
@@ -1185,7 +1189,7 @@ def init_parallel_env():
     parallel_helper._init_parallel_ctx()
 
     # 5: init gloo context (step 2: gloo init)
-    # dividing init_gloo into two part beacause nccl and gloo
+    # dividing init_gloo into two part because nccl and gloo
     # are separately looking for free ports which sometimes
     # leads to port-conflict.
     if (is_cpu_only or backend == "heter") and parallel_env.rank == 0:

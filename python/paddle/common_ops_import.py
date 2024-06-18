@@ -32,7 +32,4 @@ from paddle.base.framework import (  # noqa: F401
     in_dygraph_mode,
 )
 from paddle.base.layer_helper import LayerHelper  # noqa: F401
-from paddle.base.layers.layer_function_generator import (  # noqa: F401
-    templatedoc,
-)
 from paddle.base.param_attr import ParamAttr  # noqa: F401

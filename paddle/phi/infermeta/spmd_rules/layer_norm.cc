@@ -26,6 +26,26 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
+void LogInputDistAttr(const std::string& name,
+                      const std::vector<int64_t>& shape,
+                      const TensorDistAttr& src_dist_attr,
+                      const TensorDistAttr& dst_dist_attr) {
+  VLOG(4) << name << " shape: [" << str_join(shape) << "] "
+          << "src_dims_mapping: [" << str_join(src_dist_attr.dims_mapping())
+          << "] "
+          << "dst_dims_mapping: [" << str_join(dst_dist_attr.dims_mapping())
+          << "] "
+          << "src_partial: " << src_dist_attr.partial_status_string()
+          << " dst_partial: " << dst_dist_attr.partial_status_string();
+}
+
+void LogOutputDistAttr(const std::string& name,
+                       const TensorDistAttr& dst_dist_attr) {
+  VLOG(4) << name << " dims mapping: ["
+          << str_join(dst_dist_attr.dims_mapping()) << "] "
+          << "partial: " << dst_dist_attr.partial_status_string();
+}
+
 SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& scale,
                             const DistMetaTensor& bias,
@@ -35,9 +55,9 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
   auto x_shape = common::vectorize(x.dims());
   auto scale_shape = common::vectorize(scale.dims());
   auto bias_shape = common::vectorize(bias.dims());
-  int x_ndim = x_shape.size();
-  int scale_ndim = scale_shape.size();
-  int bias_ndim = bias_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int scale_ndim = static_cast<int>(scale_shape.size());
+  int bias_ndim = static_cast<int>(bias_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> scale_dims_mapping = scale.dist_attr().dims_mapping();
@@ -82,7 +102,7 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
   // get output notation
   std::string out_axes = x_axes;
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: merge input sharding
   // As the mean and variance in outputs are `flattened` from
   // x[0:begin_norm_axis], only the first axis can be sharded,
@@ -94,13 +114,13 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
   // Step2.2: infer output dims mapping
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
   TensorDistAttr mean_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
-  TensorDistAttr varience_dist_attr =
+  TensorDistAttr variance_dist_attr =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
   out_dist_attr.set_dims_mapping(
       GetDimsMappingForAxes(out_axes, axis_to_dim_map));
   mean_dist_attr.set_dims_mapping(
       GetDimsMappingForAxes(mean_axes, axis_to_dim_map));
-  varience_dist_attr.set_dims_mapping(
+  variance_dist_attr.set_dims_mapping(
       GetDimsMappingForAxes(variance_axes, axis_to_dim_map));
 
   // Step2.3: update input dims mapping
@@ -110,7 +130,7 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
   TensorDistAttr bias_dist_attr_dst =
       CopyTensorDistAttrForOutput(bias.dist_attr());
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
-  // TODO(zhiqiu): support shardding on scale and bias
+  // TODO(zhiqiu): support sharding on scale and bias
   // Now, apply replicating.
   scale_dist_attr_dst.set_dims_mapping({-1});
   bias_dist_attr_dst.set_dims_mapping({-1});
@@ -142,11 +162,11 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
   VLOG(4) << "Mean dims mapping: [" << str_join(mean_dist_attr.dims_mapping())
           << "]";
   VLOG(4) << "Variance dims mapping: ["
-          << str_join(varience_dist_attr.dims_mapping()) << "]";
+          << str_join(variance_dist_attr.dims_mapping()) << "]";
   VLOG(4) << std::endl;
 
   return {{x_dist_attr_dst, scale_dist_attr_dst, bias_dist_attr_dst},
-          {out_dist_attr, mean_dist_attr, varience_dist_attr}};
+          {out_dist_attr, mean_dist_attr, variance_dist_attr}};
 }
 
 SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
@@ -162,10 +182,10 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
   auto out_shape = common::vectorize(out.dims());
   auto mean_shape = common::vectorize(mean.dims());
   auto variance_shape = common::vectorize(variance.dims());
-  int x_ndim = x_shape.size();
-  int out_ndim = out_shape.size();
-  int mean_ndim = mean_shape.size();
-  int variance_ndim = variance_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int out_ndim = static_cast<int>(out_shape.size());
+  int mean_ndim = static_cast<int>(mean_shape.size());
+  int variance_ndim = static_cast<int>(variance_shape.size());
   auto out_dist_attr_src = out.dist_attr();
   auto mean_dist_attr_src = mean.dist_attr();
   auto variance_dist_attr_src = variance.dist_attr();
@@ -215,16 +235,15 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
   std::string bias_axes(1, x_axes[x_ndim - 1]);
   std::string out_axes = x_axes;
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // For the axes after norm_axis in both input and output tensors,
   // set their dims mappings to -1. For the other axes, set input
   // tensor's dims mapping the same as output tensor's dims mapping.
   // step2.1 merge dims mappings of output, mean, variance.
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
-  axes_sharding_info.emplace_back(std::make_pair(out_axes, out_dims_mapping));
-  axes_sharding_info.emplace_back(std::make_pair(mean_axes, mean_dims_mapping));
-  axes_sharding_info.emplace_back(
-      std::make_pair(variance_axes, variance_dims_mapping));
+  axes_sharding_info.emplace_back(out_axes, out_dims_mapping);
+  axes_sharding_info.emplace_back(mean_axes, mean_dims_mapping);
+  axes_sharding_info.emplace_back(variance_axes, variance_dims_mapping);
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
 
@@ -274,7 +293,7 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
           << "dst_dims_mapping: ["
           << str_join(output_dist_attrs[2].dims_mapping()) << "]";
 
-  for (int i = 0, n = input_dist_attrs.size(); i < n; i++) {
+  for (int i = 0, n = static_cast<int>(input_dist_attrs.size()); i < n; i++) {
     VLOG(4) << "Input" << std::to_string(i) << " dims_mapping: ["
             << str_join(input_dist_attrs[i].dims_mapping()) << "]";
   }
@@ -347,34 +366,65 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
   TensorDistAttr x_dist_attr;
   TensorDistAttr mean_dist_attr;
   TensorDistAttr variance_dist_attr;
-  TensorDistAttr grad_dist_attr;
+  TensorDistAttr out_grad_dist_attr;
+
   std::vector<TensorDistAttr> dist_attrs;
   dist_attrs.push_back(x.dist_attr());
   dist_attrs.push_back(mean.dist_attr());
   dist_attrs.push_back(variance.dist_attr());
-  dist_attrs.push_back(out_grad.dist_attr());
+  out_grad_dist_attr = out_grad.dist_attr();
+  out_grad_dist_attr.clean_partial_status();
+  dist_attrs.push_back(out_grad_dist_attr);
+
   if (begin_norm_axis > 0) {
     std::vector<std::vector<int64_t>> shapes = {
         x_shape, mean_shape, variance_shape, x_shape};
-    std::vector<std::string> anotations;
-    std::string align_anotation;
-    std::tie(anotations, align_anotation) =
+    std::vector<std::string> annotations;
+    std::string align_annotation;
+    std::tie(annotations, align_annotation) =
         BuildLayerNormGradEinsum(x_shape.size(), begin_norm_axis);
-    AlignDimsSharding(
-        &dist_attrs, shapes, anotations, {}, align_anotation, false);
+
+    // Sharding Propagation
+    std::vector<std::pair<std::string, std::vector<int64_t>>>
+        axes_sharding_info;
+    auto x_dims_mapping = dist_attrs[0].dims_mapping();
+    auto out_grad_dims_mapping = dist_attrs[3].dims_mapping();
+    std::fill(
+        x_dims_mapping.begin() + begin_norm_axis, x_dims_mapping.end(), -1);
+    std::fill(out_grad_dims_mapping.begin() + begin_norm_axis,
+              out_grad_dims_mapping.end(),
+              -1);
+    axes_sharding_info.emplace_back(annotations[0], x_dims_mapping);
+    axes_sharding_info.emplace_back(annotations[1],
+                                    dist_attrs[1].dims_mapping());
+    axes_sharding_info.emplace_back(annotations[2],
+                                    dist_attrs[2].dims_mapping());
+    axes_sharding_info.emplace_back(annotations[3], out_grad_dims_mapping);
+    std::unordered_map<std::string, int64_t> axis_to_dim_map =
+        ShardingMergeForTensors(axes_sharding_info);
+
     x_dist_attr = std::move(dist_attrs[0]);
+    x_dist_attr.set_dims_mapping(
+        GetDimsMappingForAxes(annotations[0], axis_to_dim_map));
     mean_dist_attr = std::move(dist_attrs[1]);
+    mean_dist_attr.set_dims_mapping(
+        GetDimsMappingForAxes(annotations[1], axis_to_dim_map));
     variance_dist_attr = std::move(dist_attrs[2]);
-    grad_dist_attr = std::move(dist_attrs[3]);
+    variance_dist_attr.set_dims_mapping(
+        GetDimsMappingForAxes(annotations[2], axis_to_dim_map));
+    out_grad_dist_attr = std::move(dist_attrs[3]);
+    out_grad_dist_attr.set_dims_mapping(
+        GetDimsMappingForAxes(annotations[3], axis_to_dim_map));
   } else {
     x_dist_attr = GetReplicatedDistAttr(dist_attrs[0]);
     mean_dist_attr = GetReplicatedDistAttr(dist_attrs[1]);
     variance_dist_attr = GetReplicatedDistAttr(dist_attrs[2]);
-    grad_dist_attr = GetReplicatedDistAttr(dist_attrs[3]);
+    out_grad_dist_attr = GetReplicatedDistAttr(dist_attrs[3]);
   }
   // TODO(liuzhenhai): support sharded scale and bias
   TensorDistAttr scale_dist_attr = GetReplicatedDistAttr(scale.dist_attr());
   TensorDistAttr bias_dist_attr = GetReplicatedDistAttr(bias.dist_attr());
+  TensorDistAttr x_grad_dist_attr = out_grad_dist_attr;
   TensorDistAttr scale_grad_dist_attr =
       GetReplicatedDistAttr(scale.dist_attr());
   TensorDistAttr bias_grad_dist_attr = GetReplicatedDistAttr(bias.dist_attr());
@@ -390,13 +440,29 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
   scale_grad_dist_attr.set_partial_status(partial_on_dims);
   bias_grad_dist_attr.set_partial_status(partial_on_dims);
 
-  return SpmdInfo({x_dist_attr,
-                   scale_dist_attr,
-                   bias_dist_attr,
-                   mean_dist_attr,
-                   variance_dist_attr,
-                   grad_dist_attr},
-                  {grad_dist_attr, scale_grad_dist_attr, bias_grad_dist_attr});
+  VLOG(4) << "LayerNormGradInferSpmd:";
+  VLOG(4) << "begin_norm_axis: " << begin_norm_axis;
+  LogInputDistAttr("X", x_shape, x.dist_attr(), x_dist_attr);
+  LogInputDistAttr("Scale", scale_shape, scale.dist_attr(), scale_dist_attr);
+  LogInputDistAttr("Bias", bias_shape, bias.dist_attr(), bias_dist_attr);
+  LogInputDistAttr("Mean", mean_shape, mean.dist_attr(), mean_dist_attr);
+  LogInputDistAttr(
+      "Variance", variance_shape, variance.dist_attr(), variance_dist_attr);
+  LogInputDistAttr(
+      "OutGrad", out_grad_shape, out_grad.dist_attr(), out_grad_dist_attr);
+  LogOutputDistAttr("XGrad", x_grad_dist_attr);
+  LogOutputDistAttr("ScaleGrad", scale_grad_dist_attr);
+  LogOutputDistAttr("BiasGrad", bias_grad_dist_attr);
+  VLOG(4) << std::endl;
+
+  return SpmdInfo(
+      {x_dist_attr,
+       scale_dist_attr,
+       bias_dist_attr,
+       mean_dist_attr,
+       variance_dist_attr,
+       out_grad_dist_attr},
+      {x_grad_dist_attr, scale_grad_dist_attr, bias_grad_dist_attr});
 }
 
 }  // namespace distributed

@@ -79,11 +79,15 @@ class P2POp:
 def _with_batch_p2p_guard(backend):
     if backend == "NCCL":
         framework.core.ProcessGroupNCCL.group_start()
+    elif backend == "BKCL":
+        framework.core.ProcessGroupBKCL.group_start()
     try:
         yield
     finally:
         if backend == "NCCL":
             framework.core.ProcessGroupNCCL.group_end()
+        elif backend == "BKCL":
+            framework.core.ProcessGroupBKCL.group_end()
 
 
 def _check_p2p_op_list(p2p_op_list):

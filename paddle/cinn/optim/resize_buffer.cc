@@ -16,14 +16,17 @@
 #include <unordered_map>
 
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/replace_mod_to_max.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/string.h"
 
+PD_DECLARE_bool(group_schedule_tiling_first);
 namespace cinn {
 namespace optim {
 
@@ -40,8 +43,8 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
       std::stringstream oss;
       oss << less_than_ir->a();
       std::string var_name = oss.str();
-      if (utils::Startswith(var_name, "blockIdx") ||
-          utils::Startswith(var_name, "threadIdx")) {
+      if (utils::StartsWith(var_name, "blockIdx") ||
+          utils::StartsWith(var_name, "threadIdx")) {
         var_name_to_extent_[var_name] = less_than_ir->b();
       }
     }
@@ -70,6 +73,7 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
     ir::Store* store = expr->As<ir::Store>();
     ir::Tensor tensor = store->tensor.as_tensor_ref();
     AnalyzeTensorRange(store->indices, tensor);
+    AnalyzeBufferSize(store->indices, tensor);
     ir::IRMutator<>::Visit(op, expr);
   }
 
@@ -102,10 +106,8 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
  private:
   void AnalyzeTensorRange(const std::vector<Expr>& indices,
                           const ir::Tensor& tensor) {
-    if (!tensor->buffer.defined() ||
-        tensor->buffer->memory_type == ir::MemoryType::Heap) {
-      return;
-    }
+    if (!tensor->buffer.defined()) return;
+    if (tensor->buffer->memory_type == ir::MemoryType::Heap) return;
 
     std::vector<ir::Expr> indice_extent;
     for (int i = 0; i < indices.size(); ++i) {
@@ -143,6 +145,45 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
             << buffer_name_to_indice_extent[buffer_name];
   }
 
+  void AnalyzeBufferSize(const std::vector<Expr>& indices,
+                         const ir::Tensor& tensor) {
+    if (!tensor->buffer.defined()) return;
+    if (tensor->buffer->memory_type == ir::MemoryType::Heap) return;
+
+    const std::string& buffer_name = tensor->buffer->name;
+    buffer_name_to_size[buffer_name] = AnalyzeBufferSize(indices);
+    VLOG(6) << "buffer_name = " << buffer_name
+            << ", size = " << buffer_name_to_size[buffer_name];
+  }
+
+  ir::Expr AnalyzeBufferSize(const std::vector<ir::Expr>& indices) {
+    const auto GetIterVarNames =
+        [](const std::vector<ir::Expr>& indices) -> std::set<std::string> {
+      std::set<std::string> iter_var_names;
+      for (const ir::Expr& e : indices) {
+        ir::ir_utils::CollectIRNodes(e, [&](const ir::Expr* x) {
+          if (x->as_var() && !x->as_var()->is_symbolic_constant) {
+            iter_var_names.insert(x->as_var()->name);
+          }
+          return false;
+        });
+      }
+      return iter_var_names;
+    };
+
+    std::set<std::string> iter_var_names = GetIterVarNames(indices);
+    ir::Expr size(1);
+    for (const std::string& var_name : iter_var_names) {
+      PADDLE_ENFORCE_GT(var_name_to_extent_.count(var_name),
+                        0,
+                        ::common::errors::PreconditionNotMet(
+                            "Cannot find the extent of var %s", var_name));
+      size = common::AutoSimplify(size * var_name_to_extent_.at(var_name));
+    }
+
+    return size;
+  }
+
   // A recursion function to calculate the max index range
   // The index may contain some vars like index = 8 * i / j, where we know the
   // range of i, j, we search all values to get the max index range
@@ -153,7 +194,7 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
 
     // We only use the maximal of var, maximal of Mod operation,
     // which may not be the maximal of index
-    // mathmetically, but it works for current CINN.
+    // mathematically, but it works for current CINN.
     //
     // We may add better computation of MaxIndexRange if we need
     for (int i = 0; i < vars.size(); ++i) {
@@ -168,13 +209,26 @@ class AnalyzeLoopVarRange : public ir::IRMutator<> {
       }
     }
     ir::Expr tmp = ir::Add::Make(copy, ir::Expr(1));
-    ir::Expr simplify = common::AutoSimplify(tmp);
-    return simplify;
+    ir::Expr simplified = common::AutoSimplify(tmp);
+    if (simplified.As<ir::Min>()) {
+      ir::Expr lhs = simplified.As<ir::Min>()->a();
+      ir::Expr rhs = simplified.As<ir::Min>()->b();
+      common::cas_intervals_t var_intervals =
+          common::CollectVarIntervalsOfExprs({lhs, rhs});
+      common::SymbolicExprAnalyzer analyzer(var_intervals);
+      if (analyzer.ProveLE(lhs, rhs)) {
+        return lhs;
+      } else if (analyzer.ProveGE(lhs, rhs)) {
+        return rhs;
+      }
+    }
+    return simplified;
   }
 
  public:
   std::unordered_map<std::string, std::vector<ir::Expr>>
       buffer_name_to_indice_extent;
+  std::unordered_map<std::string, ir::Expr> buffer_name_to_size;
 
  private:
   std::unordered_map<std::string, ir::Expr> var_name_to_extent_;
@@ -184,8 +238,10 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
  public:
   ResizeBufferFromAnalyzedRange(
       const std::unordered_map<std::string, std::vector<ir::Expr>>&
-          buffer_name_to_shape)
-      : buffer_name_to_shape_(buffer_name_to_shape) {}
+          buffer_name_to_shape,
+      const std::unordered_map<std::string, ir::Expr>& buffer_name_to_size)
+      : buffer_name_to_shape_(buffer_name_to_shape),
+        buffer_name_to_size_(buffer_name_to_size) {}
 
   void operator()(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
@@ -193,6 +249,7 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
     ir::Store* store = expr->As<ir::Store>();
     ir::Tensor tensor = store->tensor.as_tensor_ref();
     ResizeTensor(&tensor);
+    ReplaceTensorIndices<ir::Store>(store);
     ir::IRMutator<>::Visit(op, expr);
   }
 
@@ -208,8 +265,8 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
       return;
     }
 
-    load->tensor.as_tensor_ref()->shape =
-        load->tensor.as_tensor_ref()->buffer->shape;
+    ir::Tensor tensor = load->tensor.as_tensor_ref();
+    ResizeTensor(&tensor);
 
     // For the moment, align the load tensor indices with the tensor shape using
     // the trick method. A better way would be to modify the FlattenLoop
@@ -218,31 +275,67 @@ class ResizeBufferFromAnalyzedRange : public ir::IRMutator<> {
     for (int i = 0; i < cnt; i++) {
       load->indices.erase(load->indices.begin());
     }
+    ReplaceTensorIndices<ir::Load>(load);
     ir::IRMutator<>::Visit(op, expr);
   }
 
  private:
   void ResizeTensor(ir::Tensor* tensor_ptr) {
     ir::Buffer buffer = (*tensor_ptr)->buffer;
-    if (!buffer.defined() || buffer->memory_type == ir::MemoryType::Heap) {
-      return;
-    }
+    if (!buffer.defined()) return;
+    if (buffer->memory_type == ir::MemoryType::Heap) return;
+
     const std::string& buffer_name = buffer->name;
     if (buffer_name_to_shape_.count(buffer_name)) {
       const std::vector<ir::Expr>& analyzed_shape =
           buffer_name_to_shape_.at(buffer_name);
       VLOG(6) << "Replacing shape of tensor " << (*tensor_ptr)->name
-              << ", buffer " << buffer->name << ", with shape "
-              << analyzed_shape;
-
+              << " with shape " << analyzed_shape;
       (*tensor_ptr)->shape = analyzed_shape;
       buffer->shape = analyzed_shape;
     }
+    if (FLAGS_group_schedule_tiling_first &&
+        buffer_name_to_size_.count(buffer_name) > 0) {
+      const ir::Expr& analyzed_size = buffer_name_to_size_.at(buffer_name);
+      VLOG(6) << "Replacing shape of buffer " << buffer->name << " with shape "
+              << analyzed_size;
+      buffer->shape = {analyzed_size};
+    }
+  }
+
+  template <typename T>
+  void ReplaceTensorIndices(T* op) {
+    ir::Tensor tensor = op->tensor.as_tensor_ref();
+    ir::Buffer buffer = tensor->buffer;
+    if (!buffer.defined()) return;
+    if (buffer->memory_type != ir::MemoryType::GPULocal) return;
+
+    VLOG(4) << "replacing index of tensor: " << tensor->name;
+    ir::Expr index_expr = op->index();
+    std::unordered_map<std::string, ir::Expr> var_name_to_expr;
+    ir::ir_utils::CollectIRNodes(index_expr, [&](const ir::Expr* x) {
+      const ir::_Var_* var = x->as_var();
+      if (var) {
+        var_name_to_expr[var->name] = var->Copy();
+      }
+      return false;
+    });
+    if (var_name_to_expr.size() != 1) {
+      return;
+    }
+
+    ir::Expr single_var = var_name_to_expr.begin()->second;
+    VLOG(4) << "found single var: " << single_var;
+    for (size_t i = 0; i + 1 < op->indices.size(); i++) {
+      op->indices[i] = ir::Expr(0);
+    }
+    op->indices.back() = single_var;
   }
 
  private:
   const std::unordered_map<std::string, std::vector<ir::Expr>>&
       buffer_name_to_shape_;
+  const std::unordered_map<std::string, ir::Expr>& buffer_name_to_size_;
 };
 
 void ResizeBufferToMaxVarRange(ir::Expr* expr) {
@@ -250,7 +343,8 @@ void ResizeBufferToMaxVarRange(ir::Expr* expr) {
   AnalyzeLoopVarRange analyze_functor;
   analyze_functor(expr);
   ResizeBufferFromAnalyzedRange resize_functor(
-      analyze_functor.buffer_name_to_indice_extent);
+      analyze_functor.buffer_name_to_indice_extent,
+      analyze_functor.buffer_name_to_size);
   resize_functor(expr);
   VLOG(6) << "After ResizeBufferToMaxVarRange, Expr = \n" << *expr;
 }

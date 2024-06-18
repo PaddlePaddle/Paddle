@@ -46,7 +46,9 @@ def ref_log_softmax_grad(x, axis):
 class TestLogSoftmaxOp(OpTest):
     def setUp(self):
         self.op_type = 'log_softmax'
+        self.prim_op_type = "comp"
         self.python_api = F.log_softmax
+        self.public_python_api = F.log_softmax
         self.dtype = 'float64'
         self.shape = [2, 3, 4, 5]
         self.axis = -1
@@ -64,7 +66,7 @@ class TestLogSoftmaxOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -75,7 +77,9 @@ class TestLogSoftmaxOp(OpTest):
 class TestLogSoftmaxOp_ZeroDim(TestLogSoftmaxOp):
     def setUp(self):
         self.op_type = 'log_softmax'
+        self.prim_op_type = "comp"
         self.python_api = F.log_softmax
+        self.public_python_api = F.log_softmax
         self.dtype = 'float64'
 
         x = np.random.uniform(0.1, 1.0, []).astype(self.dtype)
@@ -86,7 +90,7 @@ class TestLogSoftmaxOp_ZeroDim(TestLogSoftmaxOp):
         self.attrs = {'axis': -1}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], ['Out'], check_pir=True)
@@ -107,7 +111,7 @@ class TestLogSoftmaxFP16OP(TestLogSoftmaxOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-3, check_pir=True)
+        self.check_output(atol=1e-3, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], ['Out'], max_relative_error=1e-2, check_pir=True)
@@ -131,7 +135,9 @@ class TestLogSoftmaxAxisFP16OP(TestLogSoftmaxFP16OP):
 class TestLogSoftmaxBF16Op(OpTest):
     def setUp(self):
         self.op_type = 'log_softmax'
+        self.prim_op_type = "comp"
         self.python_api = F.log_softmax
+        self.public_python_api = F.log_softmax
         self.dtype = np.uint16
         self.shape = [2, 3, 4, 5]
         self.axis = -1
@@ -146,7 +152,7 @@ class TestLogSoftmaxBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir=True)
+        self.check_output_with_place(place, check_pir=True, check_prim_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -188,7 +194,7 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
         np.testing.assert_allclose(out[0], ref_out, rtol=1e-05)
 
-        # test dygrapg api
+        # test dygraph api
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         y = logsoftmax(x)
@@ -236,6 +242,7 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
             self.check_api(axis)
         self.check_api(-1, 'float64')
 
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name='X1', shape=[100], dtype='int32')

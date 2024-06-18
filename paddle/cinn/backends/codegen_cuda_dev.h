@@ -19,6 +19,7 @@
 
 #include "paddle/cinn/backends/codegen_c.h"
 #include "paddle/cinn/common/common.h"
+#include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/lowered_func.h"
@@ -37,7 +38,7 @@ namespace backends {
  * CUDA device code generator.
  *
  * It generates the device function, e.g, the function called "myadd" will have
- * a __global__ functon called "myadd_kernel", different from codegen_c, the
+ * a __global__ function called "myadd_kernel", different from codegen_c, the
  * declaration of the "myadd_kernel" function has an expanded argument list,
  * which finally similar to `__global__ void myadd(float* __restrict__ A, float*
  * __restrict__ B, int n);`
@@ -69,6 +70,13 @@ class CodeGenCUDA_Dev : public CodeGenC {
   std::string Compile(const ir::Module& module, OutputKind output_kind);
 
   static const std::string& GetSourceHeader();
+
+  ir::Expr GetDynSharedMemOffset() const {
+    if (MathEqual(dyn_shared_mem_offset_, Expr(-1))) {
+      return Expr(0);
+    }
+    return dyn_shared_mem_offset_;
+  }
 
  protected:
   void Visit(const ir::_Var_* op) override;
@@ -109,13 +117,17 @@ class CodeGenCUDA_Dev : public CodeGenC {
  private:
   Target target_;
   bool for_nvrtc_{false};
-  // names of vectorized tensors from `Let` statments where dtypes of the
+  // names of vectorized tensors from `Let` statements where dtypes of the
   // tensors are customized_type with customized_type::kcuda_builtin_vector_t
   // prefix
   std::unordered_set<std::string> vectorized_tensor_names_;
   static const std::string source_header_;
+
+  ir::Expr dyn_shared_mem_offset_{-1};
   std::vector<ir::Buffer> dynamic_alloc_buffers_;
 };
+
+ir::Expr CalculateSharedMemory(const ir::Expr& func_expr);
 
 }  // namespace backends
 }  // namespace cinn

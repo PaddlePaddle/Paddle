@@ -369,7 +369,13 @@ def check_op_config(op_entry, op_name):
         'traits',
         'interfaces',
     )
-    infer_meta_key_set = ('func', 'param', 'spmd_rule')
+    infer_meta_key_set = (
+        'func',
+        'param',
+        'spmd_rule',
+        'local_shape',
+        'global_shape',
+    )
     kernel_key_set = (
         'func',
         'param',
@@ -637,6 +643,8 @@ def validate_backward_inputs(
 
 
 def validate_backward_outputs(op, forward_inputs, backward_outputs):
+    if op in ['fused_attention_grad']:
+        return
     assert len(backward_outputs) <= len(
         forward_inputs
     ), f"{op } has too many outputs"

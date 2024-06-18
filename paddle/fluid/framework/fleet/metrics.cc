@@ -219,7 +219,7 @@ void BasicAucCalculator::calculate_bucket_error() {
       }
     }
   } else {
-    double* table[2] = {&_table[0][0], &_table[1][0]};
+    double* table[2] = {&_table[0][0], &_table[1][0]};  // NOLINT
     for (int i = 0; i < _table_size; i++) {
       double click = table[1][i];
       double show = table[0][i] + table[1][i];
@@ -298,10 +298,10 @@ void BasicAucCalculator::add_uid_unlock_data(double pred,
       platform::errors::PreconditionNotMet(
           "label must be equal to 0 or 1, but its value is: %d", label));
 
-  WuaucRecord record;
+  WuaucRecord record = {0, 0, 0};
   record.uid_ = uid;
   record.label_ = label;
-  record.pred_ = pred;
+  record.pred_ = static_cast<float>(pred);
   wuauc_records_.emplace_back(std::move(record));
 }
 
@@ -320,14 +320,14 @@ void BasicAucCalculator::computeWuAuc() {
               }
             });
 
-  WuaucRocData roc_data;
+  WuaucRocData roc_data = {0, 0, 0};
   uint64_t prev_uid = 0;
   size_t prev_pos = 0;
   for (size_t i = 0; i < wuauc_records_.size(); ++i) {
     if (wuauc_records_[i].uid_ != prev_uid) {
       std::vector<WuaucRecord> single_user_recs(
           wuauc_records_.begin() + prev_pos, wuauc_records_.begin() + i);
-      roc_data = computeSingelUserAuc(single_user_recs);
+      roc_data = computeSingleUserAuc(single_user_recs);
       if (roc_data.auc_ != -1) {
         double ins_num = (roc_data.tp_ + roc_data.fp_);
         _user_cnt += 1;
@@ -343,7 +343,7 @@ void BasicAucCalculator::computeWuAuc() {
 
   std::vector<WuaucRecord> single_user_recs(wuauc_records_.begin() + prev_pos,
                                             wuauc_records_.end());
-  roc_data = computeSingelUserAuc(single_user_recs);
+  roc_data = computeSingleUserAuc(single_user_recs);
   if (roc_data.auc_ != -1) {
     double ins_num = (roc_data.tp_ + roc_data.fp_);
     _user_cnt += 1;
@@ -353,7 +353,7 @@ void BasicAucCalculator::computeWuAuc() {
   }
 }
 
-BasicAucCalculator::WuaucRocData BasicAucCalculator::computeSingelUserAuc(
+BasicAucCalculator::WuaucRocData BasicAucCalculator::computeSingleUserAuc(
     const std::vector<WuaucRecord>& records) {
   double tp = 0.0;
   double fp = 0.0;

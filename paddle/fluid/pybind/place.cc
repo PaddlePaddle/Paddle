@@ -55,7 +55,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
@@ -74,7 +73,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -125,7 +123,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/fluid/string/to_string.h"
+#include "paddle/utils/string/to_string.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -160,21 +158,17 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
-#ifdef PADDLE_WITH_CINN
-#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
-#endif
-
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/place.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -182,8 +176,7 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 PyTypeObject *g_place_pytype = nullptr;
 PyTypeObject *g_customplace_pytype = nullptr;
 PyTypeObject *g_cudaplace_pytype = nullptr;
@@ -462,6 +455,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .value("XPU3", phi::backends::xpu::XPUVersion::XPU3)
       .export_values();
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
+  m.def("set_xpu_debug_level",
+        [](int level) { platform::set_xpu_debug_level(level); });
   m.def("get_xpu_device_version",
         [](int device_id) { return platform::get_xpu_version(device_id); });
 #ifdef PADDLE_WITH_XPU_KP
@@ -479,14 +474,14 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     return platform::get_xpu_op_list(version);
   });
   m.def("is_float16_supported", [](const platform::XPUPlace &place) -> bool {
-    // XPUs with Compute Capability > xpu2 support float16 and bfloat16
+    // XPUs with Compute Capability > xpu1 support float16
     return platform::get_xpu_version(place.device) >
            phi::backends::xpu::XPUVersion::XPU1;
   });
   m.def("is_bfloat16_supported", [](const platform::XPUPlace &place) -> bool {
-    // XPUs with Compute Capability > xpu2 support float16 and bfloat16
+    // XPUs with Compute Capability > xpu2 support bfloat16
     return platform::get_xpu_version(place.device) >
-           phi::backends::xpu::XPUVersion::XPU1;
+           phi::backends::xpu::XPUVersion::XPU2;
   });
 #endif
 
@@ -544,15 +539,14 @@ void BindPlace(pybind11::module &m) {  // NOLINT
   g_cudapinnedplace_pytype =
       reinterpret_cast<PyTypeObject *>(cudapinnedplace.ptr());
   cudapinnedplace
-      .def("__init__",
-           [](platform::CUDAPinnedPlace &self) {
+      .def(py::init([]() {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-             PADDLE_THROW(platform::errors::PermissionDenied(
-                 "Cannot use CUDAPinnedPlace in CPU only version, "
-                 "Please recompile or reinstall Paddle with CUDA support."));
+        PADDLE_THROW(platform::errors::PermissionDenied(
+            "Cannot use CUDAPinnedPlace in CPU only version, "
+            "Please recompile or reinstall Paddle with CUDA support."));
 #endif
-             new (&self) platform::CUDAPinnedPlace();
-           })
+        return std::make_unique<platform::CUDAPinnedPlace>();
+      }))
       .def("_type", &PlaceIndex<platform::CUDAPinnedPlace>)
       .def("_equals", &IsSamePlace<platform::CUDAPinnedPlace, platform::Place>)
       .def("_equals",
@@ -590,8 +584,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
                              "machine.";
                std::exit(-1);
              }
-             // use ipu(0) to comile, while run with the number user configure
-             // in sharding and pipline.
+             // use ipu(0) to compile, while run with the number user configure
+             // in sharding and pipeline.
              new (&self) platform::IPUPlace(0);
 #else
              LOG(ERROR) << string::Sprintf(
@@ -680,5 +674,4 @@ void BindPlace(pybind11::module &m) {  // NOLINT
       .def("__str__", string::to_string<const platform::Place &>);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

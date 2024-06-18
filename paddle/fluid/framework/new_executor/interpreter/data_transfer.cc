@@ -30,15 +30,15 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
-bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
-                              const phi::KernelKey& expected_kernel_key,
-                              const phi::DenseTensor* tensor,
-                              const std::string& var_name,
-                              std::string* new_var_name,
-                              std::vector<OpFuncNode>* op_func_nodes,
-                              bool use_local_scope,
-                              bool is_fetch_v2,
-                              bool static_build) {
+bool DataTransferHelper::apply(const phi::KernelKey& kernel_type_for_var,
+                               const phi::KernelKey& expected_kernel_key,
+                               const phi::DenseTensor* tensor,
+                               const std::string& var_name,
+                               std::string* new_var_name,
+                               std::vector<OpFuncNode>* op_func_nodes,
+                               bool use_local_scope,
+                               bool is_fetch_v2,
+                               bool static_build) {
   bool is_transferred = false;
   auto* src_var_name = &var_name;
 
@@ -60,7 +60,7 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
     is_transferred = true;
   }
 
-  // 2. dype transform
+  // 2. dtype transform
   if (need_dtype_transform(kernel_type_for_var, expected_kernel_key)) {
     auto op = TransferDtype(
         *src_var_name,
@@ -95,7 +95,7 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
   return is_transferred;
 }
 
-void DataTranferHelper::RunAndConstructShareNode(
+void DataTransferHelper::RunAndConstructShareNode(
     const std::string& src_var_name,
     const std::string& dst_var_name,
     std::vector<OpFuncNode>* op_func_nodes,
@@ -116,7 +116,7 @@ void DataTranferHelper::RunAndConstructShareNode(
       op, src_var_name, dst_var_name, op_func_nodes, static_build);
 }
 
-void DataTranferHelper::RunAndConstructOpFuncNode(
+void DataTransferHelper::RunAndConstructOpFuncNode(
     const std::shared_ptr<OperatorBase>& op,
     const std::string& var_name,
     const std::string& new_var_name,
@@ -168,7 +168,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
     // their implementations are device-related.
     // For example, consider changing the layout of a gpu tensor
     // while the gpu kernel of transfer_layout op does not exist.
-    // To use the cpu kernel, you must insert memcpy_d2h/mepcpy_h2d op
+    // To use the cpu kernel, you must insert memcpy_d2h/memcpy_h2d op
     // in addition. But such operation should not be done here.
     // Maybe in future we will support this.
   }
@@ -357,11 +357,11 @@ std::shared_ptr<OperatorBase> TransferDtype(const std::string& var_name,
   AttributeMap attr_map;
   attr_map["in_dtype"] = static_cast<int>(in_dtype);
   attr_map["out_dtype"] = static_cast<int>(out_dtype);
-  // NOTE(Aurelius84): In whice case use_mkldnn = true?
+  // NOTE(Aurelius84): In which case use_mkldnn = true?
   attr_map["use_mkldnn"] = false;
 
-  // 3. Create transfer_dtype_op
-  std::string op_type("transfer_dtype");
+  // 3. Create cast op
+  std::string op_type("cast");
   auto& op_info = OpInfoMap::Instance().Get(op_type);
   auto op = std::shared_ptr<OperatorBase>(
       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
@@ -479,7 +479,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   }
 
   bool transfered = false;
-  DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
+  DataTransferHelper data_transfer_helper(place, var_scope, local_scope);
   phi::Kernel* phi_kernel = op_func_node->phi_kernel_;
   auto has_infer_varkernel_fn =
       (phi_kernel && phi_kernel->get_kerneltype_forvar_fn_ != nullptr);
@@ -532,7 +532,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
               // for some situation like InferShape().
               // In this situation We cannot skip Var analysis, as
               // MKL-DNN shape of Var may differ from kNHWC Var
-              // In such situation corressponding resized Var
+              // In such situation corresponding resized Var
               // has to be created and registered
               if ((tensor_in->layout() == DataLayout::ONEDNN) &&
                   (var->IsType<phi::DenseTensor>() == true) &&
@@ -702,7 +702,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                                              &arguments);
     }
 #ifdef PADDLE_WITH_DNNL
-    // For input that is Extra, only MKLDNN will use Extra Inputs
+    // For input that is Extra, only OneDNN will use Extra Inputs
     auto& extra_input_names =
         paddle::operators::ExtraInfoUtils::Instance().GetExtraInputNamesMap(
             op_with_kernel->Type());
@@ -736,7 +736,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
   }
 
   if (transfered) {
-    // NOTE(zhiqiu): UPDATE the corresponding OeratorBase to make it consistent
+    // NOTE(zhiqiu): UPDATE the corresponding OperatorBase to make it consistent
     // with instruction.
     op_base->Inputs() = new_ins;
     op_base->Outputs() = new_outs;
@@ -751,7 +751,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
                                  std::vector<OpFuncNode>* op_func_nodes,
                                  framework::Scope* local_scope,
                                  bool static_build) {
-  DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
+  DataTransferHelper data_transfer_helper(place, var_scope, local_scope);
   for (auto& var_name_item : out_names) {
     std::vector<Variable*>& vars = out_vars->at(var_name_item.first);
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {

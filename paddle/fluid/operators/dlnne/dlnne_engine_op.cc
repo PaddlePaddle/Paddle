@@ -44,8 +44,8 @@ std::string ConvertType(phi::DataType type) {
     }
     default: {
       PADDLE_THROW(
-          platform::errors::Fatal("The DLNNE Calibration only support "
-                                  "float/float16/int32_t/int64_t input."));
+          phi::errors::Fatal("The DLNNE Calibration only support "
+                             "float/float16/int32_t/int64_t input."));
     }
   }
 }
@@ -66,8 +66,8 @@ int GetDataByte(phi::DataType type) {
     }
     default: {
       PADDLE_THROW(
-          platform::errors::Fatal("The DLNNE Calibration only support "
-                                  "float/float16/int32_t/int64_t input."));
+          phi::errors::Fatal("The DLNNE Calibration only support "
+                             "float/float16/int32_t/int64_t input."));
     }
   }
 }
@@ -93,7 +93,7 @@ void ConvertPaddle2Onnx(std::string onnx_file_name,
     PADDLE_ENFORCE_EQ(
         convert_flag,
         0,
-        platform::errors::Unavailable("Convert paddle to onnx failed"));
+        phi::errors::Unavailable("Convert paddle to onnx failed"));
   }
 }
 
@@ -108,10 +108,9 @@ void QuantizeOnnx(std::string onnx_file_name,
                 << " --output-model " << rlym_file_name;
     LOG(INFO) << convert_cmd.str();
     int convert_flag = system(convert_cmd.str().c_str());
-    PADDLE_ENFORCE_EQ(
-        convert_flag,
-        0,
-        platform::errors::Unavailable("Convert onnx to rlym failed"));
+    PADDLE_ENFORCE_EQ(convert_flag,
+                      0,
+                      phi::errors::Unavailable("Convert onnx to rlym failed"));
   }
 
   if (!FileExists(quantized_rlym_file_name.c_str())) {
@@ -121,9 +120,8 @@ void QuantizeOnnx(std::string onnx_file_name,
                  << dataset_plugin_path << " " << rlym_file_name;
     LOG(INFO) << quantize_cmd.str();
     int quantize_flag = system(quantize_cmd.str().c_str());
-    PADDLE_ENFORCE_EQ(quantize_flag,
-                      0,
-                      platform::errors::Unavailable("quantize model failed"));
+    PADDLE_ENFORCE_EQ(
+        quantize_flag, 0, phi::errors::Unavailable("quantize model failed"));
   }
 }
 
@@ -147,9 +145,9 @@ class DlnneEngineOpMaker : public framework::OpProtoAndCheckerMaker {
                          "'01', '23', '0123' ");
     // when use_calib_mode is true and enable_int8 is true,
     // the calibration_runtime start,
-    // when calibration_mode is true, the calibration_runtiime
+    // when calibration_mode is true, the calibration_runtime
     // go to the first stage of calibration, and when finish
-    // fisrt stage, the calibration_mode is set false, the
+    // first stage, the calibration_mode is set false, the
     // calibration_runtime go to the second stage
     AddAttr<bool>("use_calib_mode", "dlnne use calib mode");
     AddAttr<bool>("enable_int8", "dlnne enable int8");

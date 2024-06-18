@@ -73,9 +73,7 @@ class Independent(Variable):
         ret = self._base.constraint(value)
         if ret.dim() < self._reinterpreted_batch_rank:
             raise ValueError(
-                "Input dimensions must be equal or grater than  {}".format(
-                    self._reinterpreted_batch_rank
-                )
+                f"Input dimensions must be equal or grater than  {self._reinterpreted_batch_rank}"
             )
         return ret.reshape(
             ret.shape[: ret.dim() - self.reinterpreted_batch_rank] + (-1,)

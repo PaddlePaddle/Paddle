@@ -25,8 +25,8 @@ from paddle.base.core import PassVersionChecker
 class TestReshapeTransposeMatmulV2OneDNNFusePass(InferencePassTest):
     def setUp(self):
         self.set_params()
-        self.tranpose_perm = [0, 2, 1, 3]
-        self.pass_name = 'reshape_transpose_matmul_mkldnn_fuse_pass'
+        self.transpose_perm = [0, 2, 1, 3]
+        self.pass_name = 'reshape_transpose_matmul_onednn_fuse_pass'
 
         with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
@@ -37,7 +37,7 @@ class TestReshapeTransposeMatmulV2OneDNNFusePass(InferencePassTest):
             )
 
             reshape = paddle.reshape(data, shape=self.reshape_shape)
-            transpose = paddle.transpose(reshape, self.tranpose_perm)
+            transpose = paddle.transpose(reshape, self.transpose_perm)
 
             matmul = paddle.matmul(
                 transpose,

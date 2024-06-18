@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/swish_op_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class SwishOpConverter : public OpConverter {
  public:
@@ -74,12 +72,10 @@ class SwishOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "swish", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "swish", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(swish, SwishOpConverter);

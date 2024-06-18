@@ -22,18 +22,11 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #endif
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 class Node;
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 struct TrtSkipLayerNorm : public PatternBase {
   TrtSkipLayerNorm(PDPattern *pattern, const std::string &name_scope)
@@ -102,7 +95,8 @@ PDNode *TrtSkipLayerNorm::operator()(PDNode *x, PDNode *y) {
   return layer_norm_out_var;
 }
 
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -218,7 +212,8 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
       }
       new_desc.SetAttr("begin_norm_axis", begin_norm_axis);
     }
-    int32_t hidden_size = layer_norm_scale->Var()->GetShape()[0];
+    int32_t hidden_size =
+        static_cast<int32_t>(layer_norm_scale->Var()->GetShape()[0]);
     new_desc.SetAttr("hidden_size", hidden_size);
 
     auto fused_node = graph->CreateOpNode(&new_desc);  // OpDesc will be copied.
@@ -270,9 +265,7 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   AddStatis(found_subgraph_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(trt_skip_layernorm_fuse_pass,
               paddle::framework::ir::TrtSkipLayerNormFusePass);

@@ -25,6 +25,7 @@ from PIL import Image
 
 import paddle
 from paddle.dataset.common import download
+from paddle.io import Dataset
 from paddle.static.log_helper import get_logger
 from paddle.static.quantization import PostTrainingQuantization
 
@@ -114,6 +115,33 @@ def _reader_creator(
 def val(data_dir=DATA_DIR):
     file_list = os.path.join(data_dir, 'val_list.txt')
     return _reader_creator(file_list, 'val', shuffle=False, data_dir=data_dir)
+
+
+class ImageNetDataset(Dataset):
+    def __init__(self, data_dir=DATA_DIR, shuffle=False, need_label=False):
+        super().__init__()
+        self.need_label = need_label
+        self.data_dir = data_dir
+        val_file_list = os.path.join(data_dir, 'val_list.txt')
+        with open(val_file_list) as flist:
+            lines = [line.strip() for line in flist]
+            if shuffle:
+                np.random.shuffle(lines)
+            self.data = [line.split() for line in lines]
+
+    def __getitem__(self, index):
+        sample = self.data[index]
+        data_path = os.path.join(self.data_dir, sample[0])
+        data, label = process_image(
+            [data_path, sample[1]], mode='val', color_jitter=False, rotate=False
+        )
+        if self.need_label:
+            return data, np.array([label]).astype('int64')
+        else:
+            return data
+
+    def __len__(self):
+        return len(self.data)
 
 
 class TestPostTrainingQuantization(unittest.TestCase):
@@ -267,7 +295,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         throughput = cnt / np.sum(periods)
         latency = np.average(periods)
         acc1 = np.sum(test_info) / cnt
-        return (throughput, latency, acc1)
+        return (throughput, latency, acc1, feed_dict)
 
     def generate_quantized_model(
         self,
@@ -284,6 +312,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         batch_nums=1,
         onnx_format=False,
         deploy_backend=None,
+        feed_name="inputs",
     ):
         try:
             os.system("mkdir " + self.int8_model)
@@ -293,11 +322,30 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
-        val_reader = val()
+        image = paddle.static.data(
+            name=feed_name[0], shape=[None, 3, 224, 224], dtype='float32'
+        )
+        feed_list = [image]
+        if len(feed_name) == 2:
+            label = paddle.static.data(
+                name='label', shape=[None, 1], dtype='int64'
+            )
+            feed_list.append(label)
+
+        val_dataset = ImageNetDataset(need_label=len(feed_list) == 2)
+        data_loader = paddle.io.DataLoader(
+            val_dataset,
+            places=place,
+            feed_list=feed_list,
+            drop_last=False,
+            return_list=False,
+            batch_size=2,
+            shuffle=False,
+        )
 
         ptq = PostTrainingQuantization(
             executor=exe,
-            sample_generator=val_reader,
+            data_loader=data_loader,
             model_dir=model_path,
             model_filename=model_filename,
             params_filename=params_filename,
@@ -344,11 +392,14 @@ class TestPostTrainingQuantization(unittest.TestCase):
         model_cache_folder = self.download_data(data_urls, data_md5s, model)
         model_path = os.path.join(model_cache_folder, data_name)
         _logger.info(
-            "Start FP32 inference for {} on {} images ...".format(
-                model, infer_iterations * batch_size
-            )
+            f"Start FP32 inference for {model} on {infer_iterations * batch_size} images ..."
         )
-        (fp32_throughput, fp32_latency, fp32_acc1) = self.run_program(
+        (
+            fp32_throughput,
+            fp32_latency,
+            fp32_acc1,
+            feed_name,
+        ) = self.run_program(
             model_path,
             model_filename,
             params_filename,
@@ -370,14 +421,13 @@ class TestPostTrainingQuantization(unittest.TestCase):
             batch_nums,
             onnx_format,
             deploy_backend,
+            feed_name,
         )
 
         _logger.info(
-            "Start INT8 inference for {} on {} images ...".format(
-                model, infer_iterations * batch_size
-            )
+            f"Start INT8 inference for {model} on {infer_iterations * batch_size} images ..."
         )
-        (int8_throughput, int8_latency, int8_acc1) = self.run_program(
+        (int8_throughput, int8_latency, int8_acc1, _) = self.run_program(
             self.int8_model,
             model_filename,
             params_filename,
@@ -387,14 +437,10 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         _logger.info(f"---Post training quantization of {algo} method---")
         _logger.info(
-            "FP32 {}: batch_size {}, throughput {} images/second, latency {} second, accuracy {}.".format(
-                model, batch_size, fp32_throughput, fp32_latency, fp32_acc1
-            )
+            f"FP32 {model}: batch_size {batch_size}, throughput {fp32_throughput} images/second, latency {fp32_latency} second, accuracy {fp32_acc1}."
         )
         _logger.info(
-            "INT8 {}: batch_size {}, throughput {} images/second, latency {} second, accuracy {}.\n".format(
-                model, batch_size, int8_throughput, int8_latency, int8_acc1
-            )
+            f"INT8 {model}: batch_size {batch_size}, throughput {int8_throughput} images/second, latency {int8_latency} second, accuracy {int8_acc1}.\n"
         )
         sys.stdout.flush()
 
@@ -421,7 +467,7 @@ class TestPostTrainingKLForMobilenetv1(TestPostTrainingQuantization):
         is_use_cache_file = False
         is_optimize_model = True
         diff_threshold = 0.025
-        batch_nums = 1
+        batch_nums = 2
         self.run_test(
             model,
             'inference.pdmodel',
@@ -607,7 +653,7 @@ class TestPostTrainingAvgONNXFormatForMobilenetv1TensorRT(
         is_optimize_model = False
         onnx_format = True
         diff_threshold = 0.05
-        batch_nums = 2
+        batch_nums = 12
         deploy_backend = "tensorrt"
         self.run_test(
             model,
@@ -650,7 +696,7 @@ class TestPostTrainingKLONNXFormatForMobilenetv1MKLDNN(
         is_optimize_model = False
         onnx_format = True
         diff_threshold = 0.05
-        batch_nums = 1
+        batch_nums = 12
         deploy_backend = "mkldnn"
         self.run_test(
             model,

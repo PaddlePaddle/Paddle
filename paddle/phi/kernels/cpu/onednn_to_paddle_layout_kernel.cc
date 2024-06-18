@@ -55,13 +55,6 @@ void OneDNN2PaddleLayout(const Context& dev_ctx,
   VLOG(10) << " x: " << print_tensor_meta(x);
   VLOG(10) << " out: " << print_tensor_meta(*out) << " " << out;
 
-  if (src_layout != DataLayout::ONEDNN) {
-    out->ShareDataWith(x);
-    out->ShareInplaceVersionCounterWith(x);
-    out->set_layout(static_cast<DataLayout>(dst_layout));
-    return;
-  }
-
   DataLayout tmp_layout = static_cast<DataLayout>(dst_layout);
 
   if (tmp_layout == DataLayout::ANY) {
@@ -69,6 +62,18 @@ void OneDNN2PaddleLayout(const Context& dev_ctx,
   }
 
   VLOG(4) << "src_layout: " << src_layout << ", tmp_layout: " << tmp_layout;
+
+  if (src_layout != DataLayout::ONEDNN || !x.storage_properties_initialized()) {
+    if (!x.IsInitialized()) {
+      out->Resize(x.dims());
+      out->set_layout(tmp_layout);
+      return;
+    }
+    out->ShareDataWith(x);
+    out->ShareInplaceVersionCounterWith(x);
+    out->set_layout(static_cast<DataLayout>(tmp_layout));
+    return;
+  }
 
   // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
   // data_transfer.cc

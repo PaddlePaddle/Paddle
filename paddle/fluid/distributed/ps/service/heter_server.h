@@ -26,6 +26,7 @@ limitations under the License. */
 #include "brpc/channel.h"
 #include "brpc/controller.h"
 #include "brpc/server.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/ps/service/brpc_utils.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/sendrecv.pb.h"
@@ -38,7 +39,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/core/flags.h"
 
 namespace google {
 namespace protobuf {
@@ -53,7 +53,7 @@ class ProgramDesc;
 class Scope;
 }  // namespace framework
 }  // namespace paddle
-PHI_DECLARE_double(eager_delete_tensor_gb);
+COMMON_DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
 
@@ -162,7 +162,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
       /*
       timeline_.Pause();
       if (timeline_.ElapsedSec() > FLAGS_switch_send_recv_timeout_s) {
-        VLOG(0) << "vars not consumed exceed 10 miniutes";
+        VLOG(0) << "vars not consumed exceed 10 minutes";
         break;
       }
       */
@@ -182,7 +182,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
       /*
       timeline_.Pause();
       if (timeline_.ElapsedSec() > FLAGS_switch_send_recv_timeout_s) {
-        VLOG(0) << "vars not produced exceed 10 miniutes";
+        VLOG(0) << "vars not produced exceed 10 minutes";
         break;
       }
       */
@@ -524,7 +524,7 @@ class HeterService : public PsService {
     peer_endpoints_ = peer_endpoints;
   }
 
-  void SetFanin(const int& fan_in) { fan_in_ = fan_in; }
+  void SetFanIn(const int& fan_in) { fan_in_ = fan_in; }
 
   void ForceExit() {
     VLOG(3) << "heter service force exit";
@@ -626,7 +626,7 @@ class HeterServer {
     service_.SetPeerEndPoints(peer_endpoints);
   }
 
-  void SetFanin(const int& fan_in);
+  void SetFanIn(const int& fan_in);
 
   void SetServiceHandler(
       std::shared_ptr<SendAndRecvVariableHandler> request_handler) {

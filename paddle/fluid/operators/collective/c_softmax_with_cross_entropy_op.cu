@@ -16,21 +16,21 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/softmax_impl.h"
+#include "paddle/utils/string/string_helper.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
@@ -155,7 +155,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -166,7 +166,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
 
@@ -212,7 +212,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     } else {
       void* logits_max_buff = logits_max.mutable_data<T>(place);
 
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           logits_max_buff,
           logits_max_buff,
           logits_max.numel(),
@@ -237,7 +237,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
         ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
     predicted_logits.mutable_data<T>(place);
 
-    auto t = framework::EigenVector<T>::Flatten(predicted_logits);
+    auto t = phi::EigenVector<T>::Flatten(predicted_logits);
     t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
     const int64_t start_index = rank * D;
@@ -276,7 +276,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
       comm_ctx->AllReduce(&predicted_logits, predicted_logits, ncclSum, stream);
     } else {
       void* predict_logits_buff = predicted_logits.data();
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           predict_logits_buff,
           predict_logits_buff,
           predicted_logits.numel(),
@@ -302,7 +302,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
       comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, ncclSum, stream);
     } else {
       void* sum_exp_logits_buff = sum_exp_logits.data();
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
           sum_exp_logits_buff,
           sum_exp_logits_buff,
           sum_exp_logits.numel(),
@@ -404,7 +404,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
         ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
     predicted_logits.mutable_data<T>(place);
 
-    auto t = framework::EigenVector<T>::Flatten(predicted_logits);
+    auto t = phi::EigenVector<T>::Flatten(predicted_logits);
     t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
     const int64_t start_index = rank * D;
@@ -543,7 +543,6 @@ class CSoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
                           GPU,
@@ -551,11 +550,11 @@ PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
                           ops::CSoftmaxWithCrossEntropyOpCUDAKernel,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}
 PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy_grad,
                           GPU,
                           ALL_LAYOUT,
                           ops::CSoftmaxWithCrossEntropyGradCUDAKernel,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

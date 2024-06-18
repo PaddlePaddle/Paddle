@@ -65,10 +65,10 @@ REPEAT_ALL_DATA_TYPE(PD_TENSOR_MUTABLE_DATA_IMPL)
     PADDLE_ENFORCE_NOT_NULL(size,                                              \
                             paddle::platform::errors::InvalidArgument(         \
                                 "The pointer of size shouldn't be nullptr"));  \
-    paddle_infer::PlaceType cxx_palce_type;                                    \
+    paddle_infer::PlaceType cxx_place_type;                                    \
     int cxx_size;                                                              \
-    type* data = tensor->data<type>(&cxx_palce_type, &cxx_size);               \
-    *place = paddle_infer::CvtFromCxxPlaceType(cxx_palce_type);                \
+    type* data = tensor->data<type>(&cxx_place_type, &cxx_size);               \
+    *place = paddle_infer::CvtFromCxxPlaceType(cxx_place_type);                \
     *size = static_cast<int32_t>(cxx_size);                                    \
     return data;                                                               \
   }

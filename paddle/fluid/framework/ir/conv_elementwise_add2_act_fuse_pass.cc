@@ -16,10 +16,11 @@
 #include <string>
 #include "paddle/fluid/framework/ir/cutlass_teller.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#endif
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 #define GET_IR_NODE(node__) GET_IR_NODE_FROM_SUBGRAPH(node__, node__, pattern);
 #define GET_NODES                      \
@@ -35,7 +36,7 @@ namespace ir {
   GET_IR_NODE(act_op);                 \
   GET_IR_NODE(act_out);
 
-// Inherient the basic information from `base_desc`, and modify some fields.
+// Inherit the basic information from `base_desc`, and modify some fields.
 framework::proto::OpDesc PrepareOpDesc(
     const framework::proto::OpDesc& base_desc,
     const std::string& bias,
@@ -154,7 +155,7 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
     all_act_set.insert(cutlass_act_set.begin(), cutlass_act_set.end());
   }
 
-  patterns::ConvElementwiseadd2Act pattern(gpd.mutable_pattern(), pattern_name);
+  patterns::ConvElementwiseAdd2Act pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x, all_act_set);
   int found_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -194,7 +195,11 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
     auto new_op_proto = PrepareOpDesc(
         base_op_desc, bias_name, bias1_name, act_op_type, act_op_out);
     framework::OpDesc new_op_desc(new_op_proto, nullptr);
-    if (cutlass_can_fuse && cutlass_enable && is_fp16_precision) {
+    int sm = 0;
+#ifdef PADDLE_WITH_CUDA
+    sm = platform::GetGPUComputeCapability(platform::GetCurrentDeviceId());
+#endif
+    if (cutlass_can_fuse && cutlass_enable && (is_fp16_precision || sm >= 80)) {
       new_op_desc.SetAttr("use_cudnn", false);
     }
 
@@ -229,9 +234,7 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
   AddStatis(found_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(conv_elementwise_add2_act_fuse_pass,
               paddle::framework::ir::ConvElementwiseAdd2ActFusePass);

@@ -172,7 +172,7 @@ message CopyTableConfig {
   optional bool sparse_copy_by_feasign = 10 [ default = true ];
   // table dependency for pull/push
   optional bool enable_dependency = 11 [ default = false ];
-  repeated TableDependencyMap table_denpendency_map = 12;
+  repeated TableDependencyMap table_dependency_map = 12;
 }
 
 message CondTableMap {

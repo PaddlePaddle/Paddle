@@ -44,8 +44,8 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
     }
   }
 
-  int64_t product = std::accumulate(
-      shape.begin(), shape.end(), 1, std::multiplies<int64_t>());
+  int64_t product =
+      std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<>());
   if (product > 0) {
     PADDLE_ENFORCE_EQ(
         product,
@@ -59,7 +59,7 @@ std::vector<int64_t> InferTargetShape(const std::vector<int64_t>& shape,
     PADDLE_ENFORCE_EQ(len % infer_size,
                       0,
                       phi::errors::InvalidArgument(
-                          "The total is not diviable by infer_size."));
+                          "The total is not divisible by infer_size."));
     new_shape[infer_idx] = infer_size;
     return new_shape;
   }
@@ -72,28 +72,28 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
     const std::vector<int64_t>& tgt_shape) {
   std::vector<std::shared_ptr<DimTrans>> ret;
   int64_t total_elem_num_src = std::accumulate(
-      src_shape.begin(), src_shape.end(), 1, std::multiplies<int64_t>());
+      src_shape.begin(), src_shape.end(), 1, std::multiplies<>());
   std::vector<int64_t> inferred_tgt_shape =
       InferTargetShape(tgt_shape, total_elem_num_src);
 
   int src_idx = 0, tgt_idx = 0;
   int s, t;
   int src_len, tgt_len;
-  src_len = static_cast<int64_t>(src_shape.size());
-  tgt_len = static_cast<int64_t>(inferred_tgt_shape.size());
+  src_len = static_cast<int>(src_shape.size());
+  tgt_len = static_cast<int>(inferred_tgt_shape.size());
   while (src_idx < src_len || tgt_idx < tgt_len) {
     std::vector<int64_t> src_dims, tgt_splitted_shape;
     if (src_idx >= src_len) {
       s = 1;
     } else {
-      s = src_shape[src_idx];
+      s = static_cast<int>(src_shape[src_idx]);
       src_dims.emplace_back(src_idx);
       src_idx++;
     }
     if (tgt_idx >= tgt_len) {
       t = 1;
     } else {
-      t = inferred_tgt_shape[tgt_idx];
+      t = static_cast<int>(inferred_tgt_shape[tgt_idx]);
       tgt_splitted_shape.emplace_back(t);
       tgt_idx++;
     }
@@ -110,21 +110,31 @@ std::vector<std::shared_ptr<DimTrans>> MakeReshapeDimTrans(
       while (s != t) {
         if (s < t) {
           src_dims.emplace_back(src_idx);
-          s *= src_shape[src_idx];
+          s *= static_cast<int>(src_shape[src_idx]);
           src_idx++;
         } else {
           tgt_splitted_shape.emplace_back(inferred_tgt_shape[tgt_idx]);
-          t *= inferred_tgt_shape[tgt_idx];
+          t *= static_cast<int>(inferred_tgt_shape[tgt_idx]);
           tgt_idx++;
         }
       }
     }
 
-    if (tgt_splitted_shape.size() > 0) {
+    if (!tgt_splitted_shape.empty()) {
       std::vector<std::shared_ptr<DimTrans>> input_dims;
-      for (int i = 0, n = static_cast<int>(src_dims.size()); i < n; i++) {
-        int64_t in_dim = src_dims[i];
+      for (auto in_dim : src_dims) {
         if (src_shape[in_dim] > 1) {
+          input_dims.emplace_back(std::make_shared<InputDim>(in_dim));
+        } else if (src_shape[in_dim] == 1 && s == 1 && t == 1) {
+          // NOTE: for the case like:
+          //    shape: [1, 512, 4096] --> [1, 2, 256, 4096],
+          //    input dims_mapping: [0, 1, -1]
+          //    expected output dims_mapping: [0, 1, -1, -1] (not [-1, 1, -1,
+          //    -1])
+          // In this case, the dim0 in target shape is 1 and it is from
+          // dim0 in source shape. make the dim0's transformation be InputDim
+          // rather than Singleton so that the sharding status can be
+          // propagated.
           input_dims.emplace_back(std::make_shared<InputDim>(in_dim));
         }
       }
@@ -149,8 +159,8 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
     x_shape.erase(x_shape.begin());
   }
 
-  int x_ndim = x_shape.size();
-  int out_ndim = shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int out_ndim = static_cast<int>(shape.size());
   auto x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -227,8 +237,8 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   // Step0: Verify input args based on reshape logic
   auto x_shape = common::vectorize(x.dims());
   auto out_shape = common::vectorize(out.dims());
-  int x_ndim = x_shape.size();
-  int out_ndim = out_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int out_ndim = static_cast<int>(out_shape.size());
   auto out_dist_attr_src = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -267,7 +277,7 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
 
   // The out_shape may contain '-1', which will cause error
   // when inferring the transformation from out_shape to
-  // x_shape, so infer the '-1' value before inferrng DimTrans
+  // x_shape, so infer the '-1' value before inferring DimTrans
   int64_t nelm = std::accumulate(
       x_shape.begin(), x_shape.end(), 1, std::multiplies<int64_t>());
   out_shape = InferTargetShape(out_shape, nelm);
@@ -297,7 +307,7 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
   }
 
   VLOG(4) << "Transformation from output to input:";
-  for (int64_t i = 0, n = trans.size(); i < n; i++) {
+  for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
     std::shared_ptr<DimTrans> t = trans[i];
     VLOG(4) << "\tX axis[" << i << "]: " << t->to_string();
   }
@@ -311,26 +321,41 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
 SpmdInfo ReshapeInferSpmdDynamic(const DistMetaTensor& x,
                                  const std::vector<int64_t>& shape) {
   auto spmd_info = ReshapeInferSpmd(x, shape);
-  spmd_info.second.emplace_back(spmd_info.first[0]);
+  auto xshape_dist_dst = PADDLE_GET_CONST(TensorDistAttr, spmd_info.first[0]);
+  auto xshape_dims_mapping = xshape_dist_dst.dims_mapping();
+  xshape_dims_mapping.insert(xshape_dims_mapping.begin(), -1);
+  xshape_dist_dst.set_dims_mapping(xshape_dims_mapping);
+  spmd_info.second.emplace_back(xshape_dist_dst);
   return spmd_info;
 }
 
 SpmdInfo ReshapeGradInferSpmd(const DistMetaTensor& x_shape,
                               const DistMetaTensor& out_grad) {
   std::vector<int64_t> out_grad_shape = common::vectorize(out_grad.dims());
-  const auto& x_shape_dist_src = x_shape.dist_attr();
-  auto tmp = ReshapeInferSpmdDynamic(x_shape, out_grad_shape);
+  auto x_shape_dist_tmp = x_shape.dist_attr();
+  auto x_dims_mapping = x_shape_dist_tmp.dims_mapping();
+  x_dims_mapping.erase(x_dims_mapping.begin());
+  x_shape_dist_tmp.set_dims_mapping(x_dims_mapping);
+  auto tmp = ReshapeInferSpmd(DistMetaTensor(x_shape.dims(), x_shape_dist_tmp),
+                              out_grad_shape);
   // check no shard is needed
   const auto& x_shape_dist_dst = PADDLE_GET_CONST(TensorDistAttr, tmp.first[0]);
   const auto& out_grad_dist_dst =
       PADDLE_GET_CONST(TensorDistAttr, tmp.second[0]);
-  PADDLE_ENFORCE_EQ(x_shape_dist_src,
-                    x_shape_dist_dst,
+  PADDLE_ENFORCE_EQ(x_shape_dist_tmp.dims_mapping(),
+                    x_shape_dist_dst.dims_mapping(),
                     phi::errors::InvalidArgument(
                         "x_shape should not be re shared: [%s] => [%s]",
-                        x_shape_dist_src.to_string(),
+                        x_shape_dist_tmp.to_string(),
                         x_shape_dist_dst.to_string()));
   return {{out_grad_dist_dst}, {x_shape_dist_dst}};
+}
+
+SpmdInfo StaticReshapeGradInferSpmd(const DistMetaTensor& x_shape,
+                                    const DistMetaTensor& out_grad) {
+  auto spmd_info = ReshapeGradInferSpmd(x_shape, out_grad);
+  spmd_info.first.insert(spmd_info.first.begin(), x_shape.dist_attr());
+  return spmd_info;
 }
 
 }  // namespace distributed

@@ -13,16 +13,14 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/grad_merge_all_reduce_op_handle.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/phi/core/flags.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-PHI_DECLARE_bool(sync_nccl_allreduce);
+COMMON_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 GradMergeAllReduceOpHandle::GradMergeAllReduceOpHandle(
@@ -136,6 +134,4 @@ std::string FusedGradMergeAllReduceOpHandle::Name() const {
   return "fused_grad_merge_all_reduce";
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

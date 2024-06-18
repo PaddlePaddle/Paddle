@@ -37,8 +37,10 @@ void AssertTrueMsgTool::SetMsg(int key, const std::string& msg) {
 }
 
 const std::string& AssertTrueMsgTool::GetMsg(int key) {
-  CHECK(global_msg_.find(key) != global_msg_.end())
-      << "Cannot find assert_true message key " << key;
+  PADDLE_ENFORCE_NE(
+      global_msg_.find(key),
+      global_msg_.end(),
+      phi::errors::NotFound("Cannot find assert_true message key (%d).", key));
   return global_msg_[key];
 }
 
@@ -69,9 +71,12 @@ void AssertTrueMsgTool::InitFlagInfo() {
       continue;
     }
     const auto& flag_arg = cinn::utils::Split(str, "=");
-    CHECK_EQ(flag_arg.size(), 2UL)
-        << "The FLAGS_cinn_check_fusion_accuracy_pass must be the format of "
-           "\"only_warning=false;rtol=1e-5;atol=1e-8;equal_nan=false\"";
+    PADDLE_ENFORCE_EQ(
+        flag_arg.size(),
+        2UL,
+        phi::errors::InvalidArgument(
+            "The FLAGS_cinn_check_fusion_accuracy_pass must be the format of "
+            "\"only_warning=false;rtol=1e-5;atol=1e-8;equal_nan=false\"."));
 
     if (flag_arg[0] == "only_warning" || flag_arg[0] == "equal_nan") {
       // bool type parameter
@@ -80,9 +85,9 @@ void AssertTrueMsgTool::InitFlagInfo() {
       // string type parameter
       flag_values_[flag_arg[0]] = std::stof(flag_arg[1]);
     } else {
-      LOG(FATAL)
-          << "The FLAGS_cinn_check_fusion_accuracy_pass only support parameter "
-             "\"only_warning/rtol/atol/equal_nan\" now";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "The FLAGS_cinn_check_fusion_accuracy_pass only support parameter "
+          "\"only_warning/rtol/atol/equal_nan\" now"));
     }
   }
 
@@ -104,26 +109,28 @@ bool MemcpyToHost(void* dst,
                   size_t bytes,
                   const Target& input_target,
                   void* stream = nullptr) {
-  if (input_target == cinn::common::DefaultNVGPUTarget()) {
+  input_target.arch.Match(
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-    const auto& cuda_stream = static_cast<cudaStream_t>(stream);
-    cudaMemcpyAsync(dst, src, bytes, cudaMemcpyDeviceToHost, cuda_stream);
-    cudaStreamSynchronize(cuda_stream);
-    return true;
+        const auto& cuda_stream = static_cast<cudaStream_t>(stream);
+        cudaMemcpyAsync(dst, src, bytes, cudaMemcpyDeviceToHost, cuda_stream);
+        cudaStreamSynchronize(cuda_stream);
 #else
-    LOG(FATAL)
-        << "NVGPU Target only support on flag CINN_WITH_CUDA ON! Please check.";
-    return false;
+        PADDLE_THROW(
+            phi::errors::Fatal("NVGPU Target only support on flag "
+                               "CINN_WITH_CUDA ON! Please check."));
 #endif
-  }
-  if (input_target == cinn::common::DefaultHostTarget()) {
-    memcpy(dst, src, bytes);
-    return true;
-  }
-  LOG(FATAL) << "MemcpyToHost Only support cpu or nvgpu -> cpu, but here the "
-                "input target is "
-             << input_target << "! Please check.";
-  return false;
+      },
+      [&](common::X86Arch) { memcpy(dst, src, bytes); },
+      [&](std::variant<common::UnknownArch, common::ARMArch>) {
+        std::stringstream ss;
+        ss << input_target;
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "MemcpyToHost Only support cpu or nvgpu -> cpu, but here the "
+            "input target is %s! Please check.",
+            ss.str()));
+      });
+  return true;
 }
 
 bool MemcpyToDevice(void* dst,
@@ -131,32 +138,42 @@ bool MemcpyToDevice(void* dst,
                     size_t bytes,
                     const Target& input_target,
                     void* stream = nullptr) {
+  input_target.arch.Match(
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  if (input_target == cinn::common::DefaultNVGPUTarget()) {
-    cudaMemcpyAsync(dst,
-                    src,
-                    bytes,
-                    cudaMemcpyDeviceToDevice,
-                    static_cast<cudaStream_t>(stream));
-    return true;
-  } else if (input_target == cinn::common::DefaultHostTarget()) {
-    cudaMemcpyAsync(dst,
-                    src,
-                    bytes,
-                    cudaMemcpyHostToDevice,
-                    static_cast<cudaStream_t>(stream));
-    return true;
-  } else {
-    LOG(FATAL) << "MemcpyToDevice only support cpu or nvgpu -> nvgpu, but here "
-                  "the input target is "
-               << input_target << "! Please check.";
-    return false;
-  }
+        cudaMemcpyAsync(dst,
+                        src,
+                        bytes,
+                        cudaMemcpyDeviceToDevice,
+                        static_cast<cudaStream_t>(stream));
 #else
-  LOG(FATAL) << "MemcpyToDevice only support nvgpu, and NVGPU Target only "
-                "support when flag CINN_WITH_CUDA ON! Please check.";
-  return false;
+        PADDLE_THROW(
+            phi::errors::Fatal("NVGPU Target only support on flag "
+                               "CINN_WITH_CUDA ON! Please check."));
 #endif
+      },
+      [&](common::X86Arch) {
+#ifdef CINN_WITH_CUDA
+        cudaMemcpyAsync(dst,
+                        src,
+                        bytes,
+                        cudaMemcpyHostToDevice,
+                        static_cast<cudaStream_t>(stream));
+#else
+        PADDLE_THROW(
+            phi::errors::Fatal("NVGPU Target only support on flag "
+                               "CINN_WITH_CUDA ON! Please check."));
+#endif
+      },
+      [&](std::variant<common::UnknownArch, common::ARMArch>) {
+        std::stringstream ss;
+        ss << input_target;
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "MemcpyToDevice Only support gpu or cpu -> gpu, but here the "
+            "input target is %s! Please check.",
+            ss.str()));
+      });
+  return true;
 }
 }  // namespace utils
 
@@ -187,7 +204,7 @@ void CheckAssertTrue(const bool* x,
     if (only_warning) {
       LOG(WARNING) << error_info;
     } else {
-      LOG(FATAL) << error_info;
+      PADDLE_THROW(phi::errors::InvalidArgument(error_info));
     }
   } else {
     VLOG(1) << "[AssertTrue] Check succeed!\n"
@@ -236,13 +253,15 @@ void cinn_assert_true(void* v_args,
                   utils::AssertTrueMsgTool::GetInstance()->GetMsg(msg),
                   target);
 
-  if (target == cinn::common::DefaultNVGPUTarget()) {
-    utils::MemcpyToDevice(
-        output->memory, x->memory, numel * sizeof(bool), target, stream);
-  } else {
-    utils::MemcpyToHost(
-        output->memory, x->memory, numel * sizeof(bool), target, stream);
-  }
+  target.arch.Match(
+      [&](common::NVGPUArch) {
+        utils::MemcpyToDevice(
+            output->memory, x->memory, numel * sizeof(bool), target, stream);
+      },
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+        utils::MemcpyToHost(
+            output->memory, x->memory, numel * sizeof(bool), target, stream);
+      });
 }
 
 }  // namespace runtime

@@ -16,22 +16,21 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/utils/flags.h"
 
-PHI_DECLARE_double(eager_delete_tensor_gb);
-PHI_DECLARE_double(memory_fraction_of_eager_deletion);
-PHI_DECLARE_bool(fast_eager_deletion_mode);
+COMMON_DECLARE_double(eager_delete_tensor_gb);
+COMMON_DECLARE_double(memory_fraction_of_eager_deletion);
+COMMON_DECLARE_bool(fast_eager_deletion_mode);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 GarbageCollector::GarbageCollector(const platform::Place &place,
                                    size_t max_memory_size)
-    : max_memory_size_((std::max)(max_memory_size, static_cast<size_t>(1))) {
-  garbages_ = std::make_unique<GarbageQueue>();
+    : garbages_(std::make_unique<GarbageQueue>()),
+      mutex_(nullptr),
+      max_memory_size_((std::max)(max_memory_size, static_cast<size_t>(1))) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place);
   if (max_memory_size_ > 1) {
     mutex_ = std::make_unique<std::mutex>();
@@ -89,7 +88,9 @@ void DefaultStreamGarbageCollector::ClearCallback(
 
 StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
                                                size_t max_memory_size)
-    : GarbageCollector(place, max_memory_size) {
+    : GarbageCollector(place, max_memory_size),
+      stream_(nullptr),
+      callback_manager_(nullptr) {
   platform::CUDADeviceGuard guard(place.device);
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream_));
@@ -247,5 +248,4 @@ std::unique_ptr<GarbageCollector> CreateGarbageCollector(
   return std::unique_ptr<GarbageCollector>(gc.release());
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

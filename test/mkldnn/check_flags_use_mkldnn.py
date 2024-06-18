@@ -16,6 +16,7 @@ import os
 
 import numpy as np
 
+import paddle
 from paddle import base
 from paddle.base.framework import _global_flags
 from paddle.base.layer_helper import LayerHelper
@@ -35,7 +36,7 @@ def check():
     helper = LayerHelper(base.unique_name.generate("test"), act="relu")
     func = helper.append_activation
     with base.dygraph.guard(base.core.CPUPlace()):
-        a = base.dygraph.to_variable(a_np)
+        a = paddle.to_tensor(a_np)
         res1 = func(a)
         res2 = np.maximum(a_np, 0)
     np.testing.assert_array_equal(res1.numpy(), res2)

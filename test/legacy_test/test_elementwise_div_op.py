@@ -492,7 +492,8 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
     @test_with_pir_api
     def test_shape_with_batch_sizes(self):
         paddle.enable_static()
-        with base.program_guard(base.Program()):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
             x_var = paddle.static.data(
                 name='x', dtype='float32', shape=[None, 3, None, None]
             )
@@ -508,23 +509,15 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
 class TestDivideOp(unittest.TestCase):
     def test_name(self):
         paddle.enable_static()
-        with base.program_guard(base.Program()):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
             x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
             y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
 
             y_1 = paddle.divide(x, y, name='div_res')
+
             self.assertEqual(('div_res' in y_1.name), True)
 
-        with paddle.pir_utils.IrGuard(), base.program_guard(base.Program()):
-            x = paddle.static.data(name="x", shape=[2, 3], dtype="float32")
-            y = paddle.static.data(name='y', shape=[2, 3], dtype='float32')
-
-            y_1 = paddle.divide(x, y, name='div_res')
-
-            def name_call():
-                self.assertEqual(('div_res' in y_1.name), True)
-
-            self.assertRaises(ValueError, name_call)
         paddle.disable_static()
 
     def test_dygraph(self):
@@ -578,7 +571,7 @@ class TestComplexElementwiseDivOp(OpTest):
             check_pir=True,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
@@ -588,7 +581,7 @@ class TestComplexElementwiseDivOp(OpTest):
             check_pir=True,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',

@@ -55,7 +55,7 @@ class SubNetWithDict(paddle.nn.Layer):
         )
 
     def forward(self, input, cache=None):
-        input = base.dygraph.to_variable(input)
+        input = paddle.to_tensor(input)
 
         q = self.q_fc(input)
         k = self.k_fc(input)
@@ -83,7 +83,7 @@ class MainNetWithDict(paddle.nn.Layer):
         self.sub_net = SubNetWithDict(hidden_size, output_size)
 
     def forward(self, input, max_len=4):
-        input = base.dygraph.to_variable(input)
+        input = paddle.to_tensor(input)
         cache = {
             "k": paddle.tensor.fill_constant(
                 shape=[self.batch_size, self.output_size],

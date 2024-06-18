@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/transformer_input_output_convert_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 /*
  * Convert Transformer Input(pos_id, max_seqlen).
@@ -51,15 +49,13 @@ class TransformerInputConvert : public OpConverter {
     nvinfer1::ILayer* layer =
         engine_->AddDynamicPlugin(&input, input_num, plugin);
 
-    RreplenishLayerAndOutput(layer,
-                             "transformer_input_convert",
-                             {pos_id_name, max_seqlen_name},
-                             test_mode);
+    ReplenishLayerAndOutput(layer,
+                            "transformer_input_convert",
+                            {pos_id_name, max_seqlen_name},
+                            test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(transformer_input_convert, TransformerInputConvert);

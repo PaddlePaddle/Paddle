@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "paddle/fluid/pir/drr/include/drr_match_context.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace drr {
@@ -63,44 +64,34 @@ class ComputeAttribute {
   AttrComputeFunc attr_compute_func_;
 };
 
-using Attribute = std::variant<NormalAttribute, ComputeAttribute>;
-
-class TensorShape {
- public:
-  explicit TensorShape(const std::string& tensor_name)
-      : tensor_name_(tensor_name) {}
-
-  const std::string& tensor_name() const { return tensor_name_; }
-
- private:
-  std::string tensor_name_;
-};
-
-class TensorDataType {
- public:
-  explicit TensorDataType(const std::string& tensor_name)
-      : tensor_name_(tensor_name) {}
-
-  const std::string& tensor_name() const { return tensor_name_; }
-
- private:
-  std::string tensor_name_;
-};
-
 using ConstraintFunction = std::function<bool(const MatchContext&)>;
 class Constraint {
  public:
-  explicit Constraint(const ConstraintFunction& constrain_fn)
-      : IsContextMatchConstraint_(constrain_fn) {}
+  explicit Constraint(const ConstraintFunction& constraint_fn)
+      : is_meet_constraint_(constraint_fn) {}
   bool operator()(const MatchContext& match_context) const {
-    return IsContextMatchConstraint_(match_context);
+    return is_meet_constraint_(match_context);
   }
 
  private:
-  ConstraintFunction IsContextMatchConstraint_;
+  ConstraintFunction is_meet_constraint_;
 };
 
-class DrrPatternContext {
+using PostProcessFunction = std::function<void(const MatchContext&)>;
+class PostProcess {
+ public:
+  explicit PostProcess(const PostProcessFunction& post_process_fn)
+      : post_process_after_match_(post_process_fn) {}
+  void operator()(const MatchContext& match_context) const {
+    return post_process_after_match_(match_context);
+  }
+
+ private:
+  PostProcessFunction post_process_after_match_;
+};
+
+using Attribute = std::variant<NormalAttribute, ComputeAttribute>;
+class TEST_API DrrPatternContext {
  public:
   DrrPatternContext();
   ~DrrPatternContext() = default;
@@ -113,6 +104,8 @@ class DrrPatternContext {
 
   std::vector<Constraint> constraints() const;
 
+  std::vector<PostProcess> post_processes() const;
+
   std::shared_ptr<ResultPatternGraph> result_pattern_graph() const {
     return result_pattern_graph_;
   }
@@ -124,20 +117,22 @@ class DrrPatternContext {
   const Op& SourceOpPattern(
       const std::string& op_type,
       const std::unordered_map<std::string, Attribute>& attributes = {});
-  const drr::Tensor& SourceTensorPattern(const std::string& name);
+  drr::Tensor& SourceTensorPattern(const std::string& name);
 
   const Op& ResultOpPattern(
       const std::string& op_type,
-      const std::unordered_map<std::string, Attribute>& attributes = {});
+      const std::unordered_map<std::string, Attribute>& attributes = {},
+      const std::unordered_map<std::string, Attribute>& runtime_attributes =
+          {});
   drr::Tensor& ResultTensorPattern(const std::string& name);
 
-  // void RequireEqual(const Attribute& first, const Attribute& second);
-  void RequireEqual(const TensorShape& first, const TensorShape& second);
-  void RequireEqual(const TensorDataType& first, const TensorDataType& second);
-  void RequireNativeCall(const ConstraintFunction& custom_fn);
+  void AddConstraint(const ConstraintFunction& constraint_fn);
+
+  void AddPostProcess(const PostProcessFunction& post_process_fn);
 
   std::shared_ptr<SourcePatternGraph> source_pattern_graph_;
   std::vector<Constraint> constraints_;
+  std::vector<PostProcess> post_processes_;
   std::shared_ptr<ResultPatternGraph> result_pattern_graph_;
 
   std::vector<std::shared_ptr<const drr::Op>> owned_ops_;
@@ -145,58 +140,54 @@ class DrrPatternContext {
 
 class Op {
  public:
-  const std::string& name() const { return op_type_name_; }
+  TEST_API const std::string& name() const { return op_type_name_; }
 
-  void operator()(const Tensor& arg, const Tensor* out) const;
-
-  Tensor& operator()() const;
-
-  Tensor& operator()(const Tensor& arg) const;
-  Tensor& operator()(const Tensor& arg0, const Tensor& arg1) const;
-  Tensor& operator()(const Tensor& arg0,
-                     const Tensor& arg1,
-                     const Tensor& arg2) const;
-  void operator()(const std::vector<const Tensor*>& args,
-                  const std::vector<const Tensor*>& outputs) const;
-  // const Tensor& operator()(const Tensor& arg0, const Tensor& arg1, const
-  // Tensor& arg2) const; const Tensor& operator()(const Tensor& arg0, const
-  // Tensor& arg1, const Tensor& arg2, const Tensor& arg3) const; const Tensor&
-  // operator()(const Tensor& arg0, const Tensor& arg1, const Tensor& arg2,
-  // const Tensor& arg3, const Tensor& arg4) const;
+  TEST_API Tensor& operator()() const;
+  TEST_API void operator()(const Tensor& arg, const Tensor* out) const;
+  TEST_API Tensor& operator()(const Tensor& arg) const;
+  TEST_API Tensor& operator()(const Tensor& arg0, const Tensor& arg1) const;
+  TEST_API Tensor& operator()(const Tensor& arg0,
+                              const Tensor& arg1,
+                              const Tensor& arg2) const;
+  TEST_API void operator()(const std::vector<const Tensor*>& args,
+                           const std::vector<const Tensor*>& outputs) const;
 
   static const char* prefix;
 
  private:
-  friend class DrrPatternContext;
-  friend class OpCall;
-
   Op(const std::string& op_type_name,
+     PatternGraph* pattern_graph,
      const std::unordered_map<std::string, Attribute>& attributes,
-     PatternGraph* pattern_graph)
+     const std::unordered_map<std::string, Attribute>& runtime_attributes = {})
       : op_type_name_(op_type_name),
+        pattern_graph_(pattern_graph),
         attributes_(attributes),
-        pattern_graph_(pattern_graph) {}
+        runtime_attributes_(runtime_attributes) {}
 
-  const std::unordered_map<std::string, Attribute>& attributes() const {
-    return attributes_;
-  }
+  std::string op_type_name_;
+  PatternGraph* pattern_graph_{nullptr};
+  std::unordered_map<std::string, Attribute> attributes_;
+  std::unordered_map<std::string, Attribute> runtime_attributes_;
 
   thread_local static int64_t count;
 
-  std::string op_type_name_;
-  std::unordered_map<std::string, Attribute> attributes_;
-  PatternGraph* pattern_graph_{nullptr};
+  friend class DrrPatternContext;
+  friend class OpCall;
 };
 
-class Tensor {
+class TEST_API Tensor {
  public:
-  static const char NONE_TENSOR_NAME[];
+  static const char RESULT_INPUT_NONE_TENSOR_NAME[];
+  static const char RESULT_OUTPUT_NONE_TENSOR_NAME[];
+  static const char SOURCE_INPUT_NONE_TENSOR_NAME[];
+  static const char SOURCE_OUTPUT_NONE_TENSOR_NAME[];
 
-  TensorShape shape() const { return TensorShape(name()); }
-
-  TensorDataType dtype() const { return TensorDataType(name()); }
-
-  bool is_none() const { return name_ == NONE_TENSOR_NAME; }
+  bool is_none() const {
+    return name_ == RESULT_INPUT_NONE_TENSOR_NAME ||
+           name_ == RESULT_OUTPUT_NONE_TENSOR_NAME ||
+           name_ == SOURCE_INPUT_NONE_TENSOR_NAME ||
+           name_ == SOURCE_OUTPUT_NONE_TENSOR_NAME;
+  }
 
   void Assign(const Tensor& other);
 
@@ -210,28 +201,26 @@ class Tensor {
 
   void set_producer(OpCall* producer) { producer_ = producer; }
 
-  const std::vector<const OpCall*>& consumers() const { return consumers_; }
-
-  void set_consumables(const std::vector<const OpCall*>& consumers) {
-    consumers_ = consumers;
+  const std::unordered_set<const OpCall*>& consumers() const {
+    return consumers_;
   }
 
-  void AddConsumer(const OpCall* consumer) { consumers_.push_back(consumer); }
+  void AddConsumer(const OpCall* consumer) { consumers_.insert(consumer); }
 
  private:
-  friend class DrrPatternContext;
-  friend class Op;
-
   Tensor(const std::string& name, PatternGraph* pattern_graph)
       : name_(name), pattern_graph_(pattern_graph) {}
 
+  friend class DrrPatternContext;
+  friend class Op;
+
   std::string name_;
   OpCall* producer_{nullptr};
-  std::vector<const OpCall*> consumers_;
+  std::unordered_set<const OpCall*> consumers_;
   PatternGraph* pattern_graph_{nullptr};
 };
 
-class OpCall {
+class TEST_API OpCall {
  public:
   OpCall(const Op* op,
          const std::vector<const Tensor*>& inputs,
@@ -239,7 +228,8 @@ class OpCall {
       : op_name_(op->op_type_name_),
         inputs_(inputs),
         outputs_(outputs),
-        attributes_(op->attributes_) {}
+        attributes_(op->attributes_),
+        runtime_attributes_(op->runtime_attributes_) {}
 
   const std::string& name() const { return op_name_; }
 
@@ -251,78 +241,101 @@ class OpCall {
     return attributes_;
   }
 
+  const std::unordered_map<std::string, Attribute>& runtime_attributes() const {
+    return runtime_attributes_;
+  }
+
  private:
   std::string op_name_;
   std::vector<const Tensor*> inputs_;
   std::vector<const Tensor*> outputs_;
   std::unordered_map<std::string, Attribute> attributes_;
+  std::unordered_map<std::string, Attribute> runtime_attributes_;
 };
 
-class ResultPattern {
+class TEST_API ResultPattern {
  public:
-  const drr::Op& Op(
-      const std::string& op_type,
-      const std::unordered_map<std::string, Attribute>& attributes = {}) {
-    return ctx_->ResultOpPattern(op_type, attributes);
-  }
+  const drr::Op&
+  Op(const std::string& op_type,
+     const std::unordered_map<std::string, Attribute>& attributes = {},
+     const std::unordered_map<std::string, Attribute>& runtime_attributes = {});
 
-  drr::Tensor& Tensor(const std::string& name) {
-    return ctx_->ResultTensorPattern(name);
-  }
+  drr::Tensor& Tensor(const std::string& name);
 
   // Represent the input tensor which is none.
   // Example:
   // instance_norm has follow input tensor : (x, scale, bias), scale and
   // bias are optional(means it may be none).
-  // When scale is onoe, we can write a instance_norm op in drr as follow:
-  // res.Op("instance_norm")(res.Tensor("x"), res.NoneTensor,
+  // When scale is none, we can write a instance_norm op in drr as follow:
+  // res.Op("instance_norm")(res.Tensor("x"), res.InputNoneTensor(),
   // res.Tensor("bias"));
-  drr::Tensor& NoneTensor() {
-    return ctx_->ResultTensorPattern(Tensor::NONE_TENSOR_NAME);
-  }
+  drr::Tensor& InputNoneTensor();
 
-  Attribute StrAttr(const std::string& value) const {
-    return ComputeAttr(
-        [=](const MatchContext& match_ctx) -> std::string { return value; });
-  }
+  // Represent the output tensor which is none.
+  // Example:
+  // reshape has follow output tensor : (out, xshape), xshape is optional(means
+  // it may be none). We can write a reshape op in drr as follow:
+  // res.Op("reshape")({res.Tensor("x")}, {res.Tensor("out"),
+  // res.OutputNoneTensor()});
+  drr::Tensor& OutputNoneTensor();
 
-  Attribute BoolAttr(bool value) const {
-    return ComputeAttr(
-        [=](const MatchContext& match_ctx) -> bool { return value; });
-  }
+  Attribute StrAttr(const std::string& value) const;
 
-  Attribute Int32Attr(int32_t value) const {
-    return ComputeAttr(
-        [=](const MatchContext& match_ctx) -> int32_t { return value; });
-  }
+  Attribute BoolAttr(bool value) const;
 
-  Attribute Int64Attr(int64_t value) const {
-    return ComputeAttr(
-        [=](const MatchContext& match_ctx) -> int64_t { return value; });
-  }
+  Attribute Int32Attr(int32_t value) const;
 
-  Attribute Float32Attr(float value) const {
-    return ComputeAttr(
-        [=](const MatchContext& match_ctx) -> float { return value; });
-  }
+  Attribute Int64Attr(int64_t value) const;
 
-  Attribute VectorInt64Attr(const std::vector<int64_t>& value) const {
-    return ComputeAttr(
-        [=](const MatchContext& match_ctx) -> std::vector<int64_t> {
-          return value;
-        });
-  }
+  Attribute Float32Attr(float value) const;
 
-  Attribute VectorInt32Attr(const std::vector<int32_t>& value) const {
-    return ComputeAttr(
-        [=](const MatchContext& match_ctx) -> std::vector<int32_t> {
-          return value;
-        });
-  }
+  Attribute VectorInt64Attr(const std::vector<int64_t>& value) const;
 
-  Attribute ComputeAttr(const AttrComputeFunc& attr_compute_func) const {
-    return ComputeAttribute(attr_compute_func);
-  }
+  Attribute VectorInt32Attr(const std::vector<int32_t>& value) const;
+
+  Attribute VectorFloatAttr(const std::vector<float>& value) const;
+
+  // {"bool", phi::DataType::BOOL},
+  // {"uint8", phi::DataType::UINT8},
+  // {"int8", phi::DataType::INT8},
+  // {"uint16", phi::DataType::UINT16},
+  // {"int16", phi::DataType::INT16},
+  // {"uint32", phi::DataType::UINT32},
+  // {"int32", phi::DataType::INT32},
+  // {"uint64", phi::DataType::UINT64},
+  // {"int64", phi::DataType::INT64},
+  // {"float32", phi::DataType::FLOAT32},
+  // {"complex64", phi::DataType::COMPLEX64},
+  // {"complex128", phi::DataType::COMPLEX128},
+  // {"Undefined", phi::DataType::UNDEFINED},
+  // {"psting", phi::DataType::PSTRING},
+  // {"float16", phi::DataType::FLOAT16},
+  // {"bfloat16", phi::DataType::BFLOAT16},
+  // {"float64", phi::DataType::FLOAT64}};
+  Attribute DataTypeAttr(const std::string& value) const;
+
+  // {"cpu", phi::CPUPlace{}},
+  // {"gpu", phi::GPUPlace{}},
+  // {"gpu_pinned", phi::GPUPinnedPlace{}},
+  // {"xpu", phi::XPUPlace{}},
+  // {"ipu", phi::IPUPlace{}},
+  // {":", phi::CustomPlace{}},
+  // {"undefined", phi::Place{}}};
+  Attribute PlaceAttr(const std::string& value) const;
+
+  // {"NHWC", phi::DataLayout::kNHWC},
+  // {"NCHW", phi::DataLayout::kNCHW},
+  // {"Undefined", phi::DataLayout::kAnyLayout},
+  // {"ONEDNN", phi::DataLayout::ONEDNN},
+  // {"SPARSE_COO", phi::DataLayout::SPARSE_COO},
+  // {"SPARSE_CSR", phi::DataLayout::SPARSE_CSR},
+  // {"NDHWC", phi::DataLayout::kNDHWC},
+  // {"NCDHW", phi::DataLayout::kNCDHW},
+  // {"PSTRING_UNION", phi::DataLayout::PSTRING_UNION},
+  // {"STRIDED", phi::DataLayout::STRIDED}};
+  Attribute DataLayoutAttr(const std::string& value) const;
+
+  Attribute ComputeAttr(const AttrComputeFunc& attr_compute_func) const;
 
  private:
   friend class SourcePattern;
@@ -332,34 +345,27 @@ class ResultPattern {
   DrrPatternContext* ctx_{nullptr};
 };
 
-class SourcePattern {
+class TEST_API SourcePattern {
  public:
-  drr::ResultPattern ResultPattern() const { return drr::ResultPattern(ctx_); }
+  drr::ResultPattern ResultPattern() const;
 
   const drr::Op& Op(
       const std::string& op_type,
-      const std::unordered_map<std::string, Attribute>& attributes = {}) {
-    return ctx_->SourceOpPattern(op_type, attributes);
-  }
+      const std::unordered_map<std::string, Attribute>& attributes = {});
 
-  const drr::Tensor& Tensor(const std::string& name) {
-    return ctx_->SourceTensorPattern(name);
-  }
+  const drr::Tensor& Tensor(const std::string& name);
 
-  Attribute Attr(const std::string& attr_name) const {
-    return NormalAttribute(attr_name);
-  }
+  Attribute Attr(const std::string& attr_name) const;
 
-  void RequireEqual(const TensorShape& first, const TensorShape& second) {
-    ctx_->RequireEqual(first, second);
-  }
-  void RequireEqual(const TensorDataType& first, const TensorDataType& second) {
-    ctx_->RequireEqual(first, second);
-  }
+  void AddConstraint(const ConstraintFunction& constraint_fn);
 
-  void RequireNativeCall(const ConstraintFunction& custom_fn) {
-    ctx_->RequireNativeCall(custom_fn);
-  }
+  void AddPostProcess(const PostProcessFunction& post_process_fn);
+
+  // Same as a ResultPattern::InputNoneTensor
+  drr::Tensor& InputNoneTensor();
+
+  // Same as a ResultPattern::OutputNoneTensor
+  drr::Tensor& OutputNoneTensor();
 
  private:
   friend class DrrPatternContext;

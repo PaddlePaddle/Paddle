@@ -92,15 +92,7 @@ class Geometric(distribution.Distribution):
                 f"Expected type of probs is Number.Real|Tensor|framework.Variable, but got {type(probs)}"
             )
 
-        if paddle.equal_all(lessthen_0, all_false) and paddle.equal_all(
-            morethen_1, all_false
-        ):
-            batch_shape = tuple(probs.shape)
-        else:
-            raise ValueError(
-                "Expected parameter probs of distribution Geometric to satisfy the"
-                "constraint Interval(lower_bound=0.0, upper_bound=1.0)"
-            )
+        batch_shape = tuple(probs.shape)
 
         self.probs = probs
         super().__init__(batch_shape)
@@ -124,7 +116,7 @@ class Geometric(distribution.Distribution):
         return paddle.sqrt(self.variance)
 
     def pmf(self, k):
-        r"""Probability mass funciotn evaluated at k.
+        r"""Probability mass function evaluated at k.
 
         .. math::
 
@@ -341,5 +333,5 @@ class Geometric(distribution.Distribution):
             )
         else:
             raise TypeError(
-                f"Exected type of other is geometric.Geometric, but got {type(other)}"
+                f"Exacted type of other is geometric.Geometric, but got {type(other)}"
             )

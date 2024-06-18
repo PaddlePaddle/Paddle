@@ -20,9 +20,9 @@
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/utils.h"
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/onednn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
@@ -31,11 +31,21 @@
 namespace paddle {
 namespace dialect {
 bool HaveOpToMultiKernelsMap(std::string op_name) {
-  return op_to_multi_kernels_map.find(op_name) != op_to_multi_kernels_map.end();
+  for (const auto& map :
+       {&op_to_multi_kernels_map, &sp_op_to_multi_kernels_map}) {
+    if (map->find(op_name) != map->end()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name) {
   return op_to_multi_kernels_map[op_name];
+}
+
+const std::vector<PdOpSig>& SparseOpToPdOpsMapping(std::string op_name) {
+  return sp_op_to_multi_kernels_map[op_name];
 }
 
 #ifdef PADDLE_WITH_DNNL
@@ -69,14 +79,14 @@ pir::Operation* InsertSliceOperationForTarget(
                              {src_vec_type[defining_info.idx_in_vector]},
                              op_info);
   block->push_back(operation);
-  pir::OpResult target_op_result = operation->result(0);
+  pir::Value target_op_result = operation->result(0);
   param_map->PushValue(arg_name, VariableDefiningInfo(target_op_result));
   return operation;
 }
 
 std::ostream& operator<<(std::ostream& os,
                          const std::vector<std::string>& vec_str) {
-  pir::PrintInterleave(
+  pir::detail::PrintInterleave(
       vec_str.begin(),
       vec_str.end(),
       [&os](std::string s) { os << s; },
@@ -94,8 +104,8 @@ std::vector<std::string> CheckUnregisteredOperationInBlock(
     }
     OpTranscriber general_handler;
     try {
-      general_handler.LoopkUpOpInfo(ctx, *op);
-    } catch (pir::IrNotMetException& e) {
+      general_handler.LookUpOpInfo(ctx, *op);
+    } catch (common::enforce::EnforceNotMet& e) {
       unregistered_ops.push_back(op->Type());
     }
   }

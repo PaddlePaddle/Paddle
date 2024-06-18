@@ -15,7 +15,7 @@ package cinn.frontend.paddle.proto;
 // Any incompatible changes to ProgramDesc and its dependencies should
 // raise the version defined version.h.
 //
-// Serailization and Deserialization codes should be modified in a way
+// Serialization and Deserialization codes should be modified in a way
 // that supports old versions following the version and compatibility policy.
 message Version { optional int64 version = 1 [ default = 0 ]; }
 
@@ -201,9 +201,6 @@ message OpCompatibleMap {
   optional string default_required_version = 2;
 }
 
-// Please refer to
-// https://github.com/PaddlePaddle/Paddle/blob/develop/doc/design/program.md
-// for more details.
 // TODO(panyx0718): A model can have multiple programs. Need a
 // way to distinguish them. Maybe ID or name?
 message ProgramDesc {

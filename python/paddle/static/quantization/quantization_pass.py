@@ -165,7 +165,7 @@ class QuantizationTransformPass:
                 preprocess method works or not. The function's input is non-quantized
                 activation and function returns processed activation to be quantized.
                 If None, the activation will be quantized directly. Default is None.
-            optimizer_func(function): Fuction return a optimizer. When 'is_test' is
+            optimizer_func(function): Function return a optimizer. When 'is_test' is
                 False and user want to use self-defined quantization function and
                 preprocess function, this function must be set. Default is None.
             executor(base.Executor): If user want to use self-defined quantization
@@ -414,7 +414,7 @@ class QuantizationTransformPass:
         if not self._is_test:
             self._create_global_step(graph)
         ops = graph.all_op_nodes()
-        # Do the preproccess of quantization, such as skipping some ops
+        # Do the preprocess of quantization, such as skipping some ops
         # for not being quantized.
         for op in ops:
             if (
@@ -516,9 +516,9 @@ class QuantizationTransformPass:
             var_dtype=var_node.dtype(),
         )
         scale_name = self._quantized_scale_name(name)
-        if var_node.dtype() == core.VarDesc.VarType.FP64:
+        if var_node.dtype() == paddle.float64:
             data_type = 'float64'
-        elif var_node.dtype() == core.VarDesc.VarType.FP32:
+        elif var_node.dtype() == paddle.float32:
             data_type = 'float32'
         else:
             data_type = "float16"
@@ -563,9 +563,9 @@ class QuantizationTransformPass:
         )
 
         scale_name = self._quantized_scale_name(name)
-        if var_node.dtype() == core.VarDesc.VarType.FP64:
+        if var_node.dtype() == paddle.float64:
             data_type = 'float64'
-        elif var_node.dtype() == core.VarDesc.VarType.FP32:
+        elif var_node.dtype() == paddle.float32:
             data_type = 'float32'
         else:
             data_type = "float16"
@@ -595,9 +595,9 @@ class QuantizationTransformPass:
                 shape=[self._window_size],
                 var_dtype=var_node.dtype(),
             )
-            if var_node.dtype() == core.VarDesc.VarType.FP64:
+            if var_node.dtype() == paddle.float64:
                 data_type = 'float64'
-            elif var_node.dtype() == core.VarDesc.VarType.FP32:
+            elif var_node.dtype() == paddle.float32:
                 data_type = 'float32'
             else:
                 data_type = "float16"
@@ -645,9 +645,9 @@ class QuantizationTransformPass:
             var_dtype=var_node.dtype(),
         )
         scale_name = self._quantized_scale_name(name)
-        if var_node.dtype() == core.VarDesc.VarType.FP64:
+        if var_node.dtype() == paddle.float64:
             data_type = 'float64'
-        elif var_node.dtype() == core.VarDesc.VarType.FP32:
+        elif var_node.dtype() == paddle.float32:
             data_type = 'float32'
         else:
             data_type = "float16"
@@ -675,9 +675,9 @@ class QuantizationTransformPass:
                 var_dtype=var_node.dtype(),
                 shape=[1],
             )
-            if var_node.dtype() == core.VarDesc.VarType.FP64:
+            if var_node.dtype() == paddle.float64:
                 data_type = 'float64'
-            elif var_node.dtype() == core.VarDesc.VarType.FP32:
+            elif var_node.dtype() == paddle.float32:
                 data_type = 'float32'
             else:
                 data_type = "float16"
@@ -753,9 +753,9 @@ class QuantizationTransformPass:
             var_dtype=var_node.dtype(),
         )
         scale_name = self._quantized_scale_name(name)
-        if var_node.dtype() == core.VarDesc.VarType.FP64:
+        if var_node.dtype() == paddle.float64:
             data_type = 'float64'
-        elif var_node.dtype() == core.VarDesc.VarType.FP32:
+        elif var_node.dtype() == paddle.float32:
             data_type = 'float32'
         else:
             data_type = "float16"
@@ -1291,9 +1291,9 @@ class QuantizationFreezePass:
             var_dtype=output_var_node.dtype(),
         )
 
-        if output_var_node.dtype() == core.VarDesc.VarType.FP64:
+        if output_var_node.dtype() == paddle.float64:
             data_type = 'float64'
-        elif output_var_node.dtype() == core.VarDesc.VarType.FP32:
+        elif output_var_node.dtype() == paddle.float32:
             data_type = 'float32'
         else:
             data_type = "float16"
@@ -1643,9 +1643,9 @@ class OutScaleForTrainingPass:
                     ):
                         continue
 
-                    if in_node.dtype() == core.VarDesc.VarType.FP64:
+                    if in_node.dtype() == paddle.float64:
                         data_type = 'float64'
-                    elif in_node.dtype() == core.VarDesc.VarType.FP32:
+                    elif in_node.dtype() == paddle.float32:
                         data_type = 'float32'
                     else:
                         data_type = "float16"
@@ -1997,9 +1997,9 @@ class AddQuantDequantPass:
             var_dtype=var_node.dtype(),
         )
         scale_name = f"{var_node.name()}.quant_dequant@scale"
-        if var_node.dtype() == core.VarDesc.VarType.FP64:
+        if var_node.dtype() == paddle.float64:
             data_type = 'float64'
-        elif var_node.dtype() == core.VarDesc.VarType.FP32:
+        elif var_node.dtype() == paddle.float32:
             data_type = 'float32'
         else:
             data_type = "float16"
@@ -2037,9 +2037,9 @@ class AddQuantDequantPass:
                 var_dtype=var_node.dtype(),
                 shape=[1],
             )
-            if var_node.dtype() == core.VarDesc.VarType.FP64:
+            if var_node.dtype() == paddle.float64:
                 data_type = 'float64'
-            elif var_node.dtype() == core.VarDesc.VarType.FP32:
+            elif var_node.dtype() == paddle.float32:
                 data_type = 'float32'
             else:
                 data_type = "float16"
@@ -2156,9 +2156,9 @@ class InsertQuantizeLinear:
             var_dtype=var_node.dtype(),
         )
         if not scale_var_node:
-            if var_node.dtype() == core.VarDesc.VarType.FP64:
+            if var_node.dtype() == paddle.float64:
                 data_type = 'float64'
-            elif var_node.dtype() == core.VarDesc.VarType.FP32:
+            elif var_node.dtype() == paddle.float32:
                 data_type = 'float32'
             else:
                 data_type = "float16"
@@ -2226,9 +2226,9 @@ class InsertQuantizeLinear:
                 var_dtype=var_node.dtype(),
                 shape=[1],
             )
-            if var_node.dtype() == core.VarDesc.VarType.FP64:
+            if var_node.dtype() == paddle.float64:
                 data_type = 'float64'
-            elif var_node.dtype() == core.VarDesc.VarType.FP32:
+            elif var_node.dtype() == paddle.float32:
                 data_type = 'float32'
             else:
                 data_type = "float16"
@@ -2945,9 +2945,7 @@ class AddQuantDequantPassV2:
                             paddle.float16,
                         ]:
                             _logger.warning(
-                                "Since the {} contains an input of type INT, the quantization of this layer is skipped.".format(
-                                    op_node.name()
-                                )
+                                f"Since the {op_node.name()} contains an input of type INT, the quantization of this layer is skipped."
                             )
                             break
 
@@ -3419,7 +3417,7 @@ class AddQuantDequantForInferencePass:
                 )
                 data_type = (
                     'float64'
-                    if var_node.dtype() == core.VarDesc.VarType.FP64
+                    if var_node.dtype() == paddle.float64
                     else 'float32'
                 )
                 _init_var_node(
@@ -3430,9 +3428,7 @@ class AddQuantDequantForInferencePass:
                 )
             else:
                 _logger.warning(
-                    "Cannot find the target node {} in scope, so skip adding quant node.".format(
-                        var_name
-                    )
+                    f"Cannot find the target node {var_name} in scope, so skip adding quant node."
                 )
                 return None
         try:
@@ -3597,7 +3593,7 @@ class AddQuantDequantForResidual:
 
     def _insert_quant_dequant(self, graph, var_node, op):
         """
-        Insert per tensort quantize_linear and dequantize_linear node between var_node and op
+        Insert per tensor quantize_linear and dequantize_linear node between var_node and op
         """
         insert_quant_pass = InsertQuantizeLinear(
             self._place,

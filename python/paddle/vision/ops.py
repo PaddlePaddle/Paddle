@@ -826,7 +826,7 @@ def deform_conv2d(
             dilation_H = dilation_W = dilation. Default: 1.
         deformable_groups (int): The number of deformable group partitions.
             Default: 1.
-        groups (int, optonal): The groups number of the deformable conv layer. According to
+        groups (int, optional): The groups number of the deformable conv layer. According to
             grouped convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
@@ -2255,7 +2255,7 @@ def matrix_nms(
     than score_threshold (if provided), then the top k candidate is selected if
     nms_top_k is larger than -1. Score of the remaining candidate are then
     decayed according to the Matrix NMS scheme.
-    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    After NMS step, at most keep_top_k number of total bboxes are to be kept
     per image if keep_top_k is larger than -1.
 
     Args:

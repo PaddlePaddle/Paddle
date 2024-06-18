@@ -15,17 +15,18 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/insert_broadcast_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/pattern_applicator.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
@@ -36,34 +37,34 @@ namespace {
 pir::Value GetOutputDimTensor(pir::PatternRewriter* rewriter,
                               pir::Value x,
                               pir::Value y) {
-  pir::Value x_shape = rewriter->Build<paddle::dialect::ShapeOp>(x).out();
-  pir::Value y_shape = rewriter->Build<paddle::dialect::ShapeOp>(y).out();
-  return rewriter->Build<paddle::dialect::ShapeBroadcastOp>(x_shape, y_shape)
-      .out();
+  pir::Operation* x_shape_op = rewriter->Build<paddle::dialect::ShapeOp>(x);
+  pir::Operation* y_shape_op = rewriter->Build<paddle::dialect::ShapeOp>(y);
+  pir::Operation* shape_broadcast_op =
+      rewriter->Build<paddle::dialect::ShapeBroadcastOp>(x_shape_op->result(0),
+                                                         y_shape_op->result(0));
+  return shape_broadcast_op->result(0);
 }
 
 bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
-  if (op->operand_source(0).defining_op()->isa<paddle::dialect::ExpandOp>() &&
-      op->operand_source(1).defining_op()->isa<paddle::dialect::ExpandOp>()) {
-    return false;
-  }
   pir::Value x = op->operand_source(0);
   pir::Value y = op->operand_source(1);
   pir::ShapeConstraintIRAnalysis& shape_analysis =
       pir::ShapeAnalysisManager::Instance().Get(op->GetParentProgram());
   const auto& x_shape = shape_analysis.GetShapeOrDataForValue(x);
   const auto& y_shape = shape_analysis.GetShapeOrDataForValue(y);
-  if (x_shape.shape() == y_shape.shape() && x_shape.data() == y_shape.data()) {
+  const auto& out_shape = shape_analysis.GetShapeOrDataForValue(op->result(0));
+
+  if (x_shape.shape() == y_shape.shape()) {
     return false;
   }
 
   pir::Value output_dim_tensor = GetOutputDimTensor(rewriter, x, y);
-  {
+  if (x_shape.shape() != out_shape.shape()) {
     pir::Value broadcasted_x =
         rewriter->Build<paddle::dialect::ExpandOp>(x, output_dim_tensor).out();
     op->operand(0).set_source(broadcasted_x);
   }
-  {
+  if (y_shape.shape() != out_shape.shape()) {
     pir::Value broadcasted_y =
         rewriter->Build<paddle::dialect::ExpandOp>(y, output_dim_tensor).out();
     op->operand(1).set_source(broadcasted_y);
@@ -109,7 +110,13 @@ class InsertBroadcastPass : public pir::PatternRewritePass {
     ps.Add<InsertBroadcastPattern<paddle::dialect::GreaterThanOp>>(context);
     ps.Add<InsertBroadcastPattern<paddle::dialect::GreaterEqualOp>>(context);
 
+    // logical ops
+    ps.Add<InsertBroadcastPattern<paddle::dialect::LogicalAndOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::LogicalOrOp>>(context);
+    ps.Add<InsertBroadcastPattern<paddle::dialect::LogicalXorOp>>(context);
+
     // bitwise ops
+    ps.Add<InsertBroadcastPattern<paddle::dialect::BitwiseAndOp>>(context);
     ps.Add<InsertBroadcastPattern<paddle::dialect::BitwiseOrOp>>(context);
     ps.Add<InsertBroadcastPattern<paddle::dialect::BitwiseXorOp>>(context);
     ps.Add<InsertBroadcastPattern<paddle::dialect::BitwiseNotOp>>(context);
@@ -118,7 +125,7 @@ class InsertBroadcastPass : public pir::PatternRewritePass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+    return op->isa<cinn::dialect::GroupOp>() && op->num_regions() > 0;
   }
 };
 

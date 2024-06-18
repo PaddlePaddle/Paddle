@@ -16,11 +16,11 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #ifdef PADDLE_WITH_XPU_BKCL
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/distributed/collective/process_group.h"
 
@@ -65,7 +65,7 @@ class CAllGatherOpXPUKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -76,7 +76,7 @@ class CAllGatherOpXPUKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(rid)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "BKCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       stream = comm_ctx->GetStream();
@@ -86,17 +86,15 @@ class CAllGatherOpXPUKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           nranks,
           comm->nranks(),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "nranks: %s should equal to %s", nranks, comm->nranks()));
       stream = comm->stream();
       VLOG(3) << "old BKCLCommContext has rid " << rid;
     }
 
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      stream = static_cast<platform::XPUDeviceContext*>(dev_ctx)
-                   ->x_context()
-                   ->xpu_stream;
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+      stream = static_cast<phi::XPUContext*>(dev_ctx)->x_context()->xpu_stream;
     }
 
     if (comm_ctx) {
@@ -106,7 +104,7 @@ class CAllGatherOpXPUKernel : public framework::OpKernel<T> {
           comm->comm(), sendbuff, numel, recvbuff, dtype, stream));
     }
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should be compiled with XPU and bkcl."));
 #endif
   }
@@ -116,7 +114,6 @@ class CAllGatherOpXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_allgather,
                           XPU,
@@ -124,7 +121,7 @@ PD_REGISTER_STRUCT_KERNEL(c_allgather,
                           ops::CAllGatherOpXPUKernel,
                           float,
                           double,
-                          plat::float16,
+                          phi::dtype::float16,
                           int,
                           int64_t,
                           uint8_t,

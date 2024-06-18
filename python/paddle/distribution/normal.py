@@ -159,7 +159,7 @@ class Normal(distribution.Distribution):
 
     @property
     def mean(self):
-        """Mean of normal distribuion.
+        """Mean of normal distribution.
 
         Returns:
             Tensor: mean value.

@@ -32,11 +32,7 @@ PD_DEFINE_bool(  // NOLINT
     false,
     "Keep old mode for developers, the model is saved on cpu not device.");
 
-PHI_DECLARE_bool(enable_pir_in_executor);
-
-namespace paddle {
-namespace inference {
-namespace analysis {
+namespace paddle::inference::analysis {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
@@ -208,9 +204,10 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
 #endif
 
 void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
-  if (FLAGS_enable_pir_in_executor) {
+  if (argument->use_pir()) {
     return;
   }
+
   PADDLE_ENFORCE_EQ(
       argument->scope_valid(),
       true,
@@ -237,6 +234,4 @@ std::string IrParamsSyncAmongDevicesPass::repr() const {
   return "ir_params_sync_among_devices_pass";
 }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

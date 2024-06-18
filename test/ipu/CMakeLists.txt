@@ -11,7 +11,7 @@ if(WITH_IPU)
   endforeach()
 
   set_tests_properties(test_conv_op_ipu PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_elemetwise_x_op_ipu PROPERTIES TIMEOUT 600)
+  set_tests_properties(test_elementwise_x_op_ipu PROPERTIES TIMEOUT 600)
   set_tests_properties(test_reduce_x_op_ipu PROPERTIES TIMEOUT 800)
   set_tests_properties(test_save_load_ipu PROPERTIES TIMEOUT 600)
   set_tests_properties(test_activation_ops_ipu PROPERTIES TIMEOUT 600)

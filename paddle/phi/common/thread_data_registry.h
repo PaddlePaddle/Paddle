@@ -34,6 +34,9 @@ using void_t = void;
 template <typename T, typename = void>
 struct IsAccumulatable : std::false_type {};
 
+template <>
+struct IsAccumulatable<std::string, void> : std::false_type {};
+
 template <typename T>
 struct IsAccumulatable<T,
                        void_t<decltype(std::declval<T>() += std::declval<T>())>>

@@ -38,7 +38,7 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         x_dims.size(),
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Dimension number of Input(X) should be at least 2. But "
             "received: input rank %u, input shape [%s].",
             x_dims.size(),
@@ -55,14 +55,14 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
 
       PADDLE_ENFORCE_LE(x_lod.size(),
                         1UL,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Level of Input(X)'s lod should not be "
                             "greater than 1. But received: lod level %u.",
                             x_lod.size()));
       PADDLE_ENFORCE_GT(
           y_lod.size(),
           0UL,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Level of Input(Y)'s lod should be greater than 0. But "
               "received: lod level %u.",
               y_lod.size()));
@@ -70,8 +70,8 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
           ref_level == -1 ||
               (ref_level >= 0 && ref_level < static_cast<int>(y_lod.size())),
           true,
-          platform::errors::InvalidArgument(
-              "Invlid `ref_level`, which should be either equal to -1 "
+          phi::errors::InvalidArgument(
+              "Invalid `ref_level`, which should be either equal to -1 "
               "or in [0, %d), but received `ref_level` = %u.",
               y_lod.size(),
               ref_level));
@@ -82,7 +82,7 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             x_lod[0].size(),
             y_lod[ref_level].size(),
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Level number of Input(X)'s lod could be 0. Otherwise "
                 "size of Input(X)'s first level lod should be equal to "
                 "size of Input(Y)'s referred level lod. But received: "
@@ -95,7 +95,7 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             x_dims[0],
             static_cast<int64_t>(y_lod[ref_level].size()) - 1,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "When Input(X)'s lod is null, the dims[0] of "
                 "Input(X) should match the "
                 "size of Input(Y)'s referred level lod. But received "
@@ -152,7 +152,7 @@ class SequenceExpandOpMaker : public framework::OpProtoAndCheckerMaker {
 Sequence Expand Operator.
 
 This operator expands `X` according to specified level lod of `Y`. Current
-implementation constaints that lod level of `X` should be at most 1. Attribute
+implementation constraints that lod level of `X` should be at most 1. Attribute
 `ref_level` is used to specify which level lod of `Y` is referred to expand `X`.
 If set `ref_level` to -1, then last level lod of `Y` would be referred.
 Please note, rank of `X` should be at least 2, when the rank exceeds 2, `X`

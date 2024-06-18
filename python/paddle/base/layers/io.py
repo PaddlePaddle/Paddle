@@ -74,7 +74,7 @@ def __create_shared_decorated_reader__(op_type, reader, attrs):
     var_name = unique_name(op_type)
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=var_name)
-    startop_op = startup_blk.append_op(
+    startup_op = startup_blk.append_op(
         type=op_type,
         inputs={'UnderlyingReader': reader},
         outputs={'Out': [startup_var]},
@@ -83,7 +83,7 @@ def __create_shared_decorated_reader__(op_type, reader, attrs):
     startup_var.persistable = True
     main_prog_block = default_main_program().current_block()
     main_prog_var = _copy_reader_var_(main_prog_block, startup_var)
-    _copy_reader_create_op_(main_prog_block, startop_op)
+    _copy_reader_create_op_(main_prog_block, startup_op)
     return monkey_patch_reader_methods(main_prog_var)
 
 

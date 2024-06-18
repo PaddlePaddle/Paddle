@@ -41,7 +41,7 @@ std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
       place, size, stream);
 }
 
-AllocationPtr Alloc(const platform::CUDAPlace& place,
+AllocationPtr Alloc(const platform::Place& place,
                     size_t size,
                     const phi::Stream& stream) {
   return allocation::AllocatorFacade::Instance().Alloc(place, size, stream);

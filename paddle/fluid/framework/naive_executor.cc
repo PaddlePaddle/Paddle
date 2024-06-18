@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/denormal.h"
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 #ifdef PADDLE_WITH_TENSORRT
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
@@ -32,12 +32,8 @@
 #ifdef PADDLE_WITH_NVTX
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
-#ifdef PADDLE_WITH_LITE
-#include "paddle/fluid/operators/lite/lite_engine_op.h"
-#endif
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 void NaiveExecutor::Prepare(Scope *scope,
                             const ProgramDesc &program_desc,
                             int block_id) {
@@ -49,6 +45,14 @@ void NaiveExecutor::Prepare(Scope *scope,
 
   VLOG(3) << "NaiveExecutor init with scope " << scope;
   CreateOps(program_desc, block_id);
+}
+
+void NaiveExecutor::Prepare(Scope *scope) {
+  if (!scope) {
+    scope_ = new framework::Scope;
+  } else {
+    scope_ = scope;
+  }
 }
 
 void NaiveExecutor::PrepareInterpreterCore(
@@ -234,6 +238,20 @@ void NaiveExecutor::RegisterInputHook(const HookFunc &hookfunc) {
   }
 }
 
+void NaiveExecutor::RegisterOutputHook(const PirHookFunc &hookfunc) {
+  pir_output_hookfuncs_.push_back(hookfunc);
+  if (interpreter_core_) {
+    interpreter_core_->SetOutputHooks(pir_output_hookfuncs_);
+  }
+}
+
+void NaiveExecutor::RegisterInputHook(const PirHookFunc &hookfunc) {
+  pir_input_hookfuncs_.push_back(hookfunc);
+  if (interpreter_core_) {
+    interpreter_core_->SetInputHooks(pir_input_hookfuncs_);
+  }
+}
+
 void NaiveExecutor::MakeReusePlan(
     const std::unordered_map<std::string, std::string> &reuse_table) {
   std::unordered_map<std::string, std::unordered_set<std::string>> clusters;
@@ -320,38 +338,4 @@ void NaiveExecutor::ResetTrtOps(int num) {
 #endif
 }
 
-void NaiveExecutor::CloneLiteEnigne(int num, void *stream) {
-#ifdef PADDLE_WITH_LITE
-  for (auto &op : ops_) {
-    if (op->Type() == "lite_engine") {
-      operators::LiteEngineOp *lite_op =
-          dynamic_cast<operators::LiteEngineOp *>(op.get());
-      PADDLE_ENFORCE_NOT_NULL(
-          lite_op,
-          phi::errors::InvalidArgument(
-              "lite_op(type: lite_engine) should be created."));
-      std::string engine_key = lite_op->Attr<std::string>("engine_key");
-      std::string new_engine_key = engine_key + "_" + std::to_string(num);
-      PADDLE_ENFORCE(
-          paddle::inference::Singleton<inference::lite::EngineManager>::Global()
-              .Has(engine_key),
-          phi::errors::InvalidArgument(
-              "lite_engine(key: %s) should be created.", engine_key));
-      auto *lite_engine =
-          paddle::inference::Singleton<inference::lite::EngineManager>::Global()
-              .Get(engine_key);
-      auto new_lite_engine = lite_engine->Clone();
-#ifdef LITE_SUBGRAPH_WITH_XPU
-      new_lite_engine->SetStream(TARGET(kXPU), stream);
-#endif
-      paddle::inference::Singleton<inference::lite::EngineManager>::Global()
-          .Set(new_engine_key, new_lite_engine);
-      lite_op->SetAttr("engine_key", new_engine_key);
-      lite_op->SetEngine(new_lite_engine.get());
-    }
-  }
-#endif
-}
-
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

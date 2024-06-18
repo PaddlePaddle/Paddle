@@ -49,10 +49,10 @@ class Planner:
         self._dist_context._dist_op_context = default_ctx.dist_op_context
         self._dist_context.data_parallel = default_ctx.data_parallel
         if not is_naive_data_parallel(self._dist_context):
-            # Use SSA graph for complex parallism
+            # Use SSA graph for complex parallelism
             self._dist_context.initialize(with_graph=True)
         else:
-            # Use program for data parallel parallism
+            # Use program for data parallel parallelism
             self._dist_context.initialize(with_graph=False)
 
         self._completer = Completer(self._dist_context)
@@ -110,14 +110,7 @@ class Planner:
                     or device_count != last_device_count
                 ):
                     logger.info(
-                        "The cluster {} nodes {} {} devices is different from the saved last cluster {} nodes {} {} devices, so we run the planner again.".format(
-                            node_count,
-                            device_count,
-                            gpu_model,
-                            last_node_count,
-                            last_device_count,
-                            last_gpu_model,
-                        )
+                        f"The cluster {node_count} nodes {device_count} {gpu_model} devices is different from the saved last cluster {last_node_count} nodes {last_device_count} {last_gpu_model} devices, so we run the planner again."
                     )
                     need_set_dist_attr = False
                 else:

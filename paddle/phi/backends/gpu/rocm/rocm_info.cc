@@ -173,7 +173,7 @@ int GetCurrentDeviceId() {
   return device_id;
 }
 
-std::array<int, 3> GetGpuMaxGridDimSize(int id) {
+std::array<unsigned int, 3> GetGpuMaxGridDimSize(int id) {
   PADDLE_ENFORCE_LT(
       id,
       GetGPUDeviceCount(),
@@ -181,7 +181,7 @@ std::array<int, 3> GetGpuMaxGridDimSize(int id) {
                                    "but received id is: %d. GPU count is: %d.",
                                    id,
                                    GetGPUDeviceCount()));
-  std::array<int, 3> ret;
+  std::array<unsigned int, 3> ret;
   int size;
   auto error_code_x =
       hipDeviceGetAttribute(&size, hipDeviceAttributeMaxGridDimX, id);

@@ -20,7 +20,8 @@ from op_test import OpTest
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def linear_interp_np(
@@ -256,7 +257,7 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
             data_format='NCW',
         )
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(x_data)
+            x = paddle.to_tensor(x_data)
             interp = us_1(x)
 
             expect = linear_interp_np(
@@ -325,8 +326,12 @@ class TestResizeLinearOpUint8(OpTest):
 
 
 class TestLinearInterpOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
-        with program_guard(Program(), Program()):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             def input_shape_error():
                 x1 = paddle.static.data(name="x1", shape=[1], dtype="float32")
@@ -369,6 +374,7 @@ class TestLinearInterpOpError(unittest.TestCase):
             self.assertRaises(ValueError, input_shape_error)
             self.assertRaises(ValueError, data_format_error)
             self.assertRaises(ValueError, out_shape_error)
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

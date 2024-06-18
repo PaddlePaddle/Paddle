@@ -13,213 +13,155 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
+#include "paddle/cinn/ir/group_schedule/config/schedule_config_manager.h"
 
-#include <absl/types/variant.h>
-#include "paddle/cinn/hlir/framework/pir/compilation_task.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
+#include "paddle/cinn/runtime/arch_device.h"
 #include "paddle/cinn/utils/multi_threading.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/builtin_type.h"
+#include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
 
-PD_DECLARE_bool(cinn_bucket_compile);
+PD_DECLARE_bool(enable_cinn_compile_cache);
+PD_DECLARE_int64(cinn_compile_thread_num);
 
-namespace cinn {
-namespace hlir {
-namespace framework {
-
-// TODO(Aurelius84): Clear usless Build Interface.
-std::unique_ptr<Program> PirCompiler::Build() {
-  m_builder_.Clear();
-  // NOTE(Aurelius84): Currently only support each op for one group
-  std::vector<pir::GroupPtr> groups;
-  for (auto& op : *program_.block()) {
-    std::vector<::pir::Operation*> ops = {&op};
-    auto group = std::make_shared<pir::Group>(ops);
-    group->output_ops.insert(&op);
-    groups.push_back(group);
+namespace cinn::hlir::framework {
+class CompilationContextMapper {
+ public:
+  CompilationContextMapper(const Target& target,
+                           const std::vector<pir::OpLoweringGroupPtr>& groups) {
+    Construct(target, groups);
   }
-  VLOG(4) << "Groups size: " << groups.size();
-  return std::move(Build(groups));
+  std::vector<GroupCompilationContext>& UniqueCompilationContexts() {
+    return group_compilation_contexts_;
+  }
+  std::vector<std::shared_ptr<pir::CompilationResult>>&
+  MutableCompilationResult() {
+    return compilation_results_;
+  }
+
+  std::vector<pir::CINNKernelInfo> RecoverKernelInfos();
+  void UpdateGlobalCache();
+  void SetFinalize(bool val) { is_finalized_ = val; }
+
+ private:
+  void Construct(const Target& target,
+                 const std::vector<pir::OpLoweringGroupPtr>& groups);
+  std::vector<size_t> mapper_index_;
+  std::vector<pir::FusionInfo> fusion_infos_;
+  std::vector<GroupCompilationContext> group_compilation_contexts_;
+  std::vector<std::shared_ptr<pir::CompilationResult>> compilation_results_;
+
+  bool is_finalized_{false};
+};
+
+static size_t GetThreadNum(size_t task_size) {
+  size_t thread_size = task_size;
+  if (!FLAGS_enable_cinn_compile_cache) {
+    thread_size = 1;
+  } else if (FLAGS_cinn_compile_thread_num > 0) {
+    thread_size = FLAGS_cinn_compile_thread_num;
+  }
+  return thread_size;
 }
 
-std::vector<pir::CINNKernelInfo> PirCompiler::BuildCUDAJITInfo(
-    const std::vector<pir::GroupPtr>& groups) {
-  std::vector<pir::CINNKernelInfo> cinn_kernel_info_vecs(groups.size());
+std::vector<pir::CINNKernelInfo> PirCompiler::Build(
+    const std::vector<pir::OpLoweringGroupPtr>& groups) {
+  CompilationContextMapper ctx_mapper(target_, groups);
+  auto& group_compilation_contexts = ctx_mapper.UniqueCompilationContexts();
+  auto& compilation_results = ctx_mapper.MutableCompilationResult();
 
-  if (FLAGS_cinn_bucket_compile) {
-    for (int i = 0; i < groups.size(); ++i) {
-      group_compilation_contexts_.emplace_back(target_, groups[i], scope_);
-    }
+  const size_t task_size = group_compilation_contexts.size();
+  const size_t thread_size = GetThreadNum(task_size);
+  VLOG(5) << "Found " << task_size << " new groups parsed from "
+          << groups.size() << " and compiles with " << thread_size;
+  cinn::ir::InitScheduleConfig();
+  if (task_size > 0) {
+    // See
+    // https://developer.nvidia.com/blog/cuda-pro-tip-always-set-current-device-avoid-multithreading-bugs/
+    // for details.
+    const auto device_id = runtime::GetArchDevice(target_);
     auto worker_fn = [&](int index) {
-      CompilationTask task(&group_compilation_contexts_[index]);
-      task();
-      cinn_kernel_info_vecs[index] = task.BuildPirCINNKernelInfo();
+      runtime::SetArchDevice(target_, device_id);
+      CompilationTask task(&group_compilation_contexts[index]);
+      compilation_results[index] = task();
+      // Triggering llvm compilation in thread
+      compilation_results[index]->GetKernelInfo();
     };
-    utils::parallel_run(
-        worker_fn, utils::SequenceDispatcher(0, groups.size()), -1);
-  } else {
-    auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
-
-    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-    for (int i = 0; i < groups.size(); ++i) {
-      lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
-    }
-
-    for (auto&& lowered_func : lowered_funcs) {
-      ProcessFunction(lowered_func);
-    }
-    compiler_ = backends::Compiler::Create(target_);
-    auto build_module = m_builder_.Build();
-    compiler_->Build(build_module, "");
-
-    auto fn_ptrs = compiler_->GetFnPtr();
-
-    for (int idx = 0; idx < groups.size(); ++idx) {
-      pir::CINNKernelInfo cinn_kernel_info;
-      auto fn_name = groups[idx]->FuncName();
-      auto fn_ptr = compiler_->Lookup(fn_name);
-      cinn_kernel_info.fn_ptr = fn_ptr;
-      cinn_kernel_info.int_args_map = groups[idx]->int_args_map;
-
-      cinn_kernel_info_vecs[idx] = cinn_kernel_info;
-    }
+    utils::parallel_run(worker_fn,
+                        utils::SequenceDispatcher(0, task_size),
+                        /*thread_num=*/thread_size);
   }
-  return cinn_kernel_info_vecs;
+  VLOG(5) << "Finished compiling " << task_size << " Cinn Kernel info.";
+  ctx_mapper.SetFinalize(true);
+  ctx_mapper.UpdateGlobalCache();
+  return ctx_mapper.RecoverKernelInfos();
 }
 
-std::unique_ptr<Program> PirCompiler::Build(
-    const std::vector<pir::GroupPtr>& groups) {
-  std::vector<std::unique_ptr<Instruction>> instructions(groups.size());
-  if (FLAGS_cinn_bucket_compile) {
-    for (int i = 0; i < groups.size(); ++i) {
-      group_compilation_contexts_.emplace_back(target_, groups[i], scope_);
-    }
-    auto worker_fn = [&](int index) {
-      CompilationTask task(&group_compilation_contexts_[index]);
-      task();
-      instructions[index] = task.BuildInstruction();
-    };
-    utils::parallel_run(
-        worker_fn, utils::SequenceDispatcher(0, groups.size()), -1);
-  } else {
-    auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
-
-    std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
-    for (int i = 0; i < groups.size(); ++i) {
-      lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
-    }
-
-    for (auto&& lowered_func : lowered_funcs) {
-      ProcessFunction(lowered_func);
-    }
-
-    compiler_ = backends::Compiler::Create(target_);
-    auto build_module = m_builder_.Build();
-    compiler_->Build(build_module, "");
-
-    instructions = BuildInstructions(groups);
-  }
-
-  // TODO(Aurelius84): Instantiate all tensors on compile-time, which is
-  // controlled by 'options.with_instantiate_variables' in GraphCompiler.
-  // Moreover, it's better to implement InsertBufferHandlers() logic
-  // to automatically insert Malloc and Free instructions.
-  for (auto& name : scope_->var_names()) {
-    std::string var_name({name.data(), name.size()});
-    VLOG(4) << "Instantiate " << var_name << " on compile-time";
-    auto* var = scope_->Var<Tensor>(var_name);
-    auto& tensor = absl::get<Tensor>(*var);
-    tensor->mutable_data(target_, tensor->type());
-  }
-  return std::make_unique<Program>(scope_, std::move(instructions));
-}
-
-void PirCompiler::ProcessFunction(
-    const std::vector<ir::LoweredFunc>& lowered_funcs) {
-  for (auto&& func : lowered_funcs) {
-    for (auto&& arg : func->args) {
-      std::string arg_name = arg.name();
-      if (arg_name[0] == '_') arg_name = arg_name.substr(1);
-
-      auto* var = scope_->FindVar(arg_name);
-      // For argument buffer not in scope, create it.
-      if (!var && arg.is_buffer()) {
-        auto* new_var = scope_->Var<Tensor>(arg_name);
-        auto& tensor = absl::get<Tensor>(*new_var);
-        std::vector<Shape::dim_t> shape;
-        for (auto& shape_dim : arg.buffer_arg()->shape) {
-          CHECK(shape_dim.is_constant());
-          shape.push_back(static_cast<int>(shape_dim.get_constant()));
-        }
-        tensor->Resize(Shape{shape});
-        tensor->set_type(arg.buffer_arg()->dtype);
-      }
-    }
-    m_builder_.AddFunction(func);
-  }
-}
-
-std::vector<std::unique_ptr<Instruction>> PirCompiler::BuildInstructions(
-    const std::vector<pir::GroupPtr>& groups) {
-  std::vector<std::unique_ptr<Instruction>> instructions;
-  for (int idx = 0; idx < groups.size(); ++idx) {
-    auto fn_name = groups[idx]->FuncName();
-    auto instr =
-        std::unique_ptr<Instruction>(new Instruction(target_,
-                                                     scope_.get(),
-                                                     groups[idx]->input_names,
-                                                     groups[idx]->output_names,
-                                                     fn_name));
-    VLOG(4) << "Lookup kernel name: " << fn_name;
-    auto* fn_ptr = compiler_->Lookup(fn_name);
-    CHECK(fn_ptr);
-    instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), fn_name);
-    // As some instruction like reduce, will generate more than one kernel.
-    // So try to find the rest kernel, if it exists.
-    // SetSubKernels(instr.get(), fn_name);
-    instr->Finalize();
-    instructions.push_back(std::move(instr));
-  }
-  return instructions;
-}
-
-std::shared_ptr<Scope> BuildScope(const Target& target,
-                                  const ::pir::Program& program) {
-  std::unordered_set<::pir::Value> visited;
-  auto scope = std::make_shared<Scope>();
-
-  auto create_var = [&](::pir::Value value) {
-    if (!(value) || !(value.type())) {
-      return;
-    }
-    if (visited.count(value) > 0) return;
-    visited.emplace(value);
-
-    std::string name = pir::CompatibleInfo::ValueName(value);
-    auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
-    auto* var = scope->Var<Tensor>(name);
-    auto& tensor = absl::get<Tensor>(*var);
-
-    std::vector<Shape::dim_t> shape;
-    for (auto i = 0; i < type_info.dims().size(); ++i) {
-      shape.push_back(Shape::dim_t(type_info.dims()[i]));
-    }
-    tensor->Resize(Shape{shape});
-    tensor->set_type(pir::CompatibleInfo::ConvertIRType(type_info.dtype()));
+void CompilationContextMapper::Construct(
+    const Target& target, const std::vector<pir::OpLoweringGroupPtr>& groups) {
+  std::unordered_set<size_t> unique_infos;
+  const auto IsNewAndUnique =
+      [&unique_infos](const pir::FusionInfo& info) -> bool {
+    const bool is_unique = unique_infos.find(info.hash()) == unique_infos.end();
+    const bool is_new = !CompilationCache::Instance().Has(info);
+    return is_new && is_unique;
   };
 
-  for (auto& op : *program.block()) {
-    for (auto oprand : op.operands()) {
-      create_var(oprand.source());
+  for (size_t i = 0; i < groups.size(); ++i) {
+    fusion_infos_.emplace_back(*groups[i]);
+    VLOG(5) << "Construct FusionInfo: " << fusion_infos_[i]
+            << " for group: " << *groups[i];
+    // If FLAGS_enable_cinn_compile_cache=False, Cache strategy will not take
+    // effects.
+    if (IsNewAndUnique(fusion_infos_[i]) || !FLAGS_enable_cinn_compile_cache) {
+      mapper_index_.push_back(i);
+      group_compilation_contexts_.emplace_back(target, groups[i]);
+      compilation_results_.push_back(
+          std::make_shared<pir::CompilationResult>(target));
     }
-
-    for (auto result : op.results()) {
-      create_var(result);
-    }
+    unique_infos.insert(fusion_infos_[i].hash());
   }
-  return scope;
 }
 
-}  // namespace framework
-}  // namespace hlir
-}  // namespace cinn
+std::vector<pir::CINNKernelInfo>
+CompilationContextMapper::RecoverKernelInfos() {
+  PADDLE_ENFORCE_EQ(
+      is_finalized_,
+      true,
+      ::common::errors::PreconditionNotMet(
+          "Required is_finalized_ = true, please call SetFinalize() firstly."));
+  PADDLE_ENFORCE_EQ(group_compilation_contexts_.size(),
+                    compilation_results_.size(),
+                    ::common::errors::PreconditionNotMet(
+                        "Required group_compilation_contexts_.size() = "
+                        "compilation_results_.size()."));
+
+  std::vector<pir::CINNKernelInfo> kernel_infos(fusion_infos_.size());
+  for (size_t i = 0; i < fusion_infos_.size(); ++i) {
+    const auto& compilation_result =
+        FLAGS_enable_cinn_compile_cache
+            ? CompilationCache::Instance().Get(fusion_infos_[i])
+            : compilation_results_[i];
+    kernel_infos[i] = compilation_result->GetKernelInfo();
+  }
+  return kernel_infos;
+}
+
+void CompilationContextMapper::UpdateGlobalCache() {
+  PADDLE_ENFORCE_EQ(
+      is_finalized_,
+      true,
+      ::common::errors::PreconditionNotMet(
+          "Required is_finalized_ = true, please call SetFinalize() firstly."));
+  for (size_t i = 0; i < compilation_results_.size(); ++i) {
+    PADDLE_ENFORCE_LT(mapper_index_[i],
+                      fusion_infos_.size(),
+                      ::common::errors::PreconditionNotMet(
+                          "Required mapper_index < fusion_infos_.size()."));
+    const auto& fusion_info = fusion_infos_[mapper_index_[i]];
+    VLOG(5) << "Insert new compiled result into cache, fusion_info: "
+            << fusion_info;
+    CompilationCache::Instance().Insert(fusion_info, compilation_results_[i]);
+  }
+}
+}  // namespace cinn::hlir::framework

@@ -77,7 +77,7 @@ class Node : public cinn::common::GraphNode {
   std::tuple<cinn::common::GraphEdge *, cinn::common::GraphEdge *> LinkTo(
       NodeData *other);
 
-  // This node determines another node, which means the other node depeneds on
+  // This node determines another node, which means the other node depends on
   // this node.
   void Controls(NodeData *other);
 
@@ -161,7 +161,7 @@ class NodeData : public cinn::common::GraphNode {
   std::tuple<cinn::common::GraphEdge *, cinn::common::GraphEdge *> LinkTo(
       Node *other);
 
-  // This node determines another node, which means the other node depeneds on
+  // This node determines another node, which means the other node depends on
   // this node.
   void Controls(Node *other);
 

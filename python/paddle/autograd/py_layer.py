@@ -18,7 +18,7 @@ from paddle.base import core
 __all__ = []
 
 
-def with_mateclass(meta, *bases):
+def with_metaclass(meta, *bases):
     class impl(meta):
         def __new__(cls, name, temp_bases, attrs):
             return meta(name, bases, attrs)
@@ -267,7 +267,7 @@ class PyLayerMeta(type):
         return super().__init__(name, bases, attrs)
 
 
-class PyLayer(with_mateclass(PyLayerMeta, core.eager.PyLayer, PyLayerContext)):
+class PyLayer(with_metaclass(PyLayerMeta, core.eager.PyLayer, PyLayerContext)):
     """
     Paddle implements Python custom operators on the PaddlePaddle framework by creating a subclass of
     ``PyLayer``, which must comply with the following rules:

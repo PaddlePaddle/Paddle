@@ -17,6 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 namespace auto_parallel {
+
 TEST(Tile, Ctor) {
   std::vector<int64_t> mesh_shape = {2, 2};
   std::vector<int64_t> process_ids = {0, 1, 2, 3};

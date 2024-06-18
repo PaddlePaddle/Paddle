@@ -29,17 +29,18 @@ class InferShapeContext;
 namespace paddle {
 namespace operators {
 namespace details {
-framework::DDim BroadcastTwoDims(const framework::DDim& x_dims,
-                                 const framework::DDim& y_dims,
-                                 int axis = -1);
+phi::DDim BroadcastTwoDims(const phi::DDim& x_dims,
+                           const phi::DDim& y_dims,
+                           int axis = -1);
 }
 // shape input(0) -> output(0) without change.
-void UnaryOpUnchangedInferShape(framework::InferShapeContext* ctx);
+TEST_API void UnaryOpUnchangedInferShape(framework::InferShapeContext* ctx);
 // shape input(0) -> output(0) without change, check if axis in range [-Rank(x),
 // Rank(x)-1]
-void UnaryOpUnchangedInferShapeCheckAxis(framework::InferShapeContext* ctx);
+TEST_API void UnaryOpUnchangedInferShapeCheckAxis(
+    framework::InferShapeContext* ctx);
 // broadcast input(0) and input(1) -> output(0)
-void BinaryOpBroadcastInferShape(framework::InferShapeContext* ctx);
+TEST_API void BinaryOpBroadcastInferShape(framework::InferShapeContext* ctx);
 
 }  // namespace operators
 }  // namespace paddle

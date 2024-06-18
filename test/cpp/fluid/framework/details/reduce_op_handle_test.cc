@@ -74,7 +74,7 @@ struct TestReduceOpHandle {
       nccl_ctxs_ = std::make_unique<platform::NCCLContextMap>(gpu_list_);
 #else
       PADDLE_THROW(
-          platform::errors::PreconditionNotMet("Not compiled with NCLL."));
+          platform::errors::PreconditionNotMet("Not compiled with NCCL."));
 #endif
     } else {
       int count = 8;
@@ -109,7 +109,7 @@ struct TestReduceOpHandle {
           nodes.back().get(), local_scopes_, gpu_list_, nccl_ctxs_.get()));
 #else
       PADDLE_THROW(
-          platform::errors::PreconditionNotMet("Not compiled with NCLL."));
+          platform::errors::PreconditionNotMet("Not compiled with NCCL."));
 #endif
     } else {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)

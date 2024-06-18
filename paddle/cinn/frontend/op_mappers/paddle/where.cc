@@ -14,21 +14,33 @@
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void WhereOpMapper(const paddle::cpp::OpDesc& op_desc,
                    const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("Condition").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Condition").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of where op must be 1"));
   auto c_name = op_desc.Input("Condition").front();
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of where op must be 1"));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Input("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of where op must be 1"));
   auto y_name = op_desc.Input("Y").front();
 
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of where op must be 1"));
   auto out_name = op_desc.Output("Out").front();
 
   auto c = ctx.GetVar(c_name);

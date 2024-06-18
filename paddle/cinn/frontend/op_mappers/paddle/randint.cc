@@ -16,31 +16,45 @@
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
 #include "paddle/cinn/frontend/var_type_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void RandIntOpMapper(const paddle::cpp::OpDesc& op_desc,
                      const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of randint op should be one."));
   auto out_name = op_desc.Output("Out").front();
 
-  CHECK(op_desc.HasAttr("shape")) << "Cannot find attribute \"shape\" in "
-                                     "paddle op \"randint\"! Please check.";
+  PADDLE_ENFORCE_EQ(op_desc.HasAttr("shape"),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The randint op should have shape attribute."));
+
   auto shape_origin =
       utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "shape");
   auto shape = utils::ToShapeType(shape_origin);
 
-  CHECK(op_desc.HasAttr("low")) << "Cannot find attribute \"low\" in paddle op "
-                                   "\"randint\"! Please check.";
+  PADDLE_ENFORCE_EQ(op_desc.HasAttr("low"),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The randint op should have low attribute."));
+
   auto min = utils::GetAttrOrDefault<int>(op_desc, "low", 0);
 
-  CHECK(op_desc.HasAttr("high")) << "Cannot find attribute \"high\" in paddle "
-                                    "op \"randint\"! Please check.";
+  PADDLE_ENFORCE_EQ(op_desc.HasAttr("high"),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The randint op should have high attribute."));
+
   auto max = utils::GetAttrOrDefault<int>(op_desc, "high", 0);
-  CHECK_GT(max, min) << "max(" << max << ") should greater than min(" << min
-                     << ")! Please check.";
+  PADDLE_ENFORCE_GT(max,
+                    min,
+                    phi::errors::InvalidArgument(
+                        "max should greater than min! Please check."));
 
   auto seed = utils::GetAttrOrDefault<int>(op_desc, "seed", 0);
 

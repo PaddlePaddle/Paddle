@@ -133,7 +133,7 @@ static int8_t GetCorrectDeviceIdByPlaceType(
       return 0;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case paddle::PlaceType::kGPU:
-      return phi::backends::gpu::GetCurrentDeviceId();
+      return static_cast<int8_t>(phi::backends::gpu::GetCurrentDeviceId());
 #endif
     default:
       PD_THROW(

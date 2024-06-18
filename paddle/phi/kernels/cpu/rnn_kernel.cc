@@ -868,7 +868,7 @@ void RnnKernel(const Context& dev_ctx,
         is_test,
         seed,
         reserve);
-  } else if (is_rnn_relu(mode)) {
+  } else if (is_rnn_relu(mode)) {  // NOLINT
     gate_num = 1;
     RnnFunc<SimpleRNNCell<T,
                           funcs::ReluCPUFunctor,

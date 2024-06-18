@@ -19,14 +19,14 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/backends/dynload/port.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/phi/common/port.h"
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 bool gpu_place_used(const paddle::PaddlePlace& place) {
@@ -225,7 +225,7 @@ void TestInference(const std::string& dirname,
     fetch_targets[fetch_target_names[i]] = cpu_fetchs[i];
   }
 
-  // 6. If export Flags_use_mkldnn=True, use mkldnn related ops.
+  // 6. If export Flags_use_mkldnn=True, use onednn related ops.
   if (FLAGS_use_mkldnn) executor.EnableMKLDNN(*inference_program);
 
   // 7. Run the inference program

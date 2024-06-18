@@ -48,7 +48,7 @@ class ExponentialFamily(distribution.Distribution):
         raise NotImplementedError
 
     def entropy(self):
-        """caculate entropy use `bregman divergence`
+        """calculate entropy use `bregman divergence`
         https://www.lix.polytechnique.fr/~nielsen/EntropyEF-ICIP2010.pdf
         """
         entropy_value = -self._mean_carrier_measure

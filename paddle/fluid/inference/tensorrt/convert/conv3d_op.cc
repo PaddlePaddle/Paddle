@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 template <typename RegistFunc, typename SetDilationFunc>
 void ConvertConv3d(TensorRTEngine* engine,
@@ -35,7 +33,7 @@ void ConvertConv3d(TensorRTEngine* engine,
   auto* Y_v = scope.FindVar(filter_var_name);
   PADDLE_ENFORCE_NOT_NULL(
       Y_v,
-      platform::errors::NotFound("Can not find %s presistale var in scope.",
+      platform::errors::NotFound("Can not find %s presistable var in scope.",
                                  filter_var_name));
   auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
   bool enable_int8 = op_desc.HasAttr("enable_int8");
@@ -192,9 +190,7 @@ class Deconv3dOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(conv3d, Conv3dOpConverter);
 REGISTER_TRT_OP_CONVERTER(conv3d_transpose, Deconv3dOpConverter);

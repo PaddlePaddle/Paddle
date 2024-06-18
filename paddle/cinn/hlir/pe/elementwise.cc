@@ -18,11 +18,12 @@
 #include <string>
 
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/dim_expr_converter.h"
 #include "paddle/cinn/hlir/op/op_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/utils/functional.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace pe {
@@ -140,7 +141,10 @@ ir::Tensor Squeeze(const ir::Tensor& A,
         output_shape.push_back(A->shape[idx]);
         position.push_back(idx);
       } else {
-        CHECK_EQ(A->shape[idx], Expr(1));
+        PADDLE_ENFORCE_EQ(A->shape[idx],
+                          Expr(1),
+                          phi::errors::InvalidArgument(
+                              "The dimension to squeeze must be 1."));
       }
     }
   } else {
@@ -183,8 +187,10 @@ ir::Tensor ExpandDims(const ir::Tensor& A,
             idx.push_back(indice[i]);
           }
         }
-        CHECK_EQ(idx.size(), A->shape.size())
-            << "The index size not equal with the input rank.";
+        PADDLE_ENFORCE_EQ(idx.size(),
+                          A->shape.size(),
+                          phi::errors::InvalidArgument(
+                              "The index size not equal with the input rank."));
         return A(idx);
       },
       UniqName(output_name));
@@ -197,29 +203,45 @@ ir::Tensor Reshape(const ir::Tensor& A,
   const std::vector<Expr>& A_expr_shape = A->shape;
   int input_total_size = 1;
   int output_total_size = 1;
-  for (auto& i : A_expr_shape) {
-    CHECK(i.is_constant()) << "Input tensor's shape should be constant value.";
-    input_total_size *= static_cast<int>(i.get_constant());
+  std::vector<Expr> A_stride_info;
+  int stride_base = 1;
+  A_stride_info.push_back(Expr(stride_base));
+
+  for (int i = A_expr_shape.size() - 1; i > 0; i--) {
+    stride_base *= static_cast<int>(A_expr_shape[i].get_constant());
+    A_stride_info.insert(A_stride_info.begin(), Expr(stride_base));
   }
+
+  std::vector<Expr> new_stride_info;
+  stride_base = 1;
+  new_stride_info.push_back(Expr(stride_base));
+
+  for (int i = new_shape.size() - 1; i > 0; --i) {
+    stride_base *= new_shape[i];
+
+    new_stride_info.insert(new_stride_info.begin(), Expr(stride_base));
+  }
+
   for (auto& i : new_shape) {
     output_total_size *= i;
     new_expr_shape.push_back(Expr(i));
   }
-  CHECK_EQ(input_total_size, output_total_size)
-      << "In op reshape, the input tensor and output tensor's total size "
-         "should be equal, please check!";
+
   auto res = Compute(
       new_expr_shape,
       [=](const std::vector<Expr>& indice) {
-        Expr offset = Expr(0);
-        for (int i = 0; i < indice.size(); i++) {
-          offset = offset * new_expr_shape[i] + indice[i];
+        Expr offset = indice[0] * new_stride_info[0];
+        for (int i = 1; i < indice.size(); i++) {
+          offset = offset + indice[i] * new_stride_info[i];
         }
         std::vector<Expr> indice_a;
         for (int i = A_expr_shape.size() - 1; i >= 0; i--) {
-          auto temp = common::AutoSimplify(offset % A_expr_shape[i]);
+          auto inner_offset = offset;
+          if (i != (A_expr_shape.size() - 1)) {
+            inner_offset = inner_offset / A_stride_info[i];
+          }
+          auto temp = inner_offset % A_expr_shape[i];
           indice_a.insert(indice_a.begin(), temp);
-          offset = (offset - temp) / A_expr_shape[i];
         }
         return A(indice_a);
       },
@@ -232,32 +254,45 @@ ir::Tensor Reshape(const ir::Tensor& A,
                    const std::string& name) {
   std::vector<Expr> new_expr_shape;
   const std::vector<Expr>& A_expr_shape = A->shape;
-  ir::Expr input_total_size(1);
-  for (auto& i : A_expr_shape) {
-    // CHECK(i.is_constant()) << "Input tensor's shape should be constant
-    // value.";
-    input_total_size = ir::Mul::Make(input_total_size, i);
+  Expr input_total_size(1);
+  Expr output_total_size(1);
+
+  std::vector<Expr> A_stride_info;
+  Expr stride_base(1);
+  A_stride_info.push_back(stride_base);
+  for (int i = A_expr_shape.size() - 1; i > 0; i--) {
+    stride_base = stride_base * A_expr_shape[i];
+    A_stride_info.insert(A_stride_info.begin(), Expr(stride_base));
   }
-  ir::Expr output_total_size(1);
+
+  std::vector<Expr> new_stride_info;
+  stride_base = Expr(1);
+  new_stride_info.push_back(Expr(stride_base));
+  for (int i = new_shape.size() - 1; i > 0; --i) {
+    stride_base = stride_base * new_shape[i]->dim_expr;
+    new_stride_info.insert(new_stride_info.begin(), Expr(stride_base));
+  }
+
   for (auto& i : new_shape) {
-    output_total_size = ir::Mul::Make(output_total_size, i->dim_expr);
+    output_total_size = output_total_size * i->dim_expr;
     new_expr_shape.push_back(i->dim_expr);
   }
-  // CHECK_EQ(input_total_size, output_total_size)
-  //     << "In op reshape, the input tensor and output tensor's total size "
-  //        "should be equal, please check!";
+
   auto res = Compute(
       new_expr_shape,
       [=](const std::vector<Expr>& indice) {
-        Expr offset = Expr(0);
-        for (int i = 0; i < indice.size(); i++) {
-          offset = offset * new_expr_shape[i] + indice[i];
+        Expr offset = indice[0] * new_stride_info[0];
+        for (int i = 1; i < indice.size(); i++) {
+          offset = offset + indice[i] * new_stride_info[i];
         }
         std::vector<Expr> indice_a;
         for (int i = A_expr_shape.size() - 1; i >= 0; i--) {
-          auto temp = offset % A_expr_shape[i];
+          auto inner_offset = offset;
+          if (i != (A_expr_shape.size() - 1)) {
+            inner_offset = inner_offset / A_stride_info[i];
+          }
+          auto temp = inner_offset % A_expr_shape[i];
           indice_a.insert(indice_a.begin(), temp);
-          offset = (offset - temp) / A_expr_shape[i];
         }
         return A(indice_a);
       },
@@ -277,6 +312,14 @@ ir::Tensor Cast(const ir::Tensor& A,
   return res;
 }
 
+ir::Tensor Store(const ir::Tensor& A, const std::string& name) {
+  auto res = Compute(
+      A->shape,
+      [=](const std::vector<Expr>& indices) { return A(indices); },
+      name);
+  return res;
+}
+
 ir::Tensor Arange(const float start,
                   const float stop,
                   const float step,
@@ -292,6 +335,108 @@ ir::Tensor Arange(const float start,
                 Expr(step) * ir::Cast::Make(cinn::common::F32(), indices[0]));
       },
       output_name);
+  return res;
+}
+
+ir::Tensor Tril(const ir::Tensor& A,
+                const int diagonal,
+                const std::vector<ir::Dim>& out_shape,
+                const std::string& name) {
+  ir::Tensor res = Compute(
+      ToCinnExprs(out_shape),
+      [=](const std::vector<Expr>& indice) {
+        PADDLE_ENFORCE_GE(indice.size(),
+                          size_t(2),
+                          phi::errors::InvalidArgument(
+                              "The Tril op input tensor must have a rank "
+                              "greater than or equal to 2."));
+        std::vector<Expr> new_indice(indice.end() - 2, indice.end());
+        Expr col_indice = indice.back();
+        return ir::Select::Make(new_indice[0] >= new_indice[1] - diagonal,
+                                A(indice),
+                                ir::Zero(A->type()));
+      },
+      name);
+  return res;
+}
+
+ir::Tensor GenerateShape(const std::vector<ir::Tensor>& inputs,
+                         const cinn::dialect::SymbolBindings& symbol_bindings,
+                         const std::vector<symbol::DimExpr>& output_dim_exprs,
+                         const std::string& name) {
+  if (output_dim_exprs.size() != 1) {
+    VLOG(4) << "pe::GenerateShape will return a meaningless tensor when "
+               "output_dim_exprs.size() != 1";
+    return Compute(
+        {Expr(1)},
+        [=](const std::vector<Expr>& indice) { return Expr(1); },
+        name);
+  }
+  cinn::common::DimExprConverterWithSymbolBindings converter(inputs,
+                                                             symbol_bindings);
+  auto res = Compute(
+      {Expr(1)},
+      [=, &converter](const std::vector<Expr>& indice) {
+        return converter.ConvertToIrExpr(output_dim_exprs[0]);
+      },
+      name);
+  return res;
+}
+
+ir::Tensor IsClose(const ir::Tensor& x,
+                   const ir::Tensor& y,
+                   int axis,
+                   float rtol,
+                   float atol,
+                   bool equal_nan,
+                   const std::string& out_name) {
+  // [To do] axis is not used in the op.
+  // For each a=x[i], b=y[i]:
+  // ```
+  // if (isnan(a) || isnan(b)) {
+  //   out = equal_nan && isnan(a) == isnan(b);
+  // } else {
+  //   T left = (a > b ? a - b : b - a);
+  //   T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
+  //   T diff = (left > right ? left - right : right - left);
+  //   out = a == b || left <= right || diff <= 1e-15;
+  // }
+  // ```
+  auto fnop = [&](const Expr& a, const Expr& b) {
+    // check whether x or y is nan
+    auto check_x_nan = lang::IsNan(a);
+    auto check_y_nan = lang::IsNan(b);
+
+    // out = equal_nan && isnan(a) == isnan(b);
+    auto check_nan_same =
+        Expr(equal_nan) && ir::EQ::Make(check_x_nan, check_y_nan);
+
+    // check whether x and y are close
+    // T left = (a > b ? a - b : b - a);
+    auto left = ir::Select::Make(a > b, a - b, b - a);
+    // T right = atol + (b > 0 ? rtol * b : (-rtol) * b);
+    auto right = ir::Cast::Make(x->type(), atol) +
+                 ir::Select::Make(b > ir::Zero(b->type()),
+                                  ir::Cast::Make(x->type(), rtol) * b,
+                                  ir::Cast::Make(x->type(), -rtol) * b);
+    // T diff = (left > right ? left - right : right - left);
+    auto diff = ir::Select::Make(left > right, left - right, right - left);
+    // out = a == b || left <= right || diff <= 1e-15;
+    auto check_diff = (ir::EQ::Make(a, b) || (left <= right)) ||
+                      (diff <= lang::Epsilon(diff->type()));
+
+    return ir::Select::Make(
+        check_x_nan || check_y_nan, check_nan_same, check_diff);
+  };
+  auto fn = [=](const std::vector<Expr>& indice) {
+    PADDLE_ENFORCE_EQ(
+        indice.size(),
+        y->shape.size(),
+        phi::errors::InvalidArgument(
+            "The indice size should be equal to y's shape size."));
+    return fnop(x(indice), y(indice));
+  };
+  auto res = Compute(x->shape, fn, out_name);
   return res;
 }
 

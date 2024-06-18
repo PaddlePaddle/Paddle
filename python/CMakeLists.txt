@@ -1,7 +1,5 @@
 if(WITH_CINN)
   file(GLOB_RECURSE CINN_PY_FILES ${PROJECT_SOURCE_DIR}/python/cinn/*.py)
-  set(CINN_PYTHON_DIR ${PROJECT_SOURCE_DIR}/python/cinn)
-  set(CINN_CORE_API ${CMAKE_BINARY_DIR}/python/cinn/core_api.so)
 
   if(WITH_GPU)
     set(PACKAGE_NAME "cinn-gpu")
@@ -18,26 +16,6 @@ if(WITH_CINN)
   endif()
 
   message(STATUS "PYTHON_EXECUTABLE: ${PYTHON_EXECUTABLE}")
-
-  # There may be a link file called core_api.so under the dir ${CINN_PYTHON_DIR} due to the `mac_doc`
-  # function defined in build.sh. So, we need to copy the directory ${CINN_PYTHON_DIR} first and
-  # then core_api.so.
-  add_custom_command(
-    OUTPUT ${CINN_CORE_API} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CINN_PYTHON_DIR}
-            ${PADDLE_BINARY_DIR}/python/cinn
-    COMMAND cp --remove-destination
-            ${CMAKE_BINARY_DIR}/paddle/cinn/pybind/core_api.so ${CINN_CORE_API}
-    COMMAND cd ${CMAKE_CURRENT_BINARY_DIR} && ${PYTHON_EXECUTABLE} setup_cinn.py
-            bdist_wheel
-    DEPENDS core_api ${CINN_PY_FILES})
-
-  add_custom_target(COPY_CINN_CORE_API ALL DEPENDS ${CINN_CORE_API}
-                                                   ${CINN_PY_FILES})
-
-  if(CINN_ONLY)
-    return()
-  endif()
 endif()
 
 file(GLOB UTILS_PY_FILES . ./paddle/legacy/utils/*.py)
@@ -47,7 +25,7 @@ set(PY_FILES paddle/__init__.py ${UTILS_PY_FILES} ${FLUID_PY_FILES})
 if(WITH_GPU)
   set(PACKAGE_NAME "paddlepaddle-gpu")
 elseif(WITH_ROCM)
-  set(PACKAGE_NAME "paddlepaddle-rocm")
+  set(PACKAGE_NAME "paddlepaddle-dcu")
 elseif(WITH_XPU)
   set(PACKAGE_NAME "paddlepaddle-xpu")
 elseif(WITH_IPU)
@@ -60,13 +38,11 @@ set(SETUP_LOG_FILE "setup.py.log")
 
 set(FLUID_CORE_NAME "libpaddle")
 
-if(WITH_SETUP_INSTALL)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/env_dict.py.in
-                 ${CMAKE_CURRENT_BINARY_DIR}/env_dict.py)
-else()
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-                 ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
-endif()
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/env_dict.py.in
+               ${CMAKE_CURRENT_BINARY_DIR}/env_dict.py)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
+               ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
 set(FLUID_DST_DIR ${PADDLE_BINARY_DIR}/python/paddle/base/)
 
@@ -91,20 +67,20 @@ set(FLUID_CORE_DEPS ${FLUID_CORE})
 
 add_custom_target(copy_libpaddle ALL DEPENDS ${FLUID_CORE_DEPS})
 
-# Standard op(phi op) description is defined in ops.yaml and legacy_ops.yaml.
+# Standard op(phi op) description is defined in ops.yaml and dygraph_ops.yaml.
 # When users define composite rules of some nonbasic op, as for definition of args,
 # they are supposed to refer to standard op description. However, there exists
 # some gap of description between current op and standard ones. So special dictionary
 # is needed to record such gap for execution of composite rules.
 # Todo: this custom_target will be moved to other place.
 
-set(ops_yaml_path "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/ops.yaml")
+set(ops_yaml_path "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/ops.yaml")
 
 set(ops_legacy_yaml_path
-    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_ops.yaml")
+    "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/inconsistent/dygraph_ops.yaml")
 
 set(ops_compat_yaml_path
-    "${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml")
+    "${PADDLE_SOURCE_DIR}/paddle/phi/ops/yaml/op_compat.yaml")
 
 set(phi_ops_map_path
     "${PADDLE_SOURCE_DIR}/python/paddle/incubate/autograd/phi_ops_map.py")
@@ -150,11 +126,15 @@ if(WIN32)
         ${PADDLE_BINARY_DIR}/python/paddle/
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${PADDLE_SOURCE_DIR}/test
               ${PADDLE_BINARY_DIR}/test
+      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
+              pass_desc_py_proto ${PY_FILES})
+
+    add_custom_command(
+      OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel
       COMMAND ${CMAKE_COMMAND} -E env ${py_env} ${PYTHON_EXECUTABLE} setup.py
               bdist_wheel
       COMMENT "Packing whl packages------>>>"
-      DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
-              pass_desc_py_proto ${PY_FILES})
+      DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
   endif()
 else()
   if(WITH_SETUP_INSTALL)
@@ -174,15 +154,31 @@ else()
       COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle
               ${PADDLE_BINARY_DIR}/python
       COMMAND cp -r ${PADDLE_SOURCE_DIR}/test ${PADDLE_BINARY_DIR}/
-      COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
-      COMMENT "Packing whl packages------>>>"
       DEPENDS copy_libpaddle ${FLUID_CORE} framework_py_proto profiler_py_proto
               pass_desc_py_proto ${PY_FILES})
+    if(APPLE AND WITH_ARM)
+      add_custom_command(
+        OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel
+        COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
+                --plat-name=macosx_11_0_arm64
+        COMMENT "Packing whl packages------>>>")
+    else()
+      add_custom_command(
+        OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel
+        COMMAND env ${py_env} ${PYTHON_EXECUTABLE} setup.py bdist_wheel
+        COMMENT "Packing whl packages------>>>")
+    endif()
   endif()
 endif()
 
 add_custom_target(paddle_python ALL
                   DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
+
+if(BUILD_WHL_PACKAGE AND NOT WITH_SETUP_INSTALL)
+  add_custom_target(paddle_copy ALL
+                    DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp_wheel)
+  add_dependencies(paddle_copy paddle_python)
+endif()
 
 set(PADDLE_PYTHON_PACKAGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/dist/)
 

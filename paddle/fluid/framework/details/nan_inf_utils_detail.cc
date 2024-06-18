@@ -19,8 +19,8 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/phi/common/amp_type_traits.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
@@ -83,14 +83,14 @@ static const std::unordered_map<std::string, int>& role_str2int() {
   return _role_str2int;
 }
 
-static std::unordered_set<std::string>& op_type_nan_inf_white_list() {
+std::unordered_set<std::string>& op_type_nan_inf_white_list() {
   static std::unordered_set<std::string> _op_type_nan_inf_white_list = {
       "coalesce_tensor", /* This Op will alloc tensor, and may not init space */
   };
   return _op_type_nan_inf_white_list;
 }
 
-static std::unordered_map<std::string, std::vector<std::string>>&
+std::unordered_map<std::string, std::vector<std::string>>&
 op_var_nan_inf_white_list() {
   static std::unordered_map<std::string, std::vector<std::string>>
       _op_var_nan_inf_white_list = {
@@ -100,7 +100,7 @@ op_var_nan_inf_white_list() {
   return _op_var_nan_inf_white_list;
 }
 
-static void InitWhiteListFormEnv() {
+void InitWhiteListFormEnv() {
   // op_type_skip and op_var_skip may be NULL.
   // So need init static value in there, prevent thread competition.
   // NOTE. role_str2int needn't do this for it only used in this func.
@@ -264,7 +264,7 @@ void CheckOpHasNanOrInf(const framework::OperatorBase& op,
 
   if (IsSkipOp(op)) return;
 
-  if (op_var_nan_inf_white_list().count(op.Type()) == 0) {
+  if (op_var_nan_inf_white_list().count(op.Type()) == 0) {  // NOLINT
     // NOTE. vname may destruct in the end of this func.
     for (auto& vname : op.OutputVars(true)) {
       auto* var = exec_scope.FindVar(vname);

@@ -184,7 +184,7 @@ class FleetWrapper {
       int fea_dim,
       uint64_t padding_id,
       bool scale_sparse,
-      const std::string& accesor,
+      const std::string& accessor,
       const std::string& click_name,
       platform::Place place,
       const std::vector<std::string>& input_names,
@@ -288,7 +288,7 @@ class FleetWrapper {
 
   std::string GetDistDesc() const {
     CHECK(is_initialized_ == true)
-        << "fleetwrapper should be initialized first!!!";
+        << "FleetWrapper should be initialized first!!!";
     return dist_desc_;
   }
 
@@ -313,6 +313,7 @@ class FleetWrapper {
   int32_t SaveCache(int table_id, const std::string& path, const int mode);
   void Revert();
   void CheckSavePrePatchDone();
+  void SetDate(const uint64_t table_id, const std::string& date);
 
   //********* for fl-coordinator
   void InitFlWorker(const std::vector<std::string>& host_list,

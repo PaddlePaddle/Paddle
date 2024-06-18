@@ -21,16 +21,14 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/device_context.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-namespace paddle {
-namespace framework {
-namespace interpreter {
+namespace paddle::framework::interpreter {
 
 using DeviceContext = platform::DeviceContext;
 using DeviceEvent = platform::DeviceEvent;
@@ -123,8 +121,8 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
       }
     }
   }
-  // NOTE(lizhiyu): The mannual event only support the program_interpreter to
-  // annalyze the streams across the sub_programs. construct mannual events to
+  // NOTE(lizhiyu): The manual event only support the program_interpreter to
+  // analyze the streams across the sub_programs. construct manual events to
   // record
   for (auto& instruction : *instructions) {
     // create extra event to record
@@ -158,11 +156,11 @@ void StreamAnalyzer::ConstructEvents(std::vector<Instruction>* instructions) {
         instruction.AddEventToRecord(device_event, platform::kCUDA /*unused*/);
         (*program_force_events_to_wait_)[op_func_node->event_to_record_] =
             instruction.EventToRecord();
-        VLOG(6) << "Create mannual event: " << op_func_node->event_to_record_
+        VLOG(6) << "Create manual event: " << op_func_node->event_to_record_
                 << " for the operator: " << instruction.OpBase()->Type();
       }
     }
-    // add extra mannual events
+    // add extra manual events
     if (!(op_func_node->events_to_wait_.empty())) {
       for (auto event_name : op_func_node->events_to_wait_) {
         PADDLE_ENFORCE_NE(
@@ -431,9 +429,21 @@ void analyse_event_info_for_two_instructions<Instruction>(
 
   if (has_data_dependency<Instruction, std::string>(
           instructions[cur_instr_id], instructions[next_instr_id]) ||
-      !run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty() ||
       instructions[next_instr_id]->OpBase()->Type() == "depend") {
     waiter_instr_ids->insert(next_instr_id);
+    return;
+  }
+
+  if (!run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty()) {
+    auto& next_next_instructor_ids =
+        run_type_info[next_instr_id][DownstreamRunType::kEventRun];
+    for (auto& id : next_next_instructor_ids) {
+      if (has_data_dependency<Instruction, std::string>(
+              instructions[cur_instr_id], instructions[id])) {
+        waiter_instr_ids->insert(next_instr_id);
+        return;
+      }
+    }
     return;
   }
 
@@ -491,9 +501,22 @@ void analyse_event_info_for_two_instructions<
 
   if (has_data_dependency<paddle::framework::InstructionBase, pir::Value>(
           instructions[cur_instr_id], instructions[next_instr_id]) ||
-      !run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty() ||
       instructions[next_instr_id]->Name() == "pd_op.depend") {
     waiter_instr_ids->insert(next_instr_id);
+    return;
+  }
+
+  if (!run_type_info[next_instr_id][DownstreamRunType::kEventRun].empty()) {
+    auto& next_next_instructor_ids =
+        run_type_info[next_instr_id][DownstreamRunType::kEventRun];
+    for (auto& id : next_next_instructor_ids) {
+      if (has_data_dependency<paddle::framework::InstructionBase, pir::Value>(
+              instructions[cur_instr_id], instructions[id])) {
+        waiter_instr_ids->insert(next_instr_id);
+        return;
+      }
+    }
+
     return;
   }
 
@@ -601,17 +624,19 @@ void shrink_event_info(
       std::set<size_t> unnecessary_waiter_instr_ids;
       for (size_t cur_instr_id : waiter_instr_ids) {
         for (size_t next_instr_id : waiter_instr_ids) {
-          if (dependency_builder.OpHappensBefore(cur_instr_id, next_instr_id)) {
+          if (dependency_builder.OpHappensBefore(cur_instr_id, next_instr_id) &&
+              dependency_builder.IsSameDeviceContext(cur_instr_id,
+                                                     next_instr_id)) {
             unnecessary_waiter_instr_ids.insert(next_instr_id);
             break;
           }
         }
       }
 
-      for (size_t unnecessary_wiater_instr_id : unnecessary_waiter_instr_ids) {
+      for (size_t unnecessary_waiter_instr_id : unnecessary_waiter_instr_ids) {
         VLOG(8) << "Shrink event : " << recorder_instr_id << " -> "
-                << unnecessary_wiater_instr_id;
-        waiter_recorder_map[unnecessary_wiater_instr_id].erase(
+                << unnecessary_waiter_instr_id;
+        waiter_recorder_map[unnecessary_waiter_instr_id].erase(
             recorder_instr_id);
       }
     }
@@ -738,8 +763,8 @@ void PirStreamAnalyzer::ConstructEvents(
       }
     }
   }
-  // NOTE(lizhiyu): The mannual event only support the program_interpreter to
-  // annalyze the streams across the sub_programs. construct mannual events to
+  // NOTE(lizhiyu): The manual event only support the program_interpreter to
+  // annalyze the streams across the sub_programs. construct manual events to
   // record
   for (auto& instr : instructions) {
     // create extra event to record
@@ -770,11 +795,11 @@ void PirStreamAnalyzer::ConstructEvents(
         instr->AddEventToRecord(device_event, platform::kCUDA /*unused*/);
         (*program_force_events_to_wait_)[instr->EventToRecordInfo()] =
             instr->EventToRecord();
-        VLOG(6) << "Create mannual event: " << instr->EventToRecordInfo()
+        VLOG(6) << "Create manual event: " << instr->EventToRecordInfo()
                 << " for the operator: " << instr->Name();
       }
     }
-    // add extra mannual events
+    // add extra manual events
     if (!(instr->EventsToWaitInfo().empty())) {
       for (auto event_name : instr->EventsToWaitInfo()) {
         PADDLE_ENFORCE_NE(
@@ -845,6 +870,4 @@ PirStreamAnalyzer::GetEventInfo() const {
   return event_info_;
 }
 
-}  // namespace interpreter
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::interpreter

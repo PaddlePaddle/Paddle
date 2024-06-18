@@ -31,7 +31,7 @@ def celu(x, alpha=1.0, name=None):
     r"""
     celu activation.
 
-    Apply the following operation to each element of the input Tensor accroding to the `Continuously Differentiable Exponential Linear Units <https://arxiv.org/abs/1704.07483>`_.
+    Apply the following operation to each element of the input Tensor according to the `Continuously Differentiable Exponential Linear Units <https://arxiv.org/abs/1704.07483>`_.
 
     .. math::
 
@@ -688,9 +688,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
     """
     if not isinstance(lower, float) or not isinstance(upper, float):
         raise TypeError(
-            "The lower and upper values must be float type. Received: lower {}, upper {}.".format(
-                lower, upper
-            )
+            f"The lower and upper values must be float type. Received: lower {lower}, upper {upper}."
         )
 
     if lower < 0 or lower > 1:
@@ -700,9 +698,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
     if upper < lower:
         raise ValueError(
-            "The upper value must be greater than lower value. Received: lower {}, upper {}.".format(
-                lower, upper
-            )
+            f"The upper value must be greater than lower value. Received: lower {lower}, upper {upper}."
         )
 
     if upper > 1:
@@ -1547,7 +1543,7 @@ def tanhshrink(x, name=None):
         return out
 
 
-def thresholded_relu(x, threshold=1.0, name=None):
+def thresholded_relu(x, threshold=1.0, value=0.0, name=None):
     r"""
     thresholded relu activation.
 
@@ -1557,7 +1553,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
             \left\{
                 \begin{array}{rl}
                 x,& \text{if } \ x > threshold \\
-                0,& \text{otherwise}
+                value,& \text{otherwise}
                 \end{array}
             \right.
 
@@ -1565,6 +1561,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
         threshold (float, optional): The value of threshold for thresholded_relu. Default is 1.0
+        value (float, optional): The value to replace with when x is less than threshold. Default is 0.0
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1584,7 +1581,7 @@ def thresholded_relu(x, threshold=1.0, name=None):
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.thresholded_relu(x, threshold)
+        return _C_ops.thresholded_relu(x, threshold, value)
     else:
         check_variable_and_dtype(
             x,
@@ -1598,19 +1595,19 @@ def thresholded_relu(x, threshold=1.0, name=None):
             type='thresholded_relu',
             inputs={'X': x},
             outputs={'Out': out},
-            attrs={'threshold': threshold},
+            attrs={'threshold': threshold, 'value': value},
         )
         return out
 
 
 @inplace_apis_in_dygraph_only
-def thresholded_relu_(x, threshold=1.0, name=None):
+def thresholded_relu_(x, threshold=1.0, value=0.0, name=None):
     r"""
     Inplace version of ``thresholded_relu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_nn_functional_thresholded_relu`.
     """
     if in_dynamic_mode():
-        return _C_ops.thresholded_relu_(x, threshold)
+        return _C_ops.thresholded_relu_(x, threshold, value)
 
 
 def log_softmax(x, axis=-1, dtype=None, name=None):
@@ -1743,7 +1740,7 @@ def glu(x, axis=-1, name=None):
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        A Tensor with the same data type as x. The size of the given aixs is
+        A Tensor with the same data type as x. The size of the given axis is
         halved.
 
     Examples:
@@ -1767,9 +1764,7 @@ def glu(x, axis=-1, name=None):
     rank = len(x.shape)
     if not (-rank <= axis < rank):
         raise ValueError(
-            "Expected value range of `axis` is [{}, {}), but received axis: {}".format(
-                -rank, rank, axis
-            )
+            f"Expected value range of `axis` is [{-rank}, {rank}), but received axis: {axis}"
         )
     a, b = chunk(x, 2, axis=axis, name=name)
     gate = sigmoid(b, name=name)

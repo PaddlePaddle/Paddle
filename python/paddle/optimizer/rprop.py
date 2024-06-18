@@ -149,7 +149,7 @@ class Rprop(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
@@ -165,7 +165,7 @@ class Rprop(Optimizer):
                     p.dtype,
                     self._initial_learning_rate,
                 )
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -187,7 +187,7 @@ class Rprop(Optimizer):
                 p.dtype,
                 fill_value=self._initial_learning_rate,
             )
-            self._already_create_accumulater.add(p.name)
+            self._already_create_accumulator.add(p.name)
 
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):

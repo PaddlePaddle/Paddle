@@ -24,6 +24,7 @@
 #include "paddle/cinn/common/test_helper.h"
 #include "paddle/cinn/runtime/cpu/host_intrinsics.h"
 #include "paddle/cinn/runtime/cpu/use_extern_funcs.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace runtime {
@@ -77,7 +78,7 @@ void TestCallElementwise(const std::string &fn_name,
   auto stages = CreateStages(lower_args);
 
   auto target = cinn::common::DefaultHostTarget();
-  target.arch = Target::Arch::X86;
+  target.arch = cinn::common::X86Arch{};
   ir::Module::Builder builder("module0", target);
   auto func = Lower("fn", stages, lower_args);
   builder.AddFunction(func);
@@ -89,11 +90,18 @@ void TestCallElementwise(const std::string &fn_name,
 
   jit->Link(module);
   auto fn = jit->Lookup("fn");
-  CHECK(fn);
+  PADDLE_ENFORCE_NOT_NULL(fn, phi::errors::NotFound("fn is not found."));
   auto fn_ = reinterpret_cast<void (*)(void *, int32_t)>(fn);
 
   cinn_buffer_t *A_buf;
   if (set_value != 0) {
+    PADDLE_ENFORCE_EQ(
+        x->num_elements(),
+        out->num_elements(),
+        phi::errors::InvalidArgument("X's number of elements (%d) should "
+                                     "be equal to output's (%d).",
+                                     x->num_elements(),
+                                     out->num_elements()));
     A_buf = CreateBuffer({10, 10}, false, set_value);
   } else {
     A_buf = CreateBuffer({10, 10});
@@ -208,7 +216,7 @@ TEST(cinn_cpu_mkl_gemm_fp32, test) {
   auto stages = CreateStages({call, out});
 
   auto target = cinn::common::DefaultHostTarget();
-  target.arch = Target::Arch::X86;
+  target.arch = cinn::common::X86Arch{};
   ir::Module::Builder builder("module0", target);
 
   auto func = Lower("fn", stages, {A, B, out, call});

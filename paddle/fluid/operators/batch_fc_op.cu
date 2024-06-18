@@ -14,11 +14,11 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/batch_fc_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -112,7 +112,7 @@ class BatchFCCUDAKernel : public framework::OpKernel<T> {
     output->Resize({slot_pairs_num, ins_num, out_dim});
     T* out_data = output->mutable_data<T>(ctx.GetPlace());
     // initialize
-    auto out_eigen = framework::EigenVector<T>::Flatten(*output);
+    auto out_eigen = phi::EigenVector<T>::Flatten(*output);
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto& place =
         *ctx.template device_context<phi::GPUContext>().eigen_device();
@@ -173,11 +173,11 @@ class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
         *ctx.template device_context<phi::GPUContext>().eigen_device();
     // initialize
     dx->mutable_data<T>(ctx.GetPlace());
-    auto dx_eigen = framework::EigenVector<T>::Flatten(*dx);
+    auto dx_eigen = phi::EigenVector<T>::Flatten(*dx);
     dx_eigen.device(place) = dx_eigen.constant(static_cast<T>(0));
 
     dw->mutable_data<T>(ctx.GetPlace());
-    auto dw_eigen = framework::EigenVector<T>::Flatten(*dw);
+    auto dw_eigen = phi::EigenVector<T>::Flatten(*dw);
     dw_eigen.device(place) = dw_eigen.constant(static_cast<T>(0));
 
     // get data ptr
@@ -188,7 +188,7 @@ class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
     T* dw_data = dw->data<T>();
 
     db->mutable_data<T>(ctx.GetPlace());
-    auto db_eigen = framework::EigenVector<T>::Flatten(*db);
+    auto db_eigen = phi::EigenVector<T>::Flatten(*db);
     db_eigen.device(place) = db_eigen.constant(static_cast<T>(0));
     T* db_data = db->data<T>();
     add_bias_grad<T>(ctx.cuda_device_context().stream(),
@@ -237,7 +237,6 @@ class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using GPUCtx = phi::GPUContext;
 
 PD_REGISTER_STRUCT_KERNEL(
     batch_fc, GPU, ALL_LAYOUT, ops::BatchFCCUDAKernel, float, double) {}

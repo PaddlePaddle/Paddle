@@ -49,7 +49,7 @@ TEST(Expr, basic) {
   auto func = Lower("matmul", stages, {A, B, C});
 
   Target target;
-  target.arch = Target::Arch ::X86;
+  target.arch = common::X86Arch{};
   target.bits = Target::Bit ::k32;
   target.os = Target::OS ::Linux;
 

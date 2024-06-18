@@ -63,17 +63,13 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
       return phi::Place();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case phi::Backend::GPU:
+    case phi::Backend::GPUDNN:
       return phi::GPUPlace(
           set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
 #endif
 #ifdef PADDLE_WITH_DNNL
     case phi::Backend::ONEDNN:  // NOLINT
       return phi::CPUPlace();
-#endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    case phi::Backend::GPUDNN:
-      return phi::GPUPlace(
-          set_device_id ? phi::backends::gpu::GetCurrentDeviceId() : 0);
 #endif
 #if defined(PADDLE_WITH_XPU)
     case phi::Backend::XPU:
@@ -92,6 +88,9 @@ phi::Place TransToPhiPlace(const Backend& backend, bool set_device_id) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       size_t device_type_id_ = static_cast<size_t>(backend) -
                                static_cast<size_t>(Backend::NUM_BACKENDS);
+      if (backend == phi::Backend::CUSTOM) {
+        device_type_id_ = 1;
+      }
       std::string device_type =
           phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
               device_type_id_);

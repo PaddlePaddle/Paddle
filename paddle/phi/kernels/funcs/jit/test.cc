@@ -18,11 +18,11 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/jit/kernels.h"
-#include "paddle/utils/flags.h"
 
 PD_DEFINE_double(acc, 1e-5, "Test accuracy threshold.");
 
@@ -75,7 +75,7 @@ void TestAllImpls(const typename KernelTuple::attr_type& attr,
                   const Tester& verifier,
                   const Args&... args) {
   auto funcs = jit::GetAllCandidateFuncsWithTypes<KernelTuple, PlaceType>(attr);
-  for (auto f : funcs) {
+  for (auto const& f : funcs) {
     VLOG(10) << "Test Kernel " << f.first;
     verifier(f.second, args...);
   }
@@ -234,7 +234,8 @@ void TestKernelLSTM() {
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
   std::vector<std::string> all_acts = {"sigmoid", "tanh", "relu", "identity"};
   auto test_sizes = TestSizes();
-  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 1000));
+  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 1000),
+                   test_sizes.end());
   for (int d : test_sizes) {
     for (bool use_peephole : {true, false}) {
       for (auto& act_gate : all_acts) {
@@ -331,7 +332,8 @@ void TestKernelGRU() {
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
   std::vector<std::string> all_acts = {"sigmoid", "tanh", "relu", "identity"};
   auto test_sizes = TestSizes();
-  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 1000));
+  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 1000),
+                   test_sizes.end());
   for (int d : test_sizes) {
     for (auto& act_gate : all_acts) {
       for (auto& act_cand : all_acts) {
@@ -491,7 +493,8 @@ void TestKernelCRFDecoding() {
   VLOG(10) << "Test JITKernel: " << jit::to_string(KernelTuple::kernel_type);
   constexpr int state_trans_base_idx = 2;
   auto test_sizes = TestSizes();
-  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 2000));
+  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 2000),
+                   test_sizes.end());
   for (int seq_len : {1, 11, 17, 50}) {
     for (int tag_num : test_sizes) {
       auto ref = jit::GetReferFunc<KernelTuple>();
@@ -550,7 +553,8 @@ void TestKernelSeqPool() {
   std::vector<jit::SeqPoolType> pool_types = {
       jit::SeqPoolType::kSum, jit::SeqPoolType::kAvg, jit::SeqPoolType::kSqrt};
   auto test_sizes = TestSizes();
-  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 1000));
+  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 1000),
+                   test_sizes.end());
   for (auto type : pool_types) {
     for (int w : test_sizes) {
       jit::seq_pool_attr_t attr(w, type);
@@ -592,7 +596,8 @@ void TestKernelEmbSeqPool() {
   std::vector<jit::SeqPoolType> pool_types = {
       jit::SeqPoolType::kSum};  // only support sum yet
   auto test_sizes = TestSizes();
-  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 1000));
+  test_sizes.erase(std::remove(test_sizes.begin(), test_sizes.end(), 1000),
+                   test_sizes.end());
   for (int tbl_w : test_sizes) {
     std::vector<T> table(tbl_h * tbl_w);
     RandomVec<T>(tbl_h * tbl_w, table.data());
@@ -1172,9 +1177,9 @@ TEST(JITKernel_helper, GetAllCandidateFuncs) {
 
 TEST(JITKernel_helper, pack_weights) {
   const int N = 8 * 60, K = 2;
-  std::array<std::array<float, N>, K> src;
-  std::array<std::array<float, N>, K> yref;
-  std::array<float, N * K> y;
+  std::array<std::array<float, N>, K> src = {};
+  std::array<std::array<float, N>, K> yref = {};
+  std::array<float, N* K> y = {};
   float* x = &(src[0][0]);
   float* ref = &(yref[0][0]);
   for (int i = 0; i < N * K; ++i) {

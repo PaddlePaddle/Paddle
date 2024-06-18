@@ -13,9 +13,9 @@
 # limitations under the License.
 
 OP_GET_KERNEL_TYPE_FOR_VAR_TEMPLATE = """
-bool {op_name}::InferSymbolicShape(pir::ShapeConstraintIRAnalysis* shape_analysis) {{
+bool {op_name}::InferSymbolicShape(pir::InferSymbolicShapeContext* infer_context) {{
   VLOG(4) << "Infer symbolic shape for op: {op_name}";
-  return {op_name}InferSymbolicShape(this->operation(), shape_analysis);
+  return {op_name}InferSymbolicShape(this->operation(), infer_context);
 }}
 """
 

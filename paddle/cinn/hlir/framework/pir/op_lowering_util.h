@@ -18,6 +18,7 @@
 #include <queue>
 
 #include "paddle/cinn/hlir/framework/pir/group.h"
+#include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 
@@ -26,6 +27,7 @@ namespace hlir {
 namespace framework {
 namespace pir {
 using GroupPtr = std::shared_ptr<Group>;
+using OpLoweringGroupPtr = std::shared_ptr<OpLoweringGroup>;
 
 class PrettyNamer;
 

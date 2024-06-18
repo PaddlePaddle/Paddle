@@ -280,7 +280,7 @@ class InferencePassTest(unittest.TestCase):
                     err_msg='Output has diff between GPU and TensorRT. ',
                 )
 
-        # Check whether the mkldnn results and the CPU results are the same.
+        # Check whether the onednn results and the CPU results are the same.
         if (not use_gpu) and self.enable_mkldnn:
             mkldnn_outputs = self._get_inference_outs(
                 self._get_analysis_config(

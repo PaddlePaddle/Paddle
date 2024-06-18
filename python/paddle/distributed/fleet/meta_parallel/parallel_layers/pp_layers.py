@@ -46,9 +46,9 @@ from functools import partial
 
 import paddle
 from paddle import framework, nn
+from paddle.device.cuda.cuda_graphed_layer import CUDAGraphedLayer
+from paddle.distributed.fleet.utils.log_util import layer_to_str, logger
 from paddle.incubate.distributed.fleet import recompute_hybrid
-
-from ...utils.log_util import layer_to_str, logger
 
 __all__ = []
 
@@ -131,9 +131,7 @@ class SegmentLayers:
                 return seg_method
             else:
                 raise ValueError(
-                    "We set seg_method as {}, this length is {}, but the number of stages is {}".format(
-                        seg_method, len(seg_method), self.num_parts
-                    )
+                    f"We set seg_method as {seg_method}, this length is {len(seg_method)}, but the number of stages is {self.num_parts}"
                 )
 
         elif self.method == "uniform":
@@ -155,9 +153,7 @@ class SegmentLayers:
 
             assert (
                 sum(weights) % actual_num_parts == 0
-            ), "number of layers ({}) should be divided by part number({})".format(
-                sum(weights), actual_num_parts
-            )
+            ), f"number of layers ({sum(weights)}) should be divided by part number({actual_num_parts})"
             part_size = sum(weights) // actual_num_parts
             result = [0 for _ in range(actual_num_parts + 1)]
 
@@ -221,6 +217,10 @@ class PipelineLayerChunk(nn.Layer):
             self.add_sublayer(str(len(self.run_function)), sublayer)
         self.run_function.append(sublayer)
 
+    def extend(self, layer_list):
+        for layer in layer_list:
+            self.append(layer)
+
     def get_run_function(self):
         return self.run_function
 
@@ -232,6 +232,26 @@ class PipelineLayerChunk(nn.Layer):
             "The forward function of PipelineLayerChunk cannot be called directly. "
             "Please call forward function of PipelineLayer."
         )
+
+    def __iter__(self):
+        return iter(self.run_function)
+
+
+class PipelineSublayers(nn.Layer):
+    def __init__(self, run_function):
+        super().__init__()
+        self.run_function = run_function
+        for idx, sublayer in enumerate(self.run_function):
+            if isinstance(sublayer, nn.Layer):
+                self.add_sublayer(str(idx), sublayer)
+
+    def forward(self, x):
+        for layer in self.run_function:
+            x = layer(x)
+        return x
+
+    def __iter__(self):
+        return iter(self.run_function)
 
 
 class PipelineLayer(nn.Layer):
@@ -245,6 +265,7 @@ class PipelineLayer(nn.Layer):
         recompute_interval(int, optional): the number of layers to be used recompute, the value of 0 represents no recompute. default 0.
         recompute_ctx(dict,optional): the context of recompute, when 'recompute_interval' > 0, the context must be given.
         num_virtual_pipeline_stages(int, optional): the num of virtual pipeline stages for interleave pp.
+        use_cudagraph(bool, optional): enable CUDAGraphedLayer in pp layers.
     Examples:
         .. code-block:: python
 
@@ -323,6 +344,7 @@ class PipelineLayer(nn.Layer):
         recompute_interval=0,
         recompute_ctx=None,
         num_virtual_pipeline_stages=None,
+        use_cudagraph=False,
     ):
         super().__init__()
         if num_stages is None and topology is None:
@@ -341,7 +363,7 @@ class PipelineLayer(nn.Layer):
                 ), "seg_method should be a str for interleave scheduler"
                 assert seg_method.startswith(
                     'layer:'
-                ), "seg_method shoud be start with layer: for interleave scheduler"
+                ), "seg_method should be start with layer: for interleave scheduler"
 
         self._num_virtual_pipeline_stages = (
             1
@@ -355,10 +377,11 @@ class PipelineLayer(nn.Layer):
 
         self.device_id = dist.ParallelEnv().device_id
         self.layers = layers
-        self._loss_fn = loss_fn
+        self._loss_fn = loss_fn if isinstance(loss_fn, list) else [loss_fn]
         self._topo = topology
         self._recompute_interval = recompute_interval
         self.recompute_ctx = recompute_ctx
+        self.use_cudagraph = use_cudagraph
 
         # Defaults to 1234 to initialize layer parameters
         self._base_seed = 1234
@@ -371,9 +394,7 @@ class PipelineLayer(nn.Layer):
             offload = recompute_ctx.get('offload', False)
             partition = recompute_ctx.get('partition', False)
             logger.info(
-                "Start Recompute for PipeLineParallel. recompute_offload: {}, recompute_partition: {}".format(
-                    offload, partition
-                )
+                f"Start Recompute for PipeLineParallel. recompute_offload: {offload}, recompute_partition: {partition}"
             )
 
         world_size = dist.get_world_size()
@@ -606,9 +627,7 @@ class PipelineLayer(nn.Layer):
             start = self.segment_parts[stage]
             end = self.segment_parts[stage + 1]
             logger.info(
-                "stage={}, global_rank={} ,layer_number={}".format(
-                    stage, self.global_rank, end - start
-                )
+                f"stage={stage}, global_rank={self.global_rank} ,layer_number={end - start}"
             )
 
             for index, layer in enumerate(self._layers_desc[start:end]):
@@ -627,11 +646,14 @@ class PipelineLayer(nn.Layer):
                     stage_to_virtual_stage_info += f" {i},"
                 logger.info(stage_to_virtual_stage_info)
 
-        if self._loss_fn:
-            try:
-                logger.info(f"loss: {self._loss_fn.__name__}")
-            except AttributeError:
-                logger.info(f"loss: {self._loss_fn.__class__.__name__}")
+        if self._loss_fn[0]:
+            loss_fn_names = []
+            for idx in range(len(self._loss_fn)):
+                try:
+                    loss_fn_names.append(self._loss_fn[idx].__name__)
+                except AttributeError:
+                    loss_fn_names.append(self._loss_fn[idx].__class__.__name__)
+            logger.info(f"loss: {', '.join(loss_fn_names)}")
 
     def _build_layer_with_interleave(self):
         from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
@@ -677,6 +699,23 @@ class PipelineLayer(nn.Layer):
             # For 1f1b scheduler, just use run_function list
             run_function = self.run_function
 
+        self.groupable_layers = []
+
+        def flush_into_run_function():
+            if len(self.groupable_layers) > 0:
+                logger.info(
+                    f"flush {len(self.groupable_layers)} of layers into run_function"
+                )
+                if self.use_cudagraph:
+                    pipeline_sublayer = PipelineSublayers(
+                        self.groupable_layers.copy()
+                    )
+                    pipeline_sublayer = CUDAGraphedLayer(pipeline_sublayer)
+                    run_function.append(pipeline_sublayer)
+                else:
+                    run_function.extend(self.groupable_layers)
+                self.groupable_layers = []
+
         for index, layer in enumerate(self._layers_desc[start:end]):
             layer_index = start + index
 
@@ -686,12 +725,13 @@ class PipelineLayer(nn.Layer):
             paddle.seed(self._base_seed + layer_index)
 
             if isinstance(layer, nn.Layer):
-                run_function.append(layer)
+                self.groupable_layers.append(layer)
                 if self._num_virtual_pipeline_stages == 1:
                     # Only add sublayer for 1f1b scheduler,
                     # for interleave, PipelineLayerChunk will do this
                     self.add_sublayer(str(layer_index), layer)
             elif isinstance(layer, SharedLayerDesc):
+                flush_into_run_function()
                 if layer.layer_name not in self.shared_layers:
                     self.shared_layers[layer.layer_name] = layer.build_layer()
                     self.shared_weight_attrs[
@@ -723,13 +763,16 @@ class PipelineLayer(nn.Layer):
 
             elif isinstance(layer, LayerDesc):
                 model = layer.build_layer()
-                run_function.append(model)
+                self.groupable_layers.append(model)
                 if self._num_virtual_pipeline_stages == 1:
                     # Only add sublayer for 1f1b scheduler,
                     # for interleave, PipelineLayerChunk will do this
                     self.add_sublayer(str(layer_index), model)
             else:
+                flush_into_run_function()
                 run_function.append(layer)
+
+        flush_into_run_function()
         return run_function
 
     def forward_function(self, start, end):

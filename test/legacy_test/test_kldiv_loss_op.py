@@ -21,9 +21,12 @@ from paddle.nn.functional import kl_div
 from paddle.pir_utils import test_with_pir_api
 
 
-def kldiv_loss(x, target, reduction):
-    output = target * (np.log(target) - x)
-    loss = np.where(target >= 0, output, np.zeros_like(x))
+def kldiv_loss(x, target, reduction, log_target=False):
+    if log_target:
+        loss = np.exp(target) * (target - x)
+    else:
+        output = target * (np.log(target) - x)
+        loss = np.where(target >= 0, output, np.zeros_like(x))
 
     if reduction == "batchmean":
         if len(x.shape) > 0:
@@ -46,13 +49,16 @@ class TestKLDivLossOp(OpTest):
         x = np.random.uniform(-10, 10, self.x_shape).astype('float64')
         target = np.random.uniform(-10, 10, self.x_shape).astype('float64')
 
-        self.attrs = {"reduction": self.reduction}
+        self.attrs = {
+            "reduction": self.reduction,
+            "log_target": self.log_target,
+        }
 
         self.inputs = {
             'X': x,
             'Target': target,
         }
-        loss = kldiv_loss(x, target, self.reduction)
+        loss = kldiv_loss(x, target, self.reduction, self.log_target)
         self.outputs = {'Loss': loss.astype('float64')}
 
     def test_check_output(self):
@@ -64,34 +70,52 @@ class TestKLDivLossOp(OpTest):
     def initTestCase(self):
         self.x_shape = (4, 5, 5)
         self.reduction = 'batchmean'
+        self.log_target = False
 
 
 class TestKLDivLossOp2(TestKLDivLossOp):
     def initTestCase(self):
         self.x_shape = (3, 2, 7, 7)
         self.reduction = 'none'
+        self.log_target = False
 
 
 class TestKLDivLossOp3(TestKLDivLossOp):
     def initTestCase(self):
         self.x_shape = (2, 3, 5, 7, 9)
         self.reduction = 'mean'
+        self.log_target = False
 
 
 class TestKLDivLossOp4(TestKLDivLossOp):
     def initTestCase(self):
         self.x_shape = (5, 20)
         self.reduction = 'sum'
+        self.log_target = False
+
+
+class TestKLDivLossOp5(TestKLDivLossOp):
+    def initTestCase(self):
+        self.x_shape = (5, 20)
+        self.reduction = 'sum'
+        self.log_target = True
+
+
+class TestKLDivLossOp6(TestKLDivLossOp):
+    def initTestCase(self):
+        self.x_shape = (3, 2, 7, 7)
+        self.reduction = 'none'
+        self.log_target = True
 
 
 class TestKLDivLossDygraph(unittest.TestCase):
-    def run_kl_loss(self, reduction, shape=(5, 20)):
+    def run_kl_loss(self, reduction, shape=(5, 20), log_target=False):
         x = np.random.uniform(-10, 10, shape).astype('float64')
         target = np.random.uniform(-10, 10, shape).astype('float64')
-        gt_loss = kldiv_loss(x, target, reduction)
+        gt_loss = kldiv_loss(x, target, reduction, log_target)
 
         with paddle.base.dygraph.guard():
-            kldiv_criterion = paddle.nn.KLDivLoss(reduction)
+            kldiv_criterion = paddle.nn.KLDivLoss(reduction, log_target)
             pred_loss = kldiv_criterion(
                 paddle.to_tensor(x), paddle.to_tensor(target)
             )
@@ -112,6 +136,9 @@ class TestKLDivLossDygraph(unittest.TestCase):
     def test_kl_loss_none(self):
         self.run_kl_loss('none')
 
+    def test_kl_loss_mean_logtarget(self):
+        self.run_kl_loss('mean', log_target=True)
+
     @test_with_pir_api
     def test_kl_loss_static_api(self):
         with paddle_static_guard():
@@ -121,6 +148,7 @@ class TestKLDivLossDygraph(unittest.TestCase):
             paddle.nn.functional.kl_div(input, label)
             paddle.nn.functional.kl_div(input, label, 'sum')
             paddle.nn.functional.kl_div(input, label, 'batchmean')
+            paddle.nn.functional.kl_div(input, label, 'batchmean', True)
 
 
 class TestKLDivLossTypePromotion(unittest.TestCase):

@@ -35,6 +35,25 @@ void Module::Builder::AddFunctionWithoutOptim(const ir::LoweredFunc &func) {
   module_->functions.push_back(func);
 }
 
+std::optional<int> GetDataAlignmentImpl(common::UnknownArch arch) {
+  return std::nullopt;
+}
+
+std::optional<int> GetDataAlignmentImpl(common::X86Arch arch) { return 32; }
+
+std::optional<int> GetDataAlignmentImpl(common::ARMArch arch) {
+  return std::nullopt;
+}
+
+std::optional<int> GetDataAlignmentImpl(common::NVGPUArch arch) {
+  return std::nullopt;
+}
+
+std::optional<int> GetDataAlignment(common::Arch arch) {
+  return std::visit([](const auto &impl) { return GetDataAlignmentImpl(impl); },
+                    arch.variant());
+}
+
 void Module::Builder::AddBuffer(ir::Buffer buffer) {
   CHECK(buffer->target.defined())
       << "buffer [" << buffer->name << "]'s target is undefined";
@@ -43,8 +62,8 @@ void Module::Builder::AddBuffer(ir::Buffer buffer) {
             return x.as_buffer()->name == buffer->name;
           }) == std::end(module_->buffers)) {
     module_->buffers.push_back(buffer);
-    if (module_->target.arch == Target::Arch::X86) {
-      module_->buffers.back().as_buffer()->data_alignment = 32;
+    if (auto alignment = GetDataAlignment(module_->target.arch)) {
+      module_->buffers.back().as_buffer()->data_alignment = alignment.value();
     }
   }
 }
@@ -64,7 +83,7 @@ void Module::Builder::Clear() {
   module_->predicates.clear();
 }
 
-Target::Arch Module::Builder::GetTargetArch() { return module_->target.arch; }
+common::Arch Module::Builder::GetTargetArch() { return module_->target.arch; }
 
 Module Module::Builder::Build() {
   if (module_->functions.empty()) {

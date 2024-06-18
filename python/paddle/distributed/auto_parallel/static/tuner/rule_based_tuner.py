@@ -250,7 +250,7 @@ class RowMatmulPattern(BasePattern):
 
 
 @register_pattern
-class FFNPattrern(BasePattern):
+class FFNPattern(BasePattern):
     """FFN pattern defined by GPT model in PaddleFleetX."""
 
     name = "ffn"
@@ -971,7 +971,7 @@ class ClusterPartitionUtil:
         ],
     ) -> list:
         """
-        Partiton cluster into possible device meshes.
+        Partition cluster into possible device meshes.
         Args:
             n (int): The number of nodes.
             m (int): The number of single devices on each node.
@@ -1044,7 +1044,7 @@ class RuleBasedTuner:
         mode (str): The mode of current task, it can be train or eval. Default: train.
         level (str): The level of this tuner, it can be o1 or o2.
                      o2 level may find better strategy but need more time than o1.
-                     If level is o1, it means all layers within same parallelism and place layers evenly when in pipeline parallism.
+                     If level is o1, it means all layers within same parallelism and place layers evenly when in pipeline parallelism.
                      If level is o2, it means layers can has own parallelism and place layers may not evenly.
                      Default: o1.
     """
@@ -1281,11 +1281,7 @@ class RuleBasedTuner:
                             ] = shard_spec[pattern_node_id]
                             tensor_name = graph.attrs["id_to_var_name"][var_id]
                             self._logger.info(
-                                "{}'s shard_spec may be {} when under {} parallelism.".format(
-                                    tensor_name,
-                                    shard_spec[pattern_node_id],
-                                    parallelism,
-                                )
+                                f"{tensor_name}'s shard_spec may be {shard_spec[pattern_node_id]} when under {parallelism} parallelism."
                             )
         else:
             self._logger.info(
@@ -1363,8 +1359,8 @@ class RuleBasedTuner:
 
         return program
 
-    def _compelte_sub_fwd_program(self, idx, sub_fwd_program, process_mesh):
-        """Compelete forward sub  program."""
+    def _complete_sub_fwd_program(self, idx, sub_fwd_program, process_mesh):
+        """Complete forward sub  program."""
         selective_parallelisms = (
             ["dp", "mp"] if len(process_mesh.shape) == 1 else ["dp_mp", "mp_dp"]
         )
@@ -1413,9 +1409,7 @@ class RuleBasedTuner:
                 ] = dist_context
             else:
                 self._logger.info(
-                    "No pattern has be matched under {} parallelism whe sub program is {}.".format(
-                        parallelism, sub_fwd_program
-                    )
+                    f"No pattern has be matched under {parallelism} parallelism whe sub program is {sub_fwd_program}."
                 )
 
     def complete_sub_fwd_programs(self, process_mesh):
@@ -1424,7 +1418,7 @@ class RuleBasedTuner:
             sub_fwd_program = self.fwd_sub_programs[idx]
             if idx not in self.sub_programs_dist_context:
                 self.sub_programs_dist_context[idx] = {}
-            self._compelte_sub_fwd_program(idx, sub_fwd_program, process_mesh)
+            self._complete_sub_fwd_program(idx, sub_fwd_program, process_mesh)
 
     def _complete_sub_bwd_program(self, sub_program_dist_context):
         """
@@ -1926,7 +1920,7 @@ class RuleBasedTuner:
             ]
 
         # Use beam search, the beam size is 2.
-        # When the process mesh is 1-D, the selecetive parallelsim can be dp or mp.
+        # When the process mesh is 1-D, the selective parallelism can be dp or mp.
         # Because the first layer often contains more ops than other layer, using beam search can find more accurate strategy.
         count = 0
         for dist_context_x in dist_contexts_x:
@@ -2274,7 +2268,7 @@ class RuleBasedTuner:
 
             # For example, device_mesh is [1, 8] and process_mesh is [8].
             # The selective parallelism is dp or mp
-            # Get dp8 or mp8 cost and compare them to get best sreategy.
+            # Get dp8 or mp8 cost and compare them to get best strategy.
             for parallelism in ["dp", "mp", "dp_mp", "mp_dp"]:
                 for process_mesh_shape in process_mesh_shapes:
                     dist_context_of_device_meshes = None
@@ -2326,13 +2320,7 @@ class RuleBasedTuner:
                         )
 
                         self._logger.info(
-                            "Cost Model: The max memory is {:.2f}GB and cost is {:.2f} when {} parallelism under process mesh shape {} on {} stages.".format(
-                                memory / (1024**3),
-                                cost,
-                                parallelism,
-                                process_mesh_shape,
-                                len(device_meshes),
-                            )
+                            f"Cost Model: The max memory is {memory / (1024**3):.2f}GB and cost is {cost:.2f} when {parallelism} parallelism under process mesh shape {process_mesh_shape} on {len(device_meshes)} stages."
                         )
                         # 10% buffer is reserved safely for memory cost
                         if memory > 0.9 * self.cluster.machines[0].devices[
@@ -2344,12 +2332,7 @@ class RuleBasedTuner:
                             best_cost = cost
                             best_dist_context = dist_context_of_device_meshes
                             self._logger.info(
-                                "O1 level: a better strategy has be found that parallelism is {} under process mesh shape {} on {} stages with max memory {:.2f}GB.".format(
-                                    parallelism,
-                                    process_mesh_shape,
-                                    len(device_meshes),
-                                    memory / (1024**3),
-                                )
+                                f"O1 level: a better strategy has be found that parallelism is {parallelism} under process mesh shape {process_mesh_shape} on {len(device_meshes)} stages with max memory {memory / (1024**3):.2f}GB."
                             )
 
         return best_dist_context
@@ -2421,7 +2404,7 @@ class RuleBasedTuner:
 
         elif self.level == "o1":
             # If level is o1, it means all layers within same parallelism.
-            # When in pipeline parallism, it means that place layers evenly.
+            # When in pipeline parallelism, it means that place layers evenly.
             use_o2_level = False
             for device_meshes in self.device_meshes_list:
                 if len(device_meshes) > 1:
@@ -2433,7 +2416,7 @@ class RuleBasedTuner:
                         else:
                             if shape != device_mesh.shape:
                                 self._logger.info(
-                                    "Warning: The o1 level is not be supported when the number of machines is prime numer which greaters than 1. We will use o2 level to tune."
+                                    "Warning: The o1 level is not be supported when the number of machines is prime number which greater than 1. We will use o2 level to tune."
                                 )
                                 use_o2_level = True
                                 break

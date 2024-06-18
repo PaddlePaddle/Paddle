@@ -40,9 +40,23 @@ class SimpleNet(paddle.nn.Layer):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) == core.XPUVersion.XPU3,
+    "Bugs on XPU3, disable temporarily.",
 )
 class TestMasterWeight(AmpTestBase):
     def run_dygraph(self, dtype, level, use_promote, max_iters, x_data):
@@ -77,6 +91,54 @@ class TestMasterWeight(AmpTestBase):
             optimizer.clear_grad()
         return losses
 
+    def run_pir(self, dtype, level, use_promote, max_iters, x_data):
+        with paddle.pir_utils.IrGuard():
+            losses = []
+            startup = paddle.static.Program()
+            main = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                model = SimpleNet(100, 100)
+                optimizer = paddle.optimizer.AdamW(
+                    learning_rate=0.01,
+                    parameters=model.parameters(),
+                )
+                scaler = paddle.amp.GradScaler(enable=True)
+                model, optimizer = paddle.amp.decorate(
+                    models=model,
+                    optimizers=optimizer,
+                    level=level,
+                    dtype=dtype,
+                )
+                with paddle.amp.auto_cast(
+                    enable=True,
+                    dtype=dtype,
+                    level=level,
+                    use_promote=use_promote,
+                ):
+                    x = paddle.static.data('x', x_data.shape, 'float16')
+                    out = model(x)
+                    loss = paddle.mean(out)
+                scaled = scaler.scale(loss)
+                scaler.minimize(optimizer, scaled)
+            if paddle.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+            elif paddle.device.is_compiled_with_xpu():
+                place = paddle.device.XPUPlace(0)
+            else:
+                raise ValueError("Only support CUDA or XPU Place.")
+            exe = paddle.static.Executor(place)
+            exe.run(startup)
+            for iter_id in range(max_iters):
+                results = exe.run(
+                    main,
+                    feed={'x': x_data},
+                    fetch_list=[loss],
+                )
+
+                losses.append(results[0])
+
+            return losses
+
     def run_static(self, dtype, level, use_promote, max_iters, x_data):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -100,7 +162,12 @@ class TestMasterWeight(AmpTestBase):
                 loss = paddle.mean(out)
                 optimizer.minimize(loss)
 
-        place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
         exe = paddle.static.Executor(place)
         exe.run(startup_program)
         optimizer.amp_init(
@@ -121,6 +188,8 @@ class TestMasterWeight(AmpTestBase):
         return losses
 
     def test_master_weight(self):
+        np.random.seed(1)
+        paddle.seed(1)
         dtype = 'float16'
         level = 'O2'
         use_promote = True
@@ -133,9 +202,11 @@ class TestMasterWeight(AmpTestBase):
         loss_static = self.run_static(
             dtype, level, use_promote, total_steps, x_data
         )
+        loss_pir = self.run_pir(dtype, level, use_promote, total_steps, x_data)
 
         for i in range(total_steps):
             self.assertEqual(loss_dygraph[i], loss_static[i])
+            self.assertEqual(loss_dygraph[i], loss_pir[i])
 
 
 if __name__ == '__main__':

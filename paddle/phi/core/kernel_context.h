@@ -75,6 +75,10 @@ class KernelContext {
 
   void AssignOutputRange(std::pair<int, int>&& range, size_t idx);
 
+  void UpdataInput(size_t idx, const TensorBase* input) {
+    inputs_[idx] = input;
+  }
+
   template <typename TensorType>
   const TensorType& InputAt(size_t idx) const {
     return static_cast<const TensorType&>(*(inputs_.at(idx)));
@@ -112,6 +116,10 @@ class KernelContext {
       return paddle::optional<std::vector<const TensorType*>>(std::move(v));
     }
     return paddle::none;
+  }
+
+  const TensorBase* MutableIutputAt(size_t idx) const {
+    return inputs_.at(idx);
   }
 
   template <typename TensorType>

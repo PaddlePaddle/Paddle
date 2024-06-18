@@ -17,10 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
 #include "paddle/fluid/framework/ir/fusion_group/cuda_resources.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace fusion_group {
+namespace paddle::framework::ir::fusion_group {
 
 std::string ExtractDataType(const std::vector<Node*>& nodes) {
   std::string dtype_str = "";
@@ -173,12 +170,10 @@ std::string CodeGenerator::Generate(
     std::string func_name,
     const std::vector<OperationExpression>& expressions) {
   // TODO(liuyiqun): Check whether all expressions are elementwise operations.
-  std::set<int> input_ids = std::move(DistilInputIds(expressions));
-  std::set<int> output_ids = std::move(DistilOutputIds(expressions));
-  std::set<int> intermediate_output_ids =
-      std::move(DistilIntermediateIds(expressions));
-  std::unordered_map<int, std::string> dtypes =
-      std::move(DistilDtypes(expressions));
+  std::set<int> input_ids = DistilInputIds(expressions);
+  std::set<int> output_ids = DistilOutputIds(expressions);
+  std::set<int> intermediate_output_ids = DistilIntermediateIds(expressions);
+  std::unordered_map<int, std::string> dtypes = DistilDtypes(expressions);
   TemplateVariable template_var;
   template_var.Add("func_name", func_name);
   template_var.Add(
@@ -210,7 +205,7 @@ std::string CodeGenerator::Generate(
 std::set<int> CodeGenerator::DistilInputIds(
     const std::vector<OperationExpression>& expressions) {
   std::set<int> input_ids;
-  // Use std::set to remove the reptead id and get a ordered list.
+  // Use std::set to remove the repeated id and get a ordered list.
   for (const auto& expression : expressions) {
     for (auto id : expression.GetInputIds()) {
       if (id >= 0) {
@@ -224,7 +219,7 @@ std::set<int> CodeGenerator::DistilInputIds(
 std::set<int> CodeGenerator::DistilOutputIds(
     const std::vector<OperationExpression>& expressions) {
   std::set<int> output_ids;
-  // Use std::set to remove the reptead id and get a ordered list.
+  // Use std::set to remove the repeated id and get a ordered list.
   for (const auto& expression : expressions) {
     for (auto id : expression.GetOutputIds()) {
       output_ids.insert(id);
@@ -236,7 +231,7 @@ std::set<int> CodeGenerator::DistilOutputIds(
 std::set<int> CodeGenerator::DistilIntermediateIds(
     const std::vector<OperationExpression>& expressions) {
   std::set<int> intermediate_output_ids;
-  // Use std::set to remove the reptead id and get a ordered list.
+  // Use std::set to remove the repeated id and get a ordered list.
   for (const auto& expression : expressions) {
     for (auto id : expression.GetIntermediateOutputIds()) {
       intermediate_output_ids.insert(id);
@@ -366,7 +361,7 @@ std::unordered_map<Node*, int> CodeGenerator::EncodeVarNodes(
 
   // Encoding output vars.
   for (auto* out : output_var_nodes) {
-    VLOG(3) << "Ecoding output names:" << out->Name() << "(" << out
+    VLOG(3) << "Encoding output names:" << out->Name() << "(" << out
             << "), id:" << id;
     if (var_ids.find(out) == var_ids.end()) {
       var_ids[out] = id++;
@@ -375,7 +370,4 @@ std::unordered_map<Node*, int> CodeGenerator::EncodeVarNodes(
   return var_ids;
 }
 
-}  // namespace fusion_group
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir::fusion_group

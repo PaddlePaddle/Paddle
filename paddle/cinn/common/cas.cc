@@ -19,7 +19,7 @@
 #include <string>
 #include <utility>
 
-#include "paddle/cinn/common/arithmatic.h"
+#include "paddle/cinn/common/arithmetic.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -28,7 +28,7 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
 using namespace ir;  // NOLINT
@@ -37,6 +37,9 @@ Expr AutoSimplify(
     Expr u,
     const absl::flat_hash_map<std::string, CasInterval>& var_intervals) {
   VLOG(7) << "Begin AutoSimplify: " << u;
+  if (u.type().is_float()) {
+    return u;
+  }
   u = detail::ConvertCinnToCAS(u);
   absl::flat_hash_map<std::string, CasInterval> s_var_intervals;
   for (auto& item : var_intervals) {
@@ -73,7 +76,7 @@ int gcd(int a, int b) {
 }
 
 //////// All the following symbolic computation methods are implemented
-/// referencing to the book <Computer Algegra and
+/// referencing to the book <Computer Algebra and
 /// Symbolic Computation - Joel S. Cohen>
 
 template <typename T>
@@ -136,7 +139,8 @@ namespace detail {
 // Is a Divisible to b.
 // @{
 bool IsDivisible(int64_t a, int64_t b) {
-  CHECK_NE(b, 0);
+  PADDLE_ENFORCE_NE(
+      b, 0, phi::errors::InvalidArgument("The divisor %d should not be 0.", b));
   return a % b == 0;
 }
 bool IsDivisible(const Sum* a, int b);
@@ -854,7 +858,7 @@ void CasSimplifyMutator::UnfoldBound(Expr* lower_bound,
     AddBaseAndSimplify(lower_bound, var);
     AddBaseAndSimplify(upper_bound, var);
   } else {
-    LOG(FATAL) << "can't get the bound";
+    PADDLE_THROW(phi::errors::InvalidArgument("can't get the bound"));
   }
 }
 
@@ -1072,77 +1076,79 @@ bool CasSimplifyMutator::SimplifySpecificSumMod(Expr* result, Expr a, Expr b) {
       }
     }
   }
-#ifdef CINN_WITH_CUDA
-  return false;
-#else
-
-  int const_value = 0;
-  Expr lower_bound;
-  Expr upper_bound;
-  Expr rest_oper;
-  bool can_simplify = true;
-  bool has_int = false;
-  // fold only the expr bound(may contains the var) and try to simplify the var
-  Expr unfolded_lower_bound, unfolded_upper_bound;
-  for (Expr& v : a_sum->operands()) {
-    auto* v_int = v.As<IntImm>();
-    if (v_int) {
-      const_value += v_int->value;
-      has_int = true;
-    } else if (GetVarBound(&lower_bound, &upper_bound, v, false)) {
-      AddBaseAndSimplify(&rest_oper, v);
-    } else {
-      can_simplify = false;
-      break;
-    }
-  }
-  can_simplify = can_simplify && has_int &&
-                 std::abs(const_value) % b_i->value == b_i->value - 1 &&
-                 lower_bound.defined() && upper_bound.defined() &&
-                 rest_oper.defined();
-  // further infer the vars' bound by the intervals infos, try to get the
-  // constant
-  if (can_simplify) {
-    std::vector<Expr> bounds = {lower_bound, upper_bound};
-    for (int i = 0; i < bounds.size(); ++i) {
-      Expr bound = bounds[i];
-      Expr bound_l, bound_r;
-      GetExprBound(&bound_l, &bound_r, bound);
-      if (i == 0 && bound_l.defined()) {
-        lower_bound = bound_l;
-      }
-      if (i == 1 && bound_r.defined()) {
-        upper_bound = bound_r;
-      }
-    }
-  } else {
-    return false;
-  }
-  // case1: (32+(-x))%33 = 32-x%33 (0<=x<=32)
-  // case2: (x-32)%33 = x%33 - 32%33 (0<=x<=32)
-  can_simplify = can_simplify && lower_bound.is_constant();
-  bool case1 = can_simplify && const_value >= 0 &&
-               lower_bound.get_constant() >= -const_value &&
-               upper_bound.is_constant() && upper_bound.get_constant() <= 0;
-  bool case2 = can_simplify && const_value <= 0 &&
-               lower_bound.get_constant() >= 0 && upper_bound.is_constant() &&
-               upper_bound.get_constant() <= -const_value;
-  can_simplify = can_simplify && (case1 || case2);
-  if (can_simplify) {
-    Expr const_expr;
-    if (const_value < 0) {
-      const_expr = make_const(b->type(), const_value % b_i->value);
-    } else {
-      const_expr = make_const(b->type(), const_value % b_i->value);
-    }
-    *result = CasSimplify(
-        Sum::Make(
-            {const_expr, CasSimplify(Mod::Make(rest_oper, b), var_intervals)}),
-        var_intervals);
-    return true;
-  }
-  return false;
-#endif
+  return cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](common::NVGPUArch) { return false; },
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+        int const_value = 0;
+        Expr lower_bound;
+        Expr upper_bound;
+        Expr rest_oper;
+        bool can_simplify = true;
+        bool has_int = false;
+        // fold only the expr bound(may contains the var) and try to simplify
+        // the var
+        Expr unfolded_lower_bound, unfolded_upper_bound;
+        for (Expr& v : a_sum->operands()) {
+          auto* v_int = v.As<IntImm>();
+          if (v_int) {
+            const_value += v_int->value;
+            has_int = true;
+          } else if (GetVarBound(&lower_bound, &upper_bound, v, false)) {
+            AddBaseAndSimplify(&rest_oper, v);
+          } else {
+            can_simplify = false;
+            break;
+          }
+        }
+        can_simplify = can_simplify && has_int &&
+                       std::abs(const_value) % b_i->value == b_i->value - 1 &&
+                       lower_bound.defined() && upper_bound.defined() &&
+                       rest_oper.defined();
+        // further infer the vars' bound by the intervals infos, try to get the
+        // constant
+        if (can_simplify) {
+          std::vector<Expr> bounds = {lower_bound, upper_bound};
+          for (int i = 0; i < bounds.size(); ++i) {
+            Expr bound = bounds[i];
+            Expr bound_l, bound_r;
+            GetExprBound(&bound_l, &bound_r, bound);
+            if (i == 0 && bound_l.defined()) {
+              lower_bound = bound_l;
+            }
+            if (i == 1 && bound_r.defined()) {
+              upper_bound = bound_r;
+            }
+          }
+        } else {
+          return false;
+        }
+        // case1: (32+(-x))%33 = 32-x%33 (0<=x<=32)
+        // case2: (x-32)%33 = x%33 - 32%33 (0<=x<=32)
+        can_simplify = can_simplify && lower_bound.is_constant();
+        bool case1 = can_simplify && const_value >= 0 &&
+                     lower_bound.get_constant() >= -const_value &&
+                     upper_bound.is_constant() &&
+                     upper_bound.get_constant() <= 0;
+        bool case2 = can_simplify && const_value <= 0 &&
+                     lower_bound.get_constant() >= 0 &&
+                     upper_bound.is_constant() &&
+                     upper_bound.get_constant() <= -const_value;
+        can_simplify = can_simplify && (case1 || case2);
+        if (can_simplify) {
+          Expr const_expr;
+          if (const_value < 0) {
+            const_expr = make_const(b->type(), const_value % b_i->value);
+          } else {
+            const_expr = make_const(b->type(), const_value % b_i->value);
+          }
+          *result = CasSimplify(
+              Sum::Make({const_expr,
+                         CasSimplify(Mod::Make(rest_oper, b), var_intervals)}),
+              var_intervals);
+          return true;
+        }
+        return false;
+      });
 }
 
 // Return if the var's interval is nonnegative.
@@ -1155,8 +1161,8 @@ inline bool IsVarNonnegative(
 // Return if the var is binded with thread or block in cuda(which implies it is
 // non-negative).
 inline bool IsVarBinded(const std::string& var_name) {
-  return utils::Startswith(var_name, "threadIdx") ||
-         utils::Startswith(var_name, "blockIdx");
+  return utils::StartsWith(var_name, "threadIdx") ||
+         utils::StartsWith(var_name, "blockIdx");
 }
 
 /**
@@ -1180,7 +1186,7 @@ inline bool IsVarAllNonnegative(
 }
 
 Expr CasSimplifyMutator::SimplifyMod(Expr u) {
-  VLOG(4) << "SimplifyMod:" << u;
+  VLOG(6) << "SimplifyMod:" << u;
   auto* node = u.As<Mod>();
   CHECK(node);
 
@@ -1229,11 +1235,11 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
 
   // (x % 16) % 4 = x % 4
   if (a_mod && b_i) {
-    VLOG(4) << "Simplify sequential mod";
+    VLOG(6) << "Simplify sequential mod";
     auto* a_b_i = a_mod->b().As<IntImm>();
     if (a_b_i->value != 0 && a_b_i->value % b_i->value == 0) {
       auto e = SimplifyMod(Mod::Make(a_mod->a(), b_i));
-      VLOG(4) << "Reduce Mod from " << u << " to " << e;
+      VLOG(6) << "Reduce Mod from " << u << " to " << e;
       return e;
     }
   }
@@ -1260,11 +1266,11 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
   // (4*x + k*y)%2 = (k*y) %2
   // (2x+y+z) % 2 = (y+z) % 2
   if (a_sum && b_i) {
-    VLOG(4) << "A SUM ";
+    VLOG(6) << "A SUM ";
     std::vector<Expr> sum_args;
     for (auto& v : a_sum->operands()) {
       if (!IsDivisible(v, b_i->value)) {
-        VLOG(4) << v;
+        VLOG(6) << v;
         sum_args.push_back(v);
       }
     }
@@ -1284,7 +1290,7 @@ Expr CasSimplifyMutator::SimplifyMod(Expr u) {
         all_nonnegative_int =
             all_nonnegative_int && arg_int && arg_int->value >= 0;
       }
-      VLOG(4) << all_nonnegative_var << " " << all_nonnegative_int;
+      VLOG(6) << all_nonnegative_var << " " << all_nonnegative_int;
       if (all_nonnegative_var)
         return SimplifyMod(Mod::Make(Sum::Make(sum_args), b));
       if (all_nonnegative_int) {
@@ -1348,7 +1354,7 @@ Expr CasSimplifyMutator::SimplifyMinAndMax(Expr u) {
           return const_operand;
         }
       }
-      // not unfold var for var may be eliminated in the caculation
+      // not unfold var for var may be eliminated in the calculation
       if (GetExprBound(&lower_bound, &upper_bound, non_const_operand, false)) {
         // if non_const_operand's lower_bound is larger than const_operand, then
         // non_const_operand must be larger than const_operand
@@ -1448,10 +1454,10 @@ Expr CasSimplifyMutator::SimplifyCmp(Expr u) {
 }
 
 /**
- * deal with index's div-mod add simplification, tempory solution, not cover all
- * situations. case 1: (m / n) * n + m % n = m (m, n's type is int) case 2: (m /
- * n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1, n2, n3's type is
- * int)
+ * deal with index's div-mod add simplification, temporary solution, not cover
+ * all situations. case 1: (m / n) * n + m % n = m (m, n's type is int) case 2:
+ * (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1, n2, n3's type
+ * is int)
  */
 Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
   auto sum = tmp.As<Sum>();
@@ -1480,7 +1486,10 @@ Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
   if (!right_mod || (!left_mul && !left_div)) {
     return tmp;
   }
-  CHECK_GE(right_mod->operands().size(), 2U);
+  PADDLE_ENFORCE_GE(right_mod->operands().size(),
+                    2U,
+                    phi::errors::InvalidArgument(
+                        "right_mod's operands size should be greater than 2"));
   Expr mod_left = right_mod->operand(0);
   Expr mod_right = right_mod->operand(1);
   if (!mod_left->type().is_integer() || !mod_right->type().is_integer()) {
@@ -1490,7 +1499,10 @@ Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
     // case 1: (m / n) * n + m % n = m (m, n's type is int)
     // case 2: (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1,
     // n2, n3's type is int)
-    CHECK_GE(left_mul->operands().size(), 2U);
+    PADDLE_ENFORCE_GE(left_mul->operands().size(),
+                      2U,
+                      phi::errors::InvalidArgument(
+                          "left_mul's operands size should be greater than 2"));
     Expr mul_left = left_mul->operand(0);
     Expr mul_right = left_mul->operand(1);
 
@@ -1507,7 +1519,10 @@ Expr CasSimplifyMutator::SimplifySpecificSum(Expr tmp) {
     if (!div) {
       return tmp;
     }
-    CHECK_GE(div->operands().size(), 2U);
+    PADDLE_ENFORCE_GE(div->operands().size(),
+                      2U,
+                      phi::errors::InvalidArgument(
+                          "div's operands size should be greater than 2"));
     Expr div_left = div->operand(0);
     Expr div_right = div->operand(1);
     if (!div_left->type().is_integer() || !div_right->type().is_integer()) {
@@ -1546,11 +1561,11 @@ Expr CasSimplifyMutator::operator()(Expr u) {
 
   if (u.As<Sum>()) {
     auto tmp = detail::SumOrProductGetSingleElementsRec(SimplifySum(u));
-    // deal with index's div-mod add simplification, tempory solution, not cover
-    // all situations. case 1: (m / n) * n + m % n = m (m, n's type is int) case
-    // 2: (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m, n1, n2,
-    // n3's type is int) case 3: m / n2 + (n1 * m) % n3 = n1 * m if n3 = n1 * n2
-    // (m, n1, n2, n3's type is int)
+    // deal with index's div-mod add simplification, temporary solution, not
+    // cover all situations. case 1: (m / n) * n + m % n = m (m, n's type is
+    // int) case 2: (m / n1) * n3 + (n2 * m) % n3 = n2 * m if n3 = n1 * n2 (m,
+    // n1, n2, n3's type is int) case 3: m / n2 + (n1 * m) % n3 = n1 * m if n3 =
+    // n1 * n2 (m, n1, n2, n3's type is int)
     return SimplifySpecificSum(tmp);
   }
 

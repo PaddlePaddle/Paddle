@@ -15,11 +15,10 @@
 #include "paddle/fluid/distributed/ps/table/sparse_accessor.h"
 
 #include "glog/logging.h"
-#include "paddle/fluid/string/string_helper.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
+#include "paddle/utils/string/string_helper.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 int SparseAccessor::Initialize() {
   auto name = _config.embed_sgd_param().name();
@@ -304,5 +303,4 @@ int SparseAccessor::ParseFromString(const std::string& str, float* value) {
   return ret;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

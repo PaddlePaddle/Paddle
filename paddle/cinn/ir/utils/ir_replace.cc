@@ -50,7 +50,7 @@ struct IrReplaceVarBroadcastMutator : ir::IRMutator<Expr*> {
   void Visit(const ir::Broadcast* op, Expr* expr) override {
     if (op->node_type() == from_->node_type() &&
         from_repr_ == GetStreamCnt(*expr)) {
-      *expr = ir::ir_utils::IRCopy(to_);
+      *expr = ir::ir_utils::IRCopy(to_, /* copy_buffer_node = */ false);
     }
   }
 
@@ -68,7 +68,7 @@ struct IrReplaceMutator : ir::IRMutator<Expr*> {
   void Visit(const Expr* op, Expr* expr) override {
     ir::IRMutator<>::Visit(expr, expr);
     if (from_repr_ == GetStreamCnt(*expr)) {
-      *expr = ir::ir_utils::IRCopy(to_);
+      *expr = ir::ir_utils::IRCopy(to_, /* copy_buffer_node = */ false);
     }
   }
 

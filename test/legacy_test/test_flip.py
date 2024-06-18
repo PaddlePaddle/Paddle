@@ -58,7 +58,7 @@ class TestFlipOp_API(unittest.TestCase):
     def test_dygraph(self):
         img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
         with base.dygraph.guard():
-            inputs = base.dygraph.to_variable(img)
+            inputs = paddle.to_tensor(img)
             ret = paddle.flip(inputs, [0])
             ret = ret.flip(0)
             ret = paddle.flip(ret, 1)
@@ -235,7 +235,7 @@ class TestFlipDoubleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -267,7 +267,7 @@ class TestFlipTripleGradCheck(unittest.TestCase):
     @test_with_pir_api
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 

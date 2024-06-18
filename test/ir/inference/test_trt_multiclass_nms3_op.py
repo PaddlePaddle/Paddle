@@ -48,10 +48,10 @@ def multiclass_nms(
     In the NMS step, this operator greedily selects a subset of detection bounding
     boxes that have high scores larger than score_threshold, if providing this
     threshold, then selects the largest nms_top_k confidences scores if nms_top_k
-    is larger than -1. Then this operator pruns away boxes that have high IOU
+    is larger than -1. Then this operator prunes away boxes that have high IOU
     (intersection over union) overlap with already selected boxes by adaptive
     threshold NMS based on parameters of nms_threshold and nms_eta.
-    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    After NMS step, at most keep_top_k number of total bboxes are to be kept
     per image if keep_top_k is larger than -1.
     Args:
         bboxes (Tensor): Two types of bboxes are supported:
@@ -332,7 +332,7 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
         self.run_test()
 
     def test_disable_varseqlen(self):
-        self.diable_tensorrt_varseqlen = False
+        self.disable_tensorrt_varseqlen = False
         self.run_test()
 
 

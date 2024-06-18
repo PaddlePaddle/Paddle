@@ -112,29 +112,29 @@ class ResNetBasicBlockOp : public framework::OperatorWithKernel {
     // make sure Mean/RunningMean and Var/RunningVar share memory
     PADDLE_ENFORCE_EQ(ctx->Inputs("Mean1")[0],
                       ctx->Outputs("Mean1Out")[0],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Mean1 and Mean1Out should share the same memory"));
     PADDLE_ENFORCE_EQ(ctx->Inputs("Var1")[0],
                       ctx->Outputs("Var1Out")[0],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Var1 and Var1Out should share the same memory"));
     PADDLE_ENFORCE_EQ(ctx->Inputs("Mean2")[0],
                       ctx->Outputs("Mean2Out")[0],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Mean2 and Mean2Out should share the same memory"));
     PADDLE_ENFORCE_EQ(ctx->Inputs("Var2")[0],
                       ctx->Outputs("Var2Out")[0],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Var2 and Var2Out should share the same memory"));
 
     if (has_shortcut) {
       PADDLE_ENFORCE_EQ(ctx->Inputs("Mean3")[0],
                         ctx->Outputs("Mean3Out")[0],
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Mean3 and Mean3Out should share the same memory"));
       PADDLE_ENFORCE_EQ(ctx->Inputs("Var3")[0],
                         ctx->Outputs("Var3Out")[0],
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "Var3 and Var3Out should share the same memory"));
     }
 
@@ -143,10 +143,10 @@ class ResNetBasicBlockOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         data_format,
         "NCHW",
-        platform::errors::InvalidArgument("The data format must equal to NCHW. "
-                                          "But received: the data format "
-                                          "= [%s]",
-                                          data_format));
+        phi::errors::InvalidArgument("The data format must equal to NCHW. "
+                                     "But received: the data format "
+                                     "= [%s]",
+                                     data_format));
     int stride1 = ctx->Attrs().Get<int>("stride1");
     int stride2 = ctx->Attrs().Get<int>("stride2");
     int padding1 = ctx->Attrs().Get<int>("padding1");
@@ -158,13 +158,13 @@ class ResNetBasicBlockOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x1_dims.size(),
         4,
-        platform::errors::InvalidArgument("The dimensions of input "
-                                          "must equal to 4."
-                                          "But received: the shape of input "
-                                          "= [%s], the dimension of input = "
-                                          "[%d]",
-                                          x1_dims,
-                                          x1_dims.size()));
+        phi::errors::InvalidArgument("The dimensions of input "
+                                     "must equal to 4."
+                                     "But received: the shape of input "
+                                     "= [%s], the dimension of input = "
+                                     "[%d]",
+                                     x1_dims,
+                                     x1_dims.size()));
 
     // Calculate the dims of output1
     int batch = x1_dims[0];
@@ -225,27 +225,23 @@ class ResNetBasicBlockOp : public framework::OperatorWithKernel {
 
     // By default, the type of the scale, bias, mean,
     // and var tensors should be float when input tensor's dtype is float16.
-    auto bn_param_type = framework::proto::VarType::FP32;
-    PADDLE_ENFORCE_EQ(bn_param_type,
-                      framework::TransToProtoVarType(
-                          ctx.Input<phi::DenseTensor>("Scale1")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "Scale input should be of float type"));
-    PADDLE_ENFORCE_EQ(bn_param_type,
-                      framework::TransToProtoVarType(
-                          ctx.Input<phi::DenseTensor>("Bias1")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "Bias input should be of float type"));
-    PADDLE_ENFORCE_EQ(bn_param_type,
-                      framework::TransToProtoVarType(
-                          ctx.Input<phi::DenseTensor>("Scale2")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "Scale input should be of float type"));
-    PADDLE_ENFORCE_EQ(bn_param_type,
-                      framework::TransToProtoVarType(
-                          ctx.Input<phi::DenseTensor>("Bias2")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "Bias input should be of float type"));
+    auto bn_param_type = phi::DataType::FLOAT32;
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        ctx.Input<phi::DenseTensor>("Scale1")->dtype(),
+        phi::errors::InvalidArgument("Scale input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        ctx.Input<phi::DenseTensor>("Bias1")->dtype(),
+        phi::errors::InvalidArgument("Bias input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        ctx.Input<phi::DenseTensor>("Scale2")->dtype(),
+        phi::errors::InvalidArgument("Scale input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        ctx.Input<phi::DenseTensor>("Bias2")->dtype(),
+        phi::errors::InvalidArgument("Bias input should be of float type"));
 
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
@@ -546,8 +542,7 @@ class ResNetBasicBlockGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const {
     PADDLE_ENFORCE_NOT_NULL(
         ctx.InputVar(framework::GradVarName("Y")),
-        platform::errors::NotFound(
-            "Can not find Y@GRAD in the execution context."));
+        phi::errors::NotFound("Can not find Y@GRAD in the execution context."));
 
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());

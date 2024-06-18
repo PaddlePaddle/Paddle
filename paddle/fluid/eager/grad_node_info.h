@@ -36,8 +36,8 @@ namespace egr {
  * TODO(yangzhanlue): GradNodeBase will also in charge of get the correct input
  * from GradOpDescMaker to GradNodeBase.
  *
- * NOTE: GradNodeBase has a method named run, this method should be overrided by
- * the specific derived class, it will prepare backward inputs and double
+ * NOTE: GradNodeBase has a method named run, this method should be overridden
+ *by the specific derived class, it will prepare backward inputs and double
  * backward's depends. Then, it will call C++ API of backward kernel functions
  * to finish backward computation.
  *
@@ -203,7 +203,7 @@ class GradNodeBase {
 
   /**
    * operator() designed to contain the real backward execution logic, it should
-   * be overrided by derived class defined for each operator. It accepts a
+   * be overridden by derived class defined for each operator. It accepts a
    * vector of Tensor which contains grads input of current operator
    *
    * Note: why we need backward inputs and outputs construct as vector of vector
@@ -250,12 +250,13 @@ class GradNodeBase {
   void SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
                      size_t slot_rank);
   void SetGradInMeta(const paddle::Tensor& fwd_out, size_t slot_rank);
-
+  void SetGradInMeta(const std::vector<paddle::Tensor*>& fwd_out,
+                     size_t slot_rank);
   void SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
                       size_t slot_rank);
   void SetGradOutMeta(const std::vector<const paddle::Tensor*>& fwd_in,
                       size_t slot_rank);
-  void SetGradOutMeta(const paddle::Tensor& fwd_in, size_t slot_rank);
+  TEST_API void SetGradOutMeta(const paddle::Tensor& fwd_in, size_t slot_rank);
   void SetGradOutMeta(const paddle::Tensor& fwd_in,
                       const AutogradMeta* fwd_in_other,
                       size_t slot_rank);
@@ -292,12 +293,12 @@ class GradNodeBase {
   inline bool GradientHooksRegistered() { return !gradient_hooks_.empty(); }
 
   std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
-  GetGradientHookFuntions() {
+  GetGradientHookFunctions() {
     VLOG(7) << "GetGradientHookFunctions ";
     return gradient_hooks_;
   }
 
-  void SetGradientHookFuntions(
+  void SetGradientHookFunctions(
       std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
           hooks) {
     VLOG(7) << "SetGradientHookFunctions ";

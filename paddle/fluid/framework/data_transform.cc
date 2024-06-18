@@ -26,7 +26,7 @@ class Variable;
 }  // namespace paddle
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 namespace paddle {
@@ -82,7 +82,7 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
             phi::funcs::make_memory_desc(out, lin);
         out.set_mem_desc(out_mem_desc);
       } else {
-        // Case2 - transfrom from ONEDNN OPKernel to Non-ONEDNN OPKernel
+        // Case2 - transform from ONEDNN OPKernel to Non-ONEDNN OPKernel
         // Do transform via ONEDNN lib
         PADDLE_ENFORCE(lin == DataLayout::ONEDNN && lout != DataLayout::ONEDNN,
                        platform::errors::InvalidArgument(
@@ -97,12 +97,12 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
             place);
       }
     } else {
-      // Case3 - transfrom between Non-ONEDNN OPKernels
+      // Case3 - transform between Non-ONEDNN OPKernels
       TransDataLayout(
           kernel_type_for_var, expected_kernel_type, in, &out, place);
     }
 #else
-    // Case3 - transfrom between Non-ONEDNN OPKernels
+    // Case3 - transform between Non-ONEDNN OPKernels
     TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out, place);
 #endif
     transformed = true;
@@ -167,8 +167,8 @@ phi::GetKernelTypeForVarContext BuildGetKernelTypeForVarContext(
     bool has_infer_varkernel_fn) {
   // According to "GetKernelTypeForVar" in some ops executed with oneDNN,
   // the only "string" member, such as "data_layout" 、"data_format" of
-  // AttibuteMap is useful. In the future the other args maybe used. Because the
-  // "phi" module should not depend on the "fluid", transform
+  // AttributeMap is useful. In the future the other args maybe used. Because
+  // the "phi" module should not depend on the "fluid", transform
   // "framework::AttributeMap" to "phi::AttributeMap".
   if (has_infer_varkernel_fn) {
     for (auto &attr : fluid_attrs) {

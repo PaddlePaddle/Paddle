@@ -29,8 +29,8 @@ from predictor_utils import PredictorTools
 
 import paddle
 from paddle import base
-from paddle.base.dygraph.base import to_variable
-from paddle.jit.api import to_static
+from paddle.framework import use_pir_api
+from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
 from paddle.static import InputSpec
@@ -323,7 +323,6 @@ class SeResNeXt(paddle.nn.Layer):
             ),
         )
 
-    @to_static(full_graph=True)
     def forward(self, inputs, label):
         if self.layers == 50 or self.layers == 101:
             y = self.conv0(inputs)
@@ -367,6 +366,7 @@ class TestSeResnet(Dy2StTestBase):
             self.temp_dir.name, "inference/se_resnet"
         )
         self.model_filename = "se_resnet" + INFER_MODEL_SUFFIX
+        self.pir_model_filename = "se_resnet" + PIR_INFER_MODEL_SUFFIX
         self.params_filename = "se_resnet" + INFER_PARAMS_SUFFIX
         self.dy_state_dict_save_path = os.path.join(
             self.temp_dir.name, "se_resnet.dygraph"
@@ -382,6 +382,7 @@ class TestSeResnet(Dy2StTestBase):
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
             se_resnext = SeResNeXt()
+            se_resnext = paddle.jit.to_static(se_resnext, full_graph=True)
             optimizer = optimizer_setting(
                 train_parameters, se_resnext.parameters()
             )
@@ -403,8 +404,8 @@ class TestSeResnet(Dy2StTestBase):
                         .reshape(BATCH_SIZE, 1)
                     )
 
-                    img = to_variable(dy_x_data)
-                    label = to_variable(y_data)
+                    img = paddle.to_tensor(dy_x_data)
+                    label = paddle.to_tensor(y_data)
                     label.stop_gradient = True
 
                     pred, avg_loss, acc_top1, acc_top5 = se_resnext(img, label)
@@ -451,15 +452,16 @@ class TestSeResnet(Dy2StTestBase):
 
                     step_idx += 1
                     if step_idx == STEP_NUM:
-                        # TODO(@xiongkun): open after save / load supported in pir.
-                        if (
-                            to_static
-                            and not paddle.base.framework.use_pir_api()
-                        ):
+                        if to_static:
+                            if use_pir_api():
+                                output_spec = [0]
+                            else:
+                                output_spec = [pred]
+
                             paddle.jit.save(
                                 se_resnext,
                                 self.model_save_prefix,
-                                output_spec=[pred],
+                                output_spec=output_spec,
                                 input_names_after_prune=['x'],
                                 input_spec=[
                                     InputSpec(
@@ -494,14 +496,19 @@ class TestSeResnet(Dy2StTestBase):
                 se_resnext.eval()
 
                 label = np.random.random([1, 1]).astype("int64")
-                img = base.dygraph.to_variable(data)
-                label = base.dygraph.to_variable(label)
+                img = paddle.to_tensor(data)
+                label = paddle.to_tensor(label)
                 pred_res, _, _, _ = se_resnext(img, label)
 
                 return pred_res.numpy()
 
     def predict_static(self, data):
         paddle.enable_static()
+        if use_pir_api():
+            model_filename = self.pir_model_filename
+        else:
+            model_filename = self.model_filename
+
         exe = base.Executor(place)
         [
             inference_program,
@@ -510,7 +517,7 @@ class TestSeResnet(Dy2StTestBase):
         ] = paddle.static.io.load_inference_model(
             self.model_save_dir,
             executor=exe,
-            model_filename=self.model_filename,
+            model_filename=model_filename,
             params_filename=self.params_filename,
         )
 
@@ -546,7 +553,7 @@ class TestSeResnet(Dy2StTestBase):
         dy_pre = self.predict_dygraph(image)
         st_pre = self.predict_static(image)
         dy_jit_pre = self.predict_dygraph_jit(image)
-        predictor_pre = self.predict_analysis_inference(image)
+
         np.testing.assert_allclose(
             dy_pre,
             st_pre,
@@ -560,18 +567,18 @@ class TestSeResnet(Dy2StTestBase):
             err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
 
-        flat_st_pre = st_pre.flatten()
-        flat_predictor_pre = np.array(predictor_pre).flatten()
-        for i in range(len(flat_predictor_pre)):
-            # modify precision to 1e-6, avoid unittest failed
-            self.assertAlmostEqual(
-                flat_predictor_pre[i],
-                flat_st_pre[i],
-                delta=1e-6,
-                msg="predictor_pre:\n {}\n, st_pre: \n{}.".format(
-                    flat_predictor_pre[i], flat_st_pre[i]
-                ),
-            )
+        if not use_pir_api():
+            predictor_pre = self.predict_analysis_inference(image)
+            flat_st_pre = st_pre.flatten()
+            flat_predictor_pre = np.array(predictor_pre).flatten()
+            for i in range(len(flat_predictor_pre)):
+                # modify precision to 1e-6, avoid unittest failed
+                self.assertAlmostEqual(
+                    flat_predictor_pre[i],
+                    flat_st_pre[i],
+                    delta=1e-6,
+                    msg=f"predictor_pre:\n {flat_predictor_pre[i]}\n, st_pre: \n{flat_st_pre[i]}.",
+                )
 
     @test_default_and_pir
     def test_check_result(self):
@@ -608,9 +615,7 @@ class TestSeResnet(Dy2StTestBase):
             err_msg=f'static acc5: {acc5_1} \ndygraph acc5: {acc5_2}',
         )
 
-        # TODO(@xiongkun): open after save / load supported in pir.
-        if not paddle.base.framework.use_pir_api():
-            self.verify_predict()
+        self.verify_predict()
 
 
 if __name__ == '__main__':

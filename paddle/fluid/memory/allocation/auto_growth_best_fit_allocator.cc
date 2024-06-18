@@ -16,10 +16,12 @@
 
 #include <algorithm>
 #include <mutex>  // NOLINT
+#include <utility>
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/backends/device_manager.h"
 
 PADDLE_DEFINE_EXPORTED_READONLY_bool(
     free_idle_chunk,
@@ -40,20 +42,19 @@ PADDLE_DEFINE_EXPORTED_READONLY_bool(
 PADDLE_DEFINE_EXPORTED_READONLY_bool(print_allocator_trace_info,
                                      false,
                                      "print trace memory info");
-
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
-    const std::shared_ptr<Allocator> &underlying_allocator,
+    std::shared_ptr<Allocator> underlying_allocator,
     size_t alignment,
     size_t chunk_size,
-    bool allow_free_idle_chunk)
-    : underlying_allocator_(underlying_allocator),
+    bool allow_free_idle_chunk,
+    int extra_padding_size)
+    : underlying_allocator_(std::move(underlying_allocator)),
       alignment_(alignment),
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
-      allow_free_idle_chunk_(allow_free_idle_chunk) {
+      allow_free_idle_chunk_(allow_free_idle_chunk),
+      extra_padding_size_(extra_padding_size) {
   total_alloc_times_ = 0;
   total_alloc_size_ = 0;
   total_free_times_ = 0;
@@ -66,8 +67,11 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
   platform::RecordEvent record("AutoGrowthBestFitAllocator::Allocate",
                                platform::TracerEventType::UserDefined,
                                9 /*level*/);
-  size_t size = AlignedSize(unaligned_size, alignment_);
-  VLOG(10) << "Allocate " << unaligned_size << " bytes, aligned to " << size;
+
+  size_t size = AlignedSize(unaligned_size + extra_padding_size_, alignment_);
+
+  VLOG(10) << "Allocate " << unaligned_size << " bytes, aligned to " << size
+           << ", extra size " << extra_padding_size_;
 
   std::lock_guard<SpinLock> guard(spinlock_);
   auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
@@ -220,6 +224,4 @@ void AutoGrowthBestFitAllocator::Trace() const {
           << " curr_chunks_num:" << chunks_.size();
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation

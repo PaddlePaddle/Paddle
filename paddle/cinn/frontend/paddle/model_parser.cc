@@ -19,10 +19,11 @@
 
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/codegen_cuda_host.h"
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/frontend/paddle/compatible_pb.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::frontend::paddle {
 
@@ -42,7 +43,9 @@ int SizeOfType(framework_proto::VarType::Type type) {
     DO(INT64, int64_t);
 #undef DO
     default:
-      LOG(FATAL) << "unknown data type " << type;
+      std::stringstream ss;
+      ss << "unknown data type " << type;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return -1;
 }
@@ -53,7 +56,8 @@ void TensorFromStream(std::istream &is,
   using Type = framework_proto::VarType::Type;
   uint32_t version;
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
-  CHECK_EQ(version, 0U) << "Only version 0 is supported";
+  PADDLE_ENFORCE_EQ(
+      version, 0U, phi::errors::InvalidArgument("Only version 0 is supported"));
   // read tensor desc
   framework_proto::VarType::TensorDesc desc;
   {
@@ -74,45 +78,50 @@ void TensorFromStream(std::istream &is,
   tensor->Resize(dims);
   void *buf;
   size_t size = tensor->shape().numel() * SizeOfType(desc.data_type());
-  // alllocate memory
-  if (target.arch == Target::Arch::X86) {
-    switch (static_cast<int>(desc.data_type())) {
+  // allocate memory
+  target.arch.Match(
+      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::X86Arch) {
+        switch (static_cast<int>(desc.data_type())) {
 #define SET_TENSOR(desc, type, precision)     \
   case Type::VarType_Type_##desc:             \
     buf = tensor->mutable_data<type>(target); \
     tensor->set_type(precision);              \
     break
-
-      SET_TENSOR(FP32, float, Float(32));
-      SET_TENSOR(INT8, int8_t, Int(8));
-      SET_TENSOR(INT16, int16_t, Int(16));
-      SET_TENSOR(INT32, int32_t, Int(32));
-      SET_TENSOR(INT64, int64_t, Int(64));
+          SET_TENSOR(FP32, float, Float(32));
+          SET_TENSOR(INT8, int8_t, Int(8));
+          SET_TENSOR(INT16, int16_t, Int(16));
+          SET_TENSOR(INT32, int32_t, Int(32));
+          SET_TENSOR(INT64, int64_t, Int(64));
 #undef SET_TENSOR
-      default:
-        LOG(FATAL) << "unknown type " << desc.data_type();
-    }
-    // tensor->set_persistable(true);
-    is.read(static_cast<char *>(buf), size);
-  } else if (target.arch == Target::Arch::NVGPU) {
+          default:
+            std::stringstream ss;
+            ss << "unknown type " << desc.data_type();
+            PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+        }
+        // tensor->set_persistable(true);
+        is.read(static_cast<char *>(buf), size);
+      },
+      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-    if (desc.data_type() != Type::VarType_Type_FP32)
-      LOG(FATAL) << "[CUDA] The type is not fp32!!";
-    auto *data = tensor->mutable_data<float>(target);
-    tensor->set_type(Float(32));
-    std::vector<float> temp(tensor->shape().numel());
-    // LOG(INFO) <<"[CUDA] The tensor's size is "<< tensor->shape().numel();
-    is.read(reinterpret_cast<char *>(temp.data()), size);
-    CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
-                         temp.data(),
-                         tensor->shape().numel() * sizeof(float),
-                         cudaMemcpyHostToDevice));
+        if (desc.data_type() != Type::VarType_Type_FP32)
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("[CUDA] The type is not fp32!!"));
+        auto *data = tensor->mutable_data<float>(target);
+        tensor->set_type(Float(32));
+        std::vector<float> temp(tensor->shape().numel());
+        // LOG(INFO) <<"[CUDA] The tensor's size is "<< tensor->shape().numel();
+        is.read(reinterpret_cast<char *>(temp.data()), size);
+        CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
+                             temp.data(),
+                             tensor->shape().numel() * sizeof(float),
+                             cudaMemcpyHostToDevice));
 #else
-    LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
+        PADDLE_THROW(phi::errors::Fatal(
+            "To use CUDA backends, you need to set WITH_CUDA ON!"));
 #endif
-  } else {
-    CINN_NOT_IMPLEMENTED
-  }
+      });
 }
 
 void LoadLoDTensor(std::istream &is,
@@ -281,7 +290,7 @@ void LoadModelPb(const std::string &model_dir,
                         target);
           break;
         default:
-          LOG(FATAL) << "unknown weight type";
+          PADDLE_THROW(phi::errors::InvalidArgument("unknown weight type"));
       }
     }
   }

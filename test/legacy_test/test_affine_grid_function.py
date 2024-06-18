@@ -122,10 +122,12 @@ class AffineGridTestCase(unittest.TestCase):
     def paddle_dygraph_layer(self):
         paddle.disable_static()
         theta_var = (
-            dg.to_variable(self.theta) if not self.invalid_theta else "invalid"
+            paddle.to_tensor(self.theta)
+            if not self.invalid_theta
+            else "invalid"
         )
         output_shape = (
-            dg.to_variable(self.output_shape)
+            paddle.to_tensor(self.output_shape)
             if self.variable_output_shape
             else self.output_shape
         )

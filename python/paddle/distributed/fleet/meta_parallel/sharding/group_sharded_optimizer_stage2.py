@@ -75,7 +75,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         group=None,
         offload=False,
         device="gpu",
-        pertrain_sync_models=True,
+        pretrain_sync_models=True,
         dp_group=None,
         **kw
     ):
@@ -178,7 +178,7 @@ class GroupShardedOptimizerStage2(Optimizer):
             ), "Not support! when using offload with sharding stage2, please use pure sharding stage2, exclude data parallel."
 
         # Synchronous all ranks models
-        if pertrain_sync_models:
+        if pretrain_sync_models:
             self._sync_params_and_buffers()
 
         self.param_storages = {}  # {dtype: {rank: InternalStorage}}
@@ -342,7 +342,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         # func 1
         self._integration_params()
 
-    # Segement helpers
+    # Segment helpers
 
     def _segment_params(self):
         """

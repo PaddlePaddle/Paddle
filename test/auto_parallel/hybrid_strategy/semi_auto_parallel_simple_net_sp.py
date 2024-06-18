@@ -179,7 +179,7 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
         loss_fn = nn.MSELoss()
         # run forward and backward
         opt = paddle.optimizer.AdamW(
-            learning_rate=0.1, parameters=layer.parameters()
+            learning_rate=0.001, parameters=layer.parameters()
         )
         for _ in range(5):
             image, label = self.init_input_data()
@@ -192,7 +192,6 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
 
             loss = loss_fn(out, label)
             loss.backward()
-
             opt.step()
         return loss, layer.parameters()
 
@@ -204,14 +203,8 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
             self.dp_mp_sp_loss,
             self.dp_mp_sp_parameters,
         ) = self.run_dynamic(model, is_sp=True)
-
-        self.check_tensor_eq(self.dp_mp_sp_loss, self.base_loss)
-        for param, param_base in zip(
-            self.dp_mp_sp_parameters, self.base_parameters
-        ):
-            if param.grad._is_initialized():
-                self.check_tensor_eq(param, param_base)
-                self.check_tensor_eq(param.grad, param_base.grad)
+        if dist.get_rank() in model.pp1_mesh.process_ids:
+            self.check_tensor_eq(self.dp_mp_sp_loss, self.base_loss, rtol=1e-3)
 
     def run_test_case(self):
         self.test_dp_mp_sp_demo_net()

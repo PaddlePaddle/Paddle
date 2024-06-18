@@ -39,13 +39,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/printf.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/utils/string/printf.h"
 
 namespace framework = paddle::framework;
-namespace platform = paddle::platform;
-namespace operators = paddle::operators;
-namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
 // void testSampleNodes(
@@ -106,7 +103,7 @@ void testFeatureNodeSerializeFloat64() {
   ASSERT_LE(eps * eps, 1e-5);
 }
 
-// void testSingleSampleNeighboor(
+// void testSingleSampleNeighbour(
 //     std::shared_ptr<paddle::distributed::GraphBrpcClient>& worker_ptr_) {
 //   std::vector<std::vector<int64_t>> vs;
 //   std::vector<std::vector<float>> vs1;
@@ -228,7 +225,7 @@ void testFeatureNodeSerializeFloat64() {
 // void testCache();
 void testGraphToBuffer();
 
-const char* edges[] = {"37\t45\t0.34",
+const char* edges[] = {"37\t45\t0.34",  // NOLINT
                        "37\t145\t0.31",
                        "37\t112\t0.21",
                        "96\t48\t1.4",
@@ -239,10 +236,10 @@ const char* edges[] = {"37\t45\t0.34",
                        "59\t122\t0.21",
                        "97\t48\t0.34",
                        "97\t247\t0.31",
-                       "97\t111\t0.21"};
-char edge_file_name[] = "edges.txt";
+                       "97\t111\t0.21"};  // NOLINT
+char edge_file_name[] = "edges.txt";      // NOLINT
 
-const char* nodes[] = {"user\t37\ta 0.34\tb 13 14\tc hello\td abc",
+const char* nodes[] = {"user\t37\ta 0.34\tb 13 14\tc hello\td abc",  // NOLINT
                        "user\t96\ta 0.31\tb 15 10\tc 96hello\td abcd",
                        "user\t59\ta 0.11\tb 11 14",
                        "user\t97\ta 0.11\tb 12 11",
@@ -257,10 +254,10 @@ const char* nodes[] = {"user\t37\ta 0.34\tb 13 14\tc hello\td abc",
                        "item\t122\ta 0.21",
                        "item\t49\ta 0.21",
                        "item\t248\ta 0.21",
-                       "item\t113\ta 0.21"};
-char node_file_name[] = "nodes.txt";
+                       "item\t113\ta 0.21"};  // NOLINT
+char node_file_name[] = "nodes.txt";          // NOLINT
 
-void prepare_file(char file_name[], bool load_edge) {
+void prepare_file(char file_name[], bool load_edge) {  // NOLINT
   std::ofstream ofile;
   ofile.open(file_name);
   if (load_edge) {
@@ -410,8 +407,8 @@ void RunBrpcPushSparse() {
   // testCache();
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
-  prepare_file(edge_file_name, 1);
-  prepare_file(node_file_name, 0);
+  prepare_file(edge_file_name, true);
+  prepare_file(node_file_name, false);
   // auto ph_host = paddle::distributed::PSHost(ip_, port_, 0);
   // host_sign_list_.push_back(ph_host.SerializeToString());
 
@@ -419,7 +416,7 @@ void RunBrpcPushSparse() {
   // auto ph_host2 = paddle::distributed::PSHost(ip2, port2, 1);
   // host_sign_list_.push_back(ph_host2.SerializeToString());
   // // test-end
-  // // Srart Server
+  // // Start Server
   // std::thread* server_thread = new std::thread(RunServer);
   // std::thread* server_thread2 = new std::thread(RunServer2);
   // sleep(1);
@@ -541,7 +538,7 @@ void RunBrpcPushSparse() {
   client1.load_node_file(std::string("user"), std::string(node_file_name));
   client1.load_node_file(std::string("item"), std::string(node_file_name));
   client1.load_edge_file(
-      std::string("user2item"), std::string(edge_file_name), 0);
+      std::string("user2item"), std::string(edge_file_name), false);
   nodes.clear();
   VLOG(0) << "start to pull graph list";
   nodes = client1.pull_graph_list(std::string("user"), 0, 1, 4, 1);

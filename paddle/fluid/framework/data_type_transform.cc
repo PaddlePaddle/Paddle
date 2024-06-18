@@ -137,7 +137,7 @@ void TransDataType(const phi::KernelKey& kernel_type_for_var,
                     kernel_type_for_var.dtype(),
                     platform::errors::InvalidArgument(
                         "The src dtype(%s) of input tensor and kernel_type(%s) "
-                        "are not conststent.",
+                        "are not consistent.",
                         DataTypeToString(in.dtype()),
                         DataTypeToString(kernel_type_for_var.dtype())));
   auto dst_type = framework::TransToProtoVarType(expected_kernel_type.dtype());

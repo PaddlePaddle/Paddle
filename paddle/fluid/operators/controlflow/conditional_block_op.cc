@@ -15,18 +15,17 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 #include <array>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
-#include "paddle/phi/core/flags.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 const char ConditionalOp::kInputs[] = "Input";        // NOLINT
 const char ConditionalOp::kOutputs[] = "Out";         // NOLINT
@@ -50,7 +49,7 @@ class ConditionalBlockOp : public ConditionalOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     bool need_run = false;
     if (Attr<bool>("is_scalar_condition")) {
       // When is_scalar_condition is True, the conditional variable is a scalar,
@@ -73,7 +72,7 @@ class ConditionalBlockOp : public ConditionalOp {
       auto *scope_var = scope.FindVar(Output(ConditionalOp::kScope));
       PADDLE_ENFORCE_NOT_NULL(
           scope_var,
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "Expect Scope variable to be set in conditional_block_op, but "
               "got a null Scope variable. Please set the Scope variable."));
 
@@ -139,7 +138,7 @@ class ConditionalBlockInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(context->HasInputs(ConditionalOp::kCondition),
                       true,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "conditional_block_op must have condition input."));
   }
 };
@@ -154,7 +153,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     bool need_run = false;
     if (Attr<bool>("is_scalar_condition")) {
       auto xs = this->InputTensors(scope, ConditionalOp::kCondition);
@@ -180,14 +179,14 @@ class ConditionalBlockGradOp : public ConditionalOp {
       auto *scope_var = scope.FindVar(Input(ConditionalOp::kScope));
       PADDLE_ENFORCE_NOT_NULL(
           scope_var,
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "Expect Scope variable to be set in conditional_block_op, but "
               "got a null Scope variable. Please set the Scope variable."));
       auto &scopes = scope_var->Get<std::vector<framework::Scope *>>();
       PADDLE_ENFORCE_GT(
           scopes.size(),
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "Expect Scope variable contains at least 1 scope, but got: %d",
               scopes.size()));
       framework::Scope &cur_scope = *(scopes[0]);
@@ -272,7 +271,7 @@ class ConditionalBlockGradInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE_EQ(
         context->HasInputs(ConditionalOp::kCondition),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Condition must be set in conditional_block_grad_op."));
     if (context->HasInputs(ConditionalOp::kInputs) &&
         context->HasOutputs(framework::GradVarName(ConditionalOp::kInputs))) {
@@ -294,7 +293,7 @@ class ConditionalBlockGradInferVarType : public framework::VarTypeInference {
         ctx->OutputSize(framework::GradVarName(ConditionalOp::kInputs));
     PADDLE_ENFORCE_EQ(input_size,
                       output_size,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "input_size and output_size should be equal for "
                           "conditional_block_grad_op."));
     for (size_t i = 0; i < output_size; ++i) {
@@ -334,8 +333,7 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conditional_block,

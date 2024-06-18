@@ -40,8 +40,8 @@ class FusedEcMoe(Layer):
         **bias** (Parameter): the learnable bias of this layer.
 
     Shape:
-        - input: Multi-dimentional tensor with shape :math:`[batch\_size, seq\_len, d\_model]` .
-        - output: Multi-dimentional tensor with shape :math:`[batch\_size, seq\_len, d\_model]` .
+        - input: Multi-dimensional tensor with shape :math:`[batch\_size, seq\_len, d\_model]` .
+        - output: Multi-dimensional tensor with shape :math:`[batch\_size, seq\_len, d\_model]` .
 
     Examples:
         .. code-block:: python

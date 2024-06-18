@@ -75,7 +75,7 @@ class TestGaussianRandomFP16Op(OpTest):
             "mean": self.mean,
             "std": self.std,
             "seed": 10,
-            "dtype": paddle.base.core.VarDesc.VarType.FP16,
+            "dtype": paddle.float16,
             "use_mkldnn": self.use_mkldnn,
         }
         paddle.seed(10)
@@ -87,9 +87,7 @@ class TestGaussianRandomFP16Op(OpTest):
         self.std = 2.0
 
     def test_check_output(self):
-        self.check_output_with_place_customized(
-            self.verify_output, place=core.CUDAPlace(0), check_pir=True
-        )
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         self.assertEqual(outs[0].shape, (123, 92))
@@ -128,7 +126,7 @@ class TestGaussianRandomBF16Op(OpTest):
             "mean": self.mean,
             "std": self.std,
             "seed": 10,
-            "dtype": paddle.base.core.VarDesc.VarType.BF16,
+            "dtype": paddle.bfloat16,
             "use_mkldnn": self.use_mkldnn,
         }
         paddle.seed(10)
@@ -140,9 +138,7 @@ class TestGaussianRandomBF16Op(OpTest):
         self.std = 2.0
 
     def test_check_output(self):
-        self.check_output_with_place_customized(
-            self.verify_output, place=core.CUDAPlace(0), check_pir=True
-        )
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         outs = convert_uint16_to_float(outs)
@@ -346,17 +342,17 @@ class TestGaussianRandomAPI(unittest.TestCase):
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
             out = paddle.tensor.random.gaussian([2, 3])
-            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP16)
+            self.assertEqual(out.dtype, paddle.float16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
             out = paddle.tensor.random.gaussian([2, 3])
-            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP32)
+            self.assertEqual(out.dtype, paddle.float32)
 
         def test_default_fp64():
             paddle.framework.set_default_dtype('float64')
             out = paddle.tensor.random.gaussian([2, 3])
-            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP64)
+            self.assertEqual(out.dtype, paddle.float64)
 
         if paddle.is_compiled_with_cuda():
             paddle.set_device('gpu')
@@ -370,17 +366,17 @@ class TestStandardNormalDtype(unittest.TestCase):
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
             out = paddle.tensor.random.standard_normal([2, 3])
-            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP16)
+            self.assertEqual(out.dtype, paddle.float16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
             out = paddle.tensor.random.standard_normal([2, 3])
-            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP32)
+            self.assertEqual(out.dtype, paddle.float32)
 
         def test_default_fp64():
             paddle.framework.set_default_dtype('float64')
             out = paddle.tensor.random.standard_normal([2, 3])
-            self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP64)
+            self.assertEqual(out.dtype, paddle.float64)
 
         if paddle.is_compiled_with_cuda():
             paddle.set_device('gpu')
@@ -428,9 +424,7 @@ class TestRandomValue(unittest.TestCase):
             -0.0000053026194133403266873214888799115129813799285329878330230713
         )
         expect_std = 0.99999191058126390974081232343451119959354400634765625
-        _check_random_value(
-            core.VarDesc.VarType.FP64, expect, expect_mean, expect_std
-        )
+        _check_random_value(paddle.float64, expect, expect_mean, expect_std)
 
         expect = [
             -0.7988942,
@@ -446,9 +440,7 @@ class TestRandomValue(unittest.TestCase):
         ]
         expect_mean = -0.00004762359094456769526004791259765625
         expect_std = 0.999975681304931640625
-        _check_random_value(
-            core.VarDesc.VarType.FP32, expect, expect_mean, expect_std
-        )
+        _check_random_value(paddle.float32, expect, expect_mean, expect_std)
 
 
 if __name__ == "__main__":

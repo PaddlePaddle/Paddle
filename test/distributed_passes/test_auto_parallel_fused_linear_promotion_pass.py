@@ -181,7 +181,7 @@ class TestFusedLinerPromotion(unittest.TestCase):
             rank=0, enable_fused_linear_promotion=False, enable_sp=False
         )
         ops_without_promotion = dist_main_prog.global_block().ops
-        oringin_fused_gemm_epilogue_ops = [
+        origin_fused_gemm_epilogue_ops = [
             op
             for op in ops_without_promotion
             if op.type == "fused_gemm_epilogue"
@@ -196,7 +196,7 @@ class TestFusedLinerPromotion(unittest.TestCase):
         ]
         self.assertEqual(
             len(fused_gemm_epilogue_ops),
-            len(oringin_fused_gemm_epilogue_ops) + 2,
+            len(origin_fused_gemm_epilogue_ops) + 2,
         )
 
 

@@ -1,11 +1,15 @@
-if(NOT CINN_ONLY)
-  core_gather_headers()
-  gather_srcs(
-    cinnapi_src
-    SRCS
-    utils.cc
-    op_lowering_impl.cc
-    op_mapper.cc
-    op_lowering_util.cc
-    compilation_task.cc)
-endif()
+core_gather_headers()
+gather_srcs(
+  cinnapi_src
+  SRCS
+  group.cc
+  utils.cc
+  op_lowering_group.cc
+  op_lowering_impl.cc
+  op_mapper.cc
+  op_lowering_util.cc
+  trivial_op_impl.cc
+  trivial_op_util.cc
+  compilation_task.cc
+  compilation_cache.cc
+  fusion_info.cc)

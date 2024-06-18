@@ -29,7 +29,7 @@ from paddle.incubate.autograd import primapi
 from paddle.pir_utils import test_with_pir_api
 
 
-def dropout_wapper(
+def dropout_wrapper(
     X,
     Seed=None,
     dropout_prob=0.5,
@@ -71,7 +71,7 @@ class TestDropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
         self.prim_op_type = "comp"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
@@ -99,7 +99,7 @@ class TestDropoutOp_ZeroDim(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
         self.prim_op_type = "comp"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.inputs = {'X': np.random.random(()).astype("float32")}
         self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
@@ -119,7 +119,7 @@ class TestDropoutOp_ZeroDim(TestDropoutOp):
 class TestDropoutOpInput1d(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((2000,)).astype("float32")}
@@ -147,7 +147,7 @@ class TestDropoutOpInput1d(OpTest):
 class TestDropoutOp2(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
@@ -164,7 +164,7 @@ class TestDropoutOp2(TestDropoutOp):
 class TestDropoutOp2_ZeroDim(TestDropoutOp2):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random(()).astype("float32")}
@@ -181,7 +181,7 @@ class TestDropoutOp2_ZeroDim(TestDropoutOp2):
 class TestDropoutOp3(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
@@ -203,7 +203,7 @@ class TestDropoutOp3(TestDropoutOp):
 class TestDropoutOp4(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
@@ -223,7 +223,7 @@ class TestDropoutOp4(OpTest):
 class TestDropoutOp5(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
@@ -242,7 +242,7 @@ class TestDropoutOp5(OpTest):
 class TestDropoutOp6(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
@@ -264,7 +264,7 @@ class TestDropoutOp6(TestDropoutOp):
 class TestDropoutOp7(TestDropoutOp):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
@@ -291,7 +291,7 @@ class TestDropoutOp7(TestDropoutOp):
 class TestDropoutOp8(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
@@ -314,7 +314,7 @@ class TestDropoutOp8(OpTest):
 class TestDropoutOp9(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
@@ -335,7 +335,7 @@ class TestDropoutOp9(OpTest):
 class TestDropoutOpWithSeed(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.inputs = {
@@ -380,7 +380,7 @@ class TestDropoutOpWithSeed(OpTest):
 class TestFP16DropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.init_test_case()
@@ -431,7 +431,7 @@ class TestFP16DropoutOp2(TestFP16DropoutOp):
 class TestBF16DropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
-        self.python_api = dropout_wapper
+        self.python_api = dropout_wrapper
         self.public_python_api = prim_dropout_wrapper
         self.prim_op_type = "comp"
         self.dtype = np.uint16
@@ -538,8 +538,11 @@ class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
 
 
 class TestDropoutOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             paddle.enable_static()
 
             def test_Variable():
@@ -690,7 +693,7 @@ class TestDropoutFAPI(unittest.TestCase):
                 in_np = np.random.random([40, 40]).astype("float32")
                 res_np = in_np
                 res_np2 = np.zeros_like(in_np)
-                input = base.dygraph.to_variable(in_np)
+                input = paddle.to_tensor(in_np)
 
                 res1 = paddle.nn.functional.dropout(
                     x=input, p=0.0, training=False
@@ -792,9 +795,12 @@ class TestDropoutFAPI(unittest.TestCase):
 
 
 class TestDropoutFAPIError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             def test_Variable():
                 # the input of dropout must be Variable.
@@ -907,7 +913,7 @@ class TestDropoutCAPI(unittest.TestCase):
             with base.dygraph.guard(place):
                 input_np = np.random.random([40, 40]).astype("float32")
                 result_np = input_np
-                input = base.dygraph.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 m = paddle.nn.Dropout(p=0.0)
                 m.eval()
                 result = m(input)
@@ -961,7 +967,7 @@ class TestDropout2DFAPI(unittest.TestCase):
             with base.dygraph.guard(place):
                 in_np = np.random.random([2, 3, 4, 5]).astype("float32")
                 res_np = in_np
-                input = base.dygraph.to_variable(in_np)
+                input = paddle.to_tensor(in_np)
 
                 res1 = paddle.nn.functional.dropout2d(
                     x=input, p=0.0, training=False, data_format='NCHW'
@@ -984,7 +990,7 @@ class TestDropout2DFAPIError(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
 
             def test_xdim():
-                # dimentions of x should be 4
+                # dimensions of x should be 4
                 x = paddle.static.data(
                     name='x1', shape=[2, 3, 4, 5, 6], dtype="int32"
                 )
@@ -1014,7 +1020,7 @@ class TestDropout2DCAPI(unittest.TestCase):
             with base.dygraph.guard(place):
                 input_np = np.random.random([2, 3, 4, 5]).astype("float32")
                 result_np = input_np
-                input = base.dygraph.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 m = paddle.nn.Dropout2D(p=0.0)
                 m.eval()
                 result = m(input)
@@ -1093,7 +1099,7 @@ class TestDropout3DFAPI(unittest.TestCase):
             with base.dygraph.guard(place):
                 in_np = np.random.random([2, 3, 4, 5, 6]).astype("float32")
                 res_np = in_np
-                input = base.dygraph.to_variable(in_np)
+                input = paddle.to_tensor(in_np)
 
                 res1 = paddle.nn.functional.dropout3d(
                     x=input, p=0.0, training=False, data_format='NCDHW'
@@ -1116,7 +1122,7 @@ class TestDropout3DFAPIError(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
 
             def test_xdim():
-                # dimentions of x should be 5
+                # dimensions of x should be 5
                 x = paddle.static.data(
                     name='x1', shape=[2, 3, 4, 5], dtype="int32"
                 )
@@ -1146,7 +1152,7 @@ class TestDropout3DCAPI(unittest.TestCase):
             with base.dygraph.guard(place):
                 input_np = np.random.random([2, 3, 4, 5, 6]).astype("float32")
                 result_np = input_np
-                input = base.dygraph.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 m = paddle.nn.Dropout3D(p=0.0)
                 m.eval()
                 result = m(input)
@@ -1202,7 +1208,7 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
                 in_np = np.random.random([40, 40]).astype("float32")
                 res_np = in_np
                 res_np3 = np.zeros_like(in_np)
-                input = base.dygraph.to_variable(in_np)
+                input = paddle.to_tensor(in_np)
 
                 res1 = paddle.nn.functional.alpha_dropout(x=input, p=0.0)
                 res2 = paddle.nn.functional.alpha_dropout(
@@ -1217,8 +1223,11 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
 
 
 class TestAlphaDropoutFAPIError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             def test_Variable():
                 # the input of dropout must be Variable.
@@ -1276,7 +1285,7 @@ class TestAlphaDropoutCAPI(unittest.TestCase):
             with base.dygraph.guard(place):
                 input_np = np.random.random([40, 40]).astype("float32")
                 result_np = input_np
-                input = base.dygraph.to_variable(input_np)
+                input = paddle.to_tensor(input_np)
                 m = paddle.nn.AlphaDropout(p=0.0)
                 m.eval()
                 result = m(input)
@@ -1528,7 +1537,9 @@ class PrimNet(paddle.nn.Layer):
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=build_strategy)
+    return paddle.jit.to_static(
+        net, build_strategy=build_strategy, full_graph=True
+    )
 
 
 @param.parameterized_class(
@@ -1744,9 +1755,11 @@ class TestCompositeDropout(unittest.TestCase):
                     input_ = paddle.static.data(
                         'x',
                         shape=self.x.shape,
-                        dtype=self.x.dtype
-                        if self.dtype != "bfloat16"
-                        else "float32",
+                        dtype=(
+                            self.x.dtype
+                            if self.dtype != "bfloat16"
+                            else "float32"
+                        ),
                     )
                     input_.stop_gradient = False
                     y = paddle.assign(input_)
@@ -2094,9 +2107,11 @@ class TestPirCompositeDropout(unittest.TestCase):
                     input_ = paddle.static.data(
                         'x',
                         shape=self.x.shape,
-                        dtype=self.x.dtype
-                        if self.dtype != "bfloat16"
-                        else "float32",
+                        dtype=(
+                            self.x.dtype
+                            if self.dtype != "bfloat16"
+                            else "float32"
+                        ),
                     )
                     input_.stop_gradient = False
                     output = paddle.nn.functional.dropout(

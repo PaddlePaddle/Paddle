@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import numpy as np
 
@@ -52,7 +53,7 @@ def transpose(x, perm, name=None):
     perm[i]-th dimension of `input`.
 
     Args:
-        x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float32, float64, int32.
+        x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float16, bfloat16, float32, float64, int8, int16, int32, int64, uint8, uint16, complex64, complex128.
         perm (list|tuple): Permute the input according to the data of perm.
         name (str, optional): The name of this layer. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -119,8 +120,12 @@ def transpose(x, perm, name=None):
             [
                 'bool',
                 'float16',
+                'bfloat16',
                 'float32',
                 'float64',
+                'int8',
+                'uint8',
+                'int16',
                 'int32',
                 'int64',
                 'uint16',
@@ -301,38 +306,250 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         return out
 
 
-def norm(x, p='fro', axis=None, keepdim=False, name=None):
+def vector_norm(x, p=2.0, axis=None, keepdim=False, name=None):
     """
-
-    Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
-    or 2-norm, and in general the p-norm for p > 0) of a given tensor.
-
-    Note:
-        This norm API is different from `numpy.linalg.norm`.
-        This api supports high-order input tensors (rank >= 3), and certain axis need to be pointed out to calculate the norm.
-        But `numpy.linalg.norm` only supports 1-D vector or 2-D matrix as input tensor.
-        For p-order matrix norm, this api actually treats matrix as a flattened vector to calculate the vector norm, NOT REAL MATRIX NORM.
+    Calculate the p-order vector norm for certain  dimension of Tensor `input`.
+    Returns the vector norm (the 1-norm, the Euclidean or 2-norm, and in general the p-norm)
+    of a given tensor.
 
     Args:
-        x (Tensor): The input tensor could be N-D tensor, and the input data
-            type could be float32 or float64.
-        p (float|string, optional): Order of the norm. Supported values are `fro`, `nuc`, `0`, `1`, `2`,
-            `inf`, `-inf` and any positive real number yielding the corresponding p-norm. Not supported: ord < 0.
-            Default value is `fro`.
-        axis (int|list|tuple, optional): The axis on which to apply norm operation. If axis is int
-            or list(int)/tuple(int)  with only one element, the vector norm is computed over the axis.
-            If `axis < 0`, the dimension to norm operation is rank(input) + axis.
-            If axis is a list(int)/tuple(int) with two elements, the matrix norm is computed over the axis.
-            Default value is `None`.
-        keepdim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result tensor will have fewer dimension
-            than the :attr:`input` unless :attr:`keepdim` is true, default
-            value is False.
+        x (Tensor): Tensor, data type float32, float64.
+        p (int|float, optional): None for porder=2.0. Default None.
+        axis (int|list, optional): None for last dimension. Default None.
+        keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: results of norm operation on the specified axis of input tensor,
+        Tensor: results of vector_norm operation on the specified axis of input tensor,
+        it's data type is the same as input's Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import numpy as np
+            >>> x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
+            >>> print(x)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[-12., -11., -10., -9. ],
+              [-8. , -7. , -6. , -5. ],
+              [-4. , -3. , -2. , -1. ]],
+             [[ 0. ,  1. ,  2. ,  3. ],
+              [ 4. ,  5. ,  6. ,  7. ],
+              [ 8. ,  9. ,  10.,  11.]]])
+            >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=2,axis=None,keepdim=False)
+            >>> print(out_vector_norm)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            34.)
+            >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=0,axis=[0,1],keepdim=False)
+            >>> print(out_vector_norm)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [5., 6., 6., 6.])
+            >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=float("inf"),axis=[1,2],keepdim=False)
+            >>> print(out_vector_norm)
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [12., 11.])
+            >>> out_vector_norm = paddle.linalg.vector_norm(x=x,p=1,axis=1,keepdim=False)
+            >>> print(out_vector_norm)
+            Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[24., 21., 18., 15.],
+             [12., 15., 18., 21.]])
+    """
+
+    def zero_norm(
+        input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
+    ):
+        return paddle.count_nonzero(
+            input, axis=axis, keepdim=keepdim, name=name
+        ).astype(input.dtype)
+
+    def inf_norm(
+        input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
+    ):
+        if in_dynamic_mode():
+            out = _C_ops.abs(input)
+            if porder == np.float64('inf'):
+                return _C_ops.max(out, axis, keepdim)
+            else:
+                return _C_ops.min(out, axis, keepdim)
+        else:
+            helper = LayerHelper('inf_norm', **locals())
+            out = helper.create_variable_for_type_inference(
+                dtype=helper.input_dtype()
+            )
+            helper.append_op(
+                type='abs', inputs={'X': input}, outputs={'Out': out}
+            )
+            reduce_out = helper.create_variable_for_type_inference(
+                dtype=helper.input_dtype()
+            )
+            reduce_all, axis = _get_reduce_axis(axis, x)
+            reduce_type = (
+                'reduce_max' if porder == np.float64('inf') else 'reduce_min'
+            )
+            helper.append_op(
+                type=reduce_type,
+                inputs={'X': out},
+                outputs={'Out': reduce_out},
+                attrs={
+                    'dim': axis,
+                    'keep_dim': keepdim,
+                    'reduce_all': reduce_all,
+                },
+            )
+
+            return reduce_out
+
+    def vector_norm_axis_tuple(
+        input, porder=2, axis=None, keepdim=False, asvector=False, name=None
+    ):
+        """
+        NOTE:
+            This function calculates the vector norm for dim >= 2.
+        """
+        if in_dynamic_or_pir_mode():
+            abs_out = _C_ops.abs(input)
+            pow_out = _C_ops.pow(abs_out, porder)
+            sum_out = _C_ops.sum(pow_out, axis, None, keepdim)
+            out = _C_ops.pow(sum_out, float(1.0 / porder))
+            return out
+
+        block = LayerHelper('norm', **locals())
+        out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+        abs_out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+        block.append_op(
+            type='abs', inputs={'X': input}, outputs={'Out': abs_out}
+        )
+        pow_out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+
+        block.append_op(
+            type='pow',
+            inputs={'X': abs_out},
+            outputs={'Out': pow_out},
+            attrs={'factor': porder},
+        )
+        sum_out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+        reduce_all, axis = _get_reduce_axis(axis, x)
+        block.append_op(
+            type='reduce_sum',
+            inputs={'X': pow_out},
+            outputs={'Out': sum_out},
+            attrs={
+                'dim': axis,
+                'keep_dim': keepdim,
+                'reduce_all': reduce_all,
+            },
+        )
+        block.append_op(
+            type='pow',
+            inputs={'X': sum_out},
+            outputs={'Out': out},
+            attrs={'factor': float(1.0 / porder)},
+        )
+        return out
+
+    def vector_norm_axis_int(
+        input, porder=2, axis=None, keepdim=False, asvector=False, name=None
+    ):
+        """
+        NOTE:
+            This function calculates the vector norm for len(axis) == 1.
+        """
+        if in_dynamic_or_pir_mode():
+            if axis is None:
+                axis = -1
+            return _C_ops.p_norm(input, porder, axis, 1e-12, keepdim, asvector)
+        else:
+            if porder is not None:
+                check_type(porder, 'porder', (float, int), 'p_norm')
+            if axis is not None:
+                check_type(axis, 'axis', (int), 'p_norm')
+            check_variable_and_dtype(
+                input,
+                'input',
+                ['float16', 'uint16', 'float32', 'float64'],
+                'p_norm',
+            )
+
+            attrs = {
+                'axis': axis if axis is not None else -1,
+                'porder': float(porder) if porder is not None else 2.0,
+                'keepdim': keepdim,
+                'asvector': asvector,
+                'epsilon': 1e-12,
+            }
+            helper = LayerHelper('p_norm', **locals())
+            out = helper.create_variable_for_type_inference(
+                dtype=helper.input_dtype()
+            )
+
+            helper.append_op(
+                type='p_norm',
+                inputs={'X': input},
+                outputs={'Out': out},
+                attrs=attrs,
+            )
+            return out
+
+    if not isinstance(p, (int, float)):
+        raise ValueError(f"only valid p type is int and float, found {type(p)}")
+
+    asvector = False
+    if axis is None:
+        axis = -1
+        asvector = True
+
+    if isinstance(axis, tuple):
+        axis = list(axis)
+    if isinstance(axis, list) and len(axis) == 1:
+        axis = axis[0]
+
+    # when len(axis) == 1, use the original op to calculate
+    if isinstance(axis, int):
+        return vector_norm_axis_int(
+            x,
+            axis=axis,
+            porder=p,
+            keepdim=keepdim,
+            asvector=asvector,
+            name=name,
+        )
+
+    # when len(axis) >= 1, calculate by combining other Python apis
+    elif isinstance(axis, list):
+        if p == np.inf or p == -np.inf:
+            return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
+        elif p == 0:
+            return zero_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
+        else:
+            return vector_norm_axis_tuple(
+                x, porder=p, axis=axis, keepdim=keepdim, name=name
+            )
+
+
+def matrix_norm(x, p='fro', axis=[-2, -1], keepdim=False, name=None):
+    """
+    Calculate the p-order matrix norm for certain  dimension of Tensor `input`.
+
+    Args:
+        x (Tensor): Tensor, data type float32, float64.
+        p (int|float|string, optional): Default 'fro'.
+        axis (list, optional): The axis is a list(int)/tuple(int) with two elements. Default last two dimensions.
+        keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: results of matrix_norm operation on the specified axis of input tensor,
         it's data type is the same as input's Tensor.
 
     Examples:
@@ -349,50 +566,31 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
               [ 4. ,  5. ,  6. ,  7. ],
               [ 8. ,  9. ,  10.,  11.]]])
 
-            >>> # compute frobenius norm along last two dimensions.
-            >>> out_fro = paddle.linalg.norm(x, p='fro', axis=[0,1])
-            >>> print(out_fro)
+            >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p=2,axis=[0,1],keepdim=False)
+            >>> print(out_matrix_norm)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [15.75857544, 14.97978878, 14.69693947, 14.97978973])
+
+            >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p='fro',axis=[0,1],keepdim=False)
+            >>> print(out_matrix_norm)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [17.43559647, 16.91153526, 16.73320007, 16.91153526])
 
-            >>> # compute 2-order vector norm along last dimension.
-            >>> out_pnorm = paddle.linalg.norm(x, p=2, axis=-1)
-            >>> print(out_pnorm)
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[21.11871147, 13.19090557, 5.47722578 ],
-             [3.74165750 , 11.22497177, 19.13112640]])
+            >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p=float('inf'),axis=[1,2],keepdim=False)
+            >>> print(out_matrix_norm)
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [42., 38.])
 
-            >>> # compute 2-order  norm along [0,1] dimension.
-            >>> out_pnorm = paddle.linalg.norm(x, p=2, axis=[0,1])
-            >>> print(out_pnorm)
+            >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p=-1,axis=[0,1],keepdim=False)
+            >>> print(out_matrix_norm)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [17.43559647, 16.91153526, 16.73320007, 16.91153526])
+            [12., 12., 12., 12.])
 
-            >>> # compute inf-order  norm
-            >>> out_pnorm = paddle.linalg.norm(x, p=float("inf"))
-            >>> print(out_pnorm)
-            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            12.)
+            >>> out_matrix_norm = paddle.linalg.matrix_norm(x=x,p='nuc',axis=[0,1],keepdim=False)
+            >>> print(out_matrix_norm)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [23.21962357, 22.82873154, 22.69693947, 22.82873154])
 
-            >>> out_pnorm = paddle.linalg.norm(x, p=float("inf"), axis=0)
-            >>> print(out_pnorm)
-            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[12., 11., 10., 9. ],
-             [8. , 7. , 6. , 7. ],
-             [8. , 9. , 10., 11.]])
-
-            >>> # compute -inf-order  norm
-            >>> out_pnorm = paddle.linalg.norm(x, p=-float("inf"))
-            >>> print(out_pnorm)
-            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            0.)
-
-            >>> out_pnorm = paddle.linalg.norm(x, p=-float("inf"), axis=0)
-            >>> print(out_pnorm)
-            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0., 1., 2., 3.],
-             [4., 5., 6., 5.],
-             [4., 3., 2., 1.]])
     """
 
     def _backshift_permutation(dim0, dim1, dimn):
@@ -464,7 +662,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         perm = _backshift_permutation(axis[0], axis[1], len(input.shape))
         inv_perm = _inverse_permutation(perm)
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             transposed = _C_ops.transpose(input, perm)
             u, s, vh = _C_ops.svd(transposed, False)
             result = _C_ops.sum(s, -1, None, keepdim)
@@ -480,7 +678,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             input, 'input', ['float32', 'float64'], 'nuclear_norm'
         )
 
-        block = LayerHelper('nuclear_nrom', **locals())
+        block = LayerHelper('nuclear_norm', **locals())
         out = block.create_variable_for_type_inference(
             dtype=block.input_dtype()
         )
@@ -542,220 +740,359 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
         return out
 
-    def vector_norm(
-        input, porder=None, axis=None, keepdim=False, asvector=False, name=None
-    ):
+    def p_matrix_norm(input, porder=1.0, axis=axis, keepdim=False, name=None):
         """
-        Calculate the p-order vector norm for certain  dimension of Tensor `input`.
+        Calculate the p-order matrix norm for certain  dimension of Tensor `input`.
         Args:
           input (Variable): Tensor, data type float32, float64.
-          porder (float, optional): None for porder=2.0. Default None.
-          axis (int, optional): None for last dimension. Default None.
+          porder (int|float,str): p in ['fro', 'nuc', ±1, ±2, ±inf] Default 1.
+          axis (list): Two dimensions.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
-          asvector (bool, optional): Whether keep the result as a vector, Default False.
           name (str, optional): The default value is None. Normally there is no need for
               user to set this property. For more information, please refer to :ref:`api_guide_Name`.
         """
+
+        perm = _backshift_permutation(axis[0], axis[1], len(input.shape))
+        inv_perm = _inverse_permutation(perm)
+
         if in_dynamic_or_pir_mode():
-            if axis is None:
-                axis = -1
-            return _C_ops.p_norm(input, porder, axis, 1e-12, keepdim, asvector)
-        else:
-            if porder is not None:
-                check_type(porder, 'porder', (float, int), 'p_norm')
-            if axis is not None:
-                check_type(axis, 'axis', (int), 'p_norm')
-            check_variable_and_dtype(
-                input,
-                'input',
-                ['float16', 'uint16', 'float32', 'float64'],
-                'p_norm',
+            abs_ord = abs(porder)
+
+            max_min = _C_ops.max if porder > 0.0 else _C_ops.min
+
+            if abs_ord == 2.0:
+                transpose_out = _C_ops.transpose(input, perm)
+                u, s, vh = _C_ops.svd(transpose_out, False)
+                result = max_min(s, -1, keepdim)
+                if keepdim:
+                    result = _C_ops.transpose(
+                        _C_ops.unsqueeze(result, -1), inv_perm
+                    )
+                return result
+            else:  # 1,-1,inf,-inf
+                dim0, dim1 = axis
+                if abs_ord == np.float64("inf"):
+                    dim0, dim1 = dim1, dim0
+                if not keepdim and (dim0 < dim1):
+                    dim1 -= 1
+                return max_min(
+                    vector_norm(input, 1.0, axis=dim0, keepdim=keepdim),
+                    dim1,
+                    keepdim,
+                )
+
+        check_variable_and_dtype(
+            input,
+            'input',
+            ['float16', 'uint16', 'float32', 'float64'],
+            'p_matrix_norm',
+        )
+
+        block = LayerHelper('p_matrix_norm', **locals())
+        out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype()
+        )
+
+        abs_ord = abs(porder)
+
+        if abs_ord == 2.0:
+            transpose_out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+            input_shape = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
             )
 
-            attrs = {
-                'axis': axis if axis is not None else -1,
-                'porder': float(porder) if porder is not None else 2.0,
-                'keepdim': keepdim,
-                'asvector': asvector,
-                'epsilon': 1e-12,
-            }
-            helper = LayerHelper('p_norm', **locals())
-            out = helper.create_variable_for_type_inference(
-                dtype=helper.input_dtype()
+            block.append_op(
+                type='transpose2',
+                inputs={'X': [input]},
+                outputs={'Out': [transpose_out], 'XShape': [input_shape]},
+                attrs={'axis': perm},
             )
 
-            helper.append_op(
-                type='p_norm',
-                inputs={'X': input},
-                outputs={'Out': out},
-                attrs=attrs,
+            u = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
             )
-            return out
+            s = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+            vt = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+            block.append_op(
+                type='svd',
+                inputs={'X': [transpose_out]},
+                outputs={'U': u, 'VH': vt, 'S': s},
+                attrs={'full_matrices': False},
+            )
 
-    def inf_norm(
-        input, porder=None, axis=axis, keepdim=False, asvector=False, name=None
-    ):
-        if in_dynamic_mode():
-            out = _C_ops.abs(input)
-            if porder == np.float64('inf'):
-                return _C_ops.max(out, axis, keepdim)
-            else:
-                return _C_ops.min(out, axis, keepdim)
-        else:
-            helper = LayerHelper('inf_norm', **locals())
-            out = helper.create_variable_for_type_inference(
-                dtype=helper.input_dtype()
+            reduce_type = 'reduce_max' if porder > 0 else 'reduce_min'
+            reduce_out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
             )
-            helper.append_op(
-                type='abs', inputs={'X': input}, outputs={'Out': out}
-            )
-            reduce_out = helper.create_variable_for_type_inference(
-                dtype=helper.input_dtype()
-            )
-            reduce_all, axis = _get_reduce_axis(axis, x)
-            reduce_type = (
-                'reduce_max' if porder == np.float64('inf') else 'reduce_min'
-            )
-            helper.append_op(
+            reduce_all, max_min_axis = _get_reduce_axis(-1, s)
+            block.append_op(
                 type=reduce_type,
-                inputs={'X': out},
+                inputs={'X': s},
                 outputs={'Out': reduce_out},
                 attrs={
-                    'dim': axis,
+                    'dim': max_min_axis,
                     'keep_dim': keepdim,
                     'reduce_all': reduce_all,
                 },
             )
 
+            if keepdim:
+                unsqueeze_out = block.create_variable_for_type_inference(
+                    dtype=block.input_dtype()
+                )
+
+                block.append_op(
+                    type='unsqueeze2',
+                    inputs={'X': [reduce_out]},
+                    outputs={'Out': [unsqueeze_out], 'XShape': [input_shape]},
+                    attrs={'axes': [-1]},
+                )
+
+                block.append_op(
+                    type='transpose2',
+                    inputs={'X': [unsqueeze_out]},
+                    outputs={'Out': [out], 'XShape': [input_shape]},
+                    attrs={'axis': inv_perm},
+                )
+                return out
+
             return reduce_out
 
-    def p_matrix_norm(input, porder=1.0, axis=axis, keepdim=False, name=None):
-        """
-        NOTE:
-            This function actually treats the matrix as flattened vector to calculate vector norm instead of matrix norm.
-        """
-        if in_dynamic_mode():
-            abs_out = _C_ops.abs(input)
-            pow_out = _C_ops.pow(abs_out, porder)
-            sum_out = _C_ops.sum(pow_out, axis, None, keepdim)
-            out = _C_ops.pow(sum_out, float(1.0 / porder))
-            return out
-
-        block = LayerHelper('norm', **locals())
-        out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype()
-        )
-        abs_out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype()
-        )
-        block.append_op(
-            type='abs', inputs={'X': input}, outputs={'Out': abs_out}
-        )
-        pow_out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype()
-        )
-
-        block.append_op(
-            type='pow',
-            inputs={'X': abs_out},
-            outputs={'Out': pow_out},
-            attrs={'factor': porder},
-        )
-        sum_out = block.create_variable_for_type_inference(
-            dtype=block.input_dtype()
-        )
-        reduce_all, axis = _get_reduce_axis(axis, x)
-        block.append_op(
-            type='reduce_sum',
-            inputs={'X': pow_out},
-            outputs={'Out': sum_out},
-            attrs={
-                'dim': axis,
-                'keep_dim': keepdim,
-                'reduce_all': reduce_all,
-            },
-        )
-        block.append_op(
-            type='pow',
-            inputs={'X': sum_out},
-            outputs={'Out': out},
-            attrs={'factor': float(1.0 / porder)},
-        )
-        return out
-
-    if axis is None and p is not None:
-        if isinstance(p, str):
-            if p == "fro":
-                return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
-            else:
-                raise ValueError(
-                    f"only valid string values are 'fro', found {p}"
-                )
-        elif isinstance(p, (int, float)):
-            return vector_norm(
-                x,
-                porder=p,
-                axis=axis,
-                keepdim=keepdim,
-                asvector=True,
-                name=name,
-            )
         else:
-            raise ValueError(
-                f"only valid p type is string or float, found {type(p)}"
+            dim0, dim1 = axis
+            if abs_ord == np.float64("inf"):
+                dim0, dim1 = dim1, dim0
+            if not keepdim and (dim0 < dim1):
+                dim1 -= 1
+
+            vector_out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
             )
+
+            attrs = {
+                'axis': dim0,
+                'porder': 1,
+                'keepdim': keepdim,
+                'asvector': False,
+                'epsilon': 1e-12,
+            }
+
+            block.append_op(
+                type='p_norm',
+                inputs={'X': input},
+                outputs={'Out': vector_out},
+                attrs=attrs,
+            )
+
+            reduce_type = 'reduce_max' if porder > 0 else 'reduce_min'
+            reduce_out = block.create_variable_for_type_inference(
+                dtype=block.input_dtype()
+            )
+            reduce_all, max_min_axis = _get_reduce_axis(dim1, vector_out)
+            block.append_op(
+                type=reduce_type,
+                inputs={'X': vector_out},
+                outputs={'Out': reduce_out},
+                attrs={
+                    'dim': max_min_axis,
+                    'keep_dim': keepdim,
+                    'reduce_all': reduce_all,
+                },
+            )
+            return reduce_out
 
     if isinstance(axis, tuple):
         axis = list(axis)
-    if isinstance(axis, list) and len(axis) == 1:
-        axis = axis[0]
 
-    # calculate vector norm, where axis is int or list with only one integer
-    if isinstance(axis, int):
-        if isinstance(p, str):
-            if p == "fro":
-                return vector_norm(
-                    x,
-                    porder=2,
-                    axis=axis,
-                    keepdim=keepdim,
-                    asvector=False,
-                    name=name,
-                )
-
-            else:
-                raise ValueError(
-                    f"only valid string values are 'fro', found {p}"
-                )
-        elif isinstance(p, (int, float)):
-            return vector_norm(
-                x,
-                axis=axis,
-                porder=p,
-                keepdim=keepdim,
-                asvector=False,
-                name=name,
-            )
-        else:
-            raise ValueError(
-                f"unspport p for p-order vector norm. except float, found {p}"
-            )
-    # calculate matrix norm, where axis is list with two integers
-    elif isinstance(axis, list) and len(axis) == 2:
+    if isinstance(axis, list) and len(axis) == 2:
         if p == "fro":
             return frobenius_norm(x, dim=axis, keepdim=keepdim, name=name)
         elif p == "nuc":
             return nuclear_norm(x, axis=axis, keepdim=keepdim, name=name)
-        elif p == np.inf or p == -np.inf:
-            return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
-        elif p == 0:
-            raise ValueError(
-                f"just support axis type int or list (length of list <=1) if p = 0, found {axis}"
-            )
-        else:
+        elif (
+            p == np.inf
+            or p == -np.inf
+            or p == 1
+            or p == -1
+            or p == 2
+            or p == -2
+        ):
             return p_matrix_norm(
                 x, porder=p, axis=axis, keepdim=keepdim, name=name
             )
+        else:
+            raise ValueError(
+                f"just support p value 'fro','nuc',1,-1,inf,-inf,2,-2 if axis is 2D, found {p}"
+            )
+
+    else:
+        raise ValueError(
+            f"except axis type int or list (length of list == 2), found {len(axis)}"
+        )
+
+
+def norm(x, p=None, axis=None, keepdim=False, name=None):
+    """
+
+    Returns the matrix norm (the Frobenius norm, the nuclear norm and p-norm) or vector norm (the 1-norm, the Euclidean
+    or 2-norm, and in general the p-norm) of a given tensor.
+
+    Whether the function calculates the vector norm or the matrix norm is determined as follows:
+
+    - If axis is of type int, calculate the vector norm.
+
+    - If axis is a two-dimensional array, calculate the matrix norm.
+
+    - If axis is None, x is compressed into a one-dimensional vector and the vector norm is calculated.
+
+    Paddle supports the following norms:
+
+    +----------------+--------------------------------+--------------------------------+
+    |     porder     |        norm for matrices       |        norm for vectors        |
+    +================+================================+================================+
+    |  None(default) |         frobenius norm         |            2_norm              |
+    +----------------+--------------------------------+--------------------------------+
+    |       fro      |         frobenius norm         |          not support           |
+    +----------------+--------------------------------+--------------------------------+
+    |       nuc      |          nuclear norm          |          not support           |
+    +----------------+--------------------------------+--------------------------------+
+    |       inf      |     max(sum(abs(x), dim=1))    |          max(abs(x))           |
+    +----------------+--------------------------------+--------------------------------+
+    |      -inf      |     min(sum(abs(x), dim=1))    |          min(abs(x))           |
+    +----------------+--------------------------------+--------------------------------+
+    |       0        |          not support           |          sum(x != 0)           |
+    +----------------+--------------------------------+--------------------------------+
+    |       1        |     max(sum(abs(x), dim=0))    |           as below             |
+    +----------------+--------------------------------+--------------------------------+
+    |      -1        |     min(sum(abs(x), dim=0))    |           as below             |
+    +----------------+--------------------------------+--------------------------------+
+    |       2        |The maximum singular value      |           as below             |
+    |                |of a matrix consisting of axis. |                                |
+    +----------------+--------------------------------+--------------------------------+
+    |      -2        |The minimum singular value      |           as below             |
+    |                |of a matrix consisting of axis. |                                |
+    +----------------+--------------------------------+--------------------------------+
+    |    other int   |           not support          | sum(abs(x)^{porder})^          |
+    |     or float   |                                | {(1 / porder)}                 |
+    +----------------+--------------------------------+--------------------------------+
+
+    Args:
+        x (Tensor): The input tensor could be N-D tensor, and the input data
+            type could be float32 or float64.
+        p (int|float|string, optional): Order of the norm. Supported values are `fro`, `nuc`, `0`, `±1`, `±2`,
+            `±inf` and any real number yielding the corresponding p-norm.
+            Default value is None.
+        axis (int|list|tuple, optional): The axis on which to apply norm operation. If axis is int
+            or list(int)/tuple(int)  with only one element, the vector norm is computed over the axis.
+            If `axis < 0`, the dimension to norm operation is rank(input) + axis.
+            If axis is a list(int)/tuple(int) with two elements, the matrix norm is computed over the axis.
+            Default value is `None`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have fewer dimension
+            than the :attr:`input` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: results of norm operation on the specified axis of input tensor,
+        it's data type is the same as input's Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.arange(24, dtype="float32").reshape([2, 3, 4]) - 12
+            >>> print(x)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[-12., -11., -10., -9. ],
+              [-8. , -7. , -6. , -5. ],
+              [-4. , -3. , -2. , -1. ]],
+             [[ 0. ,  1. ,  2. ,  3. ],
+              [ 4. ,  5. ,  6. ,  7. ],
+              [ 8. ,  9. ,  10.,  11.]]])
+
+            >>> # compute frobenius norm along last two dimensions.
+            >>> out_fro = paddle.linalg.norm(x, p='fro', axis=[0,1])
+            >>> print(out_fro)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [17.43559647, 16.91153526, 16.73320007, 16.91153526])
+
+            >>> # compute 2-order vector norm along last dimension.
+            >>> out_pnorm = paddle.linalg.norm(x, p=2, axis=-1)
+            >>> print(out_pnorm)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[21.11871147, 13.19090557, 5.47722578 ],
+             [3.74165750 , 11.22497177, 19.13112640]])
+
+            >>> # compute 2-order  norm along [0,1] dimension.
+            >>> out_pnorm = paddle.linalg.norm(x, p=2, axis=[0,1])
+            >>> print(out_pnorm)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [15.75857544, 14.97978878, 14.69693947, 14.97978973])
+
+            >>> # compute inf-order  norm
+            >>> out_pnorm = paddle.linalg.norm(x, p=float("inf"))
+            >>> print(out_pnorm)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            12.)
+
+            >>> out_pnorm = paddle.linalg.norm(x, p=float("inf"), axis=0)
+            >>> print(out_pnorm)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[12., 11., 10., 9. ],
+             [8. , 7. , 6. , 7. ],
+             [8. , 9. , 10., 11.]])
+
+            >>> # compute -inf-order  norm
+            >>> out_pnorm = paddle.linalg.norm(x, p=-float("inf"))
+            >>> print(out_pnorm)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            0.)
+
+            >>> out_pnorm = paddle.linalg.norm(x, p=-float("inf"), axis=0)
+            >>> print(out_pnorm)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 1., 2., 3.],
+             [4., 5., 6., 5.],
+             [4., 3., 2., 1.]])
+    """
+
+    if isinstance(axis, tuple):
+        axis = list(axis)
+    elif isinstance(axis, list) and len(axis) == 1:
+        axis = axis[0]
+
+    # calculate vector norm, where axis is None, int or list with only one integer
+    if axis is None or (isinstance(axis, int)):
+        # 'fro' is used to adapt previous usage
+        if p is None or p == 'fro':
+            p = 2.0
+        if isinstance(p, (int, float)):
+            return vector_norm(
+                x,
+                p=p,
+                axis=axis,
+                keepdim=keepdim,
+                name=name,
+            )
+        else:
+            raise ValueError(
+                f"only valid p type is int or float for vector_norm, found {type(p)} and{p}"
+            )
+
+    # calculate matrix norm, where axis is list with two integers
+    elif isinstance(axis, list) and len(axis) == 2:
+        if p is None:
+            p = 'fro'
+        return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
+
     else:
         raise ValueError(
             f"except axis type int or list (length of list <=2), found {axis}"
@@ -1178,7 +1515,7 @@ def cond(x, p=None, name=None):
                     type='elementwise_div',
                     inputs={'X': max_out, 'Y': min_out},
                     outputs={'Out': out},
-                    attrs={'aixs': axis},
+                    attrs={'axis': -1},
                 )
                 return out
             if porder == -2:
@@ -1186,7 +1523,7 @@ def cond(x, p=None, name=None):
                     type='elementwise_div',
                     inputs={'X': min_out, 'Y': max_out},
                     outputs={'Out': out},
-                    attrs={'aixs': axis},
+                    attrs={'axis': -1},
                 )
                 return out
 
@@ -1201,7 +1538,7 @@ def cond(x, p=None, name=None):
     if not len(x_shape) >= 2:
         raise ValueError(
             "input should be a matrix or batches of matrices, "
-            + f"but the dimention of received input is {len(x_shape)}"
+            + f"but the dimension of received input is {len(x_shape)}"
         )
     if p is None:
         p = 2
@@ -1387,17 +1724,18 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
             )
         if fweights.shape[0] != observation_num:
             raise ValueError(
-                "The number of Input(fweights) should equal to x's dim[1]: {}, but received "
-                "size of Input(fweights) is {}.".format(
-                    observation_num, fweights.shape[0]
-                )
+                f"The number of Input(fweights) should equal to x's dim[1]: {observation_num}, but received "
+                f"size of Input(fweights) is {fweights.shape[0]}."
             )
         if fweights.min() < 0:
             raise ValueError(
                 "The value of Input(fweights) cannot be negative, but received "
                 f"min of Input(fweights) is {fweights.min()}."
             )
-        if not paddle.all(fweights == paddle.round(fweights.astype('float64'))):
+        if not paddle.all(
+            fweights
+            == paddle.round(fweights.astype('float64')).astype(fweights.dtype)
+        ):
             raise ValueError("Input(fweights) must be integer ")
 
     if aweights is not None:
@@ -1412,10 +1750,8 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         )
         if aweights.shape[0] != observation_num:
             raise ValueError(
-                "The number of Input(aweights) should equal to x's dim[1]: {}, but received "
-                "size of Input(aweights) is {}.".format(
-                    observation_num, aweights.shape[0]
-                )
+                f"The number of Input(aweights) should equal to x's dim[1]: {observation_num}, but received "
+                f"size of Input(aweights) is {aweights.shape[0]}."
             )
         if aweights.min() < 0:
             raise ValueError(
@@ -1441,11 +1777,10 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         nx_w = nx
 
     if w is not None and aweights is not None and ddof:
-        norm_factor = w_sum - (w * aweights).sum() / w_sum
+        norm_factor = w_sum - (w * aweights.astype(w.dtype)).sum() / w_sum
     else:
         norm_factor = w_sum - ddof
-    if norm_factor <= 0:
-        norm_factor = paddle.to_tensor(0, dtype=nx.dtype)
+    norm_factor = paddle.clip(norm_factor, min=0)
     nx = nx - avg.unsqueeze(1)
     xxt = paddle.mm(nx, nx_w.t().conj())
     cov = paddle.divide(xxt, norm_factor).squeeze()
@@ -1521,7 +1856,7 @@ def t(input, name=None):
         check_variable_and_dtype(
             input,
             'input',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             'transpose',
         )
 
@@ -1569,8 +1904,8 @@ def cross(x, y, axis=9, name=None):
     If `axis` is not given, it defaults to the first axis found with the length 3.
 
     Args:
-        x (Tensor): The first input tensor, the data type is float16, float32, float64, int32, int64.
-        y (Tensor): The second input tensor, the data type is float16, float32, float64, int32, int64.
+        x (Tensor): The first input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128.
+        y (Tensor): The second input tensor, the data type is float16, float32, float64, int32, int64, complex64, complex128.
         axis (int, optional): The axis along which to compute the cross product. It defaults to be 9 which indicates using the first axis found with the length 3.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1610,13 +1945,31 @@ def cross(x, y, axis=9, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'uint16', 'float32', 'float64', "int32", "int64"],
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                "int32",
+                "int64",
+                "complex64",
+                "complex128",
+            ],
             'cross',
         )
         check_variable_and_dtype(
             y,
             'y',
-            ['float16', 'uint16', 'float32', 'float64', "int32", "int64"],
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                "int32",
+                "int64",
+                "complex64",
+                "complex128",
+            ],
             'cross',
         )
         helper = LayerHelper("cross", **locals())
@@ -1636,7 +1989,7 @@ def cross(x, y, axis=9, name=None):
 def cholesky(x, upper=False, name=None):
     r"""
     Computes the Cholesky decomposition of one symmetric positive-definite
-    matrix or batches of symmetric positive-definite matrice.
+    matrix or batches of symmetric positive-definite matrices.
 
     If `upper` is `True`, the decomposition has the form :math:`A = U^{T}U` ,
     and the returned matrix :math:`U` is upper-triangular. Otherwise, the
@@ -1781,7 +2134,7 @@ def bmm(x, y, name=None):
     """
     Applies batched matrix multiplication to two tensors.
 
-    Both of the two input tensors must be three-dementional and share the same batch size.
+    Both of the two input tensors must be three-dimensional and share the same batch size.
 
     If x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
 
@@ -1823,21 +2176,15 @@ def bmm(x, y, name=None):
         y_shape = y.shape
         if not len(x_shape) == len(y_shape) == 3:
             raise ValueError(
-                "x and y should be 3-dimensional. But received x's dimention: {}, y's dimention: {}".format(
-                    x_shape, y_shape
-                )
+                f"x and y should be 3-dimensional. But received x's dimension: {x_shape}, y's dimension: {y_shape}"
             )
         if x_shape[2] != -1 and y_shape[1] != -1 and x_shape[2] != y_shape[1]:
             raise ValueError(
-                "x's width must be equal with y's height. But received x's shape: {}, y's shape: {}".format(
-                    x_shape, y_shape
-                )
+                f"x's width must be equal with y's height. But received x's shape: {x_shape}, y's shape: {y_shape}"
             )
         if x_shape[0] != -1 and y_shape[0] != -1 and x_shape[0] != y_shape[0]:
             raise ValueError(
-                "x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {}, y's shape: {}".format(
-                    x_shape, y_shape
-                )
+                f"x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {x_shape}, y's shape: {y_shape}"
             )
         helper = LayerHelper('bmm', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -2000,13 +2347,11 @@ def mv(x, vec, name=None):
             vec_shape = list(vec.shape)
             if len(x_shape) != 2:
                 raise ValueError(
-                    f"x should be 2-dimensional. But received x's dimention: {x_shape}"
+                    f"x should be 2-dimensional. But received x's dimension: {x_shape}"
                 )
             if len(vec_shape) != 1:
                 raise ValueError(
-                    "vec should be 1-dimensional. But received vec's dimention: {}".format(
-                        vec_shape
-                    )
+                    f"vec should be 1-dimensional. But received vec's dimension: {vec_shape}"
                 )
 
         __check_input(x, vec)
@@ -2058,11 +2403,9 @@ def det(x, name=None):
             "but received Input x's dimensional: %s.\n" % len(input_shape)
         )
 
-        assert (
-            input_shape[-1] == input_shape[-2]
-        ), "Expect squared input," "but received {} by {} matrix.\n".format(
-            input_shape[-2],
-            input_shape[-1],
+        assert input_shape[-1] == input_shape[-2], (
+            "Expect squared input,"
+            f"but received {input_shape[-2]} by {input_shape[-1]} matrix.\n"
         )
         helper = LayerHelper('determinant', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -2117,11 +2460,9 @@ def slogdet(x, name=None):
             "but received Input x's dimensional: %s.\n" % len(input_shape)
         )
 
-        assert (
-            input_shape[-1] == input_shape[-2]
-        ), "Expect squared input," "but received {} by {} matrix.\n".format(
-            input_shape[-2],
-            input_shape[-1],
+        assert input_shape[-1] == input_shape[-2], (
+            "Expect squared input,"
+            f"but received {input_shape[-2]} by {input_shape[-1]} matrix.\n"
         )
         helper = LayerHelper('slogdeterminant', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -2212,6 +2553,161 @@ def svd(x, full_matrices=False, name=None):
         return u, s, vh
 
 
+def _conjugate(x):
+    if x.is_complex():
+        return x.conj()
+    return x
+
+
+def _transpose(x):
+    shape = x.shape
+    perm = list(range(0, len(shape)))
+    perm = perm[:-2] + [perm[-1]] + [perm[-2]]
+    return paddle.transpose(x, perm)
+
+
+def _transjugate(x):
+    return _conjugate(_transpose(x))
+
+
+def _get_approximate_basis(x, q, niter=2, M=None):
+    niter = 2 if niter is None else niter
+    m, n = x.shape[-2:]
+    qr = paddle.linalg.qr
+
+    R = paddle.randn((n, q), dtype=x.dtype)
+
+    A_t = _transpose(x)
+    A_H = _conjugate(A_t)
+    if M is None:
+        Q = qr(paddle.matmul(x, R))[0]
+        for i in range(niter):
+            Q = qr(paddle.matmul(A_H, Q))[0]
+            Q = qr(paddle.matmul(x, Q))[0]
+    else:
+        M_H = _transjugate(M)
+        Q = qr(paddle.matmul(x, R) - paddle.matmul(M, R))[0]
+        for i in range(niter):
+            Q = qr(paddle.matmul(A_H, Q) - paddle.matmul(M_H, Q))[0]
+            Q = qr(paddle.matmul(x, Q) - paddle.matmul(M, Q))[0]
+
+    return Q
+
+
+def svd_lowrank(x, q=None, niter=2, M=None, name=None):
+    r"""
+    Return the singular value decomposition (SVD) on a low-rank matrix or batches of such matrices.
+
+    If :math:`X` is the input matrix or a batch of input matrices, the output should satisfies:
+
+    .. math::
+        X \approx U * diag(S) * V^{T}
+
+    When :math:`M` is given, the output should satisfies:
+
+    .. math::
+        X - M \approx U * diag(S) * V^{T}
+
+    Args:
+        x (Tensor): The input tensor. Its shape should be `[..., N, M]`, where `...` is
+            zero or more batch dimensions. N and M can be arbitrary positive number.
+            The data type of ``x`` should be float32 or float64.
+        q (int, optional): A slightly overestimated rank of :math:`X`.
+            Default value is None, which means the overestimated rank is 6.
+        niter (int, optional): The number of iterations to perform. Default: 2.
+        M (Tensor, optional): The input tensor's mean. Its shape should be `[..., 1, M]`.
+            Default value is None.
+        name (str, optional): Name for the operation. For more information, please
+            refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+        - Tensor U, is N x q matrix.
+        - Tensor S, is a vector with length q.
+        - Tensor V, is M x q matrix.
+
+        tuple (U, S, V): which is the nearly optimal approximation of a singular value decomposition of the matrix :math:`X` or :math:`X - M`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(2024)
+
+            >>> x = paddle.randn((5, 5), dtype='float64')
+            >>> U, S, V = paddle.linalg.svd_lowrank(x)
+            >>> print(U)
+            Tensor(shape=[5, 5], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[-0.03586982, -0.17211503,  0.31536566, -0.38225676, -0.85059629],
+             [-0.38386839,  0.67754925,  0.23222694,  0.51777188, -0.26749766],
+             [-0.85977150, -0.28442378, -0.41412094, -0.08955629, -0.01948348],
+             [ 0.18611503,  0.56047358, -0.67717019, -0.39286761, -0.19577062],
+             [ 0.27841082, -0.34099254, -0.46535957,  0.65071250, -0.40770727]])
+
+            >>> print(S)
+            Tensor(shape=[5], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [4.11253399, 3.03227120, 2.45499752, 1.25602436, 0.45825337])
+
+            >>> print(V)
+            Tensor(shape=[5, 5], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[ 0.46401347,  0.50977695, -0.08742316, -0.11140428, -0.71046833],
+             [-0.48927226, -0.35047624,  0.07918771,  0.45431083, -0.65200463],
+             [-0.20494730,  0.67097011, -0.05427719,  0.66510472,  0.24997083],
+             [-0.69645001,  0.40237917,  0.09360970, -0.58032322, -0.08666357],
+             [ 0.13512270,  0.07199989,  0.98710572,  0.04529277,  0.01134594]])
+    """
+    if not paddle.is_tensor(x):
+        raise ValueError(f'Input must be tensor, but got {type(x)}')
+
+    m, n = x.shape[-2:]
+    if q is None:
+        q = min(6, m, n)
+    elif not (q >= 0 and q <= min(m, n)):
+        raise ValueError(
+            f'q(={q}) must be non-negative integer'
+            f' and not greater than min(m, n)={min(m, n)}'
+        )
+
+    if not (niter >= 0):
+        raise ValueError(f'niter(={niter}) must be non-negative integer')
+
+    if M is None:
+        M_t = None
+    else:
+        M = M.broadcast_to(x.shape)
+        M_t = _transpose(M)
+    A_t = _transpose(x)
+
+    if m < n or n > q:
+        Q = _get_approximate_basis(A_t, q, niter=niter, M=M_t)
+        Q_c = _conjugate(Q)
+        if M is None:
+            B_t = paddle.matmul(x, Q_c)
+        else:
+            B_t = paddle.matmul(x, Q_c) - paddle.matmul(M, Q_c)
+        assert B_t.shape[-2] == m, (B_t.shape, m)
+        assert B_t.shape[-1] == q, (B_t.shape, q)
+        assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
+        U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)
+        V = _transjugate(Vh)
+        V = Q.matmul(V)
+    else:
+        Q = _get_approximate_basis(x, q, niter=niter, M=M)
+        Q_c = _conjugate(Q)
+        if M is None:
+            B = paddle.matmul(A_t, Q_c)
+        else:
+            B = paddle.matmul(A_t, Q_c) - paddle.matmul(M_t, Q_c)
+        B_t = _transpose(B)
+        assert B_t.shape[-2] == q, (B_t.shape, q)
+        assert B_t.shape[-1] == n, (B_t.shape, n)
+        assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
+        U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)
+        V = _transjugate(Vh)
+        U = Q.matmul(U)
+
+    return U, S, V
+
+
 def pca_lowrank(x, q=None, center=True, niter=2, name=None):
     r"""
     Performs linear Principal Component Analysis (PCA) on a low-rank matrix or batches of such matrices.
@@ -2269,82 +2765,6 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
              [-0.67131070, -0.19071018,  0.07795789, -0.04615811,  0.71046714]])
     """
 
-    def conjugate(x):
-        if x.is_complex():
-            return x.conj()
-        return x
-
-    def transpose(x):
-        shape = x.shape
-        perm = list(range(0, len(shape)))
-        perm = perm[:-2] + [perm[-1]] + [perm[-2]]
-        return paddle.transpose(x, perm)
-
-    def transjugate(x):
-        return conjugate(transpose(x))
-
-    def get_approximate_basis(x, q, niter=2, M=None):
-        niter = 2 if niter is None else niter
-        m, n = x.shape[-2:]
-        qr = paddle.linalg.qr
-
-        R = paddle.randn((n, q), dtype=x.dtype)
-
-        A_t = transpose(x)
-        A_H = conjugate(A_t)
-        if M is None:
-            Q = qr(paddle.matmul(x, R))[0]
-            for i in range(niter):
-                Q = qr(paddle.matmul(A_H, Q))[0]
-                Q = qr(paddle.matmul(x, Q))[0]
-        else:
-            M_H = transjugate(M)
-            Q = qr(paddle.matmul(x, R) - paddle.matmul(M, R))[0]
-            for i in range(niter):
-                Q = qr(paddle.matmul(A_H, Q) - paddle.matmul(M_H, Q))[0]
-                Q = qr(paddle.matmul(x, Q) - paddle.matmul(M, Q))[0]
-
-        return Q
-
-    def svd_lowrank(x, q=6, niter=2, M=None):
-        q = 6 if q is None else q
-        m, n = x.shape[-2:]
-        if M is None:
-            M_t = None
-        else:
-            M_t = transpose(M)
-        A_t = transpose(x)
-
-        if m < n or n > q:
-            Q = get_approximate_basis(A_t, q, niter=niter, M=M_t)
-            Q_c = conjugate(Q)
-            if M is None:
-                B_t = paddle.matmul(x, Q_c)
-            else:
-                B_t = paddle.matmul(x, Q_c) - paddle.matmul(M, Q_c)
-            assert B_t.shape[-2] == m, (B_t.shape, m)
-            assert B_t.shape[-1] == q, (B_t.shape, q)
-            assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
-            U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)
-            V = transjugate(Vh)
-            V = Q.matmul(V)
-        else:
-            Q = get_approximate_basis(x, q, niter=niter, M=M)
-            Q_c = conjugate(Q)
-            if M is None:
-                B = paddle.matmul(A_t, Q_c)
-            else:
-                B = paddle.matmul(A_t, Q_c) - paddle.matmul(M_t, Q_c)
-            B_t = transpose(B)
-            assert B_t.shape[-2] == q, (B_t.shape, q)
-            assert B_t.shape[-1] == n, (B_t.shape, n)
-            assert B_t.shape[-1] <= B_t.shape[-2], B_t.shape
-            U, S, Vh = paddle.linalg.svd(B_t, full_matrices=False)
-            V = transjugate(Vh)
-            U = Q.matmul(U)
-
-        return U, S, V
-
     if not paddle.is_tensor(x):
         raise ValueError(f'Input must be tensor, but got {type(x)}')
 
@@ -2372,7 +2792,7 @@ def matrix_power(x, n, name=None):
 
     Computes the n-th power of a square matrix or a batch of square matrices.
 
-    Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`n` be
+    Let :math:`X` be a square matrix or a batch of square matrices, :math:`n` be
     an exponent, the equation should be:
 
     .. math::
@@ -2444,7 +2864,7 @@ def matrix_power(x, n, name=None):
 
 def qr(x, mode="reduced", name=None):
     r"""
-    Computes the QR decomposition of one matrix or batches of matrice (backward is unsupported now).
+    Computes the QR decomposition of one matrix or batches of matrices (backward is unsupported now).
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., M, N]`,
@@ -2818,9 +3238,7 @@ def eigvals(x, name=None):
     x_shape = list(x.shape)
     if len(x_shape) < 2:
         raise ValueError(
-            "The dimension of Input(x) should be at least 2, but received x's dimention = {}, x's shape = {}".format(
-                len(x_shape), x_shape
-            )
+            f"The dimension of Input(x) should be at least 2, but received x's dimension = {len(x_shape)}, x's shape = {x_shape}"
         )
 
     if x_shape[-1] != x_shape[-2]:
@@ -2972,7 +3390,7 @@ def eigh(x, UPLO='L', name=None):
             )
         if x_shape[-1] != x_shape[-2]:
             raise ValueError(
-                f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
+                f"The input matrix must be batches of square matrices. But received x's dimension: {x_shape}"
             )
         if UPLO != 'L' and UPLO != 'U':
             raise ValueError(
@@ -3027,7 +3445,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             where * is zero or more batch dimensions. m and n can be
             arbitrary positive number. The data type of x should be
             float32 or float64 or complex64 or complex128. When data
-            type is complex64 or cpmplex128, hermitian should be set
+            type is complex64 or complex128, hermitian should be set
             True.
         rcond (Tensor, optional): the tolerance value to determine
             when is a singular value zero. Default:1e-15.
@@ -3251,7 +3669,7 @@ def solve(x, y, name=None):
     r"""
 
     Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
-    Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`Y` be
+    Let :math:`X` be a square matrix or a batch of square matrices, :math:`Y` be
     a vector/matrix or a batch of vectors/matrices, the equation should be:
 
     .. math::
@@ -3489,7 +3907,7 @@ def eigvalsh(x, UPLO='L', name=None):
             )
         if x_shape[-1] != x_shape[-2]:
             raise ValueError(
-                f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
+                f"The input matrix must be batches of square matrices. But received x's dimension: {x_shape}"
             )
         if UPLO != 'L' and UPLO != 'U':
             raise ValueError(
@@ -3934,6 +4352,7 @@ def householder_product(x, tau, name=None):
         x.dtype,
         'x',
         [
+            'float16',
             'float32',
             'float64',
             'complex64',
@@ -3945,6 +4364,7 @@ def householder_product(x, tau, name=None):
         tau.dtype,
         'tau',
         [
+            'float16',
             'float32',
             'float64',
             'complex64',
@@ -3996,9 +4416,11 @@ def householder_product(x, tau, name=None):
                 Q = paddle.static.setitem(
                     Q,
                     (slice(None), slice(i, None)),
-                    Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
-                    if x.dtype in [paddle.complex128, paddle.complex64]
-                    else Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i]),
+                    (
+                        Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+                        if x.dtype in [paddle.complex128, paddle.complex64]
+                        else Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+                    ),
                 )
         return Q[:, :n]
 
@@ -4591,11 +5013,14 @@ def histogramdd(
     for i in range(D):
         on_edge = reshaped_input[:, i] == edges[i][-1]
         if paddle.in_dynamic_mode():
-            index_list[i][on_edge] -= 1
-        else:
-            index_list = paddle.static.setitem(
-                index_list, (i, on_edge), index_list[i][on_edge] - 1
+            index_list[i] = paddle.where(
+                on_edge, index_list[i] - 1, index_list[i]
             )
+        else:
+            index_list_i = paddle.where(
+                on_edge, index_list[i] - 1, index_list[i]
+            )
+            index_list = paddle.static.setitem(index_list, i, index_list_i)
     index_list = tuple(index_list)
     lut = paddle.arange(
         paddle.to_tensor(hist_shape).prod(),
@@ -4621,3 +5046,157 @@ def histogramdd(
         hist /= s
 
     return (hist, edges)
+
+
+def ormqr(x, tau, y, left=True, transpose=False, name=None):
+    r'''
+    Calculate the product of a normal matrix and a householder matrix.
+    Compute the product of the matrix C (given by y) with dimensions (m, n) and a matrix Q,
+    where Q is generated by the Householder reflection coefficient (x, tau). Returns a Tensor.
+
+    Args:
+        x (Tensor): Shape(\*,mn, k), when left is True, the value of mn is equal to m, otherwise the value of mn is equal to n. \* indicates that the length of the tensor on axis 0 is 0 or greater.
+        tau (Tensor): Shape (\*, min(mn, k)), where \* indicates that the length of the Tensor on axis 0 is 0 or greater, and its type is the same as input.
+        y (Tensor): Shape (\*m,n), where \* indicates that the length of the Tensor on axis 0 is 0 or greater, and its type is the same as input.
+        left (bool, optional): Determines the order in which the matrix product operations are operated. If left is true, the order of evaluation is op(Q) \* y, otherwise, the order of evaluation is y \* op(Q). Default value: True.
+        transpose (bool, optional): If true, the matrix Q is conjugated and transposed, otherwise, the conjugate transpose transformation is not performed. Default value: False.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor. Data type and dimension are equals with :attr:`y`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import numpy as np
+            >>> from paddle import  linalg
+
+            >>> input = paddle.to_tensor([[-114.6, 10.9, 1.1], [-0.304, 38.07, 69.38], [-0.45, -0.17, 62]])
+            >>> tau = paddle.to_tensor([1.55, 1.94, 3.0])
+            >>> y = paddle.to_tensor([[-114.6, 10.9, 1.1], [-0.304, 38.07, 69.38], [-0.45, -0.17, 62]])
+            >>> output = linalg.ormqr(input, tau, y)
+            >>> print(output)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[ 63.82712936 , -13.82312393 , -116.28614044],
+                [-53.65926361 , -28.15783691 , -70.42700958 ],
+                [-79.54292297 ,  24.00182915 , -41.34253311 ]])
+    '''
+
+    check_dtype(
+        y.dtype,
+        'y',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'complex64',
+            'complex128',
+        ],
+        'ormqr',
+    )
+    check_type(left, 'left', bool, 'ormqr')
+    check_type(transpose, 'transpose', bool, 'ormqr')
+    assert (
+        x.dtype == tau.dtype and x.dtype == y.dtype
+    ), "The input tau and y must have the same dtype with the x.\n"
+    assert (
+        len(x.shape) >= 2 and len(y.shape) >= 2 and len(tau.shape) >= 1
+    ), "The input x and y must have more than 2 dimensions, and input tau must have more than 1 dimension"
+    assert len(x.shape) == len(tau.shape) + 1 and len(x.shape) == len(
+        y.shape
+    ), "the dimension of x is 1 larger than the dimension of tau\n and the dimension of x is equal to the dimension of input"
+    assert (
+        x.shape[-1] == tau.shape[-1]
+    ), "The innermost dimension of x and tau should be the same"
+    if transpose and left:
+        assert (
+            x.shape[-2] == y.shape[-2]
+        ), "The row dimensions of x and y should be the same"
+    elif not transpose and left:
+        assert (
+            x.shape[-1] == y.shape[-2]
+        ), "The column dimension of x and the row dimension of y should be the same"
+    elif transpose and not left:
+        assert (
+            x.shape[-2] == y.shape[-1]
+        ), "The row dimension of x and the column dimension of y should be the same"
+    else:
+        assert (
+            x.shape[-1] == y.shape[-1]
+        ), "The column dimensions of Impt and Osser's should be the same"
+    if len(x.shape) == 3:
+        assert (
+            x.shape[0] == y.shape[0] and x.shape[0] == tau.shape[0]
+        ), "The input and tau and y parameters should have the same batch"
+    Q = householder_product(x, tau)
+    if len(x.shape) == 2:
+        Q = Q.T if transpose else Q
+    else:
+        Q = paddle.transpose(Q, [0, 2, 1]) if transpose else Q
+    result = matmul(Q, y) if left else matmul(y, Q)
+
+    return result
+
+
+def cholesky_inverse(
+    x: paddle.Tensor, upper: bool = False, name: str | None = None
+) -> paddle.Tensor:
+    r"""
+    Using the Cholesky factor `U` to calculate the inverse matrix of a symmetric positive definite matrix, returns the matrix `inv`.
+
+    If `upper` is `False`, `U` is lower triangular matrix:
+
+    .. math::
+
+        inv = (UU^{T})^{-1}
+
+    If `upper` is `True`, `U` is upper triangular matrix:
+
+    .. math::
+
+        inv = (U^{T}U)^{-1}
+
+    Args:
+        x (Tensor): A tensor of lower or upper triangular Cholesky decompositions of symmetric matrix with shape `[N, N]`.
+            The data type of the `x` should be one of ``float32``, ``float64``.
+        upper (bool, optional): If `upper` is `False`, `x` is lower triangular matrix, or is upper triangular matrix. Default: `False`.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor. Computes the inverse matrix.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # lower triangular matrix
+            >>> x = paddle.to_tensor([[3.,.0,.0], [5.,3.,.0], [-1.,1.,2.]])
+            >>> out = paddle.linalg.cholesky_inverse(x)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[ 0.61728382, -0.25925916,  0.22222219],
+             [-0.25925916,  0.13888884, -0.08333331],
+             [ 0.22222218, -0.08333331,  0.25000000]])
+
+            >>> # upper triangular matrix
+            >>> out = paddle.linalg.cholesky_inverse(x.T, upper=True)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            [[ 0.61728382, -0.25925916,  0.22222219],
+             [-0.25925916,  0.13888884, -0.08333331],
+             [ 0.22222218, -0.08333331,  0.25000000]])
+
+    """
+    if x.ndim != 2:
+        raise ValueError('The input tensor must be 2-dimensional')
+
+    if x.shape[0] != x.shape[1]:
+        raise ValueError('The input tensor must be square matrix')
+
+    if upper:
+        A = x.T @ x
+    else:
+        A = x @ x.T
+    return paddle.linalg.inv(A)

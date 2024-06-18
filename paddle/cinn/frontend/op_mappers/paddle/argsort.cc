@@ -17,20 +17,29 @@
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void ArgsortOpMapper(const paddle::cpp::OpDesc& op_desc,
                      const cinn::frontend::OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of Argmax/Argmin op must be 1."));
   auto x_name = op_desc.Input("X").front();
 
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The output of Argmax/Argmin op must be 1."));
   auto out_name = op_desc.Output("Out").front();
 
-  CHECK_EQ(op_desc.Output("Indices").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Output("Indices").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The output of Argmax/Argmin op must be 1."));
   auto indices_name = op_desc.Output("Indices").front();
 
   auto is_ascend =
@@ -46,8 +55,8 @@ void ArgsortOpMapper(const paddle::cpp::OpDesc& op_desc,
   ctx.AddVarModelToProgram(indices_name, idx->id);
 
   // TODO(lanxianghit): return the sorted tensor here. Now out[1] is a temporary
-  // tensor. this is because output 'Out' is never uesd in Paddle API, but CINN
-  // need to return 2 output vars to meet the op defination, this should be
+  // tensor. this is because output 'Out' is never used in Paddle API, but CINN
+  // need to return 2 output vars to meet the op definition, this should be
   // resolved after sort op restructured.
   ctx.AddVar(out_name, out[1]);
   ctx.AddVarModelToProgram(out_name, out[1]->id);

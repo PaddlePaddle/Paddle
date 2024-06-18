@@ -33,7 +33,7 @@
 #include "paddle/cinn/utils/profiler.h"
 
 #include "paddle/cinn/ast_gen_ius/tensor_group.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -210,7 +210,7 @@ static void BufferMallocWithCallback(void* args, int num_args) {
   for (int i = 0; i < num_args; ++i) {
     cinn_buffer_t* buffer = static_cast<cinn_buffer_t*>(pod_args[i]);
     CHECK(buffer->external_malloc)
-        << "external_malloc is nullptr at " << i << "-th argumemnts";
+        << "external_malloc is nullptr at " << i << "-th arguments";
     buffer->external_malloc->operator()(nullptr, buffer);
   }
 }
@@ -282,7 +282,7 @@ void GraphCompiler::InsertBufferHandlers(
                                         malloc_var_names,
                                         std::vector<std::string>({}),
                                         function_name);
-      VLOG(4) << "seting malloc function " << function_name << " for var "
+      VLOG(4) << "setting malloc function " << function_name << " for var "
               << cinn::utils::Join(malloc_var_names, ", ");
       malloc_instr->SetLoweredFunc(
           reinterpret_cast<void*>(BufferMallocWithCallback), function_name);
@@ -366,10 +366,17 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
   for (int i = 0; i < C->size() - 1; i++) {
     ir::Expr temp = C[i];
     // checkout whether the tensor is with buffer.
-    if (!temp.as_tensor_ref()->buffer.defined() ||
-        target != cinn::common::DefaultNVGPUTarget()) {
-      all_arg_tensors.push_back(temp.as_tensor_ref());
-    }
+    target.arch.Match(
+        [&](common::NVGPUArch) {
+          if (!temp.as_tensor_ref()->buffer.defined()) {
+            all_arg_tensors.push_back(temp.as_tensor_ref());
+          }
+        },
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) {
+          all_arg_tensors.push_back(temp.as_tensor_ref());
+        });
   }
 
   poly::StageMap stages = C.back();
@@ -405,7 +412,11 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
   VLOG(3) << "input_output_nodes.size() is: " << input_output_nodes.size()
           << ", all_arg_tensors.size() is: " << all_arg_tensors.size();
   std::vector<ir::LoweredFunc> funcs_after_schedule;
-  CHECK_GE(funcs.size(), expr_pack.size());
+  PADDLE_ENFORCE_GE(
+      funcs.size(),
+      expr_pack.size(),
+      phi::errors::InvalidArgument(
+          "The number of funcs should not less than expr_pack's"));
   if (funcs.size() > expr_pack.size() ||
       all_arg_tensors.size() > input_output_nodes.size()) {
     for (int i = 0; i < funcs.size(); i++) {
@@ -422,14 +433,25 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
   } else if (funcs.size() == expr_pack.size()) {
     funcs_after_schedule = funcs;
   } else {
-    LOG(FATAL) << "The number of funcs should not less than expr_pack's";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The number of funcs should not less than expr_pack's"));
   }
-  CHECK_EQ(funcs_after_schedule.size(), expr_pack.size());
+  PADDLE_ENFORCE_EQ(funcs_after_schedule.size(),
+                    expr_pack.size(),
+                    phi::errors::InvalidArgument(
+                        "The number of funcs after schedule should be equal to "
+                        "expr_pack's"));
   std::vector<ir::LoweredFunc> res;
   for (int i = 0; i < funcs_after_schedule.size(); i++) {
+    cinn::common::DefaultDeviceTarget().arch.Match(
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) {},
+        [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-    optim::OptimizeExprGPU(&(funcs_after_schedule[i]->body));
+          optim::OptimizeExprGPU(&(funcs_after_schedule[i]->body));
 #endif
+        });
     auto temp_buffers = lang::GetTempBuffers(
         all_arg_tensors, tensor_group, funcs_after_schedule[i]->body);
 

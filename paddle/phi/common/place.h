@@ -19,7 +19,6 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/common/macros.h"
-#include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/utils/test_macros.h"
 
 namespace paddle {
@@ -137,7 +136,6 @@ class GPUPlace : public Place {
   GPUPlace() : Place(AllocationType::GPU, 0) {}
   explicit GPUPlace(int device_id) : Place(AllocationType::GPU, device_id) {}
 
-  GPUPlace(const GPUPlace&) = default;
   GPUPlace(const Place& place)  // NOLINT
       : Place(AllocationType::GPU, place.GetDeviceId()) {}
 };

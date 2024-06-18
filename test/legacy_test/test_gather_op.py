@@ -42,7 +42,7 @@ class TestGatherOp(OpTest):
         self.if_enable_cinn()
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, check_symbol_infer=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -63,6 +63,11 @@ class TestGatherOp(OpTest):
 
     def init_inputs_and_outputs(self):
         xnp = np.random.random(self.x_shape).astype(self.x_type)
+        if self.x_type == 'complex64' or self.x_type == "cpmolex128":
+            xnp = (
+                np.random.randint(-10, 10, size=(10, 10))
+                + 1j * np.random.randint(-10, 10, size=(10, 10))
+            ).astype(self.x_type)
         self.inputs = {
             'X': xnp,
             'Index': np.array(self.index).astype(self.index_type),
@@ -130,6 +135,22 @@ class TestGatherOpBFP16(TestGatherOp):
         )
 
 
+class TestGatherOpComplex64(TestGatherOp):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestGatherOpComplex128(TestGatherOp):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestCase1(TestGatherOp):
     def config(self):
         """
@@ -155,6 +176,22 @@ class TestCase1BFP16(TestGatherOpBFP16):
         self.config_dtype()
         self.index = [1, 3, 5]
         self.index_type = "int32"
+
+
+class TestCase1Complex64(TestCase1):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestCase1Complex128(TestCase1):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestCase2(TestGatherOp):
@@ -184,6 +221,22 @@ class TestCase2BFP16(TestGatherOpBFP16):
         self.index_type = "int64"
 
 
+class TestCase2Complex64(TestCase2):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestCase2Complex128(TestCase2):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestCase3(TestGatherOp):
     def config(self):
         """
@@ -209,6 +262,22 @@ class TestCase3BFP16(TestGatherOpBFP16):
         self.config_dtype()
         self.index = [1, 3, 5]
         self.index_type = "int64"
+
+
+class TestCase3Complex64(TestCase3):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestCase3Complex128(TestCase3):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestCase4(TestGatherOp):
@@ -237,6 +306,22 @@ class TestCase4BFP16(TestGatherOpBFP16):
         self.index_type = "int32"
 
 
+class TestCase4Complex64(TestCase4):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestCase4Complex128(TestCase4):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestCase5(TestGatherOp):
     def config(self):
         self.x_shape = (10, 20)
@@ -261,6 +346,22 @@ class TestCase5BFP16(TestGatherOpBFP16):
 class TestCase5FP16(TestCase5):
     def config_dtype(self):
         self.x_type = "float16"
+
+
+class TestCase5Complex64(TestCase5):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestCase5Complex128(TestCase5):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestCase6(TestGatherOp):
@@ -323,6 +424,22 @@ class TestGatherBF16Op(OpTest):
         self.axis_type = "int32"
 
 
+class TestCase6Complex64(TestCase6):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestCase6Complex128(TestCase6):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestGatherOp1(OpTest):
     def setUp(self):
         self.op_type = "gather"
@@ -361,6 +478,22 @@ class TestGatherOp1FP16(TestGatherOp1):
         self.x_type = "float16"
 
 
+class TestGatherOp1Complex64(TestGatherOp1):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestGatherOp1Complex128(TestGatherOp1):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestGatherOp2(TestGatherOp1):
     def config(self):
         """
@@ -380,6 +513,22 @@ class TestGatherOp2(TestGatherOp1):
 class TestGatherOp2FP16(TestGatherOp2):
     def config_dtype(self):
         self.x_type = "float16"
+
+
+class TestGatherOp2Complex64(TestGatherOp2):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestGatherOp2Complex128(TestGatherOp2):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestGatherOp3(TestGatherOp1):
@@ -403,6 +552,22 @@ class TestGatherOp3FP16(TestGatherOp3):
         self.x_type = "float16"
 
 
+class TestGatherOp3Complex64(TestGatherOp3):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestGatherOp3Complex128(TestGatherOp3):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestGatherOp4(TestGatherOp1):
     def config(self):
         """
@@ -423,6 +588,22 @@ class TestGatherOp4(TestGatherOp1):
 class TestGatherOp4FP16(TestGatherOp4):
     def config_dtype(self):
         self.x_type = "float16"
+
+
+class TestGatherOp4Complex64(TestGatherOp4):
+    def config_dtype(self):
+        self.x_type = "complex64"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestGatherOp4Complex128(TestGatherOp4):
+    def config_dtype(self):
+        self.x_type = "complex128"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class API_TestGather(unittest.TestCase):
@@ -535,6 +716,7 @@ class API_TestDygraphGather(unittest.TestCase):
 
 
 class TestGathertError(unittest.TestCase):
+    @test_with_pir_api
     def test_error1(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -567,8 +749,11 @@ class TestGathertError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_axis_dtype1)
 
+    @test_with_pir_api
     def test_error2(self):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             shape = [8, 9, 6]
             x = paddle.static.data(shape=shape, dtype='int8', name='x')
             index = paddle.static.data(shape=shape, dtype='int32', name='mask')
@@ -586,6 +771,7 @@ class TestGathertError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_index_type)
 
+    @test_with_pir_api
     def test_error3(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -616,8 +802,7 @@ class TestCheckOutType(unittest.TestCase):
         index = paddle.static.data(shape=[4], dtype='int64', name='index')
         out = paddle.gather(data, index)
         self.assertTrue(
-            out.dtype == core.VarDesc.VarType.INT64
-            or out.dtype == core.DataType.INT64
+            out.dtype == paddle.int64 or out.dtype == core.DataType.INT64
         )
 
     def test_pir_out_type(self):

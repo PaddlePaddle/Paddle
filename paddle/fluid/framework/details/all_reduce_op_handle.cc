@@ -13,20 +13,18 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/phi/core/flags.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-PHI_DECLARE_bool(sync_nccl_allreduce);
+COMMON_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
@@ -260,7 +258,7 @@ void AllReduceOpHandle::AllReduceFunc(
 
       size_t size =
           numel * SizeOfType(framework::TransToProtoVarType(trg.dtype()));
-      RunAndRecordEvent(p, [&trg, var, p, size] {
+      RunAndRecordEvent(p, [&trg, var, size] {
         auto dst_ptr = var->GetMutable<phi::DenseTensor>()->data();
         platform::CPUPlace cpu_place;
         memory::Copy(cpu_place, dst_ptr, cpu_place, trg.data(), size);
@@ -335,6 +333,4 @@ void AllReduceOpHandle::SyncNCCLAllReduce() {
 #endif
 
 std::string AllReduceOpHandle::Name() const { return "all_reduce"; }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

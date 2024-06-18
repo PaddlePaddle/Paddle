@@ -70,8 +70,8 @@
 	path = third_party/xbyak
 	url = https://github.com/herumi/xbyak.git
 	ignore = dirty
-[submodule "third_party/mkldnn"]
-	path = third_party/mkldnn
+[submodule "third_party/onednn"]
+	path = third_party/onednn
 	url = https://github.com/oneapi-src/oneDNN.git
 	ignore = dirty
 [submodule "third_party/flashattn"]
@@ -109,4 +109,16 @@
 [submodule "third_party/cccl"]
 	path = third_party/cccl
 	url = https://github.com/NVIDIA/cccl.git
+	ignore = dirty
+[submodule "third_party/cryptopp"]
+	path = third_party/cryptopp
+	url = https://github.com/weidai11/cryptopp.git
+	ignore = dirty
+[submodule "third_party/cryptopp-cmake"]
+	path = third_party/cryptopp-cmake
+	url = https://github.com/noloader/cryptopp-cmake.git
+	ignore = dirty
+[submodule "third_party/nlohmann_json"]
+	path = third_party/nlohmann_json
+	url = https://github.com/nlohmann/json.git
 	ignore = dirty

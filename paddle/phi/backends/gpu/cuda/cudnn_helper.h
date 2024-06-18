@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/errors.h"
+#include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/common/bfloat16.h"
@@ -25,9 +26,8 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/utils/flags.h"
 
-PD_DECLARE_bool(cudnn_deterministic);
+COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 namespace backends {

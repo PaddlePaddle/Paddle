@@ -21,9 +21,9 @@ limitations under the License. */
 #include <set>
 #include <utility>
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_string(cuda_dir);
 
@@ -177,7 +177,7 @@ static std::string FindCUDAIncludePath() {
     return pos != std::string::npos && pos == (str.length() - substr.length());
   };
 
-  struct stat st;
+  struct stat st = {};
   std::string cuda_include_path;
   if (!FLAGS_cuda_dir.empty()) {
     cuda_include_path = FLAGS_cuda_dir;
@@ -186,7 +186,8 @@ static std::string FindCUDAIncludePath() {
     }
     for (std::string suffix : {"/lib", "/lib64"}) {
       if (EndWith(FLAGS_cuda_dir, suffix)) {
-        cuda_include_path.erase(cuda_include_path.end() - suffix.length());
+        cuda_include_path.erase(cuda_include_path.end() -
+                                suffix.length());  // NOLINT
         break;
       }
     }
@@ -219,7 +220,8 @@ static std::string FindCUDAIncludePath() {
 
 GPUDeviceCode::GPUDeviceCode(const Place& place,
                              const std::string& name,
-                             const std::string& kernel) {
+                             const std::string& kernel)
+    : module_(nullptr), function_(nullptr) {
   if (place.GetType() != phi::AllocationType::GPU) {
     PADDLE_THROW(phi::errors::PermissionDenied(
         "GPUDeviceCode can only launch on GPU place."));

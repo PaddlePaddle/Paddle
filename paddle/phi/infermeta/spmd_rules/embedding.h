@@ -39,10 +39,10 @@ SpmdInfo EmbeddingInferSpmd(const DistMetaTensor& x,
 /// is used in  static graph, but `embedding` used in egaer graph is not
 /// supported. So we need two propagation rules for `c_embedding` and
 /// `embedding`.
-SpmdInfo EmbeddingInferSpmdUnspportVocabParallel(const DistMetaTensor& x,
-                                                 const DistMetaTensor& weight,
-                                                 int padding_idx,
-                                                 bool sparse = false);
+SpmdInfo EmbeddingInferSpmdUnsupportVocabParallel(const DistMetaTensor& x,
+                                                  const DistMetaTensor& weight,
+                                                  int padding_idx,
+                                                  bool sparse = false);
 
 SpmdInfo EmbeddingInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& weight,

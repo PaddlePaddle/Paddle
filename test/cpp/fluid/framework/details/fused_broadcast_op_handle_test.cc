@@ -37,6 +37,7 @@ using DeviceType = paddle::platform::DeviceType;
 struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
   std::vector<std::string> out_varnames_;
   std::vector<std::unique_ptr<ir::Node>> nodes_;
+  TestFusedBroadcastOpHandle() : out_varnames_(), nodes_() {}
 
   void InitFusedBroadcastOp(std::vector<size_t> input_scope_idxes) {
     nodes_.clear();
@@ -56,7 +57,7 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
     // create op handle node
     nodes_.emplace_back(
         ir::CreateNodeForTest("fused_broadcast", ir::Node::Type::kOperation));
-    if (use_device_ == p::kCUDA) {
+    if (use_device_ == p::kCUDA) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       op_handle_ = new FusedBroadcastOpHandle(
           nodes_.back().get(), local_scopes_, place_list_, nccl_ctxs_.get());

@@ -21,8 +21,8 @@
 namespace paddle {
 namespace framework {
 
-InterpreterCoreGarbageCollector::InterpreterCoreGarbageCollector() {
-  garbages_ = std::make_unique<GarbageQueue>();
+InterpreterCoreGarbageCollector::InterpreterCoreGarbageCollector()
+    : garbages_(std::make_unique<GarbageQueue>()) {
   max_memory_size_ = static_cast<int64_t>(GetEagerDeletionThreshold());
   cur_memory_size_ = 0;
 }
@@ -32,14 +32,14 @@ CreateInterpreterCoreGarbageCollector(
     const platform::Place& place,
     const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction) {
   if (platform::is_gpu_place(place)) {
-    if (IsInterpretercoreFastGCEnabled()) {
+    if (IsInterpretercoreFastGCEnabled()) {  // NOLINT
       return std::unique_ptr<InterpreterCoreGarbageCollector>(
           new InterpreterCoreFastGarbageCollector());
     } else {
       return std::unique_ptr<InterpreterCoreGarbageCollector>(
           new InterpreterCoreEventGarbageCollector(vec_instruction));
     }
-  } else if (platform::is_xpu_place(place)) {
+  } else if (platform::is_xpu_place(place)) {  // NOLINT
     // Because there is no multi-stream on XPU device, fast GC can
     // be used.
     // Previously, XPU used no_event GC. But `Wait` in no_event GC
@@ -62,14 +62,14 @@ CreateInterpreterCoreGarbageCollector(
     const platform::Place& place,
     const std::vector<Instruction>& vec_instruction) {
   if (platform::is_gpu_place(place)) {
-    if (IsInterpretercoreFastGCEnabled()) {
+    if (IsInterpretercoreFastGCEnabled()) {  // NOLINT
       return std::unique_ptr<InterpreterCoreGarbageCollector>(
           new InterpreterCoreFastGarbageCollector());
     } else {
       return std::unique_ptr<InterpreterCoreGarbageCollector>(
           new InterpreterCoreEventGarbageCollector(vec_instruction));
     }
-  } else if (platform::is_xpu_place(place)) {
+  } else if (platform::is_xpu_place(place)) {  // NOLINT
     // Because there is no multi-stream on XPU device, fast GC can
     // be used.
     // Previously, XPU used no_event GC. But `Wait` in no_event GC

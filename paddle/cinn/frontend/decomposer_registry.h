@@ -38,18 +38,19 @@ class DecomposerContext {
   // Map the new var to the original var.
   void MapOutToOrigin(const Variable& new_var, const Variable& ori_var) const {
     if (new_var->shape != ori_var->shape) {
-      LOG(FATAL)
-          << "The output shape should be equal to the original. But received : "
-          << new_var->id << ".shape=[" << utils::Join(new_var->shape, ", ")
-          << "] and the original var " << ori_var->id << ".shape=["
-          << utils::Join(ori_var->shape, ", ") << "].";
+      std::stringstream ss;
+      ss << "The output shape should be equal to the original. But received : "
+         << new_var->id << ".shape=[" << utils::Join(new_var->shape, ", ")
+         << "] and the original var " << ori_var->id << ".shape=["
+         << utils::Join(ori_var->shape, ", ") << "].";
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
     if (new_var->type != ori_var->type) {
-      LOG(FATAL)
-          << "The output type shoule be equal to the original. But received : "
-          << new_var->id << ".type=" << new_var->type
-          << " and the original var " << ori_var->id
-          << ".type=" << ori_var->type;
+      std::stringstream ss;
+      ss << "The output type should be equal to the original. But received : "
+         << new_var->id << ".type=" << new_var->type << " and the original var "
+         << ori_var->id << ".type=" << ori_var->type;
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
     }
     (*var_map_)[new_var->id] = ori_var;
   }

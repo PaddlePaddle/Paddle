@@ -41,7 +41,7 @@ class TestConv2DTransposeMKLDNNOp(TestConv2DTransposeOp):
         return
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_output_with_place(
@@ -84,6 +84,7 @@ class TestConv2DTransposeMKLDNNOp(TestConv2DTransposeOp):
             output = conv2d_bias_naive(output, bias)
             output = output.astype(self.dtype)
             self.attrs['fuse_bias'] = self.fuse_bias
+            self.op_type = "conv2d_transpose_bias"
             self.inputs['Bias'] = OpTest.np_dtype_to_base_dtype(bias)
 
         if self.fuse_activation == "relu":

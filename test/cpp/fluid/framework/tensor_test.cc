@@ -19,7 +19,6 @@
 
 #include <string>
 
-namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 
 TEST(DenseTensor, Dims) {
@@ -59,20 +58,20 @@ TEST(DenseTensor, MutableData) {
     auto p1_holder = src_tensor.Holder();
     EXPECT_NE(p1, nullptr);
     // set src_tensor a new dim with large size
-    // momery is supposed to be re-allocated
+    // memory is supposed to be re-allocated
     p2 = src_tensor.mutable_data<float>(common::make_ddim({3, 4}),
                                         platform::CPUPlace());
     EXPECT_NE(p2, nullptr);
     auto p2_holder1 = src_tensor.Holder();
     EXPECT_NE(p1_holder.get(), p2_holder1.get());
     // set src_tensor a new dim with same size
-    // momery block is supposed to be unchanged
+    // memory block is supposed to be unchanged
     p1 = src_tensor.mutable_data<float>(common::make_ddim({2, 2, 3}),
                                         platform::CPUPlace());
     auto p2_holder2 = src_tensor.Holder();
     EXPECT_EQ(p2_holder1.get(), p2_holder2.get());
     // set src_tensor a new dim with smaller size
-    // momery block is supposed to be unchanged
+    // memory block is supposed to be unchanged
     p2 = src_tensor.mutable_data<float>(common::make_ddim({2, 2}),
                                         platform::CPUPlace());
     auto p2_holder3 = src_tensor.Holder();
@@ -125,19 +124,19 @@ TEST(DenseTensor, MutableData) {
     auto p1_holder = src_tensor.Holder();
     EXPECT_NE(p1, nullptr);
     // set src_tensor a new dim with large size
-    // momery is supposed to be re-allocated
+    // memory is supposed to be re-allocated
     p2 = src_tensor.mutable_data<float>(common::make_ddim({3, 1024}),
                                         platform::CUDAPlace(0));
     auto p2_holder = src_tensor.Holder();
     EXPECT_NE(p2, nullptr);
     EXPECT_NE(p1_holder.get(), p2_holder.get());
     // set src_tensor a new dim with same size
-    // momery block is supposed to be unchanged
+    // memory block is supposed to be unchanged
     p1 = src_tensor.mutable_data<float>(common::make_ddim({2, 2, 3}),
                                         platform::CUDAPlace(0));
     EXPECT_EQ(p1, p2);
     // set src_tensor a new dim with smaller size
-    // momery block is supposed to be unchanged
+    // memory block is supposed to be unchanged
     p2 = src_tensor.mutable_data<float>(common::make_ddim({2, 2}),
                                         platform::CUDAPlace(0));
     EXPECT_EQ(p1, p2);

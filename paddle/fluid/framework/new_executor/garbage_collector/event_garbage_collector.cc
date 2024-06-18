@@ -21,36 +21,38 @@
 #include <windows.h>
 #endif  // !_WIN32
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
-    const std::vector<Instruction>& vec_instruction) {
+    const std::vector<Instruction>& vec_instruction)
+    : queue_(nullptr), gc_event_(), events_() {
   WorkQueueOptions options(/*name*/ "GarbageCollector",
                            /*num_threads*/ 1,
                            /*allow_spinning*/ true,
                            /*track_task*/ false);
   queue_ = CreateSingleThreadedWorkQueue(options);
-  for (auto& instruc : vec_instruction) {
-    gc_event_.emplace_back(instruc.DeviceContext().GetPlace(),
+  for (auto& instruct : vec_instruction) {
+    gc_event_.emplace_back(instruct.DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
   }
 }
 
 InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
-    const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction) {
+    const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction)
+    : queue_(nullptr), gc_event_(), events_() {
   WorkQueueOptions options(/*name*/ "GarbageCollector",
                            /*num_threads*/ 1,
                            /*allow_spinning*/ true,
                            /*track_task*/ false);
   queue_ = CreateSingleThreadedWorkQueue(options);
-  for (auto& instruc : vec_instruction) {
-    gc_event_.emplace_back(instruc->DeviceContext().GetPlace(),
+  for (auto& instruct : vec_instruction) {
+    gc_event_.emplace_back(instruct->DeviceContext().GetPlace(),
                            platform::GenerateDeviceEventFlag());
   }
 }
 
-InterpreterCoreEventGarbageCollector::~InterpreterCoreEventGarbageCollector() {
+InterpreterCoreEventGarbageCollector::
+    ~InterpreterCoreEventGarbageCollector() {  // NOLINT
   queue_.reset(nullptr);
 }
 
@@ -103,7 +105,33 @@ void InterpreterCoreEventGarbageCollector::Add(
             ->MoveMemoryHolder(),
         event,
         ctx);
-    var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
+  } else if (var->IsType<phi::SparseCooTensor>()) {
+    Add(var->GetMutable<phi::SparseCooTensor>()
+            ->mutable_values()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
+    Add(var->GetMutable<phi::SparseCooTensor>()
+            ->mutable_indices()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
+  } else if (var->IsType<phi::SparseCsrTensor>()) {
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_crows()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_cols()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_values()
+            ->MoveMemoryHolder(),
+        event,
+        ctx);
   } else if (var->IsType<LoDTensorArray>()) {
     auto* tensor_arr = var->GetMutable<LoDTensorArray>();
     for (auto& t : *tensor_arr) {
@@ -149,7 +177,7 @@ void InterpreterCoreEventGarbageCollector::Free(
     platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
   event->Record(ctx);
-  event->SetFininshed();  // Only for CPU Event
+  event->SetFinished();  // Only for CPU Event
   queue_->AddTask([container = garbage, event = event]() {
     while (!event->Query()) {
 #if defined(_WIN32)
@@ -165,7 +193,7 @@ void InterpreterCoreEventGarbageCollector::Free(
 void InterpreterCoreEventGarbageCollector::FreeGarbages() {
   for (auto& vals : events_) {
     vals.second->Record(vals.first);
-    vals.second->SetFininshed();  // Only for CPU Event
+    vals.second->SetFinished();  // Only for CPU Event
   }
   queue_->AddTask(
       [container = std::move(*garbages_), events = std::move(events_)]() {
@@ -185,5 +213,4 @@ void InterpreterCoreEventGarbageCollector::FreeGarbages() {
   events_.clear();
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

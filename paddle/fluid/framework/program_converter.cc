@@ -43,42 +43,36 @@ std::pair<bool, std::unordered_multimap<std::string, OpDesc*>> DetectLegacyOps(
 
   // get *all kinds* of formats of op versions and op version map to a unified
   // representation before comparison can be done in a neat way
-  if (!program->HasOpVersionMap()) {
-    is_legacy_program = true;
-  } else {
-    legacy_op_versions =
-        paddle::framework::compatible::pb::GetLegacyOpVersions();
+  legacy_op_versions = paddle::framework::compatible::pb::GetLegacyOpVersions();
 
-    const auto* _op_version_map = program->OpVersionMap();
-    for (int i = 0; i < _op_version_map->pair_size(); ++i) {
-      auto pair =
-          std::make_pair(_op_version_map->pair(i).op_name(),
-                         static_cast<uint32_t>(
-                             _op_version_map->pair(i).op_version().version()));
-      program_op_versions.insert(pair);
-    }
+  const auto* _op_version_map = program->OpVersionMap();
+  for (int i = 0; i < _op_version_map->pair_size(); ++i) {
+    auto pair = std::make_pair(
+        _op_version_map->pair(i).op_name(),
+        static_cast<uint32_t>(_op_version_map->pair(i).op_version().version()));
+    program_op_versions.insert(pair);
+  }
 
-    const size_t num_blocks = program->Size();
-    for (size_t i = 0; i < num_blocks; i++) {
-      BlockDesc* block = program->MutableBlock(i);
-      const size_t num_ops = block->OpSize();
-      for (size_t j = 0; j < num_ops; j++) {
-        OpDesc* op = block->Op(static_cast<int>(j));
-        const std::string& op_type = op->Type();
-        if (needConvertedOperators.find(op_type) !=
-            needConvertedOperators.end()) {
-          // If an operator (program_op) is in the needConvertedOperators set,
-          // it indicates that the operator may need to be converted.
-          // Further judgement: if the operator does not exist in the
-          // program_op_version_map, the operator needs to be converted.
-          // Moreover, if the operator does exist and its program_op_version_
-          // is less than or equal legacy_op_version, the operator also needs to
-          // be converted.
-          if (!program_op_versions.count(op_type) ||
-              program_op_versions[op_type] <= legacy_op_versions[op_type]) {
-            is_legacy_program = true;
-            legacy_op_map.insert(std::make_pair(op_type, op));
-          }
+  const size_t num_blocks = program->Size();
+  for (size_t i = 0; i < num_blocks; i++) {
+    BlockDesc* block = program->MutableBlock(i);
+    const size_t num_ops = block->OpSize();
+    for (size_t j = 0; j < num_ops; j++) {
+      OpDesc* op = block->Op(static_cast<int>(j));
+      const std::string& op_type = op->Type();
+      if (needConvertedOperators.find(op_type) !=
+          needConvertedOperators.end()) {
+        // If an operator (program_op) is in the needConvertedOperators set,
+        // it indicates that the operator may need to be converted.
+        // Further judgement: if the operator does not exist in the
+        // program_op_version_map, the operator needs to be converted.
+        // Moreover, if the operator does exist and its program_op_version_
+        // is less than or equal legacy_op_version, the operator also needs to
+        // be converted.
+        if (!program_op_versions.count(op_type) ||
+            program_op_versions[op_type] <= legacy_op_versions[op_type]) {
+          is_legacy_program = true;
+          legacy_op_map.insert(std::make_pair(op_type, op));
         }
       }
     }
@@ -137,7 +131,7 @@ void ConvertAssignValueOp(OpDesc* op) {
   op->SetAttr("int64_values", std::vector<int64_t>());
 
   phi::DataType dtype = phi::DataType::FLOAT32;
-  if (values.size()) {
+  if (!values.empty()) {
     dtype = values.at(0).dtype();
   }
 
@@ -259,7 +253,7 @@ void ConvertAssignValueOp(OpDesc* op) {
   if (op->HasAttr("bool_values")) {
     std::vector<int> bool_values =
         PADDLE_GET_CONST(std::vector<int>, op->GetAttr("bool_values", false));
-    if (bool_values.size()) {
+    if (!bool_values.empty()) {
       values = WrapAsScalars(bool_values);
     }
     op->RemoveAttr("bool_values");
@@ -267,7 +261,7 @@ void ConvertAssignValueOp(OpDesc* op) {
   if (op->HasAttr("fp32_values")) {
     std::vector<float> fp32_values =
         PADDLE_GET_CONST(std::vector<float>, op->GetAttr("fp32_values", false));
-    if (fp32_values.size()) {
+    if (!fp32_values.empty()) {
       values = WrapAsScalars(fp32_values);
     }
     op->RemoveAttr("fp32_values");
@@ -275,7 +269,7 @@ void ConvertAssignValueOp(OpDesc* op) {
   if (op->HasAttr("int32_values")) {
     std::vector<int> int32_values =
         PADDLE_GET_CONST(std::vector<int>, op->GetAttr("int32_values", false));
-    if (int32_values.size()) {
+    if (!int32_values.empty()) {
       values = WrapAsScalars(int32_values);
     }
     op->RemoveAttr("int32_values");
@@ -283,12 +277,12 @@ void ConvertAssignValueOp(OpDesc* op) {
   if (op->HasAttr("int64_values")) {
     std::vector<int64_t> int64_values = PADDLE_GET_CONST(
         std::vector<int64_t>, op->GetAttr("int64_values", false));
-    if (int64_values.size()) {
+    if (!int64_values.empty()) {
       values = WrapAsScalars(int64_values);
     }
     op->RemoveAttr("int64_values");
   }
-  op->SetAttr("values", values);
+  if (!values.empty()) op->SetAttr("values", values);
 }
 
 void ConvertProgram(ProgramDesc* program) {

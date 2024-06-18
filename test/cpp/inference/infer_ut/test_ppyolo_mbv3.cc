@@ -62,7 +62,7 @@ TEST(tensorrt_tester_ppyolo_mbv3, multi_thread4_trt_fp32_bz2) {
   // init output data
   std::map<std::string, paddle::test::Record> infer_output_data,
       truth_output_data;
-  // prepare groudtruth config
+  // prepare ground truth config
   paddle_infer::Config config, config_no_ir;
   config_no_ir.SetModel(FLAGS_modeldir + "/model.pdmodel",
                         FLAGS_modeldir + "/model.pdiparams");
@@ -75,17 +75,17 @@ TEST(tensorrt_tester_ppyolo_mbv3, multi_thread4_trt_fp32_bz2) {
   config.EnableTensorRtEngine(
       1 << 25, 2, 3, paddle_infer::PrecisionType::kFloat32, false, false);
   LOG(INFO) << config.Summary();
-  // get groudtruth by disbale ir
+  // get ground truth by disable ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
-      pred_pool_no_ir.Retrive(0), &input_data_map, &truth_output_data, 1);
+      pred_pool_no_ir.Retrieve(0), &input_data_map, &truth_output_data, 1);
 
   // get infer results from multi threads
   std::vector<std::thread> threads;
   services::PredictorPool pred_pool(config, thread_num);
   for (int i = 0; i < thread_num; ++i) {
     threads.emplace_back(paddle::test::SingleThreadPrediction,
-                         pred_pool.Retrive(i),
+                         pred_pool.Retrieve(i),
                          &input_data_map,
                          &infer_output_data,
                          2);
@@ -104,14 +104,14 @@ TEST(tensorrt_tester_ppyolo_mbv3, multi_thread4_trt_fp32_bz2) {
 }
 
 TEST(DISABLED_mkldnn_tester_ppyolo_mbv3, multi_thread4_mkl_bz2) {
-  // TODO(OliverLPH): mkldnn multi thread will fail
+  // TODO(OliverLPH): onednn multi thread will fail
   int thread_num = 4;
   // init input data
   auto input_data_map = PrepareInput(2);
   // init output data
   std::map<std::string, paddle::test::Record> infer_output_data,
       truth_output_data;
-  // prepare groudtruth config
+  // prepare ground truth config
   paddle_infer::Config config, config_no_ir;
   config_no_ir.SetModel(FLAGS_modeldir + "/model.pdmodel",
                         FLAGS_modeldir + "/model.pdiparams");
@@ -125,17 +125,17 @@ TEST(DISABLED_mkldnn_tester_ppyolo_mbv3, multi_thread4_mkl_bz2) {
   config.SetMkldnnCacheCapacity(10);
   config.SetCpuMathLibraryNumThreads(10);
   LOG(INFO) << config.Summary();
-  // get groudtruth by disbale ir
+  // get ground truth by disable ir
   paddle_infer::services::PredictorPool pred_pool_no_ir(config_no_ir, 1);
   SingleThreadPrediction(
-      pred_pool_no_ir.Retrive(0), &input_data_map, &truth_output_data, 1);
+      pred_pool_no_ir.Retrieve(0), &input_data_map, &truth_output_data, 1);
 
   // get infer results from multi threads
   std::vector<std::thread> threads;
   services::PredictorPool pred_pool(config, thread_num);
   for (int i = 0; i < thread_num; ++i) {
     threads.emplace_back(paddle::test::SingleThreadPrediction,
-                         pred_pool.Retrive(i),
+                         pred_pool.Retrieve(i),
                          &input_data_map,
                          &infer_output_data,
                          2);

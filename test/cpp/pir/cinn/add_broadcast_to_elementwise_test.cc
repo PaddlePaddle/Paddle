@@ -17,16 +17,32 @@
 #include <memory>
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
+
+std::vector<pir::Type> CreateDenseTensorTypes(const phi::DDim &dims) {
+  pir::IrContext *ctx = ::pir::IrContext::Instance();
+  pir::Type fp32_dtype = ::pir::Float32Type::get(ctx);
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {};
+  size_t offset = 0;
+  std::vector<::pir::Type> op_output_types = {::pir::DenseTensorType::get(
+      ctx, fp32_dtype, dims, data_layout, lod, offset)};
+  return op_output_types;
+}
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT
+  auto group_op = builder.Build<cinn::dialect::GroupOp>(
+      CreateDenseTensorTypes(common::make_ddim({4, 3, 16})));
+  builder.SetInsertionPointToBlockEnd(group_op.block());
   paddle::dialect::FullOp full_input_x =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{4, 3, 16},
                                              1.5,
@@ -39,9 +55,13 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
                                                       full_input_y.result(0));
 
   auto relu_op = builder.Build<paddle::dialect::ReluOp>(add_op.result(0));
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{relu_op.out()});
 }
 
 void BuildProgramBoth(pir::Builder &builder) {  // NOLINT
+  auto group_op = builder.Build<cinn::dialect::GroupOp>(
+      CreateDenseTensorTypes(common::make_ddim({10, 10})));
+  builder.SetInsertionPointToBlockEnd(group_op.block());
   paddle::dialect::FullOp full_input_x =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{10, 1},
                                              1.5,
@@ -57,9 +77,13 @@ void BuildProgramBoth(pir::Builder &builder) {  // NOLINT
                                                       full_input_y.result(0));
 
   auto relu_op = builder.Build<paddle::dialect::ReluOp>(add_op.result(0));
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{relu_op.out()});
 }
 
 void BuildProgramSubBoth(pir::Builder &builder) {  // NOLINT
+  auto group_op = builder.Build<cinn::dialect::GroupOp>(
+      CreateDenseTensorTypes(common::make_ddim({10, 10})));
+  builder.SetInsertionPointToBlockEnd(group_op.block());
   paddle::dialect::FullOp full_input_x =
       builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{10, 1},
                                              1.5,
@@ -75,6 +99,7 @@ void BuildProgramSubBoth(pir::Builder &builder) {  // NOLINT
       full_input_x.result(0), full_input_y.result(0));
 
   auto relu_op = builder.Build<paddle::dialect::ReluOp>(sub_op.result(0));
+  builder.Build<pir::YieldOp>(std::vector<pir::Value>{relu_op.out()});
 }
 
 TEST(PatternRewrite, broadcast_elementwise) {
@@ -87,12 +112,15 @@ TEST(PatternRewrite, broadcast_elementwise) {
   BuildProgram(builder);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
 
   pm.Run(&program);
 
-  auto it = program.block()->begin();
+  auto it = program.block()
+                ->begin()
+                ->dyn_cast<cinn::dialect::GroupOp>()
+                .block()
+                ->begin();
 
   CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
@@ -113,12 +141,15 @@ TEST(PatternRewrite, broadcast_elementwise_both) {
   BuildProgramBoth(builder);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
 
   pm.Run(&program);
 
-  auto it = program.block()->begin();
+  auto it = program.block()
+                ->begin()
+                ->dyn_cast<cinn::dialect::GroupOp>()
+                .block()
+                ->begin();
 
   CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;
@@ -141,12 +172,15 @@ TEST(PatternRewrite, broadcast_elementwise_sub_both) {
   BuildProgramSubBoth(builder);
 
   pir::PassManager pm(ctx);
-  pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
 
   pm.Run(&program);
 
-  auto it = program.block()->begin();
+  auto it = program.block()
+                ->begin()
+                ->dyn_cast<cinn::dialect::GroupOp>()
+                .block()
+                ->begin();
 
   CHECK_EQ(it->isa<paddle::dialect::FullOp>(), true);
   it++;

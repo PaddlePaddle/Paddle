@@ -17,8 +17,7 @@
 #include "paddle/cinn/hlir/framework/pir/compilation_task.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/framework/op_lowering.h"
-#include "paddle/cinn/ir/module.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -29,7 +28,11 @@ void GroupCompilationContext::SetLoweredFuncs(
        funcs.predicate2funcs) {
     predicates_.push_back(std::move(predicate2func.first));
     lowered_funcs_.push_back(std::move(predicate2func.second));
-    ++func_size_;
+  }
+  for (std::pair<ir::SymbolicPredicate, ir::LoweredFunc>& predicate2func :
+       funcs.predicate2funcsCX86) {
+    CX86_predicates_.push_back(std::move(predicate2func.first));
+    CX86_lowered_funcs_.push_back(std::move(predicate2func.second));
   }
   infer_shape_lowered_func_ = std::move(funcs.infer_shape_func);
 }
@@ -43,32 +46,30 @@ std::string GroupCompilationContext::PrintPredicate2Funcs() const {
   return ss.str();
 }
 
-void* GroupCompilationContext::FuncPtr() {
-  return backend_compiler_->Lookup(host_func_name_);
-}
-
-std::shared_ptr<backends::Compiler> GroupCompilationContext::BackendCompiler() {
-  return backend_compiler_;
-}
-
-void CompilationTask::operator()() {
+std::shared_ptr<pir::CompilationResult> CompilationTask::operator()() {
   Lowering();
-  CodegenAndJit();
+  return CodegenAndJit();
 }
 
 void CompilationTask::Lowering() {
-  auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(context_->target_);
+  VLOG(5) << "Begin to lowering group: " << *context_->group_;
+  auto op_lowerer = CreateOpLowerer<pir::OpLoweringGroupPtr>(context_->target_);
   context_->SetLoweredFuncs(
-      op_lowerer.BucketLower(context_->group_, false, true, false));
-  // context_->SetLoweredFuncs(
-  //     op_lowerer.BucketLower(context_->group_, false, false, false));
-  op_lowerer.InsertNameGeneToScope(context_->scope_);
+      op_lowerer.BucketLower(context_->group_,
+                             /* apply op schedule = */ false,
+                             /* apply group schedule = */ true,
+                             /* apply pass = */ true));
+  VLOG(5) << "End to lowering: " << context_->PrintPredicate2Funcs();
 }
 
-void CompilationTask::CodegenAndJit() {
+std::shared_ptr<pir::CompilationResult> CompilationTask::CodegenAndJit() {
   ir::Module::Builder builder(cinn::common::UniqName("module"),
                               context_->target_);
-  CHECK_EQ(context_->predicates_.size(), context_->lowered_funcs_.size());
+  PADDLE_ENFORCE_EQ(context_->predicates_.size(),
+                    context_->lowered_funcs_.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of predicates and lowered_funcs should be "
+                        "the same."));
   for (const ir::Expr& predicate : context_->predicates_) {
     builder.AddPredicate(predicate);
   }
@@ -78,42 +79,39 @@ void CompilationTask::CodegenAndJit() {
   builder.SetInferShapeFunc(context_->infer_shape_lowered_func_);
   ir::Module ir_module = builder.Build();
 
-  context_->backend_compiler_ = backends::Compiler::Create(context_->target_);
-  context_->backend_compiler_->Build(ir_module, "");
+  ir::Module::Builder builder_CX86(cinn::common::UniqName("module"),
+                                   common::DefaultHostTarget());
+  PADDLE_ENFORCE_EQ(context_->CX86_predicates_.size(),
+                    context_->CX86_lowered_funcs_.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of predicates and lowered_funcs should be "
+                        "the same."));
+  for (const ir::Expr& predicate : context_->CX86_predicates_) {
+    builder_CX86.AddPredicate(predicate);
+  }
+  for (const ir::LoweredFunc& func : context_->CX86_lowered_funcs_) {
+    builder_CX86.AddFunction(func);
+  }
+  ir::Module ir_moduleCX86 = builder_CX86.Build();
+
+  return BuildPirCINNKernelInfo(ir_module, ir_moduleCX86);
 }
 
-std::unique_ptr<Instruction> CompilationTask::BuildInstruction() {
-  std::string fn_name = context_->group_->FuncName();
-  std::unique_ptr<Instruction> instr =
-      std::make_unique<Instruction>(context_->target_,
-                                    context_->scope_.get(),
-                                    context_->group_->input_names,
-                                    context_->group_->output_names,
-                                    fn_name);
-  VLOG(4) << "Lookup kernel name: " << fn_name;
-  auto* fn_ptr = context_->backend_compiler_->Lookup(fn_name);
-  CHECK(fn_ptr);
-  auto* infer_shape_fn_ptr =
-      context_->backend_compiler_->Lookup(fn_name + "_infer_shape" + fn_name);
-  CHECK(infer_shape_fn_ptr);
-  instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), fn_name);
-  instr->Finalize();
-  return instr;
-}
-
-pir::CINNKernelInfo CompilationTask::BuildPirCINNKernelInfo() {
-  std::string fn_name = context_->group_->FuncName();
-  VLOG(4) << "Lookup kernel name: " << fn_name;
-  auto* fn_ptr = context_->backend_compiler_->Lookup(fn_name);
-  CHECK(fn_ptr);
-  auto* infer_shape_fn_ptr =
-      context_->backend_compiler_->Lookup(fn_name + "_infer_shape");
-  CHECK(infer_shape_fn_ptr);
-  pir::CINNKernelInfo cinn_kernel_info;
-  cinn_kernel_info.fn_ptr = fn_ptr;
-  cinn_kernel_info.infer_shape_fn_ptr = infer_shape_fn_ptr;
-  cinn_kernel_info.int_args_map = context_->group_->int_args_map;
-  return cinn_kernel_info;
+std::shared_ptr<pir::CompilationResult> CompilationTask::BuildPirCINNKernelInfo(
+    const ir::Module& module, const ir::Module& CX86module) {
+  auto compilation_result =
+      std::make_shared<pir::CompilationResult>(context_->target_);
+  auto backend_resource = std::make_shared<pir::BackendResource>(
+      context_->target_,
+      context_->group_->FuncName(),
+      context_->group_->FuncName() + "_infer_shape",
+      context_->group_->int_args_map());
+  VLOG(5) << "Start to compile module into cuda kernel...";
+  backend_resource->GetBackendCompiler()->Build(module, "", false);
+  backend_resource->GetBackendCompiler()->AppendCX86(CX86module);
+  compilation_result->SetBackendResource(backend_resource);
+  VLOG(5) << "End to compile module into cuda kernel.";
+  return compilation_result;
 }
 
 }  // namespace framework

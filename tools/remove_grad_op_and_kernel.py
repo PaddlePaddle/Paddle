@@ -126,7 +126,7 @@ if __name__ == '__main__':
         xpu_kernel_pattern1 = r'REGISTER_OP_XPU_KERNEL\(.*?\);?'
         xpu_kernel_pattern2 = r'REGISTER_OP_XPU_KERNEL\(.*?_grad,.*?\);?'
 
-        # remove custom grad kernel, mkldnn or cudnn etc.
+        # remove custom grad kernel, onednn or cudnn etc.
         op_kernel_pattern1 = r'REGISTER_OP_KERNEL\(.*?\);?'
         op_kernel_pattern2 = r'REGISTER_OP_KERNEL\(.*?_grad,.*?\);?'
 

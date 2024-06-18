@@ -15,6 +15,7 @@
 
 from google.protobuf import text_format
 
+import paddle
 from paddle.base import core
 from paddle.base.proto import data_feed_pb2
 
@@ -48,7 +49,7 @@ class DatasetBase:
         download_cmd="cat",
     ):
         """
-        should be called only once in user's python scripts to initialize setings of dataset instance.
+        should be called only once in user's python scripts to initialize settings of dataset instance.
         Normally, it is called by InMemoryDataset or QueueDataset.
 
         Args:
@@ -182,9 +183,9 @@ class DatasetBase:
             if var.lod_level == 0:
                 slot_var.is_dense = True
                 slot_var.shape.extend(var.shape)
-            if var.dtype == core.VarDesc.VarType.FP32:
+            if var.dtype == paddle.float32:
                 slot_var.type = "float"
-            elif var.dtype == core.VarDesc.VarType.INT64:
+            elif var.dtype == paddle.int64:
                 slot_var.type = "uint64"
             else:
                 raise ValueError(
@@ -279,7 +280,7 @@ class DatasetBase:
         self, var_list, data_generator_class, test_file
     ):
         """
-         Var consistency insepection of use_var_list and data_generator data.
+         Var consistency inspection of use_var_list and data_generator data.
 
         Examples:
             .. code-block:: python
@@ -318,9 +319,7 @@ class DatasetBase:
                                 % ele[0]
                             )
 
-                        if var_list[
-                            i
-                        ].dtype == core.VarDesc.VarType.FP32 and not all(
+                        if var_list[i].dtype == paddle.float32 and not all(
                             isinstance(ele, float) for ele in ele[1]
                         ):
                             raise TypeError(
@@ -332,8 +331,8 @@ class DatasetBase:
                             )
 
                         if (
-                            var_list[i].dtype == core.VarDesc.VarType.INT64
-                            or var_list[i].dtype == core.VarDesc.VarType.INT32
+                            var_list[i].dtype == paddle.int64
+                            or var_list[i].dtype == paddle.int32
                         ) and not all(isinstance(ele, int) for ele in ele[1]):
                             raise TypeError(
                                 "var dtype mismatch error: var name = {}, var type in var_list = {}, while var in data_generator contains non-int value, which is {} \n"
@@ -383,7 +382,7 @@ class InMemoryDataset(DatasetBase):
         """
         :api_attr: Static Graph
 
-        should be called only once in user's python scripts to initialize distributed-related setings of dataset instance
+        should be called only once in user's python scripts to initialize distributed-related settings of dataset instance
         Args:
             kwargs: Keyword arguments. Currently, we support following keys in **kwargs:
 
@@ -445,7 +444,7 @@ class InMemoryDataset(DatasetBase):
         """
         :api_attr: Static Graph
 
-        should be called in user's python scripts to update setings of dataset instance.
+        should be called in user's python scripts to update settings of dataset instance.
 
         Args:
             kwargs: Keyword arguments. Currently, we support following keys in **kwargs,
@@ -526,7 +525,7 @@ class InMemoryDataset(DatasetBase):
         """
         :api_attr: Static Graph
 
-        should be called only once in user's python scripts to initialize setings of dataset instance
+        should be called only once in user's python scripts to initialize settings of dataset instance
 
         Args:
             kwargs: Keyword arguments. Currently, we support following keys in **kwargs:
@@ -844,7 +843,7 @@ class InMemoryDataset(DatasetBase):
         tree_path,
         tdm_layer_counts,
         start_sample_layer,
-        with_hierachy,
+        with_hierarchy,
         seed,
         id_slot,
     ):
@@ -853,7 +852,7 @@ class InMemoryDataset(DatasetBase):
             tree_path,
             tdm_layer_counts,
             start_sample_layer,
-            with_hierachy,
+            with_hierarchy,
             seed,
             id_slot,
         )
@@ -1317,7 +1316,7 @@ class QueueDataset(DatasetBase):
         """
         :api_attr: Static Graph
 
-        should be called only once in user's python scripts to initialize setings of dataset instance
+        should be called only once in user's python scripts to initialize settings of dataset instance
 
         """
         super().init(**kwargs)
@@ -1357,7 +1356,7 @@ class FileInstantDataset(DatasetBase):
 
     def init(self, **kwargs):
         """
-        should be called only once in user's python scripts to initialize setings of dataset instance
+        should be called only once in user's python scripts to initialize settings of dataset instance
         """
         super().init(**kwargs)
 
@@ -1383,7 +1382,7 @@ class BoxPSDataset(InMemoryDataset):
 
     def init(self, **kwargs):
         """
-        should be called only once in user's python scripts to initialize setings of dataset instance
+        should be called only once in user's python scripts to initialize settings of dataset instance
         """
         super().init(**kwargs)
 

@@ -54,7 +54,7 @@ CONDITION_FUNC(without_last_dimension_in_reduce) {
   auto in_shape =
       helper->shape_dict_.at(producer->inlinks_in_order()[0]->source()->id());
   auto reduce_axes =
-      absl::get<std::vector<int>>(producer->attrs.attr_store.at("dim"));
+      absl::get<std::vector<int>>(producer->attrs.attr_store.at("axis"));
   return helper->WithoutLastDimInReduce(in_shape, reduce_axes);
 }
 
@@ -77,19 +77,19 @@ CONDITION_FUNC(reduce_fuse_reduce) {
   auto reducer_output_shape =
       helper->shape_dict_.at(reducer->outlinks_in_order()[0]->sink()->id());
 
-  auto producer_reduce_dim =
-      absl::get<std::vector<int>>(producer->attrs.attr_store.at("dim"));
-  auto reducer_reduce_dim =
-      absl::get<std::vector<int>>(reducer->attrs.attr_store.at("dim"));
+  auto producer_reduce_axes =
+      absl::get<std::vector<int>>(producer->attrs.attr_store.at("axis"));
+  auto reducer_reduce_axes =
+      absl::get<std::vector<int>>(reducer->attrs.attr_store.at("axis"));
 
-  for (auto& dim : producer_reduce_dim) {
+  for (auto& dim : producer_reduce_axes) {
     // if dim = -1, set as shape.size() - 1
     if (dim < 0) {
       dim += producer_input_shape.size();
     }
   }
 
-  for (auto& dim : reducer_reduce_dim) {
+  for (auto& dim : reducer_reduce_axes) {
     // if dim = -1,  set as shape.size() - 1
     if (dim < 0) {
       dim += reducer_input_shape.size();
@@ -97,12 +97,12 @@ CONDITION_FUNC(reduce_fuse_reduce) {
   }
 
   if (producer_output_shape == reducer_output_shape &&
-      producer_reduce_dim == reducer_reduce_dim) {
+      producer_reduce_axes == reducer_reduce_axes) {
     bool input_shape_same = producer_input_shape == reducer_input_shape;
-    bool without_last_dim =
-        helper->WithoutLastDimInReduce(producer_input_shape,
-                                       producer_reduce_dim) &&
-        helper->WithoutLastDimInReduce(reducer_input_shape, reducer_reduce_dim);
+    bool without_last_dim = helper->WithoutLastDimInReduce(
+                                producer_input_shape, producer_reduce_axes) &&
+                            helper->WithoutLastDimInReduce(reducer_input_shape,
+                                                           reducer_reduce_axes);
     // check shape is same
     if (input_shape_same || without_last_dim) {
       auto shared_size = helper->GetSharedSize(producer);
@@ -124,7 +124,7 @@ CONDITION_FUNC(reduce_fuse_reduce) {
 }
 
 CONDITION_FUNC(is_horizontal_relation) {
-  auto check_depency = [&](const Node* node) {
+  auto check_dependency = [&](const Node* node) {
     std::queue<const Node*> candidates;
     std::unordered_set<const Node*> visited_set;
     candidates.push(node);
@@ -134,7 +134,7 @@ CONDITION_FUNC(is_horizontal_relation) {
       candidates.pop();
       // visit all producer node
       for (auto tmp_node : helper->GetProducerNode(candidate)) {
-        // check depency.
+        // check dependency.
         if (producer == tmp_node) {
           return true;
         }
@@ -142,7 +142,7 @@ CONDITION_FUNC(is_horizontal_relation) {
         if (!consumer->nodes_set.count(tmp_node)) {
           continue;
         }
-        // recored visited node.
+        // recorded visited node.
         if (!visited_set.count(tmp_node)) {
           visited_set.insert(tmp_node);
           candidates.push(tmp_node);
@@ -157,7 +157,7 @@ CONDITION_FUNC(is_horizontal_relation) {
     if (helper->GetOpKind(node) != consumer->op_pattern_kind) {
       continue;
     }
-    if (check_depency(node)) {
+    if (check_dependency(node)) {
       return false;
     }
   }
@@ -184,7 +184,7 @@ CONDITION_FUNC(horizontal_or_vertical_reduce_relation) {
   auto reduce_shape =
       helper->shape_dict_.at(helper->GetProducerNodeData(reducer)[0]->id());
   auto reduce_axes =
-      absl::get<std::vector<int>>(reducer->attrs.attr_store.at("dim"));
+      absl::get<std::vector<int>>(reducer->attrs.attr_store.at("axis"));
   for (auto& axis : reduce_axes) {
     // if axis = -1, set as shape.size() - 1
     if (axis < 0) {
@@ -207,17 +207,17 @@ CONDITION_FUNC(horizontal_or_vertical_reduce_relation) {
     return false;
   }
 
-  int succesive_reduce_dimension = reduce_shape.at(reduce_axes.back());
+  int successive_reduce_dimension = reduce_shape.at(reduce_axes.back());
   for (int idx = reduce_axes.size() - 2; idx >= 0; --idx) {
     if (reduce_axes[idx] == reduce_axes[idx + 1] - 1) {
-      succesive_reduce_dimension *= reduce_shape[reduce_axes[idx]];
+      successive_reduce_dimension *= reduce_shape[reduce_axes[idx]];
       continue;
     }
     break;
   }
 
   return helper->target_ == cinn::common::DefaultNVGPUTarget()
-             ? (succesive_reduce_dimension <= helper->target_.max_num_threads()
+             ? (successive_reduce_dimension <= helper->target_.max_num_threads()
                     ? true
                     : false)
              : true;
@@ -269,8 +269,8 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
 
   auto rinput_shape = helper->GetNodeInputShape(producer);
   auto reduce_axes =
-      absl::get<std::vector<int>>(producer->attrs.attr_store.at("dim"));
-  auto keep_dim = absl::get<bool>(producer->attrs.attr_store.at("keep_dim"));
+      absl::get<std::vector<int>>(producer->attrs.attr_store.at("axis"));
+  auto keepdim = absl::get<bool>(producer->attrs.attr_store.at("keepdim"));
   for (auto& axis : reduce_axes) {
     if (axis < 0) {
       axis += rinput_shape.size();
@@ -337,7 +337,7 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
       return false;
     }
     // if keep dim = true.
-    if (keep_dim) {
+    if (keepdim) {
       continue;
     } else {
       // if routput_shape = [1]

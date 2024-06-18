@@ -17,9 +17,10 @@ import struct
 import numpy as np
 
 from paddle import pir
+from paddle._typing.dtype_like import DTypeLike
 
 from ..pir import Value
-from ..pir.core import ParameterMeta
+from ..pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE, ParameterMeta
 from . import core
 from .framework import (
     Variable,
@@ -62,21 +63,6 @@ _NUMPY_DTYPE_2_PADDLE_DTYPE = {
     'complex128': core.VarDesc.VarType.COMPLEX128,
 }
 
-_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
-    core.DataType.BOOL: 'bool',
-    core.DataType.FLOAT16: 'float16',
-    core.DataType.BFLOAT16: 'uint16',
-    core.DataType.FLOAT32: 'float32',
-    core.DataType.FLOAT64: 'float64',
-    core.DataType.INT8: 'int8',
-    core.DataType.INT16: 'int16',
-    core.DataType.INT32: 'int32',
-    core.DataType.INT64: 'int64',
-    core.DataType.UINT8: 'uint8',
-    core.DataType.COMPLEX64: 'complex64',
-    core.DataType.COMPLEX128: 'complex128',
-}
-
 
 def convert_float_to_uint16(data, data_format="NCHW"):
     if data.size == 0:
@@ -104,7 +90,7 @@ def convert_uint16_to_float(data):
     return np.reshape(new_data, data.shape)
 
 
-def convert_dtype(dtype):
+def convert_dtype(dtype: DTypeLike) -> str:
     if isinstance(dtype, core.VarDesc.VarType):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
@@ -185,7 +171,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         return
 
     # NOTE: `in_to_static_mode` is used to determined whether this op is called under
-    # @to_static in transformation from dygrah to static layer. We add Tensor in
+    # @to_static in transformation from dygraph to static layer. We add Tensor in
     # expected_type to skip checking because Tensor may be created and used in unusual way.
     from .dygraph.base import in_to_static_mode
 
@@ -201,9 +187,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         )
     if not isinstance(input, expected_type):
         raise TypeError(
-            "The type of '{}' in {} must be {}, but received {}. {}".format(
-                input_name, op_name, expected_type, type(input), extra_message
-            )
+            f"The type of '{input_name}' in {op_name} must be {expected_type}, but received {type(input)}. {extra_message}"
         )
 
 
@@ -216,31 +200,29 @@ def check_dtype(
 
     if convert_dtype(input_dtype) not in expected_dtype:
         raise TypeError(
-            "The data type of '{}' in {} must be {}, but received {}. {}".format(
-                input_name,
-                op_name,
-                expected_dtype,
-                convert_dtype(input_dtype),
-                extra_message,
-            )
+            f"The data type of '{input_name}' in {op_name} must be {expected_dtype}, but received {convert_dtype(input_dtype)}. {extra_message}"
         )
 
 
 def check_shape(
     shape,
     op_name,
-    expected_shape_type=(list, tuple, Variable),
-    expected_element_type=(int, Variable),
+    expected_shape_type=(list, tuple, Variable, Value),
+    expected_element_type=(int, Variable, Value),
     expected_tensor_dtype=('int32', 'int64'),
 ):
     # See NOTE [ Why skip dynamic graph check ]
     if in_dygraph_mode():
         return
     check_type(shape, 'shape', expected_shape_type, op_name)
-    if expected_element_type is not None and not isinstance(shape, Variable):
+    if expected_element_type is not None and not isinstance(
+        shape, (Variable, Value)
+    ):
         for item in shape:
             check_type(item, 'element of shape', expected_element_type, op_name)
-            if expected_tensor_dtype is not None and isinstance(item, Variable):
+            if expected_tensor_dtype is not None and isinstance(
+                item, (Variable, Value)
+            ):
                 check_dtype(
                     item.dtype,
                     'element of shape',
@@ -250,7 +232,9 @@ def check_shape(
                         ', '.join(expected_tensor_dtype)
                     ),
                 )
-    if expected_tensor_dtype is not None and isinstance(shape, Variable):
+    if expected_tensor_dtype is not None and isinstance(
+        shape, (Variable, Value)
+    ):
         check_dtype(shape.dtype, 'shape', expected_tensor_dtype, op_name)
 
 
@@ -259,11 +243,11 @@ class DataToLoDTensorConverter:
         self.place = place
         self.lod_level = lod_level
         self.shape = shape
-        negtive_count = 0
+        negative_count = 0
         for s in self.shape:
             if s < 0:
-                negtive_count += 1
-            if negtive_count > 1:
+                negative_count += 1
+            if negative_count > 1:
                 self.shape = None
                 break
         self.dtype = convert_dtype(dtype)
@@ -288,9 +272,7 @@ class DataToLoDTensorConverter:
         for s1, s2 in zip(self.shape, shape):
             if s1 != s2 and s1 >= 0 and s2 >= 0:
                 raise ValueError(
-                    "Shape not match. What is defined in data layer is {}, but receive {}".format(
-                        self.shape, shape
-                    )
+                    f"Shape not match. What is defined in data layer is {self.shape}, but receive {shape}"
                 )
 
     def done(self):
@@ -301,9 +283,7 @@ class DataToLoDTensorConverter:
                     arr = arr.reshape(self.shape)
                 except ValueError:
                     raise ValueError(
-                        "Reshape error. What is defined in data layer is {}, but receive {}".format(
-                            self.shape, arr.shape
-                        )
+                        f"Reshape error. What is defined in data layer is {self.shape}, but receive {arr.shape}"
                     )
         t = core.LoDTensor()
         t.set(arr, self.place)
@@ -434,7 +414,7 @@ class DataFeeder:
                     raise TypeError("Feed list should contain a list of Value")
                 self.feed_dtypes.append(each_var.dtype)
                 self.feed_names.append(each_var.name)
-                self.feed_lod_level.append(each_var.lod_level)
+                self.feed_lod_level.append(0)
                 self.feed_shapes.append(each_var.shape)
         else:
             if program is None:

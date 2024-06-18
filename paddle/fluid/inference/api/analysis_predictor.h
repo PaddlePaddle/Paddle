@@ -29,7 +29,9 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
-#include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/utils/string/printf.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
@@ -42,9 +44,12 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle_infer {
+using float16 = paddle::platform::float16;
+using bfloat16 = phi::dtype::bfloat16;
 namespace experimental {
 class InternalUtils;
 };
@@ -250,7 +255,11 @@ class AnalysisPredictor : public PaddlePredictor {
   /// to get the optimized model program
   ///
   void OptimizeInferenceProgram();
-
+  ///
+  /// \brief According to argument information, execute the relevant pass
+  /// to get the optimized model program
+  ///
+  void OptimizeInferencePirProgram();
   ///
   /// \brief Clear the intermediate tensors of the predictor
   ///
@@ -309,7 +318,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   ///
   /// \brief Register a output hook function to operate the intermediate tensor
-  /// of op output. when using this function, memory reuse should be tured off.
+  /// of op output. when using this function, memory reuse should be turned off.
   /// The hook function signature is void(const std::string&, const
   /// std::string&, const paddle::Tensor&>). Here, the first parameter is op's
   /// type, the second param is output var name of the op, and the third
@@ -321,7 +330,7 @@ class AnalysisPredictor : public PaddlePredictor {
   void RegisterInputHook(const InputTensorHookFunc &hookfunc) override;
 
   ///
-  /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
+  /// \brief Initialize onednn quantizer and execute onednn quantization pass
   ///
   /// \return Whether the function executed successfully
   ///
@@ -343,6 +352,13 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return Whether the function executed successfully
   ///
   bool PrepareProgram(const std::shared_ptr<framework::ProgramDesc> &program);
+  ///
+  /// \brief Prepare predictor's required programs, including loading model
+  /// information, graph optimization, and executor creation variables, etc.
+  ///
+  /// \return Whether the function executed successfully
+  ///
+  bool PreparePirProgram();
   ///
   /// \brief Prepare scope environment, each predictor has its own scope
   ///
@@ -375,6 +391,13 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return Whether the function executed successfully
   ///
   bool LoadParameters();
+
+  ///
+  /// \brief Load model parameters.
+  ///
+  /// \return Whether the function executed successfully
+  ///
+  bool LoadPirParameters();
 
   ///
   /// \brief Prepare input data, only used in Run()
@@ -494,6 +517,8 @@ class AnalysisPredictor : public PaddlePredictor {
   void InitPlace();
   void InitDeviceContexts();
   void InitResourceManager(void *stream);
+  std::string GetOptimizedModelPath();
+  void ClearExtraParams();
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   // fleet exe related
@@ -546,7 +571,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
  private:
   AnalysisConfig config_;
-  std::unique_ptr<Argument> argument_;
+  std::unique_ptr<Argument> argument_ = nullptr;
   Argument::fusion_statis_t fusion_statis_;
   std::unique_ptr<NaiveExecutor> executor_;
   platform::Place place_;
@@ -554,11 +579,14 @@ class AnalysisPredictor : public PaddlePredictor {
   framework::Scope *sub_scope_{nullptr};
   std::shared_ptr<framework::ProgramDesc> inference_program_;
   std::shared_ptr<pir::Program> pir_program_;
+  bool load_pir_model_{false};
   std::vector<framework::OpDesc *> feeds_;
+  std::vector<pir::Operation *> pir_feeds_;
   std::map<std::string, size_t> feed_names_;
   // Sorted according to the idx.
   std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
+  std::vector<pir::Operation *> pir_fetches_;
   std::map<size_t, std::string> idx2fetches_;
 
   phi::DataType model_precision_{phi::DataType::FLOAT32};

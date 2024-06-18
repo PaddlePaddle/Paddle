@@ -19,19 +19,19 @@
 namespace cinn {
 namespace utils {
 
-TEST(string, Endswith) {
+TEST(string, EndsWith) {
   std::string a = "a__p";
-  ASSERT_TRUE(Endswith(a, "__p"));
-  ASSERT_FALSE(Endswith(a, "_x"));
-  ASSERT_TRUE(Endswith(a, "a__p"));
-  ASSERT_FALSE(Endswith(a, "a___p"));
+  ASSERT_TRUE(EndsWith(a, "__p"));
+  ASSERT_FALSE(EndsWith(a, "_x"));
+  ASSERT_TRUE(EndsWith(a, "a__p"));
+  ASSERT_FALSE(EndsWith(a, "a___p"));
 }
-TEST(string, Startswith) {
+TEST(string, StartsWith) {
   std::string a = "a__p";
-  ASSERT_TRUE(Startswith(a, "a_"));
-  ASSERT_TRUE(Startswith(a, "a__"));
-  ASSERT_TRUE(Startswith(a, "a__p"));
-  ASSERT_FALSE(Startswith(a, "a___p"));
+  ASSERT_TRUE(StartsWith(a, "a_"));
+  ASSERT_TRUE(StartsWith(a, "a__"));
+  ASSERT_TRUE(StartsWith(a, "a__p"));
+  ASSERT_FALSE(StartsWith(a, "a___p"));
 }
 
 }  // namespace utils

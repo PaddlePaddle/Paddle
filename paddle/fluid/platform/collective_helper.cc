@@ -61,17 +61,17 @@ class NCCLCommImpl : public NCCLComm {
   }
 
  private:
-  int ring_id_;
-  int nranks_;
-  int rank_;
-  ncclComm_t comm_;
-  std::unique_ptr<phi::GPUContext> dev_ctx_;
+  int ring_id_ = 0;
+  int nranks_ = 0;
+  int rank_ = 0;
+  ncclComm_t comm_ = nullptr;
+  std::unique_ptr<phi::GPUContext> dev_ctx_ = nullptr;
 
   // used for comm wait compute, compute_stream-->event-->comm_stream
-  std::shared_ptr<platform::CudaEventObject> compute_event_;
+  std::shared_ptr<platform::CudaEventObject> compute_event_ = nullptr;
 
   // used for compute wait comm, comm_stream-->event-->compute_stream
-  std::shared_ptr<platform::CudaEventObject> comm_event_;
+  std::shared_ptr<platform::CudaEventObject> comm_event_ = nullptr;
 };
 
 NCCLCommContext& NCCLCommContext::Instance() {
@@ -133,7 +133,7 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
                                         dev_ids.size()));
 
   const int kDevices = dev_ids.size();
-  ncclComm_t comms[kDevices];
+  ncclComm_t comms[kDevices];  // NOLINT
   PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclCommInitAll(
       comms, dev_ids.size(), dev_ids.data()));
 
@@ -169,7 +169,7 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
   VLOG(1) << "Begin CreateNCCLCommMultiTrainer. device number: " << kDevices
           << ", ntrainers: " << ntrainers << ", train_id: " << train_id
           << ", rind_id: " << ring_id;
-  ncclComm_t comms[kDevices];
+  ncclComm_t comms[kDevices];  // NOLINT
   {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupStart());
     for (int i = 0; i < kDevices; i++) {
@@ -183,7 +183,7 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
       VLOG(1) << "ncclCommInitRank: " << i;
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclGroupEnd());
-    VLOG(1) << "nccl group end seccessss";
+    VLOG(1) << "nccl group end success";
   }
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id),
                     0,
@@ -261,7 +261,7 @@ NCCLComm* NCCLCommContext::AssignNCCLComm(
             platform::CUDAPlace(dev_id)));
     dev_ctx->set_nccl_comm(comm);
   }
-  VLOG(4) << "add mccl comm: " << comm_map_[ring_id][dev_id].get()
+  VLOG(4) << "add nccl comm: " << comm_map_[ring_id][dev_id].get()
           << ", ring_id:" << ring_id << ", dev_id:" << dev_id;
   return comm_map_[ring_id][dev_id].get();
 }

@@ -134,7 +134,8 @@ void TensorToVector(const phi::DenseTensor& src,
                     const phi::DeviceContext& ctx,
                     std::vector<T>* dst);
 
-phi::DenseTensor ReshapeToMatrix(const phi::DenseTensor& src, int num_col_dims);
+TEST_API phi::DenseTensor ReshapeToMatrix(const phi::DenseTensor& src,
+                                          int num_col_dims);
 
 template <typename T>
 T GetValue(const phi::DenseTensor* x);

@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
@@ -22,7 +23,6 @@
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/flags.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
@@ -163,12 +163,11 @@ static std::vector<std::vector<phi::DDim>> RunInferShapeFunc(
   for (size_t i = 0; i < ctx.InputRange().size(); ++i) {
     const auto& input_pair = ctx.InputRangeAt(i);
     if (input_pair.first == input_pair.second - 1) {
-      input_shapes.emplace_back(
-          std::move(ctx.InputAt(input_pair.first).shape()));
+      input_shapes.emplace_back(ctx.InputAt(input_pair.first).shape());
     } else {
       std::vector<std::vector<int64_t>> shapes;
       for (size_t j = input_pair.first; j < input_pair.second; j++) {
-        shapes.push_back(std::move(ctx.InputAt(j).shape()));
+        shapes.push_back(ctx.InputAt(j).shape());
       }
       vec_input_shapes.emplace_back(std::move(shapes));
     }
@@ -406,7 +405,7 @@ static std::vector<std::vector<phi::DataType>> RunInferDtypeFunc(
               "Custom operator only supports `paddle::Vec(...)` inputs and "
               "cannot support `paddle::Vec(...)` output without setting "
               "InplaceMap. If you have to use `paddle::Vec(...)` output, "
-              "please indicate it by setting InplaceMap manully."));
+              "please indicate it by setting InplaceMap manually."));
       std::vector<phi::DataType> dtypes;
       auto duplicable_input_pair = ctx.InputRangeAt(inplace_reverse_map[i]);
       for (size_t j = duplicable_input_pair.first;
@@ -494,8 +493,7 @@ phi::distributed::SpmdInfo RunInferSpmdFn(
         auto& t = ctx.InputAt(j);
         phi::distributed::DistMetaTensor meta_tensor;
         if (t.impl().get()) {
-          meta_tensor =
-              paddle::experimental::MakeDistMetaTensor(*(t.impl().get()));
+          meta_tensor = paddle::experimental::MakeDistMetaTensor(*(t.impl()));
         }
         meta_tensors.emplace_back(std::move(meta_tensor));
       }
@@ -505,8 +503,7 @@ phi::distributed::SpmdInfo RunInferSpmdFn(
       auto& t = ctx.InputAt(range.first);
       phi::distributed::DistMetaTensor meta_tensor;
       if (t.impl().get()) {
-        meta_tensor =
-            paddle::experimental::MakeDistMetaTensor(*(t.impl().get()));
+        meta_tensor = paddle::experimental::MakeDistMetaTensor(*(t.impl()));
       }
       tensor_inputs.emplace_back(std::move(meta_tensor));
     }
@@ -558,7 +555,7 @@ std::vector<std::vector<phi::DDim>> RunInferShapeFn(
     out_dims =
         RunInferShapeFunc(ctx, infer_shape_func, inputs, outputs, inplace_map);
   } else {
-    if (is_forward) {
+    if (is_forward) {  // NOLINT
       out_dims = RunDefaultInferShapeFunc(ctx, inputs, outputs, inplace_map);
     } else {
       out_dims =
@@ -592,7 +589,7 @@ std::vector<std::vector<phi::DataType>> RunInferDtypeFn(
     out_dtypes =
         RunInferDtypeFunc(ctx, infer_dtype_func, inputs, outputs, inplace_map);
   } else {
-    if (is_forward) {
+    if (is_forward) {  // NOLINT
       out_dtypes = RunDefaultInferDtypeFunc(ctx, inputs, outputs, inplace_map);
     } else {
       out_dtypes =
@@ -800,8 +797,8 @@ void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
              ->meta()
              .is_contiguous()) {
       tensor.set_impl(std::make_shared<phi::DenseTensor>(
-          std::move(paddle::experimental::Trans2Contiguous(
-              *(std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()))))));
+          paddle::experimental::Trans2Contiguous(
+              *(std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())))));
     }
   }
 

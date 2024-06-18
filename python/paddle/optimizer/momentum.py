@@ -210,12 +210,12 @@ class Momentum(Optimizer):
             parameters = self._update_param_group(parameters)
 
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_accumulator(self._velocity_acc_str, master_p)
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -226,7 +226,7 @@ class Momentum(Optimizer):
                     "Consider using multi_precision=True option of the Momentum optimizer."
                 )
             self._add_accumulator(self._velocity_acc_str, p)
-            self._already_create_accumulater.add(p.name)
+            self._already_create_accumulator.add(p.name)
 
     def _create_regularization_of_grad(self, param, grad, regularization=None):
         """Create and add backward regularization Operators

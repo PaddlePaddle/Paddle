@@ -20,9 +20,9 @@ limitations under the License. */
 #include <sstream>
 #include <unordered_map>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/flags.h"
 
 #ifdef PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/ps/table/accessor.h"
@@ -75,7 +75,7 @@ class CommonFeatureValueAccessor {
     __host__ __device__ int EmbedDim() const { return embed_sgd_dim; }
     __host__ __device__ int EmbedXDim() const { return embedx_sgd_dim; }
     __host__ __device__ int EmbedWDim() const { return embedx_dim; }
-    __host__ __device__ int CpuPtrIndex() const { return 0; }  // cpuprt uint64
+    __host__ __device__ int CpuPtrIndex() const { return 0; }  // cpu_ptr uint64
     __host__ __device__ int DeltaScoreIndex() const {
       return CpuPtrIndex() + 2;
     }
@@ -650,13 +650,13 @@ class CommonFeatureValueAccessor {
       *(dest_val + common_pull_value.EmbedWIndex()) = 0;
     } else {
       *(dest_val + common_pull_value.ShowIndex()) =
-          src_val[common_feature_value.ShowIndex()];
+          src_val[common_pull_value.ShowIndex()];
       *(dest_val + common_pull_value.ClickIndex()) =
-          src_val[common_feature_value.ClickIndex()];
+          src_val[common_pull_value.ClickIndex()];
       *(dest_val + common_pull_value.EmbedWIndex()) =
-          src_val[common_feature_value.EmbedWIndex()];
+          src_val[common_pull_value.EmbedWIndex()];
     }
-    int mf_size = static_cast<int>(src_val[common_feature_value.MfSizeIndex()]);
+    int mf_size = static_cast<int>(src_val[common_pull_value.MfSizeIndex()]);
     if (mf_size == 0 || *key == 0) {
       for (int j = 0; j < mf_dim; j++) {
         *(dest_val + 3 + j) = 0;
@@ -686,7 +686,7 @@ class CommonFeatureValueAccessor {
         std::vector<float> embedx_w;
     */
     std::stringstream os;
-    os << "cpuptr: " << common_feature_value.CpuPtr(const_cast<float*>(v))
+    os << "cpu_ptr: " << common_feature_value.CpuPtr(const_cast<float*>(v))
        << " delta_score: " << v[2] << " show: " << v[3] << " click: " << v[4]
        << " embed_w:" << v[5] << " embed_g2sum:";
     for (int i = common_feature_value.EmbedG2SumIndex();
@@ -732,7 +732,7 @@ struct FeatureValue {
   friend std::ostream& operator<<(std::ostream& out, FeatureValue& val) {
     out << "show: " << val.show << " clk: " << val.clk << " slot: " << val.slot
         << " lr: " << val.lr << " mf_dim: " << val.mf_dim
-        << "cpuptr: " << val.cpu_ptr << " mf_size: " << val.mf_size << " mf:";
+        << "cpu_ptr: " << val.cpu_ptr << " mf_size: " << val.mf_size << " mf:";
     for (int i = 0; i < val.mf_dim + 1; ++i) {
       out << " " << val.mf[i];
     }

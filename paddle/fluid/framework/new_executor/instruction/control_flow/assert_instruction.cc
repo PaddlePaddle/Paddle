@@ -24,7 +24,10 @@ AssertInstruction::AssertInstruction(size_t id,
                                      const platform::Place& place,
                                      ::pir::Operation* op,
                                      ValueExecutionInfo* value_exe_info)
-    : InstructionBase(id, place), op_(op), value_exe_info_(value_exe_info) {
+    : InstructionBase(id, place),
+      op_(op),
+      type_(OpFuncType::kCpuSync),
+      value_exe_info_(value_exe_info) {
   PADDLE_ENFORCE(op->isa<paddle::dialect::AssertOp>(),
                  phi::errors::PreconditionNotMet(
                      "Assert instruction only support assert op"));
@@ -82,11 +85,20 @@ void AssertInstruction::Run() {
         value_exe_info_->GetVarByValue(val)->Get<phi::DenseTensor>();
     formatter.Print(tensor, name);
   }
-
+  const std::string& error_msg = [&]() -> std::string {
+    if (op_->HasAttribute(paddle::dialect::AssertOp::ERROR_INFO_ATTR_NAME)) {
+      return op_
+          ->attribute<pir::StrAttribute>(
+              paddle::dialect::AssertOp::ERROR_INFO_ATTR_NAME)
+          .AsString();
+    }
+    return {};
+  }();
   PADDLE_THROW(platform::errors::InvalidArgument(
       "The condition variable '%s' of AssertOp must be "
-      "true, but received false",
-      value_exe_info_->GetVarName(cond_var_)));
+      "true, but received false. %s",
+      value_exe_info_->GetVarName(cond_var_),
+      error_msg));
 }
 
 }  // namespace framework

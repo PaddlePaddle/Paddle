@@ -66,8 +66,8 @@ PredictorEngine::PredictorEngine(
           predictor)) {}
 
 std::unique_ptr<BaseEngine> PredictorEngine::Clone(void *stream) {
-  auto *x = new PredictorEngine(
-      info_, scope_, place_, std::move(predictor_->Clone(stream)));
+  auto *x =
+      new PredictorEngine(info_, scope_, place_, predictor_->Clone(stream));
   return std::unique_ptr<BaseEngine>(x);
 }
 

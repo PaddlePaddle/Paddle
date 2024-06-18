@@ -12,8 +12,8 @@
 #define ON 1
 #define OFF 0
 
-// WITH_MKLDNN
-#if @WITH_MKLDNN@
+// WITH_ONEDNN
+#if @WITH_ONEDNN@
 #undef PADDLE_WITH_DNNL
 #define PADDLE_WITH_DNNL
 #endif

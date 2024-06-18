@@ -17,9 +17,9 @@
 #include <vector>
 
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -48,13 +48,13 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
     auto strides = ctx.Attr<std::vector<int>>("strides");
     auto paddings = ctx.Attr<std::vector<int>>("paddings");
     if (ctx.HasInput("Y") && batch_size > 1) {
-      const phi::DenseTensor* imgrealsize = ctx.Input<phi::DenseTensor>("Y");
+      const phi::DenseTensor* img_real_size = ctx.Input<phi::DenseTensor>("Y");
       auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
       phi::DenseTensor cpu_shape_tensor;
       paddle::framework::TensorCopySync(
-          *imgrealsize, platform::CPUPlace(), &cpu_shape_tensor);
-      std::vector<int> imgreal_h;
-      std::vector<int> imgreal_w;
+          *img_real_size, phi::CPUPlace(), &cpu_shape_tensor);
+      std::vector<int> img_real_h;
+      std::vector<int> img_real_w;
       std::vector<int> output_height;
       std::vector<int> output_width;
       int result = 0;
@@ -72,12 +72,12 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
         } else {
           tmp_real_w = tmp_real_w / out_stride[1] + 1;
         }
-        imgreal_h.push_back(tmp_real_h);
-        imgreal_w.push_back(tmp_real_w);
+        img_real_h.push_back(tmp_real_h);
+        img_real_w.push_back(tmp_real_w);
         output_height.push_back(Im2SeqOutputSize(
-            imgreal_h[i], kernels[0], paddings[0], paddings[2], strides[0]));
+            img_real_h[i], kernels[0], paddings[0], paddings[2], strides[0]));
         output_width.push_back(Im2SeqOutputSize(
-            imgreal_w[i], kernels[1], paddings[1], paddings[3], strides[1]));
+            img_real_w[i], kernels[1], paddings[1], paddings[3], strides[1]));
         result += output_height[i] * output_width[i];
       }
 
@@ -163,9 +163,10 @@ class Im2SequenceGradKernel : public framework::OpKernel<T> {
     auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     d_x->mutable_data<T>(ctx.GetPlace());
 
-    auto x_v = framework::EigenVector<T>::Flatten(*d_x);
+    auto x_v = phi::EigenVector<T>::Flatten(*d_x);
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-    EigenConstant<std::decay_t<decltype(place)>, T, 1>::Eval(place, x_v, 0.0);
+    phi::funcs::EigenConstant<std::decay_t<decltype(place)>, T, 1>::Eval(
+        place, x_v, 0.0);
 
     auto in_dim = in->dims();
     int batch_size = in_dim[0];

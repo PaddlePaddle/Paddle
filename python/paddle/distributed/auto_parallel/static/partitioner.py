@@ -411,14 +411,7 @@ def _get_dist_shape(var, dist_attr):
         else:
             assert (
                 var_shape[idx] % mesh[mapping[idx]] == 0
-            ), "un-event partition: var_shape[idx]=[{}], mesh[{}], {}, {}, {}, {}".format(
-                var_shape[idx],
-                mesh[mapping[idx]],
-                var.name,
-                var_shape,
-                mesh,
-                mapping,
-            )
+            ), f"un-event partition: var_shape[idx]=[{var_shape[idx]}], mesh[{mesh[mapping[idx]]}], {var.name}, {var_shape}, {mesh}, {mapping}"
             new_shape.append(var_shape[idx] // mesh[mapping[idx]])
 
     return new_shape

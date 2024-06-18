@@ -12,19 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 #include "paddle/fluid/framework/io/crypto/aes_cipher.h"
 
 #include <cryptopp/aes.h>
@@ -41,8 +28,7 @@
 #include "paddle/fluid/framework/io/crypto/cipher_utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void AESCipher::Init(const std::string& cipher_name,
                      const int& iv_size,
@@ -66,19 +52,18 @@ std::string AESCipher::EncryptInternal(const std::string& plaintext,
   BuildCipher(true, &need_iv, &m_cipher, &m_filter);
   if (need_iv) {
     iv_ = CipherUtils::GenKey(iv_size_);
-    m_cipher.get()->SetKeyWithIV(
-        key_char,
-        key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
-        iv_.size());
+    m_cipher->SetKeyWithIV(key_char,
+                           key.size(),
+                           reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
+                           iv_.size());
   } else {
-    m_cipher.get()->SetKey(key_char, key.size());
+    m_cipher->SetKey(key_char, key.size());
   }
 
   std::string ciphertext;
   m_filter->Attach(new CryptoPP::StringSink(ciphertext));
   CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
-  CryptoPP::StringSource(plaintext, true, filter_redirector);
+  CryptoPP::StringSource ss(plaintext, true, filter_redirector);
   if (need_iv) {
     return iv_ + ciphertext;
   }
@@ -98,18 +83,17 @@ std::string AESCipher::DecryptInternal(const std::string& ciphertext,
   if (need_iv) {
     iv_ = ciphertext.substr(0, iv_size_ / 8);
     ciphertext_beg = iv_size_ / 8;
-    m_cipher.get()->SetKeyWithIV(
-        key_char,
-        key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
-        iv_.size());
+    m_cipher->SetKeyWithIV(key_char,
+                           key.size(),
+                           reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
+                           iv_.size());
   } else {
-    m_cipher.get()->SetKey(key_char, key.size());
+    m_cipher->SetKey(key_char, key.size());
   }
   std::string plaintext;
   m_filter->Attach(new CryptoPP::StringSink(plaintext));
   CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
-  CryptoPP::StringSource(
+  CryptoPP::StringSource ss(
       ciphertext.substr(ciphertext_beg), true, filter_redirector);
 
   return plaintext;
@@ -125,19 +109,18 @@ std::string AESCipher::AuthenticatedEncryptInternal(
   BuildAuthEncCipher(&need_iv, &m_cipher, &m_filter);
   if (need_iv) {
     iv_ = CipherUtils::GenKey(iv_size_);
-    m_cipher.get()->SetKeyWithIV(
-        key_char,
-        key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
-        iv_.size());
+    m_cipher->SetKeyWithIV(key_char,
+                           key.size(),
+                           reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
+                           iv_.size());
   } else {
-    m_cipher.get()->SetKey(key_char, key.size());
+    m_cipher->SetKey(key_char, key.size());
   }
 
   std::string ciphertext;
   m_filter->Attach(new CryptoPP::StringSink(ciphertext));
   CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
-  CryptoPP::StringSource(plaintext, true, filter_redirector);
+  CryptoPP::StringSource ss(plaintext, true, filter_redirector);
   if (need_iv) {
     ciphertext = iv_.append(ciphertext);
   }
@@ -157,18 +140,17 @@ std::string AESCipher::AuthenticatedDecryptInternal(
   if (need_iv) {
     iv_ = ciphertext.substr(0, iv_size_ / 8);
     ciphertext_beg = iv_size_ / 8;
-    m_cipher.get()->SetKeyWithIV(
-        key_char,
-        key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
-        iv_.size());
+    m_cipher->SetKeyWithIV(key_char,
+                           key.size(),
+                           reinterpret_cast<const unsigned char*>(&(iv_.at(0))),
+                           iv_.size());
   } else {
-    m_cipher.get()->SetKey(key_char, key.size());
+    m_cipher->SetKey(key_char, key.size());
   }
   std::string plaintext;
   m_filter->Attach(new CryptoPP::StringSink(plaintext));
   CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
-  CryptoPP::StringSource(
+  CryptoPP::StringSource ss(
       ciphertext.substr(ciphertext_beg), true, filter_redirector);
   PADDLE_ENFORCE_EQ(
       m_filter->GetLastResult(),
@@ -186,43 +168,31 @@ void AESCipher::BuildCipher(
   if (aes_cipher_name_ == "AES_ECB_PKCSPadding" && for_encrypt) {
     m_cipher->reset(new CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption);
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        *(*m_cipher).get(),
-        nullptr,
-        CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
+        **m_cipher, nullptr, CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_ECB_PKCSPadding" && !for_encrypt) {
     m_cipher->reset(new CryptoPP::ECB_Mode<CryptoPP::AES>::Decryption);
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        *(*m_cipher).get(),
-        nullptr,
-        CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
+        **m_cipher, nullptr, CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_CBC_PKCSPadding" && for_encrypt) {
     m_cipher->reset(new CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        *(*m_cipher).get(),
-        nullptr,
-        CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
+        **m_cipher, nullptr, CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_CBC_PKCSPadding" && !for_encrypt) {
     m_cipher->reset(new CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        *(*m_cipher).get(),
-        nullptr,
-        CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
+        **m_cipher, nullptr, CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_CTR_NoPadding" && for_encrypt) {
     m_cipher->reset(new CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        *(*m_cipher).get(),
-        nullptr,
-        CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
+        **m_cipher, nullptr, CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
   } else if (aes_cipher_name_ == "AES_CTR_NoPadding" && !for_encrypt) {
     m_cipher->reset(new CryptoPP::CTR_Mode<CryptoPP::AES>::Decryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        *(*m_cipher).get(),
-        nullptr,
-        CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
+        **m_cipher, nullptr, CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
   } else {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
         "Create cipher error. "
@@ -239,7 +209,7 @@ void AESCipher::BuildAuthEncCipher(
     m_cipher->reset(new CryptoPP::GCM<CryptoPP::AES>::Encryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::AuthenticatedEncryptionFilter(
-        *(*m_cipher).get(),
+        **m_cipher,
         nullptr,
         false,
         tag_size_ / 8,
@@ -261,7 +231,7 @@ void AESCipher::BuildAuthDecCipher(
     m_cipher->reset(new CryptoPP::GCM<CryptoPP::AES>::Decryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::AuthenticatedDecryptionFilter(
-        *(*m_cipher).get(),
+        **m_cipher,
         nullptr,
         CryptoPP::AuthenticatedDecryptionFilter::DEFAULT_FLAGS,
         tag_size_ / 8,
@@ -305,5 +275,4 @@ std::string AESCipher::DecryptFromFile(const std::string& key,
   return Decrypt(ciphertext, key);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

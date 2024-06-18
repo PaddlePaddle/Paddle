@@ -14,9 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/many_emb_layernorm_varseqlen_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
  public:
@@ -103,7 +101,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
                              slice_stride_dims);  // unuseful slice_start_dims
     slice_layer->setInput(1, *start_tensor);
     slice_layer->setInput(2, *size_tensor);
-    slice_layer->setName(("Embeltwise_slice_layer (Output: slice_max_seqlen " +
+    slice_layer->setName(("EmbEltwise_slice_layer (Output: slice_max_seqlen " +
                           op_desc.Output("Out")[0] + ")")
                              .c_str());
     engine_->SetTensorDynamicRange(slice_layer->getOutput(0), 1.0f);
@@ -114,7 +112,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     shape_dim.nbDims = 1;
     shape_dim.d[0] = -1;
     reshape_layer->setReshapeDimensions(shape_dim);
-    reshape_layer->setName(("Embeltwise_reshape_layer (Output: max_seqlen " +
+    reshape_layer->setName(("EmbEltwise_reshape_layer (Output: max_seqlen " +
                             op_desc.Output("Out")[0] + ")")
                                .c_str());
     engine_->SetTensorDynamicRange(reshape_layer->getOutput(0), 1.0f);
@@ -173,10 +171,8 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
                           static_cast<int32_t>(emb_sizes[i]));
     }
 
-    nvinfer1::PluginFieldCollection* plugin_ptr =
-        static_cast<nvinfer1::PluginFieldCollection*>(
-            malloc(sizeof(*plugin_ptr) +
-                   fields.size() * sizeof(nvinfer1::PluginField)));
+    std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_ptr(
+        new nvinfer1::PluginFieldCollection);
     plugin_ptr->nbFields = static_cast<int>(fields.size());
     plugin_ptr->fields = fields.data();
 
@@ -188,7 +184,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
         "ManyEmbLayerNormVarlenPluginDynamic", "2");
 
     auto plugin_obj = creator->createPlugin(
-        "ManyEmbLayerNormVarlenPluginDynamic", plugin_ptr);
+        "ManyEmbLayerNormVarlenPluginDynamic", plugin_ptr.get());
 
     auto plugin_layer = engine_->network()->addPluginV2(
         plugin_inputs.data(), plugin_inputs.size(), *plugin_obj);
@@ -196,7 +192,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
     plugin_layer->setName(("ManyEmbLayerNormPluginDynamic_V3(Output: " +
                            op_desc.Output("Out")[0] + ")")
                               .c_str());
-    free(plugin_ptr);
+    plugin_ptr.reset();
     float out_0_scale =
         PADDLE_GET_CONST(float, op_desc.GetAttr("out_0_threshold"));
     float out_1_scale =
@@ -239,9 +235,7 @@ class PrelnEmbEltwiseLayerNormOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(fused_preln_embedding_eltwise_layernorm,
                           PrelnEmbEltwiseLayerNormOpConverter);

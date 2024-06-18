@@ -33,6 +33,20 @@ void RmsNormKernel(const Context& dev_ctx,
                    const float quant_max_bound,
                    const float quant_min_bound,
                    DenseTensor* out,
-                   DenseTensor* residual_out);
+                   DenseTensor* residual_out,
+                   DenseTensor* inv_var);
+
+template <typename T, typename Context>
+void ResidualAddRmsNormWrapper(const Context& ctx,
+                               const T* x,
+                               const T* residual,
+                               const T* bias,
+                               const T* norm_weight,
+                               const T* norm_bias,
+                               const float epsilon,
+                               const int rows,
+                               const int cols,
+                               T* residual_output,
+                               T* output);
 
 }  // namespace phi

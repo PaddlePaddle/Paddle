@@ -111,7 +111,7 @@ void pack_weights<float>(const float* src, float* dst, int n, int k) {
                       0,
                       phi::errors::InvalidArgument(
                           "Each element of groups should be larger than "
-                          "0. However the element: %d doesn't satify.",
+                          "0. However the element: %d doesn't satisfy.",
                           i));
   });
   int sum = std::accumulate(groups.begin(), groups.end(), 0);

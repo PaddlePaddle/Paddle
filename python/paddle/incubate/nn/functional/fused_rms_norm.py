@@ -105,6 +105,9 @@ def fused_rms_norm(
     residual_out = helper.create_variable_for_type_inference(dtype=x.dtype)
     outputs_dict['residual_out'] = residual_out
 
+    inv_var = helper.create_variable_for_type_inference(dtype=paddle.float32)
+    outputs_dict['inv_var'] = inv_var
+
     inputs = {'x': x, 'norm_weight': norm_weight}
     if norm_bias is not None:
         inputs['norm_bias'] = norm_bias

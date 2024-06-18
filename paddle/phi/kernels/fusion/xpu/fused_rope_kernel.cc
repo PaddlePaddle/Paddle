@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/kernels/fusion/xpu/fused_rope_utils.h"
 
 namespace phi {
@@ -29,14 +28,19 @@ void FusedRopeKernel(const Context& dev_ctx,
                      const paddle::optional<DenseTensor>& cos,
                      const paddle::optional<DenseTensor>& position_ids,
                      bool use_neox_rotary_style,
+                     bool time_major,
+                     float rotary_emb_base,
                      DenseTensor* out_q,
                      DenseTensor* out_k,
                      DenseTensor* out_v) {
-  using XPUT = typename XPUTypeTrait<T>::Type;
+  using XPUType = typename XPUTypeTrait<T>::Type;
   if (q.numel() <= 0) {
     return;
   }
-
+  PADDLE_ENFORCE_EQ(
+      time_major,
+      false,
+      phi::errors::InvalidArgument("time_major is not supported in xpu"));
   int64_t batch_size = q.dims()[0];
   int64_t seq_len = q.dims()[1];
   int64_t num_heads = q.dims()[2];
@@ -45,72 +49,134 @@ void FusedRopeKernel(const Context& dev_ctx,
                     0,
                     phi::errors::InvalidArgument(
                         "The head_dim of input must be a multiple of 2."));
-
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
   int64_t sin_cos_len = batch_size * seq_len * head_dim;
-  auto* sin_data = RAII_GUARD.alloc_l3_or_gm<XPUT>(sin_cos_len);
-  auto* cos_data = RAII_GUARD.alloc_l3_or_gm<XPUT>(sin_cos_len);
-
-  if (sin.get_ptr() && cos.get_ptr()) {
-    PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
-                      cos.get_ptr()->dims(),
-                      phi::errors::InvalidArgument(
-                          "The dims of sin and cos must be the same. But "
-                          "recieved sin's dims is {%s}, cos's dims is {%s}.",
-                          sin.get_ptr()->dims(),
-                          cos.get_ptr()->dims()));
-  }
-
-  XPUGetSinCosData<XPUT, Context>(
-      dev_ctx, sin, position_ids, sin_data, batch_size, seq_len, head_dim);
-  XPUGetSinCosData<XPUT, Context>(
-      dev_ctx, cos, position_ids, cos_data, batch_size, seq_len, head_dim);
-
   if (use_neox_rotary_style) {
-    // TODO(lijin23): support rotary_embedding every_two.
-    PADDLE_THROW(phi::errors::Unimplemented(
-        "XPU do not support rotary_embedding with use_neox_rotary_style set."));
-  } else {
-    auto* outq_data = reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(out_q));
-    XPUFusedRotaryHalf<XPUT, Context>(
-        dev_ctx,
-        reinterpret_cast<const XPUT*>(q.data<T>()),
-        sin_data,
+    auto* sin_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(sin_cos_len);
+    auto* cos_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(sin_cos_len);
+    if (sin.get_ptr() && cos.get_ptr()) {
+      PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
+                        cos.get_ptr()->dims(),
+                        phi::errors::InvalidArgument(
+                            "The dims of sin and cos must be the same. But "
+                            "received sin's dims is {%s}, cos's dims is {%s}.",
+                            sin.get_ptr()->dims(),
+                            cos.get_ptr()->dims()));
+    }
+    XPUGetSinCosData<XPUType, Context>(
+        dev_ctx, sin, position_ids, sin_data, batch_size, seq_len, head_dim);
+    XPUGetSinCosData<XPUType, Context>(
+        dev_ctx, cos, position_ids, cos_data, batch_size, seq_len, head_dim);
+    if (!k) {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "XPU do not support rotary_embedding without qk when "
+          "use_neox_rotary_style == True."));
+    }
+    auto* outq_data =
+        reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_q));
+    auto* outk_data =
+        reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_k));
+    int ret = xpu::rotary_embedding_v3<XPUType, XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(q.data<T>()),
+        reinterpret_cast<const XPUType*>(k->data<T>()),
         cos_data,
+        sin_data,
         outq_data,
+        outk_data,
         batch_size,
         seq_len,
         num_heads,
-        head_dim);
-
-    if (k.get_ptr()) {
+        head_dim,
+        {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1},
+        {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1});
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rotary_embedding_v3");
+    if (v) {
+      PADDLE_THROW(
+          phi::errors::Unimplemented("XPU do not support rotary_embedding with "
+                                     "v when use_neox_rotary_style == True."));
+    }
+  } else {
+    auto* sin_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(sin_cos_len);
+    auto* cos_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(sin_cos_len);
+    if (sin.get_ptr() && cos.get_ptr()) {
+      PADDLE_ENFORCE_EQ(sin.get_ptr()->dims(),
+                        cos.get_ptr()->dims(),
+                        phi::errors::InvalidArgument(
+                            "The dims of sin and cos must be the same. But "
+                            "received sin's dims is {%s}, cos's dims is {%s}.",
+                            sin.get_ptr()->dims(),
+                            cos.get_ptr()->dims()));
+    }
+    XPUGetSinCosData<XPUType, Context>(
+        dev_ctx, sin, position_ids, sin_data, batch_size, seq_len, head_dim);
+    XPUGetSinCosData<XPUType, Context>(
+        dev_ctx, cos, position_ids, cos_data, batch_size, seq_len, head_dim);
+    if (head_dim * sizeof(T) <= 1024 && head_dim % 64 == 0 && k) {
+      int64_t num_heads_k = k->dims()[2];
+      auto* outq_data =
+          reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_q));
       auto* outk_data =
-          reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(out_k));
-      XPUFusedRotaryHalf<XPUT, Context>(
-          dev_ctx,
-          reinterpret_cast<const XPUT*>(k->data<T>()),
+          reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_k));
+      int ret = xpu::rotary_no_freqs_qk_embedding_v2<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(q.data<T>()),
+          reinterpret_cast<const XPUType*>(k->data<T>()),
           sin_data,
           cos_data,
+          outq_data,
           outk_data,
+          {batch_size, seq_len, num_heads, head_dim},
+          {batch_size, seq_len, 1, head_dim},
+          {seq_len * num_heads * head_dim, num_heads * head_dim, head_dim, 1},
+          {seq_len * head_dim, head_dim, head_dim, 1},
+          num_heads_k);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "rotary_no_freqs_qk_embedding_v2");
+    } else {
+      auto* outq_data =
+          reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_q));
+      XPUFusedRotaryHalf<XPUType, Context>(
+          dev_ctx,
+          reinterpret_cast<const XPUType*>(q.data<T>()),
+          sin_data,
+          cos_data,
+          outq_data,
           batch_size,
           seq_len,
           num_heads,
           head_dim);
+
+      if (k) {
+        int64_t num_heads_k = k->dims()[2];
+        auto* outk_data =
+            reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_k));
+        XPUFusedRotaryHalf<XPUType, Context>(
+            dev_ctx,
+            reinterpret_cast<const XPUType*>(k->data<T>()),
+            sin_data,
+            cos_data,
+            outk_data,
+            batch_size,
+            seq_len,
+            num_heads_k,
+            head_dim);
+      }
     }
 
-    if (v.get_ptr()) {
+    if (v) {
+      int64_t num_heads_v = k->dims()[2];
       auto* outv_data =
-          reinterpret_cast<XPUT*>(dev_ctx.template Alloc<T>(out_v));
-      XPUFusedRotaryHalf<XPUT, Context>(
+          reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out_v));
+      XPUFusedRotaryHalf<XPUType, Context>(
           dev_ctx,
-          reinterpret_cast<const XPUT*>(v->data<T>()),
+          reinterpret_cast<const XPUType*>(v->data<T>()),
           sin_data,
           cos_data,
           outv_data,
           batch_size,
           seq_len,
-          num_heads,
+          num_heads_v,
           head_dim);
     }
   }

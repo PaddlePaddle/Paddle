@@ -19,13 +19,21 @@ from paddle.base import unique_name
 from paddle.utils import gast
 
 from ..utils import (
+    GetterSetterHelper,
+    ast_to_source_code,
+)
+from .base import (
+    BaseTransformer,
+    ForLoopTuplePreTransformer,
+    ForNodeVisitor,
+)
+from .utils import (
+    ARGS_NAME,
     FOR_BODY_PREFIX,
     FOR_CONDITION_PREFIX,
     WHILE_BODY_PREFIX,
     WHILE_CONDITION_PREFIX,
     FunctionNameLivenessAnalysis,
-    GetterSetterHelper,
-    ast_to_source_code,
     create_get_args_node,
     create_name_str,
     create_nonlocal_stmt_nodes,
@@ -33,12 +41,6 @@ from ..utils import (
     get_attribute_full_name,
     get_parent_mapping,
 )
-from .base import (
-    BaseTransformer,
-    ForLoopTuplePreTransformer,
-    ForNodeVisitor,
-)
-from .ifelse_transformer import ARGS_NAME
 
 __all__ = []
 
@@ -90,17 +92,7 @@ def create_while_nodes(
         assign_loop_var_names.append(name)
 
     while_func_name = "_jst.While"
-    while_node_str = (
-        "{}({}, {}, {}, {}, return_name_ids={}, push_pop_names={})".format(
-            while_func_name,
-            condition_name,
-            body_name,
-            getter_name,
-            setter_name,
-            create_name_str(loop_var_names),
-            create_name_str(push_pop_names),
-        )
-    )
+    while_node_str = f"{while_func_name}({condition_name}, {body_name}, {getter_name}, {setter_name}, return_name_ids={create_name_str(loop_var_names)}, push_pop_names={create_name_str(push_pop_names)})"
     while_node = gast.parse(while_node_str).body[0]
 
     ret = [while_node]

@@ -20,8 +20,6 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
@@ -32,6 +30,9 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 namespace auto_parallel {
+
+using phi::distributed::ProcessMesh;
+using phi::distributed::TensorDistAttr;
 
 const std::vector<int64_t>& get_dims_mapping(
     const phi::distributed::ArgDistAttr& dist_attr);

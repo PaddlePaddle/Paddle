@@ -19,6 +19,6 @@
 // !!! do not fix this ut by adding other header files (PR#60842) !!!
 #include "paddle/phi/extension.h"
 
-TEST(CustomDevce, extension_header) {
+TEST(CustomDevice, extension_header) {
   VLOG(1) << "check extension header support compile only";
 }

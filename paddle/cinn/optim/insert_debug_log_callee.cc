@@ -139,7 +139,7 @@ struct InsertDebugLogCalleeMutator : public ir::IRMutator<> {
     ir::IRMutator<>::Visit(&node->body, &node->body);
 
     auto deal_with_exprs =
-        [&](std::vector<Expr> *exprs) {  // deal with op->argument_preapre_exprs
+        [&](std::vector<Expr> *exprs) {  // deal with op->argument_prepare_exprs
           std::vector<Expr> new_stmts;
           for (auto &expr : *exprs) {
             auto msg =

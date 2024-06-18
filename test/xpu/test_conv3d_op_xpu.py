@@ -31,14 +31,14 @@ def conv3d_forward_naive(
 ):
     if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
         raise ValueError(
-            "Unknown Attr(padding_algorithm): '%s'. "
-            "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+            f"Unknown Attr(padding_algorithm): '{str(padding_algorithm)}'. "
+            "It can only be 'SAME' or 'VALID'."
         )
 
     if data_format not in ["NCDHW", "NDHWC"]:
         raise ValueError(
-            "Unknown Attr(data_format): '%s' ."
-            "It can only be 'NCDHW' or 'NDHWC'." % str(data_format)
+            f"Unknown Attr(data_format): '{str(data_format)}' ."
+            "It can only be 'NCDHW' or 'NDHWC'."
         )
 
     channel_last = data_format == "NDHWC"
@@ -111,9 +111,9 @@ def conv3d_forward_naive(
 
     out = np.zeros((in_n, out_c, out_d, out_h, out_w))
 
-    d_bolck_d = dilation[0] * (f_d - 1) + 1
-    d_bolck_h = dilation[1] * (f_h - 1) + 1
-    d_bolck_w = dilation[2] * (f_w - 1) + 1
+    d_block_d = dilation[0] * (f_d - 1) + 1
+    d_block_h = dilation[1] * (f_h - 1) + 1
+    d_block_w = dilation[2] * (f_w - 1) + 1
 
     input_pad = np.pad(
         input,
@@ -128,13 +128,13 @@ def conv3d_forward_naive(
         constant_values=0,
     )
 
-    filter_dilation = np.zeros((f_n, f_c, d_bolck_d, d_bolck_h, d_bolck_w))
+    filter_dilation = np.zeros((f_n, f_c, d_block_d, d_block_h, d_block_w))
     filter_dilation[
         :,
         :,
-        0 : d_bolck_d : dilation[0],
-        0 : d_bolck_h : dilation[1],
-        0 : d_bolck_w : dilation[2],
+        0 : d_block_d : dilation[0],
+        0 : d_block_h : dilation[1],
+        0 : d_block_w : dilation[2],
     ] = filter
 
     for d in range(out_d):
@@ -144,9 +144,9 @@ def conv3d_forward_naive(
                     input_pad_masked = input_pad[
                         :,
                         g * f_c : (g + 1) * f_c,
-                        d * stride[0] : d * stride[0] + d_bolck_d,
-                        i * stride[1] : i * stride[1] + d_bolck_h,
-                        j * stride[2] : j * stride[2] + d_bolck_w,
+                        d * stride[0] : d * stride[0] + d_block_d,
+                        i * stride[1] : i * stride[1] + d_block_h,
+                        j * stride[2] : j * stride[2] + d_block_w,
                     ]
 
                     f_sub = filter_dilation[
@@ -163,14 +163,14 @@ def conv3d_forward_naive(
 
 
 def create_test_padding_SAME_class(parent):
-    class TestPaddingSMAECase(parent):
+    class TestPaddingSAMECase(parent):
         def init_paddings(self):
             self.pad = [0, 0, 0]
             self.padding_algorithm = "SAME"
 
     cls_name = "{}_{}".format(parent.__name__, "PaddingSAMEOp")
-    TestPaddingSMAECase.__name__ = cls_name
-    globals()[cls_name] = TestPaddingSMAECase
+    TestPaddingSAMECase.__name__ = cls_name
+    globals()[cls_name] = TestPaddingSAMECase
 
 
 def create_test_padding_VALID_class(parent):
@@ -255,7 +255,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
 
         def test_check_grad(self):
             place = paddle.XPUPlace(0)
-            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            # TODO(wangzhongpu): support onednn op in dygraph mode
             self.check_grad_with_place(
                 place,
                 {'Input', 'Filter'},
@@ -265,7 +265,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
 
         def test_check_grad_no_filter(self):
             place = paddle.XPUPlace(0)
-            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            # TODO(wangzhongpu): support onednn op in dygraph mode
             self.check_grad_with_place(
                 place,
                 ['Input'],
@@ -276,7 +276,7 @@ class XPUTestConv3DOp(XPUOpTestWrapper):
 
         def test_check_grad_no_input(self):
             place = paddle.XPUPlace(0)
-            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            # TODO(wangzhongpu): support onednn op in dygraph mode
             self.check_grad_with_place(
                 place,
                 ['Filter'],

@@ -245,6 +245,28 @@ def auc(
             [array(1.)]
 
     """
+    if in_pir_mode():
+        if ins_tag_weight is None:
+            ins_tag_weight = paddle.full(
+                shape=[1, 1], dtype="float32", fill_value=1.0
+            )
+        stat_pos = paddle.zeros(shape=[1, num_thresholds + 1], dtype="int64")
+        stat_neg = paddle.zeros(shape=[1, num_thresholds + 1], dtype="int64")
+        auc_out, batch_stat_pos, batch_stat_neg = _C_ops.auc(
+            input,
+            label,
+            stat_pos,
+            stat_neg,
+            ins_tag_weight,
+            curve,
+            num_thresholds,
+            slide_steps,
+        )
+        return (
+            auc_out,
+            batch_stat_pos,
+            batch_stat_neg,
+        )
     helper = LayerHelper("auc", **locals())
 
     if ins_tag_weight is None:
@@ -265,7 +287,7 @@ def auc(
     # historical batch-level values, and the last bucket stores the sum values of
     # previous slide_step buckets.
     # The index of bucket that the newest batch will use is determined by batch_id mod slide_steps,
-    # and batch_id is store in the last posision of following variable
+    # and batch_id is store in the last position of following variable
     batch_stat_pos = helper.create_global_variable(
         persistable=True,
         dtype='int64',

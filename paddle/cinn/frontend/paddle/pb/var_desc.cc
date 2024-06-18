@@ -15,9 +15,9 @@
 #include "paddle/cinn/frontend/paddle/pb/var_desc.h"
 
 #include <google/protobuf/map.h>
-
 #include "paddle/cinn/frontend/paddle/cpp/desc_api.h"
 #include "paddle/cinn/frontend/paddle/framework.pb.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::frontend::paddle::pb {
 
@@ -39,7 +39,7 @@ cpp::VarDescAPI::Type VarDesc::GetType() const {
     GET_TYPE_CASE_ITEM(PLACE_LIST);
     GET_TYPE_CASE_ITEM(READER);
     default:
-      LOG(FATAL) << "Unknown var type";
+      PADDLE_THROW(phi::errors::InvalidArgument("Unknown var type"));
       return VarDescAPI::Type();
   }
 #undef GET_TYPE_CASE_ITEM
@@ -62,7 +62,7 @@ void VarDesc::SetType(VarDescAPI::Type type) {
     SET_TYPE_CASE_ITEM(PLACE_LIST);
     SET_TYPE_CASE_ITEM(READER);
     default:
-      LOG(FATAL) << "Unknown var type";
+      PADDLE_THROW(phi::errors::InvalidArgument("Unknown var type"));
   }
 #undef SET_TYPE_CASE_ITEM
 }
@@ -83,9 +83,11 @@ void VarDesc::SetTensorDescNum(size_t num) {
       return;
     } break;
     default:
-      LOG(FATAL) << "Setting 'sub_tensor_number' is not supported by the type "
-                    "of var %s."
-                 << this->Name();
+      std::stringstream ss;
+      ss << "Setting 'sub_tensor_number' is not supported by the type "
+            "of var %s."
+         << this->Name();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 
@@ -95,9 +97,11 @@ size_t VarDesc::GetTensorDescNum() const {
       return desc_->type().reader().lod_tensor_size();
       break;
     default:
-      LOG(FATAL) << "Getting 'sub_tensor_number' is not supported by the type "
-                    "of var %s."
-                 << this->Name();
+      std::stringstream ss;
+      ss << "Getting 'sub_tensor_number' is not supported by the type "
+            "of var %s."
+         << this->Name();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return 0;
 }
@@ -151,7 +155,9 @@ void VarDesc::SetDataType(VarDescAPI::VarDataType data_type) {
     SET_DATA_TYPE_CASE_ITEM(FP32);
     SET_DATA_TYPE_CASE_ITEM(FP64);
     default:
-      LOG(FATAL) << "Unknown var type: " << static_cast<int>(data_type);
+      std::stringstream ss;
+      ss << "Unknown var type: " << static_cast<int>(data_type);
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 #undef SET_DATA_TYPE_CASE_ITEM
 }
@@ -200,7 +206,9 @@ cpp::VarDescAPI::VarDataType VarDesc::GetDataType() const {
     GET_DATA_TYPE_CASE_ITEM(FP32);
     GET_DATA_TYPE_CASE_ITEM(FP64);
     default:
-      LOG(FATAL) << "Unknown var type: " << static_cast<int>(type);
+      std::stringstream ss;
+      ss << "Unknown var type: " << static_cast<int>(type);
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       return VarDescAPI::Type();
   }
 #undef GET_DATA_TYPE_CASE_ITEM
@@ -225,9 +233,10 @@ void VarDesc::SetLoDLevel(int32_t lod_level) {
       desc_->mutable_type()->mutable_tensor_array()->set_lod_level(lod_level);
       break;
     default:
-      LOG(FATAL)
-          << "Setting 'lod_level' is not supported by the type of var %s."
-          << this->Name();
+      std::stringstream ss;
+      ss << "Setting 'lod_level' is not supported by the type of var %s."
+         << this->Name();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 
@@ -249,9 +258,10 @@ void VarDesc::SetLoDLevels(const std::vector<int32_t> &multiple_lod_level) {
       }
     } break;
     default:
-      LOG(FATAL)
-          << "Setting 'lod_levels' is not supported by the type of var %s."
-          << this->Name();
+      std::stringstream ss;
+      ss << "Setting 'lod_levels' is not supported by the type of var %s."
+         << this->Name();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 
@@ -262,9 +272,10 @@ int32_t VarDesc::GetLoDLevel() const {
     case framework_proto::VarType::LOD_TENSOR_ARRAY:
       return desc_->type().tensor_array().lod_level();
     default:
-      LOG(FATAL)
-          << "Getting 'lod_level' is not supported by the type of var %s."
-          << this->Name();
+      std::stringstream ss;
+      ss << "Getting 'lod_level' is not supported by the type of var %s."
+         << this->Name();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return 0;
 }
@@ -280,9 +291,10 @@ std::vector<int32_t> VarDesc::GetLoDLevels() const {
       return res;
       break;
     default:
-      LOG(FATAL)
-          << "Getting 'lod_levels' is not supported by the type of var %s."
-          << this->Name();
+      std::stringstream ss;
+      ss << "Getting 'lod_levels' is not supported by the type of var %s."
+         << this->Name();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return std::vector<int32_t>();
 }
@@ -298,9 +310,10 @@ const framework_proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
     case framework_proto::VarType::LOD_TENSOR_ARRAY:
       return desc_->type().tensor_array().tensor();
     default:
-      LOG(FATAL)
-          << "Getting 'tensor_desc' is not supported by the type of var %s."
-          << this->Name();
+      std::stringstream ss;
+      ss << "Getting 'tensor_desc' is not supported by the type of var %s."
+         << this->Name();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return framework_proto::VarDesc().type().lod_tensor().tensor();
 }
@@ -317,10 +330,11 @@ std::vector<framework_proto::VarType::TensorDesc> VarDesc::tensor_descs()
       }
       return res;
     default:
-      LOG(FATAL)
-          << "Getting 'tensor_descs' is not supported by the type of var "
-             "%s."
-          << this->Name();
+      std::stringstream ss;
+      ss << "Getting 'tensor_descs' is not supported by the type of var "
+            "%s."
+         << this->Name();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return std::vector<framework_proto::VarType::TensorDesc>();
 }
@@ -336,10 +350,12 @@ framework_proto::VarType::TensorDesc *VarDesc::mutable_tensor_desc() {
     case framework_proto::VarType::LOD_TENSOR_ARRAY:
       return desc_->mutable_type()->mutable_tensor_array()->mutable_tensor();
     default:
-      LOG(FATAL) << "Getting 'mutable_tensor_desc' is not supported by the "
-                    "type of var "
-                    "%s."
-                 << this->Name();
+      std::stringstream ss;
+      ss << "Getting 'mutable_tensor_desc' is not supported by the "
+            "type of var "
+            "%s."
+         << this->Name();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return nullptr;
 }
@@ -358,10 +374,11 @@ VarDesc::mutable_tensor_descs() {
       }
       return res;
     default:
-      LOG(FATAL)
-          << "Getting 'tensor_descs' is not supported by the type of var "
-             "%s."
-          << this->Name();
+      std::stringstream ss;
+      ss << "Getting 'tensor_descs' is not supported by the type of var "
+            "%s."
+         << this->Name();
+      PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return std::vector<framework_proto::VarType::TensorDesc *>();
 }

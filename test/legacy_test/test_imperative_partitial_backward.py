@@ -24,7 +24,7 @@ class TestImperativePartitialBackward(unittest.TestCase):
     def test_partitial_backward(self):
         with base.dygraph.guard():
             x = np.random.randn(2, 4, 5).astype("float32")
-            x = base.dygraph.to_variable(x)
+            x = paddle.to_tensor(x)
             linear1 = paddle.nn.Linear(5, 10)
             linear2 = paddle.nn.Linear(5, 10)
 

@@ -105,7 +105,7 @@ CONDITION_FUNC(elementwise_fuse_broadcast) {
   return true;
 }
 
-CONDITION_FUNC(honrizontal_elementwise_fuse_reduce) {
+CONDITION_FUNC(horizontal_elementwise_fuse_reduce) {
   std::shared_ptr<Graph::Group> ele_group, reduce_group;
   if (first->op_pattern_kind == framework::kReduction) {
     ele_group = second;
@@ -221,7 +221,7 @@ CONDITION_FUNC(elementwise_fuse_reduce) {
   auto input_shape =
       helper->shape_dict_.at(reducer->inlinks_in_order()[0]->source()->id());
   auto reduce_axes =
-      absl::get<std::vector<int>>(reducer->attrs.attr_store.at("dim"));
+      absl::get<std::vector<int>>(reducer->attrs.attr_store.at("axis"));
 
   int max_num_threads = helper->target_.max_num_threads();
   // if without last dimension in reduce.
@@ -330,7 +330,7 @@ inline bool horizontal_relation(
   };
   auto selected_nodes = select_node_set(second_set, op_pattern_kind);
 
-  auto check_depency = [&](const Node* node) {
+  auto check_dependency = [&](const Node* node) {
     std::queue<const Node*> candidates;
     std::unordered_set<const Node*> visited_set;
     candidates.push(node);
@@ -360,7 +360,7 @@ inline bool horizontal_relation(
   };
 
   for (auto node : selected_nodes) {
-    if (check_depency(node)) {
+    if (check_dependency(node)) {
       return false;
     }
   }
@@ -411,8 +411,8 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
     auto reducer_input_shape = helper->GetNodeInputShape(reducer);
     auto reducer_output_shape = helper->GetNodeDataShape(reducer);
     auto reduce_axes =
-        absl::get<std::vector<int>>(reducer->attrs.attr_store.at("dim"));
-    auto keep_dim = absl::get<bool>(reducer->attrs.attr_store.at("keep_dim"));
+        absl::get<std::vector<int>>(reducer->attrs.attr_store.at("axis"));
+    auto keepdim = absl::get<bool>(reducer->attrs.attr_store.at("keepdim"));
     for (auto& axis : reduce_axes) {
       if (axis == -1) {
         axis = reducer_input_shape.size() - 1;
@@ -479,7 +479,7 @@ CONDITION_FUNC(reduce_fuse_broadcast) {
         return false;
       }
 
-      if (keep_dim) {
+      if (keepdim) {
         continue;
       } else {
         // if reducer_output_shape = [1]
@@ -535,29 +535,29 @@ CONDITION_FUNC(reduce_fuse_reduce) {
   auto reducer_1_output_shape =
       helper->shape_dict_.at(reducer_1->outlinks_in_order()[0]->sink()->id());
 
-  auto reducer_0_reduce_dim =
-      absl::get<std::vector<int>>(reducer_0->attrs.attr_store.at("dim"));
-  auto reducer_1_reduce_dim =
-      absl::get<std::vector<int>>(reducer_1->attrs.attr_store.at("dim"));
+  auto reducer_0_reduce_axis =
+      absl::get<std::vector<int>>(reducer_0->attrs.attr_store.at("axis"));
+  auto reducer_1_reduce_axis =
+      absl::get<std::vector<int>>(reducer_1->attrs.attr_store.at("axis"));
 
-  for (auto& dim : reducer_0_reduce_dim) {
+  for (auto& dim : reducer_0_reduce_axis) {
     // if dim = -1, set as shape.size() - 1
     if (dim == -1) {
-      dim = reducer_0_reduce_dim.size() - 1;
+      dim = reducer_0_reduce_axis.size() - 1;
     }
   }
 
-  for (auto& dim : reducer_1_reduce_dim) {
+  for (auto& dim : reducer_1_reduce_axis) {
     // if dim = -1,  set as shape.size() - 1
     if (dim == -1) {
-      dim = reducer_1_reduce_dim.size() - 1;
+      dim = reducer_1_reduce_axis.size() - 1;
     }
   }
 
   // check shape is same
   if (reducer_0_input_shape == reducer_1_input_shape &&
       reducer_0_output_shape == reducer_1_output_shape &&
-      reducer_0_reduce_dim == reducer_1_reduce_dim) {
+      reducer_0_reduce_axis == reducer_1_reduce_axis) {
     auto shared_size = 0;
     for (auto& fusion_group : {first, second}) {
       for (auto* master : fusion_group->master_nodes) {
@@ -576,11 +576,11 @@ CONDITION_FUNC(reduce_fuse_reduce) {
   }
 
   if (helper->WithoutLastDimInReduce(reducer_0_input_shape,
-                                     reducer_0_reduce_dim) &&
+                                     reducer_0_reduce_axis) &&
       helper->WithoutLastDimInReduce(reducer_1_input_shape,
-                                     reducer_1_reduce_dim) &&
+                                     reducer_1_reduce_axis) &&
       reducer_0_output_shape == reducer_1_output_shape &&
-      reducer_0_reduce_dim == reducer_1_reduce_dim) {
+      reducer_0_reduce_axis == reducer_1_reduce_axis) {
     auto shared_size = 0;
     for (auto& fusion_group : {first, second}) {
       for (auto* master : fusion_group->master_nodes) {

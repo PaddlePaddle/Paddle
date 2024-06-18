@@ -105,24 +105,20 @@ class TrainerRuntimeConfig:
             ]
             if max_merge_var_num != num_threads:
                 print(
-                    'WARNING: In {} mode, communicator_max_merge_var_num '
+                    f'WARNING: In {mode_str} mode, communicator_max_merge_var_num '
                     'must be equal to CPU_NUM. But received, '
-                    'communicator_max_merge_var_num = {}, CPU_NUM = '
-                    '{}. communicator_max_merge_var_num will be fored to {}.'.format(
-                        mode_str, max_merge_var_num, num_threads, num_threads
-                    )
+                    f'communicator_max_merge_var_num = {max_merge_var_num}, CPU_NUM = '
+                    f'{num_threads}. communicator_max_merge_var_num will be forced to {num_threads}.'
                 )
                 self.runtime_configs[
                     'communicator_max_merge_var_num'
                 ] = num_threads
             if send_queue_size != num_threads:
                 print(
-                    'WARNING: In {} mode, communicator_send_queue_size '
+                    f'WARNING: In {mode_str} mode, communicator_send_queue_size '
                     'must be equal to CPU_NUM. But received, '
-                    'communicator_send_queue_size = {}, CPU_NUM = '
-                    '{}. communicator_send_queue_size will be fored to {}.'.format(
-                        mode_str, send_queue_size, num_threads, num_threads
-                    )
+                    f'communicator_send_queue_size = {send_queue_size}, CPU_NUM = '
+                    f'{num_threads}. communicator_send_queue_size will be forced to {num_threads}.'
                 )
                 self.runtime_configs[
                     'communicator_send_queue_size'
@@ -171,10 +167,8 @@ class DistributedStrategy:
         self._server_runtime_config = ServerRuntimeConfig()
         num_threads = int(os.getenv("CPU_NUM", "1"))
 
-        self._execute_strategy = base.ExecutionStrategy()
         self._build_strategy = base.BuildStrategy()
 
-        self._execute_strategy.num_threads = num_threads
         if num_threads > 1:
             self._build_strategy.reduce_strategy = (
                 base.BuildStrategy.ReduceStrategy.Reduce
@@ -281,31 +275,6 @@ class DistributedStrategy:
             "check_server_runtime_config must be implemented by derived class. You should use StrategyFactory to create DistributedStrategy."
         )
 
-    def get_execute_strategy(self):
-        return self._execute_strategy
-
-    def set_execute_strategy(self, config):
-        if isinstance(config, base.ExecutionStrategy):
-            self._execute_strategy = config
-        elif isinstance(config, dict):
-            for key in config:
-                if hasattr(self._execute_strategy, key):
-                    setattr(self._execute_strategy, key, config[key])
-                else:
-                    raise ValueError(
-                        f"ExecutionStrategy doesn't have key: {key}"
-                    )
-        else:
-            raise TypeError(
-                "execute_strategy only accept input type: dict or ExecutionStrategy"
-            )
-        self.check_execute_strategy()
-
-    def check_execute_strategy(self):
-        raise NotImplementedError(
-            "check_execute_strategy must be implemented by derived class. You should use StrategyFactory to create DistributedStrategy."
-        )
-
     def get_build_strategy(self):
         return self._build_strategy
 
@@ -337,7 +306,6 @@ class SyncStrategy(DistributedStrategy):
         self.check_trainer_runtime_config()
         self.check_server_runtime_config()
         self.check_build_strategy()
-        self.check_execute_strategy()
 
     def check_trainer_runtime_config(self):
         self._trainer_runtime_config.mode = DistributedMode.SYNC
@@ -351,9 +319,6 @@ class SyncStrategy(DistributedStrategy):
     def check_server_runtime_config(self):
         pass
 
-    def check_execute_strategy(self):
-        self._execute_strategy.use_thread_barrier = True
-
     def check_build_strategy(self):
         self._build_strategy.async_mode = True
 
@@ -365,7 +330,6 @@ class AsyncStrategy(DistributedStrategy):
         self.check_trainer_runtime_config()
         self.check_server_runtime_config()
         self.check_build_strategy()
-        self.check_execute_strategy()
 
     def check_trainer_runtime_config(self):
         self._trainer_runtime_config.mode = DistributedMode.ASYNC
@@ -375,9 +339,6 @@ class AsyncStrategy(DistributedStrategy):
         self._program_config.runtime_split_send_recv = True
 
     def check_server_runtime_config(self):
-        pass
-
-    def check_execute_strategy(self):
         pass
 
     def check_build_strategy(self):
@@ -391,7 +352,6 @@ class HalfAsyncStrategy(DistributedStrategy):
         self.check_trainer_runtime_config()
         self.check_server_runtime_config()
         self.check_build_strategy()
-        self.check_execute_strategy()
 
     def check_trainer_runtime_config(self):
         self._trainer_runtime_config.mode = DistributedMode.HALF_ASYNC
@@ -403,9 +363,6 @@ class HalfAsyncStrategy(DistributedStrategy):
 
     def check_server_runtime_config(self):
         pass
-
-    def check_execute_strategy(self):
-        self._execute_strategy.use_thread_barrier = True
 
     def check_build_strategy(self):
         self._build_strategy.async_mode = True
@@ -419,7 +376,6 @@ class GeoStrategy(DistributedStrategy):
         self.check_trainer_runtime_config()
         self.check_server_runtime_config()
         self.check_build_strategy()
-        self.check_execute_strategy()
 
     def check_program_config(self):
         self._program_config.sync_mode = False
@@ -438,9 +394,6 @@ class GeoStrategy(DistributedStrategy):
         ] = self._program_config.geo_sgd_need_push_nums
 
     def check_server_runtime_config(self):
-        pass
-
-    def check_execute_strategy(self):
         pass
 
     def check_build_strategy(self):

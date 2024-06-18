@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+from paddle.utils import gast
+
 from .base import BaseTransformer
 
 __all__ = []
@@ -39,3 +41,9 @@ class TypeHintTransformer(BaseTransformer):
         node.annotation = None
         self.generic_visit(node)
         return node
+
+    def visit_AnnAssign(self, node):
+        if node.value is None:
+            return None
+        assign_node = gast.Assign(targets=[node.target], value=node.value)
+        return assign_node

@@ -28,25 +28,125 @@ import nets
 
 import paddle
 from paddle import base
+from paddle.framework import in_pir_mode
+from paddle.nn import Layer
+from paddle.pir_utils import test_with_pir_api
 from paddle.static.amp import decorate
 
 paddle.enable_static()
 
 
-def resnet_cifar10(input, depth=32):
-    def conv_bn_layer(
-        input, ch_out, filter_size, stride, padding, act='relu', bias_attr=False
-    ):
-        tmp = paddle.static.nn.conv2d(
-            input=input,
-            filter_size=filter_size,
-            num_filters=ch_out,
-            stride=stride,
-            padding=padding,
-            act=None,
+def img_conv_group_pir(
+    input,
+    in_channels,
+    out_channels,
+    conv_num_filter,
+    kernel_size,
+    pool_size,
+    pool_stride=1,
+    pool_padding=0,
+    pool_type='max',
+    global_pooling=False,
+    conv_with_batchnorm=False,
+    conv_batchnorm_drop_rate=0.0,
+    conv_stride=1,
+    conv_padding=1,
+    conv_filter_size=3,
+    conv_dilation=1,
+    conv_groups=1,
+    param_attr=None,
+    bias_attr=None,
+    conv_act=None,
+    use_cudnn=True,
+):
+    tmp = input
+    assert isinstance(conv_num_filter, (list, tuple))
+
+    def __extend_list__(obj):
+        if not hasattr(obj, '__len__'):
+            return [obj] * len(conv_num_filter)
+        else:
+            assert len(obj) == len(conv_num_filter)
+            return obj
+
+    conv_padding = __extend_list__(conv_padding)
+    conv_filter_size = __extend_list__(conv_filter_size)
+    param_attr = __extend_list__(param_attr)
+    conv_with_batchnorm = __extend_list__(conv_with_batchnorm)
+    conv_batchnorm_drop_rate = __extend_list__(conv_batchnorm_drop_rate)
+
+    for i in range(len(conv_num_filter)):
+        local_conv_act = conv_act
+        if conv_with_batchnorm[i]:
+            local_conv_act = None
+
+        conv = paddle.nn.Conv2D(
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=conv_stride,
+            padding=conv_padding[i],
+            dilation=conv_dilation,
+            groups=conv_groups,
             bias_attr=bias_attr,
         )
-        return paddle.static.nn.batch_norm(input=tmp, act=act)
+        conv_out = conv(input)
+
+        if conv_with_batchnorm[i]:
+            batch_norm = paddle.nn.BatchNorm(in_channels, act=conv_act)
+            tmp = batch_norm(tmp)
+            drop_rate = conv_batchnorm_drop_rate[i]
+            if abs(drop_rate) > 1e-5:
+                tmp = paddle.nn.functional.dropout(x=tmp, p=drop_rate)
+
+    if pool_type == 'max':
+        pool_out = paddle.nn.functional.max_pool2d(
+            x=tmp,
+            kernel_size=pool_size,
+            stride=pool_stride,
+        )
+    else:
+        pool_out = paddle.nn.functional.avg_pool2d(
+            x=tmp,
+            kernel_size=pool_size,
+            stride=pool_stride,
+        )
+    return pool_out
+
+
+def resnet_cifar10(input, depth=32):
+    def conv_bn_layer(
+        input,
+        ch_out,
+        filter_size,
+        stride,
+        padding,
+        act='relu',
+        bias_attr=False,
+    ):
+        if in_pir_mode():
+            conv = paddle.nn.Conv2D(
+                in_channels=input.shape[1],
+                out_channels=ch_out,
+                kernel_size=filter_size,
+                stride=stride,
+                padding=padding,
+                bias_attr=bias_attr,
+            )
+            tmp = conv(input)
+            bn = paddle.nn.BatchNorm(tmp.shape[1], act=act)
+            return bn(tmp)
+        else:
+            tmp = paddle.static.nn.conv2d(
+                input=input,
+                filter_size=filter_size,
+                num_filters=ch_out,
+                stride=stride,
+                padding=padding,
+                act=None,
+                bias_attr=bias_attr,
+            )
+            return paddle.static.nn.batch_norm(input=tmp, act=act)
 
     def shortcut(input, ch_in, ch_out, stride):
         if ch_in != ch_out:
@@ -80,17 +180,32 @@ def resnet_cifar10(input, depth=32):
 
 def vgg16_bn_drop(input):
     def conv_block(input, num_filter, groups, dropouts):
-        return nets.img_conv_group(
-            input=input,
-            pool_size=2,
-            pool_stride=2,
-            conv_num_filter=[num_filter] * groups,
-            conv_filter_size=3,
-            conv_act='relu',
-            conv_with_batchnorm=True,
-            conv_batchnorm_drop_rate=dropouts,
-            pool_type='max',
-        )
+        if in_pir_mode():
+            return img_conv_group_pir(
+                input,
+                in_channels=3,
+                out_channels=num_filter,
+                conv_num_filter=[num_filter] * groups,
+                kernel_size=3,
+                pool_size=2,
+                pool_stride=2,
+                pool_padding=0,
+                pool_type='max',
+                conv_act='relu',
+                conv_with_batchnorm=True,
+            )
+        else:
+            return nets.img_conv_group(
+                input=input,
+                pool_size=2,
+                pool_stride=2,
+                conv_num_filter=[num_filter] * groups,
+                conv_filter_size=3,
+                conv_act='relu',
+                conv_with_batchnorm=True,
+                conv_batchnorm_drop_rate=dropouts,
+                pool_type='max',
+            )
 
     conv1 = conv_block(input, 64, 2, [0.3, 0])
     conv2 = conv_block(conv1, 128, 2, [0.4, 0])
@@ -100,7 +215,11 @@ def vgg16_bn_drop(input):
 
     drop = paddle.nn.functional.dropout(x=conv5, p=0.5)
     fc1 = paddle.static.nn.fc(x=drop, size=4096, activation=None)
-    bn = paddle.static.nn.batch_norm(input=fc1, act='relu')
+    if in_pir_mode():
+        batch_norm = paddle.nn.BatchNorm(4096)
+        bn = batch_norm(fc1)
+    else:
+        bn = paddle.static.nn.batch_norm(input=fc1, act='relu')
     drop2 = paddle.nn.functional.dropout(x=bn, p=0.5)
     fc2 = paddle.static.nn.fc(x=drop2, size=4096, activation=None)
     return fc2
@@ -110,8 +229,8 @@ def train(net_type, use_cuda, save_dirname, is_local):
     classdim = 10
     data_shape = [3, 32, 32]
 
-    train_program = base.Program()
-    startup_prog = base.Program()
+    train_program = paddle.static.Program()
+    startup_prog = paddle.static.Program()
     paddle.seed(123)
     with base.program_guard(train_program, startup_prog):
         images = paddle.static.data(
@@ -128,31 +247,85 @@ def train(net_type, use_cuda, save_dirname, is_local):
         else:
             raise ValueError("%s network is not supported" % net_type)
 
-        logits = paddle.static.nn.fc(x=net, size=classdim, activation="softmax")
-        cost, predict = paddle.nn.functional.softmax_with_cross_entropy(
-            logits, label, return_softmax=True
-        )
-        avg_cost = paddle.mean(cost)
-        acc = paddle.static.accuracy(input=predict, label=label)
-
-        # Test program
-        test_program = train_program.clone(for_test=True)
-
         optimizer = paddle.optimizer.Lamb(learning_rate=0.001)
 
-        amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
-            custom_black_varnames={"loss", "conv2d_0.w_0"}
-        )
-        mp_optimizer = decorate(
-            optimizer=optimizer,
-            amp_lists=amp_lists,
-            init_loss_scaling=8.0,
-            use_dynamic_loss_scaling=True,
-        )
+        if in_pir_mode():
 
-        mp_optimizer.minimize(avg_cost)
-        loss_scaling = mp_optimizer.get_loss_scaling()
-        scaled_loss = mp_optimizer.get_scaled_loss()
+            class layer(Layer):
+                def __init__(self, classdim, act):
+                    super().__init__()
+                    self.classdim = classdim
+                    self.act = act
+
+                def forward(self, x):
+                    logits = paddle.static.nn.fc(
+                        x=x, size=self.classdim, activation=self.act
+                    )
+                    (
+                        cost,
+                        predict,
+                    ) = paddle.nn.functional.softmax_with_cross_entropy(
+                        logits, label, return_softmax=True
+                    )
+                    return cost, predict
+
+            model = layer(classdim, "softmax")
+            model, optimizer = paddle.amp.decorate(
+                models=model,
+                optimizers=optimizer,
+                level="O2",
+                dtype='float16',
+            )
+            scaler = paddle.amp.GradScaler(
+                init_loss_scaling=8.0, use_dynamic_loss_scaling=True
+            )
+
+            with paddle.amp.auto_cast(
+                enable=True,
+                level='O2',
+                dtype='float16',
+                custom_black_list={'transpose2', 'concat'},
+                use_promote=True,
+            ):
+                cost, predict = model(net)
+                avg_cost = paddle.mean(cost)
+                acc = paddle.static.accuracy(input=predict, label=label)
+            # Test program
+            value_map = paddle.pir.IrMapping()
+            test_program = train_program.clone(value_map)
+            fetch_list = []
+            fetch_list.append(value_map.look_up(avg_cost))
+            fetch_list.append(value_map.look_up(acc))
+
+            scaled = scaler.scale(avg_cost)
+            scaler.minimize(optimizer, scaled, startup_program=startup_prog)
+            loss_scaling = optimizer.get_loss_scaling()
+            scaled_loss = optimizer.get_scaled_loss()
+        else:
+            logits = paddle.static.nn.fc(
+                x=net, size=classdim, activation="softmax"
+            )
+            cost, predict = paddle.nn.functional.softmax_with_cross_entropy(
+                logits, label, return_softmax=True
+            )
+            avg_cost = paddle.mean(cost)
+            acc = paddle.static.accuracy(input=predict, label=label)
+            # Test program
+            test_program = train_program.clone(for_test=True)
+            fetch_list = [avg_cost, acc]
+            amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
+                custom_black_varnames={"loss", "conv2d_0.w_0"}
+            )
+            mp_optimizer = decorate(
+                optimizer=optimizer,
+                amp_lists=amp_lists,
+                init_loss_scaling=8.0,
+                use_dynamic_loss_scaling=True,
+            )
+
+            mp_optimizer.minimize(avg_cost)
+            loss_scaling = mp_optimizer.get_loss_scaling()
+            scaled_loss = mp_optimizer.get_scaled_loss()
 
     BATCH_SIZE = 128
     PASS_NUM = 1
@@ -181,12 +354,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     fetch_list=[scaled_loss, avg_cost],
                 )
                 print(
-                    'PassID {:1}, BatchID {:04}, train loss {:2.4}, scaled train closs {:2.4}'.format(
-                        pass_id,
-                        batch_id + 1,
-                        float(loss),
-                        float(np_scaled_loss),
-                    )
+                    f'PassID {pass_id:1}, BatchID {batch_id + 1:04}, train loss {float(loss):2.4}, scaled train loss {float(np_scaled_loss):2.4}'
                 )
                 if (batch_id % 10) == 0:
                     acc_list = []
@@ -195,7 +363,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                         loss_t, acc_t = exe.run(
                             program=test_program,
                             feed=feeder.feed(test_data),
-                            fetch_list=[avg_cost, acc],
+                            fetch_list=fetch_list,
                         )
                         if math.isnan(float(loss_t)):
                             sys.exit("got NaN loss, training failed.")
@@ -207,12 +375,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     avg_loss_value = numpy.array(avg_loss_list).mean()
 
                     print(
-                        'PassID {:1}, BatchID {:04}, test loss {:2.2}, acc {:2.2}'.format(
-                            pass_id,
-                            batch_id + 1,
-                            float(avg_loss_value),
-                            float(acc_value),
-                        )
+                        f'PassID {pass_id:1}, BatchID {batch_id + 1:04}, test loss {float(avg_loss_value):2.2}, acc {float(acc_value):2.2}'
                     )
 
                     if acc_value > 0.08:  # Low threshold for speeding up CI
@@ -272,7 +435,7 @@ def infer(use_cuda, save_dirname=None):
         ] = paddle.static.io.load_inference_model(save_dirname, exe)
 
         # The input's dimension of conv should be 4-D or 5-D.
-        # Use normilized image pixels as input data, which should be in the range [0, 1.0].
+        # Use normalized image pixels as input data, which should be in the range [0, 1.0].
         batch_size = 1
         tensor_img = numpy.random.rand(batch_size, 3, 32, 32).astype("float32")
 
@@ -291,7 +454,7 @@ def infer(use_cuda, save_dirname=None):
             feed_target_names,
             fetch_targets,
             exe,
-            parogram=inference_program,
+            program=inference_program,
             clip_extra=True,
         )
 
@@ -466,10 +629,12 @@ class TestImageClassification(unittest.TestCase):
             {'lstm'},
         )
 
+    @test_with_pir_api
     def test_vgg_cuda(self):
         with self.scope_prog_guard():
             self.main('vgg', use_cuda=True)
 
+    @test_with_pir_api
     def test_resnet_cuda(self):
         with self.scope_prog_guard():
             self.main('resnet', use_cuda=True)
@@ -482,45 +647,6 @@ class TestImageClassification(unittest.TestCase):
         with base.scope_guard(scope):
             with base.program_guard(prog, startup_prog):
                 yield
-
-
-class TestAmpWithNonIterableDataLoader(unittest.TestCase):
-    def decorate_with_data_loader(self):
-        main_prog = paddle.static.Program()
-        start_prog = paddle.static.Program()
-        with paddle.static.program_guard(main_prog, start_prog):
-            with paddle.base.unique_name.guard():
-                image = paddle.static.data(
-                    name='image', shape=[-1, 3, 224, 224], dtype='float32'
-                )
-                label = paddle.static.data(
-                    name='label', shape=[-1, 1], dtype='int64'
-                )
-
-                net = vgg16_bn_drop(image)
-                logits = paddle.static.nn.fc(
-                    x=net, size=10, activation="softmax"
-                )
-                cost, predict = paddle.nn.functional.softmax_with_cross_entropy(
-                    logits, label, return_softmax=True
-                )
-                avg_cost = paddle.mean(cost)
-
-                optimizer = paddle.optimizer.Lamb(learning_rate=0.001)
-                amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
-                    custom_black_varnames={"loss", "conv2d_0.w_0"}
-                )
-                mp_optimizer = decorate(
-                    optimizer=optimizer,
-                    amp_lists=amp_lists,
-                    init_loss_scaling=8.0,
-                    use_dynamic_loss_scaling=True,
-                )
-
-                mp_optimizer.minimize(avg_cost)
-
-    def test_non_iterable_dataloader(self):
-        self.decorate_with_data_loader()
 
 
 if __name__ == '__main__':

@@ -33,9 +33,7 @@ def _assert_image_tensor(img, data_format):
         or data_format.lower() not in ('chw', 'hwc')
     ):
         raise RuntimeError(
-            'not support [type={}, ndim={}, data_format={}] paddle image'.format(
-                type(img), img.ndim, data_format
-            )
+            f'not support [type={type(img)}, ndim={img.ndim}, data_format={data_format}] paddle image'
         )
 
 

@@ -20,8 +20,9 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 from paddle.nn.functional import interpolate
+from paddle.pir_utils import test_with_pir_api
 
 
 def create_test_case0(self):
@@ -333,12 +334,31 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
             mode='linear',
             align_mode=1,
             align_corners=False,
-            data_format='NCW',
         )
         with base.dygraph.guard():
-            x = base.dygraph.to_variable(x_data)
+            x = paddle.to_tensor(x_data)
             interp = us_1(x)
 
+            expect = linear_interp_np(
+                x_data, out_w=64, align_mode=1, align_corners=False
+            )
+
+            np.testing.assert_allclose(interp.numpy(), expect, rtol=1e-05)
+
+
+class TestLinearInterpOpAPI2_0_case2(unittest.TestCase):
+    def test_case(self):
+        # dygraph
+        x_data = np.random.random((1, 3, 128)).astype("float32")
+        with base.dygraph.guard():
+            x = paddle.to_tensor(x_data)
+            interp = interpolate(
+                x,
+                size=[64],
+                mode='linear',
+                align_mode=1,
+                align_corners=False,
+            )
             expect = linear_interp_np(
                 x_data, out_w=64, align_mode=1, align_corners=False
             )
@@ -509,9 +529,12 @@ class TestResizeLinearOpUint8(OpTest):
 
 
 class TestLinearInterpOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         with paddle_static_guard():
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
 
                 def input_shape_error():
                     x1 = paddle.static.data(

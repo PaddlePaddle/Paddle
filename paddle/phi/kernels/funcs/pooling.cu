@@ -1005,12 +1005,16 @@ template class MaxPool2dGradFunctor<phi::GPUContext, dtype::bfloat16>;
 
 template class Pool2dFunctor<phi::GPUContext, MaxPool<float>, float>;
 template class Pool2dFunctor<phi::GPUContext, AvgPool<float>, float>;
+template class Pool2dFunctor<phi::GPUContext, LPPool<float>, float>;
 template class Pool2dGradFunctor<phi::GPUContext, MaxPoolGrad<float>, float>;
 template class Pool2dGradFunctor<phi::GPUContext, AvgPoolGrad<float>, float>;
+template class Pool2dGradFunctor<phi::GPUContext, LPPoolGrad<float>, float>;
 template class Pool2dFunctor<phi::GPUContext, MaxPool<double>, double>;
 template class Pool2dFunctor<phi::GPUContext, AvgPool<double>, double>;
+template class Pool2dFunctor<phi::GPUContext, LPPool<double>, double>;
 template class Pool2dGradFunctor<phi::GPUContext, MaxPoolGrad<double>, double>;
 template class Pool2dGradFunctor<phi::GPUContext, AvgPoolGrad<double>, double>;
+template class Pool2dGradFunctor<phi::GPUContext, LPPoolGrad<double>, double>;
 
 template class Pool2dFunctor<phi::GPUContext,
                              MaxPool<dtype::float16>,
@@ -1018,11 +1022,17 @@ template class Pool2dFunctor<phi::GPUContext,
 template class Pool2dFunctor<phi::GPUContext,
                              AvgPool<dtype::float16>,
                              dtype::float16>;
+template class Pool2dFunctor<phi::GPUContext,
+                             LPPool<dtype::float16>,
+                             dtype::float16>;
 template class Pool2dGradFunctor<phi::GPUContext,
                                  MaxPoolGrad<dtype::float16>,
                                  dtype::float16>;
 template class Pool2dGradFunctor<phi::GPUContext,
                                  AvgPoolGrad<dtype::float16>,
+                                 dtype::float16>;
+template class Pool2dGradFunctor<phi::GPUContext,
+                                 LPPoolGrad<dtype::float16>,
                                  dtype::float16>;
 template class Pool2dFunctor<phi::GPUContext,
                              MaxPool<dtype::bfloat16>,
@@ -1030,11 +1040,17 @@ template class Pool2dFunctor<phi::GPUContext,
 template class Pool2dFunctor<phi::GPUContext,
                              AvgPool<dtype::bfloat16>,
                              dtype::bfloat16>;
+template class Pool2dFunctor<phi::GPUContext,
+                             LPPool<dtype::bfloat16>,
+                             dtype::bfloat16>;
 template class Pool2dGradFunctor<phi::GPUContext,
                                  MaxPoolGrad<dtype::bfloat16>,
                                  dtype::bfloat16>;
 template class Pool2dGradFunctor<phi::GPUContext,
                                  AvgPoolGrad<dtype::bfloat16>,
+                                 dtype::bfloat16>;
+template class Pool2dGradFunctor<phi::GPUContext,
+                                 LPPoolGrad<dtype::bfloat16>,
                                  dtype::bfloat16>;
 
 template <typename PoolProcess, typename T>
@@ -2454,7 +2470,7 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
     int thread_y = 8;
     int thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int block_x = (output_width + threads.x - 1) / threads.x;
     int block_y = (output_height + threads.y - 1) / threads.y;
     int block_z = (ncd > max_grid_dim[2] * threads.z)
@@ -2535,7 +2551,7 @@ class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
     int thread_y = 8;
     int thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int block_x = (output_width + threads.x - 1) / threads.x;
     int block_y = (output_height + threads.y - 1) / threads.y;
     int block_z = (ncd > max_grid_dim[2] * threads.z)
@@ -2767,7 +2783,7 @@ class FractionalMaxPool2dFunctor<phi::GPUContext, T1, T2> {
     int thread_y = 1;
     int thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int block_x = (output_width + threads.x - 1) / threads.x;
     int block_y = (ncd > max_grid_dim[1] * threads.y)
                       ? max_grid_dim[1]
@@ -2839,7 +2855,7 @@ class FractionalMaxPool2dGradFunctor<phi::GPUContext, T1, T2> {
     int thread_y = 1;
     int thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int block_x = (output_width + threads.x - 1) / threads.x;
     int block_y = (ncd > max_grid_dim[1] * threads.y)
                       ? max_grid_dim[1]
@@ -3105,7 +3121,7 @@ class FractionalMaxPool3dFunctor<phi::GPUContext, T1, T2> {
     int thread_y = 8;
     int thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int block_x = (output_width + threads.x - 1) / threads.x;
     int block_y = (output_height + threads.y - 1) / threads.y;
     int block_z = (ncd > max_grid_dim[2] * threads.z)
@@ -3183,7 +3199,7 @@ class FractionalMaxPool3dGradFunctor<phi::GPUContext, T1, T2> {
     int thread_y = 8;
     int thread_z = 1;
     dim3 threads(thread_x, thread_y, thread_z);
-    std::array<int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
+    std::array<unsigned int, 3> max_grid_dim = context.GetCUDAMaxGridDimSize();
     int block_x = (output_width + threads.x - 1) / threads.x;
     int block_y = (output_height + threads.y - 1) / threads.y;
     int block_z = (ncd > max_grid_dim[2] * threads.z)

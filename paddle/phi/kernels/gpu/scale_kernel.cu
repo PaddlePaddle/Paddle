@@ -27,10 +27,10 @@ struct ScaleFunctor {
   ParamT scale;
   bool bias_after_scale;
 
-  ScaleFunctor(ParamT scale_data, ParamT bias_data, bool is_bias_after_sacle)
+  ScaleFunctor(ParamT scale_data, ParamT bias_data, bool is_bias_after_scale)
       : bias(bias_data),
         scale(scale_data),
-        bias_after_scale(is_bias_after_sacle) {}
+        bias_after_scale(is_bias_after_scale) {}
 
   __device__ __forceinline__ DataT operator()(const DataT x) const {
     if (bias_after_scale) {
@@ -45,7 +45,7 @@ template <typename T, typename Context>
 void ScaleKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const Scalar& scale,
-                 float bias,
+                 const Scalar& bias,
                  bool bias_after_scale,
                  DenseTensor* out) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -61,8 +61,7 @@ void ScaleKernel(const Context& dev_ctx,
       dev_ctx,
       inputs,
       &outputs,
-      ScaleFunctor<T, MT>(
-          scale.to<MT>(), static_cast<MT>(bias), bias_after_scale));
+      ScaleFunctor<T, MT>(scale.to<MT>(), bias.to<MT>(), bias_after_scale));
 }
 
 }  // namespace phi

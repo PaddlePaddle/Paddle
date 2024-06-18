@@ -107,7 +107,7 @@ inline typename KernelTuple::func_type GetReferFunc() {
   PADDLE_ENFORCE_NOT_NULL(
       p,
       phi::errors::InvalidArgument("Get the reference code of kernel in CPU "
-                                   "failed. The Refer kernel should exsit."));
+                                   "failed. The Refer kernel should exist."));
   return p->GetFunc();
 }
 
@@ -115,7 +115,7 @@ inline typename KernelTuple::func_type GetReferFunc() {
 template <typename KernelTuple, typename PlaceType>
 std::vector<const Kernel*> GetAllCandidateKernels(
     const typename KernelTuple::attr_type& attr) {
-  // the search order shoudl be jitcode > more > refer
+  // the search order should be jitcode > more > refer
   std::vector<const Kernel*> res;
   auto jitker = GetJitCode<KernelTuple, PlaceType>(attr);
   if (jitker) {
@@ -140,7 +140,7 @@ std::vector<const Kernel*> GetAllCandidateKernels(
   auto ref = GetReferKernel<KernelTuple>();
   PADDLE_ENFORCE_NOT_NULL(
       ref,
-      phi::errors::InvalidArgument("Get all candicate kernel in CPU failed. "
+      phi::errors::InvalidArgument("Get all candidate kernel in CPU failed. "
                                    "The Refer Kernel can not be empty."));
   res.emplace_back(ref);
   return res;
@@ -188,7 +188,7 @@ typename KernelTuple::func_type GetDefaultBestFunc(
   PADDLE_ENFORCE_GE(funcs.size(),
                     1UL,
                     phi::errors::InvalidArgument(
-                        "The candicate jit kernel is at least one in CPU."));
+                        "The candidate jit kernel is at least one in CPU."));
   // Here could do some runtime benchmark of this attr and return the best one.
   // But yet just get the first one as the default best one,
   // which is searched in order and tuned by offline.

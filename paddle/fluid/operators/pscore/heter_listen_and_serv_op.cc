@@ -66,13 +66,13 @@ void HeterListenAndServOp::RunAsyncLoop(framework::ProgramDesc *program) const {
     VLOG(3) << "after split, key = " << pieces[0] << ", id=" << pieces[1];
     PADDLE_ENFORCE_EQ(pieces.size(),
                       2,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Invalid format of message_and_id argument. "
                           "Expected \"message:block_id\". Received %s",
                           grad_and_id.c_str()));
     PADDLE_ENFORCE_EQ(out_map->count(pieces[0]),
                       0,
-                      platform::errors::AlreadyExists(
+                      phi::errors::AlreadyExists(
                           "The message name %s has already existed in out_map",
                           pieces[0].c_str()));
 
@@ -87,7 +87,7 @@ void HeterListenAndServOp::RunAsyncLoop(framework::ProgramDesc *program) const {
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks,
                     1,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "Invalid number of blocks in server program. Expected "
                         "equal or greater than 1. Received %zu",
                         num_blocks));
@@ -123,9 +123,9 @@ void RunServer(
 }
 
 void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
-                                   const platform::Place &dev_place) const {
+                                   const phi::Place &dev_place) const {
   // Mark this as PS that it should decide profiling by listening from trainer.
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(dev_place);
   VLOG(1) << "HeterListenAndServOp::RunImpl On gpu? "
           << platform::is_gpu_place(dev_place);
@@ -136,7 +136,7 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
 
   PADDLE_ENFORCE_EQ(heter_server_,
                     nullptr,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "RPC service has been created unexpectedly."));
 
   std::string endpoint = Attr<std::string>("endpoint");
@@ -144,13 +144,13 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
 
   heter_server_ = distributed::HeterServer::GetInstance();
   heter_server_->SetEndPoint(endpoint);
-  heter_server_->SetFanin(fan_in);
+  heter_server_->SetFanIn(fan_in);
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>("optimize_blocks");
   PADDLE_ENFORCE_GE(optimize_blocks.size(),
                     1,
-                    platform::errors::PreconditionNotMet(
+                    phi::errors::PreconditionNotMet(
                         "optimize blocks is less than 1. Optimize blocks "
                         "should be 1 at least on the pserver side."));
 

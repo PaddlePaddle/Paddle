@@ -15,7 +15,7 @@
 #include "paddle/cinn/common/dev_info_manager.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 
@@ -29,10 +29,11 @@ namespace ir {
  * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
  * printing
  */
-#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
-  }                                                            \
-  catch (const utils::ErrorHandler& err_hanlder) {             \
-    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+#define CINN_IR_SCHEDULE_END(err_msg_level)                                 \
+  }                                                                         \
+  catch (const utils::ErrorHandler& err_handler) {                          \
+    PADDLE_THROW(                                                           \
+        phi::errors::Fatal(err_handler.FormatErrorMessage(err_msg_level))); \
   }
 
 void DyScheduleImpl::MutateForType(const Expr& loop,
@@ -53,7 +54,7 @@ void DyScheduleImpl::MutateForType(const Expr& loop,
        << static_cast<int>(for_type) << "!\n";
   }
 
-  auto loop_copy = ir::ir_utils::IRCopy(loop);
+  auto loop_copy = ir::ir_utils::IRCopy(loop, /* copy_buffer_node = */ false);
   auto* new_for_node = loop_copy.As<ir::For>();
   CHECK(new_for_node);
   new_for_node->set_for_type(for_type);
@@ -106,50 +107,55 @@ void DyScheduleImpl::Unroll(const Expr& loop) {
 }
 
 void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  CINN_IR_SCHEDULE_BEGIN();
-  std::string primitive = "Bind";
-  std::ostringstream os;
+        CINN_IR_SCHEDULE_BEGIN();
+        std::string primitive = "Bind";
+        std::ostringstream os;
 
-  if (!loop.As<For>()->extent.is_constant()) {
-    os << "The extent of loop to be binded should be constant!\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
-
-  static std::set<std::string> thread_axes = {"blockIdx.x",
-                                              "blockIdx.y",
-                                              "blockIdx.z",
-                                              "threadIdx.x",
-                                              "threadIdx.y",
-                                              "threadIdx.z"};
-  if (!thread_axes.count(thread_axis)) {
-    os << "The thread_axis which is " << thread_axis << " is not supported\n";
-    throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-  }
-  int offset = thread_axis.back() - 'x';
-  auto cur_dev_info =
-      common::DevInfoMgr<common::Target::Arch::NVGPU>::GetDevInfo(0);
-  const std::array<int, 3> kMaxBlockDims = cur_dev_info->GetMaxBlockDims();
-  const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
-  auto check_offset = [&](const char& c) -> bool {
-    auto extent = loop.As<ir::For>()->extent.as_int64();
-    return extent <= (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);
-  };
-  if (thread_axis[0] == 'b') {
-    if (!check_offset(thread_axis[0])) {
-      os << "Invalid Bind! The extent of loop is out of range on grid size!\n";
-      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-    }
-    MutateForType(loop, ForType::GPUBlock, offset);
-  } else {
-    if (!check_offset(thread_axis[0])) {
-      os << "Invalid Bind! The extent of loop is out of range on block size!\n";
-      throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
-    }
-    MutateForType(loop, ForType::GPUThread, offset);
-  }
-  CINN_IR_SCHEDULE_END(this->err_msg_level_);
+        static std::set<std::string> thread_axes = {"blockIdx.x",
+                                                    "blockIdx.y",
+                                                    "blockIdx.z",
+                                                    "threadIdx.x",
+                                                    "threadIdx.y",
+                                                    "threadIdx.z"};
+        if (!thread_axes.count(thread_axis)) {
+          os << "The thread_axis which is " << thread_axis
+             << " is not supported\n";
+          throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+        }
+        int offset = thread_axis.back() - 'x';
+        auto cur_dev_info =
+            common::DevInfoMgr<common::NVGPUArch>::GetDevInfo(0);
+        const std::array<int, 3> kMaxBlockDims =
+            cur_dev_info->GetMaxBlockDims();
+        const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
+        auto check_offset = [&](const char& c) -> bool {
+          // TODO(BiynXu): rewrite the function after we have a mechanism to
+          // calculate the upper bound of symbols.
+          return true;
+        };
+        if (thread_axis[0] == 'b') {
+          if (!check_offset(thread_axis[0])) {
+            os << "Invalid Bind! The extent of loop is out of range on grid "
+                  "size!\n";
+            throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+          }
+          MutateForType(loop, ForType::GPUBlock, offset);
+        } else {
+          if (!check_offset(thread_axis[0])) {
+            os << "Invalid Bind! The extent of loop is out of range on block "
+                  "size!\n";
+            throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
+          }
+          MutateForType(loop, ForType::GPUThread, offset);
+        }
+        CINN_IR_SCHEDULE_END(this->err_msg_level_);
 #endif
+      });
 }
 }  // namespace ir
 }  // namespace cinn
@@ -184,7 +190,10 @@ void StScheduleImpl::Parallel(const Expr& loop) {
 }
 
 void StScheduleImpl::Vectorize(const Expr& loop, int factor) {
-  CHECK_GT(factor, 0) << "vectorize factor should be more than 0";
+  PADDLE_ENFORCE_GT(
+      factor,
+      0,
+      phi::errors::InvalidArgument("vectorize factor should be more than 0"));
   MutateForType(loop, ForType::Vectorized, factor);
 }
 
@@ -193,37 +202,45 @@ void StScheduleImpl::Unroll(const Expr& loop) {
 }
 
 void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  CINN_IR_SCHEDULE_BEGIN();
-  static std::set<std::string> thread_axes = {"blockIdx.x",
-                                              "blockIdx.y",
-                                              "blockIdx.z",
-                                              "threadIdx.x",
-                                              "threadIdx.y",
-                                              "threadIdx.z"};
-  CHECK(thread_axes.count(thread_axis))
-      << "thread_axis " << thread_axis << " is not supported";
-  int offset = thread_axis.back() - 'x';
-  auto cur_dev_info =
-      cinn::common::DevInfoMgr<cinn::common::Target::Arch::NVGPU>::GetDevInfo(
-          0);
-  const std::array<int, 3> kMaxBlockDims = cur_dev_info->GetMaxBlockDims();
-  const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
-  auto check_offset = [&](const char& c) -> bool {
-    auto extent = loop.As<ir::For>()->extent.as_int64();
-    return extent <= (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);
-  };
-  if (thread_axis[0] == 'b') {
-    CHECK(check_offset(thread_axis[0]))
-        << "Invalid Bind! The extent of loop is out of range on grid size!\n";
-    MutateForType(loop, ForType::GPUBlock, offset);
-  } else {
-    CHECK(check_offset(thread_axis[0]))
-        << "Invalid Bind! The extent of loop is out of range on block size!\n";
-    MutateForType(loop, ForType::GPUThread, offset);
-  }
-  CINN_IR_SCHEDULE_END(this->err_msg_level_);
+        CINN_IR_SCHEDULE_BEGIN();
+        static std::set<std::string> thread_axes = {"blockIdx.x",
+                                                    "blockIdx.y",
+                                                    "blockIdx.z",
+                                                    "threadIdx.x",
+                                                    "threadIdx.y",
+                                                    "threadIdx.z"};
+        CHECK(thread_axes.count(thread_axis))
+            << "thread_axis " << thread_axis << " is not supported";
+        int offset = thread_axis.back() - 'x';
+        auto cur_dev_info =
+            cinn::common::DevInfoMgr<cinn::common::NVGPUArch>::GetDevInfo(0);
+        const std::array<int, 3> kMaxBlockDims =
+            cur_dev_info->GetMaxBlockDims();
+        const std::array<int, 3> kMaxGridDims = cur_dev_info->GetMaxGridDims();
+        auto check_offset = [&](const char& c) -> bool {
+          auto extent = loop.As<ir::For>()->extent.as_int64();
+          return extent <=
+                 (c == 'b' ? kMaxGridDims[offset] : kMaxBlockDims[offset]);
+        };
+        if (thread_axis[0] == 'b') {
+          CHECK(check_offset(thread_axis[0]))
+              << "Invalid Bind! The extent of loop is out of range on grid "
+                 "size!\n";
+          MutateForType(loop, ForType::GPUBlock, offset);
+        } else {
+          CHECK(check_offset(thread_axis[0]))
+              << "Invalid Bind! The extent of loop is out of range on block "
+                 "size!\n";
+          MutateForType(loop, ForType::GPUThread, offset);
+        }
+        CINN_IR_SCHEDULE_END(this->err_msg_level_);
 #endif
+      });
 }
 
 }  // namespace ir

@@ -22,11 +22,18 @@ from paddle import base
 from paddle.base import Program, core, program_guard
 
 
+def api_wrapper(x, label, soft_label=False, ignore_index=-100):
+    return paddle._legacy_C_ops.cross_entropy(
+        x, label, "soft_label", soft_label, "ignore_index", ignore_index
+    )
+
+
 class TestCrossEntropyOp(OpTest):
     """Test cross-entropy with discrete one-hot labels."""
 
     def setUp(self):
         self.op_type = "cross_entropy"
+        self.python_api = api_wrapper
         self.soft_label = False
         self.ignore_index = -100
         self.dtype = np.float64

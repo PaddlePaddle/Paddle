@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/dim_trans.h"
-#include <assert.h>
+#include <cassert>
 #include <cstdio>
 #include <numeric>
 #include <set>
@@ -25,7 +25,7 @@ namespace distributed {
 
 DimTrans::DimTrans(Type type) : type_(type) {}
 
-DimTrans::~DimTrans() {}
+DimTrans::~DimTrans() = default;
 
 DimTrans::Type DimTrans::type() const { return type_; }
 
@@ -39,7 +39,7 @@ InputDim::InputDim(int64_t dim) : DimTrans(DimTrans::Type::INPUTDIM) {
   input_dim_ = dim;
 }
 
-InputDim::~InputDim() {}
+InputDim::~InputDim() = default;
 
 int64_t InputDim::input_dim() const { return input_dim_; }
 
@@ -83,7 +83,9 @@ std::string Flatten::to_string() {
   return ret_str + ")";
 }
 
-Split::Split() : DimTrans(DimTrans::Type::SPLIT) { input_dim_trans_ = nullptr; }
+Split::Split() : DimTrans(DimTrans::Type::SPLIT), split_id_(0) {
+  input_dim_trans_ = nullptr;
+}
 
 Split::Split(const std::shared_ptr<DimTrans> dim,
              const std::vector<int64_t>& shape,
@@ -125,7 +127,7 @@ std::string Split::to_string() {
 std::shared_ptr<DimTrans> make_flatten(
     const std::vector<std::shared_ptr<DimTrans>>& dims) {
   std::shared_ptr<DimTrans> ptr;
-  if (dims.size() == 0) {
+  if (dims.empty()) {
     ptr = std::make_shared<Singleton>();
   } else if (dims.size() == 1) {
     ptr = dims[0];

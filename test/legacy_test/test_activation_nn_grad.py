@@ -17,6 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
+from utils import dygraph_guard, static_guard
 
 import paddle
 import paddle.nn.functional as F
@@ -466,12 +467,14 @@ class TestLogDoubleGradCheck(unittest.TestCase):
 
         x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
 
+        core._set_prim_all_enabled(True)
         gradient_checker.double_grad_check(
             [x], y, x_init=x_arr, place=place, eps=eps
         )
         gradient_checker.double_grad_check_for_dygraph(
             self.log_wrapper, [x], y, x_init=x_arr, place=place
         )
+        core._set_prim_all_enabled(False)
 
     def test_grad(self):
         paddle.enable_static()
@@ -542,6 +545,52 @@ class TestCosDoubleGradCheck(unittest.TestCase):
             places.append(base.CUDAPlace(0))
         for p in places:
             self.func(p)
+
+
+class TestCosDoubleGradCheck2(unittest.TestCase):
+    @test_with_pir_api
+    def _check_cos_double_dynamic(self, place):
+        with dygraph_guard():
+            x = paddle.randn([64, 64])
+            x = paddle.to_tensor(x, place=place, stop_gradient=False)
+            y = paddle.cos(x)
+            dx = paddle.grad(y, x, create_graph=True)
+            dxx_result = paddle.grad(dx, x)[0]
+            dxx_expected = -paddle.cos(x)
+            np.testing.assert_allclose(
+                dxx_result.numpy(),
+                dxx_expected.numpy(),
+                1e-6,
+                1e-6,
+            )
+
+    @test_with_pir_api
+    def _check_cos_double_static(self, place):
+        x_data = np.random.randn(64, 64).astype("float32")
+        with static_guard():
+            main_prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.assign(x_data)
+                x.stop_gradient = False
+                y = paddle.cos(x)
+                dx = paddle.static.gradients(y, x)
+                dxx = paddle.static.gradients(dx, x)[0]
+
+            exe = paddle.static.Executor(place)
+            exe.run(startup_prog)
+            (dxx_result,) = exe.run(main_prog, fetch_list=[dxx])
+            dxx_expected = -np.cos(x_data)
+            np.testing.assert_allclose(dxx_result, dxx_expected, 1e-6, 1e-6)
+
+    def test_cos_double_grad(self):
+        places = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
+
+        for place in places:
+            self._check_cos_double_dynamic(place)
+            self._check_cos_double_static(place)
 
 
 class TestPowDoubleGradCheck1(unittest.TestCase):

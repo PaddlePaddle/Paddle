@@ -13,13 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 // Shape of bitmask
-static framework::DDim GetBitmaskDims(std::vector<int> out_shape) {
+static phi::DDim GetBitmaskDims(std::vector<int> out_shape) {
   int c = out_shape.back();
   int64_t nhw = std::accumulate(out_shape.begin(),
                                 out_shape.end(),
@@ -27,7 +26,7 @@ static framework::DDim GetBitmaskDims(std::vector<int> out_shape) {
                                 std::multiplies<int>()) /  // NOLINT
                 c;
   int32_t c_int32_elems = ((c + 63) & ~63) / 32;
-  int32_t nhw_int32_elems = ((nhw + 31) & ~31);
+  int32_t nhw_int32_elems = static_cast<int32_t>(((nhw + 31) & ~31));
   std::vector<int> bitmask_shape = {nhw_int32_elems, c_int32_elems, 1};
   return common::make_ddim(bitmask_shape);
 }
@@ -101,22 +100,22 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->Inputs("MeanX")[0],
         ctx->Outputs("RunningMeanX")[0],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "MeanX and RunningMeanX should share the same memory"));
     PADDLE_ENFORCE_EQ(ctx->Inputs("VarX")[0],
                       ctx->Outputs("RunningVarX")[0],
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "VarX and RunningVarX should share the same memory"));
     if (has_shortcut) {
       PADDLE_ENFORCE_EQ(
           ctx->Inputs("MeanZ")[0],
           ctx->Outputs("RunningMeanZ")[0],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "MeanZ and RunningMeanZ should share the same memory"));
       PADDLE_ENFORCE_EQ(
           ctx->Inputs("VarZ")[0],
           ctx->Outputs("RunningVarZ")[0],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "VarZ and RunningVarZ should share the same memory"));
     }
 
@@ -128,29 +127,29 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     if (1 == bn_param_shape.size()) {
       bn_param_shape = {1, 1, 1, bn_param_shape[0]};
     }
-    framework::DDim bn_param_dims = common::make_ddim(bn_param_shape);
+    phi::DDim bn_param_dims = common::make_ddim(bn_param_shape);
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         4,
-        platform::errors::InvalidArgument("The dimensions of input "
-                                          "must equal to 4."
-                                          "But received: the shape of input "
-                                          "= [%s], the dimension of input = "
-                                          "[%d]",
-                                          x_dims,
-                                          x_dims.size()));
-    PADDLE_ENFORCE_EQ(w_dims.size(),
-                      4,
-                      platform::errors::InvalidArgument(
-                          "The dimensions of filter "
-                          "must equal to 4."
-                          "But received: the shape of filter "
-                          "= [%s], the dimension of filter = [%d] ",
-                          w_dims,
-                          w_dims.size()));
+        phi::errors::InvalidArgument("The dimensions of input "
+                                     "must equal to 4."
+                                     "But received: the shape of input "
+                                     "= [%s], the dimension of input = "
+                                     "[%d]",
+                                     x_dims,
+                                     x_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        w_dims.size(),
+        4,
+        phi::errors::InvalidArgument("The dimensions of filter "
+                                     "must equal to 4."
+                                     "But received: the shape of filter "
+                                     "= [%s], the dimension of filter = [%d] ",
+                                     w_dims,
+                                     w_dims.size()));
     PADDLE_ENFORCE_EQ(bn_param_dims.size(),
                       4,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The dimensions of bn param "
                           "must equal to 4."
                           "But received: the shape of bn param "
@@ -206,18 +205,16 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     // By default, the type of the scale, bias, mean,
     // and var tensors should be float when input tensor's dtype is float16.
-    auto bn_param_type = framework::proto::VarType::FP32;
+    auto bn_param_type = phi::DataType::FLOAT32;
 
-    PADDLE_ENFORCE_EQ(bn_param_type,
-                      framework::TransToProtoVarType(
-                          ctx.Input<phi::DenseTensor>("ScaleX")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "Scale input should be of float type"));
-    PADDLE_ENFORCE_EQ(bn_param_type,
-                      framework::TransToProtoVarType(
-                          ctx.Input<phi::DenseTensor>("BiasX")->dtype()),
-                      platform::errors::InvalidArgument(
-                          "Bias input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        ctx.Input<phi::DenseTensor>("ScaleX")->dtype(),
+        phi::errors::InvalidArgument("Scale input should be of float type"));
+    PADDLE_ENFORCE_EQ(
+        bn_param_type,
+        ctx.Input<phi::DenseTensor>("BiasX")->dtype(),
+        phi::errors::InvalidArgument("Bias input should be of float type"));
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
@@ -394,8 +391,7 @@ class ResNetUnitGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_NOT_NULL(
         ctx.InputVar(framework::GradVarName("Y")),
-        platform::errors::NotFound(
-            "Can not find Y@GRAD in the execution context."));
+        phi::errors::NotFound("Can not find Y@GRAD in the execution context."));
 
     return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
                           ctx.GetPlace());
@@ -453,8 +449,7 @@ class ResNetUnitOpInferVarType
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(resnet_unit,

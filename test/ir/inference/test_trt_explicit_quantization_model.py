@@ -81,7 +81,7 @@ class TestExplicitQuantizationModel:
             batch_size=64,
         )
 
-        def train(program, stop_iter=100):
+        def train(program, stop_iter=128):
             for it, data in enumerate(train_loader):
                 if it == 0:
                     self.input_data = data[0]['image']

@@ -47,13 +47,15 @@ void ChromeTracingLogger::OpenFile() {
   }
 }
 
-ChromeTracingLogger::ChromeTracingLogger(const std::string& filename) {
+ChromeTracingLogger::ChromeTracingLogger(const std::string& filename)
+    : start_time_(0) {
   filename_ = filename.empty() ? DefaultFileName() : filename;
   OpenFile();
   StartLog();
 }
 
-ChromeTracingLogger::ChromeTracingLogger(const char* filename_cstr) {
+ChromeTracingLogger::ChromeTracingLogger(const char* filename_cstr)
+    : start_time_(0) {
   std::string filename(filename_cstr);
   filename_ = filename.empty() ? DefaultFileName() : filename;
   OpenFile();
@@ -788,7 +790,7 @@ void ChromeTracingLogger::RefineDisplayName(
     "name": "process_name", "pid": %lld, "tid": %lld,
     "ph": "M",
     "args": {
-      "name": "Deivce %lld (%s)"
+      "name": "Device %lld (%s)"
     }
   },
    {

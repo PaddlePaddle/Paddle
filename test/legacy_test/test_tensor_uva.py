@@ -53,7 +53,7 @@ class TestUVATensorFromNumpy(unittest.TestCase):
                 np.testing.assert_allclose(tensor.numpy(), data, rtol=1e-05)
                 np.testing.assert_allclose(tensor2.numpy(), data, rtol=1e-05)
 
-    def test_uva_tensor_corectness(self):
+    def test_uva_tensor_correctness(self):
         if paddle.base.core.is_compiled_with_cuda():
             a = np.arange(0, 100, dtype="int32")
             a = a.reshape([10, 10])

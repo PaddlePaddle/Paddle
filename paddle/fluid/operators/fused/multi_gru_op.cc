@@ -37,10 +37,10 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       x_mat_dims.size(),
       2,
-      platform::errors::InvalidArgument("The size of input X dims should be 2, "
-                                        "or 3 with second dimension equal to "
-                                        "1, but now Input X dim is:[%s] ",
-                                        x_dims));
+      phi::errors::InvalidArgument("The size of input X dims should be 2, "
+                                   "or 3 with second dimension equal to "
+                                   "1, but now Input X dim is:[%s] ",
+                                   x_dims));
 
   auto layers = ctx->Attrs().Get<int>("layers");
   auto wx_dims = ctx->GetInputsDim("WeightX");
@@ -48,7 +48,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_EQ(
         wx_dims[i][0],
         x_mat_dims[1],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The first dimension of flattened WeightX #%d"
             "should equal to last dimension of flattened input X, but "
             "received fattened WeightX dimension is:%d, flattened X dimension "
@@ -62,7 +62,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   for (int i = 0; i < 2 * layers; ++i) {
     PADDLE_ENFORCE_EQ(wx_dims[i].size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The rank of WeightX #%d should be 2, but received "
                           "WeightX dim size is:%d, WeightX dim is:[%s] ",
                           i,
@@ -70,7 +70,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
                           wx_dims[i]));
     PADDLE_ENFORCE_EQ(wh_dims[i].size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The rank of WeightH #%d should be 2, but received "
                           "WeightH dim size is:%d, WeightH dim is:[%s] ",
                           i,
@@ -80,7 +80,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_EQ(
         wh_dims[i][1],
         3 * frame_size,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The second dimension of WeightH #%d "
             "should equal to 3 * frame_size, but received WeightH's "
             "second dimension is: %d, frame size is:%d",
@@ -90,7 +90,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_EQ(
         wx_dims[i][1],
         3 * frame_size,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The second dimension of WeightX #%d "
             "should equal to 3 * frame_size, but received WeightX's "
             "second dimension is: %d, frame size is:%d",
@@ -105,7 +105,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
       int frame_size = static_cast<int>(wh_dims[i][0]);
       PADDLE_ENFORCE_EQ(b_dims[i].size(),
                         2,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The rank of Bias #%d should be 2, but received "
                             "Bias rank is:%d, Bias dim is:[%s]",
                             i,
@@ -113,7 +113,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
                             b_dims[i]));
       PADDLE_ENFORCE_EQ(b_dims[i][0],
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The first dimension of Bias #%d should be 1, but "
                             "received Bias first dim is:%d, Bias dim is:[%s]",
                             i,
@@ -122,7 +122,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
       PADDLE_ENFORCE_EQ(
           b_dims[i][1],
           frame_size * 3,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The shape of Bias #%d must be [1, frame_size * 3], but "
               "received bias dim is:[%s], frame size is:%d",
               i,
@@ -132,7 +132,7 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   }
 
   int last_frame_size = static_cast<int>(wh_dims.back()[0]);
-  framework::DDim out_dims({x_mat_dims[0], 2 * last_frame_size});
+  phi::DDim out_dims({x_mat_dims[0], 2 * last_frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
   ctx->ShareLoD("X", "Hidden");
 }

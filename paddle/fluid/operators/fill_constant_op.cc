@@ -33,7 +33,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_GE(
             shape[i],
             0,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Each value of attribute 'shape' is expected to be no less "
                 "than 0. But received: shape[%u] = %d; shape = [%s].",
                 i,
@@ -96,7 +96,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
           kt.set_backend(phi::Backend::XPU);
           break;
         default:
-          PADDLE_THROW(platform::errors::Unimplemented(
+          PADDLE_THROW(phi::errors::Unimplemented(
               "Could NOT determine the place of variable, place_type = %d .",
               place_type));
       }
@@ -152,7 +152,7 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                   "device")
         .SetDefault(false);
     AddAttr<int>("place_type",
-                 "(int, default -1) allow mamually setting place where the "
+                 "(int, default -1) allow manually setting place where the "
                  "variable should be hold. "
                  "-1: not set manually, determine the place by executor. "
                  "0: CPUPlace. "

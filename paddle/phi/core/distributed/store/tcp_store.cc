@@ -20,8 +20,8 @@
 
 #include "glog/logging.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
-#include "paddle/phi/core/flags.h"
 
 namespace phi {
 namespace distributed {
@@ -241,8 +241,12 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
 #else
       _sockets.erase(_sockets.begin() + i - 2);
 #endif
-
-      VLOG(5) << "Meet some exceptions during run:" << ex.what();
+      std::string s(ex.what());
+      if (s.find("TCP connection reset by peer") != std::string::npos) {
+        VLOG(5) << "TCP connection reset by peer";
+      } else {
+        VLOG(5) << "Meet some exceptions during run:" << ex.what();
+      }
     }
   }
 }
@@ -399,11 +403,11 @@ void TCPStore::waitWorkers() {
 
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
       if (_timeout != 0 && elapsed.count() > _timeout) {
-        LOG(FATAL) << paddle::string::Sprintf(
+        PADDLE_THROW(phi::errors::Fatal(paddle::string::Sprintf(
             "_timeout:%d elapsed:%d (elapsed > _timeout)=%d",
             _timeout,
             elapsed.count(),
-            elapsed.count() > _timeout);
+            elapsed.count() > _timeout)));
 
         PADDLE_ENFORCE_EQ(
             completed,

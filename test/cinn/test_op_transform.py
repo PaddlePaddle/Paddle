@@ -17,11 +17,11 @@
 import os
 import unittest
 
-from cinn import framework
 from test_utils import SingleOpTester
 
 import paddle
 from paddle import static
+from paddle.cinn import framework
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 

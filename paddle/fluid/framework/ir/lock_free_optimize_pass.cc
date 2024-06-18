@@ -101,7 +101,7 @@ void LockFreeOptimizePass::ApplyImpl(ir::Graph* graph) const {
             PADDLE_ENFORCE_NOT_NULL(
                 forward_op,
                 platform::errors::NotFound(
-                    "Can not find forward op for backword op(%s).",
+                    "Can not find forward op for backward op(%s).",
                     backward_op->Name()));
 
             Node* new_optimizer_node = CreateNewSGDNode(

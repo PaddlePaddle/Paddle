@@ -44,4 +44,10 @@ bool Controller::UseLayoutAutoTune() {
   return use_autotune;
 }
 
+void Controller::SetIsInBackward(bool is_in_backward) {
+  is_in_backward_ = is_in_backward;
+}
+
+bool Controller::GetIsInBackward() const { return is_in_backward_; }
+
 }  // namespace egr

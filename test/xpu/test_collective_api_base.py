@@ -200,12 +200,9 @@ class TestDistBase(unittest.TestCase):
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
-        self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-            self._find_free_port(),
-            self._find_free_port(),
-        )
+        self._ps_endpoints = f"127.0.0.1:{self._find_free_port()},127.0.0.1:{self._find_free_port()}"
         self._python_interp = sys.executable
-        self._master_endpoints = "127.0.0.1:%s" % (self._find_free_port())
+        self._master_endpoints = f"127.0.0.1:{self._find_free_port()}"
 
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -303,15 +300,15 @@ class TestDistBase(unittest.TestCase):
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
-        sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
-        sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
+        sys.stderr.write(f'trainer 0 stderr: {tr0_err}\n')
+        sys.stderr.write(f'trainer 1 stderr: {tr1_err}\n')
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
         with open(path0, "r") as f:
-            sys.stderr.write('trainer 0 stderr file: %s\n' % f.read())
+            sys.stderr.write(f'trainer 0 stderr file: {f.read()}\n')
         with open(path1, "r") as f:
-            sys.stderr.write('trainer 1 stderr file: %s\n' % f.read())
+            sys.stderr.write(f'trainer 1 stderr file: {f.read()}\n')
 
         def load_and_remove(path):
             with open(path, 'rb') as f:
@@ -606,19 +603,19 @@ class TestDistBase(unittest.TestCase):
             result1 = []
             result2 = []
 
-            def is_empyt_list(x):
+            def is_empty_list(x):
                 if isinstance(x, list) and len(x) == 0:
                     return True
                 return False
 
             for i in range(tot_expert):
                 for arr in output1[i]:
-                    if is_empyt_list(arr):
+                    if is_empty_list(arr):
                         continue
                     result1.append(arr)
             for i in range(tot_expert):
                 for arr in output2[i]:
-                    if is_empyt_list(arr):
+                    if is_empty_list(arr):
                         continue
                     result2.append(arr)
 

@@ -15,11 +15,11 @@
 #include <gtest/gtest.h>
 #include <map>
 
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
 
 TEST(builder_test, type_api) {
   pir::IrContext ctx;

@@ -48,7 +48,7 @@ TEST(CreateStages, compute_at) {
   {
     serial for (j, 0, 100)
     {
-      B[i, j] = (1.00000000f + A[i, j])
+      B[i, j] = (A[i, j] + 1.00000000f)
       serial for (k, 0, 100)
       {
         C[i, j, k] = (B[i, j] * B[j, k])
@@ -99,21 +99,21 @@ TEST(CreateStages, buffer_bind_to_multiple_tensors_schedule) {
   {
     serial for (j, 0, 100)
     {
-      B[i, j] = (1.00000000f + A[i, j])
+      B[i, j] = (A[i, j] + 1.00000000f)
     }
   }
   serial for (i, 0, 100)
   {
     serial for (j, 0, 100)
     {
-      C[i, j] = (1.00000000f + A[i, j])
+      C[i, j] = (A[i, j] + 1.00000000f)
     }
   }
   serial for (i, 0, 100)
   {
     serial for (j, 0, 100)
     {
-      D[i, j] = (1.00000000f + A[i, j])
+      D[i, j] = (A[i, j] + 1.00000000f)
     }
   }
 }

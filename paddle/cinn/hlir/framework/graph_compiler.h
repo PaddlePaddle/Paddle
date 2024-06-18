@@ -85,7 +85,7 @@ class GraphCompiler final {
       const std::vector<std::unique_ptr<Instruction>>& instructions);
 
   // find the first and last instruction where a variable used, and mark the
-  // variable should allocate buffer before the first instruction runing and
+  // variable should allocate buffer before the first instruction running and
   // can release the buffer after the last instruction finished.
   void AnalyzeVariableLifeTime(
       const std::vector<std::unique_ptr<Instruction>>& instructions,

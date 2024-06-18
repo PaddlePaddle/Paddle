@@ -13,20 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/init_default_kernel_signature_map.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/platform/init.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/utils/flags.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_bool(enable_gpu_memory_usage_log);
+COMMON_DECLARE_bool(enable_gpu_memory_usage_log);
 #endif
 
 int main(int argc, char** argv) {  // NOLINT
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
   std::vector<char*> new_argv;
+  new_argv.reserve(argc);
   for (int i = 0; i < argc; ++i) {
     new_argv.push_back(argv[i]);
   }
@@ -35,7 +35,7 @@ int main(int argc, char** argv) {  // NOLINT
 #if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_PSLIB)
   if (paddle::flags::FindFlag("max_body_size")) {
     setenv("FLAGS_max_body_size", "2147483647", 1);
-    envs.push_back("max_body_size");
+    envs.emplace_back("max_body_size");
   }
 #endif
 
@@ -50,7 +50,7 @@ int main(int argc, char** argv) {  // NOLINT
   char* env_str = nullptr;
   if (!envs.empty()) {
     std::string env_string = "--tryfromenv=";
-    for (auto t : envs) {
+    for (auto const& t : envs) {
       env_string += t + ",";
     }
     env_string = env_string.substr(0, env_string.length() - 1);
@@ -60,7 +60,7 @@ int main(int argc, char** argv) {  // NOLINT
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (strstr(env_str, "enable_gpu_memory_usage_log")) {
+  if (strstr(env_str, "enable_gpu_memory_usage_log")) {  // NOLINT
     VLOG(1) << "Set FLAGS_enable_gpu_memory_usage_log to true";
     FLAGS_enable_gpu_memory_usage_log = true;
   }

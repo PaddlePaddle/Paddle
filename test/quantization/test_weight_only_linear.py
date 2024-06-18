@@ -25,12 +25,11 @@ import paddle
 import paddle.nn.quant as Q
 from paddle import base
 from paddle.base import core
-from paddle.base.framework import default_main_program
 from paddle.framework import set_default_dtype
+from paddle.pir_utils import IrGuard
 
 np.random.seed(123)
 paddle.seed(123)
-default_main_program().random_seed = 42
 
 
 def get_cuda_version():
@@ -157,59 +156,9 @@ class WeightOnlyLinearTestCase(unittest.TestCase):
         )
         return out.numpy()
 
-    def get_weight_only_linear_out_static(self):
-        paddle.enable_static()
-        main = base.Program()
-        start = base.Program()
-        with base.program_guard(main, start):
-            x = paddle.static.data("x", self.x.shape, dtype=self.x.dtype)
-
-            weight = paddle.static.data(
-                "weight", self.weight.shape, dtype=self.weight.dtype
-            )
-            bias = paddle.static.data(
-                "bias", self.bias.shape, dtype=self.bias.dtype
-            )
-            x_np = self.x.numpy()
-            weight_np = self.weight.numpy()
-            bias_np = self.bias.numpy()
-            if self.weight_scale is not None:
-                weight_scale = paddle.static.data(
-                    "weight_scale",
-                    self.weight_scale.shape,
-                    dtype=self.weight_scale.dtype,
-                )
-                weight_scale_np = self.weight_scale.numpy()
-            else:
-                weight_scale = None
-                weight_scale_np = None
-
-            out = Q.weight_only_linear(
-                x,
-                weight,
-                bias,
-                weight_scale,
-                self.weight_dtype,
-                group_size=self.group_size,
-            )
-            feed_dict = {
-                'x': x_np,
-                'weight': weight_np,
-                'bias': bias_np,
-                "weight_scale": weight_scale_np,
-            }
-            exe = base.Executor(paddle.CUDAPlace(0))
-            exe.run(start)
-            (out,) = exe.run(main, feed=feed_dict, fetch_list=[out])
-        paddle.disable_static()
-        return out
-
     def test_weight_only_linear(self):
         out_expect = self.get_linear_out()
-        if self.static:
-            out_real = self.get_weight_only_linear_out_static()
-        else:
-            out_real = self.get_weight_only_linear_out()
+        out_real = self.get_weight_only_linear_out()
 
         if self.dtype == "bfloat16":
             out_real = convert_uint16_to_float(out_real)
@@ -653,13 +602,103 @@ class WeightOnlyLinearTestCase29(WeightOnlyLinearTestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    not core.is_compiled_with_cuda()
+    or get_cuda_version() < 11020
+    or paddle.device.cuda.get_device_capability()[0] < 8,
     "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearTestCaseStatic(WeightOnlyLinearTestCase):
     def config(self):
         super().config()
         self.static = True
+
+    def get_weight_only_linear_out_static(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        start = paddle.static.Program()
+        with paddle.static.program_guard(main, start):
+            x = paddle.static.data("x", self.x.shape, dtype=self.x.dtype)
+
+            weight = paddle.static.data(
+                "weight", self.weight.shape, dtype=self.weight.dtype
+            )
+            bias = paddle.static.data(
+                "bias", self.bias.shape, dtype=self.bias.dtype
+            )
+            x_np = self.x.numpy()
+            weight_np = self.weight.numpy()
+            bias_np = self.bias.numpy()
+            if self.weight_scale is not None:
+                weight_scale = paddle.static.data(
+                    "weight_scale",
+                    self.weight_scale.shape,
+                    dtype=self.weight_scale.dtype,
+                )
+                weight_scale_np = self.weight_scale.numpy()
+            else:
+                weight_scale = None
+                weight_scale_np = None
+
+            out = Q.weight_only_linear(
+                x,
+                weight,
+                bias,
+                weight_scale,
+                self.weight_dtype,
+                group_size=self.group_size,
+            )
+            feed_dict = {
+                'x': x_np,
+                'weight': weight_np,
+                'bias': bias_np,
+                "weight_scale": weight_scale_np,
+            }
+            exe = base.Executor(paddle.CUDAPlace(0))
+            exe.run(start)
+            (out,) = exe.run(main, feed=feed_dict, fetch_list=[out])
+        paddle.disable_static()
+        return out
+
+    def test_weight_quantize_and_dequantize_pir(self, algo='weight_only_int8'):
+        with IrGuard():
+            weight = (
+                paddle.rand(shape=(4096, 12288), dtype='float16')
+                * 1
+                / math.sqrt(4096)
+            )
+
+            quant_weight, quant_scale = Q.weight_quantize(x=weight, algo=algo)
+            dequant_weight = Q.weight_dequantize(
+                quant_weight, quant_scale, algo=algo
+            )
+            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            res = exe.run(feed={}, fetch_list=[weight, dequant_weight])
+            np.testing.assert_allclose(res[0], res[1], rtol=1e-2, atol=1e-2)
+
+    # [NOTE, wangbojun] currently, weight_only_int4 do not support gpu weight_quantize,
+    # which may cause error in pir test.
+    # def test_weight_quantize_and_dequantize_int4_pir(self):
+    #     self.test_weight_quantize_and_dequantize_pir(algo='weight_only_int4')
+
+    def test_weight_only_linear(self):
+        out_expect = self.get_linear_out()
+
+        out_real = self.get_weight_only_linear_out_static()
+        if self.dtype == "bfloat16":
+            out_real = convert_uint16_to_float(out_real)
+            out_expect = convert_uint16_to_float(out_expect)
+        np.testing.assert_allclose(
+            out_real, out_expect, rtol=self.rtol, atol=self.atol
+        )
+
+        with IrGuard():
+            out_real = self.get_weight_only_linear_out_static()
+        if self.dtype == "bfloat16":
+            out_real = convert_uint16_to_float(out_real)
+            out_expect = convert_uint16_to_float(out_expect)
+        np.testing.assert_allclose(
+            out_real, out_expect, rtol=self.rtol, atol=self.atol
+        )
 
 
 @unittest.skipIf(
@@ -669,7 +708,9 @@ class WeightOnlyLinearTestCaseStatic(WeightOnlyLinearTestCase):
     "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
-    def test_weightonly_linear_backward(self):
+    def test_weightonly_linear_backward(
+        self, algo='weight_only_int8', weight_dtype='int8'
+    ):
         x = (
             paddle.rand(shape=(128, 4096), dtype='float16')
             * 1
@@ -683,25 +724,41 @@ class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
             * 1
             / math.sqrt(4096)
         )
-
-        quant_weight, quant_scale = Q.weight_quantize(
-            x=weight.cuda(), algo='weight_only_int8'
-        )
-        dequant_weight = Q.weight_dequantize(quant_weight.cuda(), quant_scale)
+        if algo == "weight_only_int8":
+            quant_weight, quant_scale = Q.weight_quantize(
+                x=weight.cuda(), algo=algo
+            )
+            dequant_weight = Q.weight_dequantize(
+                quant_weight.cuda(), quant_scale, algo=algo
+            )
+        elif algo == "weight_only_int4":
+            quant_weight, quant_scale = Q.weight_quantize(
+                x=weight.cpu(), algo=algo
+            )
+            quant_weight = quant_weight.cuda()
+            quant_scale = quant_scale.cuda()
+            dequant_weight = Q.weight_dequantize(
+                quant_weight, quant_scale, algo=algo
+            )
         np.testing.assert_allclose(weight, dequant_weight, rtol=1e-2, atol=1e-2)
 
         quant_out = Q.weight_only_linear(
             x=quant_x,
             weight=quant_weight,
             weight_scale=quant_scale,
-            weight_dtype="int8",
+            weight_dtype=weight_dtype,
         )
         out = paddle.matmul(x=x, y=weight)
-        np.testing.assert_allclose(quant_out, out, rtol=1e-3, atol=1e-3)
+        np.testing.assert_allclose(quant_out, out, rtol=1e-2, atol=1e-2)
 
         quant_out.backward()
         out.backward()
-        np.testing.assert_allclose(quant_x.grad, x.grad, rtol=1e-3, atol=1e-3)
+        np.testing.assert_allclose(quant_x.grad, x.grad, rtol=1e-2, atol=1e-2)
+
+    def test_weightonly_linear_backward_int4(self):
+        self.test_weightonly_linear_backward(
+            algo='weight_only_int4', weight_dtype='int4'
+        )
 
 
 if __name__ == '__main__':

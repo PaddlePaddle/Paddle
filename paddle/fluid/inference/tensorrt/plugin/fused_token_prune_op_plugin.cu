@@ -27,7 +27,7 @@
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 #include "paddle/fluid/inference/tensorrt/plugin/fused_token_prune_op_plugin.h"
-#include "paddle/fluid/operators/fused_token_prune_op.cu.h"
+#include "paddle/phi/kernels/funcs/fused_token_prune_utils.h"
 
 namespace paddle {
 namespace inference {
@@ -349,7 +349,7 @@ int FusedTokenPrunePluginDynamic::enqueue(
         static_cast<const int32_t*>(inputs[5]);            // pre pos id
     int32_t* output3 = static_cast<int32_t*>(outputs[3]);  // new pos id
     half* output0 = static_cast<half*>(outputs[0]);
-    const int32_t B = input_desc[1].dims.d[0];  // batchs
+    const int32_t B = input_desc[1].dims.d[0];  // batches
     const int32_t max_sequnce_length =
         input_desc[1].dims.d[1];                     // max sequnce length
     const int32_t length = input_desc[1].dims.d[2];  // hidden size
@@ -447,12 +447,13 @@ int FusedTokenPrunePluginDynamic::enqueue(
     const dim3 num_blocks(
         B,
         max_sequnce_length,
-        length / num_threads);  //  batchs, max_sequnce_length, vector_ength/***
+        length /
+            num_threads);  //  batches, max_sequnce_length, vector_ength/***
     varlen_prune_token_change_order<<<num_blocks, num_threads, 0, stream>>>(
         tokens, output3, padding_token_length, token_index_, output0);
   } else {
     auto input_type = input_desc[0].type;
-    const int32_t B = input_desc[1].dims.d[0];  // batchs
+    const int32_t B = input_desc[1].dims.d[0];  // batches
     const int32_t pre_sequnce_length = input_desc[1].dims.d[1];
     const int32_t new_sequnce_length = input_desc[3].dims.d[2];  // new mask
     const int32_t length = input_desc[1].dims.d[2];              // hidden size

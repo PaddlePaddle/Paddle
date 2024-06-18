@@ -23,7 +23,9 @@ export case_list=()
 
 install_paddle(){
     echo -e "\033[31m ---- Install paddlepaddle-gpu  \033"
-    python -m pip install --user ${paddle} --force-reinstall --no-dependencies;
+    if [ -n "$paddle" ];then
+      python -m pip install --user ${paddle} --no-dependencies;
+    fi
     python -c "import paddle; print('paddle version:',paddle.__version__,'\npaddle commit:',paddle.version.commit)";
 }
 
@@ -32,7 +34,7 @@ cd ${paddle_dir}
 # get the location of "test/auto_parallel" in target_lists_for_semi_auto_ci
 count=0
 for element in "${target_lists_for_semi_auto_ci[@]}";do
-  if [[ "$element" == "test/auto_parallel" ]]; then  
+  if [[ "$element" == "test/auto_parallel" ]]; then
     test_auto_num=$count
     break
   fi
@@ -41,13 +43,12 @@ done
 # get the location of "test/collective/hybrid_strategy" in target_lists_for_dygraph_ci
 count=0
 for element in "${target_lists_for_dygraph_ci[@]}";do
-  if [[ "$element" == "test/collective/hybrid_strategy" ]]; then  
+  if [[ "$element" == "test/collective/hybrid_strategy" ]]; then
     test_dygraph_num=$count
     break
   fi
   count=$((count+1))
 done
-case_list[${#case_list[*]}]=test_semi_auto_parallel_hybrid_strategy
 for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{print $NF}'`;do
     arr_file_name=(${file_name//// })
     dir1=${arr_file_name[0]}
@@ -63,13 +64,15 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
     elif [[ ${file_name##*.} == "md" ]] || [[ ${file_name##*.} == "rst" ]] || [[ ${dir1} == "docs" ]];then
         continue
     else
+        # The most auto unittests have been monitored in PR-CI-Distribute-stable,
+        # while the other tests of llama model will be executed in PR-CI-Auto-Parallel.
         for ((i=0; i<${#target_lists_for_semi_auto_ci[@]}; i++)); do
             if [[ $i != ${test_auto_num} ]] && [[ ${file_item} == *${target_lists_for_semi_auto_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=gpt-3_auto
-                case_list[${#case_list[*]}]=auto_unit_test
+                case_list[${#case_list[*]}]="llama_auto_unit_test"
                 break
             elif [[ $i == ${test_auto_num} ]] && [[ ${file_item} == *${target_lists_for_semi_auto_ci[i]}* ]];then
-                case_list[${#case_list[*]}]=auto_unit_test
+                case_list[${#case_list[*]}]="llama_auto_unit_test"
                 break
             else
                 continue
@@ -83,13 +86,11 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
                 continue
             fi
         done
+        # The dynamic unittests have been monitored in PR-CI-Distribute-stable
+        # and will be no longer redundantly executed in PR-CI-Auto-Parallel.
         for ((i=0; i<${#target_lists_for_dygraph_ci[@]}; i++)); do
             if [[ $i != ${test_dygraph_num} ]] && [[ ${file_item} == *${target_lists_for_dygraph_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=gpt-3_dygraph
-                case_list[${#case_list[*]}]=dygraph_unit_test
-                break
-            elif [[ $i == ${test_dygraph_num} ]] && [[ ${file_item} == *${target_lists_for_dygraph_ci[i]}* ]];then
-                case_list[${#case_list[*]}]=dygraph_unit_test
                 break
             else
                 continue
@@ -121,25 +122,20 @@ get_diff_TO_case
 
 ####################
 if [[ "${case_list[*]}" == *"gpt-3_auto"* ]] && [[ "${case_list[*]}" == *"gpt-3_auto_pir"* ]]; then
-    echo "同时命中gpt-3_auto 和 gpt-3_auto_pir, 只执行新ir, 不执行旧ir"  
+    echo "同时命中gpt-3_auto 和 gpt-3_auto_pir, 只执行新ir, 不执行旧ir"
     case_list=("${case_list[@]/*gpt-3_auto_pir*/}")
     case_list=("${case_list[@]/*gpt-3_auto*/}")
     case_list[${#case_list[*]}]=gpt-3_auto_pir
     echo ${case_list[*]}
 fi
 ####################
-if [[ "${case_list[*]}" == *"auto_unit_test"* ]]; then
-    echo "命中auto_unit_test, 不再单独执行test_semi_auto_parallel_hybrid_strategy"
-    case_list=("${case_list[@]/*test_semi_auto_parallel_hybrid_strategy*/}")
-    echo ${case_list[*]}
-fi
 case_list=($(awk -v RS=' ' '!a[$1]++' <<< ${case_list[*]}))
 if [[ ${#case_list[*]} -ne 0 ]];then
     echo -e "\033[31m =======CI Check case========= \033"
     echo -e "\033[31m ---- case_list length: ${#case_list[*]}, cases: ${case_list[*]} \033"
     echo -e "\033[31m ============================= \033"
     set +e
-    
+
     # Install paddle
     install_paddle
     case_num=1
@@ -170,8 +166,8 @@ if [[ ${#case_list[*]} -ne 0 ]];then
             bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh dygraph_unit_test
             print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
-        elif [[ ${case} == "test_semi_auto_parallel_hybrid_strategy" ]];then
-            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh test_semi_auto_parallel_hybrid_strategy
+        elif [[ ${case} == "llama_auto_unit_test" ]];then
+            bash /workspace/Paddle/tools/auto_parallel/ci_case_unit.sh llama_auto_unit_test
             print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         else

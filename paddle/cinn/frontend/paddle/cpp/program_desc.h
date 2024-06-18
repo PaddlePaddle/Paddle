@@ -24,7 +24,7 @@ namespace cinn::frontend::paddle::cpp {
 
 /*
  * The cpp::ProgramDesc is the internal representation for Op. All the internal
- * imprementation should use it, not the pb::ProgramDesc.
+ * implementation should use it, not the pb::ProgramDesc.
  */
 class ProgramDesc : public ProgramDescAPI {
  public:
@@ -43,7 +43,7 @@ class ProgramDesc : public ProgramDescAPI {
   template <typename T>
   T* AddBlock();
 
-  // Just return default versoin
+  // Just return default version
   // TODO(sangoly): refine this
   bool HasVersion() const override { return true; }
 

@@ -119,7 +119,7 @@ function(kernel_declare TARGET_LIST)
             is_all_backend
             "${first_registry}")
         if(NOT is_all_backend STREQUAL "")
-          # parse the registerd kernel message
+          # parse the registered kernel message
           string(
             REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM("
                     "" kernel_msg "${first_registry}")
@@ -131,7 +131,7 @@ function(kernel_declare TARGET_LIST)
               is_all_backend
               "${first_registry}")
 
-          # parse the registerd kernel message
+          # parse the registered kernel message
           string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(" ""
                          kernel_msg "${first_registry}")
         endif()

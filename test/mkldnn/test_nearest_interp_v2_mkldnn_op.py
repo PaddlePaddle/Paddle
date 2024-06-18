@@ -151,7 +151,7 @@ class TestNearestInterpV2MKLDNNOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_dygraph=False, check_pir_onednn=True)
 
 
 class TestNearestInterpOpV2MKLDNNNHWC(TestNearestInterpV2MKLDNNOp):

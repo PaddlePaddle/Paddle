@@ -65,19 +65,19 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GE(rank,
                       0,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "greater than or equal to 0.",
                           rank));
     PADDLE_ENFORCE_GE(nranks,
                       2,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The value of nranks (%d) for c_concat must be "
                           "greater than or equal to 2.",
                           nranks));
     PADDLE_ENFORCE_LT(rank,
                       nranks,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "less than that of nranks (%d).",
                           rank,
@@ -85,7 +85,7 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<phi::CustomContext>();
     phi::DenseTensor temp_out;
-    framework::DDim temp_out_dims = x->dims();
+    phi::DDim temp_out_dims = x->dims();
     temp_out_dims[0] *= nranks;
     temp_out.Resize(temp_out_dims);
     dev_ctx.template Alloc<T>(&temp_out);
@@ -107,7 +107,7 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           nranks,
           comm->GetSize(),
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "nranks: %s should equal to %s", nranks, comm->GetSize()));
 
       int64_t send_numel = x->numel();
@@ -120,7 +120,7 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
           reinterpret_cast<void*>(const_cast<T*>(send_buff)),
           recv_buff,
           send_numel,
-          phi::ccl::ToCCLDataType(x->dtype()),
+          x->dtype(),
           comm->GetXcclComm(),
           stream);
     }
@@ -160,7 +160,7 @@ class CIdentityOpCustomDeviceKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         rid,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The ring_id (%d) for c_identity op must be non-negative.", rid));
     ctx.device_context().Alloc<T>(out);
 
@@ -180,19 +180,19 @@ class CSplitOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GE(rank,
                       0,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_split must be "
                           "greater than or equal to 0.",
                           rank));
     PADDLE_ENFORCE_GE(nranks,
                       2,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The value of nranks (%d) for c_split must be "
                           "greater than or equal to 2.",
                           nranks));
     PADDLE_ENFORCE_LT(rank,
                       nranks,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_split must be "
                           "less than that of nranks (%d).",
                           rank,
@@ -259,7 +259,7 @@ class CEmbeddingOpCustomDeviceKernel : public framework::OpKernel<T> {
               *reinterpret_cast<phi::DenseTensor*>(out_tensor.impl().get()))
           .Resize(out_dims);
     } else {
-      PADDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "CustomDevice c_embedding ids only support int32 or int64."));
     }
   }
@@ -319,7 +319,7 @@ class CEmbeddingGradOpCustomDeviceKernel : public framework::OpKernel<T> {
       table_grad_t->ShareDataWith(
           *reinterpret_cast<phi::DenseTensor*>(table_grad_tensor.impl().get()));
     } else {
-      PADDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(phi::errors::Unavailable(
           "CustomDevice c_embedding ids only support int32 or int64."));
     }
   }
@@ -465,10 +465,10 @@ class CSoftmaxWithCrossEntropyGradCustomDeviceKernel
       framework::TensorCopy(
           *softmax, context.GetPlace(), context.device_context(), logit_grad);
     }
-    const auto sofrmax_dims = softmax->dims();
-    const int axis = sofrmax_dims.size() - 1;
-    const int N = phi::funcs::SizeToAxis(axis, sofrmax_dims);
-    const int D = phi::funcs::SizeFromAxis(axis, sofrmax_dims);
+    const auto softmax_dims = softmax->dims();
+    const int axis = softmax_dims.size() - 1;
+    const int N = phi::funcs::SizeToAxis(axis, softmax_dims);
+    const int D = phi::funcs::SizeFromAxis(axis, softmax_dims);
     const auto& label_type = labels->dtype();
 
     if (label_type == phi::DataType::INT32 ||
@@ -514,7 +514,7 @@ class CSoftmaxWithCrossEntropyGradCustomDeviceKernel
       logit_grad
           ->ShareDataWith(*reinterpret_cast<phi::DenseTensor*>(
               logits_grad_out_tensor2.impl().get()))
-          .Resize(sofrmax_dims);
+          .Resize(softmax_dims);
     } else {
       PADDLE_THROW(phi::errors::Unavailable(
           "CustomDevice c_softmax_with_cross_entropy_grad "
@@ -529,7 +529,7 @@ class CSyncCalcStreamCustomDeviceKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto place = ctx.GetPlace();
     auto dev_ctx = static_cast<DeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
+        phi::DeviceContextPool::Instance().Get(place));
     dev_ctx->GetStream()->Synchronize();
   }
 };
@@ -541,13 +541,13 @@ class CAllReduceOpCustomDeviceKernel : public framework::OpKernel<T> {
     if (ctx.HasInput("Cond")) {
       auto cond = ctx.Input<phi::DenseTensor>("Cond");
       auto place = cond->place();
-      PADDLE_ENFORCE_EQ(platform::is_cpu_place(place),
+      PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::CPU,
                         true,
-                        platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "The input `cond` tensor should be on cpu place"));
       PADDLE_ENFORCE_EQ(cond->numel(),
                         1,
-                        platform::errors::PreconditionNotMet(
+                        phi::errors::PreconditionNotMet(
                             "The input `cond` should be shape [1]"));
       if (!cond->data<bool>()[0]) {
         VLOG(4) << "Skip all reduce Op since cond is 0";
@@ -560,7 +560,7 @@ class CAllReduceOpCustomDeviceKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
 
     auto place = ctx.GetPlace();
-    auto dtype = phi::ccl::ToCCLDataType(in->dtype());
+    auto dtype = in->dtype();
     int64_t numel = in->numel();
     const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
@@ -594,8 +594,8 @@ class CAllReduceOpCustomDeviceKernel : public framework::OpKernel<T> {
           break;
 
         default:
-          PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-              "Invalid reduce type: %d", red_type));
+          PADDLE_THROW(phi::errors::InvalidArgument("Invalid reduce type: %d",
+                                                    red_type));
       }
 
       auto task = pg->AllReduce(in_tensor, out_tensor, opts);
@@ -609,7 +609,7 @@ class CAllReduceOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     std::shared_ptr<phi::stream::Stream> stream;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
                    ->GetStream();
     } else {
@@ -643,7 +643,7 @@ class CBroadcastOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     std::shared_ptr<phi::stream::Stream> stream;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
                    ->GetStream();
     } else {
@@ -651,7 +651,7 @@ class CBroadcastOpCustomDeviceKernel : public framework::OpKernel<T> {
     }
 
     int numel = x->numel();
-    auto dtype = phi::ccl::ToCCLDataType(x->dtype());
+    auto dtype = x->dtype();
     if (root == comm->GetRank()) {
       phi::DeviceManager::CCLBroadcast(place.GetDeviceType(),
                                        const_cast<void*>(x->data()),
@@ -663,11 +663,10 @@ class CBroadcastOpCustomDeviceKernel : public framework::OpKernel<T> {
       VLOG(3) << "rank " << comm->GetRank() << " invoke Bcast. sent "
               << x->numel();
       if (out != x) {
-        framework::TensorCopy(
-            *static_cast<const phi::DenseTensor*>(x),
-            place,
-            *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<phi::DenseTensor*>(out));
+        framework::TensorCopy(*static_cast<const phi::DenseTensor*>(x),
+                              place,
+                              *phi::DeviceContextPool::Instance().Get(place),
+                              static_cast<phi::DenseTensor*>(out));
       }
     } else {
       phi::DeviceManager::CCLBroadcast(place.GetDeviceType(),
@@ -702,7 +701,7 @@ class BarrierOpCustomDeviceKernel : public framework::OpKernel<T> {
 
     std::shared_ptr<phi::stream::Stream> stream;
     if (ctx.Attr<bool>("use_calc_stream")) {
-      auto dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+      auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
       stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
                    ->GetStream();
     } else {
@@ -712,7 +711,7 @@ class BarrierOpCustomDeviceKernel : public framework::OpKernel<T> {
                                      const_cast<void*>(sendbuff),
                                      recvbuff,
                                      numel,
-                                     phi::ccl::ToCCLDataType(in->dtype()),
+                                     in->dtype(),
                                      phi::ccl::CCLReduceOp::SUM,
                                      comm->GetXcclComm(),
                                      *stream);
@@ -730,7 +729,7 @@ class NumberCountOpCustomDeviceKernel : public framework::OpKernel<T> {
     number_count->Resize({upper_range});
     dev_ctx.template Alloc<T>(number_count);
     phi::DenseTensor cpu_tensor;
-    framework::TensorCopySync(*numbers, platform::CPUPlace(), &cpu_tensor);
+    framework::TensorCopySync(*numbers, phi::CPUPlace(), &cpu_tensor);
     std::vector<T> count(upper_range);
     for (auto i = 0; i < cpu_tensor.numel(); ++i) {
       auto idx = static_cast<int64_t>(cpu_tensor.data<T>()[i]);
@@ -759,8 +758,8 @@ class LimitByCapacityOpCustomDeviceKernel : public framework::OpKernel<T> {
     std::vector<T> out_data(out->numel());
     phi::DenseTensor expert_count_cpu, capacity_cpu;
     framework::TensorCopySync(
-        *expert_count, platform::CPUPlace(), &expert_count_cpu);
-    framework::TensorCopySync(*capacity, platform::CPUPlace(), &capacity_cpu);
+        *expert_count, phi::CPUPlace(), &expert_count_cpu);
+    framework::TensorCopySync(*capacity, phi::CPUPlace(), &capacity_cpu);
 
     auto* ec_data = expert_count_cpu.data<T>();
     auto* capacity_data = capacity_cpu.data<T>();
@@ -798,8 +797,8 @@ class PruneGateByCapacityCustomDeviceKernel : public framework::OpKernel<T> {
 
     phi::DenseTensor expert_count_cpu, gate_idx_cpu;
     framework::TensorCopySync(
-        *expert_count, platform::CPUPlace(), &expert_count_cpu);
-    framework::TensorCopySync(*gate_idx, platform::CPUPlace(), &gate_idx_cpu);
+        *expert_count, phi::CPUPlace(), &expert_count_cpu);
+    framework::TensorCopySync(*gate_idx, phi::CPUPlace(), &gate_idx_cpu);
     auto expert_count_data = expert_count_cpu.data<T>();
     auto gate_idx_data = gate_idx_cpu.data<T>();
     std::vector<T> new_gate_idx_data(gate_idx->numel());
@@ -827,9 +826,8 @@ class RandomRoutingOpCustomDeviceKernel : public framework::OpKernel<T> {
     size_t D = topk_idx->dims()[1];
 
     phi::DenseTensor topk_value_cpu, prob_cpu;
-    framework::TensorCopySync(
-        *topk_value, platform::CPUPlace(), &topk_value_cpu);
-    framework::TensorCopySync(*prob, platform::CPUPlace(), &prob_cpu);
+    framework::TensorCopySync(*topk_value, phi::CPUPlace(), &topk_value_cpu);
+    framework::TensorCopySync(*prob, phi::CPUPlace(), &prob_cpu);
     auto* topk_value_data = topk_value_cpu.data<T>();
     auto* prob_data = prob_cpu.data<T>();
     std::vector<int64_t> out_data(topk_idx->numel());
@@ -853,7 +851,7 @@ class AssignPosCustomDeviceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // assign pos decides which tokens should be fetched belong to specially
-    // counter orderingly.
+    // counter orderly.
     auto cum_count = context.Input<phi::DenseTensor>(
         "cum_count");  // (counter number) int32 | int64
     auto numbers = context.Input<phi::DenseTensor>(
@@ -868,11 +866,11 @@ class AssignPosCustomDeviceKernel : public framework::OpKernel<T> {
 
     phi::DenseTensor cpu_eff_num_len;
     int64_t cpu_eff_num_len_data = 0;
-    if (platform::is_cpu_place(eff_num_len->place())) {
+    if (eff_num_len->place().GetType() == phi::AllocationType::CPU) {
       cpu_eff_num_len_data = eff_num_len->data<T>()[0];
     } else {
       framework::TensorCopySync(
-          *eff_num_len, platform::CPUPlace(), &cpu_eff_num_len);
+          *eff_num_len, phi::CPUPlace(), &cpu_eff_num_len);
       cpu_eff_num_len_data = cpu_eff_num_len.data<T>()[0];
     }
 
@@ -880,8 +878,8 @@ class AssignPosCustomDeviceKernel : public framework::OpKernel<T> {
     dev_ctx.template Alloc<T>(out);
 
     phi::DenseTensor numbers_cpu, cum_count_cpu;
-    framework::TensorCopySync(*numbers, platform::CPUPlace(), &numbers_cpu);
-    framework::TensorCopySync(*cum_count, platform::CPUPlace(), &cum_count_cpu);
+    framework::TensorCopySync(*numbers, phi::CPUPlace(), &numbers_cpu);
+    framework::TensorCopySync(*cum_count, phi::CPUPlace(), &cum_count_cpu);
     auto* numbers_data = numbers_cpu.data<T>();
     auto* cum_count_data = cum_count_cpu.data<T>();
 
@@ -910,34 +908,34 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
     const auto& dev_ctx = ctx.template device_context<phi::CustomContext>();
     auto place = ctx.GetPlace();
 
-    PADDLE_ENFORCE_EQ(local_count->dtype(),
-                      phi::DataType::INT64,
-                      platform::errors::InvalidArgument(
-                          "Please use int64 type in local_count."));
-    PADDLE_ENFORCE_EQ(global_count->dtype(),
-                      phi::DataType::INT64,
-                      platform::errors::InvalidArgument(
-                          "Please use int64 type in global_count."));
+    PADDLE_ENFORCE_EQ(
+        local_count->dtype(),
+        phi::DataType::INT64,
+        phi::errors::InvalidArgument("Please use int64 type in local_count."));
+    PADDLE_ENFORCE_EQ(
+        global_count->dtype(),
+        phi::DataType::INT64,
+        phi::errors::InvalidArgument("Please use int64 type in global_count."));
 
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
     phi::DenseTensor cpu_local_count;
-    if (platform::is_cpu_place(local_count->place())) {
+    if (local_count->place().GetType() == phi::AllocationType::CPU) {
       cpu_local_count_data = local_count->data<int64_t>();
     } else {
       framework::TensorCopySync(
-          *local_count, platform::CPUPlace(), &cpu_local_count);
+          *local_count, phi::CPUPlace(), &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
     }
     auto global_count_len = 0;
     phi::DenseTensor cpu_global_count;
-    if (platform::is_cpu_place(global_count->place())) {
+    if (global_count->place().GetType() == phi::AllocationType::CPU) {
       cpu_global_count_data = global_count->data<int64_t>();
       global_count_len = global_count->numel();
     } else {
       framework::TensorCopySync(
-          *global_count, platform::CPUPlace(), &cpu_global_count);
+          *global_count, phi::CPUPlace(), &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
       global_count_len = cpu_global_count.numel();
     }
@@ -956,7 +954,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
       for (auto i = 0; i < global_count_len; ++i) {
         fwd_count += cpu_global_count_data[i];
       }
-      framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
+      phi::DDim out_dims = common::make_ddim({fwd_count, in_feat});
       int64_t* expert_ptr = new int64_t[n_expert * nranks];
       expert_ptr[0] = 0;
       auto tot_experts = n_expert * nranks;
@@ -1021,8 +1019,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
 
       std::shared_ptr<phi::stream::Stream> stream;
       if (ctx.Attr<bool>("use_calc_stream")) {
-        auto dev_ctx =
-            paddle::platform::DeviceContextPool::Instance().Get(place);
+        auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
         stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
                      ->GetStream();
       } else {
@@ -1038,7 +1035,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
       for (auto i = 0; i < global_count_len; ++i) {
         fwd_count += cpu_global_count_data[i];
       }
-      framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
+      phi::DDim out_dims = common::make_ddim({fwd_count, in_feat});
       int64_t* expert_ptr = new int64_t[n_expert * nranks];
       expert_ptr[0] = 0;
       auto tot_experts = n_expert * nranks;
@@ -1059,7 +1056,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
                 place.GetDeviceType(),
                 reinterpret_cast<void*>(recv_buf + recv_ptr * in_feat),
                 cpu_global_count_data[idx] * in_feat,
-                phi::ccl::ToCCLDataType(x->dtype()),
+                x->dtype(),
                 j,
                 comm->GetXcclComm(),
                 *stream);
@@ -1075,7 +1072,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
                   const_cast<void*>(reinterpret_cast<const void*>(
                       send_buf + expert_ptr[idx] * in_feat)),
                   cpu_local_count_data[idx] * in_feat,
-                  phi::ccl::ToCCLDataType(x->dtype()),
+                  x->dtype(),
                   j,
                   comm->GetXcclComm(),
                   *stream);
@@ -1098,7 +1095,7 @@ class GlobalScatterOpCustomDeviceKernel : public framework::OpKernel<T> {
                 place.GetDeviceType(),
                 reinterpret_cast<void*>(recv_buf + recv_ptr * in_feat),
                 cpu_global_count_data[idx] * in_feat,
-                phi::ccl::ToCCLDataType(x->dtype()),
+                x->dtype(),
                 j,
                 comm->GetXcclComm(),
                 *stream);
@@ -1124,34 +1121,34 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     auto out = ctx.Output<phi::DenseTensor>("Out");
 
-    PADDLE_ENFORCE_EQ(local_count->dtype(),
-                      phi::DataType::INT64,
-                      platform::errors::InvalidArgument(
-                          "Please use int64 type in local_count."));
-    PADDLE_ENFORCE_EQ(global_count->dtype(),
-                      phi::DataType::INT64,
-                      platform::errors::InvalidArgument(
-                          "Please use int64 type in global_count."));
+    PADDLE_ENFORCE_EQ(
+        local_count->dtype(),
+        phi::DataType::INT64,
+        phi::errors::InvalidArgument("Please use int64 type in local_count."));
+    PADDLE_ENFORCE_EQ(
+        global_count->dtype(),
+        phi::DataType::INT64,
+        phi::errors::InvalidArgument("Please use int64 type in global_count."));
 
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
     auto local_count_len = 0;
     phi::DenseTensor cpu_local_count;
-    if (platform::is_cpu_place(local_count->place())) {
+    if (local_count->place().GetType() == phi::AllocationType::CPU) {
       cpu_local_count_data = local_count->data<int64_t>();
       local_count_len = local_count->numel();
     } else {
       framework::TensorCopySync(
-          *local_count, platform::CPUPlace(), &cpu_local_count);
+          *local_count, phi::CPUPlace(), &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
       local_count_len = cpu_local_count.numel();
     }
     phi::DenseTensor cpu_global_count;
-    if (platform::is_cpu_place(global_count->place())) {
+    if (global_count->place().GetType() == phi::AllocationType::CPU) {
       cpu_global_count_data = global_count->data<int64_t>();
     } else {
       framework::TensorCopySync(
-          *global_count, platform::CPUPlace(), &cpu_global_count);
+          *global_count, phi::CPUPlace(), &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
     }
 
@@ -1170,7 +1167,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
       for (auto i = 0; i < local_count_len; ++i) {
         fwd_count += cpu_local_count_data[i];
       }
-      framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
+      phi::DDim out_dims = common::make_ddim({fwd_count, in_feat});
       int64_t* expert_ptr = new int64_t[n_expert * nranks];
       expert_ptr[0] = 0;
       auto tot_experts = n_expert * nranks;
@@ -1233,8 +1230,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
 
       std::shared_ptr<phi::stream::Stream> stream;
       if (ctx.Attr<bool>("use_calc_stream")) {
-        auto dev_ctx =
-            paddle::platform::DeviceContextPool::Instance().Get(place);
+        auto dev_ctx = phi::DeviceContextPool::Instance().Get(place);
         stream = static_cast<paddle::platform::CustomDeviceContext*>(dev_ctx)
                      ->GetStream();
       } else {
@@ -1250,7 +1246,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
       for (auto i = 0; i < local_count_len; ++i) {
         fwd_count += cpu_local_count_data[i];
       }
-      framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
+      phi::DDim out_dims = common::make_ddim({fwd_count, in_feat});
       int64_t* expert_ptr = new int64_t[n_expert * nranks];
       expert_ptr[0] = 0;
       auto tot_experts = n_expert * nranks;
@@ -1269,7 +1265,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
             phi::DeviceManager::CCLRecv(place.GetDeviceType(),
                                         recv_buf + expert_ptr[idx] * in_feat,
                                         cpu_local_count_data[idx] * in_feat,
-                                        phi::ccl::ToCCLDataType(x->dtype()),
+                                        x->dtype(),
                                         j,
                                         comm->GetXcclComm(),
                                         *stream);
@@ -1284,7 +1280,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
                   const_cast<void*>(reinterpret_cast<const void*>(
                       send_buf + send_ptr * in_feat)),
                   cpu_global_count_data[idx] * in_feat,
-                  phi::ccl::ToCCLDataType(x->dtype()),
+                  x->dtype(),
                   j,
                   comm->GetXcclComm(),
                   *stream);
@@ -1305,7 +1301,7 @@ class GlobalGatherOpCustomDeviceKernel : public framework::OpKernel<T> {
             phi::DeviceManager::CCLRecv(place.GetDeviceType(),
                                         recv_buf + expert_ptr[idx] * in_feat,
                                         cpu_local_count_data[idx] * in_feat,
-                                        phi::ccl::ToCCLDataType(x->dtype()),
+                                        x->dtype(),
                                         j,
                                         comm->GetXcclComm(),
                                         *stream);
@@ -1370,7 +1366,10 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           float>,
       paddle::operators::CConcatOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          paddle::platform::float16>);
+          phi::dtype::float16>,
+      paddle::operators::CConcatOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          phi::dtype::bfloat16>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_split,
       device_type,
@@ -1382,7 +1381,10 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           int>,
       paddle::operators::CSplitOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          paddle::platform::float16>);
+          phi::dtype::float16>,
+      paddle::operators::CSplitOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          phi::dtype::bfloat16>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_embedding,
       device_type,
@@ -1391,7 +1393,7 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           float>,
       paddle::operators::CEmbeddingOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          paddle::platform::float16>);
+          phi::dtype::float16>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_embedding_grad,
       device_type,
@@ -1400,7 +1402,7 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           float>,
       paddle::operators::CEmbeddingGradOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          paddle::platform::float16>);
+          phi::dtype::float16>);
 
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_softmax_with_cross_entropy,
@@ -1413,7 +1415,7 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           double>,
       paddle::operators::CSoftmaxWithCrossEntropyOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          paddle::platform::float16>) {}
+          phi::dtype::float16>) {}
 
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_softmax_with_cross_entropy_grad,
@@ -1426,7 +1428,7 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           double>,
       paddle::operators::CSoftmaxWithCrossEntropyGradCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          paddle::platform::float16>) {}
+          phi::dtype::float16>) {}
 
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_identity,
@@ -1445,7 +1447,7 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           int64_t>,
       paddle::operators::CIdentityOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          paddle::platform::float16>) {}
+          phi::dtype::float16>) {}
 
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_sync_calc_stream,
@@ -1467,7 +1469,7 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           double>,
       paddle::operators::CSyncCalcStreamCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          paddle::platform::float16>) {}
+          phi::dtype::float16>) {}
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_allreduce_sum,
       device_type,
@@ -1481,7 +1483,7 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           phi::ccl::CCLReduceOp::SUM>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          paddle::platform::float16,
+          phi::dtype::float16,
           phi::ccl::CCLReduceOp::SUM>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
@@ -1504,7 +1506,7 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           phi::ccl::CCLReduceOp::SUM>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          paddle::platform::float16,
+          phi::dtype::float16,
           phi::ccl::CCLReduceOp::SUM>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
@@ -1527,7 +1529,7 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           phi::ccl::CCLReduceOp::MIN>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          paddle::platform::float16,
+          phi::dtype::float16,
           phi::ccl::CCLReduceOp::MIN>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
@@ -1550,7 +1552,7 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           phi::ccl::CCLReduceOp::MAX>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          paddle::platform::float16,
+          phi::dtype::float16,
           phi::ccl::CCLReduceOp::MAX>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
@@ -1573,7 +1575,7 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
           phi::ccl::CCLReduceOp::PRODUCT>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          paddle::platform::float16,
+          phi::dtype::float16,
           phi::ccl::CCLReduceOp::PRODUCT>,
       paddle::operators::CAllReduceOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
@@ -1590,8 +1592,7 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       paddle::operators::CBroadcastOpCustomDeviceKernel<int64_t>,
       paddle::operators::CBroadcastOpCustomDeviceKernel<float>,
       paddle::operators::CBroadcastOpCustomDeviceKernel<double>,
-      paddle::operators::CBroadcastOpCustomDeviceKernel<
-          paddle::platform::float16>) {}
+      paddle::operators::CBroadcastOpCustomDeviceKernel<phi::dtype::float16>) {}
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       barrier,
       device_type,
@@ -1614,7 +1615,7 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       paddle::operators::RandomRoutingOpCustomDeviceKernel<float>,
       paddle::operators::RandomRoutingOpCustomDeviceKernel<double>,
       paddle::operators::RandomRoutingOpCustomDeviceKernel<
-          paddle::platform::float16>) {}
+          phi::dtype::float16>) {}
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       assign_pos,
       device_type,
@@ -1628,7 +1629,7 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       paddle::operators::GlobalScatterOpCustomDeviceKernel<int32_t>,
       paddle::operators::GlobalScatterOpCustomDeviceKernel<int64_t>,
       paddle::operators::GlobalScatterOpCustomDeviceKernel<
-          paddle::platform::float16>) {}
+          phi::dtype::float16>) {}
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       global_gather,
       device_type,
@@ -1637,7 +1638,7 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       paddle::operators::GlobalGatherOpCustomDeviceKernel<int32_t>,
       paddle::operators::GlobalGatherOpCustomDeviceKernel<int64_t>,
       paddle::operators::GlobalGatherOpCustomDeviceKernel<
-          paddle::platform::float16>) {}
+          phi::dtype::float16>) {}
 #endif
 }
 

@@ -42,10 +42,10 @@ class ArgMinOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
     bool keepdims = PADDLE_GET_CONST(bool, op_desc.GetAttr("keepdims"));
     if (keepdims) {
-      RreplenishLayerAndOutput(topk_layer,
-                               "arg_min",
-                               {output_name + "_value", output_name},
-                               test_mode);
+      ReplenishLayerAndOutput(topk_layer,
+                              "arg_min",
+                              {output_name + "_value", output_name},
+                              test_mode);
     } else {
       auto squeeze_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *topk_layer->getOutput(1));
@@ -55,7 +55,7 @@ class ArgMinOpConverter : public OpConverter {
         dims.d[i] = dims.d[i + 1];
       }
       squeeze_layer->setReshapeDimensions(dims);
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           squeeze_layer, "arg_min", {output_name}, test_mode);
     }
   }

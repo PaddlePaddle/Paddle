@@ -168,5 +168,8 @@ phi::DDim InferShapeForReshardFromReplicate(
     }                                   \
   } while (0)
 
+std::vector<ProcessMesh> GetSubMeshes(const ProcessMesh& process_mesh);
+bool IsSubMesh(const ProcessMesh& global_mesh, const ProcessMesh& sub_mesh);
+
 }  // namespace distributed
 }  // namespace phi

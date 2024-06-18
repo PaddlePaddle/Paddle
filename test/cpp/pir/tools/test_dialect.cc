@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "test/cpp/pir/tools/test_dialect.h"
-#include "paddle/pir/core/ir_printer.h"
+#include "paddle/pir/include/core/ir_printer.h"
 #include "test/cpp/pir/tools/test_op.h"
 namespace test {
 
@@ -41,13 +41,14 @@ void TestDialect::initialize() {
               SameOperandsAndResultTypeTraitOp3>();
 }
 
-void TestDialect::PrintOperation(pir::Operation *op,
-                                 pir::IrPrinter &printer) const {
-  printer.PrintOpResult(op);
-  printer.os << " =";
+pir::OpPrintFn TestDialect::PrintOperation(pir::Operation *op) const {
+  return [](pir::Operation *op, pir::IrPrinter &printer) {
+    printer.PrintOpResult(op);
+    printer.os << " =";
 
-  printer.os << " \"" << op->name() << "\"";
-  printer.PrintOpOperands(op);
+    printer.os << " \"" << op->name() << "\"";
+    printer.PrintOpOperands(op);
+  };
 }
 }  // namespace test
 IR_DEFINE_EXPLICIT_TYPE_ID(test::TestDialect)

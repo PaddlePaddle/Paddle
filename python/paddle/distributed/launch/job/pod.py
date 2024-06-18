@@ -21,7 +21,7 @@ from .container import Container
 from .status import Status
 
 
-class PodSepc:
+class PodSpec:
     def __init__(self):
         self._name = ''.join(
             random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6)
@@ -41,7 +41,7 @@ class PodSepc:
         self._exit_code = 0
 
 
-class Pod(PodSepc):
+class Pod(PodSpec):
     def __init__(self):
         super().__init__()
 

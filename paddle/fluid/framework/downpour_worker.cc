@@ -116,7 +116,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
             << dest_table;
     copy_dense_tables_.emplace_back(src_table, dest_table);
   }
-  for (auto& m : copy_table_config_.table_denpendency_map()) {
+  for (auto& m : copy_table_config_.table_dependency_map()) {
     if (sparse_key_names_.find(m.key()) != sparse_key_names_.end()) {
       // currently only support one dependency
       for (auto& value : m.values()) {
@@ -334,8 +334,9 @@ void DownpourWorker::AdjustInsWeight() {
     }
     float ins_weight = 1.0;
     if (nid_show >= 0 && nid_show < nid_adjw_threshold) {
-      ins_weight = log(M_E + (nid_adjw_threshold - nid_show) /
-                                 nid_adjw_threshold * nid_adjw_ratio);
+      ins_weight = static_cast<float>(
+          log(M_E + (nid_adjw_threshold - nid_show) / nid_adjw_threshold *
+                        nid_adjw_ratio));
       // count nid adjw insnum and weight
       ++nid_adjw_num;
       nid_adjw_weight += ins_weight;

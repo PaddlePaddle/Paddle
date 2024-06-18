@@ -70,24 +70,24 @@ PSClient *PSClientFactory::Create(const PSParameter &ps_config) {
   const auto &config = ps_config.server_param();
   if (!config.has_downpour_server_param()) {
     LOG(ERROR) << "miss downpour_server_param in ServerParameter";
-    return NULL;
+    return nullptr;
   }
 
   if (!config.downpour_server_param().has_service_param()) {
     LOG(ERROR) << "miss service_param in ServerParameter.downpour_server_param";
-    return NULL;
+    return nullptr;
   }
 
   if (!config.downpour_server_param().service_param().has_client_class()) {
     LOG(ERROR) << "miss client_class in "
                   "ServerParameter.downpour_server_param.service_param";
-    return NULL;
+    return nullptr;
   }
 
   const auto &service_param = config.downpour_server_param().service_param();
   const auto &client_name = service_param.client_class();
 
-  PSClient *client = NULL;
+  PSClient *client = nullptr;
 #if defined(PADDLE_WITH_GLOO) && defined(PADDLE_WITH_GPU_GRAPH)
   auto gloo = ::paddle::framework::GlooWrapper::GetInstance();
   if (client_name == "PsLocalClient" && gloo->Size() > 1) {
@@ -99,10 +99,10 @@ PSClient *PSClientFactory::Create(const PSParameter &ps_config) {
 #else
   client = CREATE_PSCORE_CLASS(PSClient, client_name);
 #endif
-  if (client == NULL) {
+  if (client == nullptr) {
     LOG(ERROR) << "client is not registered, server_name:"
                << service_param.client_class();
-    return NULL;
+    return nullptr;
   }
 
   TableManager::Instance().Initialize();

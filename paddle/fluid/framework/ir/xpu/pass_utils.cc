@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/xpu/pass_utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace paddle {
@@ -90,7 +91,7 @@ std::vector<Node*> FindOpNodeByInputName(Graph* graph,
 
 template <typename T>
 std::string IntTypeToString() {
-  LOG(FATAL) << "Not support type.";
+  PADDLE_THROW(phi::errors::InvalidArgument("Not support type."));
   return "";
 }
 
@@ -123,9 +124,66 @@ template size_t HashTensor<int16_t>(const phi::DenseTensor& in);
 template size_t HashTensor<float>(const phi::DenseTensor& in);
 template size_t HashTensor<int8_t>(const phi::DenseTensor& in);
 
+template <>
+size_t HashTensor<float16>(const phi::DenseTensor& in) {
+  phi::DenseTensor dst_tensor;
+  auto* cpu_ctx = static_cast<phi::CPUContext*>(
+      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+  dst_tensor.Resize(in.dims());
+  dst_tensor.set_type(phi::DataType::FLOAT32);
+  dst_tensor.set_layout(in.layout());
+  phi::CastKernel<float16>(*cpu_ctx, in, phi::DataType::FLOAT32, &dst_tensor);
+  return HashTensor<float>(dst_tensor);
+}
+
 std::string GetPrefixWithoutHash(const std::string& name) {
   std::size_t found = name.find("_#");
   return found == std::string::npos ? name : name.substr(0, found);
+}
+
+void ConvertFromFp32ToFp16(phi::DenseTensor* weight,
+                           phi::DenseTensor* weight_max,
+                           bool transpose) {
+  // Convert fp16 to fp32
+  phi::DenseTensor weight_fp32;
+  CastToFp32(weight, &weight_fp32);
+
+  if (transpose) {  // (k, n) -> (n, k)
+    Transpose2D(&weight_fp32);
+  }
+
+  auto FindMaxAbs = [](const float* data, int len) {
+    float max_f = 0.0f;
+    for (int i = 0; i < len; ++i) {
+      float max = std::abs(data[i]);
+      if (max > max_f) {
+        max_f = max;
+      }
+    }
+    return max_f;
+  };
+
+  auto* cpu_ctx = static_cast<phi::CPUContext*>(
+      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+  // Convert to fp16
+  phi::DenseTensor weight_fp16;
+  CastToFp16(&weight_fp32, &weight_fp16);
+  // Find max
+  int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+  int size = weight_fp32.numel();
+  float max_val = FindMaxAbs(weight_fp32.data<float>(), size);
+  std::vector<float> max_vec(max_ptr_size, max_val);
+  weight_max->set_type(phi::DataType::FLOAT32);
+  weight_max->Resize({max_ptr_size});
+  memcpy(cpu_ctx->Alloc<float>(weight_max),
+         max_vec.data(),
+         max_ptr_size * sizeof(float));
+  weight->clear();
+  weight->set_type(phi::DataType::FLOAT16);
+  weight->Resize({size});
+  memcpy(cpu_ctx->Alloc<float16>(weight),
+         weight_fp16.data<float16>(),
+         size * sizeof(float16));
 }
 
 template <typename Tcpu, typename Txpu>
@@ -257,6 +315,18 @@ void PrepareWeight(Graph* graph,
 }
 
 template void PrepareWeight<float, float>(
+    Graph* graph,
+    Scope* scope,
+    BlockDesc* block,
+    Node* weight,
+    Node** dst_weight,
+    Node** dst_weight_max,
+    Node** dst_scale_max,
+    bool transpose,
+    const std::vector<float>& weight_scales,
+    bool per_channel_quant = false);
+
+template void PrepareWeight<float, float16>(
     Graph* graph,
     Scope* scope,
     BlockDesc* block,

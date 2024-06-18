@@ -471,4 +471,20 @@ namespace phi {
     }                                                                          \
   }()
 
+#define PD_VISIT_KERNEL(                                                \
+    kernel_name, kernel_key, kernel_signature, use_strided_kernel, ...) \
+  [&] {                                                                 \
+    auto kernel_result =                                                \
+        phi::KernelFactory::Instance().SelectKernelOrThrowError(        \
+            kernel_name, kernel_key, use_strided_kernel);               \
+    const auto& kernel = kernel_result.kernel;                          \
+    auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();   \
+    if (kernel_result.has_fallback_cpu) {                               \
+      PADDLE_THROW(phi::errors::NotFound(                               \
+          "The kernel with key %s of kernel `%s` is not registered.",   \
+          kernel_key,                                                   \
+          kernel_name));                                                \
+    }                                                                   \
+    (*kernel_fn)(__VA_ARGS__);                                          \
+  }()
 }  // namespace phi

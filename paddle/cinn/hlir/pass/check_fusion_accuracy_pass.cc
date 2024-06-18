@@ -27,7 +27,7 @@
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
 #include "paddle/cinn/hlir/pass/fusion_helper_base.h"
 #include "paddle/cinn/runtime/custom_function.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn::hlir::pass {
 
 using framework::Graph;
@@ -347,8 +347,8 @@ std::pair<NodePtr, NodeData*> CheckFusionAccuracyPass::CreateAllNode(
   for (int i = 0; i < shape_size; ++i) {
     axes[i] = i;
   }
-  all_node->attrs.attr_store["dim"] = axes;
-  all_node->attrs.attr_store["keep_dim"] = false;
+  all_node->attrs.attr_store["axis"] = axes;
+  all_node->attrs.attr_store["keepdim"] = false;
 
   graph_->RegisterNode(all_node_id, all_node.get());
 
@@ -529,8 +529,10 @@ std::vector<Node*> CheckFusionAccuracyPass::TopologicalOrder(
     }
   }
 
-  CHECK_EQ(ordered_nodes.size(), nodes.size())
-      << "There has circle in group! Please check.";
+  PADDLE_ENFORCE_EQ(
+      ordered_nodes.size(),
+      nodes.size(),
+      phi::errors::InvalidArgument("There has circle in group! Please check."));
 
   return ordered_nodes;
 }
@@ -556,7 +558,7 @@ GroupList CheckFusionAccuracyPass::Apply() {
       continue;
     }
 
-    // split orign group and create group for each node
+    // split origin group and create group for each node
     const auto& ordered_nodes = TopologicalOrder(group_nodes);
     VLOG(4) << "Check the accuracy of group "
             << graph_->DebugGroupedGraph(ordered_nodes);

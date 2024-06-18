@@ -63,7 +63,13 @@ namespace internal {
 
 class EigenGpuStreamDevice : public Eigen::StreamInterface {
  public:
-  EigenGpuStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
+  EigenGpuStreamDevice()
+      : stream_(nullptr),
+        allocator_(nullptr),
+        device_prop_(nullptr),
+        scratch_(nullptr),
+        semaphore_(nullptr),
+        allocations_() {
     Eigen::initializeDeviceProp();
   }
   ~EigenGpuStreamDevice() override = default;
@@ -747,13 +753,13 @@ struct GPUContext::Impl {
   bool owned_{false};
   bool stream_owned_{false};
   Place place_;
-  int compute_capability_;
-  int runtime_version_;
-  int driver_version_;
-  int multi_process_;
-  int max_threads_per_mp_;
-  int max_threads_per_block_;
-  std::array<int, 3> max_grid_dim_size_;
+  int compute_capability_ = 0;
+  int runtime_version_ = 0;
+  int driver_version_ = 0;
+  int multi_process_ = 0;
+  int max_threads_per_mp_ = 0;
+  int max_threads_per_block_ = 0;
+  std::array<unsigned int, 3> max_grid_dim_size_;
 
   CUDAStream* stream_{nullptr};
   Eigen::GpuDevice* eigen_device_{nullptr};
@@ -873,7 +879,7 @@ int GPUContext::GetMaxThreadsPerBlock() const {
   return impl_->max_threads_per_block_;
 }
 
-std::array<int, 3> GPUContext::GetCUDAMaxGridDimSize() const {
+std::array<unsigned int, 3> GPUContext::GetCUDAMaxGridDimSize() const {
   return impl_->max_grid_dim_size_;
 }
 
@@ -1024,7 +1030,7 @@ void GPUContext::SetMaxThreadsPerBlock(int val) {
   impl_->max_threads_per_block_ = val;
 }
 
-void GPUContext::SetMaxGridDimSize(const std::array<int, 3>& val) {
+void GPUContext::SetMaxGridDimSize(const std::array<unsigned int, 3>& val) {
   impl_->max_grid_dim_size_ = val;
 }
 

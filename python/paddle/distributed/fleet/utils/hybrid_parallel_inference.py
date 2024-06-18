@@ -33,7 +33,7 @@ class HybridParallelInferenceHelper:
         num_pp (int): number of pipeline parallel degree. Default ``1``.
         micro_batch_size (int): number of micro batch size. Default ``1``.
         beam_size (int): number of beam search size. Default ``1``.
-        init_comm (bool): wheter if initilize comminication group. Default ``True``.
+        init_comm (bool): whether if initialize communication group. Default ``True``.
         role_maker (RoleMakerBase or subclass): user custom define RoleMakerBase.
             If ``role_maker==None``, then use PaddleCloudRoleMaker. Default ``None``.
 
@@ -63,7 +63,7 @@ class HybridParallelInferenceHelper:
             ...     with paddle.base.device_guard(f'{device}:all'):
             ...         # read data from global lod_tensor_array
             ...         element_in_arr = paddle.tensor.array_read(array=arr, i=step_idx)
-            ...         # write placehold data to global lod_tensor_array,
+            ...         # write placeholder data to global lod_tensor_array,
             ...         # it need for send_v2 of lod_tensor_array
             ...         paddle.increment(x=step_idx, value=1.0)
             ...         paddle.tensor.array_write(element_in_arr, i=step_idx, array=arr)
@@ -455,7 +455,7 @@ class HybridParallelInferenceHelper:
 
     def _add_op_device_attr(self, block):
         """
-        Add op_device attrribute for ops in block that have
+        Add op_device attribute for ops in block that have
         not that attribute set.
 
         Args:
@@ -491,9 +491,9 @@ class HybridParallelInferenceHelper:
 
         pre_stage_id = None
         for op in block.ops:
-            assert op.has_attr(self._op_role_key), "{} has no {} set .".format(
-                op.type, self._op_role_key
-            )
+            assert op.has_attr(
+                self._op_role_key
+            ), f"{op.type} has no {self._op_role_key} set ."
             op_role = op.attr(self._op_role_key)
             assert op_role == int(
                 self._op_role.Forward
@@ -506,9 +506,9 @@ class HybridParallelInferenceHelper:
                 sub_block_id = op.attr('sub_block').id
                 sub_block = block.program.block(sub_block_id)
                 self._check_validation(sub_block)
-            assert op.has_attr(self._op_device_key), "{} has no {} set.".format(
-                op.type, self._op_device_key
-            )
+            assert op.has_attr(
+                self._op_device_key
+            ), f"{op.type} has no {self._op_device_key} set."
 
             device = op.attr(self._op_device_key)
             assert device, f"{op.type} has no {self._op_device_key} set."

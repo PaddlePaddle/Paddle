@@ -13,20 +13,20 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/reducer.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
-#include "paddle/phi/core/flags.h"
 
 PD_DECLARE_bool(use_stream_safe_cuda_allocator);
-PHI_DECLARE_string(allocator_strategy);
+COMMON_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace distributed {
 
 static bool IsStreamSafeAllocator() {
-  return FLAGS_allocator_strategy == "auto_growth" &&
-         FLAGS_use_stream_safe_cuda_allocator;
+  return (FLAGS_allocator_strategy == "auto_growth" &&
+          FLAGS_use_stream_safe_cuda_allocator);
 }
 
 static Backend TransToBackend(platform::Place place) {
@@ -162,7 +162,7 @@ struct ConcatTensorsForAllReduce {
   void operator()(const DeviceContext &context,
                   const std::vector<phi::DenseTensor> &dense_tensors_,
                   Tensor *p_dense_contents) {
-    operators::math::ConcatFunctor<DeviceContext, T> concat_functor_;
+    phi::funcs::ConcatFunctor<DeviceContext, T> concat_functor_;
     concat_functor_(
         context,
         dense_tensors_,
@@ -191,7 +191,7 @@ struct SplitTensorsForAllReduce {
       shape_refer.emplace_back(&tensor);
     }
 
-    operators::math::SplitFunctor<DeviceContext, T> split_functor_;
+    phi::funcs::SplitFunctor<DeviceContext, T> split_functor_;
     split_functor_(context, *in, shape_refer, 0, &outs);
   }
 };
@@ -334,6 +334,11 @@ void ConcatTensorsWithType<platform::XPUDeviceContext>(
                                 platform::float16>()(
           context, dense_tensors_, p_dense_contents);
       break;
+    case phi::DataType::BFLOAT16:
+      ConcatTensorsForAllReduce<platform::XPUDeviceContext,
+                                platform::bfloat16>()(
+          context, dense_tensors_, p_dense_contents);
+      break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Data type (%s) is not supported when it concats tensors for "
@@ -356,6 +361,11 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
       break;
     case phi::DataType::FLOAT16:
       SplitTensorsForAllReduce<platform::XPUDeviceContext, platform::float16>()(
+          context, p_dense_contents, p_dense_tensors);
+      break;
+    case phi::DataType::BFLOAT16:
+      SplitTensorsForAllReduce<platform::XPUDeviceContext,
+                               platform::bfloat16>()(
           context, p_dense_contents, p_dense_tensors);
       break;
     default:
@@ -482,6 +492,12 @@ EagerReducer::EagerReducer(
       is_sparse_gradient_(is_sparse_gradient),
       process_group_(process_group),
       group_size_limits_(group_size_limits),
+      groups_(),
+      variable_locators_(),
+      vars_marked_ready_(),
+      local_used_vars_(),
+      unused_vars_(),
+      gradnode_index_map_(),
       find_unused_vars_each_step_(find_unused_parameters) {
   VLOG(3) << "Start construct the Reducer ...";
 
@@ -831,23 +847,33 @@ void EagerReducer::MarkVarReady(const size_t var_index,
     auto &group_tensor = group.dense_tensors_[inside_group_index];
     const auto length = group.length_[inside_group_index];
     if (is_used_var) {
-      auto *autograd_meta = tensors_[var_index].get_autograd_meta();
-      paddle::Tensor grad_tensor =
-          static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
-      if (grad_tensor.is_dense_tensor()) {
-        const auto &tensor_impl = grad_tensor.impl();
-        auto dense_tensor =
-            std::dynamic_pointer_cast<phi::DenseTensor>(tensor_impl);
-        if (!dense_tensor->meta().is_contiguous()) {
-          grad_tensor.set_impl(std::make_shared<phi::DenseTensor>(std::move(
-              paddle::experimental::Trans2Contiguous(*dense_tensor))));
+      if (HasGrad(var_index)) {
+        auto *autograd_meta = tensors_[var_index].get_autograd_meta();
+        paddle::Tensor grad_tensor =
+            static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
+        if (grad_tensor.is_dense_tensor()) {
+          const auto &tensor_impl = grad_tensor.impl();
+          auto dense_tensor =
+              std::dynamic_pointer_cast<phi::DenseTensor>(tensor_impl);
+          if (!dense_tensor->meta().is_contiguous()) {
+            grad_tensor.set_impl(std::make_shared<phi::DenseTensor>(
+                paddle::experimental::Trans2Contiguous(*dense_tensor)));
+          }
         }
-      }
 
-      group_tensor
-          .ShareDataWith(*(
-              std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor.impl())))
-          .Resize({grad_tensor.numel()});
+        group_tensor
+            .ShareDataWith(*(std::dynamic_pointer_cast<phi::DenseTensor>(
+                grad_tensor.impl())))
+            .Resize({grad_tensor.numel()});
+      } else {
+        VLOG(3) << "Tensor[" << tensors_[var_index].name()
+                << "] doesn't have grad";
+        auto *dev_ctx =
+            platform::DeviceContextPool::Instance().Get(inner_place_);
+        group_tensor.Resize({static_cast<int64_t>(length)});
+        dev_ctx->Alloc(&group_tensor, group.dtype_);
+        phi::funcs::set_constant(*dev_ctx, &group_tensor, 0.0f);
+      }
     } else {
       // TODO(shenliang03): maybe save the memory by avoiding tensor
       // construction
@@ -864,8 +890,8 @@ void EagerReducer::MarkVarReady(const size_t var_index,
           auto dense_tensor =
               std::dynamic_pointer_cast<phi::DenseTensor>(tensor_impl);
           if (!dense_tensor->meta().is_contiguous()) {
-            grad_tensor->set_impl(std::make_shared<phi::DenseTensor>(std::move(
-                paddle::experimental::Trans2Contiguous(*dense_tensor))));
+            grad_tensor->set_impl(std::make_shared<phi::DenseTensor>(
+                paddle::experimental::Trans2Contiguous(*dense_tensor)));
           }
         }
 
@@ -894,7 +920,7 @@ void EagerReducer::MarkVarReady(const size_t var_index,
             "The sparse parameter[%d][%s] should have gradient. "
             "Currently, DataParallel does not support sparse "
             "parameters without generating gradients during training. "
-            "For example, if is_sparese=True is used in Embedding, "
+            "For example, if is_sparse=True is used in Embedding, "
             "the current step of this parameter cannot generate gradient "
             "because of stop_gradient/detach, where error will occur.",
             var_index,

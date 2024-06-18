@@ -24,7 +24,6 @@ from .base import (  # noqa: F401
     guard,
     no_grad,
     no_grad_,
-    to_variable,
 )
 from .tracer import Tracer  # noqa: F401
 

@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/instance_norm_op_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class InstanceNormOpConverter : public OpConverter {
  public:
@@ -73,12 +71,10 @@ class InstanceNormOpConverter : public OpConverter {
         instance_norm_inputs.data(), instance_norm_inputs.size(), *plugin);
 
     auto output_name = op_desc.Output("Y")[0];
-    RreplenishLayerAndOutput(layer, "instance_norm", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "instance_norm", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(instance_norm, InstanceNormOpConverter);

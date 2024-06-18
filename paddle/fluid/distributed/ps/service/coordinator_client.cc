@@ -20,13 +20,12 @@
 
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/framework/archive.h"
-#include "paddle/fluid/string/split.h"
+#include "paddle/utils/string/split.h"
 
 static const int MIN_PORT = 8500;
 static const int MAX_PORT = 65535;
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 PD_DEFINE_uint64(total_fl_client_size, 100, "supported total fl client size");
 PD_DEFINE_uint32(coordinator_wait_all_clients_max_time, 60, "uint32: s");
@@ -44,7 +43,7 @@ void CoordinatorService::FLService(
   uint32_t from_client_id = request->client_id();
   VLOG(0) << "fl-ps > recv from client id: " << from_client_id
           << ", msg_type: " << msg_type;
-  // TODO(ziyoujiyi): find is not thread safe, beacuse of RB_Tree traversal
+  // TODO(ziyoujiyi): find is not thread safe, because of RB_Tree traversal
   auto itr = _service_handle_map.find(msg_type);
   if (itr == _service_handle_map.end()) {
     LOG(ERROR) << "fl-ps > unknown flClient2Coordinator msg type: " << msg_type;
@@ -201,5 +200,4 @@ void CoordinatorClient::SendFLStrategy(const uint32_t& client_id) {
   return;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

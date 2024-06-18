@@ -24,9 +24,10 @@ import weakref
 from typing import Any, Callable
 
 import paddle
+from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten, map_structure
 
-from ..utils import NameGenerator, OrderedSet, Singleton, flatten_extend
+from ..utils import NameGenerator, Singleton, flatten_extend, get_api_fullname
 
 
 class Reference:  # to unify weak_ref and strong_ref
@@ -134,9 +135,10 @@ class ApiStatement(Statement):
         outputs: list[Symbol],
         stacks: list[str],
     ):
-        super().__init__(
-            "api", "paddle." + api.__name__, inputs, outputs, stacks
-        )
+        fullname = get_api_fullname(api)
+        if fullname is None:
+            fullname = "paddle." + api.__name__
+        super().__init__("api", fullname, inputs, outputs, stacks)
         self.api = api
 
 
@@ -213,7 +215,7 @@ class StatementIR:
         self.name = name
         self.inputs = []  # list of Symbol | PythonObj
         self.outputs = []  # list of Symbol | PythonObj
-        self.statements = []  # list of Statement
+        self.statements: list[Statement] = []  # list of Statement
 
         self.symbol_meta_map = {}
         self.param_symbol = set()
@@ -228,6 +230,8 @@ class StatementIR:
         new_sir.outputs = list(self.outputs)
         new_sir.statements = list(self.statements)
         new_sir.symbol_meta_map = dict(self.symbol_meta_map.items())
+        new_sir.param_symbol = set(self.param_symbol)
+        new_sir.non_param_symbol = set(self.non_param_symbol)
         return new_sir
 
     def set_parameter_info(self, params, non_params):
@@ -265,7 +269,7 @@ class StatementIR:
 
     def __str__(self):
         strs = []
-        strs.append("StatmentIR: %s" % self.name)
+        strs.append(f"StatementIR: {self.name}")
         strs.append(f"  inputs: {map_structure(lambda x: x.name, self.inputs)}")
         strs.append(
             f"  outputs: {map_structure(lambda x: x.name, self.outputs)}"
@@ -279,8 +283,7 @@ class StatementIR:
         return self.__str__()
 
 
-@Singleton
-class StatementIRFactory:
+class StatementIRFactory(metaclass=Singleton):
     """
     It is used to create a StatementIR.
     """
@@ -316,8 +319,7 @@ class StatementIRFactory:
             del self.cache[key]
 
 
-@Singleton
-class SIRRuntimeCache:
+class SIRRuntimeCache(metaclass=Singleton):
     """
     It is used to cache the runtime information of the StatementIR.
     """

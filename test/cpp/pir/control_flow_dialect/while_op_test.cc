@@ -21,11 +21,11 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(less_than, CPU, ALL_LAYOUT);
@@ -53,7 +53,7 @@ TEST(while_op_test, base) {
       builder.Build<FullOp>(std::vector<int64_t>{1}, 10, phi::DataType::INT32)
           .out();
 
-  // comput condition value: i < ten
+  // compute condition value: i < ten
   auto cond_value = builder.Build<LessThanOp>(i, ten).out();
 
   auto while_op =
@@ -69,7 +69,7 @@ TEST(while_op_test, base) {
           .out();
   auto new_i = builder.Build<AddOp>(body_i_argument, one).out();
 
-  // comput new condition value: new_i < new_ten
+  // compute new condition value: new_i < new_ten
   auto new_cond_value =
       builder.Build<LessThanOp>(new_i, body_ten_argument).out();
 
@@ -124,7 +124,7 @@ TEST(while_op_test, network_with_backward) {
   auto new_i = builder.Build<AddOp>(body_i_argument, one).out();
   auto new_x = builder.Build<AddOp>(body_x_argument, y).out();
 
-  // comput new condition value: new_i < new_ten
+  // compute new condition value: new_i < new_ten
   auto new_cond_value = builder.Build<LessThanOp>(new_i, ten).out();
 
   builder.Build<pir::TuplePushOp>(

@@ -15,7 +15,7 @@
 import copy
 from collections import defaultdict
 
-from paddle.distributed.passes import PassContext
+from paddle.distributed.passes.pass_base import PassContext
 from paddle.framework import IrGraph, core, set_flags
 
 from ..process_mesh import ProcessMesh
@@ -81,7 +81,7 @@ class DistributedContext:
         self._serial_optimizer = None
         self._serial_feed_vars = {}
         self._serial_fetch_vars = {}
-        self._lr_optimizer = None  # record the optimzier holding lr_scheduler
+        self._lr_optimizer = None  # record the optimizer holding lr_scheduler
 
         # Data members related to the program
         self._dist_tensors_for_program = {}
@@ -126,6 +126,9 @@ class DistributedContext:
 
         # flag whether scale gradient with dp size
         self._gradient_scale = True
+
+        # whether use allreduce_avg to scale gradient, i.e., allreduce_sum + scale -> allreduce_avg
+        self._gradient_scale_using_allreduce_avg = False
 
         # A flag indicates whether the used parallelism is data parallel
         self._data_parallel = False
@@ -219,6 +222,18 @@ class DistributedContext:
     @gradient_scale.setter
     def gradient_scale(self, gs):
         self._gradient_scale = gs
+
+    @property
+    def gradient_scale_using_allreduce_avg(self):
+        return self._gradient_scale_using_allreduce_avg
+
+    @gradient_scale_using_allreduce_avg.setter
+    def gradient_scale_using_allreduce_avg(
+        self, gradient_scale_using_allreduce_avg
+    ):
+        self._gradient_scale_using_allreduce_avg = (
+            gradient_scale_using_allreduce_avg
+        )
 
     @property
     def data_parallel(self):
@@ -1010,35 +1025,21 @@ class DistributedContext:
                 dist_tensor = self.get_dist_tensor_for_program(tensor)
                 assert (
                     dist_tensor is not None
-                ), "Tensor {} does not have a distributed attribute.".format(
-                    dist_tensor.serial_tensor.name
-                )
+                ), f"Tensor {dist_tensor.serial_tensor.name} does not have a distributed attribute."
                 if (dist_tensor is not None) and (
                     not dist_tensor.validate_dist_attr()
                 ):
                     raise AssertionError(
-                        "Tensor {} (id: {}, original_id: {}) has a wrong distributed attributes {}.".format(
-                            dist_tensor.serial_tensor.name,
-                            dist_tensor.serial_tensor.desc.id(),
-                            dist_tensor.serial_tensor.desc.original_id(),
-                            dist_tensor.dist_attr,
-                        )
+                        f"Tensor {dist_tensor.serial_tensor.name} (id: {dist_tensor.serial_tensor.desc.id()}, original_id: {dist_tensor.serial_tensor.desc.original_id()}) has a wrong distributed attributes {dist_tensor.dist_attr}."
                     )
             for op in block.ops:
                 dist_op = self.get_dist_op_for_program(op)
                 assert (
                     dist_op is not None
-                ), "Operator {} does not have a distributed attribute.".format(
-                    dist_op.serial_op.type
-                )
+                ), f"Operator {dist_op.serial_op.type} does not have a distributed attribute."
                 if (dist_op is not None) and (not dist_op.validate_dist_attr()):
                     raise AssertionError(
-                        "Operator {} (id: {}, original_id: {}) has a wrong distributed attributes {} .".format(
-                            dist_op.serial_op.type,
-                            dist_op.serial_op.desc.id(),
-                            dist_op.serial_op.desc.original_id(),
-                            dist_op.dist_attr,
-                        )
+                        f"Operator {dist_op.serial_op.type} (id: {dist_op.serial_op.desc.id()}, original_id: {dist_op.serial_op.desc.original_id()}) has a wrong distributed attributes {dist_op.dist_attr} ."
                     )
                 if (
                     op.has_attr("op_namescope")
@@ -1215,9 +1216,7 @@ class BlockState:
             assert idx == block.idx, "index doesn't match"
             assert (
                 block.forward_block_idx == -1
-            ), "forward_block_idx of forward block [{}] is not [{}]".format(
-                idx, block.forward_block_idx
-            )
+            ), f"forward_block_idx of forward block [{idx}] is not [{block.forward_block_idx}]"
             self.forward_indices.append(idx)
             self.nblock += 1
 

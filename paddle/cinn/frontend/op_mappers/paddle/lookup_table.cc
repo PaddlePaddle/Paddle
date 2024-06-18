@@ -14,22 +14,35 @@
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void LookupTableOpMapper(const paddle::cpp::OpDesc& op_desc,
                          const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("W").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("W").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The input of lookup_table op should be one."));
   auto w_name = op_desc.Input("W").front();
-  CHECK_EQ(op_desc.Input("Ids").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Ids").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The input ids of lookup_table op should be one."));
   auto ids_name = op_desc.Input("Ids").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The output of lookup_table op should be one."));
   auto out_name = op_desc.Output("Out").front();
   auto w = ctx.GetVar(w_name);
   auto ids = ctx.GetVar(ids_name);
-  CHECK(op_desc.HasAttr("padding_idx"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("padding_idx"),
+      true,
+      phi::errors::InvalidArgument(
+          "The lookup_table op should have padding_idx attribute"));
   auto padding_idx =
       utils::GetAttrOrDefault<int64_t>(op_desc, "padding_idx", -1);
   auto out = ctx.Builder()->LookupTable(w, ids, padding_idx);
@@ -40,16 +53,29 @@ void LookupTableOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void LookupTableV2OpMapper(const paddle::cpp::OpDesc& op_desc,
                            const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("W").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("W").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The input of lookup_table_v2 op should be one."));
   auto w_name = op_desc.Input("W").front();
-  CHECK_EQ(op_desc.Input("Ids").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Ids").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The input ids of lookup_table_v2 op should be one."));
   auto ids_name = op_desc.Input("Ids").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The output of lookup_table_v2 op should be one."));
   auto out_name = op_desc.Output("Out").front();
   auto w = ctx.GetVar(w_name);
   auto ids = ctx.GetVar(ids_name);
   ids = ctx.Builder()->ExpandDims(ids, {-1});
-  CHECK(op_desc.HasAttr("padding_idx"));
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("padding_idx"),
+      true,
+      phi::errors::InvalidArgument(
+          "The lookup_table_v2 op should have padding_idx attribute"));
   auto padding_idx =
       utils::GetAttrOrDefault<int64_t>(op_desc, "padding_idx", -1);
   auto out = ctx.Builder()->LookupTable(w, ids, padding_idx);

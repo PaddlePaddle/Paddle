@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import paddle
 from paddle import distributed as dist
 from paddle.autograd import PyLayer
@@ -27,6 +29,8 @@ from paddle.nn import (
     Layer,
     functional as F,
 )
+
+from .log_util import logger
 
 ####################################################
 #                                                  #
@@ -43,9 +47,7 @@ def scatter(input):
     seq_len = input.shape[0]
     assert (
         seq_len % parallelism == 0
-    ), "Input sequence length {} can't be divided exactly by sequence parallelism {}".format(
-        seq_len, parallelism
-    )
+    ), f"Input sequence length {seq_len} can't be divided exactly by sequence parallelism {parallelism}"
     interval = seq_len // parallelism
     input = paddle.slice(
         input, axes=[0], starts=[interval * rank], ends=[interval * (rank + 1)]
@@ -71,9 +73,7 @@ def reduce_scatter(input):
     output_shape = input.shape
     assert (
         input.shape[0] % parallelism == 0
-    ), "Input sequence length {} can't be divided exactly by sequence parallelism {}".format(
-        input.shape[0], parallelism
-    )
+    ), f"Input sequence length {input.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
     output_shape[0] = output_shape[0] // parallelism
     output = paddle.empty(shape=output_shape, dtype=input.dtype)
     dist.stream.reduce_scatter(
@@ -201,7 +201,7 @@ def register_sequence_parallel_allreduce_hooks(
 
     params = []
     for p in model.parameters():
-        if is_sequence_parallel_parameter(p):
+        if is_sequence_parallel_parameter(p) and not p.stop_gradient:
             params.append(p)
 
     if fuse_sequence_parallel_allreduce:
@@ -227,6 +227,203 @@ def is_fused_matmul_bias_supported():
         return False
 
 
+def is_fused_linear_param_grad_add_supported():
+    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
+        return hasattr(paddle._C_ops, 'fused_linear_param_grad_add')
+    else:
+        return False
+
+
+_raise_cuda_env_unset_warning_for_sp = True
+
+
+def _check_environment_for_overlap():
+    if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
+        global _raise_cuda_env_unset_warning_for_sp
+        if _raise_cuda_env_unset_warning_for_sp:
+            logger.warning(
+                "You set mp_async_allreduce=True or recompute_allgather=True, but you forget to set environment "
+                "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+            )
+        _raise_cuda_env_unset_warning_for_sp = False
+
+        # Using small operation to preempt GPU SMs for all_gather or reduce_scatter to achieve overlap.
+        tmp = paddle.ones([512])
+
+
+class SPInnerOverlapLinear(paddle.autograd.PyLayer):
+    @staticmethod
+    def forward(
+        ctx,
+        x,
+        weight,
+        bias,
+        fuse_matmul_bias,
+        recompute_allgather,
+        mp_fused_linear_param_grad_add,
+        model_parallel_group,
+    ):
+        ctx.recompute_allgather = recompute_allgather
+        ctx.mp_fused_linear_param_grad_add = mp_fused_linear_param_grad_add
+        ctx.model_parallel_group = model_parallel_group
+
+        world_size = model_parallel_group.nranks
+        input_parallel = all_gather(x)
+
+        if not recompute_allgather:
+            ctx.save_for_backward(x, weight, bias, input_parallel)
+        else:
+            ctx.save_for_backward(x, weight, bias)
+
+        if not fuse_matmul_bias:
+            output = paddle._C_ops.linear(input_parallel, weight, bias)
+        else:
+            output = paddle._legacy_C_ops.fused_gemm_epilogue(
+                input_parallel, weight, bias
+            )
+        return output
+
+    @staticmethod
+    def backward(ctx, dy):
+        group = ctx.model_parallel_group
+        parallelism = group.nranks
+
+        if not ctx.recompute_allgather:
+            x, weight, bias, input_parallel = ctx.saved_tensor()
+        else:
+            x, weight, bias = ctx.saved_tensor()
+
+            # all-gather x
+            input_parallel_shape = x.shape
+            input_parallel_shape[0] = input_parallel_shape[0] * parallelism
+            input_parallel = paddle.empty(
+                shape=input_parallel_shape, dtype=x.dtype
+            )
+            allgather_task = dist.all_gather(
+                input_parallel, x, group=group, sync_op=False
+            )
+
+        # compute dx
+        _check_environment_for_overlap()
+        if dy.dtype == weight.dtype:
+            dinput_parallel = paddle.matmul(dy, weight, transpose_y=True)
+        else:
+            dinput_parallel = paddle.matmul(
+                dy, paddle.cast(weight, dtype=dy.dtype), transpose_y=True
+            )
+
+        assert (
+            dinput_parallel.shape[0] % parallelism == 0
+        ), f"Input sequence length {dinput_parallel.shape[0]} can't be divided exactly by sequence parallelism {parallelism}"
+
+        if ctx.recompute_allgather:
+            # wait the finish of all-gather of x
+            allgather_task.wait()
+
+        # reduce-scatter dx
+        dx_shape = dinput_parallel.shape
+        dx_shape[0] = dx_shape[0] // parallelism
+        dx = paddle.empty(shape=dx_shape, dtype=dinput_parallel.dtype)
+        task = dist.stream.reduce_scatter(
+            dx,
+            dinput_parallel,
+            op=dist.ReduceOp.SUM,
+            group=group,
+            sync_op=False,
+        )
+
+        # compute dw and dbias
+        _check_environment_for_overlap()
+        if ctx.mp_fused_linear_param_grad_add:
+            if not is_fused_linear_param_grad_add_supported():
+                raise NotImplementedError(
+                    "You set mp_fused_linear_param_grad_add=True, "
+                    "however, the paddle you are using not support this operation. "
+                    "Please unset fused_linear_param_grad_add or use paddle compiled "
+                    "with cuda 11.6 or higher."
+                )
+            if bias is None:
+                if hasattr(weight, "main_grad"):
+                    (
+                        weight.main_grad,
+                        _,
+                    ) = paddle._C_ops.fused_linear_param_grad_add(
+                        input_parallel, dy, weight.main_grad, None, True, False
+                    )
+                    task.wait()
+                    return dx, None
+                else:
+                    if weight.grad is not None:
+                        (
+                            weight.grad,
+                            _,
+                        ) = paddle._C_ops.fused_linear_param_grad_add(
+                            input_parallel, dy, weight.grad, None, False, False
+                        )
+                        task.wait()
+                        return dx, None
+                    else:
+                        (
+                            dw,
+                            _,
+                        ) = paddle._C_ops.fused_linear_param_grad_add(
+                            input_parallel, dy, None, None, False, False
+                        )
+                        task.wait()
+                        return dx, dw
+
+            if hasattr(weight, "main_grad") and hasattr(bias, "main_grad"):
+                (
+                    weight.main_grad,
+                    bias.main_grad,
+                ) = paddle._C_ops.fused_linear_param_grad_add(
+                    input_parallel,
+                    dy,
+                    weight.main_grad,
+                    bias.main_grad,
+                    True,
+                    True,
+                )
+                task.wait()
+                return dx, None, None
+            else:
+                if weight.grad is not None:
+                    assert bias.grad is not None
+                    (
+                        weight.grad,
+                        bias.grad,
+                    ) = paddle._C_ops.fused_linear_param_grad_add(
+                        input_parallel, dy, weight.grad, bias.grad, False, True
+                    )
+                    task.wait()
+                    return dx, None, None
+                else:
+                    # When main_grad is not enabled and gradient_accumulation is used, the grad is not initialized for the first acc step.
+                    (
+                        dw,
+                        dbias,
+                    ) = paddle._C_ops.fused_linear_param_grad_add(
+                        input_parallel, dy, None, None, False, True
+                    )
+                    task.wait()
+                    return dx, dw, dbias
+        else:
+            dy = dy.reshape([-1, dy.shape[-1]])
+            dw = paddle.matmul(
+                input_parallel.reshape([-1, input_parallel.shape[-1]]),
+                dy,
+                transpose_x=True,
+            )
+            if bias is None:
+                task.wait()
+                return dx, dw
+            else:
+                dbias = paddle.sum(dy, axis=0)
+                task.wait()
+                return dx, dw, dbias
+
+
 class ColumnSequenceParallelLinear(Layer):
     def __init__(
         self,
@@ -250,9 +447,12 @@ class ColumnSequenceParallelLinear(Layer):
             if mp_group is None
             else mp_group.nranks
         )
+        assert (
+            self.world_size > 1
+        ), "tensor parallel degree must be greater than 1 in sequence parallel"
+
         self._name = name
         self.is_mp = self.world_size > 1
-
         assert (
             gather_output is False
         ), "If sequence_parallel is True, \
@@ -285,6 +485,7 @@ class ColumnSequenceParallelLinear(Layer):
             )
 
         self.weight.is_distributed = True if self.is_mp else False
+        self.fuse_matmul_bias = fuse_matmul_bias
 
         if has_bias:
             # initialize bias to zero like Megatron
@@ -312,17 +513,38 @@ class ColumnSequenceParallelLinear(Layer):
 
             self.linear = fused_linear
 
-    def forward(self, x):
-        # sequence parallelism is same as model parallelism
-        # if sequence parallel is true, input shape is [s, b, h]
-        # else input shape is [b, s, h]
-        if self.is_mp:
-            input_parallel = AllGatherOp.apply(x)
-        else:
-            input_parallel = x
-        output = self.linear(
-            input_parallel, self.weight, self.bias, name=self._name
+        mp_configs = fleet.fleet._user_defined_strategy.hybrid_configs[
+            "mp_configs"
+        ]
+        self.mp_async_allreduce = mp_configs.mp_async_allreduce
+        self.recompute_allgather = mp_configs.recompute_allgather
+
+        self.mp_fused_linear_param_grad_add = (
+            self.mp_async_allreduce
+            and mp_configs.mp_fused_linear_param_grad_add
         )
+
+    def forward(self, x):
+        # sequence parallel is same as tensor parallel, if sequence parallel is true, input shape is [s, b, h], else input shape is [b, s, h]
+        # reuse mp_async_allreduce to do sequence parallel overlap
+        if self.mp_async_allreduce:
+            output = SPInnerOverlapLinear.apply(
+                x,
+                self.weight,
+                self.bias,
+                self.fuse_matmul_bias,
+                self.recompute_allgather,
+                self.mp_fused_linear_param_grad_add,
+                self.model_parallel_group,
+            )
+        else:
+            if self.is_mp:
+                input_parallel = AllGatherOp.apply(x)
+            else:
+                input_parallel = x
+            output = self.linear(
+                input_parallel, self.weight, self.bias, name=self._name
+            )
         return output
 
 

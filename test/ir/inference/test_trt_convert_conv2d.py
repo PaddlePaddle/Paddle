@@ -65,7 +65,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         strides_options = [[2, 2], [1, 2]]
         paddings_options = [[0, 3], [1, 2, 3, 4]]
         groups_options = [1, 3]
-        padding_altorithm_options = ['EXPLICIT', 'SAME', 'VALID']
+        padding_algorithm_options = ['EXPLICIT', 'SAME', 'VALID']
         dilations_options = [[1, 2]]
         data_format_options = ['NCHW']
 
@@ -74,7 +74,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
             strides_options,
             paddings_options,
             groups_options,
-            padding_altorithm_options,
+            padding_algorithm_options,
             dilations_options,
             data_format_options,
         ]
@@ -90,7 +90,6 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         ) in itertools.product(*configurations):
             attrs = [
                 {
-                    "data_fromat": data_format,
                     "dilations": dilations,
                     "padding_algorithm": padding_algorithm,
                     "groups": groups,
@@ -252,7 +251,7 @@ class TrtConvertConv2dNotPersistableTest(TrtLayerAutoScanTest):
         strides_options = [[2, 2]]
         paddings_options = [[1, 1]]
         groups_options = [1]
-        padding_altorithm_options = ['EXPLICIT']
+        padding_algorithm_options = ['EXPLICIT']
         dilations_options = [[1, 1]]
         data_format_options = ['NCHW']
 
@@ -263,7 +262,7 @@ class TrtConvertConv2dNotPersistableTest(TrtLayerAutoScanTest):
             strides_options,
             paddings_options,
             groups_options,
-            padding_altorithm_options,
+            padding_algorithm_options,
             dilations_options,
             data_format_options,
         ]
@@ -282,14 +281,13 @@ class TrtConvertConv2dNotPersistableTest(TrtLayerAutoScanTest):
             ic = input_shape[1]
             attrs = [
                 {
-                    "data_fromat": data_format,
                     "dilations": dilations,
                     "padding_algorithm": padding_algorithm,
                     "groups": groups,
                     "paddings": paddings,
                     "strides": strides,
                     "data_format": data_format,
-                    # below attrs are used for my convience.
+                    # below attrs are used for my convenience.
                     "input_shape": input_shape,
                     "weight_shape": [
                         oc,

@@ -133,6 +133,13 @@ void SyncBatchNormKernel(const Context& ctx,
     auto* sv_inv_var_data =
         ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
 
+    int64_t reserve_space_size = 0;
+    if (reserve_space == nullptr) {
+      reserve_space = new DenseTensor();
+    }
+    reserve_space->Resize({reserve_space_size});
+    ctx.template Alloc<T>(reserve_space);
+
     // Note, Input('Mean')/Input('Variance') share variable with
     // Output('MeanOut')/Output('VarianceOut')
     KeSyncAndMovingStats<T>
@@ -256,6 +263,7 @@ void SyncBatchNormCooKernel(const Context& dev_ctx,
                                        saved_variance,
                                        reserve_space);
   y->SetIndicesDict(x.GetIndicesDict());
+  y->SetKmaps(x.GetKmaps());
 }
 
 template <typename T, typename Context>

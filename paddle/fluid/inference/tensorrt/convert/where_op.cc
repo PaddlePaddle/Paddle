@@ -41,7 +41,7 @@ class WhereOpConverter : public OpConverter {
     auto layer = TRT_ENGINE_ADD_LAYER(
         engine_, Select, *condition_tensor, *input_x_tensor, *input_y_tensor);
 
-    RreplenishLayerAndOutput(layer, "where", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "where", {output_name}, test_mode);
   }
 };
 

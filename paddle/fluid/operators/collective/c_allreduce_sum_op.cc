@@ -62,7 +62,6 @@ DEFINE_C_ALLREDUCE_CPU_KERNEL(CAllReduceSum, kRedSum)
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_allreduce_sum,
                              ops::CAllReduceOp,
@@ -77,4 +76,4 @@ PD_REGISTER_STRUCT_KERNEL(c_allreduce_sum,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

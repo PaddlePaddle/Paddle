@@ -20,30 +20,35 @@ from test_fusion_gru_op import TestFusionGRUOp
 class TestFusionGRUMKLDNNOp(TestFusionGRUOp):
     def set_confs(self):
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
 
 class TestFusionGRUMKLDNNOpNoInitial(TestFusionGRUOp):
     def set_confs(self):
         self.with_h0 = False
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
 
 class TestFusionGRUMKLDNNOpNoBias(TestFusionGRUOp):
     def set_confs(self):
         self.with_bias = False
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
 
 class TestFusionGRUMKLDNNOpReverse(TestFusionGRUOp):
     def set_confs(self):
         self.is_reverse = True
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
 
 class TestFusionGRUMKLDNNOpOriginMode(TestFusionGRUOp):
     def set_confs(self):
         self.origin_mode = True
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
 
 class TestFusionGRUMKLDNNOpMD1(TestFusionGRUOp):
@@ -51,6 +56,7 @@ class TestFusionGRUMKLDNNOpMD1(TestFusionGRUOp):
         self.M = 36
         self.D = 8
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
 
 class TestFusionGRUMKLDNNOpMD2(TestFusionGRUOp):
@@ -58,6 +64,7 @@ class TestFusionGRUMKLDNNOpMD2(TestFusionGRUOp):
         self.M = 8
         self.D = 8
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
 
 class TestFusionGRUMKLDNNOpMD3(TestFusionGRUOp):
@@ -65,6 +72,7 @@ class TestFusionGRUMKLDNNOpMD3(TestFusionGRUOp):
         self.M = 17
         self.D = 15
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
 
 class TestFusionGRUMKLDNNOpBS1(TestFusionGRUOp):
@@ -72,6 +80,7 @@ class TestFusionGRUMKLDNNOpBS1(TestFusionGRUOp):
         self.lod = [[3]]
         self.D = 16
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
 
 if __name__ == "__main__":

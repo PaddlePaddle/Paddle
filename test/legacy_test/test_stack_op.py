@@ -221,6 +221,7 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
             else base.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_case(self):
         self.program = paddle.static.Program()
         with paddle.static.program_guard(self.program):
@@ -258,6 +259,7 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
             else base.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_case(self):
         self.program = paddle.static.Program()
         with paddle.static.program_guard(self.program):
@@ -316,16 +318,16 @@ class API_DygraphTest(unittest.TestCase):
         data2 = np.array([[3.0, 4.0]])
         data3 = np.array([[5.0, 6.0]])
         with base.dygraph.guard():
-            x1 = base.dygraph.to_variable(data1)
-            x2 = base.dygraph.to_variable(data2)
-            x3 = base.dygraph.to_variable(data3)
+            x1 = paddle.to_tensor(data1)
+            x2 = paddle.to_tensor(data2)
+            x3 = paddle.to_tensor(data3)
             result = paddle.stack([x1, x2, x3])
             result_np = result.numpy()
         expected_result = np.stack([data1, data2, data3])
         np.testing.assert_allclose(expected_result, result_np, rtol=1e-05)
 
         with base.dygraph.guard():
-            y1 = base.dygraph.to_variable(data1)
+            y1 = paddle.to_tensor(data1)
             result = paddle.stack([y1], axis=0)
             result_np_2 = result.numpy()
         expected_result_2 = np.stack([data1], axis=0)
@@ -397,10 +399,57 @@ class TestStackListOfSingleTensor(unittest.TestCase):
     def test_list_single_tensor(self):
         expect = paddle.stack(self.x)
         paddle.base.core._set_prim_all_enabled(True)
-        st_model = paddle.jit.to_static(paddle.stack)
+        st_model = paddle.jit.to_static(paddle.stack, full_graph=True)
         actual = st_model(self.x)
         np.testing.assert_allclose(expect, actual)
         paddle.enable_static()
+
+
+class TestPrimStackGrad(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        paddle.seed(2022)
+        self.x = [paddle.randn((4, 2, 6), dtype="float32") for _ in range(3)]
+        for i in range(len(self.x)):
+            self.x[i].stop_gradient = False
+
+    def test_stack_double_grad(self):
+        paddle.base.core.set_prim_eager_enabled(True)
+        z = paddle.stack(self.x)
+        z = paddle.tanh(z)
+        grads_out = paddle.grad(z, self.x[1], create_graph=True)
+        ggrads_out = paddle.grad(grads_out, self.x[1], create_graph=True)[0]
+
+        zz = paddle.tanh(self.x[1])
+        grads_expected = paddle.grad(zz, self.x[1], create_graph=True)
+        ggrads_expected = paddle.grad(
+            grads_expected, self.x[1], create_graph=False
+        )[0]
+
+        np.testing.assert_allclose(ggrads_out, ggrads_expected)
+        paddle.enable_static()
+        paddle.base.core.set_prim_eager_enabled(False)
+
+    def test_stack_triple_grad(self):
+        paddle.base.core.set_prim_eager_enabled(True)
+        z = paddle.stack(self.x)
+        z = paddle.tanh(z)
+        grads_out = paddle.grad(z, self.x[1], create_graph=True)
+        ggrads_out = paddle.grad(grads_out, self.x[1], create_graph=True)
+        gggrads_out = paddle.grad(ggrads_out, self.x[1], create_graph=False)[0]
+
+        zz = paddle.tanh(self.x[1])
+        grads_expected = paddle.grad(zz, self.x[1], create_graph=True)
+        ggrads_expected = paddle.grad(
+            grads_expected, self.x[1], create_graph=True
+        )
+        gggrads_expected = paddle.grad(
+            ggrads_expected, self.x[1], create_graph=True
+        )[0]
+
+        np.testing.assert_allclose(gggrads_out, gggrads_expected)
+        paddle.enable_static()
+        paddle.base.core.set_prim_eager_enabled(False)
 
 
 if __name__ == '__main__':

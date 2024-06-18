@@ -81,11 +81,9 @@ class NestSequence:
                     warning_types.add(type(var))
             if warning_types:
                 logging_utils.warn(
-                    "Output of traced function contains non-tensor type values: {}. "
+                    f"Output of traced function contains non-tensor type values: {list(warning_types)}. "
                     "Currently, We don't support to update them while training and will return "
-                    "what we first saw. Please try to return them as tensor.".format(
-                        list(warning_types)
-                    )
+                    "what we first saw. Please try to return them as tensor."
                 )
 
     @property
@@ -112,7 +110,7 @@ class LazyInitialized:
 
 class ProgramInfo:
     """
-    A helper class to recoder Program information
+    A helper class to record Program information
     """
 
     def __init__(self):
@@ -126,7 +124,7 @@ class ProgramInfo:
 
     def __call__(self, key, prog_creator):
         """
-        Recoder infer program and op size.
+        Record infer program and op size.
         """
         assert key in ['fp32', 'amp', 'fp16']
         if key not in self.programs:
@@ -241,7 +239,7 @@ class PartialProgramLayer:
                 program_id=self.program_id, use_scope_cache=True
             ),
             self._cuda_graph_vec,
-            *attrs
+            *attrs,
         )
 
         restored_nest_out = self._restore_out(out_vars)
@@ -268,7 +266,7 @@ class PartialProgramLayer:
                 program_id=self.program_id, use_scope_cache=True
             ),
             self._cuda_graph_vec,
-            *attrs
+            *attrs,
         )
 
         return out_vars
@@ -444,9 +442,6 @@ class PartialProgramLayer:
     @LazyInitialized
     def _train_program_id(self):
         program_id = paddle.utils._hash_with_id(self._train_program, self)
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
-        )
         return program_id
 
     @LazyInitialized
@@ -456,9 +451,6 @@ class PartialProgramLayer:
     @LazyInitialized
     def _train_amp_program_id(self):
         program_id = paddle.utils._hash_with_id(self._train_amp_program, self)
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
-        )
         return program_id
 
     @LazyInitialized
@@ -469,9 +461,6 @@ class PartialProgramLayer:
     def _train_pure_fp16_program_id(self):
         program_id = paddle.utils._hash_with_id(
             self._train_pure_fp16_program, self
-        )
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
         )
         return program_id
 
@@ -564,7 +553,7 @@ class PartialProgramLayer:
         else:
             """
             Can't just return paddle.static.Program(), because self.backward_program is a property,
-            whenever we call this method, a tmp Program() object is created and is gc immediatly
+            whenever we call this method, a tmp Program() object is created and is gc immediately
             after executed the following line in PartialProgramLayer.__call__.
 
             >>> self.backward_program.desc.block(0),
@@ -597,7 +586,7 @@ class PartialProgramLayer:
             return x, y
 
         loss = forward(in)[0].sum()
-        loss.backward()  # <----- x@grad will be overwrited by elementwise_add_grad Op
+        loss.backward()  # <----- x@grad will be overwritten by elementwise_add_grad Op
         """
 
         def _need_aggregation(var):
@@ -621,7 +610,7 @@ class PartialProgramLayer:
             suffix = "@dy2static"
             var_grad_name = var.grad_name
             new_grad_name = var.name + suffix + "@GRAD"
-            finded_ops = list(
+            found_ops = list(
                 filter(
                     lambda x: x[0] >= start_idx
                     and any(
@@ -632,9 +621,9 @@ class PartialProgramLayer:
                 )
             )
 
-            # len(finded_ops) may equals zero when stop_gradient works.
-            # len(finded_ops) may > 1, because we may have fill_constant op.
-            if len(finded_ops) == 0:
+            # len(found_ops) may equals zero when stop_gradient works.
+            # len(found_ops) may > 1, because we may have fill_constant op.
+            if len(found_ops) == 0:
                 return None
             # step1: create a new var named var.name@GRAD
             target_program.block(0).create_var(
@@ -644,13 +633,13 @@ class PartialProgramLayer:
                 shape=var.shape,
             )
             # step2: rename the var.name@GRAD to var.name@GRAD@dy2static
-            for idx, op in finded_ops:
+            for idx, op in found_ops:
                 op._rename_input(var_grad_name, new_grad_name)
                 op._rename_output(var_grad_name, new_grad_name)
             # step3: insert sum op to aggregate the gradient.
             #        var.name@GRAD = sum(var.name@dy2static@GRAD, var.name@GRAD)
             target_program.block(0)._insert_op(
-                finded_ops[-1][0] + 1,
+                found_ops[-1][0] + 1,
                 type='sum',
                 inputs={'X': [var_grad_name, new_grad_name]},
                 outputs={"Out": var_grad_name},
@@ -842,7 +831,7 @@ class PartialProgramLayer:
             self._outputs.var_ids
         )
         backward_end_op_index = whole_program.desc.block(0).op_size()
-        # For Backward process in CINN, all param@GRAD shoule be skipped for GC, because
+        # For Backward process in CINN, all param@GRAD should be skipped for GC, because
         # they will be shared in scope and used by optimizer.
         backward_skip_vars = self._parse_skip_gc_vars(
             whole_program
@@ -1110,18 +1099,15 @@ class PartialProgramLayer:
         """
         if not isinstance(self._params, (list, tuple)):
             raise TypeError(
-                "Type of self._params in PartialProgramLayer should be list or tuple, but received %s."
-                % type(self._params)
+                f"Type of self._params in PartialProgramLayer should be list or tuple, but received {type(self._params)}."
             )
 
         param_and_buffer_names_set = set()
         for i, var in enumerate(self._params):
-            # self._params constains parameters and buffers with persistable=True.
+            # self._params contains parameters and buffers with persistable=True.
             if not isinstance(var, core.eager.Tensor):
                 raise TypeError(
-                    'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.format(
-                        i, type(var)
-                    )
+                    f'Type of self._params[{i}] in PartialProgramLayer should be Parameter or Variable, but received {type(var)}.'
                 )
             param_and_buffer_names_set.add(var.name)
 
@@ -1131,12 +1117,11 @@ class PartialProgramLayer:
                     if name not in param_and_buffer_names_set:
                         raise ValueError(
                             "\n\tWe don't support to define layer with parameters in the function decorated by `@to_static`."
-                            "\n\tBut we found parameter(%s) was created in the decorated function."
+                            f"\n\tBut we found parameter({name}) was created in the decorated function."
                             "\n"
                             "\n\tRevise suggestion: "
-                            "\n\t\t1. Please ensure all your sublayers are inheritted from nn.Layer."
+                            "\n\t\t1. Please ensure all your sublayers are inherited from nn.Layer."
                             "\n\t\t2. Please use nn.ParameterList and nn.LayerList as container instead of using a native Python container such as List"
-                            % name
                         )
 
     def _valid_vars(self, vars):
@@ -1155,7 +1140,7 @@ def partial_program_from(concrete_program, from_method=False):
         inputs,
         concrete_program.outputs,
         concrete_program.parameters,
-        **concrete_program.kwargs
+        **concrete_program.kwargs,
     )
 
 

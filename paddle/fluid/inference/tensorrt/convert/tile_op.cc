@@ -35,12 +35,6 @@ class TileOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
 
     if (engine_->with_dynamic_shape()) {
-      std::vector<int32_t> start(rank, 0);
-      std::vector<int32_t> stride(rank, 1);
-      auto start_tensor =
-          Add1DConstantLayer(start, output_name + "start_tensor");
-      auto stride_tensor =
-          Add1DConstantLayer(stride, output_name + "stride_tensor");
       auto input_shape_tensor = Shape(input);
 
       nvinfer1::ITensor* repeat_tensor = nullptr;
@@ -76,9 +70,26 @@ class TileOpConverter : public OpConverter {
         itensors.push_back(one_rank_tensor);
         itensors.push_back(repeat_tensor);
         repeat_expand_tensor = Concat(itensors);
+      }
+      if (rank < repeat_rank) {
+        auto* one_rank_tensor =
+            Add1DConstantLayer(std::vector<int32_t>(repeat_rank - rank, 1));
+        std::vector<nvinfer1::ITensor*> itensors;
+        itensors.push_back(one_rank_tensor);
+        itensors.push_back(input_shape_tensor);
+        input_shape_tensor = Concat(itensors);
+        // need reshape input to more dims.
+        input = Reshape(input, input_shape_tensor, "reshape_input_befor_slice");
+        repeat_expand_tensor = repeat_tensor;
       } else {
         repeat_expand_tensor = repeat_tensor;
       }
+      std::vector<int32_t> start(std::max(rank, repeat_rank), 0);
+      std::vector<int32_t> stride(std::max(rank, repeat_rank), 1);
+      auto start_tensor =
+          Add1DConstantLayer(start, output_name + "start_tensor");
+      auto stride_tensor =
+          Add1DConstantLayer(stride, output_name + "stride_tensor");
       auto output_shape_tensor = Prod(input_shape_tensor, repeat_expand_tensor);
       auto layer = TRT_ENGINE_ADD_LAYER(engine_,
                                         Slice,
@@ -90,8 +101,12 @@ class TileOpConverter : public OpConverter {
       layer->setInput(1, *start_tensor);
       layer->setInput(2, *output_shape_tensor);
       layer->setInput(3, *stride_tensor);
+#if IS_TRT_VERSION_GE(8600)
+      layer->setMode(nvinfer1::SampleMode::kWRAP);
+#else
       layer->setMode(nvinfer1::SliceMode::kWRAP);
-      RreplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
+#endif
+      ReplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
 
     } else {
       std::vector<int> repeat_times =
@@ -121,8 +136,12 @@ class TileOpConverter : public OpConverter {
       }
       auto layer = TRT_ENGINE_ADD_LAYER(
           engine_, Slice, *input, input_shape, output_dim, output_stride);
+#if IS_TRT_VERSION_GE(8600)
+      layer->setMode(nvinfer1::SampleMode::kWRAP);
+#else
       layer->setMode(nvinfer1::SliceMode::kWRAP);
-      RreplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
+#endif
+      ReplenishLayerAndOutput(layer, "tile", {output_name}, test_mode);
     }
 
 #endif

@@ -20,7 +20,7 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/phi/common/place.h"
-#include "paddle/pir/core/ir_printer.h"
+#include "paddle/pir/include/core/ir_printer.h"
 
 REGISTER_FILE_SYMBOLS(kernel_dialect);
 
@@ -60,6 +60,24 @@ void PrintKernelType(pir::Type type, std::ostream &os) {
     os << "tensor_array<";
     tensor_array_type.dtype().Print(os);
     os << ">";
+  } else if (type.isa<AllocatedSparseCooTensorType>()) {
+    AllocatedSparseCooTensorType sparse_coo_tensor_type =
+        type.dyn_cast<AllocatedSparseCooTensorType>();
+
+    os << phi::AllocationTypeStr(sparse_coo_tensor_type.place().GetType())
+       << "_";
+    os << "sparse_coo_tensor_type<";
+    sparse_coo_tensor_type.dtype().Print(os);
+    os << ">";
+  } else if (type.isa<AllocatedSparseCsrTensorType>()) {
+    AllocatedSparseCsrTensorType sparse_csr_tensor_type =
+        type.dyn_cast<AllocatedSparseCsrTensorType>();
+
+    os << phi::AllocationTypeStr(sparse_csr_tensor_type.place().GetType())
+       << "_";
+    os << "sparse_csr_tensor_type<";
+    sparse_csr_tensor_type.dtype().Print(os);
+    os << ">";
   }
 }
 
@@ -78,6 +96,8 @@ KernelDialect::KernelDialect(pir::IrContext *context)
 void KernelDialect::initialize() {
   RegisterTypes<paddle::dialect::AllocatedDenseTensorType,
                 paddle::dialect::AllocatedSelectedRowsType,
+                paddle::dialect::AllocatedSparseCooTensorType,
+                paddle::dialect::AllocatedSparseCsrTensorType,
                 paddle::dialect::AllocatedDenseTensorArrayType>();
   RegisterOps<dialect::PhiKernelOp, dialect::LegacyKernelOp>();
   RegisterAttributes<paddle::dialect::KernelAttribute>();
@@ -92,43 +112,43 @@ void KernelDialect::PrintAttribute(pir::Attribute attr,
   PrintKernelAttribute(attr, os);
 }
 
-void KernelDialect::PrintOperation(pir::Operation *op,
-                                   pir::IrPrinter &printer) const {
+pir::OpPrintFn KernelDialect::PrintOperation(pir::Operation *op) const {
   if (op->dyn_cast<PhiKernelOp>() || op->dyn_cast<LegacyKernelOp>()) {
-    auto &os = printer.os;
-    printer.PrintOpResult(op);
-    os << " =";
-    if (auto phi_kernel_op = op->dyn_cast<PhiKernelOp>()) {
-      std::string kernel_name = phi_kernel_op.kernel_name();
-      if (op->attributes().count("is_inplace") != 0 &&
-          op->attributes()
-              .at("is_inplace")
-              .dyn_cast<pir::BoolAttribute>()
-              .data()) {
-        kernel_name = kernel_name + "_";
+    return [](pir::Operation *op, pir::IrPrinter &printer) {
+      auto &os = printer.os;
+      printer.PrintOpResult(op);
+      os << " =";
+      if (auto phi_kernel_op = op->dyn_cast<PhiKernelOp>()) {
+        std::string kernel_name = phi_kernel_op.kernel_name();
+        if (op->attributes().count("is_inplace") != 0 &&
+            op->attributes()
+                .at("is_inplace")
+                .dyn_cast<pir::BoolAttribute>()
+                .data()) {
+          kernel_name = kernel_name + "_";
+        }
+        os << " \"" << kernel_name << "(phi_kernel)\"";
+      } else {
+        auto legacy_kernel_op = op->dyn_cast<LegacyKernelOp>();
+        std::string kernel_name = legacy_kernel_op.kernel_name();
+        if (op->attributes().count("is_inplace") != 0 &&
+            op->attributes()
+                .at("is_inplace")
+                .dyn_cast<pir::BoolAttribute>()
+                .data()) {
+          kernel_name = kernel_name + "_";
+        }
+        os << " \"" << kernel_name << "(legacy_kernel)\"";
       }
-      os << " \"" << kernel_name << "(phi_kernel)\"";
-    } else {
-      auto legacy_kernel_op = op->dyn_cast<LegacyKernelOp>();
-      std::string kernel_name = legacy_kernel_op.kernel_name();
-      if (op->attributes().count("is_inplace") != 0 &&
-          op->attributes()
-              .at("is_inplace")
-              .dyn_cast<pir::BoolAttribute>()
-              .data()) {
-        kernel_name = kernel_name + "_";
-      }
-      os << " \"" << kernel_name << "(legacy_kernel)\"";
-    }
-    printer.PrintOpOperands(op);
-    printer.PrintAttributeMap(op);
-    os << " :";
-    printer.PrintOperandsType(op);
-    os << " -> ";
-    printer.PrintOpReturnType(op);
-  } else {
-    printer.PrintGeneralOperation(op);
+      printer.PrintOpOperands(op);
+      printer.PrintAttributeMap(op);
+      os << " :";
+      printer.PrintOperandsType(op);
+      os << " -> ";
+      printer.PrintOpReturnType(op);
+    };
   }
+  return nullptr;
 }
 
 CustomKernelDialect::CustomKernelDialect(pir::IrContext *context)
@@ -149,24 +169,28 @@ void CustomKernelDialect::PrintAttribute(pir::Attribute attr,
   PrintKernelAttribute(attr, os);
 }
 
-void CustomKernelDialect::PrintOperation(pir::Operation *op,
-                                         pir::IrPrinter &printer) const {
-  auto &os = printer.os;
-  printer.PrintOpResult(op);
-  os << " =";
-  auto custom_kernel_op = op->dyn_cast<CustomKernelOp>();
-  std::string kernel_name = custom_kernel_op.kernel_name();
-  if (op->attributes().count("is_inplace") != 0 &&
-      op->attributes().at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
-    kernel_name = kernel_name + "_";
-  }
-  os << " \"" << kernel_name << "(custom_kernel)\"";
-  printer.PrintOpOperands(op);
-  printer.PrintAttributeMap(op);
-  os << " :";
-  printer.PrintOperandsType(op);
-  os << " -> ";
-  printer.PrintOpReturnType(op);
+pir::OpPrintFn CustomKernelDialect::PrintOperation(pir::Operation *op) const {
+  return [](pir::Operation *op, pir::IrPrinter &printer) {
+    auto &os = printer.os;
+    printer.PrintOpResult(op);
+    os << " =";
+    auto custom_kernel_op = op->dyn_cast<CustomKernelOp>();
+    std::string kernel_name = custom_kernel_op.kernel_name();
+    if (op->attributes().count("is_inplace") != 0 &&
+        op->attributes()
+            .at("is_inplace")
+            .dyn_cast<pir::BoolAttribute>()
+            .data()) {
+      kernel_name = kernel_name + "_";
+    }
+    os << " \"" << kernel_name << "(custom_kernel)\"";
+    printer.PrintOpOperands(op);
+    printer.PrintAttributeMap(op);
+    os << " :";
+    printer.PrintOperandsType(op);
+    os << " -> ";
+    printer.PrintOpReturnType(op);
+  };
 }
 #ifdef PADDLE_WITH_DNNL
 OneDNNKernelDialect::OneDNNKernelDialect(pir::IrContext *context)
@@ -189,43 +213,43 @@ void OneDNNKernelDialect::PrintAttribute(pir::Attribute attr,
   PrintKernelAttribute(attr, os);
 }
 
-void OneDNNKernelDialect::PrintOperation(pir::Operation *op,
-                                         pir::IrPrinter &printer) const {
+pir::OpPrintFn OneDNNKernelDialect::PrintOperation(pir::Operation *op) const {
   if (op->dyn_cast<PhiKernelOp>() || op->dyn_cast<LegacyKernelOp>()) {
-    auto &os = printer.os;
-    printer.PrintOpResult(op);
-    os << " =";
-    if (auto phi_kernel_op = op->dyn_cast<PhiKernelOp>()) {
-      std::string kernel_name = phi_kernel_op.kernel_name();
-      if (op->attributes().count("is_inplace") != 0 &&
-          op->attributes()
-              .at("is_inplace")
-              .dyn_cast<pir::BoolAttribute>()
-              .data()) {
-        kernel_name = kernel_name + "_";
+    return [](pir::Operation *op, pir::IrPrinter &printer) {
+      auto &os = printer.os;
+      printer.PrintOpResult(op);
+      os << " =";
+      if (auto phi_kernel_op = op->dyn_cast<PhiKernelOp>()) {
+        std::string kernel_name = phi_kernel_op.kernel_name();
+        if (op->attributes().count("is_inplace") != 0 &&
+            op->attributes()
+                .at("is_inplace")
+                .dyn_cast<pir::BoolAttribute>()
+                .data()) {
+          kernel_name = kernel_name + "_";
+        }
+        os << " \"" << kernel_name << "(phi_kernel)\"";
+      } else {
+        auto legacy_kernel_op = op->dyn_cast<LegacyKernelOp>();
+        std::string kernel_name = legacy_kernel_op.kernel_name();
+        if (op->attributes().count("is_inplace") != 0 &&
+            op->attributes()
+                .at("is_inplace")
+                .dyn_cast<pir::BoolAttribute>()
+                .data()) {
+          kernel_name = kernel_name + "_";
+        }
+        os << " \"" << kernel_name << "(legacy_kernel)\"";
       }
-      os << " \"" << kernel_name << "(phi_kernel)\"";
-    } else {
-      auto legacy_kernel_op = op->dyn_cast<LegacyKernelOp>();
-      std::string kernel_name = legacy_kernel_op.kernel_name();
-      if (op->attributes().count("is_inplace") != 0 &&
-          op->attributes()
-              .at("is_inplace")
-              .dyn_cast<pir::BoolAttribute>()
-              .data()) {
-        kernel_name = kernel_name + "_";
-      }
-      os << " \"" << kernel_name << "(legacy_kernel)\"";
-    }
-    printer.PrintOpOperands(op);
-    printer.PrintAttributeMap(op);
-    os << " :";
-    printer.PrintOperandsType(op);
-    os << " -> ";
-    printer.PrintOpReturnType(op);
-  } else {
-    printer.PrintGeneralOperation(op);
+      printer.PrintOpOperands(op);
+      printer.PrintAttributeMap(op);
+      os << " :";
+      printer.PrintOperandsType(op);
+      os << " -> ";
+      printer.PrintOpReturnType(op);
+    };
   }
+  return nullptr;
 }
 #endif
 

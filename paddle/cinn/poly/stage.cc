@@ -432,7 +432,7 @@ void Stage::EditTempTensor(Stage *other, int level) {
     if (isl_is_removed_axis(this->transformed_domain().get(), i)) {
       continue;
     }
-    int new_i = i - isl_get_precending_removed_axes_counts(
+    int new_i = i - isl_get_preceding_removed_axes_counts(
                         this->transformed_domain().get(), i);
     if (bind_info.count(new_i) != 0) {
       if (bind_info[new_i].for_type == ir::ForType::GPUThread &&
@@ -441,7 +441,7 @@ void Stage::EditTempTensor(Stage *other, int level) {
       }
     }
     // Iterators of loop within level will be erased.
-    auto related_dim_in = GetRelatedInputAxies(
+    auto related_dim_in = GetRelatedInputAxes(
         this->transform(), this->domain(), {transform_domain_names[i]});
     for (auto &j : related_dim_in) {
       erase_var.insert(j);
@@ -454,33 +454,33 @@ void Stage::EditTempTensor(Stage *other, int level) {
     if (isl_is_removed_axis(this->transformed_domain().get(), i)) {
       continue;
     }
-    int new_i = i - isl_get_precending_removed_axes_counts(
+    int new_i = i - isl_get_preceding_removed_axes_counts(
                         this->transformed_domain().get(), i);
     if (bind_info.count(new_i) != 0) {
       if (bind_info[new_i].for_type == ir::ForType::GPUBlock &&
           (this->scope() == ScopeKind::kShared ||
            this->scope() == ScopeKind::kLocal)) {
-        auto related_dim_in = GetRelatedInputAxies(
+        auto related_dim_in = GetRelatedInputAxes(
             this->transform(), this->domain(), {transform_domain_names[i]});
         for (auto &j : related_dim_in) {
           erase_var.insert(j);
         }
       } else if (bind_info[new_i].for_type == ir::ForType::GPUThread &&
                  (this->scope() == ScopeKind::kLocal)) {
-        auto related_dim_in = GetRelatedInputAxies(
+        auto related_dim_in = GetRelatedInputAxes(
             this->transform(), this->domain(), {transform_domain_names[i]});
         for (auto &j : related_dim_in) {
           erase_var.insert(j);
         }
       } else {
-        auto related_dim_in = GetRelatedInputAxies(
+        auto related_dim_in = GetRelatedInputAxes(
             this->transform(), this->domain(), {transform_domain_names[i]});
         for (auto &j : related_dim_in) {
           undo_erase_var.insert(j);
         }
       }
     } else {
-      auto related_dim_in = GetRelatedInputAxies(
+      auto related_dim_in = GetRelatedInputAxes(
           this->transform(), this->domain(), {transform_domain_names[i]});
       for (auto &j : related_dim_in) {
         undo_erase_var.insert(j);
@@ -608,9 +608,9 @@ void Stage::ComputeAt(Stage *other, int level) {
     level_out_dims.push_back(target_map_dims[i]);
     related_output_dims_set.insert(target_map_dims[i]);
   }
-  auto related_input_dims = GetRelatedInputAxies(
+  auto related_input_dims = GetRelatedInputAxes(
       new_target_transform, other->domain(), level_out_dims);
-  auto related_output_dims = GetRelatedOutputAxies(
+  auto related_output_dims = GetRelatedOutputAxes(
       new_target_transform, other->domain(), related_input_dims);
   for (auto &i : related_output_dims) {
     related_output_dims_set.insert(i);
@@ -708,7 +708,7 @@ void Stage::ComputeAt(Stage *other, int level) {
       int max_iv = maxv.get_num_si();
       int min_iv = minv.get_num_si();
       auto related_input_dims =
-          GetRelatedInputAxies(trans_res, domain_, {trans_dim_out[i]}, true);
+          GetRelatedInputAxes(trans_res, domain_, {trans_dim_out[i]}, true);
       if (max_iv != min_iv && related_input_dims.empty()) {
         trans_res = isl::manage(isl_remove_axis_by_name(
             trans_res.release(), isl_dim_out, trans_dim_out[i].c_str()));
@@ -751,8 +751,8 @@ void Stage::ComputeAt2(Stage *other, int level) {
   other->CtrlDepend(ir::Tensor(tensor()));
   if (this->tensor()->buffer.defined()) {
     std::string t_name = this->tensor()->buffer->name;
-    if (utils::Endswith(t_name, "_read_cache") ||
-        utils::Endswith(t_name, "_write_cache")) {
+    if (utils::EndsWith(t_name, "_read_cache") ||
+        utils::EndsWith(t_name, "_write_cache")) {
       EditTempTensor(other, level);
     }
   }
@@ -776,8 +776,8 @@ void Stage::ComputeAt3(Stage *other, int level) {
   other->CtrlDepend(ir::Tensor(tensor()));
   if (this->tensor()->buffer.defined()) {
     std::string t_name = this->tensor()->buffer->name;
-    if (utils::Endswith(t_name, "_read_cache") ||
-        utils::Endswith(t_name, "_write_cache")) {
+    if (utils::EndsWith(t_name, "_read_cache") ||
+        utils::EndsWith(t_name, "_write_cache")) {
       EditTempTensor(other, level);
     }
   }
@@ -788,8 +788,8 @@ void Stage::SimpleComputeAt(Stage *other, int level) {
   other->CtrlDepend(ir::Tensor(tensor()));
   if (this->tensor()->buffer.defined()) {
     std::string t_name = this->tensor()->buffer->name;
-    if (utils::Endswith(t_name, "_read_cache") ||
-        utils::Endswith(t_name, "_write_cache")) {
+    if (utils::EndsWith(t_name, "_read_cache") ||
+        utils::EndsWith(t_name, "_write_cache")) {
       EditTempTensor(other, level);
     }
   }
@@ -1133,7 +1133,7 @@ void Stage::Vectorize(int level, int factor) {
     return;
   }
   int removed_axes_counts =
-      isl_get_precending_removed_axes_counts(transformed_domain.get(), level);
+      isl_get_preceding_removed_axes_counts(transformed_domain.get(), level);
   VLOG(3) << "removed_axes_counts are " << removed_axes_counts
           << " before axis " << ith_dim_name(level);
   VLOG(3) << "vectorize level: " << level - removed_axes_counts
@@ -1171,7 +1171,7 @@ void Stage::Parallel(int level) {
     return;
   }
   int removed_axes_counts =
-      isl_get_precending_removed_axes_counts(transformed_domain.get(), level);
+      isl_get_preceding_removed_axes_counts(transformed_domain.get(), level);
   VLOG(3) << "removed_axes_counts are " << removed_axes_counts
           << " before axis " << ith_dim_name(level);
   parallel_info_.insert(level - removed_axes_counts);
@@ -1186,7 +1186,7 @@ void Stage::Unroll(int level) {
     return;
   }
   int removed_axes_counts =
-      isl_get_precending_removed_axes_counts(transformed_domain.get(), level);
+      isl_get_preceding_removed_axes_counts(transformed_domain.get(), level);
   VLOG(3) << "removed_axes_counts are " << removed_axes_counts
           << " before axis " << ith_dim_name(level);
   unroll_info_.insert(level - removed_axes_counts);
@@ -1609,7 +1609,7 @@ void Stage::AddForloopInfo(int level, const StageForloopInfo &info) {
   CHECK_LT(level, num_levels);
   auto transformed_domain = this->transformed_domain();
   int removed_axes_counts =
-      isl_get_precending_removed_axes_counts(transformed_domain.get(), level);
+      isl_get_preceding_removed_axes_counts(transformed_domain.get(), level);
 
   if (isl_is_removed_axis(transformed_domain.get(), level)) {
     // For scalar case, forloop info will be lost after for-1 and reduce-axis
@@ -1627,7 +1627,7 @@ void Stage::AddForloopInfo(int level, const StageForloopInfo &info) {
 }
 
 void Stage::CopyTransform(Stage *other, int level) {
-  auto target_transform = RemoveAxiesByInputNames(
+  auto target_transform = RemoveAxesByInputNames(
       other->transform(), other->domain(), other->origin_reduce_axis_names());
   isl::set target_origin_domain(other->domain().ctx(),
                                 isl_set_to_str(other->domain().get()));
@@ -1654,9 +1654,9 @@ void Stage::CopyTransform(Stage *other, int level) {
       dim_out_level.push_back(
           isl_map_get_dim_name(temp_target_trans.get(), isl_dim_out, i));
     }
-    auto related_dim_in = GetRelatedInputAxies(
+    auto related_dim_in = GetRelatedInputAxes(
         temp_target_trans, target_origin_domain, dim_out_level);
-    auto related_dim_out = GetRelatedOutputAxies(
+    auto related_dim_out = GetRelatedOutputAxes(
         temp_target_trans, target_origin_domain, related_dim_in);
     for (auto &i : related_dim_out) {
       if (i == pivot_dim_out) {

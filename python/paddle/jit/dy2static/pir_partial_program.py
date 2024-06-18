@@ -20,7 +20,6 @@ import numpy as np
 import paddle
 import paddle.pir.core as ir_static
 from paddle import _legacy_C_ops
-from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.autograd.backward_utils import ValueDict
 from paddle.autograd.ir_backward import grad
 from paddle.base import core, framework
@@ -30,9 +29,17 @@ from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.optimizer.lr import LRScheduler
 from paddle.pir import Value, fake_value, is_fake_value
 
-from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard
+from .logging_utils import TranslatorLogger
+from .utils import (
+    RETURN_NO_VALUE_MAGIC_NUM,
+    backend_guard,
+    cinn_is_enabled,
+    cse_is_enabled,
+)
 
 __all__ = []
+
+prog_logger = TranslatorLogger()
 
 
 class NestSequence:
@@ -114,7 +121,7 @@ class UnionFindSet:
         yield from self.father.keys()
 
 
-class RunableProgram:
+class RunnableProgram:
     """a pir program ready for run_program_op to run. constructed by 3 parts:
     - pir program (pir::Program)
     - in_out_values
@@ -134,6 +141,8 @@ class RunableProgram:
     def _get_value_name_map_from_program(cls, program):
         ret = ValueDict()
         ret[fake_value()] = "FakeVar"
+        for keyword, arg in program.global_block().kwargs().items():
+            ret[arg] = keyword
         for op in program.global_block().ops:
             if op.name() == "builtin.set_parameter":
                 ret[op.operand(0).source()] = op.attrs()["parameter_name"]
@@ -171,7 +180,7 @@ class RunableProgram:
             return []
         if isinstance(values[0], str):
             return values
-        return [self.get_value_name_map[v] for v in values]
+        return [self.get_value_name_map.get(v, "FakeVar") for v in values]
 
     @cached_property
     def x_values(self):
@@ -239,7 +248,7 @@ class RunableProgram:
         cloned_program, _ = paddle.base.libpaddle.pir.clone_program(
             self.program
         )
-        return RunableProgram(
+        return RunnableProgram(
             cloned_program,
             (self.x_names, self.param_names, self.out_names),
             None,
@@ -282,10 +291,27 @@ class RunableProgram:
         """
         origin_fwd = self.forward_program
         origin_bwd = self.backward_program
+
+        prog_logger.log(
+            1,
+            f"******** [JIT] PIR forward program before PIR PASS ********\n{origin_fwd} ",
+        )
+        prog_logger.log(
+            1,
+            f"******** [JIT] PIR backward program before PIR PASS ********\n{origin_bwd} ",
+        )
         # NOTE(dev): Add this line to trigger program_name_attr logic
         program_name_attr = self.program_name_attr
         self.forward_program, self.backward_program = pass_fn(
-            origin_fwd, origin_bwd
+            origin_fwd, origin_bwd, program_name_attr
+        )
+        prog_logger.log(
+            1,
+            f"******** [JIT] PIR forward program after PIR PASS ********\n{origin_fwd} ",
+        )
+        prog_logger.log(
+            1,
+            f"******** [JIT] PIR backward program after PIR PASS ********\n{origin_bwd} ",
         )
 
     # cached property can ensure program is splited only once.
@@ -315,29 +341,29 @@ class RunableProgram:
         value_program_attr = {}
         for k, ns in self.program_name_attr.items():
             if k.startswith("f"):
-                values = [fwd_map[n] for n in ns]
+                values = [fwd_map.get(n, fake_value()) for n in ns]
             elif k.startswith("b"):
-                values = [bwd_map[n] for n in ns]
+                values = [bwd_map.get(n, fake_value()) for n in ns]
             elif k == "no_need_buffers":
-                values = [fwd_map[n] for n in ns]
+                values = [fwd_map.get(n, fake_value()) for n in ns]
             else:
                 raise ValueError(f"Unknown program attr: {k}")
             value_program_attr[k] = values
-        self.deal_inplace_values(self.forward_program)
+        self.deal_inplace_values(self.forward_program, self.backward_program)
         self.deal_inplace_values(self.backward_program)
         return value_program_attr
 
-    def deal_inplace_values(self, program):
-        # deal inplace op and modify program inplacely.
-        value2name = self._get_value_name_map_from_program(program)
+    def deal_inplace_values(self, program1, program2=None):
+        # deal inplace op and modify program1 inplacely.
+        value2name = self._get_value_name_map_from_program(program1)
 
         def has_name(value):
-            if self._get_name_defining_op(program, value) is not None:
+            if self._get_name_defining_op(program1, value) is not None:
                 return True
             return False
 
         ufset = UnionFindSet()
-        for op in program.global_block().ops:
+        for op in program1.global_block().ops:
             for out_idx, in_idx in paddle.core.pir.get_op_inplace_info(
                 op
             ).items():
@@ -350,11 +376,31 @@ class RunableProgram:
 
         for value in ufset.iter_elements():
             if has_name(ufset.find_root(value)):
-                name_defining_op = self._get_name_defining_op(program, value)
-                if name_defining_op:
+                name_defining_op = self._get_name_defining_op(program1, value)
+                if (
+                    name_defining_op
+                    and name_defining_op.name() == 'builtin.shadow_output'
+                ):
+                    old_name = name_defining_op.attrs()['output_name']
+                    new_name = value2name[ufset.find_root(value)]
+                    if old_name == new_name:
+                        continue
                     paddle.core.pir.reset_shadow_output_name(
-                        name_defining_op, value2name[ufset.find_root(value)]
+                        name_defining_op, new_name
                     )
+                    if program2 is None:
+                        continue
+                    block = program2.global_block()
+                    kwargs = block.kwargs()
+                    if old_name in kwargs:
+                        if new_name not in kwargs:
+                            new_value = block.add_kwarg(
+                                new_name, kwargs[old_name].type()
+                            )
+                        else:
+                            new_value = kwargs[new_name]
+                        kwargs[old_name].replace_all_uses_with(new_value)
+                        block.erase_kwarg(old_name)
 
     @cached_property
     def program_name_attr(self):
@@ -385,15 +431,151 @@ class RunableProgram:
 
 class PartialProgramLayerHook:
     def before_append_backward(self, forward_program, src_vars):
-        ...
+        return forward_program, src_vars
 
     def after_append_backward(
-        self, whole_program, src_vars, backward_start_idx
+        self,
+        whole_program,
+        inputs,
+        src_vars,
+        grad_outputs,
+        forward_end_idx,
+        backward_start_idx,
     ):
-        ...
+        return whole_program, forward_end_idx, src_vars
 
     def after_infer(self, infer_program):
-        ...
+        return infer_program
+
+
+class OperatorIndexPreservePass:
+    OP_NAME_PREFIX = "preserved_index_"
+    counter = 0
+
+    def __init__(self, index, pass_fn):
+        self.name = f"{OperatorIndexPreservePass.OP_NAME_PREFIX}{OperatorIndexPreservePass.counter}"
+        OperatorIndexPreservePass.counter += 1
+        self.pass_fn = pass_fn
+        self.index = index
+
+    def __call__(self, program):
+        if len(program.global_block().ops) == 0:
+            assert self.index == 0
+            return self.pass_fn(program)
+        paddle.base.libpaddle.pir.append_shadow_output(
+            program,
+            program.global_block().ops[0].result(0),
+            self.name,
+            self.index,
+        )
+        program = self.pass_fn(program)
+        new_index = 0
+        for op in program.global_block().ops:
+            if (
+                op.name() == "builtin.shadow_output"
+                and self.name in op.attrs()["output_name"]
+            ):
+                break
+            new_index += 1
+        # remove forward_backward_seperator
+        if new_index >= len(program.global_block().ops):
+            raise RuntimeError(
+                f"Can't find index preserve label {self.name}, don't remove it in pass."
+            )
+        program.global_block().remove_op(program.global_block().ops[new_index])
+        self.index = new_index
+        return program
+
+
+class IndicesPreservePass:
+    def __init__(self, indices, pass_fn):
+        self.pass_fn = pass_fn
+        self.indices = indices
+        self.new_indices = None
+
+    def __call__(self, program):
+        passes = [self.pass_fn]
+        for idx, index in enumerate(self.indices):
+            passes.append(OperatorIndexPreservePass(index, passes[idx]))
+        new_program = passes[-1](program)
+
+        self.new_indices = [p.index for p in passes[1:]]
+        return new_program
+
+
+class ValuePreservePass:
+    OP_NAME_PREFIX = "preserved_value_"
+
+    def __init__(self, values):
+        self.values = values
+
+    def apply(self, program):
+        raise RuntimeError("Not implemented.")
+
+    def __call__(self, program):
+        # create fake values for args
+        all_values = list(
+            filter(
+                lambda x: isinstance(x, Value) and not is_fake_value(x),
+                paddle.utils.flatten(self.values),
+            )
+        )
+
+        value2name = ValueDict()
+        for idx, v in enumerate(all_values):
+            name = f"{ValuePreservePass.OP_NAME_PREFIX}{idx}"
+            if v in value2name:
+                continue
+            value2name[v] = name
+            paddle.base.libpaddle.pir.append_shadow_output(
+                program,
+                v,
+                name,
+                len(program.global_block().ops),
+            )
+
+        # apply program pass
+        program = self.apply(program)
+
+        # collect new value
+        name2new_value = {}
+        to_remove_op = []
+        for op in program.global_block().ops:
+            if op.name() == "builtin.shadow_output":
+                if op.attrs()["output_name"].startswith(
+                    ValuePreservePass.OP_NAME_PREFIX
+                ):
+                    name2new_value[op.attrs()["output_name"]] = op.operand(
+                        0
+                    ).source()
+                    to_remove_op.append(op)
+
+        # remove old op
+        for op in to_remove_op:
+            program.global_block().remove_op(op)
+
+        # get new values
+        value2new_value = ValueDict(
+            {
+                v: name2new_value.get(name, fake_value())
+                for v, name in value2name.items()
+            }
+        )
+
+        new_args = paddle.utils.map_structure(
+            lambda x: (
+                value2new_value[x] if not is_fake_value(x) else fake_value()
+            ),
+            self.values,
+        )
+        self.values = new_args
+        return program
+
+
+class FusedBnAddActPass(ValuePreservePass):
+    def apply(self, program):
+        program = paddle.base.libpaddle.pir.apply_bn_add_act_pass(program)
+        return program
 
 
 class PartialProgramLayer:
@@ -431,7 +613,11 @@ class PartialProgramLayer:
         assert isinstance(self._build_strategy, BuildStrategy)
 
         self._origin_main_program = self._verify_program(main_program)
-        self._cuda_graph_vec = self._create_cuda_graph_vec()
+        if parameters is not None:
+            parameters[0][:] = self._params
+            parameters[1][:] = self._param_values
+        with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
+            self._cuda_graph_vec = self._create_cuda_graph_vec()
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
         # Set default mode to train
@@ -455,7 +641,7 @@ class PartialProgramLayer:
 
         # program_id -> list(scope)
         self._scope_cache = {}
-        self._hooker = None
+        self._hookers = []
         self._backend = kwargs.get('backend', None)
         self._grad_var_names = {}
         self._debug_name = None
@@ -496,10 +682,11 @@ class PartialProgramLayer:
             self._cuda_graph_vec,
             *attrs,
         )
-        return out_vars
+        restored_nest_out = self._restore_out(out_vars)
+        return restored_nest_out
 
     @cached_property
-    def origin_runable_program(self):
+    def origin_runnable_program(self):
         inputs = list(self._inputs.var_list)
         outputs = list(self._outputs.var_list)
         params = self._param_values
@@ -509,7 +696,7 @@ class PartialProgramLayer:
             len(self._origin_main_program.global_block().ops),
             "output_",
         )
-        return RunableProgram(
+        return RunnableProgram(
             self._origin_main_program, (inputs, params, outputs)
         )
 
@@ -528,8 +715,8 @@ class PartialProgramLayer:
             data = np.array(lr_value).astype(convert_dtype(lr_var.dtype))
             lr_var.set_value(data)
 
-    def set_hooker(self, hooker):
-        self._hooker = hooker
+    def add_hooker(self, hooker):
+        self._hookers.append(hooker)
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
         if not use_scope_cache:
@@ -549,41 +736,103 @@ class PartialProgramLayer:
     def _create_program(self, is_infer_mode=False):
         if is_infer_mode:
 
-            def pass_fn(forward_program, backward_program):
+            def pass_fn(forward_program, backward_program, program_name_attr):
+                # common pass
                 pm = paddle.base.libpaddle.pir.PassManager()
                 paddle.base.libpaddle.pir.infer_symbolic_shape_pass(
                     pm, forward_program
                 )
-                if self._build_strategy.build_cinn_pass:
-                    paddle.base.libpaddle.pir.add_cinn_pass(pm, forward_program)
                 pm.run(forward_program)
+                if cse_is_enabled():
+                    paddle.base.libpaddle.pir.apply_cse_pass(forward_program)
+
+                # if-else pass
+                if cinn_is_enabled(self._build_strategy, self._backend):
+                    paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
+                else:
+                    paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
+                        forward_program
+                    )
+
                 return forward_program, backward_program
 
             # TODO(xiongkun) who to transfer the pruning program?
-            infer_program = self.origin_runable_program.clone()
-            if self._hooker:
-                self._hooker.after_infer(infer_program)
+            infer_program = self.origin_runnable_program.clone()
+            for hooker in self._hookers:
+                hooker.after_infer(infer_program)
             infer_program.apply_pir_program_pass(pass_fn)
             return infer_program
         else:
-            train_program: RunableProgram = self.origin_runable_program.clone()
+            train_program: RunnableProgram = (
+                self.origin_runnable_program.clone()
+            )
             train_program = self._append_backward_desc(train_program)
             # Note: Only set grad type once after initializing train program. So we put it here.
             self._set_grad_type(self._params, train_program)
 
-            def pass_fn(forward_program, backward_program):
-                fwd_pm = paddle.base.libpaddle.pir.PassManager()
-                bwd_pm = paddle.base.libpaddle.pir.PassManager()
+            def pass_fn(forward_program, backward_program, program_name_attr):
+                def init_backward_program_shape_analysis(
+                    forward_program, backward_program
+                ):
+                    forward_shape_analysis = paddle.base.libpaddle.pir.get_shape_constraint_ir_analysis(
+                        forward_program
+                    )
+                    backward_shape_analysis = paddle.base.libpaddle.pir.get_shape_constraint_ir_analysis(
+                        backward_program
+                    )
+                    backward_shape_analysis.register_symbol_cstr_from_shape_analysis(
+                        forward_shape_analysis
+                    )
+                    forward_name_value_map = {
+                        item.name: item
+                        for item in forward_program.list_vars()
+                        if item.has_name
+                    }
 
-                if self._build_strategy.build_cinn_pass:
-                    paddle.base.libpaddle.pir.add_cinn_pass(
-                        fwd_pm, forward_program
+                    def share_symbol_shape_from_forward_to_backward(
+                        forward_value, backward_value
+                    ):
+                        backward_shape_analysis.set_shape_or_data_for_var(
+                            backward_value,
+                            forward_shape_analysis.get_shape_or_data_for_var(
+                                forward_value
+                            ),
+                        )
+
+                    def get_kwargs_forward_matched_value(kw_name, kw_value):
+                        if kw_name in program_name_attr['bo_g']:
+                            idx = program_name_attr['bo_g'].index(kw_name)
+                            return forward_name_value_map[
+                                program_name_attr['fo'][idx]
+                            ]
+                        elif kw_name in forward_name_value_map:
+                            return forward_name_value_map[kw_name]
+                        else:
+                            raise Exception(f"kw_args: {kw_name} not found")
+
+                    for [kw_name, kw_value] in (
+                        backward_program.global_block().kwargs().items()
+                    ):
+                        forward_matched_value = (
+                            get_kwargs_forward_matched_value(kw_name, kw_value)
+                        )
+                        share_symbol_shape_from_forward_to_backward(
+                            forward_matched_value, kw_value
+                        )
+
+                if cse_is_enabled():
+                    paddle.base.libpaddle.pir.apply_cse_pass(forward_program)
+                    paddle.base.libpaddle.pir.apply_cse_pass(backward_program)
+                if cinn_is_enabled(self._build_strategy, self._backend):
+                    paddle.base.libpaddle.pir.apply_cinn_pass(forward_program)
+                    init_backward_program_shape_analysis(
+                        forward_program, backward_program
                     )
-                    paddle.base.libpaddle.pir.add_cinn_pass(
-                        bwd_pm, backward_program
+                    paddle.base.libpaddle.pir.apply_cinn_pass(backward_program)
+                else:
+                    paddle.base.libpaddle.pir.check_infer_symbolic_if_need(
+                        forward_program
                     )
-                    fwd_pm.run(forward_program)
-                    bwd_pm.run(backward_program)
                 return forward_program, backward_program
 
             train_program.apply_pir_program_pass(pass_fn)
@@ -592,9 +841,6 @@ class PartialProgramLayer:
     @cached_property
     def _train_program_id(self):
         program_id = paddle.utils._hash_with_id(self.train_program, self)
-        core._set_cached_executor_build_strategy(
-            program_id, self._build_strategy
-        )
         return program_id
 
     @cached_property
@@ -616,10 +862,6 @@ class PartialProgramLayer:
         """
         Return current train or eval program hash id.
         """
-        if _in_amp_guard() or _in_pure_fp16_guard():
-            raise NotImplementedError(
-                "Currently, AMP is not supported in PIR mode"
-            )
         if self.training:
             return self._train_program_id
         else:
@@ -627,18 +869,10 @@ class PartialProgramLayer:
 
     @cached_property
     def train_program(self):
-        if _in_amp_guard() or _in_pure_fp16_guard():
-            raise NotImplementedError(
-                "Currently, AMP is not supported in PIR mode"
-            )
         return self._create_program()
 
     @cached_property
     def infer_program(self):
-        if _in_amp_guard() or _in_pure_fp16_guard():
-            raise NotImplementedError(
-                "Currently, AMP is not supported in PIR mode"
-            )
         return self._create_program(is_infer_mode=True)
 
     def _verify_program(self, main_program):
@@ -665,7 +899,7 @@ class PartialProgramLayer:
             return x, y
 
         loss = forward(in)[0].sum()
-        loss.backward()  # <----- x@grad will be overwrited by elementwise_add_grad Op
+        loss.backward()  # <----- x@grad will be overwritten by elementwise_add_grad Op
         """
 
         def _need_aggregation(var):
@@ -689,7 +923,7 @@ class PartialProgramLayer:
             suffix = "@dy2static"
             var_grad_name = var.grad_name
             new_grad_name = var.name + suffix + "@GRAD"
-            finded_ops = list(
+            found_ops = list(
                 filter(
                     lambda x: x[0] >= start_idx
                     and any(
@@ -700,9 +934,9 @@ class PartialProgramLayer:
                 )
             )
 
-            # len(finded_ops) may equals zero when stop_gradient works.
-            # len(finded_ops) may > 1, because we may have fill_constant op.
-            if len(finded_ops) == 0:
+            # len(found_ops) may equals zero when stop_gradient works.
+            # len(found_ops) may > 1, because we may have fill_constant op.
+            if len(found_ops) == 0:
                 return None
             # step1: create a new var named var.name@GRAD
             target_program.global_block().create_var(
@@ -712,13 +946,13 @@ class PartialProgramLayer:
                 shape=var.shape,
             )
             # step2: rename the var.name@GRAD to var.name@GRAD@dy2static
-            for _, op in finded_ops:
+            for _, op in found_ops:
                 op._rename_input(var_grad_name, new_grad_name)
                 op._rename_output(var_grad_name, new_grad_name)
             # step3: insert sum op to aggregate the gradient.
             #        var.name@GRAD = sum(var.name@dy2static@GRAD, var.name@GRAD)
             target_program.global_block()._insert_op(
-                finded_ops[-1][0] + 1,
+                found_ops[-1][0] + 1,
                 type='sum',
                 inputs={'X': [var_grad_name, new_grad_name]},
                 outputs={"Out": var_grad_name},
@@ -732,18 +966,19 @@ class PartialProgramLayer:
             _insert_aggregation_ops_for_var(target_program, _var)
 
     @switch_to_static_graph
-    def _append_backward_desc(self, train_runnable_program: RunableProgram):
+    def _append_backward_desc(self, train_runnable_program: RunnableProgram):
         program = train_runnable_program.program
         targets = train_runnable_program.out_values
-        # TODO(@zhuoge): refine the interface, use runable_program to apply passes.
-        if self._hooker:
-            program, targets = self._hooker.before_append_backward(
-                program, targets
-            )
+        # TODO(@zhuoge): refine the interface, use runnable_program to apply passes.
+        for hooker in self._hookers:
+            program, targets = hooker.before_append_backward(program, targets)
         inputs = train_runnable_program.x_values
         params = train_runnable_program.param_values
         combined_inputs = list(itertools.chain(inputs, params))
         forward_end_idx = len(program.global_block().ops)
+        forward_end_op = None
+        if forward_end_idx > 0:
+            forward_end_op = program.global_block().ops[-1]
         grad_info_map = [None] * len(combined_inputs)
         with backend_guard(self._backend):
             check_type(
@@ -755,14 +990,14 @@ class PartialProgramLayer:
             with ir_static.program_guard(program, None):
                 # create outputs_grad for backward to avoid full and full_like op.
                 forward_outputs_grads = []
-                for out_op_result in targets:
-                    if out_op_result.stop_gradient is True:
+                for out_value in targets:
+                    if out_value.stop_gradient is True:
                         forward_outputs_grads.append(fake_value())
                     else:
                         value = paddle.full_like(
-                            out_op_result,
+                            out_value,
                             fill_value=1.0,
-                            dtype=out_op_result.dtype,
+                            dtype=out_value.dtype,
                         )
                         forward_outputs_grads.append(value)
                 paddle.base.libpaddle.pir.append_shadow_outputs(
@@ -796,14 +1031,24 @@ class PartialProgramLayer:
                             )
                         ),
                     )
+                    if forward_end_op is not None:
+                        for idx, op in enumerate(program.global_block().ops):
+                            if op == forward_end_op:
+                                forward_end_idx = idx + 1
+                                break
 
-            if self._hooker:
+            for hooker in self._hookers:
                 (
                     program,
                     forward_end_idx,
                     targets,
-                ) = self._hooker.after_append_backward(
-                    program, targets, forward_end_idx
+                ) = hooker.after_append_backward(
+                    program,
+                    combined_inputs,
+                    targets,
+                    forward_outputs_grads,
+                    forward_end_idx,
+                    forward_end_idx + op_between_forward_and_backward,
                 )
             # TODO: add later
             # self.prepare_gradient_aggregation(
@@ -816,7 +1061,7 @@ class PartialProgramLayer:
         p_grad_value = list(map(mapping_value, grad_info_map[inputs_size:]))
         o_grad_value = list(map(mapping_value, forward_outputs_grads))
 
-        # insert grads name for RunableProgram (we need name for grad_inputs and grad_outputs)
+        # insert grads name for RunnableProgram (we need name for grad_inputs and grad_outputs)
         input_grads_to_append = list(
             filter(lambda x: not is_fake_value(x), o_grad_value)
         )
@@ -834,8 +1079,31 @@ class PartialProgramLayer:
         backward_start_op_index = (
             forward_end_idx + op_between_forward_and_backward
         )
+
         # construct a runnable program.
-        return RunableProgram(
+        fused_bn_add_act_pass = FusedBnAddActPass(
+            [inputs, params, targets, x_grad_value, p_grad_value, o_grad_value]
+        )
+        forward_index_pass = IndicesPreservePass(
+            [forward_end_idx, backward_start_op_index, backward_end_op_index],
+            fused_bn_add_act_pass,
+        )
+        program = forward_index_pass(program)
+        (
+            inputs,
+            params,
+            targets,
+            x_grad_value,
+            p_grad_value,
+            o_grad_value,
+        ) = fused_bn_add_act_pass.values
+        (
+            forward_end_idx,
+            backward_start_op_index,
+            backward_end_op_index,
+        ) = forward_index_pass.new_indices
+
+        return RunnableProgram(
             program,
             (inputs, params, targets),
             (x_grad_value, p_grad_value, o_grad_value),
@@ -866,10 +1134,10 @@ class PartialProgramLayer:
 
     def _prepare_attributes(self):
         attrs = [
-            'forward_global_block',
-            self.program.forward_program.global_block(),
-            'backward_global_block',
-            self.program.backward_program.global_block(),
+            'forward_program',
+            self.program.forward_program,
+            'backward_program',
+            self.program.backward_program,
             'is_test',
             not self.training,
             'program_id',
@@ -926,7 +1194,7 @@ class PartialProgramLayer:
         return input_vars
 
     def _prepare_outputs(self):
-        return paddle.framework.core.create_empty_tensors_with_op_results(
+        return paddle.framework.core.create_empty_tensors_with_values(
             self._outputs.var_list
         )
 
@@ -1004,7 +1272,7 @@ class PartialProgramLayer:
 
         return out_vars
 
-    def _set_grad_type(self, params, train_program: RunableProgram):
+    def _set_grad_type(self, params, train_program: RunnableProgram):
         # NOTE: if user set sparse gradient mode, the param's gradient
         # will be SelectedRows, not LoDTensor. But tracer will just
         # set param grad Tensor by forward Tensor(LoDTensor)
@@ -1038,18 +1306,15 @@ class PartialProgramLayer:
         """
         if not isinstance(self._params, (list, tuple)):
             raise TypeError(
-                "Type of self._params in PartialProgramLayer should be list or tuple, but received %s."
-                % type(self._params)
+                f"Type of self._params in PartialProgramLayer should be list or tuple, but received {type(self._params)}."
             )
 
         param_and_buffer_names_set = set()
         for i, var in enumerate(self._params):
-            # self._params constains parameters and buffers with persistable=True.
+            # self._params contains parameters and buffers with persistable=True.
             if not isinstance(var, core.eager.Tensor):
                 raise TypeError(
-                    'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.format(
-                        i, type(var)
-                    )
+                    f'Type of self._params[{i}] in PartialProgramLayer should be Parameter or Variable, but received {type(var)}.'
                 )
             param_and_buffer_names_set.add(var.name)
 

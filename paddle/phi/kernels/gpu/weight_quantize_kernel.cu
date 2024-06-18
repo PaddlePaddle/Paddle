@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/datatype_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -37,7 +38,6 @@ void WeightQuantizeKernel(const Context& dev_ctx,
 
   DenseTensor quanted_x;
   dev_ctx.template Alloc<int8_t>(out);
-  dev_ctx.template Alloc<T>(scale);
   size_t m = x.dims()[0];
   size_t n = x.dims()[1];
   quanted_x.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
@@ -51,15 +51,17 @@ void WeightQuantizeKernel(const Context& dev_ctx,
           "Currently, arch only support 70, 75, 80, 86."));
 
   if (algo == "llm.int8") {
+    dev_ctx.template Alloc<float>(scale);
     std::vector<int> axis = {1, 0};
     funcs::Transpose<Context, int8_t, 2> trans;
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
                                  quanted_x.data<int8_t>(),
-                                 scale->data<T>(),
+                                 scale->data<float>(),
                                  weight_shape);
     trans(dev_ctx, quanted_x, out, axis);
   } else if (algo == "weight_only_int8") {
+    dev_ctx.template Alloc<T>(scale);
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
                                  quanted_x.data<int8_t>(),
@@ -71,11 +73,11 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                 weight_shape,
                                 arch);
   } else if (algo == "weight_only_int4") {
-    phi::errors::Unimplemented(
+    PADDLE_FATAL(
         "Weight quant gpu kernel currently don't support weight_only_int4 "
         "algo, please use cpu version.");
   } else {
-    phi::errors::Unimplemented(
+    PADDLE_FATAL(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
         "'llm.int8'], but got[%s]",
         algo);

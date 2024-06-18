@@ -23,9 +23,9 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/split.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/utils/string/printf.h"
+#include "paddle/utils/string/split.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
@@ -38,9 +38,9 @@ PADDLE_DEFINE_EXPORTED_bool(
     "To find this error in time, we use init_allocated_mem to indicate "
     "that initializing the allocated memory with a small value "
     "during unit testing.");
-PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
-PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
-PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
+COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
+COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
+COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 PD_DECLARE_bool(benchmark);
 
 namespace paddle {
@@ -216,7 +216,8 @@ size_t Used<platform::XPUPlace>(const platform::XPUPlace &place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 class GPUBuddyAllocatorList {
  private:
-  GPUBuddyAllocatorList() : devices_(platform::GetSelectedDevices()) {
+  GPUBuddyAllocatorList()
+      : devices_(platform::GetSelectedDevices()), init_flags_(), allocators_() {
     auto gpu_num = devices_.size();
     allocators_.resize(gpu_num);
     init_flags_.reserve(gpu_num);
@@ -298,11 +299,11 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
   auto *buddy_allocator = GetGPUBuddyAllocator(place.device);
   auto *ptr = buddy_allocator->Alloc(size);
   if (ptr == nullptr) {
-    platform::CUDADeviceGuard(place.device);
+    platform::CUDADeviceGuard guard(place.device);
     size_t avail, total;
     platform::GpuMemoryUsage(&avail, &total);
     PADDLE_THROW(platform::errors::ResourceExhausted(
-        "Cannot allocate %s in GPU %d, avaliable %s, total %s, GpuMinChunkSize "
+        "Cannot allocate %s in GPU %d, available %s, total %s, GpuMinChunkSize "
         "%s, GpuMaxChunkSize %s, GPU memory used: %s.",
         string::HumanReadableSize(size),
         place.device,
@@ -459,6 +460,9 @@ class BuddyAllocatorList {
       phi::DeviceManager::SetDevice(device_type_, dev_id);
       platform::CustomPlace place(device_type_, dev_id);
 
+      VLOG(10) << "Init BuddyAllocator on " << place
+               << " with GetExtraPaddingSize "
+               << phi::DeviceManager::GetExtraPaddingSize(place);
       allocators_[dev_id] = std::make_unique<BuddyAllocator>(
           std::unique_ptr<detail::SystemAllocator>(
               new detail::CustomAllocator(device_type_, dev_id)),
@@ -503,7 +507,7 @@ void *Alloc<platform::CustomPlace>(const platform::CustomPlace &place,
     size_t avail, total;
     phi::DeviceManager::MemoryStats(place, &total, &avail);
     PADDLE_THROW(platform::errors::ResourceExhausted(
-        "Cannot allocate %s in %s:%d, avaliable %s, total %s, used "
+        "Cannot allocate %s in %s:%d, available %s, total %s, used "
         "%s. ",
         string::HumanReadableSize(size),
         place.GetDeviceType(),

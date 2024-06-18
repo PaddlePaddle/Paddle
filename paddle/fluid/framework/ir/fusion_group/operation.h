@@ -55,7 +55,7 @@ struct Operation {
       return false;
     }
     if (IsGradOp() && exprs.size() != static_cast<size_t>(num_operands)) {
-      // When it is a backward opertion, it should hold a expression for each
+      // When it is a backward operation, it should hold a expression for each
       // operand.
       return false;
     }

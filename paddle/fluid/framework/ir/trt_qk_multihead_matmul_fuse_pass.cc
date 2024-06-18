@@ -22,10 +22,7 @@
 #endif
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace patterns {
+namespace paddle::framework::ir::patterns {
 
 //       input_qk   input_v
 //       |q     |k      v
@@ -249,7 +246,8 @@ PDNode* TrtQKMultiHeadMatmulPattern::operator()() {
   return reshape2_qkv_out_var;
 }
 
-}  // namespace patterns
+}  // namespace paddle::framework::ir::patterns
+namespace paddle::framework::ir {
 
 int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
                                                 const std::string& name_scope,
@@ -310,7 +308,7 @@ int TrtQkMultiHeadMatmulFusePass::BuildQkFusion(Graph* graph,
     int hidden_out = wq_tensor->dims()[1];
     int head_size = hidden_out / head_number;
     if (abs(scale_attr - 1.0f / sqrt(static_cast<float>(head_size))) > 1e-5) {
-      VLOG(3) << "scale of muilthead matmul do not fit the requirement of "
+      VLOG(3) << "scale of multi-head matmul do not fit the requirement of "
                  "qk attention plugin, Stop fusing.";
       return;
     }
@@ -575,9 +573,7 @@ void TrtQkMultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
   AddStatis(fusion_count);
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(trt_qk_multihead_matmul_fuse_pass,
               paddle::framework::ir::TrtQkMultiHeadMatmulFusePass);

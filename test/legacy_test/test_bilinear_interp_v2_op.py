@@ -975,6 +975,29 @@ class TestBilinearInterpOpAPI_dy4(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
 
 
+class TestBilinearInterpOpAPI_dy5(unittest.TestCase):
+    def test_case(self):
+        import paddle
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        with base.dygraph.guard(place):
+            input_data = np.random.random((2, 3, 6, 6)).astype("float32")
+            scale_np = np.array([2, 2]).astype("int64")
+            input_x = paddle.to_tensor(input_data)
+            scale = paddle.to_tensor(scale_np)
+            expect_res = bilinear_interp_np(
+                input_data, out_h=12, out_w=12, align_corners=False
+            )
+            up_layer = paddle.nn.Upsample(
+                scale_factor=scale, mode="bilinear", align_corners=False
+            )
+            out = up_layer(input_x)
+            np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
+
+
 @unittest.skipIf(
     not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )

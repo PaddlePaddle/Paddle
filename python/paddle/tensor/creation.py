@@ -12,15 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define functions to get create a tensor
+from __future__ import annotations
 
 import math
 import re
+from typing import Any, Sequence, overload
 
 import numpy as np
+import numpy.typing as npt
 
 import paddle
 from paddle import _C_ops
+from paddle._typing import (
+    DTypeLike,
+    NestedNumbericSequence,
+    Numberic,
+    PlaceLike,
+    ShapeLike,
+    TensorLike,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -48,27 +58,40 @@ from ..framework import (
 __all__ = []
 
 
-def _complex_to_real_dtype(dtype):
+def _complex_to_real_dtype(dtype: DTypeLike) -> DTypeLike:
     if dtype == core.VarDesc.VarType.COMPLEX64:
         return core.VarDesc.VarType.FP32
     elif dtype == core.VarDesc.VarType.COMPLEX128:
         return core.VarDesc.VarType.FP64
+    elif dtype == paddle.pir.core.DataType.COMPLEX64:
+        return paddle.pir.core.DataType.FP32
+    elif dtype == paddle.pir.core.DataType.COMPLEX128:
+        return paddle.pir.core.DataType.FP64
     else:
         return dtype
 
 
-def _real_to_complex_dtype(dtype):
+def _real_to_complex_dtype(dtype: DTypeLike) -> DTypeLike:
     if dtype == core.VarDesc.VarType.FP32:
         return core.VarDesc.VarType.COMPLEX64
     elif dtype == core.VarDesc.VarType.FP64:
         return core.VarDesc.VarType.COMPLEX128
+    elif dtype == paddle.pir.core.DataType.FP32:
+        return paddle.pir.core.DataType.COMPLEX64
+    elif dtype == paddle.pir.core.DataType.FP64:
+        return paddle.pir.core.DataType.COMPLEX128
     else:
         return dtype
 
 
 def create_global_var(
-    shape, value, dtype, persistable=False, force_cpu=False, name=None
-):
+    shape: ShapeLike,
+    value: float,
+    dtype: DTypeLike,
+    persistable: bool = False,
+    force_cpu: bool = False,
+    name: str | None = None,
+) -> paddle.Tensor:
     """
     This function creates a new tensor variable with value in the global block(block 0).
 
@@ -81,7 +104,7 @@ def create_global_var(
                            Default: False
         force_cpu (bool, optional): Force this variable to be on CPU.
                          Default: False
-        name (str, optional): For detailed information, please refer to
+        name (str|None, optional): For detailed information, please refer to
            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Returns:
@@ -148,8 +171,13 @@ def create_global_var(
 
 
 def create_parameter(
-    shape, dtype, name=None, attr=None, is_bias=False, default_initializer=None
-):
+    shape: ShapeLike,
+    dtype: DTypeLike,
+    name: str | None = None,
+    attr: ParamAttr | None = None,
+    is_bias: bool = False,
+    default_initializer: paddle.nn.initializer.Initializer | None = None,
+) -> paddle.Tensor:
     """
     This function creates a parameter. The parameter is a learnable variable, which can have
     gradient, and can be optimized.
@@ -160,15 +188,15 @@ def create_parameter(
     Args:
         shape (list of int): Shape of the parameter
         dtype (str): Data type of the parameter. It can be set as 'float16', 'float32', 'float64'.
-        name (str, optional): For detailed information, please refer to
+        name(str|None, optional): For detailed information, please refer to
            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
-        attr (ParamAttr, optional): Attribute object of the specified argument. For detailed information, please refer to
+        attr (ParamAttr|None, optional): Attribute object of the specified argument. For detailed information, please refer to
            :ref:`api_paddle_ParamAttr` None by default, which means that ParamAttr will be initialized as it is.
         is_bias (bool, optional): This can affect which default initializer is chosen
                        when default_initializer is None. If is_bias,
                        initializer.Constant(0.0) will be used. Otherwise,
                        Xavier() will be used.
-        default_initializer (Initializer, optional): Initializer for the parameter
+        default_initializer (Initializer|None, optional): Initializer for the parameter
 
     Returns:
         The created parameter.
@@ -229,7 +257,9 @@ def create_parameter(
     )
 
 
-def create_tensor(dtype, name=None, persistable=False):
+def create_tensor(
+    dtype: DTypeLike, name: str | None = None, persistable: bool = False
+) -> paddle.Tensor:
     """
     Create a variable, which will hold a Tensor with data type dtype.
 
@@ -271,7 +301,13 @@ def create_tensor(dtype, name=None, persistable=False):
     )
 
 
-def linspace(start, stop, num, dtype=None, name=None):
+def linspace(
+    start: float | paddle.Tensor,
+    stop: float | paddle.Tensor,
+    num: int | paddle.Tensor,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> paddle.Tensor:
     r"""
     Return fixed number of evenly spaced values within a given interval. Note: no gradient calculation is performed.
 
@@ -282,9 +318,9 @@ def linspace(start, stop, num, dtype=None, name=None):
             or a 0-D Tensor with data type int32, int64, float32 or float64.
         num(int|Tensor): The input :attr:`num` is given num of the sequence. It is an int, \
             or a 0-D Tensor with data type int32.
-        dtype(np.dtype|str, optional): The data type of output tensor, it could be
+        dtype(str|paddle.dtype|np.dtype|None, optional): The data type of output tensor, it could be
             int32, int64, float32 and float64. Default: if None, the data type is float32.
-        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: the output data type will be float32, float64. The 1-D tensor with fixed number of evenly spaced values, \
@@ -370,10 +406,8 @@ def linspace(start, stop, num, dtype=None, name=None):
             and out_dtype == "int32"
         ):
             raise ValueError(
-                "The dtype of start/stop is {}/{} but the attr(dtype) of linspace is {}, "
-                "which may cause data type overflows. Please reset attr(dtype) of linspace.".format(
-                    start_dtype, stop_dtype, dtype
-                )
+                f"The dtype of start/stop is {start_dtype}/{stop_dtype} but the attr(dtype) of linspace is {dtype}, "
+                "which may cause data type overflows. Please reset attr(dtype) of linspace."
             )
 
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -393,7 +427,14 @@ def linspace(start, stop, num, dtype=None, name=None):
         return out
 
 
-def logspace(start, stop, num, base=10.0, dtype=None, name=None):
+def logspace(
+    start: float | paddle.Tensor,
+    stop: float | paddle.Tensor,
+    num: int | paddle.Tensor,
+    base: float | paddle.Tensor = 10.0,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> paddle.Tensor:
     r"""
     Return fixed number of logarithmical-evenly spaced values within the interval \
     :math:`[base^{start}, base^{stop}]`.
@@ -415,7 +456,7 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
             float32 or float64.
         dtype(np.dtype|str, optional): The data type of output tensor, it could be \
             int32, int64, float32 or float64. Default: if None, the data type is float32. \
-        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: The output data type will be float32, float64. The 1-D tensor with \
@@ -524,10 +565,8 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
             and out_dtype == "int32"
         ):
             raise ValueError(
-                "The dtype of start/stop/base is {}/{}/{} but the attr(dtype) of logspace is {}, "
-                "which may cause data type overflows. Please reset attr(dtype) of logspace.".format(
-                    start_dtype, stop_dtype, base_dtype, dtype
-                )
+                f"The dtype of start/stop/base is {start_dtype}/{stop_dtype}/{base_dtype} but the attr(dtype) of logspace is {dtype}, "
+                "which may cause data type overflows. Please reset attr(dtype) of logspace."
             )
 
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -548,14 +587,23 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
         return out
 
 
-def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
-    def _handle_tensor_dtype(tensor, dtype):
+def _to_tensor_non_static(
+    data: TensorLike,
+    dtype: DTypeLike | None = None,
+    place: PlaceLike | None = None,
+    stop_gradient: bool = True,
+) -> paddle.Tensor:
+    def _handle_tensor_dtype(
+        tensor: paddle.Tensor, dtype: DTypeLike
+    ) -> paddle.Tensor:
         if dtype:
             if convert_dtype(dtype) != convert_dtype(tensor.dtype):
                 return tensor.astype(convert_dtype(dtype))
         return tensor
 
-    def _handle_np_dtype(ndarray, dtype):
+    def _handle_np_dtype(
+        ndarray: npt.NDArray[Any], dtype: DTypeLike
+    ) -> npt.NDArray[Any]:
         if dtype:
             if convert_dtype(dtype) != convert_dtype(ndarray.dtype):
                 # should not ndarray.astype('uint16') directly, data bits is wrong
@@ -576,7 +624,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             data = np.array(data)
             if data.dtype == np.object_:
                 raise ValueError(
-                    "\n\tFaild to convert input data to a regular ndarray :\n\t - Usually "
+                    "\n\tFailed to convert input data to a regular ndarray :\n\t - Usually "
                     "this means the input data contains nested lists with different lengths. "
                 )
         elif isinstance(data, paddle.Tensor) and not in_dynamic_mode():
@@ -592,7 +640,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
         elif isinstance(data, (core.LoDTensor, core.Tensor)):
             # should't expose it to users, just for internal use.
             # convert core.Tensor/core.LoDTensor to Tensor first
-            # Currenly, there is no copy when places are same
+            # Currently, there is no copy when places are same
             if in_dynamic_mode():
                 data = core.eager.Tensor(data)
             else:
@@ -604,9 +652,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             return data
         else:
             raise TypeError(
-                "Can't constructs a 'paddle.Tensor' with data type {}, data type must be scalar|list|tuple|np.ndarray|paddle.Tensor".format(
-                    type(data)
-                )
+                f"Can't constructs a 'paddle.Tensor' with data type {type(data)}, data type must be scalar|list|tuple|np.ndarray|paddle.Tensor"
             )
         if not dtype:
             if data.dtype in [
@@ -650,7 +696,11 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
         )
 
 
-def _to_tensor_static(data, dtype=None, stop_gradient=None):
+def _to_tensor_static(
+    data: TensorLike,
+    dtype: DTypeLike | None = None,
+    stop_gradient: bool = True,
+) -> paddle.Tensor:
     if isinstance(data, (Variable, paddle.pir.Value)):
         output = data
         if dtype is not None and dtype != data.dtype:
@@ -717,7 +767,12 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
     return output
 
 
-def to_tensor(data, dtype=None, place=None, stop_gradient=True):
+def to_tensor(
+    data: TensorLike | NestedNumbericSequence,
+    dtype: DTypeLike | None = None,
+    place: PlaceLike | None = None,
+    stop_gradient: bool = True,
+) -> paddle.Tensor:
     r"""
     Constructs a ``paddle.Tensor`` from ``data`` ,
     which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor.
@@ -800,7 +855,12 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             return _to_tensor_static(data, dtype, stop_gradient)
 
 
-def full_like(x, fill_value, dtype=None, name=None):
+def full_like(
+    x: paddle.Tensor,
+    fill_value: bool | float,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> paddle.Tensor:
     """
 
     This function creates a tensor filled with ``fill_value`` which has identical shape of ``x`` and ``dtype``.
@@ -812,7 +872,7 @@ def full_like(x, fill_value, dtype=None, name=None):
         dtype(np.dtype|str, optional): The data type of output. The data type can be one
             of bool, float16, float32, float64, int32, int64. The default value is None, which means the output
             data type is the same as input.
-        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: Tensor which is created according to ``x``, ``fill_value`` and ``dtype``.
@@ -883,7 +943,14 @@ def full_like(x, fill_value, dtype=None, name=None):
         return out
 
 
-def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
+def fill_constant(
+    shape: ShapeLike,
+    dtype: DTypeLike,
+    value: float | paddle.Tensor,
+    force_cpu: bool = False,
+    out: paddle.Tensor | None = None,
+    name: str | None = None,
+) -> paddle.Tensor:
     if in_dynamic_or_pir_mode():
         place = _current_expected_place()
         if force_cpu:
@@ -899,25 +966,23 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             value = float(value)
             if isinstance(shape, (list, tuple)):
                 shape = paddle.utils.convert_shape_to_list(shape)
-
         else:
+            paddle.utils.check_shape(shape)
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
-                    shape = paddle.utils.get_int_tensor_list(shape, place)
+                    shape = paddle.utils.get_int_tensor_list(shape)
             elif isinstance(shape, paddle.pir.Value):
                 pass
             else:
-                TypeError("Shape only supports OpReslut, or list, or tuple.")
+                raise TypeError("Shape only supports Value, or list, or tuple.")
 
         if out is None:
             out = _C_ops.full(shape, value, dtype, place)
             out.stop_gradient = True
             return out
-
-        if out is not None:
-            _C_ops.full_(out, shape, value, dtype, place)
-            out.stop_gradient = True
-            return out
+        _C_ops.full_(out, shape, value, dtype, place)
+        out.stop_gradient = True
+        return out
 
     else:
         attrs = {'force_cpu': force_cpu}
@@ -983,7 +1048,9 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         return out
 
 
-def ones(shape, dtype=None, name=None):
+def ones(
+    shape: ShapeLike, dtype: DTypeLike | None = None, name: str | None = None
+) -> paddle.Tensor:
     """
     Create a Tensor of specified :attr:`shape` and :attr:`dtype` and fill it with 1.
 
@@ -993,7 +1060,7 @@ def ones(shape, dtype=None, name=None):
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype (np.dtype|str, optional): Data type of output Tensor, it should be one of
             bool, float16, float32, float64, int32 and int64. If it is set to None, the data type will be float32.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: A Tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements are 1.
@@ -1031,7 +1098,9 @@ def ones(shape, dtype=None, name=None):
     return fill_constant(value=1.0, shape=shape, dtype=dtype, name=name)
 
 
-def ones_like(x, dtype=None, name=None):
+def ones_like(
+    x: paddle.Tensor, dtype: DTypeLike | None = None, name: str | None = None
+) -> paddle.Tensor:
     """
     Returns a Tensor filled with the value 1, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
@@ -1043,7 +1112,7 @@ def ones_like(x, dtype=None, name=None):
             output tensor. Supported data types: bool, float16, float32, float64,
             int32, int64. If ``dtype`` is None, the data type is the same as ``x``.
             Default is None.
-        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: A Tensor filled with the value 1, with the same shape and
@@ -1066,7 +1135,11 @@ def ones_like(x, dtype=None, name=None):
     return full_like(x=x, fill_value=1, dtype=dtype, name=name)
 
 
-def zeros(shape, dtype=None, name=None):
+def zeros(
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> paddle.Tensor:
     """
     Creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
 
@@ -1076,7 +1149,7 @@ def zeros(shape, dtype=None, name=None):
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(np.dtype|str, optional): Data type of output Tensor, it supports
             bool, float16, float32, float64, int32 and int64. Default: if None, the data type is float32.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this
+        name(str|None, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1115,7 +1188,9 @@ def zeros(shape, dtype=None, name=None):
     return fill_constant(value=0.0, shape=shape, dtype=dtype, name=name)
 
 
-def zeros_like(x, dtype=None, name=None):
+def zeros_like(
+    x: paddle.Tensor, dtype: DTypeLike | None = None, name: str | None = None
+) -> paddle.Tensor:
     """
     Returns a Tensor filled with the value 0, with the same shape and
     data type (use ``dtype`` if ``dtype`` is not None) as ``x``.
@@ -1127,7 +1202,7 @@ def zeros_like(x, dtype=None, name=None):
             output tensor. Supported data types: bool, float16, float32, float64,
             int32, int64. If ``dtype`` is None, the data type is the same as ``x``.
             Default is None.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: A Tensor filled with the value 0, with the same shape and
@@ -1151,19 +1226,24 @@ def zeros_like(x, dtype=None, name=None):
     return full_like(x=x, fill_value=0, dtype=dtype, name=name)
 
 
-def eye(num_rows, num_columns=None, dtype=None, name=None):
+def eye(
+    num_rows: int,
+    num_columns: int | None = None,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> paddle.Tensor:
     """
 
     This function constructs 2-D Tensor with ones on the diagonal and zeros elsewhere.
 
     Args:
         num_rows(int): the number of rows in each batch Tensor.
-        num_columns(int, optional): the number of columns in each batch Tensor.
+        num_columns(int|None, optional): the number of columns in each batch Tensor.
             If None, default: num_rows.
         dtype(np.dtype|str, optional): The data type of the returned Tensor.
-            It should be int32, int64, float16, float32, float64. Default: if None, the data type
+            It should be int32, int64, float16, float32, float64, complex64, complex128. Default: if None, the data type
             is float32.
-        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: An identity Tensor or LoDTensor of shape [num_rows, num_columns].
@@ -1210,7 +1290,16 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
         check_dtype(
             dtype,
             'dtype',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'uint16',
+                'int32',
+                'int64',
+                'complex64',
+                'comple128',
+            ],
             'eye',
         )
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -1230,7 +1319,12 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     return out
 
 
-def full(shape, fill_value, dtype=None, name=None):
+def full(
+    shape: ShapeLike,
+    fill_value: bool | float | paddle.Tensor,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> paddle.Tensor:
     """
 
     Return a Tensor with the ``fill_value`` which size is same as ``shape``.
@@ -1240,11 +1334,11 @@ def full(shape, fill_value, dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         fill_value(bool|float|int|Tensor): The constant value used to initialize the Tensor to be created.
-            If ``fill_value`` is an Tensor, it shoule be an 0-D Tensor which represents a scalar.
+            If ``fill_value`` is an Tensor, it should be an 0-D Tensor which represents a scalar.
         dtype(np.dtype|str, optional): Data type of the output Tensor
-            which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
+            which can be float16, float32, float64, int32, int64, if dtype is `None`, the data
             type of created Tensor is `float32`.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: Tensor which is created according to ``shape``, ``fill_value`` and ``dtype``.
@@ -1292,7 +1386,13 @@ def full(shape, fill_value, dtype=None, name=None):
     return fill_constant(shape=shape, dtype=dtype, value=fill_value, name=name)
 
 
-def arange(start=0, end=None, step=1, dtype=None, name=None):
+def arange(
+    start: float | paddle.Tensor = 0,
+    end: float | paddle.Tensor | None = None,
+    step: float | paddle.Tensor = 1,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> paddle.Tensor:
     """
     Returns a 1-D Tensor with spaced values within a given interval.
 
@@ -1313,13 +1413,13 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             If ``end`` is None, the half-open interval is [0, ``start``).
             Default is None.
         step(float|int|Tensor, optional): Spacing between values. For any out,
-            it is the istance between two adjacent values, out[i+1] - out[i].
+            it is the instance between two adjacent values, out[i+1] - out[i].
             If ``step`` is a Tensor, it is a 0-D Tensor which represents a scalar
             and data type is int32, int64, float32, float64. . Default is 1.
         dtype(str|np.dtype, optional): The data type of the
             output tensor. Supported data types: int32, int64, float32, float64.
-            If ``dytpe`` is None, the data type is float32. Default is None.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+            If ``dtype`` is None, the data type is float32. Default is None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: A 1-D Tensor with values from the interval [``start``, ``end``)
@@ -1425,7 +1525,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         return out
 
 
-def _tril_triu_op(helper):
+def _tril_triu_op(helper: LayerHelper) -> paddle.Tensor:
     """Base op of tril_op and triu_op"""
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
@@ -1474,7 +1574,9 @@ def _tril_triu_op(helper):
     return out
 
 
-def tril(x, diagonal=0, name=None):
+def tril(
+    x: paddle.Tensor, diagonal: int = 0, name: str | None = None
+) -> paddle.Tensor:
     r"""
     Returns the lower triangular part of a matrix (2-D tensor) or batch
     of matrices :attr:`x`, the other elements of the result tensor are set
@@ -1491,7 +1593,7 @@ def tril(x, diagonal=0, name=None):
             the main diagonal. The main diagonal are the set of indices
             :math:`\{(i, i)\}` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
             :math:`d_{1}, d_{2}` are the dimensions of the matrix.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: Results of lower triangular operation by the specified diagonal of input tensor x,
@@ -1539,7 +1641,9 @@ def tril(x, diagonal=0, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def tril_(x, diagonal=0, name=None):
+def tril_(
+    x: paddle.Tensor, diagonal: int = 0, name: str | None = None
+) -> paddle.Tensor | None:
     r"""
     Inplace version of ``tril`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_tril`.
@@ -1549,7 +1653,9 @@ def tril_(x, diagonal=0, name=None):
         return _C_ops.tril_(x, diagonal)
 
 
-def triu(x, diagonal=0, name=None):
+def triu(
+    x: paddle.Tensor, diagonal: int = 0, name: str | None = None
+) -> paddle.Tensor:
     r"""
     Return the upper triangular part of a matrix (2-D tensor) or batch of matrices
     :attr:`x`, the other elements of the result tensor are set to 0.
@@ -1566,7 +1672,7 @@ def triu(x, diagonal=0, name=None):
             the main diagonal. The main diagonal are the set of indices
             :math:`\{(i, i)\}` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
             :math:`d_{1}, d_{2}` are the dimensions of the matrix.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: Results of upper triangular operation by the specified diagonal of input tensor x,
@@ -1616,7 +1722,9 @@ def triu(x, diagonal=0, name=None):
 
 
 @inplace_apis_in_dygraph_only
-def triu_(x, diagonal=0, name=None):
+def triu_(
+    x: paddle.Tensor, diagonal: int = 0, name: str | None = None
+) -> paddle.Tensor | None:
     r"""
     Inplace version of ``triu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_triu`.
@@ -1626,6 +1734,18 @@ def triu_(x, diagonal=0, name=None):
         return _C_ops.triu_(x, diagonal)
 
 
+@overload
+def meshgrid(
+    args: Sequence[paddle.Tensor], name: str | None = None
+) -> paddle.Tensor:
+    ...
+
+
+@overload
+def meshgrid(*args: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
+    ...
+
+
 def meshgrid(*args, **kwargs):
     """
 
@@ -1633,7 +1753,7 @@ def meshgrid(*args, **kwargs):
 
     Args:
         *args(Tensor|list of Tensor) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,),
-            (N2,),..., (Nk,). Support data types: ``float64``, ``float16``, ``float32``, ``int32``, ``int64``.
+            (N2,),..., (Nk,). Support data types: ``float64``, ``bfloat16``, ``float16``, ``float32``, ``int32``, ``int64``, ``complex64``, ``complex128``.
         **kwargs (optional): Currently, only accept name in **kwargs
             The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -1675,7 +1795,16 @@ def meshgrid(*args, **kwargs):
             check_dtype(
                 input_.dtype,
                 'create data type',
-                ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                [
+                    'uint16',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'complex64',
+                    'complex128',
+                ],
                 'meshgrid',
             )
 
@@ -1691,7 +1820,9 @@ def meshgrid(*args, **kwargs):
         return out
 
 
-def diag_embed(input, offset=0, dim1=-2, dim2=-1):
+def diag_embed(
+    input: TensorLike, offset: int = 0, dim1: int = -2, dim2: int = -1
+) -> paddle.Tensor:
     """
     Creates a tensor whose diagonals of certain 2D planes (specified by dim1 and dim2)
     are filled by ``input``. By default, a 2D plane formed by the last two dimensions
@@ -1810,7 +1941,9 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     return out
 
 
-def diagflat(x, offset=0, name=None):
+def diagflat(
+    x: paddle.Tensor, offset: int = 0, name: str | None = None
+) -> paddle.Tensor:
     """
     If ``x`` is a vector (1-D tensor), a 2-D square tensor with the elements of ``x`` as the diagonal is returned.
 
@@ -1828,7 +1961,7 @@ def diagflat(x, offset=0, name=None):
     Args:
         x (Tensor): The input tensor. It can be any shape. Its data type should be float16, float32, float64, int32, int64.
         offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal. Default: 0 (main diagonal).
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor, a square matrix. The output data type is the same as input data type.
@@ -1908,7 +2041,7 @@ def diagflat(x, offset=0, name=None):
         check_dtype(
             x.dtype,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
             'diagflat',
         )
         check_type(offset, 'offset', (int), 'diagflat')
@@ -1944,7 +2077,12 @@ def diagflat(x, offset=0, name=None):
         return out2
 
 
-def diag(x, offset=0, padding_value=0, name=None):
+def diag(
+    x: paddle.Tensor,
+    offset: int = 0,
+    padding_value: int = 0,
+    name: str | None = None,
+) -> paddle.Tensor:
     """
     If ``x`` is a vector (1-D tensor), a 2-D square tensor with the elements of ``x`` as the diagonal is returned.
 
@@ -1959,10 +2097,10 @@ def diag(x, offset=0, padding_value=0, name=None):
     If ``offset`` < 0, it is subdiagonal.
 
     Args:
-        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float16, float32, float64, int32, int64.
+        x (Tensor): The input tensor. Its shape is either 1-D or 2-D. Its data type should be float16, float32, float64, int32, int64, complex64, complex128.
         offset (int, optional): The diagonal offset. A positive value represents superdiagonal, 0 represents the main diagonal, and a negative value represents subdiagonal.
         padding_value (int|float, optional): Use this value to fill the area outside the specified diagonal band. Only takes effect when the input is a 1-D Tensor. The default value is 0.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor, a square matrix or a vector. The output data type is the same as input data type.
@@ -2026,16 +2164,24 @@ def diag(x, offset=0, padding_value=0, name=None):
         check_dtype(
             x.dtype,
             'x',
-            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'uint16',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
             'diag_v2',
         )
         check_type(offset, 'offset', (int), 'diag_v2')
         check_type(padding_value, 'padding_value', (int, float), 'diag_v2')
         if len(x.shape) != 1 and len(x.shape) != 2:
             raise ValueError(
-                "The dimension of input x must be either 1 or 2, but received {}".format(
-                    len(x.shape)
-                )
+                f"The dimension of input x must be either 1 or 2, but received {len(x.shape)}"
             )
 
         helper = LayerHelper("diag_v2", **locals())
@@ -2053,7 +2199,9 @@ def diag(x, offset=0, padding_value=0, name=None):
         return out
 
 
-def empty(shape, dtype=None, name=None):
+def empty(
+    shape: ShapeLike, dtype: DTypeLike | None = None, name: str | None = None
+) -> paddle.Tensor:
     """
     Returns a Tensor with uninitialized data which size is same as ``shape``.
 
@@ -2062,10 +2210,10 @@ def empty(shape, dtype=None, name=None):
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
         dtype(np.dtype|str, optional): Data type of the output Tensor
-            which can be bool, float16, float32, float64, int32, int64, complex64, complex128 if dytpe is `None`, the data
+            which can be bool, float16, float32, float64, int32, int64, complex64, complex128 if dtype is `None`, the data
             type of created Tensor use global default dtype (see ``get_default_dtype``
             for details).
-        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: Tensor which is created according to ``shape`` and ``dtype``, and is uninitialized.
@@ -2108,7 +2256,39 @@ def empty(shape, dtype=None, name=None):
     dtype = convert_dtype(dtype)
 
     if in_dynamic_or_pir_mode():
-        shape = paddle.utils.convert_shape_to_list(shape)
+        if in_dynamic_mode():
+            shape = paddle.utils.convert_shape_to_list(shape)
+        else:
+            check_dtype(
+                dtype,
+                'dtype',
+                [
+                    'bool',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'uint16',
+                    'int8',
+                    'int16',
+                    'int32',
+                    'int64',
+                    'complex64',
+                    'complex128',
+                ],
+                'empty',
+            )
+
+            paddle.utils.check_shape(shape)
+            if isinstance(shape, np.ndarray):
+                shape = shape.tolist()
+            if isinstance(shape, (list, tuple)):
+                if paddle.utils._contain_var(shape):
+                    shape = paddle.utils.get_int_tensor_list(shape)
+            elif isinstance(shape, paddle.pir.Value):
+                pass
+            else:
+                raise TypeError("Shape only supports Value, or list, or tuple.")
+
         out = _C_ops.empty(
             shape, convert_np_dtype_to_dtype_(dtype), _current_expected_place()
         )
@@ -2126,6 +2306,8 @@ def empty(shape, dtype=None, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'int16',
                 'int32',
                 'int64',
                 'complex64',
@@ -2156,7 +2338,9 @@ def empty(shape, dtype=None, name=None):
         return out
 
 
-def empty_like(x, dtype=None, name=None):
+def empty_like(
+    x: paddle.Tensor, dtype: DTypeLike | None = None, name: str | None = None
+) -> paddle.Tensor:
     """
     Returns a Tensor with uninitialized data which has identical shape of ``x`` and ``dtype``.
     If the ``dtype`` is None, the data type of Tensor is same with ``x``.
@@ -2166,7 +2350,7 @@ def empty_like(x, dtype=None, name=None):
         dtype(np.dtype|str, optional): The data type of output. The data type can be one
             of bool, float16, float32, float64, int32, int64. The default value is None, which means the output
             data type is the same as input.
-        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: Tensor which is created according to ``x`` and ``dtype``, and is uninitialized.
@@ -2217,9 +2401,13 @@ def empty_like(x, dtype=None, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'int16',
                 'int32',
                 'int64',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'empty_like',
         )
@@ -2231,9 +2419,13 @@ def empty_like(x, dtype=None, name=None):
                 'float16',
                 'float32',
                 'float64',
+                'int8',
+                'int16',
                 'int32',
                 'int64',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'empty_like',
         )
@@ -2258,7 +2450,7 @@ def empty_like(x, dtype=None, name=None):
         return out
 
 
-def assign(x, output=None):
+def assign(x: TensorLike, output: paddle.Tensor | None = None) -> paddle.Tensor:
     """
 
     Copy value of the :attr:`x` to the :attr:`output`.
@@ -2267,7 +2459,7 @@ def assign(x, output=None):
         x (Tensor|np.ndarray|list|tuple|scalar): A Tensor, numpy ndarray, tuple/list of scalar,
             or scalar. Its data type can be float16, float32, float64, int32, int64 or bool. Note: the float64 data will be converted to float32 because of current platform protobuf
             data limitation.
-        output (Tensor, optional): A Tensor. If :attr:`output` is None, a new Tensor will be created as :attr:`output`. Default: None.
+        output (Tensor|None, optional): A Tensor. If :attr:`output` is None, a new Tensor will be created as :attr:`output`. Default: None.
 
     Returns:
         Tensor: A Tensor with the same shape, data type and value as :attr:`x`.
@@ -2282,9 +2474,9 @@ def assign(x, output=None):
             [[2.5 2.5]
              [2.5 2.5]
              [2.5 2.5]]
-            >>> array = np.array([[1, 1],
-            ...                     [3, 4],
-            ...                     [1, 3]]).astype(np.int64)
+            >>> array = np.array([[1, 1], [3, 4], [1, 3]]).astype(
+            ...     np.int64
+            ... )  # type: ignore
             >>> result1 = paddle.zeros(shape=[3, 3], dtype='float32')
             >>> paddle.assign(array, result1)
             >>> print(result1.numpy())
@@ -2466,7 +2658,7 @@ def assign(x, output=None):
     return output
 
 
-def clone(x, name=None):
+def clone(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
     """
     Returns a copy of input Tensor. It will always have a Tensor copy.
 
@@ -2474,7 +2666,7 @@ def clone(x, name=None):
 
     Parameters:
         x (Tensor): The input Tensor.
-        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor, A Tensor copied from ``input``.
@@ -2493,16 +2685,16 @@ def clone(x, name=None):
 
             >>> y = clone_x**3
             >>> y.backward()
-            >>> print(clone_x.grad.numpy())
+            >>> print(clone_x.grad.numpy())  # type: ignore
             [3. 3.]
-            >>> print(x.grad.numpy())
+            >>> print(x.grad.numpy())  # type: ignore
             [3. 3.]
     """
     return x.clone()
 
 
 # NOTE(zhiqiu): not public
-def _memcpy(input, place=None, output=None):
+def _memcpy(input, place=None, output=None) -> paddle.Tensor:
     """
 
     The OP copies the :attr:`input` to the :attr:`output`.
@@ -2534,6 +2726,24 @@ def _memcpy(input, place=None, output=None):
              [2.5 2.5]
              [2.5 2.5]]
     """
+    dst_place_type = -1
+    if place is None:
+        dst_place_type = -1
+    else:
+        p = core.Place()
+        p.set_place(place)
+        if p.is_cpu_place():
+            dst_place_type = 0
+        elif p.is_gpu_place():
+            dst_place_type = 1
+        elif p.is_cuda_pinned_place():
+            dst_place_type = 2
+        elif p.is_xpu_place():
+            dst_place_type = 3
+
+    if in_pir_mode():
+        return _C_ops.memcpy(input, dst_place_type)
+
     helper = LayerHelper('memcpy', **locals())
     check_type(input, 'input', (Variable), 'memcpy')
 
@@ -2558,21 +2768,6 @@ def _memcpy(input, place=None, output=None):
     if output is None:
         output = helper.create_variable_for_type_inference(dtype=input.dtype)
 
-    dst_place_type = -1
-    if place is None:
-        dst_place_type = -1
-    else:
-        p = core.Place()
-        p.set_place(place)
-        if p.is_cpu_place():
-            dst_place_type = 0
-        elif p.is_gpu_place():
-            dst_place_type = 1
-        elif p.is_cuda_pinned_place():
-            dst_place_type = 2
-        elif p.is_xpu_place():
-            dst_place_type = 3
-
     attrs = {'dst_place_type': dst_place_type}
     helper.append_op(
         type='memcpy',
@@ -2583,16 +2778,18 @@ def _memcpy(input, place=None, output=None):
     return output
 
 
-def complex(real, imag, name=None):
-    """Return a compelx tensor given the real and image component.
+def complex(
+    real: paddle.Tensor, imag: paddle.Tensor, name: str | None = None
+) -> paddle.Tensor:
+    """Return a complex tensor given the real and image component.
 
     Args:
         real (Tensor): The real component. The data type should be 'float32' or 'float64'.
         imag (Tensor): The image component. The data type should be the same as ``real``.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor: The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``real`` and ``imag``.
+        Tensor, The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``real`` and ``imag``.
 
     Note:
         ``paddle.complex`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
@@ -2635,10 +2832,12 @@ def complex(real, imag, name=None):
         return out
 
 
-def tril_indices(row, col, offset=0, dtype='int64'):
+def tril_indices(
+    row: int, col: int, offset: int = 0, dtype='int64'
+) -> paddle.Tensor:
     """
     Return the indices of the lower triangular part of the 2-D matrix
-    whose row and col is knowed.Indices are ordered based on row and then columns.
+    whose row and col is known. Indices are ordered based on row and then columns.
     The lower triangular part of the matrix is defined as the elements on
     and below the diagonal.
 
@@ -2686,6 +2885,15 @@ def tril_indices(row, col, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
+    if not isinstance(row, int) or row < 0:
+        raise TypeError("row should be a non-negative int")
+
+    if col is not None:
+        if not isinstance(col, int) or col < 0:
+            raise TypeError("col should be a non-negative int")
+    else:
+        col = row
+
     if in_dynamic_or_pir_mode():
         if col is None:
             col = row
@@ -2694,15 +2902,6 @@ def tril_indices(row, col, offset=0, dtype='int64'):
         )
         return out
     else:
-        if not isinstance(row, int) or row < 0:
-            raise TypeError("row should be a non-negative int")
-
-        if col is not None:
-            if not isinstance(col, int) or col < 0:
-                raise TypeError("col should be a non-negative int")
-        else:
-            col = row
-
         if not isinstance(offset, int):
             raise TypeError("offset should be a  int")
 
@@ -2719,7 +2918,9 @@ def tril_indices(row, col, offset=0, dtype='int64'):
     return out
 
 
-def triu_indices(row, col=None, offset=0, dtype='int64'):
+def triu_indices(
+    row: int, col: int | None = None, offset: int = 0, dtype='int64'
+) -> paddle.Tensor:
     """
     Return the indices of the upper triangular part of the 2-D matrix
     whose row and col is known. Indices are ordered based on row and then columns.
@@ -2728,8 +2929,8 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
 
     Args:
         row (int): The input x which is a int number describe the number of row of the matrix.
-        col (int, optional): The input x which is a int number describe the number of col of the matrix.
-            default value for col is None, then it will be set equal to row, indicting a square matix.
+        col (int|None, optional): The input x which is a int number describe the number of col of the matrix.
+            default value for col is None, then it will be set equal to row, indicting a square matrix.
         offset (int, optional): The offset to consider, default value is 0.
 
             - If offset = 0, all elements on and above the main diagonal are retained.
@@ -2765,6 +2966,15 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
+    if not isinstance(row, int) or row < 0:
+        raise TypeError("row should be a non-negative int")
+
+    if col is not None:
+        if not isinstance(col, int) or col < 0:
+            raise TypeError("col should be a non-negative int")
+    else:
+        col = row
+
     if in_dynamic_or_pir_mode():
         if col is None:
             col = row
@@ -2773,15 +2983,6 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
         )
         return out
     else:
-        if not isinstance(row, int) or row < 0:
-            raise TypeError("row should be a non-negative int")
-
-        if col is not None:
-            if not isinstance(col, int) or col < 0:
-                raise TypeError("col should be a non-negative int")
-        else:
-            col = row
-
         if not isinstance(offset, int):
             raise TypeError("offset should be a int")
 
@@ -2798,16 +2999,18 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
     return out
 
 
-def polar(abs, angle, name=None):
-    """Return a Cartesian coordinates corresponding to the polar coordinates compelx tensor given the ``abs`` and ``angle`` component.
+def polar(
+    abs: paddle.Tensor, angle: paddle.Tensor, name: str | None = None
+) -> paddle.Tensor:
+    """Return a Cartesian coordinates corresponding to the polar coordinates complex tensor given the ``abs`` and ``angle`` component.
 
     Args:
         abs (Tensor): The abs component. The data type should be 'float32' or 'float64'.
-        angle (Tensor): The anglee component. The data type should be the same as ``abs``.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        angle (Tensor): The angle component. The data type should be the same as ``abs``.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor: The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``abs`` and ``angle``.
+        Tensor, The output tensor. The data type is 'complex64' or 'complex128', with the same precision as ``abs`` and ``angle``.
 
     Note:
         ``paddle.polar`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
@@ -2837,14 +3040,19 @@ def polar(abs, angle, name=None):
 
 
 @dygraph_only
-def cauchy_(x, loc=0, scale=1, name=None):
+def cauchy_(
+    x: paddle.Tensor,
+    loc: Numberic = 0,
+    scale: Numberic = 1,
+    name: str | None = None,
+) -> paddle.Tensor:
     """Fills the tensor with numbers drawn from the Cauchy distribution.
 
     Args:
-        x (Tenosr): the tensor will be filled, The data type is float32 or float64.
+        x (Tensor): the tensor will be filled, The data type is float32 or float64.
         loc (scalar, optional):  Location of the peak of the distribution. The data type is float32 or float64.
         scale (scalar, optional): The half-width at half-maximum (HWHM). The data type is float32 or float64. Must be positive values.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: input tensor with numbers drawn from the Cauchy distribution.
@@ -2871,14 +3079,18 @@ def cauchy_(x, loc=0, scale=1, name=None):
 
 
 @dygraph_only
-def geometric_(x, probs, name=None):
+def geometric_(
+    x: paddle.Tensor,
+    probs: float | paddle.Tensor,
+    name: str | None = None,
+) -> paddle.Tensor:
     """Fills the tensor with numbers drawn from the Geometric distribution.
 
     Args:
-        x (Tenosr): the tensor will be filled, The data type is float32 or float64.
-        probs (Real|Tensor): Probability parameter.
+        x (Tensor): the tensor will be filled, The data type is float32 or float64.
+        probs (float|Tensor): Probability parameter.
             The value of probs must be positive. When the parameter is a tensor, probs is probability of success for each trial.
-        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
         Tensor: input tensor with numbers drawn from the Geometric distribution.

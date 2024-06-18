@@ -22,11 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-USE_OP_ITSELF(save_combine);
-USE_OP_ITSELF(load_combine);
-PD_DECLARE_KERNEL(save_combine_tensor, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(load_combine, CPU, ALL_LAYOUT);
-
 template <typename T, typename U>
 T* CreateForSaveCombineOp(int x,
                           int y,
@@ -77,7 +72,7 @@ void CheckValues(T* expect,
     EXPECT_EQ(expect[i], static_cast<T>(actual[i]));
   }
   EXPECT_EQ(expect_lod.size(), actual_lod.size());
-  for (size_t i = 0; i < expect_lod.size(); ++i) {
+  for (size_t i = 0; i < expect_lod.size(); ++i) {  // NOLINT
     for (size_t j = 0; j < expect_lod[i].size(); ++j) {
       EXPECT_EQ(expect_lod[i][j], actual_lod[i][j]);
     }
@@ -367,7 +362,7 @@ TEST(SaveLoadTestWithCombineOp, CPU) {
   }
   auto& actual_lod = target->lod();
   EXPECT_EQ(expect_lod.size(), actual_lod.size());
-  for (size_t i = 0; i < expect_lod.size(); ++i) {
+  for (size_t i = 0; i < expect_lod.size(); ++i) {  // NOLINT
     for (size_t j = 0; j < expect_lod[i].size(); ++j) {
       EXPECT_EQ(expect_lod[i][j], actual_lod[i][j]);
     }

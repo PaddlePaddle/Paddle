@@ -29,6 +29,7 @@ namespace paddle {
  */
 struct DemoConfig : public PaddlePredictor::Config {
   float other_config;
+  DemoConfig() : other_config(0) {}
 };
 
 /*
@@ -95,7 +96,7 @@ TEST(paddle_inference_api, AnalysisConfigCopyCtor) {
   AnalysisConfig cfg2(cfg1);
 
   auto passes = cfg2.pass_builder()->AllPasses();
-  for (auto ps : passes) {
+  for (auto const &ps : passes) {
     CHECK_NE(ps, delete_pass);
   }
 }

@@ -20,26 +20,28 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
 #include "paddle/cinn/hlir/framework/pir/group.h"
+#include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 #include "paddle/cinn/hlir/framework/pir/op_lowering_impl.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/common/ddim.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 PD_DECLARE_bool(cinn_bucket_compile);
 
-using cinn::hlir::framework::pir::Group;
-using cinn::hlir::framework::pir::GroupPtr;
+using cinn::hlir::framework::pir::CompatibleInfo;
+using cinn::hlir::framework::pir::OpLoweringGroup;
+using cinn::hlir::framework::pir::OpLoweringGroupPtr;
 
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 
@@ -54,7 +56,7 @@ std::vector<::pir::Type> CreateDenseTensorTypes(const phi::DDim& dims) {
   return op_output_types;
 }
 
-std::tuple<std::shared_ptr<::pir::Program>, std::vector<GroupPtr>>
+std::tuple<std::shared_ptr<::pir::Program>, std::vector<OpLoweringGroupPtr>>
 BuildGroupProgramForLowering() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -86,10 +88,13 @@ BuildGroupProgramForLowering() {
   builder.SetInsertionPointToBlockEnd(program->block());
   builder.Build<paddle::dialect::FetchOp>(group_op->result(0), "out", 0);
 
-  std::vector<GroupPtr> groups;
-  groups.emplace_back(std::make_shared<Group>(std::vector<::pir::Operation*>(
-      {exp.operation(), reshape.operation(), sub.operation()})));
-  groups[0]->output_ops.insert(groups[0]->ops.back());
+  std::vector<OpLoweringGroupPtr> groups;
+  groups.emplace_back(std::make_shared<OpLoweringGroup>(
+      std::vector<::pir::Operation*>(
+          {exp.operation(), reshape.operation(), sub.operation()}),
+      CompatibleInfo::GroupOpsName(std::vector<::pir::Operation*>(
+          {exp.operation(), reshape.operation(), sub.operation()}))));
+  groups[0]->mut_output_ops().insert(groups[0]->ops().back());
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_data;
   symbol::DimExpr x_dim_0("S0");
@@ -97,13 +102,18 @@ BuildGroupProgramForLowering() {
   symbol::DimExpr y_dim_0(1);
   symbol::DimExpr y_dim_1("S1");
   symbol::DimExpr y_dim_2(2);
-  value_to_shape_data[x] = symbol::ShapeOrDataDimExprs({x_dim_0, x_dim_1});
-  value_to_shape_data[y] =
-      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
-  value_to_shape_data[exp.result(0)] = value_to_shape_data[x];
-  value_to_shape_data[reshape.result(0)] = value_to_shape_data[y];
-  value_to_shape_data[sub.result(0)] = value_to_shape_data[y];
-  groups[0]->value_to_shape_or_data_exprs = value_to_shape_data;
+  value_to_shape_data.emplace(
+      x,
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({x_dim_0, x_dim_1})));
+  value_to_shape_data.emplace(
+      y,
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2})));
+  value_to_shape_data.emplace(exp.result(0), value_to_shape_data.at(x));
+  value_to_shape_data.emplace(reshape.result(0), value_to_shape_data.at(y));
+  value_to_shape_data.emplace(sub.result(0), value_to_shape_data.at(y));
+  groups[0]->set_value_to_shape_or_data_exprs(value_to_shape_data);
 
   return {program, groups};
 }
@@ -119,7 +129,7 @@ TEST(ReshapeOpGroup, CINNLowering) {
   program->Print(ss);
   LOG(INFO) << ss.str();
 
-  for (const auto* op : groups[0]->ops) {
+  for (const auto* op : groups[0]->ops()) {
     LOG(INFO) << op->name() << ":";
     for (uint32_t i = 0; i < op->num_results(); ++i) {
       const auto& sym_shape = groups[0]->GetShapeOrDataExprs(op->result(i));
@@ -129,17 +139,13 @@ TEST(ReshapeOpGroup, CINNLowering) {
 
   // Step 2: Compiler New pir::Program into Runtime Program
   auto target = cinn::common::DefaultNVGPUTarget();
-  auto scope = cinn::hlir::framework::BuildScope(target, *program);
-  LOG(INFO) << scope->var_names().size();
-  ASSERT_EQ(scope->var_names().size(), 4);
-
-  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
-  auto fn_ptr_res = ir_compiler.BuildCUDAJITInfo(groups);
+  cinn::hlir::framework::PirCompiler ir_compiler(target);
+  auto fn_ptr_res = ir_compiler.Build(groups);
   ASSERT_EQ(fn_ptr_res.size(), 1);
   ASSERT_TRUE(fn_ptr_res[0].fn_ptr != nullptr);
 }
 
-std::tuple<std::shared_ptr<::pir::Program>, std::vector<GroupPtr>>
+std::tuple<std::shared_ptr<::pir::Program>, std::vector<OpLoweringGroupPtr>>
 BuildBroadcastGroupProgramForLowering() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -172,10 +178,13 @@ BuildBroadcastGroupProgramForLowering() {
   builder.SetInsertionPointToBlockEnd(program->block());
   builder.Build<paddle::dialect::FetchOp>(group_op->result(0), "out", 0);
 
-  std::vector<GroupPtr> groups;
-  groups.emplace_back(std::make_shared<Group>(std::vector<::pir::Operation*>(
-      {x_broadcast.operation(), sub.operation()})));
-  groups[0]->output_ops.insert(groups[0]->ops.back());
+  std::vector<OpLoweringGroupPtr> groups;
+  groups.emplace_back(std::make_shared<OpLoweringGroup>(
+      std::vector<::pir::Operation*>(
+          {x_broadcast.operation(), sub.operation()}),
+      CompatibleInfo::GroupOpsName(std::vector<::pir::Operation*>(
+          {x_broadcast.operation(), sub.operation()}))));
+  groups[0]->mut_output_ops().insert(groups[0]->ops().back());
 
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_data;
@@ -185,15 +194,23 @@ BuildBroadcastGroupProgramForLowering() {
   symbol::DimExpr y_dim_0(1);
   symbol::DimExpr y_dim_1("S0");
   symbol::DimExpr y_dim_2(128);
-  value_to_shape_data[x] =
-      symbol::ShapeOrDataDimExprs({x_dim_0, x_dim_1, x_dim_2});
-  value_to_shape_data[y] =
-      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
-  value_to_shape_data[x_broadcast.result(0)] =
-      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
-  value_to_shape_data[sub.result(0)] =
-      symbol::ShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2});
-  groups[0]->value_to_shape_or_data_exprs = value_to_shape_data;
+  value_to_shape_data.emplace(
+      x,
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({x_dim_0, x_dim_1, x_dim_2})));
+  value_to_shape_data.emplace(
+      y,
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2})));
+  value_to_shape_data.emplace(
+      x_broadcast.result(0),
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2})));
+  value_to_shape_data.emplace(
+      sub.result(0),
+      symbol::ShapeOrDataDimExprs(
+          symbol::TensorShapeOrDataDimExprs({y_dim_0, y_dim_1, y_dim_2})));
+  groups[0]->set_value_to_shape_or_data_exprs(value_to_shape_data);
 
   return {program, groups};
 }
@@ -209,7 +226,7 @@ TEST(BroadcastOpGroup, CINNLowering) {
   program->Print(ss);
   LOG(INFO) << ss.str();
 
-  for (const auto* op : groups[0]->ops) {
+  for (const auto* op : groups[0]->ops()) {
     LOG(INFO) << op->name() << ":";
     for (uint32_t i = 0; i < op->num_results(); ++i) {
       const auto& sym_shape = groups[0]->GetShapeOrDataExprs(op->result(i));
@@ -219,12 +236,8 @@ TEST(BroadcastOpGroup, CINNLowering) {
 
   // Step 2: Compiler New pir::Program into Runtime Program
   auto target = cinn::common::DefaultNVGPUTarget();
-  auto scope = cinn::hlir::framework::BuildScope(target, *program);
-  LOG(INFO) << scope->var_names().size();
-  ASSERT_EQ(scope->var_names().size(), 4);
-
-  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
-  auto fn_ptr_res = ir_compiler.BuildCUDAJITInfo(groups);
+  cinn::hlir::framework::PirCompiler ir_compiler(target);
+  auto fn_ptr_res = ir_compiler.Build(groups);
   ASSERT_EQ(fn_ptr_res.size(), 1);
   ASSERT_TRUE(fn_ptr_res[0].fn_ptr != nullptr);
 }

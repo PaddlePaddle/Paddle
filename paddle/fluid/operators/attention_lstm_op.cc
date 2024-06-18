@@ -54,7 +54,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   const int M = static_cast<int>(x_dims[1]);
   PADDLE_ENFORCE_EQ(x_dims.size(),
                     2,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Expected input(X)'s dimension is 2. But received %d.",
                         x_dims.size()));
 
@@ -63,39 +63,39 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       w_dims.size(),
       2,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "Expected input(LSTMWeight)'s dimension is 2.But received %d.",
           w_dims.size()));
   PADDLE_ENFORCE_EQ(
       w_dims[0],
       D + M,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "LSTMWeight dims should be (%d + %d) * %d.", D, M, 4 * D));
 
   auto b_dims = ctx->GetInputDim("LSTMBias");
   PADDLE_ENFORCE_EQ(
       b_dims.size(),
       2,
-      platform::errors::InvalidArgument("Input(LSTMBias)'s rank must be 2."));
-  PADDLE_ENFORCE_EQ(b_dims[0],
-                    1,
-                    platform::errors::InvalidArgument(
-                        "LSTMBias dims should be 1 x %d.", 4 * D));
-  PADDLE_ENFORCE_EQ(b_dims[1],
-                    4 * D,
-                    platform::errors::InvalidArgument(
-                        "LSTMBias dims should be 1 x %d.", 4 * D));
+      phi::errors::InvalidArgument("Input(LSTMBias)'s rank must be 2."));
+  PADDLE_ENFORCE_EQ(
+      b_dims[0],
+      1,
+      phi::errors::InvalidArgument("LSTMBias dims should be 1 x %d.", 4 * D));
+  PADDLE_ENFORCE_EQ(
+      b_dims[1],
+      4 * D,
+      phi::errors::InvalidArgument("LSTMBias dims should be 1 x %d.", 4 * D));
 
   auto c_dims = ctx->GetInputDim("C0");
   PADDLE_ENFORCE_EQ(
       c_dims.size(),
       2,
-      platform::errors::InvalidArgument("Input(C0)'s rank must be 2."));
+      phi::errors::InvalidArgument("Input(C0)'s rank must be 2."));
   if (ctx->IsRuntime()) {
     PADDLE_ENFORCE_EQ(
         c_dims[1],
         D,
-        platform::errors::InvalidArgument("C0 dims should be N x %d.", D));
+        phi::errors::InvalidArgument("C0 dims should be N x %d.", D));
   }
 
   if (ctx->HasInput("H0")) {
@@ -103,27 +103,27 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_EQ(
         h_dims.size(),
         2UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Expected input(H0)'s dimension is 2. But received %d.",
             h_dims.size()));
     if (ctx->IsRuntime() ||
         (common::product(c_dims) > 0 && common::product(h_dims) > 0)) {
       PADDLE_ENFORCE_EQ(h_dims,
                         c_dims,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The dimension of Input(H0) and Input(C0) "
                             "should be the same."));
     }
   }
 
   auto atten_w_dims = ctx->GetInputDim("AttentionWeight");
-  PADDLE_ENFORCE_EQ(atten_w_dims.size(),
-                    2,
-                    platform::errors::InvalidArgument(
-                        "Input(AttentionWeight)'s rank must be 2."));
+  PADDLE_ENFORCE_EQ(
+      atten_w_dims.size(),
+      2,
+      phi::errors::InvalidArgument("Input(AttentionWeight)'s rank must be 2."));
   PADDLE_ENFORCE_EQ(atten_w_dims[0],
                     M + D,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "Expected `AttentionWeight` shape is [(%d + %d), 1]. "
                         "But received shape = [%d, 1], shape[0] is not %d.",
                         M,
@@ -132,39 +132,39 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
                         M + D));
   PADDLE_ENFORCE_EQ(atten_w_dims[1],
                     1,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "AttentionWeight shapes must be (%d + %d) * 1.", M, D));
 
   if (ctx->HasInput("AttentionBias")) {
     auto atten_b_dims = ctx->GetInputDim("AttentionBias");
-    PADDLE_ENFORCE_EQ(atten_b_dims.size(),
-                      2,
-                      platform::errors::InvalidArgument(
-                          "Input(AttentionBias)'s rank must be 2."));
-    PADDLE_ENFORCE_EQ(atten_b_dims[0],
-                      1,
-                      platform::errors::InvalidArgument(
-                          "AttentionBias shapes must be 1 * 1."));
-    PADDLE_ENFORCE_EQ(atten_b_dims[1],
-                      1,
-                      platform::errors::InvalidArgument(
-                          "AttentionBias shapes must be 1 * 1."));
+    PADDLE_ENFORCE_EQ(
+        atten_b_dims.size(),
+        2,
+        phi::errors::InvalidArgument("Input(AttentionBias)'s rank must be 2."));
+    PADDLE_ENFORCE_EQ(
+        atten_b_dims[0],
+        1,
+        phi::errors::InvalidArgument("AttentionBias shapes must be 1 * 1."));
+    PADDLE_ENFORCE_EQ(
+        atten_b_dims[1],
+        1,
+        phi::errors::InvalidArgument("AttentionBias shapes must be 1 * 1."));
   }
 
   if (ctx->HasInput("AttentionScalar")) {
     auto dims = ctx->GetInputDim("AttentionScalar");
     PADDLE_ENFORCE_EQ(dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(AttentionScalar)'s rank must be 2."));
-    PADDLE_ENFORCE_EQ(dims[0],
-                      1,
-                      platform::errors::InvalidArgument(
-                          "AttentionScalar shapes must be 1 * 1."));
-    PADDLE_ENFORCE_EQ(dims[1],
-                      1,
-                      platform::errors::InvalidArgument(
-                          "AttentionScalar shapes must be 1 * 1."));
+    PADDLE_ENFORCE_EQ(
+        dims[0],
+        1,
+        phi::errors::InvalidArgument("AttentionScalar shapes must be 1 * 1."));
+    PADDLE_ENFORCE_EQ(
+        dims[1],
+        1,
+        phi::errors::InvalidArgument("AttentionScalar shapes must be 1 * 1."));
   }
 
   if (ctx->HasInput("AttentionScalarBias")) {
@@ -175,19 +175,19 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
                    "AttentionLstm");
     PADDLE_ENFORCE_EQ(dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(AttentionScalarBias)'s rank must be 2."));
     PADDLE_ENFORCE_EQ(dims[0],
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "AttentionScalarBias shapes must be 1 * 1."));
     PADDLE_ENFORCE_EQ(dims[1],
                       1,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "AttentionScalarBias shapes must be 1 * 1."));
   }
 
-  framework::DDim out_dims({x_dims[0], D});
+  phi::DDim out_dims({x_dims[0], D});
   ctx->SetOutputDim("Hidden", out_dims);
   ctx->SetOutputDim("Cell", out_dims);
   ctx->SetOutputDim("AttentionedX", {x_dims[0], 1});
@@ -247,7 +247,7 @@ void AttentionLSTMOpMaker::Make() {
            " - Weight = {W_forget, W_input, W_output, W_cell}");
   AddInput("LSTMBias",
            "(phi::DenseTensor) the combined bias of LSTM, shape (1x4D)."
-           "Note: we should add the bias of hidden and context accorindg to "
+           "Note: we should add the bias of hidden and context according to "
            "the same gate: "
            "{B_forget, B_input, B_output, B_cell}");
   AddOutput(
@@ -381,11 +381,11 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         x_lod.size(),
         1UL,
-        platform::errors::InvalidArgument("Input(X)'s lod size must be 1."));
+        phi::errors::InvalidArgument("Input(X)'s lod size must be 1."));
     PADDLE_ENFORCE_EQ(
         c0->dims()[0],
         N,
-        platform::errors::InvalidArgument("C0 dims should be %d x %d.", N, D));
+        phi::errors::InvalidArgument("C0 dims should be %d x %d.", N, D));
     fc_out->Resize({max_seq_len, 1});
 
     std::function<void(const int, const T*, T*)> act_gate, act_cell, act_cand;
@@ -488,7 +488,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
 
         // gate act: sigmoid
         act_gate(D3, lstm_out_data, lstm_out_data);
-        // candicate act: tanh
+        // candidate act: tanh
         act_cand(D, lstm_out_data + D3, lstm_out_data + D3);
 
         // a = forget * prev_cell

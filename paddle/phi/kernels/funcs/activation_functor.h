@@ -398,7 +398,7 @@ struct CosDoubleGradFunctor : public BaseActivationFunctor<T> {
                   const DenseTensor* ddX,
                   DenseTensor* dX,
                   DenseTensor* ddOut) const {
-    auto* d = dev.eigen_device();
+    auto* device = dev.eigen_device();
     auto d2d1x = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(ddX, "Input", "d2d1x", "CosDoubleGrad"));
     auto x = EigenVector<T>::Flatten(
@@ -407,21 +407,17 @@ struct CosDoubleGradFunctor : public BaseActivationFunctor<T> {
     // calculate d2x first, so d2d1y can inplace d2d1x
     auto d2x = EigenVector<T>::Flatten(
         GET_DATA_SAFELY(dX, "Output", "d2x", "CosDoubleGrad"));
-    if (ddOut) {
-      if (dOut) {
-        auto d1y = EigenVector<T>::Flatten(
-            GET_DATA_SAFELY(dOut, "Output", "d1y", "CosDoubleGrad"));
-        d2x.device(*d) = -d2d1x * x.unaryExpr(Cosine<T>()) * d1y;
-      } else {
-        d2x.device(*d) = x * static_cast<T>(0);
-      }
+    if (dX) {
+      auto d1y = EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "d1y", "CosDoubleGrad"));
+      d2x.device(*device) = -d2d1x * x.unaryExpr(Cosine<T>()) * d1y;
     }
 
-    if (dX) {
+    if (ddOut) {
       // calculate d2d1y
       auto d2d1y = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "d2d1y", "CosDoubleGrad"));
-      d2d1y.device(*d) = -d2d1x * x.unaryExpr(Sine<T>());
+      d2d1y.device(*device) = -d2d1x * x.unaryExpr(Sine<T>());
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -1829,22 +1825,25 @@ struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct ThresholdedReluFunctor : public BaseActivationFunctor<T> {
   float threshold;
+  float value;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
+    return {{"threshold", &threshold}, {"value", &value}};
   }
 
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     auto th = static_cast<T>(threshold);  // NOLINT
-    out.device(d) = (x > th).template cast<T>() * x;
+    out.device(d) = (x > th).template cast<T>() * x +
+                    (x <= th).template cast<T>() * static_cast<T>(value);
   }
 };
 
 template <typename T>
 struct ThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
   float threshold;
+  float value;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
+    return {{"threshold", &threshold}, {"value", &value}};
   }
 
   template <typename Device,
@@ -2449,6 +2448,13 @@ struct Log {
   HOSTDEVICE T operator()(const T& val) const { return std::log(val); }
 };
 
+template <typename T>
+struct Log<ComplexType<T>> {
+  HOSTDEVICE ComplexType<T> operator()(const ComplexType<T>& val) const {
+    return ComplexType<T>(std::log(std::complex<T>(val)));
+  }
+};
+
 template <>
 struct Log<dtype::float16> {
   HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
@@ -2489,8 +2495,32 @@ struct LogGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct LogGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
+    dx.device(d) =
+        dout * (static_cast<ComplexType<T>>(1) / x).unaryExpr(Conj<T>());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
 struct Log2 {
   HOSTDEVICE T operator()(const T& val) const { return std::log2(val); }
+};
+
+template <typename T>
+struct Log2<ComplexType<T>> {
+  HOSTDEVICE ComplexType<T> operator()(const ComplexType<T>& val) const {
+    return ComplexType<T>(std::log(std::complex<T>(val)) /
+                          std::log(std::complex<T>(2)));
+  }
 };
 
 template <>
@@ -2534,8 +2564,32 @@ struct Log2GradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct Log2GradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
+    dx.device(d) = dout * (static_cast<ComplexType<T>>(1) /
+                           (x * static_cast<ComplexType<T>>(log(2))))
+                              .unaryExpr(Conj<T>());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
 struct Log10 {
   HOSTDEVICE T operator()(const T& val) const { return std::log10(val); }
+};
+
+template <typename T>
+struct Log10<ComplexType<T>> {
+  HOSTDEVICE ComplexType<T> operator()(const ComplexType<T>& val) const {
+    return ComplexType<T>(std::log10(std::complex<T>(val)));
+  }
 };
 
 template <>
@@ -2579,8 +2633,32 @@ struct Log10GradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct Log10GradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
+    dx.device(d) = dout * (static_cast<ComplexType<T>>(1) /
+                           (x * static_cast<ComplexType<T>>(log(10))))
+                              .unaryExpr(Conj<T>());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
 struct Log1p {
   HOSTDEVICE T operator()(const T& val) const { return std::log1p(val); }
+};
+
+template <typename T>
+struct Log1p<ComplexType<T>> {
+  HOSTDEVICE ComplexType<T> operator()(const ComplexType<T>& val) const {
+    return ComplexType<T>(std::log(std::complex<T>(1) + std::complex<T>(val)));
+  }
 };
 
 template <>
@@ -2623,6 +2701,23 @@ struct Log1pGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct Log1pGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
+    dx.device(d) = dout * (static_cast<ComplexType<T>>(1) /
+                           (x + static_cast<ComplexType<T>>(1)))
+                              .unaryExpr(Conj<T>());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
 struct LogGradGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device>
   void operator()(const Device& dev,
@@ -2649,6 +2744,42 @@ struct LogGradGradFunctor : public BaseActivationFunctor<T> {
       auto ddout = EigenVector<T>::Flatten(
           GET_DATA_SAFELY(ddOut, "Output", "DDOut", "LogGradGrad"));
       ddout.device(*d) = ddx * static_cast<T>(1) / x;
+    }
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct LogGradGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* X,
+                  const DenseTensor* ddX,
+                  DenseTensor* ddOut,
+                  const DenseTensor* dOut,
+                  DenseTensor* dX) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<ComplexType<T>>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "LogGradGrad"));
+    auto x = EigenVector<ComplexType<T>>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "LogGradGrad"));
+    // ddout = ddx / x; dx = -(dout / x) * (ddx / x)
+    // calculate dx first, so ddout can inplace ddx
+    if (dX) {
+      auto dout = EigenVector<ComplexType<T>>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "LogGradGrad"));
+      auto dx = EigenVector<ComplexType<T>>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "LogGradGrad"));
+      dx.device(*d) = dout * static_cast<ComplexType<T>>(-1) * ddx /
+                      (x * x).unaryExpr(Conj<T>());
+    }
+    if (ddOut) {
+      auto ddout = EigenVector<ComplexType<T>>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "LogGradGrad"));
+      ddout.device(*d) =
+          ddx * static_cast<ComplexType<T>>(1) / x.unaryExpr(Conj<T>());
     }
   }
 
@@ -4102,16 +4233,16 @@ struct CudaHardTanhGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaThresholdedReluFunctor : public BaseActivationFunctor<T> {
-  T zero = static_cast<T>(0.0f);
   float threshold;
+  float value;
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
+    return {{"threshold", &threshold}, {"value", &value}};
   }
 
-  // thresholded_relu(x) = x > threshold ? x : 0
+  // thresholded_relu(x, threshold, value) = x > threshold ? x : value
   __device__ __forceinline__ T operator()(const T x) const {
-    return x > static_cast<T>(threshold) ? x : zero;
+    return x > static_cast<T>(threshold) ? x : static_cast<T>(value);
   }
 };
 
@@ -4119,9 +4250,10 @@ template <typename T>
 struct CudaThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
   T zero = static_cast<T>(0.0f);
   float threshold;
+  float value;
 
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
+    return {{"threshold", &threshold}, {"value", &value}};
   }
 
   // dx = x > threshold ? dout : 0
@@ -4647,10 +4779,32 @@ struct CudaLogFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct CudaLogFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  // log(x) = log(x)
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> arg_x) const {
+    return static_cast<ComplexType<T>>(log(arg_x));
+  }
+};
+
+template <typename T>
 struct CudaLogGradFunctor : public BaseActivationFunctor<T> {
   // dx = dout / x
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
     return dout / x;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaLogGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  // dx = dout / conj(x)
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> dout, const ComplexType<T> x) const {
+    return dout / conj(x);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -4670,12 +4824,37 @@ struct CudaLog1pFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct CudaLog1pFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  // log1p(x) = log(1 + x)
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> arg_x) const {
+    return static_cast<ComplexType<T>>(
+        log(static_cast<ComplexType<T>>(1) + arg_x));
+  }
+};
+
+template <typename T>
 struct CudaLog1pGradFunctor : public BaseActivationFunctor<T> {
   T one = static_cast<T>(1.0f);
 
   // dx = dout / (1 + x)
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
     return dout / (one + x);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaLog1pGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  ComplexType<T> one = static_cast<ComplexType<T>>(1.0f);
+
+  // dx = dout / conj(1 + x)
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> dout, const ComplexType<T> x) const {
+    return dout / conj(one + x);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -4714,6 +4893,17 @@ struct CudaLog2Functor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct CudaLog2Functor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  // log2(x) = log(x)/log(2)
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> arg_x) const {
+    return static_cast<ComplexType<T>>(log(arg_x) /
+                                       static_cast<ComplexType<T>>(log(2.0f)));
+  }
+};
+
+template <typename T>
 struct CudaLog2GradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   T log_two = static_cast<T>(log(static_cast<MPType>(2.0f)));
@@ -4721,6 +4911,18 @@ struct CudaLog2GradFunctor : public BaseActivationFunctor<T> {
   // dx = dout / (x * log(2))
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
     return dout / (x * log_two);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaLog2GradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  // dx = dout / conj(x * log(2))
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> dout, const ComplexType<T> x) const {
+    return dout / conj(x * static_cast<ComplexType<T>>(log(2.0f)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -4759,6 +4961,17 @@ struct CudaLog10Functor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct CudaLog10Functor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  // log10(x) = log(x)/log(10)
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> arg_x) const {
+    return static_cast<ComplexType<T>>(log(arg_x) /
+                                       static_cast<ComplexType<T>>(log(10.0f)));
+  }
+};
+
+template <typename T>
 struct CudaLog10GradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   T log_ten = static_cast<T>(log(static_cast<MPType>(10.0f)));
@@ -4766,6 +4979,18 @@ struct CudaLog10GradFunctor : public BaseActivationFunctor<T> {
   // dx = dout / (x * log(10))
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
     return dout / (x * log_ten);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaLog10GradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  // dx = dout / conj(x * log(10))
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> dout, const ComplexType<T> x) const {
+    return dout / conj(x * static_cast<ComplexType<T>>(log(10.0f)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -5010,6 +5235,40 @@ struct CudaCELUGradFunctor : public BaseActivationFunctor<T> {
 };
 
 #endif
+
+template <typename T>
+struct SwiGLUFunctor {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  HOSTDEVICE T operator()(T x, T y) const {
+    MPType mp_x = static_cast<MPType>(x);
+    MPType mp_y = static_cast<MPType>(y);
+    MPType one = static_cast<MPType>(1);
+    return static_cast<T>(mp_y * mp_x / (one + exp(-mp_x)));
+  }
+};
+
+template <typename T, bool HasDX = true, bool HasDY = true>
+struct SwiGLUGradFunctor {
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+
+  HOSTDEVICE void operator()(T x, T y, T dz, T* dx, T* dy) const {
+    MPType one = static_cast<MPType>(1);
+
+    MPType mp_x = static_cast<MPType>(x);
+    MPType mp_dz = static_cast<MPType>(dz);
+
+    MPType sigmoid = one / (one + exp(-mp_x));
+    MPType tmp = mp_x * sigmoid;
+    if (HasDX) {
+      MPType mp_y = static_cast<MPType>(y);
+      *dx = static_cast<T>(mp_dz * mp_y * sigmoid * (one + mp_x - tmp));
+    }
+    if (HasDY) {
+      *dy = static_cast<T>(mp_dz * tmp);
+    }
+  }
+};
 
 }  // namespace funcs
 }  // namespace phi

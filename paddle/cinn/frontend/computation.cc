@@ -20,6 +20,7 @@
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/framework/scope.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace frontend {
@@ -58,12 +59,15 @@ std::shared_ptr<ComputationContext> CompileProgram(
 
   if (ctx->compile_options.use_default_passes) {
     hlir::framework::ApplyPass(ctx->graph.get(), "InferShape");
-
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) {
 #ifndef CINN_WITH_CUDA
-    if (target.arch == Target::Arch::X86) {
-      hlir::framework::ApplyPass(ctx->graph.get(), "AlterLayout");
-    }
+                        hlir::framework::ApplyPass(ctx->graph.get(),
+                                                   "AlterLayout");
 #endif
+                      },
+                      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::NVGPUArch) { CINN_NOT_IMPLEMENTED; });
     hlir::framework::ApplyPass(ctx->graph.get(), "ConstPropagate");
     hlir::framework::ApplyPasses(ctx->graph.get(), DefaultOpFusionPasses());
   }
@@ -199,35 +203,44 @@ void CinnComputation::SetTensorData(hlir::framework::Tensor &t,
                                     void *data,
                                     size_t size) {
   void *tdata = t->mutable_data(context_->target, t->type());
-  CHECK_EQ(size, t->shape().numel() * t->type().bytes());
-  if (context_->target.arch == Target::Arch::NVGPU) {
+  PADDLE_ENFORCE_EQ(
+      size == t->shape().numel() * t->type().bytes(),
+      true,
+      phi::errors::InvalidArgument("The size of the input data is not equal to "
+                                   "the size of the tensor."));
+  context_->target.arch.Match(
+      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::X86Arch) { memcpy(tdata, data, size); },
+      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-    CUDA_CALL(cudaMemcpy(tdata, data, size, cudaMemcpyHostToDevice));
+        CUDA_CALL(cudaMemcpy(tdata, data, size, cudaMemcpyHostToDevice));
 #else
-    CINN_NOT_IMPLEMENTED
+        CINN_NOT_IMPLEMENTED;
 #endif
-  } else if (context_->target.arch == Target::Arch::X86) {
-    memcpy(tdata, data, size);
-  } else {
-    CINN_NOT_IMPLEMENTED
-  }
+      });
 }
+
 void CinnComputation::GetTensorData(hlir::framework::Tensor &t,
                                     void *data,
                                     size_t size) {
   void *tdata = t->mutable_data(context_->target, t->type());
-  CHECK_EQ(size, t->shape().numel() * t->type().bytes());
-  if (context_->target.arch == Target::Arch::NVGPU) {
+  PADDLE_ENFORCE_EQ(
+      size == t->shape().numel() * t->type().bytes(),
+      true,
+      phi::errors::InvalidArgument("The size of the input data is not equal to "
+                                   "the size of the tensor."));
+  context_->target.arch.Match(
+      [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::X86Arch) { memcpy(data, tdata, size); },
+      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-    CUDA_CALL(cudaMemcpy(data, tdata, size, cudaMemcpyDeviceToHost));
+        CUDA_CALL(cudaMemcpy(data, tdata, size, cudaMemcpyDeviceToHost));
 #else
-    CINN_NOT_IMPLEMENTED
+        CINN_NOT_IMPLEMENTED;
 #endif
-  } else if (context_->target.arch == Target::Arch::X86) {
-    memcpy(data, tdata, size);
-  } else {
-    CINN_NOT_IMPLEMENTED
-  }
+      });
 }
 
 void CinnComputation::GetTensorData(const std::string &tname,
@@ -251,9 +264,11 @@ hlir::framework::Tensor CinnComputation::GetTensor(const std::string &tname) {
   }
   auto it = context_->varmap_paddle2program.find(tname);
   if (it == context_->varmap_paddle2program.end()) {
-    LOG(FATAL) << "No variable called [" << tname
-               << "] found in computation\nThe existing vars: "
-               << utils::Join(context_->scope->var_names(), ", ");
+    std::stringstream ss;
+    ss << "No variable called [" << tname
+       << "] found in computation\nThe existing vars: "
+       << utils::Join(context_->scope->var_names(), ", ");
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
   return context_->scope->GetTensor(it->second);
 }

@@ -12,19 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 import shutil
 import sys
 import zipfile
+from typing import Any, List, Literal
 
+from typing_extensions import TypeAlias
+
+import paddle
 from paddle.utils.download import get_path_from_url
 
 __all__ = []
 
-DEFAULT_CACHE_DIR = '~/.cache'
-VAR_DEPENDENCY = 'dependencies'
-MODULE_HUBCONF = 'hubconf.py'
-HUB_DIR = os.path.expanduser(os.path.join('~', '.cache', 'paddle', 'hub'))
+_Source: TypeAlias = Literal["github", "gitee", "local"]
+
+DEFAULT_CACHE_DIR: str = '~/.cache'
+VAR_DEPENDENCY: str = 'dependencies'
+MODULE_HUBCONF: str = 'hubconf.py'
+HUB_DIR: str = os.path.expanduser(os.path.join('~', '.cache', 'paddle', 'hub'))
 
 
 def _remove_if_exists(path):
@@ -57,9 +65,7 @@ def _git_archive_link(repo_owner, repo_name, branch, source):
             f'https://github.com/{repo_owner}/{repo_name}/archive/{branch}.zip'
         )
     elif source == 'gitee':
-        return 'https://gitee.com/{}/{}/repository/archive/{}.zip'.format(
-            repo_owner, repo_name, branch
-        )
+        return f'https://gitee.com/{repo_owner}/{repo_name}/repository/archive/{branch}.zip'
 
 
 def _parse_repo_info(repo, source):
@@ -117,13 +123,12 @@ def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
             hub_dir,
             check_exist=not force_reload,
             decompress=False,
-            method=('wget' if source == 'gitee' else 'get'),
         )
         shutil.move(fpath, cached_file)
 
         with zipfile.ZipFile(cached_file) as cached_zipfile:
-            extraced_repo_name = cached_zipfile.infolist()[0].filename
-            extracted_repo = os.path.join(hub_dir, extraced_repo_name)
+            extracted_repo_name = cached_zipfile.infolist()[0].filename
+            extracted_repo = os.path.join(hub_dir, extracted_repo_name)
             _remove_if_exists(extracted_repo)
             # Unzip the code and rename the base folder
             cached_zipfile.extractall(hub_dir)
@@ -172,7 +177,11 @@ def _check_dependencies(m):
             )
 
 
-def list(repo_dir, source='github', force_reload=False):
+def list(
+    repo_dir: str,
+    source: _Source = 'github',
+    force_reload: bool = False,
+) -> List[str]:  # noqa: UP006
     r"""
     List all entrypoints available in `github` hubconf.
 
@@ -218,7 +227,12 @@ def list(repo_dir, source='github', force_reload=False):
     return entrypoints
 
 
-def help(repo_dir, model, source='github', force_reload=False):
+def help(
+    repo_dir: str,
+    model,
+    source: _Source = 'github',
+    force_reload: bool = False,
+) -> str:
     """
     Show help information of model
 
@@ -261,7 +275,13 @@ def help(repo_dir, model, source='github', force_reload=False):
     return entry.__doc__
 
 
-def load(repo_dir, model, source='github', force_reload=False, **kwargs):
+def load(
+    repo_dir: str,
+    model: str,
+    source: _Source = 'github',
+    force_reload: bool = False,
+    **kwargs: Any,
+) -> paddle.nn.Layer:
     """
     Load model
 

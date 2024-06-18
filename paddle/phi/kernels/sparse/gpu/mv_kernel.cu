@@ -37,17 +37,17 @@ void MvKernelImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(x_ndims,
                     2,
                     phi::errors::InvalidArgument(
-                        "the dims size of Input(x) must be eaqual to 2."));
+                        "the dims size of Input(x) must be equal to 2."));
   PADDLE_ENFORCE_EQ(vec_ndims,
                     1,
                     phi::errors::InvalidArgument(
-                        "the dims size of Input(vec) must be eaqual to 1."));
+                        "the dims size of Input(vec) must be equal to 1."));
   PADDLE_ENFORCE_EQ(x_dim[x_ndims - 1],
                     vec_dim[vec_ndims - 1],
                     phi::errors::PreconditionNotMet(
                         "The shape of Input(x) and Input(vec) is not "
                         "suitable for mv opetation, "
-                        "x_dim[-1] must be eaqual to vec_dim[-1]."));
+                        "x_dim[-1] must be equal to vec_dim[-1]."));
   std::vector<int64_t> out_dim = {x_dim[x_ndims - 2]};
   out->Resize(common::make_ddim(out_dim));
   dev_ctx.template Alloc<T>(out);

@@ -89,7 +89,7 @@ class MemOptVarInfo {
    * scheduled in many threads inside ParallelExecutor, runtime_ref_cnt_
    * must be an atomic integer to guarantee the thread safety and visibility.
    *
-   * Speciallly, if ref_cnt_ is 1, we do not need to reset runtime_ref_cnt_
+   * Specially, if ref_cnt_ is 1, we do not need to reset runtime_ref_cnt_
    * after iteration ends.
    */
   size_t ref_cnt_;

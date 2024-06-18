@@ -49,7 +49,7 @@ TEST(selected_rows_functor, cpu_add) {
   std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   auto* out_value = output->mutable_value();
 
-  // simplely concat two SelectedRows
+  // simply concat two SelectedRows
   out_value->mutable_data<float>(common::make_ddim({7, 10}), cpu_place);
 
   phi::funcs::SelectedRowsAdd<phi::CPUContext, float> add_functor;
@@ -144,7 +144,7 @@ TEST(selected_rows_functor, cpu_add_to) {
   output->set_height(height);
   auto* out_value = output->mutable_value();
 
-  // simplely concat two SelectedRows
+  // simply concat two SelectedRows
   out_value->mutable_data<float>(common::make_ddim({7, 10}), cpu_place);
 
   phi::funcs::SelectedRowsAddTo<phi::CPUContext, float> add_to_functor;
@@ -461,7 +461,7 @@ TEST(selected_rows_functor, cpu_sum_to) {
   std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   output->set_height(height);
   auto* out_value = output->mutable_value();
-  // simplely concat two SelectedRows
+  // simply concat two SelectedRows
   out_value->mutable_data<float>(common::make_ddim({7, 10}), cpu_place);
   phi::funcs::SelectedRowsSumTo<phi::CPUContext, float> sum_to_functor;
   sum_to_functor(ctx,

@@ -89,5 +89,34 @@ class TestDatasetWithDiffOutputPlace(unittest.TestCase):
                     break
 
 
+class TestRandomSplitApi(unittest.TestCase):
+    def test_main(self):
+        paddle.seed(1)
+
+        dataset1, dataset2, dataset3 = paddle.io.random_split(
+            range(5), [0.3, 0.0, 0.7]
+        )
+
+        self.assertTrue(len(dataset1) == 2)
+        self.assertTrue(len(dataset2) == 0)
+        self.assertTrue(len(dataset3) == 3)
+
+        elements_list = list(range(5))
+
+        for _, val in enumerate(dataset1):
+            elements_list.remove(val)
+
+        for _, val in enumerate(dataset3):
+            elements_list.remove(val)
+
+        self.assertTrue(len(elements_list) == 0)
+
+    def test_errors(self):
+        paddle.seed(1)
+        self.assertRaises(
+            ValueError, paddle.io.random_split, range(5), [-0.2, 1.2]
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

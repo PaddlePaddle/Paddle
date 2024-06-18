@@ -122,7 +122,7 @@ class BeamSearchOp : public framework::OperatorWithKernel {
     } else {
       return phi::KernelKey(
           OperatorWithKernel::IndicateVarDataType(ctx, "pre_ids"),
-          platform::CPUPlace());
+          phi::CPUPlace());
     }
   }
 };

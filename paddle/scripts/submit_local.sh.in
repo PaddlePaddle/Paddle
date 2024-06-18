@@ -5,7 +5,7 @@ function version(){
         echo "    with_avx: @WITH_AVX@"
         echo "    with_gpu: @WITH_GPU@"
         echo "    with_mkl: @WITH_MKL@"
-        echo "    with_mkldnn: @WITH_MKLDNN@"
+        echo "    with_mkldnn: @WITH_ONEDNN@"
         echo "    with_python: @WITH_PYTHON@"
 }
 
@@ -98,7 +98,7 @@ function threads_config() {
       export OPENBLAS_MAIN_FREE=1
     fi
   fi
-  
+
 }
 
 PADDLE_CONF_HOME="$HOME/.config/paddle"
@@ -138,7 +138,7 @@ fi
 
 if [ "@WITH_GPU@" == "ON" ]; then
     PADDLE_NAME="paddlepaddle-gpu"
-else 
+else
     PADDLE_NAME="paddlepaddle"
 fi
 

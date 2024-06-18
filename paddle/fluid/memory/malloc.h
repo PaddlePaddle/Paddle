@@ -32,7 +32,7 @@ using phi::Allocation;
 extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                                size_t size);
 
-extern AllocationPtr Alloc(const platform::Place& place, size_t size);
+TEST_API extern AllocationPtr Alloc(const platform::Place& place, size_t size);
 
 extern uint64_t Release(const platform::Place& place);
 
@@ -40,7 +40,7 @@ extern std::shared_ptr<Allocation> AllocShared(const platform::Place& place,
                                                size_t size,
                                                const phi::Stream& stream);
 
-extern AllocationPtr Alloc(const platform::CUDAPlace& place,
+extern AllocationPtr Alloc(const platform::Place& place,
                            size_t size,
                            const phi::Stream& stream);
 
@@ -71,7 +71,7 @@ struct ThrustAllocator {
     place_ = place;
     stream_ = stream;
   }
-  ~ThrustAllocator() { VLOG(2) << "destory allocator"; }
+  ~ThrustAllocator() { VLOG(2) << "destroy allocator"; }
   char* allocate(std::ptrdiff_t num_bytes) {
     VLOG(2) << "allocate " << num_bytes << " bytes";
     auto storage = memory::AllocShared(

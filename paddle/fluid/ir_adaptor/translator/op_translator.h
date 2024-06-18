@@ -22,10 +22,10 @@
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace translator {
@@ -65,7 +65,7 @@ struct OpTranscriber {
                                      pir::Block* block);
 
  public:
-  virtual pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx, const OpDesc& op_desc);
+  virtual pir::OpInfo LookUpOpInfo(pir::IrContext* ctx, const OpDesc& op_desc);
   virtual std::vector<pir::Value> GenerateOperationInput(
       pir::IrContext* ctx,
       TranslationContext* param_map,
@@ -85,10 +85,10 @@ struct OpTranscriber {
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc);
-  virtual pir::OpResult GetAttributeAsInput(pir::IrContext* ctx,
-                                            pir::Block* block,
-                                            const OpDesc& op_desc,
-                                            const OpInputInfo& input_info);
+  virtual pir::Value GetAttributeAsInput(pir::IrContext* ctx,
+                                         pir::Block* block,
+                                         const OpDesc& op_desc,
+                                         const OpInputInfo& input_info);
 
   virtual void RecordOpResultMapping(pir::IrContext* ctx,
                                      TranslationContext* param_map,

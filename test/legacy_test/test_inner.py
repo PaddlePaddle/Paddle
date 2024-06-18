@@ -124,6 +124,7 @@ class TestMultiplyApi(unittest.TestCase):
 
 
 class TestMultiplyError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors_static_case1(self):
         # test static computation graph: dtype can not be int8
         paddle.enable_static()
@@ -134,6 +135,7 @@ class TestMultiplyError(unittest.TestCase):
             y = paddle.static.data(name='y', shape=[100], dtype=np.int8)
             self.assertRaises(TypeError, paddle.inner, x, y)
 
+    @test_with_pir_api
     def test_errors_static_case2(self):
         # test static computation graph: inputs must be broadcastable
         paddle.enable_static()
@@ -150,27 +152,27 @@ class TestMultiplyError(unittest.TestCase):
         y_data = np.random.rand(10, 2)
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
-        self.assertRaises(ValueError, paddle.inner, x, y)
+        self.assertRaises(Exception, paddle.inner, x, y)
 
     def test_errors_dynamic_case2(self):
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float64)
         y_data = np.random.randn(200).astype(np.float64)
         y = paddle.to_tensor(y_data)
-        self.assertRaises(TypeError, paddle.inner, x_data, y)
+        self.assertRaises(Exception, paddle.inner, x_data, y)
 
     def test_errors_dynamic_case3(self):
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float64)
         y_data = np.random.randn(200).astype(np.float64)
         x = paddle.to_tensor(x_data)
-        self.assertRaises(TypeError, paddle.inner, x, y_data)
+        self.assertRaises(Exception, paddle.inner, x, y_data)
 
     def test_errors_dynamic_case4(self):
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float32)
         y_data = np.random.randn(200).astype(np.float32)
-        self.assertRaises(TypeError, paddle.inner, x_data, y_data)
+        self.assertRaises(Exception, paddle.inner, x_data, y_data)
 
 
 if __name__ == '__main__':

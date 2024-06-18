@@ -94,7 +94,8 @@ Conv2dTransposeXPUPattern::Conv2dTransposeXPUPattern(
                    });
   auto conv_filter = pattern->NewNode(conv_filter_repr())
                          ->assert_is_op_input("conv2d_transpose", "Filter")
-                         ->AsInput();
+                         ->AsInput()
+                         ->assert_is_persistable_var();
   auto conv_out = pattern->NewNode(conv_out_repr())
                       ->assert_is_op_output("conv2d_transpose", "Output")
                       ->assert_has_n_outputs(1);

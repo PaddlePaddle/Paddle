@@ -18,10 +18,11 @@ base.core._set_eager_deletion_mode(-1, -1, False)
 
 import os
 
-from seresnext_test_base import DeviceType
 from simple_nets import init_data
 
 import paddle
+
+DeviceType = base.core.DeviceType
 
 os.environ['CPU_NUM'] = str(4)
 os.environ['FLAGS_cudnn_deterministic'] = str(1)

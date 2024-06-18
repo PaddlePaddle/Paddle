@@ -11,9 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 /*
  * TransposeOp
@@ -35,7 +33,7 @@ class TransposeOpConverter : public OpConverter {
         axis[i]--;
       }
     }
-    nvinfer1::Permutation perm;
+    nvinfer1::Permutation perm = {};
     for (int i = 0; i < dims; i++) {
       int j = engine_->with_dynamic_shape() ? i : i + 1;
       perm.order[i] = axis[j];
@@ -44,13 +42,11 @@ class TransposeOpConverter : public OpConverter {
     layer->setFirstTranspose(perm);
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "transpose", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "transpose", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(transpose, TransposeOpConverter);
 REGISTER_TRT_OP_CONVERTER(transpose2, TransposeOpConverter);

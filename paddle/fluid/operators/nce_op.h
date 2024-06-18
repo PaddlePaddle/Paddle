@@ -22,23 +22,23 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/operators/math/sampler.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/math/sampler.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace operators {
 
 using SelectedRows = phi::SelectedRows;
-using Sampler = math::Sampler;
-using DDim = framework::DDim;
+using Sampler = phi::math::Sampler;
+using DDim = phi::DDim;
 
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+using EigenMatrix = phi::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
 void PrepareSamples(const framework::ExecutionContext &context,
@@ -88,11 +88,11 @@ class NCEKernel : public framework::OpKernel<T> {
     Sampler *sampler;
     switch (sampler_type) {
       case 0: {
-        sampler = new math::UniformSampler(num_total_classes - 1, seed);
+        sampler = new phi::math::UniformSampler(num_total_classes - 1, seed);
         break;
       }
       case 1: {
-        sampler = new math::LogUniformSampler(num_total_classes - 1, seed);
+        sampler = new phi::math::LogUniformSampler(num_total_classes - 1, seed);
         break;
       }
       case 2: {
@@ -104,7 +104,7 @@ class NCEKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             dist_probs->numel(),
             num_total_classes,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "ShapeError: The number of elements in Input(CustomDistProbs) "
                 "should be equal to the number of total classes. But Received: "
                 "Input(CustomDistProbs).numel() = %d, Attr(num_total_classes) "
@@ -114,7 +114,7 @@ class NCEKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             dist_alias->numel(),
             num_total_classes,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "ShapeError: The number of elements in Input(CustomDistAlias) "
                 "should be equal to the number of total classes. But Received: "
                 "Input(CustomDistAlias).numel() = %d, Attr(num_total_classes) "
@@ -124,7 +124,7 @@ class NCEKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             dist_alias_probs->numel(),
             num_total_classes,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "ShapeError: The number of elements in "
                 "Input(CustomDistAliasProbs) "
                 "should be equal to the number of total classes. But Received: "
@@ -136,17 +136,17 @@ class NCEKernel : public framework::OpKernel<T> {
         const float *probs_data = dist_probs->data<float>();
         const int *alias_data = dist_alias->data<int>();
         const float *alias_probs_data = dist_alias_probs->data<float>();
-        sampler = new math::CustomSampler(num_total_classes - 1,
-                                          probs_data,
-                                          alias_data,
-                                          alias_probs_data,
-                                          seed);
+        sampler = new phi::math::CustomSampler(num_total_classes - 1,
+                                               probs_data,
+                                               alias_data,
+                                               alias_probs_data,
+                                               seed);
         break;
       }
       default: {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Unsupported SamplerType. SamplerType should be 0: Uniform, "
-            "1: LogUniform or 2: CostumDist. Received SamplerType: %d",
+            "1: LogUniform or 2: CustomDist. Received SamplerType: %d",
             sampler_type));
       }
     }
@@ -180,7 +180,7 @@ class NCEKernel : public framework::OpKernel<T> {
     for (int x = 0; x < sample_labels->numel(); x++) {
       PADDLE_ENFORCE_GE(sample_labels_data[x],
                         0,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "ValueError: Every sample label should be "
                             "non-negative. But received: "
                             "Input(SampleLabels)[%d] = %d",
@@ -274,11 +274,11 @@ class NCEGradKernel : public framework::OpKernel<T> {
     Sampler *sampler;
     switch (sampler_type) {
       case 0: {
-        sampler = new math::UniformSampler(num_total_classes - 1, seed);
+        sampler = new phi::math::UniformSampler(num_total_classes - 1, seed);
         break;
       }
       case 1: {
-        sampler = new math::LogUniformSampler(num_total_classes - 1, seed);
+        sampler = new phi::math::LogUniformSampler(num_total_classes - 1, seed);
         break;
       }
       case 2: {
@@ -290,7 +290,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             dist_probs->numel(),
             num_total_classes,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "ShapeError: The number of elements in Input(CustomDistProbs) "
                 "should be equal to the number of total classes. But Received: "
                 "Input(CustomDistProbs).numel() = %d, Attr(num_total_classes) "
@@ -300,7 +300,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             dist_alias->numel(),
             num_total_classes,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "ShapeError: The number of elements in Input(CustomDistAlias) "
                 "should be equal to the number of total classes. But Received: "
                 "Input(CustomDistAlias).numel() = %d, Attr(num_total_classes) "
@@ -310,7 +310,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             dist_alias_probs->numel(),
             num_total_classes,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "ShapeError: The number of elements in "
                 "Input(CustomDistAliasProbs) "
                 "should be equal to the number of total classes. But Received: "
@@ -322,17 +322,17 @@ class NCEGradKernel : public framework::OpKernel<T> {
         const float *probs_data = dist_probs->data<float>();
         const int *alias_data = dist_alias->data<int>();
         const float *alias_probs_data = dist_alias_probs->data<float>();
-        sampler = new math::CustomSampler(num_total_classes - 1,
-                                          probs_data,
-                                          alias_data,
-                                          alias_probs_data,
-                                          seed);
+        sampler = new phi::math::CustomSampler(num_total_classes - 1,
+                                               probs_data,
+                                               alias_data,
+                                               alias_probs_data,
+                                               seed);
         break;
       }
       default: {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "Unsupported SamplerType. SamplerType should be 0: Uniform, "
-            "1: LogUniform or 2: CostumDist. Received SamplerType: %d",
+            "1: LogUniform or 2: CustomDist. Received SamplerType: %d",
             sampler_type));
       }
     }
@@ -399,7 +399,7 @@ class NCEGradKernel : public framework::OpKernel<T> {
         auto *table_t = context.Input<phi::SelectedRows>("Weight");
         table_dim = table_t->value().dims();
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(phi::errors::InvalidArgument(
             "The parameter Weight of a NCE_OP "
             "must be either phi::DenseTensor or SelectedRows"));
       }

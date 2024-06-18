@@ -15,14 +15,17 @@
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void TransposeOpMapper(const paddle::cpp::OpDesc& op_desc,
                        const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of Transpose op must be 1."));
   auto x_name = op_desc.Input("X").front();
   auto x = ctx.GetVar(x_name);
 
@@ -33,7 +36,10 @@ void TransposeOpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto out = ctx.Builder()->Transpose(x, axis);
 
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of Transpose op must be 1."));
   auto out_name = op_desc.Output("Out").front();
   ctx.AddVar(out_name, out);
   ctx.AddVarModelToProgram(out_name, out->id);
@@ -41,7 +47,10 @@ void TransposeOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void Transpose2OpMapper(const paddle::cpp::OpDesc& op_desc,
                         const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of Transpose2 op must be 1."));
   auto x_name = op_desc.Input("X").front();
   auto x = ctx.GetVar(x_name);
 
@@ -52,7 +61,10 @@ void Transpose2OpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto out = ctx.Builder()->Transpose(x, axis);
 
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of Transpose2 op must be 1."));
   auto out_name = op_desc.Output("Out").front();
   ctx.AddVar(out_name, out);
   ctx.AddVarModelToProgram(out_name, out->id);
@@ -63,7 +75,10 @@ void Transpose2OpMapper(const paddle::cpp::OpDesc& op_desc,
     // will be used in transpose_grad, in this way, the framework can reuse
     // the memory of X immediately the transpose2_op is finished.
     // Considering compatibility issues, we could not fix transpose2_op
-    CHECK_EQ(op_desc.Output("XShape").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Output("XShape").size(),
+        1UL,
+        phi::errors::InvalidArgument("The output of Transpose2 op must be 1."));
     auto xshape_name = op_desc.Output("XShape").front();
 
     auto xshape = ctx.Builder()->Identity(x);

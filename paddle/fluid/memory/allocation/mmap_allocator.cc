@@ -25,10 +25,10 @@
 #include <string>
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_bool(use_shm_cache);
+COMMON_DECLARE_bool(use_shm_cache);
 
 namespace paddle {
 namespace memory {
@@ -54,11 +54,14 @@ struct CountInfo {
   std::atomic<int> refcount;
 };
 
-void AllocateMemoryMap(
-    std::string filename, int flags, size_t size, void **map_ptr_, int *fd_) {
+void AllocateMemoryMap(std::string filename,
+                       int *shared_fd,
+                       int flags,
+                       size_t size,
+                       void **map_ptr_) {
   // TODO(@ZHUI): support win32
   int file_flags = 0;
-  int fd = -1;
+  int fd = *shared_fd;
   if (flags & MAPPED_SHAREDMEM) {
     file_flags = O_RDWR | O_CREAT;
   } else {
@@ -71,7 +74,7 @@ void AllocateMemoryMap(
     file_flags &= ~O_CREAT;
   }
 
-  if (!(flags & MAPPED_FROMFD)) {
+  if (!(flags & MAPPED_FROMFD) && fd == -1) {
     if (flags & MAPPED_SHAREDMEM) {
       fd = shm_open(filename.c_str(), file_flags, (mode_t)0600);
       PADDLE_ENFORCE_NE(
@@ -83,14 +86,12 @@ void AllocateMemoryMap(
       VLOG(6) << "shm_open: " << filename;
       MemoryMapFdSet::Instance().Insert(filename);
     }
-  } else {
-    fd = -1;
   }
 
   PADDLE_ENFORCE_EQ(ftruncate(fd, size),
                     0,
                     platform::errors::Unavailable(
-                        "Fruncate a file to a specified length failed!"));
+                        "Truncate a file to a specified length failed!"));
 
   if (flags & MAPPED_SHAREDMEM) {
     *map_ptr_ = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -98,41 +99,47 @@ void AllocateMemoryMap(
     *map_ptr_ = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
   }
 
+  if (flags & MAPPED_UNLINK) {
+    VLOG(6) << "shm_unlink: " << filename;
+    shm_unlink(filename.c_str());
+  }
+
   PADDLE_ENFORCE_NE(*map_ptr_,
                     MAP_FAILED,
                     platform::errors::Unavailable(
                         "Memory map failed when create shared memory."));
-
   if (flags & MAPPED_KEEPFD) {
-    *fd_ = fd;
+    *shared_fd = fd;
+    VLOG(6) << "keep fd: " << *shared_fd;
   } else {
     PADDLE_ENFORCE_NE(::close(fd),
                       -1,
                       platform::errors::Unavailable(
-                          "Error closing memory maped file <", filename, ">"));
+                          "Error closing memory mapped file <", filename, ">"));
 
-    *fd_ = -1;
+    *shared_fd = -1;
   }
 }
 
 std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename,
+                                      int shared_fd,
                                       int flags,
                                       size_t size,
                                       int buffer_id) {
-  int fd = -1;
+  int fd = shared_fd;
   void *base_ptr = nullptr;
   if (buffer_id == -1) {
-    AllocateMemoryMap(filename, flags, size + mmap_alignment, &base_ptr, &fd);
+    AllocateMemoryMap(filename, &fd, flags, size + mmap_alignment, &base_ptr);
     VLOG(4) << "Create and mmap a new shm: " << filename;
   } else {
     base_ptr = MemoryMapAllocationPool::Instance().GetById(buffer_id).mmap_ptr_;
     VLOG(4) << "Get a cached shm " << filename;
   }
-  void *aliged_base_ptr =
+  void *aligned_base_ptr =
       static_cast<void *>(static_cast<char *>(base_ptr) + mmap_alignment);
   return std::make_shared<RefcountedMemoryMapAllocation>(
-      aliged_base_ptr, size, filename, flags, fd, buffer_id);
+      aligned_base_ptr, size, filename, fd, flags, buffer_id);
 }
 
 RefcountedMemoryMapAllocation::RefcountedMemoryMapAllocation(
@@ -145,18 +152,29 @@ RefcountedMemoryMapAllocation::RefcountedMemoryMapAllocation(
     : MemoryMapAllocation(ptr, size, ipc_name, fd, flags) {
   // must reset base ptr first.
   buffer_id_ = buffer_id;
+  fd_ = fd;
+  flags_ = flags;
   resetBaseptr();
   initializeRefercount();
 }
 
 void MemoryMapAllocation::close() {
+  if (!closed_fd_) {
+    closed_fd_ = true;
+    if (flags_ & MAPPED_KEEPFD) {
+      PADDLE_ENFORCE_NE(::close(fd_),
+                        -1,
+                        platform::errors::Unavailable(
+                            "Error closing file descriptor <", fd_, ">"));
+    }
+  }
   if (closed_) {
     return;
   }
   closed_ = true;
 }
 
-MemoryMapAllocation::~MemoryMapAllocation() { close(); }
+MemoryMapAllocation::~MemoryMapAllocation() { close(); }  // NOLINT
 
 void RefcountedMemoryMapAllocation::incref() {
   CountInfo *info = static_cast<CountInfo *>(map_ptr_);
@@ -193,6 +211,15 @@ void RefcountedMemoryMapAllocation::close() {
   void *data = map_ptr_;
   CountInfo *info = reinterpret_cast<CountInfo *>(data);
   --info->refcount;
+  if (flags_ & MAPPED_KEEPFD) {
+    closed_fd_ = true;
+    PADDLE_ENFORCE_NE(::close(fd_),
+                      -1,
+                      platform::errors::Unavailable(
+                          "Error closing file descriptor <", fd_, ">"));
+    VLOG(6) << "close fd: " << fd_;
+  }
+
   if (FLAGS_use_shm_cache && buffer_id_ != -1) {
     return;
   } else {
@@ -260,6 +287,7 @@ std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
   const std::string &ipc_name = GetIPCName();
   int flags = O_RDWR | O_CREAT;
   int fd = shm_open(ipc_name.c_str(), flags, 0600);
+
   PADDLE_ENFORCE_NE(fd,
                     -1,
                     platform::errors::Unavailable(
@@ -267,7 +295,7 @@ std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
   PADDLE_ENFORCE_EQ(ftruncate(fd, size),
                     0,
                     platform::errors::Unavailable(
-                        "Fruncate a file to a specified length failed!"));
+                        "Truncate a file to a specified length failed!"));
 
   void *ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   PADDLE_ENFORCE_NE(ptr,
@@ -283,7 +311,6 @@ std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
     const std::string &ipc_name, size_t size) {
   int flags = O_RDWR | O_CREAT;
   flags &= ~O_CREAT;
-
   int fd = shm_open(ipc_name.c_str(), flags, 0600);
   PADDLE_ENFORCE_NE(fd,
                     -1,
@@ -337,7 +364,7 @@ MemoryMapAllocationPool *MemoryMapAllocationPool::pool_ = nullptr;
 void MemoryMapAllocationPool::Insert(const MemoryMapInfo &memory_map) {
   std::lock_guard<std::mutex> guard(mtx_);
   memory_map_allocations_.push_back(memory_map);
-  VLOG(4) << this << "Intsert a new shm: " << memory_map.file_name_;
+  VLOG(4) << this << "Insert a new shm: " << memory_map.file_name_;
 }
 
 int MemoryMapAllocationPool::FindFromCache(const int &flag,

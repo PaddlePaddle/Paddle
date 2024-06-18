@@ -17,20 +17,18 @@ limitations under the License. */
 
 #include <glog/logging.h>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
-#include "paddle/phi/core/flags.h"
 
 PD_DECLARE_bool(convert_all_blocks);
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 #ifdef PADDLE_WITH_CINN
 PD_DECLARE_bool(use_cinn);
 #endif
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 static inline bool SeqOnlyAllReduceOps(const BuildStrategy &strategy) {
   // Should fix the allreduce op order if scheduling
@@ -60,9 +58,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     if (FLAGS_use_cinn || strategy.build_cinn_pass_) {
       // Note: This is a trick to support 0D-Tensor for CINN. This pass will be
       // removed in the near future.
-      AppendPass("cinn_zero_tensor_trick_pass");
-      // Note: This pass is used to enable cinn.
-      AppendPass("build_cinn_pass");
       AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph");
     }
 #endif
@@ -78,7 +73,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendMultiDevPass();
     AppendMultiGraphOptPasses();
 
-    AppendPassToSetMkldnnAttr("mkldnn_placement_pass");
+    AppendPassToSetMkldnnAttr("onednn_placement_pass");
     // runtime_context_cache pass should be the last pass to enable the attr of
     // all original and fused operators. But no operators can be enabled this
     // attr if putting it after MultiDevPass.
@@ -179,7 +174,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         "delete_dropout_op_x_pass");
     AppendPassWithCheck(
         strategy_.enable_inference_pass_ && strategy_.use_mkldnn_,
-        "mkldnn_placement_pass");
+        "onednn_placement_pass");
 
     // 2. trainning pass
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
@@ -480,7 +475,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                    "GPU, skipped.";
         continue;
       }
-    } else if (pass->Type() == "mkldnn_placement_pass") {
+    } else if (pass->Type() == "onednn_placement_pass") {
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(mkldnn_enabled_op_types_));
     } else if (pass->Type() == "backward_optimizer_op_deps_pass") {
@@ -505,9 +500,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
   return graph;
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details
 
 USE_PASS(sync_batch_norm_pass);
 USE_PASS(fuse_relu_depthwise_conv_pass);
@@ -540,15 +533,11 @@ USE_PASS(delete_dropout_op_x_pass);
 USE_PASS(fused_attention_pass);
 USE_PASS(fuse_adamw_op_pass);
 #endif
-#ifdef PADDLE_WITH_CINN
-USE_PASS(cinn_zero_tensor_trick_pass);
-USE_PASS(build_cinn_pass);
-#endif
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(fused_feedforward_pass);
 #endif
 #ifdef PADDLE_WITH_DNNL
-USE_PASS(mkldnn_placement_pass);
+USE_PASS(onednn_placement_pass);
 #endif
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     !defined(_WIN32) && !defined(__APPLE__)

@@ -19,7 +19,7 @@
 
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-#define MAX_RANK_SUPPORTED 6
+#define MAX_RANK_SUPPORTED 8
 
 namespace phi {
 using Tensor = DenseTensor;
@@ -168,6 +168,12 @@ void ExpandKernel(const Context& ctx,
       break;
     case 6:
       Expand<Context, T, 6>(ctx, x, shape, out);
+      break;
+    case 7:
+      Expand<Context, T, 7>(ctx, x, shape, out);
+      break;
+    case 8:
+      Expand<Context, T, 8>(ctx, x, shape, out);
       break;
   }
 }

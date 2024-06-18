@@ -144,7 +144,6 @@ _OP_WITHOUT_KERNEL_SET = {
     'heter_listen_and_serv',
     'c_wait_comm',
     'c_wait_compute',
-    'copy_cross_scope',
 }
 
 
@@ -275,6 +274,7 @@ class ProgramConfig:
         self.outputs = outputs
         self.input_type = input_type
         self.no_cast_list = [] if no_cast_list is None else no_cast_list
+        self.supported_cast_type = [np.float32, np.float16]
 
     def __repr__(self):
         log_str = ''
@@ -292,11 +292,9 @@ class ProgramConfig:
         return log_str
 
     def set_input_type(self, _type: np.dtype) -> None:
-        assert _type in [
-            np.float32,
-            np.float16,
-            None,
-        ], "PaddleTRT only supports FP32 / FP16 IO"
+        assert (
+            _type in self.supported_cast_type or _type is None
+        ), "PaddleTRT only supports FP32 / FP16 IO"
 
         ver = paddle.inference.get_trt_compile_version()
         trt_version = ver[0] * 1000 + ver[1] * 100 + ver[2] * 10
@@ -309,15 +307,14 @@ class ProgramConfig:
     def get_feed_data(self) -> Dict[str, Dict[str, Any]]:
         feed_data = {}
         for name, tensor_config in self.inputs.items():
-            do_casting = (
-                self.input_type is not None and name not in self.no_cast_list
-            )
+            data = tensor_config.data
             # Cast to target input_type
-            data = (
-                tensor_config.data.astype(self.input_type)
-                if do_casting
-                else tensor_config.data
-            )
+            if (
+                self.input_type is not None
+                and name not in self.no_cast_list
+                and data.dtype in self.supported_cast_type
+            ):
+                data = data.astype(self.input_type)
             # Truncate FP32 tensors to FP16 precision for FP16 test stability
             if data.dtype == np.float32 and name not in self.no_cast_list:
                 data = data.astype(np.float16).astype(np.float32)
@@ -334,9 +331,13 @@ class ProgramConfig:
         for name, inp in self.inputs.items():
             if name in self.no_cast_list:
                 continue
+            if inp.dtype not in self.supported_cast_type:
+                continue
             inp.convert_type_inplace(self.input_type)
         for name, weight in self.weights.items():
             if name in self.no_cast_list:
+                continue
+            if weight.dtype not in self.supported_cast_type:
                 continue
             weight.convert_type_inplace(self.input_type)
         return self
@@ -344,7 +345,6 @@ class ProgramConfig:
 
 def create_fake_model(program_config):
     '''Create a Paddle model(in memory) according to the given config.'''
-    paddle.set_flags({'FLAGS_enable_pir_in_executor': False})
     program_config = copy.deepcopy(program_config)
     program_config._cast()
     paddle.enable_static()

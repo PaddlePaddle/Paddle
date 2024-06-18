@@ -84,7 +84,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
         assert in_out_list is not None, f"{name} should not be None"
 
         if isinstance(in_out_list, (list, tuple)):
-            assert len(in_out_list) > 0, f"{name} connot be empty"
+            assert len(in_out_list) > 0, f"{name} cannot be empty"
             for each_var in in_out_list:
                 assert isinstance(
                     each_var, (paddle.Tensor, core.eager.Tensor)

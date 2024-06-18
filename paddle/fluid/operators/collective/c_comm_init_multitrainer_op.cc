@@ -17,7 +17,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_RCCL)
 #include <rccl.h>
 #endif
-#include <stdint.h>
+#include <cstdint>
 
 #include <ostream>
 #include <string>
@@ -51,10 +51,10 @@ class CCommInitMultiTrainerOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
+               const phi::Place& place) const override {
     auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::InvalidArgument("Input X must be provided."));
+        var, phi::errors::InvalidArgument("Input X must be provided."));
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
 
@@ -70,8 +70,8 @@ class CCommInitMultiTrainerOp : public framework::OperatorBase {
     platform::NCCLCommContext::Instance().CreateNCCLCommMultiTrainer(
         devices, nccl_id, ntrainers, train_id, rid);
 #else
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "PaddlePaddle should compile with GPU."));
+    PADDLE_THROW(
+        phi::errors::Unimplemented("PaddlePaddle should compile with GPU."));
 #endif
   }
 };

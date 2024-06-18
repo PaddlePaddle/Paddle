@@ -212,24 +212,16 @@ class TestFleetBase(unittest.TestCase):
 
         if DIST_UT_PORT:
             print("set begin_port:", DIST_UT_PORT)
-            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-                DIST_UT_PORT,
-                DIST_UT_PORT + 1,
+            self._ps_endpoints = (
+                f"127.0.0.1:{DIST_UT_PORT},127.0.0.1:{DIST_UT_PORT + 1}"
             )
-            self._tr_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-                DIST_UT_PORT + 2,
-                DIST_UT_PORT + 3,
+            self._tr_endpoints = (
+                f"127.0.0.1:{DIST_UT_PORT + 2},127.0.0.1:{DIST_UT_PORT + 3}"
             )
             DIST_UT_PORT += 4
         else:
-            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-                self._find_free_port(),
-                self._find_free_port(),
-            )
-            self._tr_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
-                self._find_free_port(),
-                self._find_free_port(),
-            )
+            self._ps_endpoints = f"127.0.0.1:{self._find_free_port()},127.0.0.1:{self._find_free_port()}"
+            self._tr_endpoints = f"127.0.0.1:{self._find_free_port()},127.0.0.1:{self._find_free_port()}"
 
         self._python_interp = sys.executable
         self._geo_sgd_need_push_nums = 5
@@ -338,31 +330,9 @@ class TestFleetBase(unittest.TestCase):
             python_path += " -m coverage run --branch -p"
         env.update(envs)
 
-        tr_cmd = "{} {} --role trainer --endpoints {} --trainer_endpoints {} --current_id {{}} --trainers {} --mode {} --geo_sgd_need_push_nums {} --reader {} --gloo_path {} --test {}".format(
-            python_path,
-            model,
-            self._ps_endpoints,
-            self._tr_endpoints,
-            self._trainers,
-            self._mode,
-            self._geo_sgd_need_push_nums,
-            self._reader,
-            gloo_path,
-            self._need_test,
-        )
+        tr_cmd = f"{python_path} {model} --role trainer --endpoints {self._ps_endpoints} --trainer_endpoints {self._tr_endpoints} --current_id {{}} --trainers {self._trainers} --mode {self._mode} --geo_sgd_need_push_nums {self._geo_sgd_need_push_nums} --reader {self._reader} --gloo_path {gloo_path} --test {self._need_test}"
 
-        ps_cmd = "{} {} --role pserver --endpoints {} --trainer_endpoints {} --current_id {{}} --trainers {} --mode {} --geo_sgd_need_push_nums {} --reader {} --gloo_path {} --test {}".format(
-            python_path,
-            model,
-            self._ps_endpoints,
-            self._tr_endpoints,
-            self._trainers,
-            self._mode,
-            self._geo_sgd_need_push_nums,
-            self._reader,
-            gloo_path,
-            self._need_test,
-        )
+        ps_cmd = f"{python_path} {model} --role pserver --endpoints {self._ps_endpoints} --trainer_endpoints {self._tr_endpoints} --current_id {{}} --trainers {self._trainers} --mode {self._mode} --geo_sgd_need_push_nums {self._geo_sgd_need_push_nums} --reader {self._reader} --gloo_path {gloo_path} --test {self._need_test}"
 
         if self._model_dir:
             tr_cmd += f" --model_dir {self._model_dir}"

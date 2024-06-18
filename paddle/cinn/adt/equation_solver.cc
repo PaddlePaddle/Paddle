@@ -24,6 +24,7 @@
 #include "paddle/cinn/adt/simplify_value.h"
 #include "paddle/cinn/adt/tags.h"
 #include "paddle/cinn/common/equation_graph_topo_walker.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn::adt {
 
@@ -163,7 +164,8 @@ std::unordered_map<Variable, Value> InferValuesImpl(
 
   std::unordered_map<Variable, Value> ret{};
   for (std::size_t idx = 0; idx < out_iters.value()->size(); ++idx) {
-    ListGetItem<Value, DimExpr> list_get_item{index_undot, idx};
+    ListGetItem<Value, DimExpr> list_get_item{
+        Value{index_undot}, DimExpr(static_cast<std::int64_t>(idx))};
     ret.emplace(out_iters.value()->at(idx), list_get_item);
   }
   return ret;
@@ -181,10 +183,24 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   const auto& [in_msg_in_indexes, in_msg_out_indexes] =
       in_msg_indexes.value().tuple();
   std::unordered_map<Variable, Value> ret{{op_placeholder.value(), Ok{}}};
-  CHECK_EQ(out_msg_in_indexes.value()->size(),
-           in_msg_in_indexes.value()->size());
-  CHECK_EQ(out_msg_out_indexes.value()->size(),
-           in_msg_out_indexes.value()->size());
+  PADDLE_ENFORCE_EQ(
+      out_msg_in_indexes.value()->size() == in_msg_in_indexes.value()->size(),
+      true,
+      phi::errors::InvalidArgument(
+          "The size of out_msg_in_indexes should be equal to the size of "
+          "in_msg_in_indexes, but got out_msg_in_indexes size = %d, "
+          "in_msg_in_indexes size = %d.",
+          out_msg_in_indexes.value()->size(),
+          in_msg_in_indexes.value()->size()));
+  PADDLE_ENFORCE_EQ(
+      out_msg_out_indexes.value()->size() == in_msg_out_indexes.value()->size(),
+      true,
+      phi::errors::InvalidArgument(
+          "The size of out_msg_out_indexes should be equal to the size of "
+          "in_msg_out_indexes, but got out_msg_out_indexes size = %d, "
+          "in_msg_out_indexes size = %d.",
+          out_msg_out_indexes.value()->size(),
+          in_msg_out_indexes.value()->size()));
   for (std::size_t i = 0; i < out_msg_in_indexes.value()->size(); ++i) {
     const auto& value = ctx->GetValue(in_msg_in_indexes.value()->at(i));
     CHECK(ret.emplace(out_msg_in_indexes.value()->at(i), value).second);
@@ -272,7 +288,8 @@ void CheckEquationsSolvable(
         [&](const auto& opt_old_value, const auto& simplified_value) {
           LOG(ERROR) << "old_value: " << ToTxtString(opt_old_value);
           LOG(ERROR) << "simplified_value: " << ToTxtString(simplified_value);
-          LOG(FATAL) << "CheckEquationsSolvable Failed";
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("CheckEquationsSolvable Failed"));
           return tValueInferSuccess<bool>{false};
         });
   };

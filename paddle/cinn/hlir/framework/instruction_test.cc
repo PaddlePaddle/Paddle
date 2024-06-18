@@ -104,7 +104,7 @@ TEST(Instruction, RunWithRawPodArgs) {
   const auto& shape = Shape({M, N});
 
   std::map<std::string, cinn_pod_value_t> name2podargs;
-  // case 1: create cinn_pod_value_t arguments dicrectly
+  // case 1: create cinn_pod_value_t arguments directly
   std::vector<cinn_buffer_t> args_buffer(
       3);  // store {"x", "y", "z"} buffer objects
   auto* default_memory_mng = MemoryManager::Global().RetrieveSafely(
@@ -267,7 +267,7 @@ class TestInstruction : public Instruction {
                                                             args_[18],
                                                             stream_);
     } else {
-      LOG(FATAL) << "Unkown Conv Type!";
+      PADDLE_THROW(phi::errors::InvalidArgument("Unkown Conv Type!"));
     }
     CUDA_CALL(cudaStreamSynchronize(stream_));
   }

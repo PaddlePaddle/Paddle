@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
 namespace cinn {
 namespace dialect {

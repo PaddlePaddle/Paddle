@@ -122,7 +122,7 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
             with base.dygraph.guard(base.CUDAPlace(0)):
                 x_in_np = np.random.random((1, 4, 32, 32)).astype(dtype)
                 rst_np = _get_softmax_upper(x_in_np, dtype == 'float16')
-                input_x = base.dygraph.to_variable(x_in_np)
+                input_x = paddle.to_tensor(x_in_np)
 
                 rst = incubate.softmax_mask_fuse_upper_triangle(input_x)
                 np.testing.assert_allclose(rst, rst_np, rtol=1e-05)

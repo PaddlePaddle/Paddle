@@ -35,6 +35,14 @@ Tensor add_n_impl(const std::vector<Tensor>& x);
 
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking);
 
+std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
+    const Tensor& x,
+    const Tensor& y,
+    const Tensor& bias,
+    bool trans_x,
+    bool trans_y,
+    const std::string& activation);
+
 ////////////////// Backward(grad) api impls //////////////////////
 
 void imag_grad_impl(const Tensor& out_grad, Tensor* x_grad);

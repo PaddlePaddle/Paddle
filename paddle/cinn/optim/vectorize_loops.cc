@@ -50,8 +50,11 @@ Expr Widen(Expr e, int lanes) {
     }
   }
 
-  CHECK_EQ(e.type().lanes(), 1)
-      << "Cannot broadcast lanes from " << e.type().lanes() << " to " << lanes;
+  PADDLE_ENFORCE_EQ(
+      e.type().lanes(),
+      1,
+      phi::errors::InvalidArgument(
+          "Cannot broadcast lanes from %d to %d.", e.type().lanes(), lanes));
   return ir::Broadcast::Make(e, lanes);
 }
 
@@ -80,7 +83,7 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
   const int factor_;
   const absl::flat_hash_map<std::string, cinn::common::CasInterval>
       *var_intervals_;
-  // save (tensor name) -> (bool flag) to indentify whether tensors can be
+  // save (tensor name) -> (bool flag) to identify whether tensors can be
   // vectorized or not
   std::unordered_map<std::string, bool> tensor2flag_;
 
@@ -137,7 +140,7 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
       return false;
     }
 
-    // the iter val can't appear in mulitple indices
+    // the iter val can't appear in multiple indices
     for (int i = 0; i < indices.size() - 1; ++i) {
       auto repeat_found =
           ir::ir_utils::CollectIRNodes(indices[i], find_matched_var_fn);
@@ -184,9 +187,9 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
 };
 
 // find tensors accessed sequentially in a for-loop to be vectorized,
-// and substitue the corresponding cuda built-in vector for them
+// and substitute the corresponding cuda built-in vector for them
 class CudaVectorizer : public IRMutator<Expr *> {
-  const Var iter_var_;  // the loop var of the vecotrized loop
+  const Var iter_var_;  // the loop var of the vectorized loop
   const int factor_;    // the factor for vectorize
 
   std::set<std::string> write_teller_;
@@ -258,7 +261,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
     }
 
     auto vectorized_var = tensor2vectorized_vars_.at(tensor->name);
-    // substitue a new tensor with the vector name and dtype
+    // substitute a new tensor with the vector name and dtype
     auto t = vectorized_var->type().is_cpp_handle()
                  ? node->tensor->type().PointerOf()
                  : node->tensor->type();
@@ -286,7 +289,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
     GET_CUDA_VECTOR_TYPE_NAME(type.is_bfloat16(), "bfloat16");
 #undef GET_CUDA_VECTOR_TYPE_NAME
 
-    // others are not implementd yet
+    // others are not implemented yet
     CINN_NOT_IMPLEMENTED
     return "";
   }
@@ -727,22 +730,28 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
 
   void Visit(const For *forloop, Expr *expr) {
     auto *node = expr->As<For>();
-    auto loopvar_name = forloop->loop_var->name;
-    if (forloop->extent.As<IntImm>()) {
+    auto loop_var_name = forloop->loop_var->name;
+    auto *extern_i = forloop->extent.As<IntImm>();
+    if (extern_i && extern_i->value > 0) {
+      var_intervals.emplace(loop_var_name,
+                            cinn::common::CasInterval{static_cast<int64_t>(0),
+                                                      extern_i->value - 1});
+    } else if (!extern_i) {
       var_intervals.emplace(
-          loopvar_name,
-          cinn::common::CasInterval{static_cast<int64_t>(0),
-                                    forloop->extent.as_int64() - 1});
-    } else {
-      var_intervals.emplace(
-          loopvar_name,
+          loop_var_name,
           cinn::common::CasInterval{Expr(0), forloop->extent - 1});
     }
     // the extent the forloops marked as Vectorized should be int constant
     if (forloop->is_vectorized()) {
       Context::info_rgt().Get<int>("vectorized_forloop_count")++;
 
-      CHECK_GT(forloop->vectorize_info().factor, 0);
+      PADDLE_ENFORCE_GT(
+          forloop->vectorize_info().factor,
+          0,
+          phi::errors::InvalidArgument(
+              "The value of factor in forloop's vectorize_info is incorrect."
+              "Expected value is larger than 0, but receive %d. ",
+              forloop->vectorize_info().factor));
 
       CHECK(is_zero(forloop->min));
       Expr for_extent = cinn::common::AutoSimplify(forloop->extent);
@@ -754,15 +763,19 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       vectorizable_ = true;
       IRMutator<>::Visit(&node->body, &node->body);
 
-      if (target == cinn::common::DefaultNVGPUTarget()) {
-        if (!forloop->extent.As<IntImm>() ||
-            forloop->extent.as_int32() % forloop->vectorize_info().factor !=
-                0) {
-          vectorizable_ = false;
-          VLOG(5)
-              << "GPU vectorize only support extent is a multiple of factor";
-        }
-      }
+      target.arch.Match(
+          [&](common::NVGPUArch) {
+            if (!forloop->extent.As<IntImm>() ||
+                forloop->extent.as_int32() % forloop->vectorize_info().factor !=
+                    0) {
+              vectorizable_ = false;
+              VLOG(5) << "GPU vectorize only support extent is a multiple of "
+                         "factor";
+            }
+          },
+          [&](std::variant<common::UnknownArch,
+                           common::X86Arch,
+                           common::ARMArch>) {});
 
       if (extent_min || extent_max || !vectorizable_) {
         // not vectorize if has tail blocks, for llvm to optimize
@@ -795,40 +808,49 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       }
 
       int extent = extent_int->value;
-      CHECK_GT(extent, 0)
-          << "Loop over " << Expr(new_forloop->loop_var) << " has extent "
-          << new_forloop->extent
-          << ". Can only vectorize loops over a constant extent > 1";
+      PADDLE_ENFORCE_GT(
+          extent,
+          0,
+          phi::errors::InvalidArgument(
+              "Loop over %s has extent %d"
+              ". Can only vectorize loops over a constant extent > 1",
+              Expr(new_forloop->loop_var),
+              new_forloop->extent));
 
       VLOG(2) << "Vectorizing " << new_forloop->loop_var << " extent "
               << extent;
       VLOG(2) << "before vectorize body:\n" << node->body;
 
-      if (target == cinn::common::DefaultNVGPUTarget()) {
-        CudaVectorizer cuda_vectorizer(
-            new_forloop->loop_var, factor, &var_intervals);
-        cuda_vectorizer.Visit(&new_forloop->body);
-        // unroll the new forloop to compute each element of the vector
-        // iteratively
-        auto copied_loop = ir::ir_utils::IRCopy(_new_forloop);
-        copied_loop.As<ir::For>()->set_unrolled();
-        optim::UnrollLoop(&copied_loop);
-        // add cast exprs of vector type in the front of vectorized forloop,
-        // and replace original compute statements with the correspond unrolled
-        // ones
-        auto unroll_body = copied_loop.As<ir::Block>()->stmts;
-        auto cast_exprs = cuda_vectorizer.VectorizedTypeCastExprs();
-        auto store_exprs = cuda_vectorizer.VectorizedTypeStoreExprs();
-        auto &body_stmts = new_forloop->body.As<ir::Block>()->stmts;
-        body_stmts.assign(cast_exprs.begin(), cast_exprs.end());
-        body_stmts.insert(
-            body_stmts.end(), unroll_body.begin(), unroll_body.end());
-        body_stmts.insert(
-            body_stmts.end(), store_exprs.begin(), store_exprs.end());
-      } else {
-        Vectorizer(new_forloop->loop_var, extent, var_intervals)
-            .Visit(&new_forloop->body);
-      }
+      target.arch.Match(
+          [&](common::NVGPUArch) {
+            CudaVectorizer cuda_vectorizer(
+                new_forloop->loop_var, factor, &var_intervals);
+            cuda_vectorizer.Visit(&new_forloop->body);
+            // unroll the new forloop to compute each element of the vector
+            // iteratively
+            auto copied_loop = ir::ir_utils::IRCopy(
+                _new_forloop, /* copy_buffer_node = */ false);
+            copied_loop.As<ir::For>()->set_unrolled();
+            optim::UnrollLoop(&copied_loop);
+            // add cast exprs of vector type in the front of vectorized forloop,
+            // and replace original compute statements with the correspond
+            // unrolled ones
+            auto unroll_body = copied_loop.As<ir::Block>()->stmts;
+            auto cast_exprs = cuda_vectorizer.VectorizedTypeCastExprs();
+            auto store_exprs = cuda_vectorizer.VectorizedTypeStoreExprs();
+            auto &body_stmts = new_forloop->body.As<ir::Block>()->stmts;
+            body_stmts.assign(cast_exprs.begin(), cast_exprs.end());
+            body_stmts.insert(
+                body_stmts.end(), unroll_body.begin(), unroll_body.end());
+            body_stmts.insert(
+                body_stmts.end(), store_exprs.begin(), store_exprs.end());
+          },
+          [&](std::variant<common::UnknownArch,
+                           common::X86Arch,
+                           common::ARMArch>) {
+            Vectorizer(new_forloop->loop_var, extent, var_intervals)
+                .Visit(&new_forloop->body);
+          });
 
       VLOG(2) << "after vectorize body:\n" << node->body;
 
@@ -842,7 +864,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     } else {
       IRMutator::Visit(forloop, expr);
     }
-    var_intervals.erase(loopvar_name);
+    var_intervals.erase(loop_var_name);
   }
 
   //! unroll the forloop if its' extent is min type by solving the condition
@@ -893,13 +915,14 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
           Var new_iterator_outer(
               cinn::common::UniqName(outer_for->loop_var->name + "_s"));
 
-          Expr inner_for_b =
-              Block::Make({For::Make(new_iterator_inner,
-                                     inner_for->min,
-                                     b,
-                                     ForType::Serial,
-                                     DeviceAPI::UNK,
-                                     ir::ir_utils::IRCopy(inner_for->body))});
+          Expr inner_for_b = Block::Make({For::Make(
+              new_iterator_inner,
+              inner_for->min,
+              b,
+              ForType::Serial,
+              DeviceAPI::UNK,
+              ir::ir_utils::IRCopy(inner_for->body,
+                                   /* copy_buffer_node = */ false))});
           cinn::ir::ir_utils::IrReplaceVarBroadcast(
               &inner_for_b, inner_for->loop_var, Expr(new_iterator_inner));
 
@@ -925,7 +948,12 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
   //! Split the forloop with size \p factor.
   //! @return The new forloop.
   Expr SplitForLoop(For *forloop, int factor) {
-    CHECK_GT(factor, 1);
+    PADDLE_ENFORCE_GT(factor,
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The value of factor in SplitForLoop is incorrect."
+                          "Expected value is larger than 1, but receive %d. ",
+                          factor));
     auto *for_min_i = forloop->min.As<IntImm>();
     CHECK(forloop);
     if (!for_min_i) return Expr();
@@ -934,6 +962,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     auto *extent_ptr = forloop->extent.As<IntImm>();
     Expr times;
     if (extent_ptr) {
+      if (extent_ptr->value == 0) return Expr();
       int extent_int = forloop->extent.as_int32();
       int extent_trunc = extent_int / factor;
       int extent_times =
@@ -950,10 +979,10 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
     forloop->set_vectorized(false);
 
     forloop->extent = times;
-    if (times_int && forloop->extent.as_int32() >= 1) {
-      var_intervals.emplace(
-          forloop->loop_var->name,
-          cinn::common::CasInterval{0, forloop->extent.as_int32() - 1});
+    if (times_int) {
+      var_intervals.emplace(forloop->loop_var->name,
+                            cinn::common::CasInterval{static_cast<int64_t>(0),
+                                                      times_int->value - 1});
     } else {
       var_intervals.erase(forloop->loop_var->name);
       var_intervals.emplace(

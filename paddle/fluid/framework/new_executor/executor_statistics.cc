@@ -35,11 +35,11 @@ PADDLE_DEFINE_EXPORTED_string(static_executor_perfstat_filepath,
                               "enables performance statistics for the static "
                               "graph executor.");
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 class StatisticsEngine {
  public:
+  StatisticsEngine() : executor_type_(ExecutorType::EXECUTOR) {}
   int Apply(const platform::NodeTrees& trees);
 
   void Log(const std::string& full_filename);
@@ -67,7 +67,7 @@ class StatisticsEngine {
         : evt_idx(idx), start_ns(start), end_ns(end) {}
   };
 
-  enum class ExecutorType { EXECUTOR, PARALLEL_EXECUTOR, INTERPRETER_CORE };
+  enum class ExecutorType { EXECUTOR, INTERPRETER_CORE };
 
   using Filter = std::function<bool(const platform::HostTraceEventNode&)>;
 
@@ -82,8 +82,6 @@ class StatisticsEngine {
   void InitInterthreadPriorityForStdEvents();
 
   int InitFiltersForExecutor();
-
-  int InitFiltersForParallelExecutor();
 
   int InitFiltersForInterpreterCore();
 
@@ -154,10 +152,6 @@ int StatisticsEngine::Init(const platform::NodeTrees& trees) {
         VLOG(10) << "type: Executor";
         executor_type_ = ExecutorType::EXECUTOR;
         return InitFiltersForExecutor();
-      } else if (name.find("ParallelExecutor::") == 0) {
-        VLOG(10) << "type: ParallelExecutor";
-        executor_type_ = ExecutorType::PARALLEL_EXECUTOR;
-        return InitFiltersForParallelExecutor();
       } else if (name.find("StandaloneExecutor::") == 0) {
         VLOG(10) << "type: InterpreterCore";
         executor_type_ = ExecutorType::INTERPRETER_CORE;
@@ -295,57 +289,6 @@ int StatisticsEngine::InitFiltersForExecutor() {
              });
 }
 
-int StatisticsEngine::InitFiltersForParallelExecutor() {
-  return RegisterEventFilter("Total",
-                             [](const platform::HostTraceEventNode& evt) {
-                               return evt.Name().find("ProfileStep") == 0;
-                             }) ||
-         RegisterEventFilter("CplusplusEnd",
-                             [](const platform::HostTraceEventNode& evt) {
-                               return evt.Name() == "ParallelExecutor::Run";
-                             }) ||
-         RegisterEventFilter("RunOp",
-                             [](const platform::HostTraceEventNode& evt) {
-                               return evt.Type() ==
-                                      platform::TracerEventType::Operator;
-                             }) ||
-         RegisterEventFilter(
-             "OpCompute",
-             [](const platform::HostTraceEventNode& evt) {
-               return evt.Name() == "compute" &&
-                      evt.Type() == platform::TracerEventType::OperatorInner;
-             }) ||
-         RegisterEventFilter(
-             "OpInfershape",
-             [](const platform::HostTraceEventNode& evt) {
-               return evt.Name() == "infer_shape" &&
-                      evt.Type() == platform::TracerEventType::OperatorInner;
-             }) ||
-         RegisterEventFilter("GarbageCollect",
-                             [](const platform::HostTraceEventNode& evt) {
-                               return evt.Name() == "eager_deletion" ||
-                                      evt.Name() == "CheckGC";
-                             }) ||
-         RegisterEventFilter("AllocateDeviceMem",
-                             [](const platform::HostTraceEventNode& evt) {
-                               return evt.Name() == alloc_device_mem;
-                             }) ||
-         RegisterEventFilter("FreeDeviceMem",
-                             [](const platform::HostTraceEventNode& evt) {
-                               return evt.Name() == free_device_mem;
-                             }) ||
-         RegisterEventFilter(
-             "DataTransform",
-             [](const platform::HostTraceEventNode& evt) {
-               return evt.Name() == "prepare_data" &&
-                      evt.Type() == platform::TracerEventType::OperatorInner;
-             }) ||
-         RegisterEventFilter("ThreadpoolAddTask",
-                             [](const platform::HostTraceEventNode& evt) {
-                               return evt.Name() == "WorkQueue::AddTask";
-                             });
-}
-
 int StatisticsEngine::InitFiltersForInterpreterCore() {
   return RegisterEventFilter("Total",
                              [](const platform::HostTraceEventNode& evt) {
@@ -454,9 +397,9 @@ int StatisticsEngine::Stat(const platform::NodeTrees& trees) {
     }
   }
   auto& python_end = statistics_[name2idx_["PythonEnd"]];
-  const auto& totol = statistics_[name2idx_["Total"]];
+  const auto& total = statistics_[name2idx_["Total"]];
   const auto& cplusplus_end = statistics_[name2idx_["CplusplusEnd"]];
-  python_end.total_time = totol.total_time - cplusplus_end.total_time;
+  python_end.total_time = total.total_time - cplusplus_end.total_time;
   python_end.count = cplusplus_end.count + 1;
 
   auto& launch_kernel = statistics_[name2idx_["LaunchKernel"]];
@@ -631,5 +574,4 @@ void StaticGraphExecutorPerfStatistics(
   }
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

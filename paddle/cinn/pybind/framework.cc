@@ -78,7 +78,12 @@ void BindFramework(pybind11::module *m) {
                      input_output_names,
                      key,
                      target);
-             CHECK_EQ(funcs.size(), 1U);
+             PADDLE_ENFORCE_EQ(funcs.size(),
+                               1U,
+                               phi::errors::InvalidArgument(
+                                   "The size of funcs is incorrect."
+                                   "Expected size is 1, but receive %d.",
+                                   funcs.size()));
              func = funcs[0];
              return func;
            });
@@ -103,8 +108,11 @@ void BindFramework(pybind11::module *m) {
            })
       .def("get_attr",
            [](NodeAttr &self, const std::string &key) {
-             CHECK_EQ(self.attr_store.count(key), 1)
-                 << "Didn't find value with key [" << key << "].";
+             PADDLE_ENFORCE_EQ(self.attr_store.count(key),
+                               1,
+                               phi::errors::InvalidArgument(
+                                   "Didn't find value with key [%d].",
+                                   self.attr_store.count(key)));
              return self.attr_store[key];
            })
       .def("__str__", [](NodeAttr &self) { return utils::GetStreamCnt(self); });
@@ -119,23 +127,26 @@ void BindFramework(pybind11::module *m) {
                                              t->shape().data().end());
              py::array array(std::move(dt), std::move(shape));
              auto *mutable_data = array.mutable_data();
-             if (target.arch == Target::Arch::X86) {
-               std::memcpy(mutable_data,
-                           t->data<void>(),
-                           t->shape().numel() * t->type().bytes());
-             } else if (target.arch == Target::Arch::NVGPU) {
+             target.arch.Match(
+                 [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                 [&](common::X86Arch) {
+                   std::memcpy(mutable_data,
+                               t->data<void>(),
+                               t->shape().numel() * t->type().bytes());
+                 },
+                 [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                 [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-               CUDA_CALL(cudaMemcpy(
-                   mutable_data,
-                   reinterpret_cast<void *>(t->mutable_data(target, t->type())),
-                   t->shape().numel() * t->type().bytes(),
-                   cudaMemcpyDeviceToHost));
+                   CUDA_CALL(cudaMemcpy(mutable_data,
+                                        reinterpret_cast<void *>(
+                                            t->mutable_data(target, t->type())),
+                                        t->shape().numel() * t->type().bytes(),
+                                        cudaMemcpyDeviceToHost));
 #else
-    LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
+    PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
+    "you need to set WITH_CUDA ON!"));
 #endif
-             } else {
-               CINN_NOT_IMPLEMENTED
-             }
+                 });
              return array;
            })
       .def("var_names", &Scope::var_names);
@@ -151,37 +162,40 @@ void BindFramework(pybind11::module *m) {
            [](hlir::framework::Tensor &self, Type type) {
              self->set_type(type);
            })
-      .def(
-          "numpy",
-          [](hlir::framework::Tensor &self,
-             const cinn::common::Target &target) {
-            std::string type_str = cinn::common::Type2Str(self->type());
-            if (type_str == "bfloat16") {
-              type_str = "uint16";
-            }
-            py::dtype dt(type_str);
-            py::array::ShapeContainer shape(self->shape().data().begin(),
-                                            self->shape().data().end());
-            py::array array(std::move(dt), std::move(shape));
-            void *array_data = array.mutable_data();
-            if (target.arch == Target::Arch::X86) {
-              std::memcpy(array_data,
-                          self->data<void>(),
-                          self->shape().numel() * self->type().bytes());
-            } else if (target.arch == Target::Arch::NVGPU) {
+      .def("numpy",
+           [](hlir::framework::Tensor &self,
+              const cinn::common::Target &target) {
+             std::string type_str = cinn::common::Type2Str(self->type());
+             if (type_str == "bfloat16") {
+               type_str = "uint16";
+             }
+             py::dtype dt(type_str);
+             py::array::ShapeContainer shape(self->shape().data().begin(),
+                                             self->shape().data().end());
+             py::array array(std::move(dt), std::move(shape));
+             void *array_data = array.mutable_data();
+             target.arch.Match(
+                 [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                 [&](common::X86Arch) {
+                   std::memcpy(array_data,
+                               self->data<void>(),
+                               self->shape().numel() * self->type().bytes());
+                 },
+                 [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                 [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-              CUDA_CALL(cudaMemcpy(array_data,
-                                   self->data<void>(),
-                                   self->shape().numel() * self->type().bytes(),
-                                   cudaMemcpyDeviceToHost));
+                   CUDA_CALL(
+                       cudaMemcpy(array_data,
+                                  self->data<void>(),
+                                  self->shape().numel() * self->type().bytes(),
+                                  cudaMemcpyDeviceToHost));
 #else
-    LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
+    PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
+    "you need to set WITH_CUDA ON!"));
 #endif
-            } else {
-              CINN_NOT_IMPLEMENTED
-            }
-            return array;
-          })
+                 });
+             return array;
+           })
       .def(
           "from_numpy",
           [](hlir::framework::Tensor &self,
@@ -192,29 +206,43 @@ void BindFramework(pybind11::module *m) {
                 << "currently only support float32 data type as input";
             hlir::framework::shape_t shape;
             std::copy_n(array.shape(), array.ndim(), std::back_inserter(shape));
-            CHECK_EQ(
+            PADDLE_ENFORCE_EQ(
                 std::accumulate(shape.begin(),
                                 shape.end(),
                                 1,
                                 [](int32_t a, int32_t b) { return a * b; }),
-                self->shape().numel());
+                self->shape().numel(),
+                phi::errors::InvalidArgument(
+                    "The product of all elements in the shape container and "
+                    "shape numel is not equal,"
+                    "where the product of all elements in the shape "
+                    "container:%d but shape numel:%d.",
+                    std::accumulate(shape.begin(),
+                                    shape.end(),
+                                    1,
+                                    [](int32_t a, int32_t b) { return a * b; }),
+                    self->shape().numel()));
             auto *data = self->mutable_data(target, self->type());
-            if (target.arch == Target::Arch::X86) {
-              std::memcpy(data,
-                          array.data(),
-                          self->shape().numel() * self->type().bytes());
-            } else if (target.arch == Target::Arch::NVGPU) {
+            target.arch.Match(
+                [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                [&](common::X86Arch) {
+                  std::memcpy(data,
+                              array.data(),
+                              self->shape().numel() * self->type().bytes());
+                },
+                [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-              CUDA_CALL(cudaMemcpy(reinterpret_cast<void *>(data),
-                                   reinterpret_cast<const void *>(array.data()),
-                                   self->shape().numel() * self->type().bytes(),
-                                   cudaMemcpyHostToDevice));
+                  CUDA_CALL(
+                      cudaMemcpy(reinterpret_cast<void *>(data),
+                                 reinterpret_cast<const void *>(array.data()),
+                                 self->shape().numel() * self->type().bytes(),
+                                 cudaMemcpyHostToDevice));
 #else
-    LOG(FATAL) <<"To use CUDA backends, you need to set WITH_CUDA ON!";
+    PADDLE_THROW(phi::errors::Fatal("To use CUDA backends, "
+    "you need to set WITH_CUDA ON!"));
 #endif
-            } else {
-              CINN_NOT_IMPLEMENTED
-            }
+                });
           });
 
   py::class_<Instruction> instruction(*m, "Instruction");

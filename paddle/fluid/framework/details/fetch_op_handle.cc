@@ -18,9 +18,7 @@
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 FetchOpHandle::FetchOpHandle(ir::Node *node,
                              FetchResultType *data,
@@ -33,13 +31,14 @@ FetchOpHandle::FetchOpHandle(ir::Node *node,
       offset_(offset),
       local_scopes_(local_scopes),
       local_exec_scopes_(local_exec_scopes),
+      tensors_(),
       return_merged_(return_merged) {}
 
 FetchOpHandle::~FetchOpHandle() = default;
 
 void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
   PADDLE_THROW(platform::errors::PermissionDenied(
-      "No nodes need to wait FetchOp. Unexpceted Error."));
+      "No nodes need to wait FetchOp. Unexpected Error."));
 }
 
 static void CheckDims(const framework::DDim &tensor_dims,
@@ -181,6 +180,4 @@ bool FetchOpHandle::IsMultiDeviceTransfer() { return true; }
 
 std::string FetchOpHandle::Name() const { return "Fetch"; }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

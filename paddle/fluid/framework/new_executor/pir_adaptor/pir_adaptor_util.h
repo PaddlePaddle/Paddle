@@ -32,23 +32,25 @@
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/meta_tensor.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/type_name.h"
-#include "paddle/pir/core/utils.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/type_name.h"
+#include "paddle/pir/include/core/utils.h"
 
 #include "glog/logging.h"
 
 namespace paddle {
 namespace framework {
-
+using ExecutionConfig = interpreter::ExecutionConfig;
 class IfInstruction;
 class WhileInstruction;
+class PyLayerInstruction;
 class ValueExecutionInfo {
  public:
   friend class IfInstruction;
   friend class WhileInstruction;
+  friend class PyLayerInstruction;
 
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
 
@@ -126,11 +128,12 @@ inline bool IsInvalid(pir::Value value) {
 
 Variable* CreateVar(pir::Value value,
                     const std::string& var_name_prefix,
-                    bool force_persisable,
+                    bool force_persistable,
                     ValueExecutionInfo* value_exe_info);
 
 void BuildScope(const pir::Block& block,
                 const std::string& var_name_prefix,
+                const ExecutionConfig& execution_config,
                 ValueExecutionInfo* value_exe_info = nullptr);
 
 void DeepCopyVariable(const Variable* src_var,
@@ -181,13 +184,14 @@ void BuildPhiContext(pir::Operation* op,
       if (op_yaml_info.GetInputType(op_yaml_info.InputName2Id().at(t)) ==
           "pir::VectorType<paddle::dialect::DenseTensorType>") {
         InListType optional_inputs;
+        optional_inputs.emplace_back(InType());
         ctx->EmplaceBackInputs(optional_inputs);
       } else {
         phi::DenseTensor* temp = nullptr;
         InType optional_input(temp);
         ctx->EmplaceBackInput(optional_input);
       }
-      VLOG(8) << "ctx->EmplaceBackInput : an optioanl input " << t;
+      VLOG(8) << "ctx->EmplaceBackInput : an optional input " << t;
       continue;
     }
 
@@ -228,6 +232,12 @@ void BuildPhiContext(pir::Operation* op,
       ctx->EmplaceBackInputs(inputs);
     } else if (var->IsType<phi::SelectedRows>()) {
       const phi::TensorBase* tensor_in = &(var->Get<phi::SelectedRows>());
+      ctx->EmplaceBackInput(InType(tensor_in));
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      const phi::TensorBase* tensor_in = &(var->Get<phi::SparseCooTensor>());
+      ctx->EmplaceBackInput(InType(tensor_in));
+    } else if (var->IsType<phi::SparseCsrTensor>()) {
+      const phi::TensorBase* tensor_in = &(var->Get<phi::SparseCsrTensor>());
       ctx->EmplaceBackInput(InType(tensor_in));
     } else {
       PADDLE_THROW(phi::errors::Unimplemented("Not support var type [%d] ",
@@ -438,7 +448,7 @@ void BuildPhiContext(pir::Operation* op,
         OutType optional_input(temp);
         ctx->EmplaceBackOutput(optional_input);
       }
-      VLOG(8) << "ctx->EmplaceBackOutput : an optioanl output";
+      VLOG(8) << "ctx->EmplaceBackOutput : an optional output";
       continue;
     }
 
@@ -454,6 +464,20 @@ void BuildPhiContext(pir::Operation* op,
           &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
                 ->Get<phi::SelectedRows>()))));
       VLOG(8) << "ctx->EmplaceBackOutput SelectedRows: "
+              << value_exec_info.GetVarName(out_ptr);
+    } else if (out_ptr.type()
+                   .isa<paddle::dialect::AllocatedSparseCooTensorType>()) {
+      ctx->EmplaceBackOutput(OutType(const_cast<phi::SparseCooTensor*>(
+          &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
+                ->Get<phi::SparseCooTensor>()))));
+      VLOG(8) << "ctx->EmplaceBackOutput SparseCooTensor: "
+              << value_exec_info.GetVarName(out_ptr);
+    } else if (out_ptr.type()
+                   .isa<paddle::dialect::AllocatedSparseCsrTensorType>()) {
+      ctx->EmplaceBackOutput(OutType(const_cast<phi::SparseCsrTensor*>(
+          &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
+                ->Get<phi::SparseCsrTensor>()))));
+      VLOG(8) << "ctx->EmplaceBackOutput SparseCsrTensor: "
               << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type()
                    .isa<paddle::dialect::AllocatedDenseTensorArrayType>()) {
@@ -485,8 +509,9 @@ void BuildPhiContext(pir::Operation* op,
               << value_exec_info.GetVarName(out_ptr);
       ctx->EmplaceBackOutputs(outputs);
     } else {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("only support DenseTensor and vector "));
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "only support DenseTensor, SparseCooTensor, SparseCsrTensor, and "
+          "vector "));
     }
   }
   VLOG(8) << "EmplaceBackOutputs done";

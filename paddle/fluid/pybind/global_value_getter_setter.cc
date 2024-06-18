@@ -22,12 +22,12 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
 #include "paddle/fluid/framework/python_headers.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
 // FIXME(zengjinle): these 2 flags may be removed by the linker when compiling
@@ -45,8 +45,7 @@ PD_DECLARE_int32(rpc_get_thread_num);
 PD_DECLARE_int32(rpc_prefetch_thread_num);
 #endif
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 namespace py = pybind11;
 
@@ -294,11 +293,6 @@ struct RegisterGetterSetterVisitor {
 };
 
 static void RegisterGlobalVarGetterSetter() {
-#ifdef PADDLE_WITH_DITRIBUTE
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_get_thread_num);
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_prefetch_thread_num);
-#endif
-
   const auto &flag_map = phi::GetExportedFlagInfoMap();
   for (const auto &pair : flag_map) {
     const std::string &name = pair.second.name;
@@ -311,5 +305,4 @@ static void RegisterGlobalVarGetterSetter() {
   }
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

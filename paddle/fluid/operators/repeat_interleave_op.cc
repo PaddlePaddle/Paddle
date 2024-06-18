@@ -18,8 +18,7 @@
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class RepeatInterleaveOp : public framework::OperatorWithKernel {
  public:
@@ -29,12 +28,12 @@ class RepeatInterleaveOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(X) of RepeatInterleaveOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Out"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Output(Out) of RepeatInterleaveOp should not be null."));
 
     auto input_dim = ctx->GetInputDim("X");
@@ -43,7 +42,7 @@ class RepeatInterleaveOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         dim < input_dim.size() && dim >= (0 - input_dim.size()),
         true,
-        platform::errors::OutOfRange(
+        phi::errors::OutOfRange(
             "Attr(dim) is out of range, It's expected "
             "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
             input_dim.size(),
@@ -58,7 +57,7 @@ class RepeatInterleaveOp : public framework::OperatorWithKernel {
           repeats_dim.size() == 1 ||
               (repeats_dim.size() == 2 && repeats_dim[1] == 1),
           true,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The 'shape' of Input(RepeatsTensor) must be 1-D tensor. "
               "But received: the 'shape' of Input(Index) is [%s], "
               "the dimension of Input(Index) is [%d].",
@@ -67,7 +66,7 @@ class RepeatInterleaveOp : public framework::OperatorWithKernel {
 
       PADDLE_ENFORCE_EQ(repeats_dim[0] != 0,
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The length of Input(RepeatsTensor) can't be 0."));
 
       if (dim < 0) {
@@ -77,7 +76,7 @@ class RepeatInterleaveOp : public framework::OperatorWithKernel {
     } else if (repeats > 0) {
       output_dim[dim] = input_dim[dim] * repeats;
     }
-    VLOG(3) << "infershap out " << output_dim[dim];
+    VLOG(3) << "infershape out " << output_dim[dim];
     ctx->SetOutputDim("Out", common::make_ddim(output_dim));
     auto type = ctx->GetInputsVarType("X")[0];
     if (type == framework::proto::VarType::LOD_TENSOR) {
@@ -98,14 +97,14 @@ class RepeatInterleaveGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Input(Out@GRAD) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Output(X@GRAD) should be not null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")),
+        true,
+        phi::errors::InvalidArgument("Input(Out@GRAD) should be not null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput(framework::GradVarName("X")),
+        true,
+        phi::errors::InvalidArgument("Output(X@GRAD) should be not null."));
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
@@ -124,7 +123,7 @@ class RepeatInterleaveOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor) the input tensor.");
     AddInput("RepeatsTensor",
-             "the 1-D tensor containing the repeats alongsize the axis.")
+             "the 1-D tensor containing the repeats alongside the axis.")
         .AsDispensable();
     AddOutput("Out", "the output tensor.");
     AddAttr<int>("Repeats", "the number of repetitions for each element.")
@@ -160,8 +159,7 @@ class RepeatInterleaveGradMaker : public framework::SingleGradOpMaker<T> {
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(RepeatInterleaveGradNoNeedBufferVarsInferer,
                                     "X");
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

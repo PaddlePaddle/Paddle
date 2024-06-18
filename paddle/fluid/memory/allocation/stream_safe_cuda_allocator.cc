@@ -18,8 +18,10 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
+#elif defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/rocm/hip_graph.h"
 #endif
 
 namespace paddle {
@@ -48,7 +50,7 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
                  [this] { phi::backends::gpu::SetDeviceId(place_.device); });
 
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     graph_capturing_stream_set_.insert(stream);
     return;
@@ -62,11 +64,21 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
 void StreamSafeCUDAAllocation::EraseStream(gpuStream_t stream) {
   VLOG(8) << "Try remove stream " << stream << " for address " << ptr();
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
-  outstanding_event_map_.erase(stream);
+  auto it = outstanding_event_map_.find(stream);
+  if (it == outstanding_event_map_.end()) {
+    return;
+  }
+
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(it->second));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(it->second));
+#endif
+  outstanding_event_map_.erase(it);
 }
 
 bool StreamSafeCUDAAllocation::CanBeFreed() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     return graph_capturing_stream_set_.empty() &&
            outstanding_event_map_.empty();
@@ -86,7 +98,7 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
     gpuError_t err = cudaEventQuery(event);
     if (err == cudaErrorNotReady) {
       VLOG(9) << "Event " << event << " for " << ptr() << " is not completed";
-      // Erase the completded event before "it"
+      // Erase the completed event before "it"
       outstanding_event_map_.erase(outstanding_event_map_.begin(), it);
       return false;
     }
@@ -96,7 +108,7 @@ bool StreamSafeCUDAAllocation::CanBeFreed() {
     gpuError_t err = hipEventQuery(event);
     if (err == hipErrorNotReady) {
       VLOG(9) << "Event " << event << " for " << ptr() << " is not completed";
-      // Erase the completded event before "it"
+      // Erase the completed event before "it"
       outstanding_event_map_.erase(outstanding_event_map_.begin(), it);
       return false;
     }
@@ -234,7 +246,7 @@ void StreamSafeCUDAAllocator::FreeImpl(phi::Allocation* allocation) {
 
 uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {
   if (UNLIKELY(in_cuda_graph_capturing_)) {
-    VLOG(7) << "Memory release forbidden in CUDA Graph Captruing";
+    VLOG(7) << "Memory release forbidden in CUDA Graph Capturing";
     return 0;
   }
 
@@ -249,8 +261,8 @@ uint64_t StreamSafeCUDAAllocator::ReleaseImpl(const platform::Place& place) {
 }
 
 void StreamSafeCUDAAllocator::ProcessUnfreedAllocations() {
-  // NOTE(Ruibiao): This condition is to reduce lock competion. It does not need
-  // to be thread-safe since here occasional misjudgments are permissible.
+  // NOTE(Ruibiao): This condition is to reduce lock completion. It does not
+  // need to be thread-safe since here occasional misjudgments are permissible.
   if (unfreed_allocations_.empty()) {
     return;
   }

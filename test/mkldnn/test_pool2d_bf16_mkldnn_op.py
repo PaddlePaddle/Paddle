@@ -13,10 +13,13 @@
 # limitations under the License.
 
 
+import sys
 import unittest
 
 import numpy as np
 from op_test import OpTest, OpTestTool, convert_float_to_uint16
+
+sys.path.append("../deprecated/legacy_test")
 from test_pool2d_op import (
     TestPool2D_Op_Mixin,
     adaptive_end_index,
@@ -197,7 +200,7 @@ class TestPoolBf16MklDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True)
 
     def test_check_grad(self):
         x_grad = pool2d_backward_naive(
@@ -215,7 +218,11 @@ class TestPoolBf16MklDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
         )
         x_grad = x_grad / np.prod(self.outputs['Out'].shape)
         self.check_grad_with_place(
-            core.CPUPlace(), {'X'}, 'Out', user_defined_grads=[x_grad]
+            core.CPUPlace(),
+            {'X'},
+            'Out',
+            user_defined_grads=[x_grad],
+            check_pir_onednn=True,
         )
 
 
@@ -247,7 +254,7 @@ class TestPoolBf16MklDNNOp(TestPool2D_Op_Mixin, OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace())
+        self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True)
 
     def test_check_grad(self):
         pass

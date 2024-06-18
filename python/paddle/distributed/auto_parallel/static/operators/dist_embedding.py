@@ -130,9 +130,7 @@ register_distributed_operator_impl_container(
 def adopt_lookup_table_v1(ctx, main_block, src_op, Ids_var):
     assert (
         len(Ids_var.shape) == 3
-    ), "input Ids to lookup_table should have 3 dimensions but got [{}] with shape [{}]".format(
-        Ids_var.name, Ids_var.shape
-    )
+    ), f"input Ids to lookup_table should have 3 dimensions but got [{Ids_var.name}] with shape [{Ids_var.shape}]"
     if not Ids_var.stop_gradient:
         raise NotImplementedError(
             'Requiring the gradient of Ids of lookup_table(v1) dist op is not currently supported. Please open an issue with details on your use case so that we can prioritize adding this (for instance, adversarial training for language model).'
@@ -461,9 +459,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         )[0]
         assert (
             embedding_row_dim_mapping >= 0
-        ), "row_parallel_embedding's row should be divided by a specific mesh axis, but got [{}]".format(
-            embedding_row_dim_mapping
-        )
+        ), f"row_parallel_embedding's row should be divided by a specific mesh axis, but got [{embedding_row_dim_mapping}]"
         process_mesh_shape = op_dist_attr.process_mesh.shape
         process_mesh_group = op_dist_attr.process_mesh.process_ids
 
@@ -473,7 +469,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 ctx, op_dist_attr.process_mesh, rank_id
             )
 
-        # A generalized method to calculate embedding offset using cartisian product
+        # A generalized method to calculate embedding offset using cartesian product
         relative_idx = _get_idx_in_axis(
             process_mesh_group,
             process_mesh_shape,
@@ -626,13 +622,11 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         )[0]
         assert (
             embedding_row_dim_mapping >= 0
-        ), "row_parallel_embedding's row should be divided by a specific mesh axis, but got [{}]".format(
-            embedding_row_dim_mapping
-        )
+        ), f"row_parallel_embedding's row should be divided by a specific mesh axis, but got [{embedding_row_dim_mapping}]"
         process_mesh_shape = dist_attr.process_mesh.shape
         process_mesh_group = dist_attr.process_mesh.process_ids
 
-        # A generalized method to calculate embedding offset using cartisian product
+        # A generalized method to calculate embedding offset using cartesian product
         relative_idx = _get_idx_in_axis(
             process_mesh_group,
             process_mesh_shape,

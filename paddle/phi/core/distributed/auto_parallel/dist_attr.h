@@ -197,6 +197,10 @@ class TEST_API TensorDistAttr {
   // if mesh_axis is not -1, check only on specific axis.
   bool is_partial(int64_t mesh_axis = -1) const;
 
+  void set_skip_check_mesh(bool skip);
+
+  bool skip_check_mesh() const { return skip_check_mesh_; }
+
  private:
   static std::vector<std::string> fields_;
   ProcessMesh process_mesh_;
@@ -206,9 +210,11 @@ class TEST_API TensorDistAttr {
   std::map<std::string, bool> annotated_;
   int64_t chunk_id_{0};
   // partial map would be small (less than mesh.size)
-  // iterate operation (copy and comparision) would more frequency than random
+  // iterate operation (copy and comparison) would more frequency than random
   // element access. <key: dim on mesh, value: reduce type>
   paddle::flat_hash_map<int64_t, ReduceType> partial_status_;
+  // The flag indicates whether to skip checking the process mesh.
+  bool skip_check_mesh_ = false;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {

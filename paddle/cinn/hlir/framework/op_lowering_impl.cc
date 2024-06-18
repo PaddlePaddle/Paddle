@@ -31,9 +31,6 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-using cinn::common::bfloat16;
-using cinn::common::float16;
-
 using framework::Node;
 using framework::NodeData;
 using framework::OpPatternKind;
@@ -74,7 +71,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                         apply_pass,
                         &OpLowererImpl::ReduceScheduleDetermineFunction);
     case framework::kOutFusible:
-      LOG(FATAL) << "Group Pattern Kind kOutFusible Is Not Implemented!";
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Group Pattern Kind kOutFusible Is Not Implemented!"));
     case framework::kNonFusible:
       return LowerGroup(group,
                         apply_op_schedule,
@@ -82,7 +80,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                         apply_pass,
                         &OpLowererImpl::NonFusibleScheduleDetermineFunction);
     default:
-      LOG(FATAL) << "Group Pattern Kind Is Unknown!";
+      PADDLE_THROW(
+          phi::errors::InvalidArgument("Group Pattern Kind Is Unknown!"));
   }
 }
 
@@ -294,11 +293,16 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   }
 
   auto func_body = ir_sch->GetModule().GetExprs().at(0);
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  if (apply_pass) {
-    optim::OptimizeExprGPU(&(func_body));
-  }
+        if (apply_pass) {
+          optim::OptimizeExprGPU(&(func_body));
+        }
 #endif
+      });
   // 2.Prepare temp buffers
   poly::StageMap stages;
   auto temp_buffers =
@@ -404,11 +408,19 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     }
 
     // Insert output tensors into function arg
-    if (!expr.as_tensor_ref()->buffer.defined() ||
-        this->target_ != cinn::common::DefaultNVGPUTarget()) {
-      op_func_arg_tensors->push_back(expr.as_tensor_ref());
-      expr.as_tensor_ref()->WithBuffer();
-    }
+    target_.arch.Match(
+        [&](common::NVGPUArch) {
+          if (!expr.as_tensor_ref()->buffer.defined()) {
+            op_func_arg_tensors->push_back(expr.as_tensor_ref());
+            expr.as_tensor_ref()->WithBuffer();
+          }
+        },
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) {
+          op_func_arg_tensors->push_back(expr.as_tensor_ref());
+          expr.as_tensor_ref()->WithBuffer();
+        });
   }
 
   // 2.Do lower
@@ -547,7 +559,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
               << ir_sch.GetModule().GetExprs().at(0);
       continue;
     }
-    // find master to computeat.
+    // find master to compute at.
     auto master = GetMasterToComputeAt(node,
                                        nodes_in_order,
                                        nodes_inline,

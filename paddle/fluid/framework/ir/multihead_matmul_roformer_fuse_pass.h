@@ -24,7 +24,7 @@ namespace framework {
 namespace ir {
 namespace patterns {
 /*
- * \brief   Fuse the subgraph representing multihead attention part of roformer
+ * \brief   Fuse the subgraph representing multi-head attention part of roformer
  * into multihead_matmul_roformer op.
  *
  * \note    The following graph represents this equation:

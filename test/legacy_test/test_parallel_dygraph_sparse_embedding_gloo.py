@@ -20,7 +20,7 @@ from test_dist_base import TestDistBase
 flag_name = os.path.splitext(__file__)[0]
 
 
-class TestParallelDygraphSparseEmdedding_GLOO(TestDistBase):
+class TestParallelDygraphSparseEmbedding_GLOO(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._gloo_mode = True
@@ -35,7 +35,7 @@ class TestParallelDygraphSparseEmdedding_GLOO(TestDistBase):
         )
 
 
-class TestParallelDygraphSparseEmdeddingFP64_GLOO(TestDistBase):
+class TestParallelDygraphSparseEmbeddingFP64_GLOO(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._gloo_mode = True

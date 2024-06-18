@@ -15,6 +15,7 @@
 import copy
 
 import paddle
+from paddle import _C_ops
 
 from . import unique_name
 from .dygraph_utils import _append_activation_in_dygraph
@@ -162,6 +163,21 @@ class LayerHelper(LayerHelperBase):
         if in_dygraph_mode():
             res = _append_activation_in_dygraph(input_var, act_type, use_cudnn)
             return res
+        elif in_pir_mode():
+
+            def _append_activation_in_pir(input, act=None, use_cudnn=None):
+                if act is None:
+                    return input
+
+                attrs = ()
+                if use_cudnn:
+                    attrs = ('use_cudnn', use_cudnn)
+                act_op = getattr(_C_ops, act)
+                if act == 'softmax':
+                    return act_op(input, -1)
+                return act_op(input, *attrs)
+
+            return _append_activation_in_pir(input_var, act_type, use_cudnn)
         else:
             tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
             self.append_op(

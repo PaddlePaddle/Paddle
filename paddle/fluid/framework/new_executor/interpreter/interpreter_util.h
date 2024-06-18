@@ -48,7 +48,7 @@ namespace interpreter {
 class AsyncWorkQueue {
  public:
   AsyncWorkQueue(size_t host_num_threads,
-                 size_t deivce_num_threads,
+                 size_t device_num_threads,
                  EventsWaiter* waiter);
 
   // void WaitEmpty() { queue_group_->WaitQueueGroupEmpty(); }

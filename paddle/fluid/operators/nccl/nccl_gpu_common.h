@@ -35,7 +35,8 @@ namespace paddle {
 namespace platform {
 constexpr int kInvalidGPUId = -1;
 
-struct Communicator {
+class Communicator {
+ public:
   Communicator() {}
 
   int GetCommId(int device_id) const;

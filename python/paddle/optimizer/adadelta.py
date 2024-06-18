@@ -15,10 +15,10 @@
 import warnings
 
 from paddle import _C_ops
+from paddle.base.framework import in_dynamic_or_pir_mode
 
 from ..base import framework
 from ..base.dygraph import no_grad
-from ..framework import in_dynamic_mode
 from .optimizer import Optimizer
 
 __all__ = []
@@ -149,7 +149,7 @@ class Adadelta(Optimizer):
             parameters = parameters.get('params')
 
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
@@ -157,7 +157,7 @@ class Adadelta(Optimizer):
                 self._add_accumulator(
                     self._avg_squared_update_acc_str, master_p
                 )
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -169,7 +169,7 @@ class Adadelta(Optimizer):
                 )
             self._add_accumulator(self._avg_squared_grad_acc_str, p)
             self._add_accumulator(self._avg_squared_update_acc_str, p)
-            self._already_create_accumulater.add(p.name)
+            self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         if isinstance(param_and_grad, dict):
@@ -190,7 +190,7 @@ class Adadelta(Optimizer):
             else None
         )
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             with no_grad():
                 _C_ops.adadelta_(
                     param_and_grad[0],

@@ -16,13 +16,13 @@ import collections
 import copy
 import logging
 import os
+import queue
 import re
 
 import paddle
 from paddle.base.core import (  # noqa: F401
     contains_spmd_rule,
     get_phi_spmd_rule,
-    get_spmd_rule,
 )
 from paddle.base.framework import Operator
 from paddle.base.log_helper import get_logger
@@ -182,6 +182,10 @@ def _can_apply_infer_spmd_rule(dist_op):
         "unsqueeze2",
         "silu",
         "concat",
+        "expand_as_v2",
+        "swiglu",
+        "tile",
+        "fused_rms_norm",
     ]
     parallel_ce = os.getenv("PARALLEL_CROSS_ENTROPY")
     if parallel_ce == "true":
@@ -195,23 +199,17 @@ def _update_op_dims_mapping_and_distoperatorimpl(
 ):
     dist_op_container = find_distributed_operator_impl_container(dist_op)
     _logger.debug(
-        "Update Op [{}] using DistOpContainer [{}].".format(
-            dist_op.serial_op.type, dist_op_container.type
-        )
+        f"Update Op [{dist_op.serial_op.type}] using DistOpContainer [{dist_op_container.type}]."
     )
 
     updated = dist_op_container.update_dims_mapping(dist_op)
     changed = updated or changed
-    # TODO(ljz) remove the below code once we introduce general reshard to replace specifc distopimpls
+    # TODO(ljz) remove the below code once we introduce general reshard to replace specific distopimpls
     reverted = dist_op_container.mapping_to_dist_operator_impl(
         dist_op, original_op_dist_attr
     )
     _logger.debug(
-        "Op [{}] use dist op impl [{}] idx [{}].".format(
-            dist_op.serial_op.type,
-            dist_op.dist_attr.impl_type,
-            dist_op.dist_attr.impl_idx,
-        )
+        f"Op [{dist_op.serial_op.type}] use dist op impl [{dist_op.dist_attr.impl_type}] idx [{dist_op.dist_attr.impl_idx}]."
     )
     return changed and not (reverted)
 
@@ -394,18 +392,14 @@ class Completer:
         # step 2: Infer & Update dims mapping of op node using SPMD Rule.
         if _can_apply_infer_spmd_rule(dist_op):
             _logger.debug(
-                "Op [{}] update dims mapping using New InferSPMD Rule.".format(
-                    dist_op.serial_op.type
-                )
+                f"Op [{dist_op.serial_op.type}] update dims mapping using New InferSPMD Rule."
             )
             return _update_op_dims_mapping_and_distoperatorimpl(
                 dist_op, original_op_dist_attr, changed
             )
         else:
             _logger.debug(
-                "Op [{}] update dims mapping using Original DistOp Rule.".format(
-                    dist_op.serial_op.type
-                )
+                f"Op [{dist_op.serial_op.type}] update dims mapping using Original DistOp Rule."
             )
             # update_op_dims_mapping_v1()
             op_dist_impls = find_compatible_distributed_operator_impls(
@@ -1031,6 +1025,9 @@ class Completer:
         else:
             self._dist_context._serial_main_program = serial_main_program
 
+        tensor_names, ops = self._get_tensor_names_and_ops_with_global_mesh(
+            serial_main_program
+        )
         if not is_naive_data_parallel(self._dist_context):
             self._dist_context.initialize(with_graph=True)
             self._prepare()
@@ -1044,6 +1041,7 @@ class Completer:
             # A fast and special completion for data parallel
             self._update_dist_attr_for_dp()
 
+        self._complete_with_global_mesh(serial_main_program, tensor_names, ops)
         # NOTE:[HighOrderGrad] update vars and ops distributed attribute in high order gradient
         self._complete_high_order_grad_annotation(serial_main_program)
         self._complete_chunk_id(serial_main_program)
@@ -1051,6 +1049,85 @@ class Completer:
         self._dist_context.amend_dist_attr_for_program()
         self._dist_context.validate_dist_attr_for_program()
         return serial_main_program
+
+    def _get_tensor_names_and_ops_with_global_mesh(self, serial_main_program):
+        if (
+            not self._dist_context.strategy
+            or not self._dist_context.strategy.pipeline.enable
+        ):
+            return [], []
+
+        # step1: get tensor annotated with global mesh
+        global_mesh = paddle.distributed.auto_parallel.get_mesh()
+        if global_mesh is None:
+            _logger.warning(
+                "global_mesh is not set, tensor annotation with global mesh may be not work, please use paddle.distributed.auto_parallel.set_mesh(mesh) firstly."
+            )
+            return [], []
+        global_mesh_process_ids = global_mesh._process_ids
+        tensor_names_with_global_mesh = []
+        block = serial_main_program.global_block()
+        for var in block.vars.values():
+            dist_var = self._dist_context.get_dist_tensor_for_program(var)
+            mesh = dist_var.dist_attr.process_mesh
+            if mesh is not None and sorted(mesh.process_ids) == sorted(
+                global_mesh_process_ids
+            ):
+                tensor_names_with_global_mesh.append(var.name)
+
+        # if no one tensor has global mesh, do nothing
+        if len(tensor_names_with_global_mesh) == 0:
+            return [], []
+
+        # step2: get all tensors and ops should annotated with global mesh
+        tensor_name_to_op = {}
+        ops = block.ops
+        for op in ops:
+            output_tensor_names = op.output_arg_names
+            for tensor_name in output_tensor_names:
+                tensor_name_to_op[tensor_name] = op
+
+        ops_with_global_mesh = []
+        has_visited = set()
+        tensor_name_queue = queue.Queue()
+        for tensor_name in tensor_names_with_global_mesh:
+            tensor_name_queue.put(tensor_name)
+        tensor_names_with_global_mesh.clear()
+        # BFS to find all tensors and ops should annotated with global mesh
+        while not tensor_name_queue.empty():
+            tensor_name = tensor_name_queue.get()
+            if tensor_name in has_visited:
+                continue
+
+            has_visited.add(tensor_name)
+            tensor_names_with_global_mesh.append(tensor_name)
+            op = tensor_name_to_op[tensor_name]
+            ops_with_global_mesh.append(op)
+            input_arg_names = op.input_arg_names
+            for input_name in input_arg_names:
+                tensor_name_queue.put(input_name)
+        return tensor_names_with_global_mesh, ops_with_global_mesh
+
+    def _complete_with_global_mesh(
+        self, serial_main_program, tensor_names, ops
+    ):
+        if len(tensor_names) == 0:
+            return
+        # step1: get global mesh
+        block = serial_main_program.global_block()
+        # tensor_names[0] is a tensor annotated with global mesh
+        tensor = block._var_recursive(tensor_names[0])
+        dist_tensor = self._dist_context.get_dist_tensor_for_program(tensor)
+        global_mesh = dist_tensor.dist_attr.process_mesh
+
+        # step2: set the global mesh to ops and tensors
+        for op in ops:
+            dist_op = self._dist_context.get_dist_op_for_program(op)
+            dist_op.dist_attr.process_mesh = global_mesh
+        for tensor_name in tensor_names:
+            tensor = block._var_recursive(tensor_name)
+            dist_tensor = self._dist_context.get_dist_tensor_for_program(tensor)
+            dist_tensor.dist_attr.process_mesh = global_mesh
 
     def _complete_chunk_id(self, serial_main_program):
         def set_chunk_id(block, op, chunk_id, var_to_chunk_id):
@@ -1126,14 +1203,46 @@ class Completer:
         seg_op_deps = collections.OrderedDict()  # struct_name -> [idx]
         seg_op_mesh = collections.OrderedDict()  # struct_name -> process_mesh
         regex = re.compile(seg_method, re.IGNORECASE)
+
+        start_op_index = 0
         for i, op in enumerate(ops):
-            struct_name = op.struct_name
+            m = regex.search(op.struct_name)
+            if m:
+                start_op_index = i
+                break
+
+        total_op_num = len(ops)
+        end_op_index = total_op_num - 1
+        for i in reversed(range(total_op_num)):
+            m = regex.search(ops[i].struct_name)
+            if m:
+                end_op_index = i
+                break
+
+        # all ops betweeen start_op_index and end_op_index should not be ignored
+        for i in range(start_op_index, end_op_index + 1):
+            struct_name = ops[i].struct_name
             m = regex.search(struct_name)
             if not m:
-                continue
+                # only assgin op created by reshard is allowed
+                if (
+                    ops[i].type == "assign"
+                    and "reshard_api" in ops[i].output_arg_names[0]
+                ):
+                    # this assign op belongs to next segment
+                    for j in range(i + 1, total_op_num):
+                        m = regex.search(ops[j].struct_name)
+                        if m:
+                            break
+                    assert m
+                    struct_name = ops[j].struct_name
+                else:
+                    raise ValueError(
+                        f"The op {ops[i]} should only be created by reshard"
+                    )
 
             struct_name = struct_name[m.start(0) :].split("/")[0]
-            dist_op = self._dist_context.get_dist_op_for_program(op)
+            dist_op = self._dist_context.get_dist_op_for_program(ops[i])
             if struct_name not in seg_op_deps:
                 seg_op_deps[struct_name] = [i]
                 seg_op_mesh[struct_name] = dist_op.dist_attr.process_mesh
@@ -1150,9 +1259,7 @@ class Completer:
         num_chunks = pp_degree * vpp_degree
         assert (
             len(seg_op_deps) % num_chunks == 0
-        ), "The number of layers[{}] ({}) should be devided by part number ({}).".format(
-            seg_method, len(seg_op_deps), num_chunks
-        )
+        ), f"The number of layers[{seg_method}] ({len(seg_op_deps)}) should be divided by part number ({num_chunks})."
 
         # Step2: analysis whether the pp_stage is non-decreasing among segments
         # 1. if non_decreasing is True, the ops' process_mesh will be changed by vpp strategy
@@ -1205,25 +1312,13 @@ class Completer:
                 seg_op_idx.extend(seg_op_deps[name])
 
             _logger.info(
-                "stage=[{}], chunk_id=[{}], layer_name=[{}]".format(
-                    pp_stage,
-                    chunk_id,
-                    struct_names,
-                )
+                f"stage=[{pp_stage}], chunk_id=[{chunk_id}], layer_name=[{struct_names}]"
             )
             _logger.info(
-                "start op: [{}]: [{}] [{}]".format(
-                    ops[start_idx].type,
-                    ops[start_idx].input_arg_names,
-                    ops[start_idx].output_arg_names,
-                )
+                f"start op: [{ops[start_idx].type}]: [{ops[start_idx].input_arg_names}] [{ops[start_idx].output_arg_names}]"
             )
             _logger.info(
-                "end op: [{}]: [{}] [{}]".format(
-                    ops[end_idx - 1].type,
-                    ops[end_idx - 1].input_arg_names,
-                    ops[end_idx - 1].output_arg_names,
-                )
+                f"end op: [{ops[end_idx - 1].type}]: [{ops[end_idx - 1].input_arg_names}] [{ops[end_idx - 1].output_arg_names}]"
             )
 
             for idx in range(start_idx, end_idx):
@@ -1621,7 +1716,7 @@ class Completer:
                     continue
 
                 else:
-                    raise ValueError(f"got unexpect op [{str(grad_op.type)}]")
+                    raise ValueError(f"got unexpected op [{str(grad_op.type)}]")
 
                 self._dist_context.set_op_dist_attr_for_program(
                     grad_op, grad_op_dist_attr
@@ -1818,9 +1913,9 @@ class Completer:
                         f"Backward Partial is not adapted for {str(grad_op)}"
                     )
 
-                # resulote partial
+                # resolute partial
                 # NOTE We set the Partial status in op_dist_attr instead tensor_dist_attr
-                # since the Partial will be reshard as Replicated immedidately after op output in static mode.
+                # since the Partial will be reshard as Replicated immediately after op output in static mode.
                 if len(param_grads) > 0:
                     activation_grad_dims_mapping = (
                         grad_op_dist_attr.get_input_dims_mapping(
@@ -1877,14 +1972,10 @@ class Completer:
                 assert grad_op.type == "fill_constant"
                 assert (
                     len(grad_op.input_arg_names) == 0
-                ), "first backward op should has only ONE output, but got [{}]".format(
-                    len(grad_op.input_arg_names)
-                )
+                ), f"first backward op should has only ONE output, but got [{len(grad_op.input_arg_names)}]"
                 assert (
                     len(grad_op.output_arg_names) == 1
-                ), "first backward op should has only ONE output, but got [{}]".format(
-                    len(grad_op.output_arg_names)
-                )
+                ), f"first backward op should has only ONE output, but got [{len(grad_op.output_arg_names)}]"
 
                 loss_var = vars[loss_op.output_arg_names[0]]
                 loss_grad_var = vars[grad_op.output_arg_names[0]]
@@ -2059,7 +2150,7 @@ class Completer:
                         grad_op, grad_op_dist_attr
                     )
                 else:
-                    raise ValueError(f"got unexpect op [{str(grad_op.type)}]")
+                    raise ValueError(f"got unexpected op [{str(grad_op.type)}]")
 
     def complete_update_annotation(self, serial_main_program):
         """Complete the annotation of vars and ops in the update phase for parallel program."""

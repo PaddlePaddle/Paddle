@@ -29,7 +29,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 namespace framework {
@@ -45,6 +45,9 @@ class NaiveExecutor {
  public:
   using HookFunc = std::function<void(OperatorBase*, Scope*)>;
 
+  using PirHookFunc =
+      std::function<void(InstructionBase*, ValueExecutionInfo*, Scope*)>;
+
   explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
 
   ~NaiveExecutor();
@@ -52,6 +55,8 @@ class NaiveExecutor {
   // Create child scope.
   // Create variables.
   void Prepare(Scope* scope, const ProgramDesc& program_desc, int block_id);
+
+  void Prepare(Scope* scope);
 
   void PrepareInterpreterCore(
       Scope* scope,
@@ -90,10 +95,10 @@ class NaiveExecutor {
 
   void ResetTrtOps(int num);
 
-  void CloneLiteEnigne(int num, void* stream);
-
   void RegisterOutputHook(const HookFunc& hookfunc);
   void RegisterInputHook(const HookFunc& hookfunc);
+  void RegisterOutputHook(const PirHookFunc& hookfunc);
+  void RegisterInputHook(const PirHookFunc& hookfunc);
 
  private:
   void CreateOps(const ProgramDesc& desc, int block_id);
@@ -106,6 +111,9 @@ class NaiveExecutor {
 
   std::vector<HookFunc> output_hookfuncs_;
   std::vector<HookFunc> input_hookfuncs_;
+
+  std::vector<PirHookFunc> pir_output_hookfuncs_;
+  std::vector<PirHookFunc> pir_input_hookfuncs_;
 
   // Record information that tensor_a should ShareBufferWith tensor_b.
   std::unordered_map<OperatorBase*, std::unordered_map<phi::DenseTensor*, int>>

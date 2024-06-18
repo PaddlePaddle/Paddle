@@ -33,14 +33,11 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace imperative {
+namespace paddle::imperative {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 
 void NCCLParallelContext::BcastNCCLId(
@@ -67,7 +64,7 @@ void NCCLParallelContext::Init() {
   std::vector<ncclUniqueId> nccl_ids;
   nccl_ids.resize(strategy_.nrings_);
 
-  if (strategy_.local_rank_ == 0) {
+  if (strategy_.local_rank_ == 0) {  // NOLINT
     // generate the unique ncclid on the root worker
     for (auto &nccl_id : nccl_ids) {
       platform::dynload::ncclGetUniqueId(&nccl_id);
@@ -232,5 +229,4 @@ void NCCLParallelContext::SynchronizeCompute() {
 
 #endif
 
-}  //  namespace imperative
-}  //  namespace paddle
+}  // namespace paddle::imperative

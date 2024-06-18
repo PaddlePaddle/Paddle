@@ -121,10 +121,10 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
   // Step0: verify input args based on matmul logic
   auto x_shape = common::vectorize(x.dims());
   auto y_shape = common::vectorize(y.dims());
-  int x_ndim = x_shape.size();
-  int y_ndim = y_shape.size();
-  auto x_dist_attr_src = x.dist_attr();
-  auto y_dist_attr_src = y.dist_attr();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int y_ndim = static_cast<int>(y_shape.size());
+  const auto& x_dist_attr_src = x.dist_attr();
+  const auto& y_dist_attr_src = y.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   std::vector<int64_t> y_dims_mapping = y_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -157,7 +157,7 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
   std::string out_axes;
   FillMatmulOperandNotation(x_ndim, y_ndim, &x_axes, &y_axes, &out_axes);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   if (trans_x) {
     PADDLE_ENFORCE_GE(x_ndim,
                       2,
@@ -227,12 +227,12 @@ SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
                                 bool trans_x,
                                 bool trans_y) {
   auto out_shape = common::vectorize(out.dims());
-  int out_ndim = out_shape.size();
+  int out_ndim = static_cast<int>(out_shape.size());
 
   auto x_shape = common::vectorize(x.dims());
   auto y_shape = common::vectorize(y.dims());
-  int x_ndim = x_shape.size();
-  int y_ndim = y_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int y_ndim = static_cast<int>(y_shape.size());
   int max_ndim = std::max(x_ndim, y_ndim);
   PADDLE_ENFORCE_EQ(max_ndim,
                     out_ndim,
@@ -251,7 +251,7 @@ SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
   std::string out_axes;
   FillMatmulOperandNotation(x_ndim, y_ndim, &x_axes, &y_axes, &out_axes);
 
-  // step2: Sharding Propogation
+  // step2: Sharding Propagation
   // should not use input dims mapping for backward sharding merge
   auto axis_to_dim_map =
       ShardingMergeForTensors({{out_axes, out_dims_mapping}}, false);
@@ -338,7 +338,7 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
   auto infer_y_dist_attr = get_attr(fwd_spmd_info.first[1]);
   auto is_dist_attr_equal = [&](const TensorDistAttr& dist_attr,
                                 const ArgDistAttr& arg_dist_attr) -> bool {
-    auto infer_dist_attr = get_attr(arg_dist_attr);
+    const auto& infer_dist_attr = get_attr(arg_dist_attr);
     return (dist_attr.process_mesh() != infer_dist_attr.process_mesh() ||
             dist_attr.dims_mapping() != infer_dist_attr.dims_mapping() ||
             dist_attr.partial_status() != infer_dist_attr.partial_status());

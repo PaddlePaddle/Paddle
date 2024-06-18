@@ -15,8 +15,6 @@ import copy
 import unittest
 
 import paddle
-from paddle import base
-from paddle.base import core
 from paddle.static import amp
 
 paddle.enable_static()
@@ -107,74 +105,6 @@ class AMPTest2(unittest.TestCase):
         self.assertRaises(
             ValueError, amp.bf16.AutoMixedPrecisionListsBF16, {'lstm'}, {'lstm'}
         )
-
-    def test_find_op_index(self):
-        block = base.default_main_program().global_block()
-        op_desc = core.OpDesc()
-        idx = amp.fp16_utils.find_op_index(block.desc, op_desc)
-        assert idx == -1
-
-    def test_is_in_fp32_varnames(self):
-        block = base.default_main_program().global_block()
-
-        var1 = block.create_var(name="X", shape=[3], dtype='float32')
-        var2 = block.create_var(name="Y", shape=[3], dtype='float32')
-        var3 = block.create_var(name="Z", shape=[3], dtype='float32')
-        op1 = block.append_op(
-            type="abs", inputs={"X": [var1]}, outputs={"Out": [var2]}
-        )
-        op2 = block.append_op(
-            type="abs", inputs={"X": [var2]}, outputs={"Out": [var3]}
-        )
-        amp_lists_1 = amp.bf16.AutoMixedPrecisionListsBF16(
-            custom_fp32_varnames={'X'}
-        )
-        assert amp.bf16.amp_utils._is_in_fp32_varnames(op1, amp_lists_1)
-        amp_lists_2 = amp.bf16.AutoMixedPrecisionListsBF16(
-            custom_fp32_varnames={'Y'}
-        )
-        assert amp.bf16.amp_utils._is_in_fp32_varnames(op2, amp_lists_2)
-        assert amp.bf16.amp_utils._is_in_fp32_varnames(op1, amp_lists_2)
-
-    def test_find_true_post_op(self):
-        block = base.default_main_program().global_block()
-
-        var1 = block.create_var(name="X", shape=[3], dtype='float32')
-        var2 = block.create_var(name="Y", shape=[3], dtype='float32')
-        var3 = block.create_var(name="Z", shape=[3], dtype='float32')
-        op1 = block.append_op(
-            type="abs", inputs={"X": [var1]}, outputs={"Out": [var2]}
-        )
-        op2 = block.append_op(
-            type="abs", inputs={"X": [var2]}, outputs={"Out": [var3]}
-        )
-        res = amp.bf16.amp_utils.find_true_post_op(block.ops, op1, "Y")
-        assert res == [op2]
-
-    def test_find_true_post_op_with_search_all(self):
-        program = base.Program()
-        block = program.current_block()
-        startup_block = base.default_startup_program().global_block()
-
-        var1 = block.create_var(name="X", shape=[3], dtype='float32')
-        var2 = block.create_var(name="Y", shape=[3], dtype='float32')
-        inititializer_op = startup_block._prepend_op(
-            type="fill_constant",
-            outputs={"Out": var1},
-            attrs={"shape": var1.shape, "dtype": var1.dtype, "value": 1.0},
-        )
-
-        op1 = block.append_op(
-            type="abs", inputs={"X": [var1]}, outputs={"Out": [var2]}
-        )
-        result = amp.bf16.amp_utils.find_true_post_op(
-            block.ops, inititializer_op, "X", search_all=False
-        )
-        assert len(result) == 0
-        result = amp.bf16.amp_utils.find_true_post_op(
-            block.ops, inititializer_op, "X", search_all=True
-        )
-        assert result == [op1]
 
 
 if __name__ == '__main__':

@@ -709,16 +709,8 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
                LoadFunc load_func,
                StoreFunc store_func) {
   switch (dim_head) {
-    case 10:
-      fmha_launch_kernel<T, 10, 32>(
-          params, dev_ctx.stream(), load_func, store_func);
-      break;
     case 16:
       fmha_launch_kernel<T, 16, 32>(
-          params, dev_ctx.stream(), load_func, store_func);
-      break;
-    case 26:
-      fmha_launch_kernel<T, 26, 32>(
           params, dev_ctx.stream(), load_func, store_func);
       break;
     case 32:
@@ -729,7 +721,6 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
       fmha_launch_kernel<T, 64, 64>(
           params, dev_ctx.stream(), load_func, store_func);
       break;
-    // for opt model
     case 80:
       fmha_launch_kernel<T, 80, 128>(
           params, dev_ctx.stream(), load_func, store_func);

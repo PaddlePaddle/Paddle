@@ -24,6 +24,7 @@
 #include "Python.h"
 
 #include "paddle/common/ddim.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
@@ -31,11 +32,9 @@
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/core/flags.h"
-#include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
-PHI_DECLARE_bool(reader_queue_speed_test_mode);
+COMMON_DECLARE_bool(reader_queue_speed_test_mode);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -148,6 +147,10 @@ class MultiDeviceFeedReader {
       : queue_(queue),
         names_(names),
         pool_(new ::ThreadPool(dst_places.size())),
+        readers_(),
+        futures_(),
+        exceptions_(),
+        ret_(),
         drop_last_(drop_last),
         pin_memory_(pin_memory) {
     std::vector<framework::DDim> dims;
@@ -259,8 +262,8 @@ class MultiDeviceFeedReader {
     kException = 2  // Exception raises when reading
   };
 
-  Status WaitFutures(std::exception_ptr *excep) {
-    *excep = nullptr;
+  Status WaitFutures(std::exception_ptr *e) {
+    *e = nullptr;
     size_t success_num = 0;
     for (size_t i = 0; i < futures_.size(); ++i) {
       auto each_status = futures_[i].get();
@@ -271,7 +274,7 @@ class MultiDeviceFeedReader {
               platform::errors::NotFound("exceptions_[%d] is NULL, but the "
                                          "result status is Status::kException",
                                          i));
-          *excep = exceptions_[i];
+          *e = exceptions_[i];
           exceptions_[i] = nullptr;
         }
       } else {
@@ -279,7 +282,7 @@ class MultiDeviceFeedReader {
       }
     }
 
-    if (UNLIKELY(*excep)) {
+    if (UNLIKELY(*e)) {
       return Status::kException;
     }
 
@@ -309,16 +312,16 @@ class MultiDeviceFeedReader {
   }
 
   void CheckNextStatus() {
-    std::exception_ptr excep;
-    Status status = WaitFutures(&excep);
+    std::exception_ptr e;
+    Status status = WaitFutures(&e);
 
-    if (UNLIKELY(excep)) {
+    if (UNLIKELY(e)) {
       PADDLE_ENFORCE_EQ(status,
                         Status::kException,
                         platform::errors::NotFound(
                             "The exception raised is not NULL, but "
                             "the result status is not Status::kException"));
-      std::rethrow_exception(excep);
+      std::rethrow_exception(e);
     }
 
     if (UNLIKELY(status == Status::kEOF)) {

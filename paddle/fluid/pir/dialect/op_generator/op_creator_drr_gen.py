@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import os
 
 import yaml
 from op_gen import (
@@ -22,10 +23,13 @@ from op_gen import (
 )
 
 CPP_FILE_TEMPLATE = """
-#include "paddle/fluid/pir/drr/ir_operation_factory.h"
+#include "paddle/fluid/pir/drr/src/ir_operation_factory.h"
 
 {op_header}
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
+#endif
 
 namespace paddle {{
 namespace drr {{
@@ -67,37 +71,95 @@ MUTABLE_ATTR_FUNCTION_TEMPLATE = """
       }});
 """
 
-Dialect2NameSpaceMap = {"pd_op": "paddle::dialect", "cinn_op": "cinn::dialect"}
+Dialect2NameSpaceMap = {
+    "pd_op": "paddle::dialect",
+    "cinn_op": "cinn::dialect",
+    "onednn_op": "paddle::onednn::dialect",
+}
 Dialect2OpHeaderMap = {
     "pd_op": "#include \"paddle/fluid/pir/dialect/operator/ir/pd_op.h\"",
     "cinn_op": "#include \"paddle/cinn/hlir/dialect/operator/ir/cinn_op.h\"",
+    "onednn_op": "#include \"paddle/fluid/pir/dialect/operator/ir/onednn_op.h\"",
 }
 
 
 class OpCreatorCodeGen:
-    def __init__(self, op_yaml_files, op_compat_yaml_file, dialect_name):
-        self.op_info_items = self.parse_yaml(op_yaml_files, op_compat_yaml_file)
+    def __init__(
+        self,
+        op_yaml_files,
+        op_compat_yaml_file,
+        dialect_name,
+        onednn_yaml_file=None,
+        ops_onednn_extra_yaml_file=None,
+    ):
+        self.op_info_items = self.parse_yaml(
+            op_yaml_files,
+            op_compat_yaml_file,
+            onednn_yaml_file,
+            ops_onednn_extra_yaml_file,
+        )
         self.dialect_name = dialect_name
 
-    def parse_yaml(self, op_yaml_files, op_compat_yaml_file):
+    def parse_yaml(
+        self,
+        op_yaml_files,
+        op_compat_yaml_file,
+        onednn_yaml_file=None,
+        ops_onednn_extra_yaml_file=None,
+    ):
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
 
         op_yaml_items = []
-        for yaml_file in op_yaml_files:
-            with open(yaml_file, "r") as f:
-                ops = yaml.safe_load(f)
-                op_yaml_items = op_yaml_items + ops
-
         op_info_items = []
-        for op in op_yaml_items:
-            op_compat_item = op_compat_parser.get_compat(op['name'])
-            if (
-                op_compat_item is not None
-                and op_compat_item['op'] == "pow"
-                and 'scalar' in op_compat_item
-            ):
-                op_compat_item = op_compat_item.pop('scalar')
-            op_info_items.append(OpInfoParser(op, op_compat_item))
+        if dialect_name == "onednn_op":
+            with open(ops_onednn_extra_yaml_file, "r") as f:
+                ops_onednn_extra = yaml.safe_load(f)
+                ops_onednn_extra_set = set()
+                for op in ops_onednn_extra:
+                    ops_onednn_extra_set.add(op['op'])
+            with open(onednn_yaml_file, "r") as f:
+                ops = yaml.safe_load(f)
+                onednn_ops = []
+                for op in ops:
+                    onednn_ops.append(op)
+                op_yaml_items = op_yaml_items + onednn_ops
+
+            for yaml_file in op_yaml_files:
+                with open(yaml_file, "r") as f:
+                    ops = yaml.safe_load(f)
+                    onednn_ops = []
+                    for op in ops:
+                        if op['name'] in ops_onednn_extra_set:
+                            onednn_ops.append(op)
+
+                    op_yaml_items = op_yaml_items + onednn_ops
+                    for op in op_yaml_items:
+                        op_compat_item = op_compat_parser.get_compat(op['name'])
+                        if (
+                            op_compat_item is not None
+                            and op_compat_item['op'] == "pow"
+                            and 'scalar' in op_compat_item
+                        ):
+                            op_compat_item = op_compat_item.pop('scalar')
+                        op_info_items.append(
+                            OpInfoParser(op, op_compat_item, yaml_file)
+                        )
+
+        else:
+            for yaml_file in op_yaml_files:
+                with open(yaml_file, "r") as f:
+                    ops = yaml.safe_load(f)
+                    for op in ops:
+                        op_compat_item = op_compat_parser.get_compat(op['name'])
+                        if (
+                            op_compat_item is not None
+                            and op_compat_item['op'] == "pow"
+                            and 'scalar' in op_compat_item
+                        ):
+                            op_compat_item = op_compat_item.pop('scalar')
+                        op_info_items.append(
+                            OpInfoParser(op, op_compat_item, yaml_file)
+                        )
         return op_info_items
 
     def gen_cpp_file_code(self, cpp_file_path):
@@ -109,9 +171,7 @@ class OpCreatorCodeGen:
                 ir_op_name = self.dialect_name + "." + phi_op_name
                 params_no_mutable_attr = []
                 for i in range(len(op_info_item.input_name_list)):
-                    params_no_mutable_attr.append(
-                        f"inputs[{i}].dyn_cast<pir::OpResult>()"
-                    )
+                    params_no_mutable_attr.append(f"inputs[{i}]")
                 if len(op_info_item.attribute_name_list) > 0:
                     params_no_mutable_attr.append("attrs")
 
@@ -131,9 +191,7 @@ class OpCreatorCodeGen:
                         len(op_info_item.input_name_list)
                         + len(op_info_item.mutable_attribute_name_list)
                     ):
-                        params_with_mutable_attr.append(
-                            f"inputs[{i}].dyn_cast<pir::OpResult>()"
-                        )
+                        params_with_mutable_attr.append(f"inputs[{i}]")
                     if len(op_info_item.attribute_name_list) > len(
                         op_info_item.mutable_attribute_name_list
                     ):
@@ -153,6 +211,10 @@ class OpCreatorCodeGen:
                         ),
                     )
 
+        directory_path = os.path.dirname(cpp_file_path)
+        if not os.path.exists(directory_path):
+            os.makedirs(directory_path, exist_ok=True)
+
         with open(cpp_file_path, 'w') as f:
             f.write(
                 CPP_FILE_TEMPLATE.format(
@@ -171,6 +233,8 @@ def ParseArguments():
     parser.add_argument('--op_compat_yaml_file', type=str)
     parser.add_argument('--dialect_name', type=str)
     parser.add_argument('--op_creator_file', type=str)
+    parser.add_argument('--onednn_yaml_file', type=str)
+    parser.add_argument('--ops_onednn_extra_yaml_file', type=str)
     return parser.parse_args()
 
 
@@ -180,8 +244,14 @@ if __name__ == '__main__':
     op_compat_yaml_file = args.op_compat_yaml_file
     op_creator_file = args.op_creator_file
     dialect_name = args.dialect_name
+    onednn_yaml_file = args.onednn_yaml_file
+    ops_onednn_extra_yaml_file = args.ops_onednn_extra_yaml_file
 
     code_gen = OpCreatorCodeGen(
-        op_yaml_files, op_compat_yaml_file, dialect_name
+        op_yaml_files,
+        op_compat_yaml_file,
+        dialect_name,
+        onednn_yaml_file,
+        ops_onednn_extra_yaml_file,
     )
     code_gen.gen_cpp_file_code(op_creator_file)

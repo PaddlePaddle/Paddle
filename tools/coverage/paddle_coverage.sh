@@ -19,14 +19,14 @@ set -xe
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
 
 # install lcov
-if [ ! -f "/root/.cache/lcov-1.14.tar.gz" ];then
-    wget -P /home https://paddle-ci.gz.bcebos.com/coverage/lcov-1.14.tar.gz --no-proxy --no-check-certificate || exit 101
-    cp /home/lcov-1.14.tar.gz /root/.cache/lcov-1.14.tar.gz
+if [ ! -f "/root/.cache/lcov-1.16.tar.gz" ];then
+wget -P /home https://paddle-ci.cdn.bcebos.com/coverage/lcov-1.16.tar.gz --no-proxy --no-check-certificate || exit 101
+cp /home/lcov-1.16.tar.gz /root/.cache/lcov-1.16.tar.gz
 else
-    cp /root/.cache/lcov-1.14.tar.gz /home/lcov-1.14.tar.gz
+    cp /root/.cache/lcov-1.16.tar.gz /home/lcov-1.16.tar.gz
 fi
-tar -xf /home/lcov-1.14.tar.gz -C /
-cd /lcov-1.14
+tar -xf /home/lcov-1.16.tar.gz -C /
+cd /lcov-1.16
 make install
 
 # run paddle coverage
@@ -34,10 +34,32 @@ make install
 cd /paddle/build
 
 python ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID} || exit 101
+lcov --ignore-errors gcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 
-lcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 
 # full html report
+
+function gen_full_html_report_cinn(){
+        lcov --extract coverage.info \
+        '/paddle/paddle/cinn/adt/*' \
+        '/paddle/paddle/cinn/api/*' \
+        '/paddle/paddle/cinn/ast_gen_ius/*' \
+        '/paddle/paddle/cinn/auto_schedule/*' \
+        '/paddle/paddle/cinn/backends/*' \
+        '/paddle/paddle/cinn/common/*' \
+        '/paddle/paddle/cinn/frontend/*' \
+        '/paddle/paddle/cinn/hlir/*' \
+        '/paddle/paddle/cinn/ir/*' \
+        '/paddle/paddle/cinn/lang/*' \
+        '/paddle/paddle/cinn/optim/*' \
+        '/paddle/paddle/cinn/poly/*' \
+        '/paddle/paddle/cinn/pybind/*' \
+        '/paddle/paddle/cinn/runtime/*' \
+        '/paddle/paddle/cinn/utils/*' \
+        -o coverage-full.tmp \
+        --rc lcov_branch_coverage=0
+}
+
 
 function gen_full_html_report() {
     lcov --extract coverage.info \
@@ -116,6 +138,12 @@ function gen_full_html_report_npu() {
 
 if [ ${WITH_XPU:-OFF} == "ON" ]; then
     gen_full_html_report_xpu || true
+else
+    gen_full_html_report || true
+fi
+
+if [ ${WITH_CINN:-OFF} == "ON" ]; then
+    gen_full_html_report_cinn || true
 else
     gen_full_html_report || true
 fi
@@ -222,5 +250,13 @@ fi
 
 if [ "$COVERAGE_LINES_ASSERT" = "1" ] || [ "$PYTHON_COVERAGE_LINES_ASSERT" = "1" ]; then
     echo "exit 9" > /tmp/paddle_coverage.result
-    exit 9
+    if [ "${WITH_CINN}" == "ON" ]; then
+        echo "You must one RD(liuhongyu or lanxiang or zhenghuihuang or tianchao zhangliujie)to approval this PR."
+        exit 9
+    fi
+    python ${PADDLE_ROOT}/tools/get_pr_title.py || NOT_CINN_PR=1
+    if [[ "${NOT_CINN_PR}" = "1" ]];then
+        exit 9
+    fi
+    echo "This PR belongs to the CINN direction, skip the coverage check in the PR-CI-Coverage pipeline."
 fi

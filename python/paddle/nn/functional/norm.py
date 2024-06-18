@@ -14,9 +14,8 @@
 
 import numbers
 
-# TODO: define normalization api
 import paddle
-from paddle import _C_ops, base, in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode
 from paddle.base.framework import (
     in_dygraph_mode,
     in_dynamic_or_pir_mode,
@@ -83,9 +82,14 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     """
 
     if in_dygraph_mode():
-        eps = base.dygraph.base.to_variable([epsilon], dtype=x.dtype)
+        eps = paddle.full(shape=[1], fill_value=epsilon, dtype=x.dtype)
         out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
         return x / _C_ops.maximum(out, eps)
+
+    elif in_pir_mode():
+        eps = paddle.full(shape=[1], fill_value=epsilon, dtype=x.dtype)
+        out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
+        return paddle.divide(x, _C_ops.maximum(out, eps), name=name)
 
     else:
         check_type(p, 'p', (float, int), 'normalize')
@@ -347,9 +351,10 @@ def layer_norm(
 
     normalized_ndim = len(normalized_shape)
     begin_norm_axis = input_ndim - normalized_ndim
-    if (
-        input_ndim < normalized_ndim
-        or input_shape[begin_norm_axis:] != normalized_shape
+    if input_ndim < normalized_ndim or (
+        not paddle.utils.is_same_shape(
+            input_shape[begin_norm_axis:], normalized_shape
+        )
     ):
         str_normalized_shape = str(normalized_shape)
         raise ValueError(
@@ -633,3 +638,118 @@ def local_response_norm(
     div = paddle.pow(div, beta)
     res = paddle.divide(x, div, name=name)
     return res
+
+
+def group_norm(
+    x,
+    num_groups,
+    epsilon=1e-05,
+    weight=None,
+    bias=None,
+    data_format='NCHW',
+    name=None,
+):
+    """
+    nn.GroupNorm is recommended.
+    For more information, please refer to :ref:`api_paddle_nn_GroupNorm` .
+
+    Parameters:
+        x(Tensor): Input Tensor with shape: attr:`(batch, num_features, *)`.
+        num_groups(int): The number of groups that divided from channels.
+        epsilon(float, optional): The small value added to the variance to prevent
+            division by zero. Default: 1e-05.
+        weight(Tensor, optional): The weight Tensor of group_norm, with shape: attr:`[num_channels]`.
+            Default: None.
+        bias(Tensor, optional): The bias Tensor of group_norm, with shape: attr:`[num_channels]`.
+            Default: None.
+        data_format(str, optional): Specify the input data format. Support "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
+        name(str, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
+
+    Returns:
+        Tensor, the output has the same shape with ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.seed(100)
+            >>> x = paddle.arange(48, dtype="float32").reshape((2, 6, 2, 2))
+            >>> group_norm_out = paddle.nn.functional.group_norm(x, num_groups=6)
+
+            >>> print(group_norm_out)
+            Tensor(shape=[2, 6, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]]],
+             [[[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]]]])
+    """
+    if data_format not in ['NCL', 'NCHW', 'NCDHW', 'NLC', 'NHWC', 'NDHWC']:
+        raise ValueError("unsupported data layout:" + data_format)
+
+    data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.group_norm(
+            x,
+            weight,
+            bias,
+            epsilon,
+            num_groups,
+            data_format,
+        )
+    else:
+        helper = LayerHelper('group_norm', **locals())
+        mean_out = helper.create_variable_for_type_inference(
+            dtype=x.dtype, stop_gradient=True
+        )
+        variance_out = helper.create_variable_for_type_inference(
+            dtype=x.dtype, stop_gradient=True
+        )
+
+        inputs = {'X': x}
+        if bias is not None:
+            inputs['Bias'] = bias
+        if weight is not None:
+            inputs['Scale'] = weight
+
+        # create output
+        group_norm_out = helper.create_variable_for_type_inference(
+            dtype=x.dtype
+        )
+
+        helper.append_op(
+            type="group_norm",
+            inputs=inputs,
+            outputs={
+                "Y": group_norm_out,
+                "Mean": mean_out,
+                "Variance": variance_out,
+            },
+            attrs={
+                "epsilon": epsilon,
+                "groups": num_groups,
+                "data_layout": data_format,
+            },
+        )
+
+        return helper.append_activation(group_norm_out)

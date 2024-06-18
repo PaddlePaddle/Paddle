@@ -13,29 +13,30 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/split_generate_shape_into_shape_ops_pass.h"
-
-#include "paddle/cinn/common/dim_expr_simplify.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/dialect/shape/utils/dim_expr.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pattern_rewrite/pattern_applicator.h"
-#include "paddle/pir/pattern_rewrite/pattern_match.h"
-#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pattern_rewrite/frozen_rewrite_pattern_set.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_applicator.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_match.h"
+#include "paddle/pir/include/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace cinn {
 namespace dialect {
 namespace ir {
 
-namespace {
+namespace details {
 
 struct TensorDimInShape {
   pir::Value value;
@@ -52,6 +53,8 @@ using TensorDim = std::variant<TensorDimInShape, TensorDimInData>;
 using TensorDim4SymbolNameT =
     std::function<std::optional<TensorDim>(const std::string& symbol_name)>;
 
+using SymbolName2CachedValue = std::unordered_map<symbol::DimExpr, pir::Value>;
+
 struct CachedDimExprToValueConverter {
   CachedDimExprToValueConverter(
       const TensorDim4SymbolNameT& TensorDim4SymbolNameVal,
@@ -61,24 +64,22 @@ struct CachedDimExprToValueConverter {
   TensorDim4SymbolNameT TensorDim4SymbolName;
   pir::PatternRewriter* rewriter;
 
-  // TODO(): Refactor to cached version if std::hash<symbol::DimExpr>() is
-  // ready. std::unordered_map<symbol::DimExpr, pir::Value>
-  // symbol_names2cached_value_;
-
   pir::Value ConvertToValue(const symbol::DimExpr& dim_expr) {
-    // TODO():  cache the returned value if std::hash<symbol::DimExpr>() is
-    // ready
-    return std::visit(
-        [&](const auto& impl) { return ConvertToValueImpl(impl); },
-        dim_expr.variant());
+    pir::Value value =
+        std::visit([&](const auto& impl) { return ConvertToValueImpl(impl); },
+                   dim_expr.variant());
+    return value;
   }
 
   pir::Value GetInputShapeByInputTensor(pir::Value input_tensor) {
     auto iter = tensor2shape_.find(input_tensor);
     if (iter == tensor2shape_.end()) {
-      pir::Value input_shape =
+      pir::Value shape =
           rewriter->Build<paddle::dialect::ShapeOp>(input_tensor).out();
-      iter = tensor2shape_.emplace(input_tensor, input_shape).first;
+      pir::Value cast_shape =
+          rewriter->Build<paddle::dialect::CastOp>(shape, phi::DataType::INT64)
+              .out();
+      iter = tensor2shape_.emplace(input_tensor, cast_shape).first;
     }
     return iter->second;
   }
@@ -114,32 +115,66 @@ struct CachedDimExprToValueConverter {
   }
 
   pir::Value ConvertTensorDimToValue(const TensorDimInData& tensor_dim) {
-    return rewriter
-        ->Build<paddle::dialect::SliceOp>(
-            tensor_dim.value,
-            std::vector<int64_t>{0LL},
-            std::vector<int64_t>{tensor_dim.axis},
-            std::vector<int64_t>{tensor_dim.axis + 1},
-            std::vector<int64_t>{},
-            std::vector<int64_t>{})
-        .out();
+    auto CastToInt64IfNeed = [&](pir::Value value) {
+      if (value.type()
+              .dyn_cast<paddle::dialect::DenseTensorType>()
+              .dtype()
+              .isa<pir::Int64Type>()) {
+        return value;
+      }
+      return rewriter
+          ->Build<paddle::dialect::CastOp>(value, phi::DataType::INT64)
+          .out();
+    };
+    auto FlattenValueIfNeed = [&](pir::Value value) {
+      const auto& dims =
+          value.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+      if (dims.size() <= 1) {
+        return value;
+      }
+      return rewriter
+          ->Build<paddle::dialect::FlattenOp>(value, 0, dims.size() - 1)
+          .out();
+    };
+    const auto& ddim = tensor_dim.value.type()
+                           .dyn_cast<paddle::dialect::DenseTensorType>()
+                           .dims();
+    if (ddim.size() == 0 || (ddim.size() == 1 && ddim[0] == 1)) {
+      return CastToInt64IfNeed(tensor_dim.value);
+    }
+    return CastToInt64IfNeed(rewriter
+                                 ->Build<paddle::dialect::SliceOp>(
+                                     FlattenValueIfNeed(tensor_dim.value),
+                                     std::vector<int64_t>{0LL},
+                                     std::vector<int64_t>{tensor_dim.axis},
+                                     std::vector<int64_t>{tensor_dim.axis + 1},
+                                     std::vector<int64_t>{},
+                                     std::vector<int64_t>{})
+                                 .out());
   }
 
   pir::Value ConvertToValueImpl(
       const symbol::Negative<symbol::DimExpr>& dim_expr) {
-    LOG(FATAL) << "Dead code. This logical should handled by "
-                  "ConvertToValueImpl(symbol::Add<symbol::DimExpr>)";
+    PADDLE_THROW(
+        phi::errors::Fatal("Dead code. This logical should handled by "
+                           "ConvertToValueImpl(symbol::Add<symbol::DimExpr>)"));
   }
 
   pir::Value ConvertToValueImpl(
       const symbol::Reciprocal<symbol::DimExpr>& dim_expr) {
-    LOG(FATAL) << "Dead code. This logical should handled by "
-                  "ConvertToValueImpl(symbol::Mul<symbol::DimExpr>)";
+    PADDLE_THROW(
+        phi::errors::Fatal("Dead code. This logical should handled by "
+                           "ConvertToValueImpl(symbol::Mul<symbol::DimExpr>)"));
   }
 
   pir::Value ConvertToValueImpl(const symbol::Add<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK_GT(operands->size(), 0);
+    PADDLE_ENFORCE_GT(operands->size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of operands is incorrect."
+                          "Expected size is larger than 0, but receive %d.",
+                          operands->size()));
     pir::Value acc = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       if (operands->at(i).isa<symbol::Negative<symbol::DimExpr>>()) {
@@ -158,12 +193,19 @@ struct CachedDimExprToValueConverter {
 
   pir::Value ConvertToValueImpl(const symbol::Mul<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK_GT(operands->size(), 0);
+    PADDLE_ENFORCE_GT(operands->size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of operands is incorrect."
+                          "Expected size is larger than 0, but receive %d.",
+                          operands->size()));
     pir::Value prod = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       if (operands->at(i).isa<symbol::Reciprocal<symbol::DimExpr>>()) {
-        const auto& [operand] =
-            *operands->at(i).dyn_cast<symbol::Negative<symbol::DimExpr>>();
+        const auto& operand =
+            operands->at(i)
+                .dyn_cast<symbol::Reciprocal<symbol::DimExpr>>()
+                ->data;
         pir::Value operand_value = ConvertToValue(operand);
         prod = rewriter->Build<paddle::dialect::DivideOp>(prod, operand_value)
                    .out();
@@ -178,22 +220,34 @@ struct CachedDimExprToValueConverter {
 
   pir::Value ConvertToValueImpl(const symbol::Max<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK_GT(operands->size(), 0);
+    PADDLE_ENFORCE_GT(operands->size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of operands is incorrect."
+                          "Expected size is larger than 0, but receive %d.",
+                          operands->size()));
     pir::Value max = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       pir::Value operand_value = ConvertToValue(operands->at(i));
-      max = rewriter->Build<paddle::dialect::MaxOp>(max, operand_value).out();
+      max =
+          rewriter->Build<paddle::dialect::MaximumOp>(max, operand_value).out();
     }
     return max;
   }
 
   pir::Value ConvertToValueImpl(const symbol::Min<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK_GT(operands->size(), 0);
+    PADDLE_ENFORCE_GT(operands->size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of operands is incorrect."
+                          "Expected size is larger than 0, but receive %d.",
+                          operands->size()));
     pir::Value min = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       pir::Value operand_value = ConvertToValue(operands->at(i));
-      min = rewriter->Build<paddle::dialect::MinOp>(min, operand_value).out();
+      min =
+          rewriter->Build<paddle::dialect::MinimumOp>(min, operand_value).out();
     }
     return min;
   }
@@ -201,7 +255,12 @@ struct CachedDimExprToValueConverter {
   pir::Value ConvertToValueImpl(
       const symbol::Broadcast<symbol::DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
-    CHECK_GT(operands->size(), 0);
+    PADDLE_ENFORCE_GT(operands->size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The size of operands is incorrect."
+                          "Expected size is larger than 0, but receive %d.",
+                          operands->size()));
     pir::Value broadcasted = ConvertToValue(operands->at(0));
     for (int i = 1; i < operands->size(); ++i) {
       pir::Value operand_value = ConvertToValue(operands->at(i));
@@ -214,152 +273,195 @@ struct CachedDimExprToValueConverter {
   }
 };
 
-}  // namespace
+void InsertSymbolBindingImpl(
+    cinn::dialect::GenerateShapeOp op,
+    const cinn::dialect::GenerateShapeOp::DataSymbolBinding& symbol_binding,
+    std::unordered_map<std::string, TensorDim>* symbol_name2tensor_dim) {
+  (*symbol_name2tensor_dim)[symbol_binding.symbol_name] = TensorDimInData{
+      .value = op.operand_source(symbol_binding.input_tensor_idx),
+      .axis = symbol_binding.input_tensor_dim_idx};
+}
+
+void InsertSymbolBindingImpl(
+    cinn::dialect::GenerateShapeOp op,
+    const cinn::dialect::GenerateShapeOp::ShapeSymbolBinding& symbol_binding,
+    std::unordered_map<std::string, TensorDim>* symbol_name2tensor_dim) {
+  (*symbol_name2tensor_dim)[symbol_binding.symbol_name] = TensorDimInShape{
+      .value = op.operand_source(symbol_binding.input_tensor_idx),
+      .axis = symbol_binding.input_tensor_dim_idx};
+}
+
+void InsertSymbolBinding(
+    cinn::dialect::GenerateShapeOp op,
+    const cinn::dialect::GenerateShapeOp::SymbolBinding& symbol_binding,
+    std::unordered_map<std::string, TensorDim>* symbol_name2tensor_dim) {
+  return std::visit(
+      [&](const auto& impl) {
+        return InsertSymbolBindingImpl(op, impl, symbol_name2tensor_dim);
+      },
+      symbol_binding);
+}
+
+TensorDim4SymbolNameT MakeGetterTensorDim4SymbolName(
+    cinn::dialect::GenerateShapeOp op) {
+  std::unordered_map<std::string, TensorDim> symbol_name2tensor_dim{};
+  const auto& attr_map = op->attributes();
+  const auto& iter = attr_map.find("symbol_bindings");
+  PADDLE_ENFORCE((iter != attr_map.end()),
+                 phi::errors::PreconditionNotMet(
+                     "attr symbol_bindings MUST in attribute map for [%s] op",
+                     op->name()));
+  pir::Attribute attr = iter->second;
+  auto* Convert =
+      &cinn::dialect::GenerateShapeOp::ConvertAttributeToSymbolBindings;
+  const auto& symbol_bindings = Convert(attr);
+  PADDLE_ENFORCE(
+      symbol_bindings.has_value(),
+      phi::errors::PreconditionNotMet("attr symbol_bindings in op [%s] can "
+                                      "not be converted to symbol bindings",
+                                      op->name()));
+  for (const auto& symbol_binding : symbol_bindings.value()) {
+    InsertSymbolBinding(op, symbol_binding, &symbol_name2tensor_dim);
+  }
+  return [map = std::move(symbol_name2tensor_dim)](
+             const std::string& symbol_name) -> std::optional<TensorDim> {
+    auto iter = map.find(symbol_name);
+    if (iter == map.end()) return std::nullopt;
+    return iter->second;
+  };
+}
+std::vector<symbol::DimExpr> GetOutDimExprs(cinn::dialect::GenerateShapeOp op) {
+  const auto& attr_map = op->attributes();
+  const auto& iter = attr_map.find("output_dim_exprs");
+  PADDLE_ENFORCE((iter != attr_map.end()),
+                 phi::errors::PreconditionNotMet(
+                     "attr output_dim_exprs MUST in attribute map for [%s] op",
+                     op->name()));
+  pir::Attribute output_dim_exprs_attr = iter->second;
+  PADDLE_ENFORCE(
+      output_dim_exprs_attr.isa<pir::ArrayAttribute>(),
+      phi::errors::PreconditionNotMet(
+          "attr output_dim_exprs for [%s] op must be an pir::ArrayAttribute",
+          op->name()));
+  std::vector<symbol::DimExpr> ret{};
+  const auto& output_dim_exprs =
+      output_dim_exprs_attr.dyn_cast<pir::ArrayAttribute>();
+  for (int i = 0; i < output_dim_exprs.size(); ++i) {
+    const auto& attr = output_dim_exprs.at(i);
+    const auto& opt_dim_expr = cinn::dialect::ConvertAttributeToDimExpr(attr);
+    CHECK(opt_dim_expr.has_value());
+    ret.emplace_back(opt_dim_expr.value());
+  }
+  return ret;
+}
+
+std::vector<pir::Value> GetValuesOfRewrittenOps(
+    const std::vector<symbol::DimExpr>& dim_exprs,
+    CachedDimExprToValueConverter* converter) {
+  std::vector<pir::Value> ret;
+  for (const auto& dim_expr : dim_exprs) {
+    const auto& simplified = symbol::SimplifyDimExpr(dim_expr);
+    pir::Value value = converter->ConvertToValue(simplified);
+    ret.push_back(value);
+  }
+  return ret;
+}
+
+pir::Value GetValueOfRewrittenOps(const std::vector<symbol::DimExpr>& dim_exprs,
+                                  CachedDimExprToValueConverter* converter) {
+  const std::vector<pir::Value>& values_from_dim_exprs =
+      GetValuesOfRewrittenOps(dim_exprs, converter);
+  if (values_from_dim_exprs.size() == 1) return values_from_dim_exprs.at(0);
+  pir::Value vec =
+      converter->rewriter->Build<pir::CombineOp>(values_from_dim_exprs).out();
+  return converter->rewriter->Build<paddle::dialect::ConcatOp>(vec).out();
+}
+
+std::optional<pir::Value> GetOutReplacement(cinn::dialect::GenerateShapeOp op,
+                                            pir::PatternRewriter* rewriter) {
+  std::vector<symbol::DimExpr> dim_exprs = GetOutDimExprs(op);
+  TensorDim4SymbolNameT TensorDim4SymbolName =
+      MakeGetterTensorDim4SymbolName(op);
+  if (!TensorDim4SymbolName) return std::nullopt;
+  CachedDimExprToValueConverter converter{TensorDim4SymbolName, rewriter};
+  std::optional<pir::Value> new_output =
+      GetValueOfRewrittenOps(dim_exprs, &converter);
+  if (!new_output.has_value()) return std::nullopt;
+  const auto& gs_out_type =
+      op->result(0).type().dyn_cast<paddle::dialect::DenseTensorType>();
+  const auto& new_output_type =
+      new_output->type().dyn_cast<paddle::dialect::DenseTensorType>();
+  if (gs_out_type.dtype() != new_output_type.dtype()) {
+    new_output =
+        rewriter
+            ->Build<paddle::dialect::CastOp>(
+                new_output.value(),
+                paddle::dialect::TransToPhiDataType(gs_out_type.dtype()))
+            .out();
+  }
+  if (gs_out_type.dims() != new_output_type.dims()) {
+    PADDLE_ENFORCE_EQ(
+        ::common::contain_unknown_dim(gs_out_type.dims()),
+        false,
+        ::common::errors::PreconditionNotMet(
+            "The shape of the output tensor of generate_shape_op should not "
+            "contain unknown dim, but received [%s].",
+            gs_out_type.dims().to_str()));
+    PADDLE_ENFORCE_LE(
+        ::common::product(gs_out_type.dims()),
+        9,
+        ::common::errors::PreconditionNotMet(
+            "The numel of the output tensor of generate_shape_op should be "
+            "less than 9, but received [%s].",
+            ::common::product(gs_out_type.dims())));
+    return rewriter
+        ->Build<paddle::dialect::ReshapeOp>(
+            new_output.value(),
+            ::common::vectorize<int64_t>(gs_out_type.dims()))
+        .out();
+  }
+  return new_output;
+}
+
+}  // namespace details
 
 class SplitGenerateShapeIntoShapeOps
     : public pir::OpRewritePattern<cinn::dialect::GenerateShapeOp> {
  public:
-  using pir::OpRewritePattern<cinn::dialect::GenerateShapeOp>::OpRewritePattern;
+  using OpRewritePattern<cinn::dialect::GenerateShapeOp>::OpRewritePattern;
 
   bool MatchAndRewrite(cinn::dialect::GenerateShapeOp op,
                        pir::PatternRewriter& rewriter) const override {
     std::optional<pir::Value> out_replacement =
-        GetOutReplacement(op, &rewriter);
+        details::GetOutReplacement(op, &rewriter);
     if (!out_replacement.has_value()) return false;
     rewriter.ReplaceAllUsesWith(op->result(0), out_replacement.value());
+    if (op->use_empty()) {
+      rewriter.EraseOp(op);
+    }
     return true;
-  }
-
-  std::optional<pir::Value> GetOutReplacement(
-      cinn::dialect::GenerateShapeOp op, pir::PatternRewriter* rewriter) const {
-    std::vector<symbol::DimExpr> dim_exprs = GetOutDimExprs(op);
-    TensorDim4SymbolNameT TensorDim4SymbolName =
-        MakeGetterTensorDim4SymbolName(op);
-    if (!TensorDim4SymbolName) return std::nullopt;
-    CachedDimExprToValueConverter converter{TensorDim4SymbolName, rewriter};
-    return GetValueOfRewritedOps(dim_exprs, &converter);
-  }
-
-  TensorDim4SymbolNameT MakeGetterTensorDim4SymbolName(
-      cinn::dialect::GenerateShapeOp op) const {
-    std::unordered_map<std::string, TensorDim> symbol_name2tenso_dim{};
-    const auto& attr_map = op->attributes();
-    const auto& iter = attr_map.find("symbol_bindings");
-    PADDLE_ENFORCE((iter != attr_map.end()),
-                   phi::errors::PreconditionNotMet(
-                       "attr symbol_bindings MUST in attribute map for [%s] op",
-                       op->name()));
-    pir::Attribute attr = iter->second;
-    auto* Convert =
-        &cinn::dialect::GenerateShapeOp::ConvertAttributeToSymbolBindings;
-    const auto& symbol_bindings = Convert(attr);
-    PADDLE_ENFORCE(
-        symbol_bindings.has_value(),
-        phi::errors::PreconditionNotMet("attr symbol_bindings in op [%s] can "
-                                        "not be converted to symbol bindings",
-                                        op->name()));
-    for (const auto& symbol_binding : symbol_bindings.value()) {
-      InsertSymbolBinding(op, symbol_binding, &symbol_name2tenso_dim);
-    }
-    return [map = std::move(symbol_name2tenso_dim)](
-               const std::string& symbol_name) -> std::optional<TensorDim> {
-      auto iter = map.find(symbol_name);
-      if (iter == map.end()) return std::nullopt;
-      return iter->second;
-    };
-  }
-
-  void InsertSymbolBinding(
-      cinn::dialect::GenerateShapeOp op,
-      const cinn::dialect::GenerateShapeOp::SymbolBinding& symbol_binding,
-      std::unordered_map<std::string, TensorDim>* symbol_name2tenso_dim) const {
-    return std::visit(
-        [&](const auto& impl) {
-          return InsertSymbolBindingImpl(op, impl, symbol_name2tenso_dim);
-        },
-        symbol_binding);
-  }
-
-  void InsertSymbolBindingImpl(
-      cinn::dialect::GenerateShapeOp op,
-      const cinn::dialect::GenerateShapeOp::DataSymbolBinding& symbol_binding,
-      std::unordered_map<std::string, TensorDim>* symbol_name2tenso_dim) const {
-    (*symbol_name2tenso_dim)[symbol_binding.symbol_name] = TensorDimInData{
-        .value = op.operand_source(symbol_binding.input_tensor_idx),
-        .axis = symbol_binding.input_tensor_dim_idx};
-  }
-
-  void InsertSymbolBindingImpl(
-      cinn::dialect::GenerateShapeOp op,
-      const cinn::dialect::GenerateShapeOp::ShapeSymbolBinding& symbol_binding,
-      std::unordered_map<std::string, TensorDim>* symbol_name2tenso_dim) const {
-    (*symbol_name2tenso_dim)[symbol_binding.symbol_name] = TensorDimInShape{
-        .value = op.operand_source(symbol_binding.input_tensor_idx),
-        .axis = symbol_binding.input_tensor_dim_idx};
-  }
-
-  std::vector<symbol::DimExpr> GetOutDimExprs(
-      cinn::dialect::GenerateShapeOp op) const {
-    const auto& attr_map = op->attributes();
-    const auto& iter = attr_map.find("output_dim_exprs");
-    PADDLE_ENFORCE(
-        (iter != attr_map.end()),
-        phi::errors::PreconditionNotMet(
-            "attr output_dim_exprs MUST in attribute map for [%s] op",
-            op->name()));
-    pir::Attribute output_dim_exprs_attr = iter->second;
-    PADDLE_ENFORCE(
-        output_dim_exprs_attr.isa<pir::ArrayAttribute>(),
-        phi::errors::PreconditionNotMet(
-            "attr output_dim_exprs for [%s] op must be an pir::ArrayAttribute",
-            op->name()));
-    std::vector<symbol::DimExpr> ret{};
-    const auto& output_dim_exprs =
-        output_dim_exprs_attr.dyn_cast<pir::ArrayAttribute>();
-    for (int i = 0; i < output_dim_exprs.size(); ++i) {
-      const auto& attr = output_dim_exprs.at(i);
-      const auto& opt_dim_expr = cinn::dialect::ConvertAttributeToDimExpr(attr);
-      CHECK(opt_dim_expr.has_value());
-      ret.emplace_back(opt_dim_expr.value());
-    }
-    return ret;
-  }
-
-  pir::Value GetValueOfRewritedOps(
-      const std::vector<symbol::DimExpr>& dim_exprs,
-      CachedDimExprToValueConverter* converter) const {
-    const std::vector<pir::Value>& values_from_dim_exprs =
-        GetValuesOfRewritedOps(dim_exprs, converter);
-    return converter->rewriter->Build<pir::CombineOp>(values_from_dim_exprs)
-        .out();
-  }
-
-  std::vector<pir::Value> GetValuesOfRewritedOps(
-      const std::vector<symbol::DimExpr>& dim_exprs,
-      CachedDimExprToValueConverter* converter) const {
-    std::vector<pir::Value> ret;
-    for (const auto& dim_expr : dim_exprs) {
-      const auto& simplified = cinn::common::SimplifyDimExpr(dim_expr);
-      pir::Value value = converter->ConvertToValue(simplified);
-      ret.push_back(value);
-    }
-    return ret;
   }
 };
 
-SplitGenerateShapeIntoShapeOpsPass::SplitGenerateShapeIntoShapeOpsPass()
-    : pir::PatternRewritePass("split_generate_shape_into_shape_ops_pass", 1) {}
+class SplitGenerateShapeIntoShapeOpsPass : public pir::PatternRewritePass {
+ public:
+  SplitGenerateShapeIntoShapeOpsPass()
+      : pir::PatternRewritePass("split_generate_shape_into_shape_ops_pass", 1) {
+  }
 
-pir::RewritePatternSet SplitGenerateShapeIntoShapeOpsPass::InitializePatterns(
-    pir::IrContext* context) {
-  pir::RewritePatternSet ps(context);
-  // elementwise ops
-  ps.Add<SplitGenerateShapeIntoShapeOps>(context);
-  return ps;
-}
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add<SplitGenerateShapeIntoShapeOps>(context);
+    return ps;
+  }
 
-bool SplitGenerateShapeIntoShapeOpsPass::CanApplyOn(pir::Operation* op) const {
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->num_regions() > 0;
+  }
+};
+
+std::unique_ptr<pir::Pass> CreateSplitGenerateShapeIntoShapeOpsPass() {
+  return std::make_unique<SplitGenerateShapeIntoShapeOpsPass>();
 }
 
 }  // namespace ir

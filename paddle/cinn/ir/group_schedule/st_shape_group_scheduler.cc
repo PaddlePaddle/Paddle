@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
-#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_bind.h"
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_inline.h"
-#include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/reduction_factoring.h"
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
@@ -24,47 +22,28 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
-
+#include "paddle/cinn/utils/external_func_names.h"
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
-
-static const std::unordered_set<std::string>
-    kProhibitScheduleExternalFuncNames = {
-#define CINN_NVGPU_FUNC2STRING(str) #str
-#define CINN_NVGPU_FUNC_TYPE(FUNC, TYPE) \
-  CINN_NVGPU_FUNC2STRING(cinn_nvgpu_##FUNC##TYPE)
-
-#define GEN_FUNC_NAME(_, impl) \
-  _(impl, gt_num)              \
-  _(impl, lt_num)              \
-  _(impl, index_add)           \
-  _(impl, next_smallest)
-
-#define GEN_FUNC_NAME_WITH_TYPE(_, ...)                                     \
-  _(__VA_ARGS__, _bool), _(__VA_ARGS__, _fp16), _(__VA_ARGS__, _fp32),      \
-      _(__VA_ARGS__, _fp64), _(__VA_ARGS__, _uint8), _(__VA_ARGS__, _int8), \
-      _(__VA_ARGS__, _int16), _(__VA_ARGS__, _int32), _(__VA_ARGS__, _int64),
-
-        GEN_FUNC_NAME(GEN_FUNC_NAME_WITH_TYPE, CINN_NVGPU_FUNC_TYPE)
-#undef GEN_FUNC_NAME
-#undef GEN_FUNC_NAME_WITH_TYPE
-#undef CINN_NVGPU_FUNC_TYPE
-#undef CINN_NVGPU_FUNC2STRING
-};
 
 static bool IsProhibitScheduleExternCallBlock(ir::Expr block) {
   ir::ScheduleBlockRealize* sch_block_realize =
       block.As<ir::ScheduleBlockRealize>();
-  CHECK_NOTNULL(sch_block_realize);
+  PADDLE_ENFORCE_NOT_NULL(
+      sch_block_realize,
+      phi::errors::InvalidArgument("block is not a realize"));
   ir::ScheduleBlock* sch_block =
       sch_block_realize->schedule_block.As<ir::ScheduleBlock>();
-  CHECK_NOTNULL(sch_block);
+  PADDLE_ENFORCE_NOT_NULL(sch_block,
+                          phi::errors::InvalidArgument("block is not a block"));
 
   auto find_call = ir::ir_utils::CollectIRNodesWithoutTensor(
       sch_block->body, [&](const Expr* x) { return x->As<ir::Call>(); });
   for (ir::Expr call : find_call) {
     ir::Call* call_node = call.As<ir::Call>();
-    if (kProhibitScheduleExternalFuncNames.count(call_node->name) != 0) {
+    if (cinn::utils::GetProhibitScheduleExternalFuncNames().count(
+            call_node->name) != 0) {
       return true;
     }
   }
@@ -93,10 +72,13 @@ std::vector<std::tuple<ir::Expr, ir::Expr>> FindSameOuterLoops(
 std::unordered_set<std::string> GetReduceLoopVarNames(ir::Expr block) {
   ir::ScheduleBlockRealize* schedule_block_realize =
       block.As<ir::ScheduleBlockRealize>();
-  CHECK_NOTNULL(schedule_block_realize);
+  PADDLE_ENFORCE_NOT_NULL(
+      schedule_block_realize,
+      phi::errors::InvalidArgument("block is not a realize"));
   ir::ScheduleBlock* schedule_block =
       schedule_block_realize->schedule_block.As<ir::ScheduleBlock>();
-  CHECK_NOTNULL(schedule_block);
+  PADDLE_ENFORCE_NOT_NULL(schedule_block,
+                          phi::errors::InvalidArgument("block is not a block"));
   std::vector<ir::Expr> iter_values = schedule_block_realize->iter_values;
   std::vector<ir::Var> iter_vars = schedule_block->iter_vars;
   std::unordered_set<std::string> reduce_loop_var_names;
@@ -117,10 +99,13 @@ std::unordered_set<std::string> GetReduceLoopVarNames(ir::Expr block) {
 std::unordered_set<std::string> GetReduceVarNames(ir::Expr block) {
   ir::ScheduleBlockRealize* schedule_block_realize =
       block.As<ir::ScheduleBlockRealize>();
-  CHECK_NOTNULL(schedule_block_realize);
+  PADDLE_ENFORCE_NOT_NULL(
+      schedule_block_realize,
+      phi::errors::InvalidArgument("block is not a realize"));
   ir::ScheduleBlock* schedule_block =
       schedule_block_realize->schedule_block.As<ir::ScheduleBlock>();
-  CHECK_NOTNULL(schedule_block);
+  PADDLE_ENFORCE_NOT_NULL(schedule_block,
+                          phi::errors::InvalidArgument("block is not a block"));
   std::vector<ir::Var>& iter_vars = schedule_block->iter_vars;
   std::unordered_set<std::string> reduce_var_names;
   for (int i = 0; i < iter_vars.size(); ++i) {
@@ -136,22 +121,37 @@ void StaticShapeGroupScheduler::Schedule() {
       &StaticShapeGroupScheduler::IsKeepGraphDependency);
   DoLoopAlignment();
   DoComputeInline();
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  OptimizeReduction();
+        OptimizeReduction();
 #endif
+      });
   DoHorizontalLoopFusion();
   DoVerticalLoopFusion();
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  BindCudaAxis();
-  AllocateStorage();
+        BindCudaAxis();
+        AllocateStorage();
 #endif
+      });
 }
 
 void StaticShapeGroupScheduler::MapExprSchedule() {
   DoComputeInline();
+  cinn::common::DefaultDeviceTarget().arch.Match(
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      },
+      [&](common::NVGPUArch) {
 #ifdef CINN_WITH_CUDA
-  AllocateStorage();
+        AllocateStorage();
 #endif
+      });
 }
 
 std::vector<std::pair<SymbolicPredicate, ir::Expr>>
@@ -169,7 +169,8 @@ NodePriority StaticShapeGroupScheduler::CalculateNodePriority(
   int64_t score = 1;
   for (Expr expr : node->GetLoops()) {
     ir::For* for_node = expr.As<ir::For>();
-    CHECK_NOTNULL(for_node);
+    PADDLE_ENFORCE_NOT_NULL(for_node,
+                            phi::errors::InvalidArgument("expr is not a For"));
     int loop_extent = ir::GetLoopExtent(expr);
     score *= loop_extent;
     if (reduce_loop_var_names.count(for_node->loop_var->name) != 0) {
@@ -245,13 +246,18 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
           return find_reduce_var;
         },
         /* uniq_target = */ true);
-    CHECK_EQ(reduce_loads.size(), 1);
+    PADDLE_ENFORCE_EQ(
+        reduce_loads.size(),
+        1,
+        phi::errors::InvalidArgument("The reduce load size should be 1."));
 
     std::vector<ir::Expr> indices =
         reduce_loads.begin()->As<ir::Load>()->indices;
     for (ir::Expr index : indices) {
       if (index.is_constant()) continue;
-      CHECK_NOTNULL(index.as_var());
+      PADDLE_ENFORCE_NOT_NULL(
+          index.as_var(),
+          phi::errors::InvalidArgument("The index is not a Var."));
       int idx = 0;
       bool is_reduce_var = false;
       for (int iter_idx = 0; iter_idx < master_iter_vars.size(); ++iter_idx) {
@@ -293,7 +299,11 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
         }
       }
     }
-    CHECK_EQ(original_master_loop_order.size(), recover_loop_order.size());
+    PADDLE_ENFORCE_EQ(original_master_loop_order.size(),
+                      recover_loop_order.size(),
+                      phi::errors::InvalidArgument(
+                          "The size of original_master_loop_order and "
+                          "recover_loop_order should be equal."));
   } else {
     for (int i = 0; i < master_loops.size(); ++i) {
       original_master_loop_extents.push_back(
@@ -373,7 +383,7 @@ void StaticShapeGroupScheduler::DoLoopAlignment() {
       source_loops = {source_loop};
     }
 
-    // 3. Rerorder loops to match the target loops
+    // 3. Reorder loops to match the target loops
     if (total_source_extent == total_master_loop_extents) {
       ir_sch_->Reorder(node->id(), recover_loop_order);
     }
@@ -390,25 +400,6 @@ void StaticShapeGroupScheduler::DoComputeInline() {
   VLOG(5) << "[Start DoComputeInline] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
-  std::unordered_set<std::string> no_inline_output_names = OutputTensorNames();
-  auto_schedule::AutoInline inliner(target_, no_inline_output_names);
-
-  auto InlineFunc = [&](ir::ScheduleBlockNode* node) {
-    if (IsProhibitScheduleExternCallBlock(node->Block())) {
-      return;
-    }
-    VLOG(6) << "try ComputeInline on: " << node->id()
-            << ", before ComputeInline, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-    ir::Expr schedule_block = node->Block();
-    inliner.Apply(ir_sch_, schedule_block);
-    VLOG(6) << "try ComputeInline on: " << node->id()
-            << ", after ComputeInline, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-  };
-
-  schedule_block_graph_->DFSTopoWalk(InlineFunc);
-  schedule_block_graph_->Update(*ir_sch_);
   VLOG(5) << "[After DoComputeInline] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 }
@@ -421,7 +412,8 @@ void StaticShapeGroupScheduler::DoHorizontalLoopFusion() {
       schedule_block_graph_->EndPoints();
   std::reverse(end_nodes.begin(), end_nodes.end());
   ir::ScheduleBlockNode* master_node = end_nodes.front();
-  CHECK_NOTNULL(master_node);
+  PADDLE_ENFORCE_NOT_NULL(
+      master_node, phi::errors::InvalidArgument("Cannot find the master node"));
   for (int i = 1; i < end_nodes.size(); ++i) {
     if (IsProhibitScheduleExternCallBlock(end_nodes[i]->Block())) {
       continue;
@@ -577,26 +569,9 @@ void StaticShapeGroupScheduler::DoVerticalLoopFusion() {
 }
 
 void StaticShapeGroupScheduler::BindCudaAxis() {
-  if (target_.arch != Target::Arch::NVGPU) return;
+  if (!std::holds_alternative<common::NVGPUArch>(target_.arch)) return;
   VLOG(5) << "[Start BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
-
-  auto_schedule::AutoBind binder(target_);
-
-  auto BindFunc = [&](ir::ScheduleBlockNode* node) {
-    if (IsProhibitScheduleExternCallBlock(node->Block())) {
-      return;
-    }
-    VLOG(6) << "try bind cuda axis on: " << node->id()
-            << ", before bind, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-    binder.Apply(ir_sch_, node->id());
-    VLOG(6) << "try bind cuda axis on: " << node->id()
-            << ", after bind, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-  };
-
-  schedule_block_graph_->DFSTopoWalk(BindFunc);
 
   VLOG(5) << "[After BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
@@ -616,7 +591,7 @@ std::ostream& operator<<(std::ostream& os, const Range& x) {
 // and MultiDimIntegerSet, re implement this function to simplify these ugly
 // codes.
 void StaticShapeGroupScheduler::AllocateStorage() {
-  if (target_.arch != Target::Arch::NVGPU) return;
+  if (!std::holds_alternative<common::NVGPUArch>(target_.arch)) return;
   VLOG(5) << "[Start AllocateStorage] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
@@ -1039,8 +1014,9 @@ void StaticShapeGroupScheduler::AllocateStorage() {
                        consumer_block_name)) {
         // TODO(BiynXu): Return error information to the front-end instead of
         // terminating the program.
-        LOG(FATAL) << "Fusion requires synchronization across blocks, but "
-                      "currently we do not support it.";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "Fusion requires synchronization across blocks, but "
+            "currently we do not support it."));
         break;
       } else if (IsCrossThread(store_indice_value,
                                load_indice_value,
@@ -1084,24 +1060,6 @@ void StaticShapeGroupScheduler::AllocateStorage() {
 void StaticShapeGroupScheduler::OptimizeReduction() {
   VLOG(5) << "[Start OptimizeReduction] func body: "
           << ir_sch_->GetModule().GetExprs().front();
-
-  auto_schedule::ReductionFactoring rf(target_);
-
-  auto ReductionFactoring = [&](ir::ScheduleBlockNode* node) {
-    if (IsProhibitScheduleExternCallBlock(node->Block())) {
-      return;
-    }
-    VLOG(6) << "try ReductionFactoring on: " << node->id()
-            << ", before ReductionFactoring, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-    rf.Apply(node->id(), ir_sch_);
-    VLOG(6) << "try ReductionFactoring on: " << node->id()
-            << ", after ReductionFactoring, func body: "
-            << ir_sch_->GetModule().GetExprs().front();
-  };
-
-  schedule_block_graph_->DFSTopoWalk(ReductionFactoring);
-  schedule_block_graph_->Update(*ir_sch_);
 
   VLOG(5) << "[After OptimizeReduction] func body: "
           << ir_sch_->GetModule().GetExprs().front();

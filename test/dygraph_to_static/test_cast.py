@@ -22,26 +22,25 @@ from dygraph_to_static_utils import (
 )
 
 import paddle
-from paddle.base.dygraph import to_variable
 
 SEED = 2020
 np.random.seed(SEED)
 
 
 def test_bool_cast(x):
-    x = to_variable(x)
+    x = paddle.to_tensor(x)
     x = bool(x)
     return x
 
 
 def test_int_cast(x):
-    x = to_variable(x)
+    x = paddle.to_tensor(x)
     x = int(x)
     return x
 
 
 def test_float_cast(x):
-    x = to_variable(x)
+    x = paddle.to_tensor(x)
     x = float(x)
     return x
 
@@ -52,7 +51,7 @@ def test_not_var_cast(x):
 
 
 def test_mix_cast(x):
-    x = to_variable(x)
+    x = paddle.to_tensor(x)
     x = int(x)
     x = float(x)
     x = bool(x)
@@ -93,9 +92,7 @@ class TestCastBase(Dy2StTestBase):
         res = self.do_test().numpy()
         self.assertTrue(
             res.dtype == self.cast_dtype,
-            msg='The target dtype is {}, but the casted dtype is {}.'.format(
-                self.cast_dtype, res.dtype
-            ),
+            msg=f'The target dtype is {self.cast_dtype}, but the casted dtype is {res.dtype}.',
         )
         ref_val = self.input.astype(self.cast_dtype)
         np.testing.assert_allclose(
@@ -160,9 +157,7 @@ class TestMixCast(TestCastBase):
         res = self.do_test().numpy()
         self.assertTrue(
             res.dtype == self.cast_dtype,
-            msg='The target dtype is {}, but the casted dtype is {}.'.format(
-                self.cast_dtype, res.dtype
-            ),
+            msg=f'The target dtype is {self.cast_dtype}, but the casted dtype is {res.dtype}.',
         )
         ref_val = (
             self.input.astype(self.cast_int)

@@ -69,6 +69,40 @@ Expr operator>>(Expr a, Expr b) {
   return lang::CallExtern("right_shift", {a, b}, {{"vectorizable", false}});
 }
 
+Expr BitwiseOrCallImpl(common::UnknownArch,
+                       const Target& target,
+                       Expr a,
+                       Expr b) {
+  std::stringstream ss;
+  ss << "Unsupport arch: " << target.arch_str() << " for bitwise_or.";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+}
+
+Expr BitwiseOrCallImpl(common::X86Arch, const Target& target, Expr a, Expr b) {
+  return lang::CallExtern("bitwise_or", {a, b}, {{"vectorizable", false}});
+}
+
+Expr BitwiseOrCallImpl(common::ARMArch, const Target& target, Expr a, Expr b) {
+  std::stringstream ss;
+  ss << "Unsupport arch: " << target.arch_str() << " for bitwise_or.";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+}
+
+Expr BitwiseOrCallImpl(common::NVGPUArch,
+                       const Target& target,
+                       Expr a,
+                       Expr b) {
+  Type t_a = a.type();
+  auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_or");
+  return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
+}
+
+Expr BitwiseOrCall(const Target& target, Expr a, Expr b) {
+  return std::visit(
+      [&](const auto& arch) { return BitwiseOrCallImpl(arch, target, a, b); },
+      target.arch.variant());
+}
+
 Expr operator|(Expr a, Expr b) {
   CHECK(a.type().is_int() || a.type().is_uint());
   CHECK(b.type().is_int() || b.type().is_uint());
@@ -82,14 +116,41 @@ Expr operator|(Expr a, Expr b) {
     }
   }
   auto target = cinn::runtime::CurrentTarget::GetCurrentTarget();
-  if (target.arch == cinn::common::Target::Arch::X86) {
-    return lang::CallExtern("bitwise_or", {a, b}, {{"vectorizable", false}});
-  } else if (target.arch == cinn::common::Target::Arch::NVGPU) {
-    auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_or");
-    return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
-  } else {
-    LOG(FATAL) << "Unsupport arch: " << target.arch_str() << " for bitwise_or.";
-  }
+  return BitwiseOrCall(target, a, b);
+}
+
+Expr BitwiseAndCallImpl(common::UnknownArch,
+                        const Target& target,
+                        Expr a,
+                        Expr b) {
+  std::stringstream ss;
+  ss << "Unsupport arch: " << target.arch_str() << " for bitwise_and.";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+}
+
+Expr BitwiseAndCallImpl(common::X86Arch, const Target& target, Expr a, Expr b) {
+  return lang::CallExtern("bitwise_and", {a, b}, {{"vectorizable", false}});
+}
+
+Expr BitwiseAndCallImpl(common::ARMArch, const Target& target, Expr a, Expr b) {
+  std::stringstream ss;
+  ss << "Unsupport arch: " << target.arch_str() << " for bitwise_and.";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+}
+
+Expr BitwiseAndCallImpl(common::NVGPUArch,
+                        const Target& target,
+                        Expr a,
+                        Expr b) {
+  Type t_a = a.type();
+  auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_and");
+  return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
+}
+
+Expr BitwiseAndCall(const Target& target, Expr a, Expr b) {
+  return std::visit(
+      [&](const auto& arch) { return BitwiseAndCallImpl(arch, target, a, b); },
+      target.arch.variant());
 }
 
 Expr operator&(Expr a, Expr b) {
@@ -105,15 +166,41 @@ Expr operator&(Expr a, Expr b) {
     }
   }
   auto target = cinn::runtime::CurrentTarget::GetCurrentTarget();
-  if (target.arch == cinn::common::Target::Arch::X86) {
-    return lang::CallExtern("bitwise_and", {a, b}, {{"vectorizable", false}});
-  } else if (target.arch == cinn::common::Target::Arch::NVGPU) {
-    auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_and");
-    return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
-  } else {
-    LOG(FATAL) << "Unsupport arch: " << target.arch_str()
-               << " for bitwise_and.";
-  }
+  return BitwiseAndCall(target, a, b);
+}
+
+Expr BitwiseXorCallImpl(common::UnknownArch,
+                        const Target& target,
+                        Expr a,
+                        Expr b) {
+  std::stringstream ss;
+  ss << "Unsupport arch: " << target.arch_str() << " for bitwise_xor.";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+}
+
+Expr BitwiseXorCallImpl(common::X86Arch, const Target& target, Expr a, Expr b) {
+  return lang::CallExtern("bitwise_xor", {a, b}, {{"vectorizable", false}});
+}
+
+Expr BitwiseXorCallImpl(common::ARMArch, const Target& target, Expr a, Expr b) {
+  std::stringstream ss;
+  ss << "Unsupport arch: " << target.arch_str() << " for bitwise_xor.";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+}
+
+Expr BitwiseXorCallImpl(common::NVGPUArch,
+                        const Target& target,
+                        Expr a,
+                        Expr b) {
+  Type t_a = a.type();
+  auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_xor");
+  return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
+}
+
+Expr BitwiseXorCall(const Target& target, Expr a, Expr b) {
+  return std::visit(
+      [&](const auto& arch) { return BitwiseXorCallImpl(arch, target, a, b); },
+      target.arch.variant());
 }
 
 Expr operator^(Expr a, Expr b) {
@@ -129,29 +216,40 @@ Expr operator^(Expr a, Expr b) {
     }
   }
   auto target = cinn::runtime::CurrentTarget::GetCurrentTarget();
-  if (target.arch == cinn::common::Target::Arch::X86) {
-    return lang::CallExtern("bitwise_xor", {a, b}, {{"vectorizable", false}});
-  } else if (target.arch == cinn::common::Target::Arch::NVGPU) {
-    auto func_name = hlir::GetExternFuncName(target, t_a, "bitwise_xor");
-    return lang::CallExtern(func_name, {a, b}, {{"vectorizable", false}});
-  } else {
-    LOG(FATAL) << "Unsupport arch: " << target.arch_str()
-               << " for bitwise_xor.";
-  }
+  return BitwiseXorCall(target, a, b);
+}
+
+Expr BitwiseNotCallImpl(common::UnknownArch, const Target& target, Expr a) {
+  std::stringstream ss;
+  ss << "Unsupport arch: " << target.arch_str() << " for bitwise_not.";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+}
+
+Expr BitwiseNotCallImpl(common::X86Arch, const Target& target, Expr a) {
+  return lang::CallExtern("bitwise_not", {a}, {{"vectorizable", false}});
+}
+
+Expr BitwiseNotCallImpl(common::ARMArch, const Target& target, Expr a) {
+  std::stringstream ss;
+  ss << "Unsupport arch: " << target.arch_str() << " for bitwise_not.";
+  PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
+}
+
+Expr BitwiseNotCallImpl(common::NVGPUArch, const Target& target, Expr a) {
+  auto func_name = hlir::GetExternFuncName(target, a->type(), "bitwise_not");
+  return lang::CallExtern(func_name, {a}, {{"vectorizable", false}});
+}
+
+Expr BitwiseNotCall(const Target& target, Expr a) {
+  return std::visit(
+      [&](const auto& arch) { return BitwiseNotCallImpl(arch, target, a); },
+      target.arch.variant());
 }
 
 Expr operator~(Expr a) {
   CHECK(a.type().is_int() || a.type().is_uint());
   auto target = cinn::runtime::CurrentTarget::GetCurrentTarget();
-  if (target.arch == cinn::common::Target::Arch::X86) {
-    return lang::CallExtern("bitwise_not", {a}, {{"vectorizable", false}});
-  } else if (target.arch == cinn::common::Target::Arch::NVGPU) {
-    auto func_name = hlir::GetExternFuncName(target, a->type(), "bitwise_not");
-    return lang::CallExtern(func_name, {a}, {{"vectorizable", false}});
-  } else {
-    LOG(FATAL) << "Unsupport arch: " << target.arch_str()
-               << " for bitwise_not.";
-  }
+  return BitwiseNotCall(target, a);
 }
 
 }  // namespace ir

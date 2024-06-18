@@ -32,7 +32,7 @@ class Node;
 }  // namespace ir
 }  // namespace framework
 namespace platform {
-struct NCCLContextMap;
+class NCCLContextMap;
 }  // namespace platform
 }  // namespace paddle
 

@@ -611,7 +611,7 @@ void BatchNormDoubleGradKernel(
     EigenArrayMap<T> ddy_arr(
         ctx.template Alloc<T>(&transformed_ddy), C, sample_size);
     ddy_arr.setZero();
-    if (use_global_stats) {
+    if (use_global_stats) {  // NOLINT
       // math: ddy = r * ddx * inv_var + ddbias +
       //           ddscale * (x - mean) * inv_var
       if (ddX) {

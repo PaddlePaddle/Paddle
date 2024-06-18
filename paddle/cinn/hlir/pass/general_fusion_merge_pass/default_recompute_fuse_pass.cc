@@ -44,7 +44,7 @@ class DefaultRecomputeFusePass final : public RecomputeFusePass {
     std::vector<OpGroupPtr> candidates;
     for (int i = 0; i < consumers.size(); ++i) {
       const auto& consumer = consumers.at(i);
-      if (!VerticalFuseUtil::DetectFusabilityByKind(ctx, producer, consumer)) {
+      if (!VerticalFuseUtil::DetectFusibilityByKind(ctx, producer, consumer)) {
         continue;
       }
       unsafe_candidates.push_back(consumer);

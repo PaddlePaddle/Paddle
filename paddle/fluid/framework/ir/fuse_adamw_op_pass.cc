@@ -112,7 +112,7 @@ void InsertOpToGraph(const std::vector<std::vector<Node *>> &inout_node_vectors,
       fuse_adamw_op_desc.SetInput("SkipUpdate", {});
     }
 
-    for (auto &name : config.repalce_outputs_name) {
+    for (auto &name : config.replace_outputs_name) {
       fuse_adamw_op_desc.SetOutput(name, GetNodeNames(inout_node_vectors[i]));
       i++;
     }
@@ -151,7 +151,7 @@ void InsertOpToGraph(const std::vector<std::vector<Node *>> &inout_node_vectors,
         IR_NODE_LINK_TO(inout_node_vectors[j][k], fuse_adamw_node);
       }
       for (; j < config.replace_inputs_name.size() +
-                     config.repalce_outputs_name.size();
+                     config.replace_outputs_name.size();
            j++) {
         IR_NODE_LINK_TO(fuse_adamw_node, inout_node_vectors[j][k]);
       }

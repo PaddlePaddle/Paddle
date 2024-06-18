@@ -503,7 +503,7 @@ class _ProgramHolder:
     def _append_scale_to_output(self, program):
         # 0. scale don't support bool output, we skip append scale for it
         for out_desc in self._output_descs:
-            if out_desc.dtype() == core.VarDesc.VarType.BOOL:
+            if out_desc.dtype() == paddle.bool:
                 return
 
         # 1. append scale & save var
@@ -892,8 +892,7 @@ def _run_dygraph(instance, input, program_holder):
     for i, value in enumerate(input):
         if not isinstance(value, (np.ndarray, core.eager.Tensor)):
             raise TypeError(
-                "The type of input in TranslatedLayer must be numpy array or Variable(Tensor), but received %s."
-                % type(value)
+                f"The type of input in TranslatedLayer must be numpy array or Variable(Tensor), but received {type(value)}."
             )
         # NOTE: In order to unify the API, firstly convert the input to Tensor
         if isinstance(value, np.ndarray):
@@ -925,8 +924,7 @@ def _run_dygraph(instance, input, program_holder):
             persistable_vars.append(instance._buffers[dy_var_name])
         else:
             raise ValueError(
-                "The persistable variable %s does not exist in current TranslatedLayer."
-                % var_name
+                f"The persistable variable {var_name} does not exist in current TranslatedLayer."
             )
 
     output_vars = []
@@ -998,8 +996,6 @@ def _run_dygraph(instance, input, program_holder):
                     program_holder.backward_program.block(0),
                 )
             )
-    # Note(lvyongkang): Current PIR don't support save/load
-    attrs.extend(['in_pir_pt_mode', False])
 
     _legacy_C_ops.run_program(
         _valid_vars(input_vars),
@@ -1112,9 +1108,7 @@ def _append_block(
     input_names = [inp.name for inp in input_variables]
     if len(name_inp_desc) != len(input_names):
         raise ValueError(
-            "The number of input is invalid, expected {}, but received {}.".format(
-                len(name_inp_desc), len(input_names)
-            )
+            f"The number of input is invalid, expected {len(name_inp_desc)}, but received {len(input_names)}."
         )
     for i, out_name in enumerate(name_inp_desc):
         if dict_rename_var_old_new:
@@ -1399,13 +1393,13 @@ class TranslatedLayer(layers.Layer):
 
         # NOTE(chenweihang): [ why not use var name directly? ]
         # When add parameter or buffer to Layer by follow apis,
-        # the variable name can't contain `.`, beccause which may cause
+        # the variable name can't contain `.`, because which may cause
         # AttributeError when access the newly added parameter or buffer
         # in the form of `self.**.**``, but the EagerParamBase or BarBase
         # name contains `.` originally, such as `linear_0.w_0`, so here
         # need to generate new var name for each var
         self._persistable_var_name_dict = {}
-        # the TranslatedLayer object holded var names count started from 0
+        # the TranslatedLayer object held var names count started from 0
         with unique_name.guard():
             for name, var in persistable_vars.items():
                 if isinstance(var, framework.EagerParamBase):
@@ -1430,7 +1424,7 @@ class TranslatedLayer(layers.Layer):
         # 0. dir and filename check
         model_path = os.path.normpath(model_path)
         if not os.path.isdir(model_path):
-            raise ValueError("There is no directory named '%s'" % model_path)
+            raise ValueError(f"There is no directory named '{model_path}'")
         model_filename = None
         params_filename = None
         if configs is not None:
@@ -1501,7 +1495,7 @@ class TranslatedLayer(layers.Layer):
         Gets translated program of specified method.
 
         Args:
-            - method_name (string): mehtod name corresponding to the program
+            - method_name (string): method name corresponding to the program
                 to be obtained. Default: 'forward'.
 
         Returns:
@@ -1595,8 +1589,7 @@ class TranslatedLayer(layers.Layer):
         program_holder = self._program_holder_dict.get(method_name, None)
         if program_holder is None:
             raise ValueError(
-                "The method `%s` does not exist in loaded TranslatedLayer."
-                % method_name
+                f"The method `{method_name}` does not exist in loaded TranslatedLayer."
             )
         return program_holder
 

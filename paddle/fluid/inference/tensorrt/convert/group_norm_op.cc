@@ -81,7 +81,7 @@ class GroupNormOpConverter : public OpConverter {
       nvinfer1::ILayer* groupnorm_layer =
           engine_->AddDynamicPlugin(&input_itensor, 1, plugin);
       auto output_name = op_desc.Output("Y")[0];
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           groupnorm_layer, "group_norm", {output_name}, test_mode);
     } else {
       int gn_num = input_itensor->getDimensions().d[0] * groups;
@@ -100,7 +100,7 @@ class GroupNormOpConverter : public OpConverter {
       nvinfer1::ILayer* groupnorm_layer =
           engine_->AddPlugin(&input_itensor, 1, plugin);
       auto output_name = op_desc.Output("Y")[0];
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           groupnorm_layer, "group_norm", {output_name}, test_mode);
     }
   }

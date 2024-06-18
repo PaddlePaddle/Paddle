@@ -23,7 +23,32 @@ void ViewShapeKernel(const Context& dev_ctx,
                      const DenseTensor& input,
                      const std::vector<int64_t>& dims,
                      DenseTensor* out) {
-  DDim new_dims = DDim(dims.data(), static_cast<int>(dims.size()));
+  // infer dims
+  auto infer_dim = -1;
+  auto new_size = 1;
+  auto numel = input.numel();
+  std::vector<int64_t> dims_copy = dims;
+  for (int dim = 0, ndim = dims_copy.size(); dim < ndim; ++dim) {
+    if (dims_copy[dim] == -1) {
+      if (infer_dim >= 0) {
+        PADDLE_THROW(phi::errors::Fatal("Only one dimension can be inferred"));
+      }
+      infer_dim = dim;
+    } else if (dims_copy[dim] >= 0) {
+      new_size *= dims_copy[dim];
+    } else {
+      PADDLE_THROW(phi::errors::OutOfRange("Tensor idx is out of range"));
+    }
+  }
+  PADDLE_ENFORCE_NE(new_size,
+                    0,
+                    phi::errors::Unavailable(
+                        "cannot reshape tensor of 0 elements into shape "));
+  if (infer_dim >= 0 && new_size > 0 && numel % new_size == 0) {
+    dims_copy[infer_dim] = numel / new_size;
+  }
+
+  DDim new_dims = DDim(dims_copy.data(), static_cast<int>(dims_copy.size()));
   DDim stride;
   if (ReshapeStride(input.dims(), input.strides(), new_dims, stride)) {
     auto meta = input.meta();
@@ -65,7 +90,7 @@ void ViewDtypeKernel(const Context& dev_ctx,
             input.dtype(),
             dtype,
             input.strides()[input.strides().size() - 1]));
-    size_t times = input_dtype_size / output_dtype_size;
+    size_t times = input_dtype_size / output_dtype_size;  // NOLINT
 
     DDim output_dims = input.dims();
     output_dims[output_dims.size() - 1] =
@@ -149,10 +174,10 @@ void ViewDtypeKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(view_shape,
-                                                       STRIDED,
-                                                       phi::ViewShapeKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(view_shape,
+                                         STRIDED,
+                                         phi::ViewShapeKernel) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(view_dtype,
-                                                       STRIDED,
-                                                       phi::ViewDtypeKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(view_dtype,
+                                         STRIDED,
+                                         phi::ViewDtypeKernel) {}

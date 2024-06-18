@@ -15,9 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/skip_merge_layernorm_op_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 class SkipMergeLayernormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
@@ -80,15 +78,13 @@ class SkipMergeLayernormOpConverter : public OpConverter {
           "mode."));
     }
     auto output_name = op_desc.Output("Out").front();
-    RreplenishLayerAndOutput(skip_merge_layernorm_layer,
-                             "skip_merge_layernorm",
-                             {output_name},
-                             test_mode);
+    ReplenishLayerAndOutput(skip_merge_layernorm_layer,
+                            "skip_merge_layernorm",
+                            {output_name},
+                            test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(skip_merge_layernorm, SkipMergeLayernormOpConverter);

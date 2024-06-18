@@ -37,7 +37,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -131,7 +131,7 @@ static phi::DataType DLNNE2FluidDataType(dl::nne::DataType type) {
     case dl::nne::DataType::kBOOL:
       return phi::DataType::BOOL;
     default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "unknown fluid datatype in Fluid op converter"));
       return phi::DataType::FLOAT32;
   }
@@ -316,10 +316,9 @@ class DlnneEngineOp : public framework::OperatorBase {
       }
 
       builder = dl::nne::CreateInferBuilder();
-      PADDLE_ENFORCE_NE(
-          builder,
-          nullptr,
-          platform::errors::Unavailable("nne create builder failed"));
+      PADDLE_ENFORCE_NE(builder,
+                        nullptr,
+                        phi::errors::Unavailable("nne create builder failed"));
       dl::nne::BuilderConfig builder_cfg;
       builder_cfg.max_batch_size = max_batch_size_;
       builder_cfg.ws_mode = weight_share_map[weight_share_mode_];
@@ -327,10 +326,9 @@ class DlnneEngineOp : public framework::OperatorBase {
       network = builder->CreateNetwork();
 
       parser = dl::nne::CreateParser();
-      PADDLE_ENFORCE_NE(
-          parser,
-          nullptr,
-          platform::errors::Unavailable("nne create parser failed"));
+      PADDLE_ENFORCE_NE(parser,
+                        nullptr,
+                        phi::errors::Unavailable("nne create parser failed"));
       if (dlnne_log_flag_) {
         LOG(INFO) << "set output for dlnne";
       }
@@ -398,11 +396,11 @@ class DlnneEngineOp : public framework::OperatorBase {
 
  protected:
   void RunDlnneOnCreateEngine(const framework::Scope &scope,
-                              const platform::Place &dev_place) const {
+                              const phi::Place &dev_place) const {
     PADDLE_ENFORCE_EQ(
         input_names_.empty(),
         false,
-        platform::errors::PreconditionNotMet(
+        phi::errors::PreconditionNotMet(
             "Dlnne engine needs at least one input, but no input is found. "
             "Please check if you set the input correctly."));
 
@@ -440,8 +438,8 @@ class DlnneEngineOp : public framework::OperatorBase {
         PADDLE_ENFORCE_EQ(
             first_batch,
             batch,
-            platform::errors::Unavailable(
-                "compute infer_batchs is different from each other"));
+            phi::errors::Unavailable(
+                "compute infer_batches is different from each other"));
       }
       infer_batch = first_batch;
     }
@@ -474,13 +472,13 @@ class DlnneEngineOp : public framework::OperatorBase {
         data_bytes = 4;
         dtype = 2;
       } else if (type == phi::DataType::FLOAT16) {
-        buffer = static_cast<void *>(t.data<paddle::platform::float16>());
+        buffer = static_cast<void *>(t.data<phi::dtype::float16>());
         data_bytes = 2;
         dtype = 3;
       } else {
         PADDLE_THROW(
-            platform::errors::Fatal("The DLNNE Engine OP only support "
-                                    "float/int32_t/int64_t/float16 input."));
+            phi::errors::Fatal("The DLNNE Engine OP only support "
+                               "float/int32_t/int64_t/float16 input."));
       }
       input_buffers[bind_index] = buffer;
 
@@ -555,7 +553,7 @@ class DlnneEngineOp : public framework::OperatorBase {
       auto *fluid_v = scope.FindVar(y);
       PADDLE_ENFORCE_NOT_NULL(
           fluid_v,
-          platform::errors::NotFound(
+          phi::errors::NotFound(
               "Output variable %s is not found in DLNNE subgraph.", y));
 
       auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
@@ -654,7 +652,7 @@ class DlnneEngineOp : public framework::OperatorBase {
   }
 
   void RunNativeImpl(const framework::Scope &scope,
-                     const platform::Place &dev_place) const {
+                     const phi::Place &dev_place) const {
     VLOG(4) << "RunNativeImpl";
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>("sub_block");
@@ -665,7 +663,7 @@ class DlnneEngineOp : public framework::OperatorBase {
   }
 
   void RunCalibration(const framework::Scope &scope,
-                      const platform::Place &dev_place) const {
+                      const phi::Place &dev_place) const {
     std::unordered_map<std::string, void *> calib_data_map;
     std::unordered_map<std::string, std::vector<int64_t>> calib_data_shape_map;
     std::unordered_map<std::string, std::string> calib_data_type_map;
@@ -738,7 +736,7 @@ class DlnneEngineOp : public framework::OperatorBase {
   }
 
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     VLOG(4) << "calibration_mode_: " << calibration_mode_;
     if (calibration_mode_ == true) {
       VLOG(4) << "RunCalibration";

@@ -56,7 +56,7 @@ void InitTensorsOnClient(framework::Scope* scope,
   auto ptr = w_value->mutable_data<float>(*place);
 
   for (int64_t i = 0; i < w_value->numel(); ++i) {
-    ptr[i] = static_cast<float>(i / 10);
+    ptr[i] = static_cast<float>(i) / 10.0;
   }
 
   auto x_var = scope->Var("x")->GetMutable<phi::DenseTensor>();

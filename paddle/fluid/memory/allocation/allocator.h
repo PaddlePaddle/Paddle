@@ -19,21 +19,21 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/inlined_vector.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/flags.h"
 
 #ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 
-PHI_DECLARE_string(allocator_strategy);
-PHI_DECLARE_bool(sync_after_alloc);
-PHI_DECLARE_int64(alloc_fill_value);
+COMMON_DECLARE_string(allocator_strategy);
+COMMON_DECLARE_bool(sync_after_alloc);
+COMMON_DECLARE_int64(alloc_fill_value);
 
 namespace paddle {
 namespace memory {
@@ -147,7 +147,10 @@ static T&& FillValue(T&& allocation) {
 #if defined(PADDLE_WITH_CUDA)
   if (allocation != nullptr) {
     if (FLAGS_sync_after_alloc || FLAGS_alloc_fill_value >= 0) {
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+      bool need_sync = !platform::is_cpu_place(allocation->place());
+      if (need_sync) {
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+      }
       if (FLAGS_alloc_fill_value >= 0) {
         VLOG(10) << "Set " << FLAGS_alloc_fill_value << " on "
                  << allocation->ptr() << " " << allocation->place() << " "
@@ -159,7 +162,9 @@ static T&& FillValue(T&& allocation) {
           std::memset(
               allocation->ptr(), FLAGS_alloc_fill_value, allocation->size());
         }
-        PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+        if (need_sync) {
+          PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+        }
       }
     }
   }
@@ -202,7 +207,7 @@ class Allocator : public phi::Allocator {
 };
 
 inline size_t AlignedSize(size_t size, size_t alignment) {
-  auto remaining = size % alignment;
+  auto remaining = size % alignment;  // NOLINT
   return remaining == 0 ? size : size + alignment - remaining;
 }
 

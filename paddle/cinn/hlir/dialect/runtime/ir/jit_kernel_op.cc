@@ -17,7 +17,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/common/enforce.h"
-#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace cinn {
 namespace dialect {
@@ -45,11 +45,11 @@ void JitKernelOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs and attributes for: JitKernelOp.";
 
   auto& attributes = this->attributes();
-
-  IR_ENFORCE(attributes.count(kAttrName) > 0 &&
-                 attributes.at(kAttrName)
-                     .isa<cinn::dialect::CINNKernelInfoAttribute>(),
-             "Type of attribute: instruction is not right.");
+  PADDLE_ENFORCE_EQ(attributes.count(kAttrName) > 0 &&
+                        attributes.at(kAttrName)
+                            .isa<cinn::dialect::CINNKernelInfoAttribute>(),
+                    true,
+                    "Type of attribute: instruction is not right.");
 }
 
 const hlir::framework::pir::CINNKernelInfo& JitKernelOp::cinn_kernel_info() {

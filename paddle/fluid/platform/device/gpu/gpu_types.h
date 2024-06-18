@@ -1,5 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-// Copyright (c) 2022 NVIDIA Corporation. All rights reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,11 +32,13 @@
 
 namespace paddle {
 
+// Note(qili93): CUDA Runtime API supported by HIP
+// https://github.com/ROCm/HIPIFY/blob/master/doc/markdown/CUDA_Runtime_API_functions_supported_by_HIP.md
+
 #ifdef PADDLE_WITH_HIP
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
   using GPU_TYPE = ROCM_TYPE;
-#else  // CDUA
-
+#else  // PADDLE_WITH_CUDA
 #define DECLARE_TYPE_FOR_GPU(GPU_TYPE, CUDA_TYPE, ROCM_TYPE) \
   using GPU_TYPE = CUDA_TYPE;
 #endif
@@ -81,22 +82,22 @@ DECLARE_TYPE_FOR_GPU(dnnDropoutDescriptor_t,
                      cudnnDropoutDescriptor_t,
                      miopenDropoutDescriptor_t);
 DECLARE_TYPE_FOR_GPU(dnnHandle_t, cudnnHandle_t, miopenHandle_t);
-
+DECLARE_TYPE_FOR_GPU(gpuIpcMemHandle_t, cudaIpcMemHandle_t, hipIpcMemHandle_t);
 DECLARE_TYPE_FOR_GPU(blasHandle_t, cublasHandle_t, rocblas_handle);
+DECLARE_TYPE_FOR_GPU(gpuStreamCaptureMode,
+                     cudaStreamCaptureMode,
+                     hipStreamCaptureMode);
 
 // TODO(Ming Huang): Since there is no blasLt handler,
 // use rocblas_handle for workround.
 DECLARE_TYPE_FOR_GPU(blasLtHandle_t, cublasLtHandle_t, rocblas_handle);
-
-using CUDAGraphID = unsigned long long;  // NOLINT
 
 #undef DECLARE_TYPE_FOR_GPU
 
 #ifdef PADDLE_WITH_HIP
 #define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV) \
   constexpr auto GPU_CV = ROCM_CV;
-#else  // CDUA
-
+#else  // PADDLE_WITH_CUDA
 #define DECLARE_CONSTANT_FOR_GPU(GPU_CV, CUDA_CV, ROCM_CV) \
   constexpr auto GPU_CV = CUDA_CV;
 #endif
@@ -106,8 +107,64 @@ DECLARE_CONSTANT_FOR_GPU(gpuErrorOutOfMemory,
                          hipErrorOutOfMemory);
 DECLARE_CONSTANT_FOR_GPU(gpuErrorNotReady, cudaErrorNotReady, hipErrorNotReady);
 DECLARE_CONSTANT_FOR_GPU(gpuSuccess, cudaSuccess, hipSuccess);
+DECLARE_CONSTANT_FOR_GPU(gpuErrorCudartUnloading,
+                         cudaErrorCudartUnloading,
+                         hipErrorDeinitialized);
+DECLARE_CONSTANT_FOR_GPU(gpuEventDisableTiming,
+                         cudaEventDisableTiming,
+                         hipEventDisableTiming);
+DECLARE_CONSTANT_FOR_GPU(gpuStreamNonBlocking,
+                         cudaStreamNonBlocking,
+                         hipStreamNonBlocking);
+DECLARE_CONSTANT_FOR_GPU(gpuIpcMemLazyEnablePeerAccess,
+                         cudaIpcMemLazyEnablePeerAccess,
+                         hipIpcMemLazyEnablePeerAccess);
 
 #undef DECLARE_CONSTANT_FOR_GPU
+
+#ifdef PADDLE_WITH_HIP
+#define DECLARE_FUNCTION_FOR_GPU(GPU_FUNC, CUDA_FUNC, ROCM_FUNC) \
+  const auto GPU_FUNC = ROCM_FUNC;
+#else  // PADDLE_WITH_CUDA
+#define DECLARE_FUNCTION_FOR_GPU(GPU_FUNC, CUDA_FUNC, ROCM_FUNC) \
+  const auto GPU_FUNC = CUDA_FUNC;
+#endif
+
+DECLARE_FUNCTION_FOR_GPU(gpuStreamCreateWithPriority,
+                         cudaStreamCreateWithPriority,
+                         hipStreamCreateWithPriority);
+DECLARE_FUNCTION_FOR_GPU(gpuStreamBeginCapture,
+                         cudaStreamBeginCapture,
+                         hipStreamBeginCapture);
+DECLARE_FUNCTION_FOR_GPU(gpuStreamEndCapture,
+                         cudaStreamEndCapture,
+                         hipStreamEndCapture);
+DECLARE_FUNCTION_FOR_GPU(gpuStreamGetCaptureInfo,
+                         cudaStreamGetCaptureInfo,
+                         hipStreamGetCaptureInfo);
+DECLARE_FUNCTION_FOR_GPU(gpuEventCreateWithFlags,
+                         cudaEventCreateWithFlags,
+                         hipEventCreateWithFlags);
+DECLARE_FUNCTION_FOR_GPU(gpuEventRecord, cudaEventRecord, hipEventRecord);
+DECLARE_FUNCTION_FOR_GPU(gpuEventDestroy, cudaEventDestroy, hipEventDestroy);
+DECLARE_FUNCTION_FOR_GPU(gpuEventQuery, cudaEventQuery, hipEventQuery);
+DECLARE_FUNCTION_FOR_GPU(gpuEventSynchronize,
+                         cudaEventSynchronize,
+                         hipEventSynchronize);
+DECLARE_FUNCTION_FOR_GPU(gpuStreamSynchronize,
+                         cudaStreamSynchronize,
+                         hipStreamSynchronize);
+DECLARE_FUNCTION_FOR_GPU(gpuIpcOpenMemHandle,
+                         cudaIpcOpenMemHandle,
+                         hipIpcOpenMemHandle);
+DECLARE_FUNCTION_FOR_GPU(gpuIpcCloseMemHandle,
+                         cudaIpcCloseMemHandle,
+                         hipIpcCloseMemHandle);
+
+#undef DECLARE_FUNCTION_FOR_GPU
+
+using CUDAGraphID = unsigned long long;  // NOLINT
+
 }  // namespace paddle
 
-#endif
+#endif  // defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

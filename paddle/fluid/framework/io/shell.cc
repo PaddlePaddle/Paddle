@@ -30,8 +30,8 @@ std::shared_ptr<FILE> shell_fopen(const std::string& path,
   if (shell_verbose()) {
     LOG(INFO) << "Opening file[" << path << "] with mode[" << mode << "]";
   }
-  FILE* fp;
-  if (!(fp = fopen(path.c_str(), mode.c_str()))) {
+  FILE* fp = fopen(path.c_str(), mode.c_str());
+  if (!fp) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Failed to open file, path[%s], mode[%s].", path, mode));
   }
@@ -58,19 +58,20 @@ static int close_open_fds_internal() {
     long d_ino = 0;  // NOLINT
     off_t d_off;
     unsigned short d_reclen = 0;  // NOLINT
-    char d_name[256];
+    char d_name[256];             // NOLINT
+    linux_dirent() : d_off(0), d_name{} {}
   };
 
-  int dir_fd = -1;
-  if ((dir_fd = open("/proc/self/fd", O_RDONLY)) < 0) {
+  int dir_fd = open("/proc/self/fd", O_RDONLY);
+  if (dir_fd < 0) {
     PADDLE_THROW(platform::errors::Unavailable("Failed to open proc/self/fd."));
     return -1;
   }
-  char buffer[sizeof(linux_dirent)];
+  char buffer[sizeof(linux_dirent)];  // NOLINT
 
   for (;;) {
     int bytes = 0;
-    if ((bytes = syscall(SYS_getdents64,
+    if ((bytes = syscall(SYS_getdents64,  // NOLINT
                          dir_fd,
                          reinterpret_cast<linux_dirent*>(buffer),
                          sizeof(buffer))) < 0) {
@@ -151,7 +152,7 @@ static int shell_popen_fork_internal(const char* real_cmd,
 }
 
 static int read_from_pipe(FILE* fp, std::string* output) {
-  std::array<char, 4096> buf;
+  std::array<char, 4096> buf = {};
   while (true) {
     int n = static_cast<int>(fread(buf.data(), 1, 4096, fp));
     if (n <= 0) {
@@ -187,8 +188,8 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
 
   std::string real_cmd = "set -o pipefail; " + cmd;
 
-  int pipe_fds[2];
-  if (pipe(pipe_fds) != 0) {
+  std::array<int, 2> pipe_fds = {};
+  if (pipe(pipe_fds.data()) != 0) {
     *err_no = -1;
     return nullptr;
   }
@@ -213,8 +214,8 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
 
   close(child_end);
 
-  FILE* fp = nullptr;
-  if ((fp = fdopen(parent_end, mode.c_str())) == nullptr) {
+  FILE* fp = fdopen(parent_end, mode.c_str());
+  if (fp == nullptr) {
     *err_no = -1;
     signal(SIGCHLD, old_handler);
     return nullptr;
@@ -255,8 +256,8 @@ static int shell_p2open_fork_internal(const char* real_cmd,
 #if defined(_WIN32) || defined(__APPLE__) || defined(PADDLE_ARM)
   return 0;
 #else
-  int child_pid = -1;
-  if ((child_pid = fork()) < 0) {
+  int child_pid = fork();
+  if (child_pid < 0) {
     return -1;
   }
 
@@ -300,17 +301,17 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
 
   std::string real_cmd = "set -o pipefail; " + cmd;
 
-  int pipein_fds[2];
-  int pipeout_fds[2];
-  if (pipe(pipein_fds) != 0) {
+  std::array<int, 2> pipein_fds = {};
+  std::array<int, 2> pipeout_fds = {};
+  if (pipe(pipein_fds.data()) != 0) {
     return {nullptr, nullptr};
   }
-  if (pipe(pipeout_fds) != 0) {
+  if (pipe(pipeout_fds.data()) != 0) {
     return {nullptr, nullptr};
   }
 
-  int child_pid =
-      shell_p2open_fork_internal(real_cmd.c_str(), pipein_fds, pipeout_fds);
+  int child_pid = shell_p2open_fork_internal(
+      real_cmd.c_str(), pipein_fds.data(), pipeout_fds.data());
 
   close(pipein_fds[1]);
   close(pipeout_fds[0]);

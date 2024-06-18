@@ -40,7 +40,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
-#include "paddle/pir/core/op_result.h"
+#include "paddle/pir/include/core/value.h"
 #include "paddle/utils/pybind.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
@@ -71,9 +71,7 @@ int TensorDtype2NumpyDtype(phi::DataType dtype);
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
 bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
 bool PyObject_CheckStr(PyObject* obj);
-bool PyObject_CheckIROpResult(PyObject* obj);
 bool PyObject_CheckIRValue(PyObject* obj);
-bool PyObject_CheckIRVectorOfOpResult(PyObject* obj);
 bool PyObject_CheckIRVectorOfValue(PyObject* obj);
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos);
 int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos);
@@ -97,15 +95,21 @@ std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos);
 std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos);
 pir::Value CastPyArg2Value(PyObject* obj,
                            const std::string& op_type,
-                           size_t arg_pos);
+                           size_t arg_pos,
+                           bool dispensable = false);
 paddle::optional<pir::Value> CastPyArg2OptionalValue(PyObject* obj,
                                                      const std::string& op_type,
-                                                     size_t arg_pos);
+                                                     size_t arg_pos,
+                                                     bool dispensable = false);
 std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
                                                 const std::string& op_type,
-                                                size_t arg_pos);
+                                                size_t arg_pos,
+                                                bool dispensable = false);
 paddle::optional<std::vector<pir::Value>> CastPyArg2OptionalVectorOfValue(
-    PyObject* obj, const std::string& op_type, size_t arg_pos);
+    PyObject* obj,
+    const std::string& op_type,
+    size_t arg_pos,
+    bool dispensable = false);
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
@@ -150,6 +154,8 @@ PyObject* ToPyObject(const phi::distributed::Placements& value);
 PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
+PyObject* ToPyObject(const phi::DataType& dtype);
+PyObject* ToPyObject(const std::vector<phi::DataType>& dtypes);
 PyObject* ToPyObject(const void* value);
 PyObject* ToPyObject(const std::unordered_map<int, int>& value);
 PyObject* ToPyObject(
@@ -157,8 +163,8 @@ PyObject* ToPyObject(
 PyObject* ToPyObject(const paddle::framework::Vocab& value);
 
 PyObject* ToPyObject(std::shared_ptr<egr::GradNodeBase> grad_node);
-PyObject* ToPyObject(const pir::OpResult& value);
-PyObject* ToPyObject(const std::vector<pir::OpResult>& value);
+PyObject* ToPyObject(const pir::Value& value);
+PyObject* ToPyObject(const std::vector<pir::Value>& value);
 
 class PyTensorHook : public egr::TensorHook {
  public:
@@ -397,7 +403,7 @@ paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj);
 
 PyObject* GetEmptyTensorsWithVarDesc(PyObject* self, PyObject* args);
 
-PyObject* GetEmptyTensorsWithOpResult(PyObject* self, PyObject* args);
+PyObject* GetEmptyTensorsWithValue(PyObject* self, PyObject* args);
 
 // end of Slice related methods
 

@@ -119,10 +119,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
                             static_cast<int32_t>(emb_sizes[i]));
       }
 
-      nvinfer1::PluginFieldCollection* plugin_ptr =
-          static_cast<nvinfer1::PluginFieldCollection*>(
-              malloc(sizeof(*plugin_ptr) +
-                     fields.size() * sizeof(nvinfer1::PluginField)));
+      std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_ptr(
+          new nvinfer1::PluginFieldCollection);
       plugin_ptr->nbFields = static_cast<int>(fields.size());
       plugin_ptr->fields = fields.data();
 
@@ -132,7 +130,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       auto creator = GetPluginRegistry()->getPluginCreator(
           "ManyEmbLayerNormVarlenPluginDynamic", "1");
       auto plugin_obj = creator->createPlugin(
-          "ManyEmbLayerNormVarlenPluginDynamic", plugin_ptr);
+          "ManyEmbLayerNormVarlenPluginDynamic", plugin_ptr.get());
 
       auto plugin_layer = engine_->network()->addPluginV2(
           plugin_inputs.data(), plugin_inputs.size(), *plugin_obj);
@@ -140,7 +138,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       plugin_layer->setName(("ManyEmbLayerNormVarlenPluginDynamicV1(Output: " +
                              op_desc.Output("Out")[0] + ")")
                                 .c_str());
-      free(plugin_ptr);
+      plugin_ptr.reset();
       if (enable_int8) {
         float out_scale =
             PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
@@ -171,12 +169,12 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       } else {
         layer = plugin_layer;
         auto output_name = op_desc.Output("Out")[0];
-        RreplenishLayerAndOutput(layer,
-                                 "ManyEmbLayerNormVarlenPluginDynamicV1",
-                                 {output_name,
-                                  std::string("qkv_plugin_mask"),
-                                  std::string("max_seqlen_tensor")},
-                                 test_mode);
+        ReplenishLayerAndOutput(layer,
+                                "ManyEmbLayerNormVarlenPluginDynamicV1",
+                                {output_name,
+                                 std::string("qkv_plugin_mask"),
+                                 std::string("max_seqlen_tensor")},
+                                test_mode);
       }
     } else {
       for (int i = 0; i < input_num; i++) {
@@ -218,10 +216,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
                             static_cast<int32_t>(emb_sizes[i]));
       }
 
-      nvinfer1::PluginFieldCollection* plugin_ptr =
-          static_cast<nvinfer1::PluginFieldCollection*>(
-              malloc(sizeof(*plugin_ptr) +
-                     fields.size() * sizeof(nvinfer1::PluginField)));
+      std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_ptr(
+          new nvinfer1::PluginFieldCollection);
       plugin_ptr->nbFields = static_cast<int>(fields.size());
       plugin_ptr->fields = fields.data();
 
@@ -229,8 +225,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
 
       auto creator = GetPluginRegistry()->getPluginCreator(
           "ManyEmbLayerNormPluginDynamic", "1");
-      auto plugin_obj =
-          creator->createPlugin("ManyEmbLayerNormPluginDynamic", plugin_ptr);
+      auto plugin_obj = creator->createPlugin("ManyEmbLayerNormPluginDynamic",
+                                              plugin_ptr.get());
 
       auto plugin_layer = engine_->network()->addPluginV2(
           plugin_inputs.data(), plugin_inputs.size(), *plugin_obj);
@@ -238,7 +234,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       plugin_layer->setName(("ManyEmbLayerNormPluginDynamicV1(Output: " +
                              op_desc.Output("Out")[0] + ")")
                                 .c_str());
-      free(plugin_ptr);
+      plugin_ptr.reset();
       if (enable_int8) {
         float out_scale =
             PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
@@ -247,7 +243,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       }
       layer = plugin_layer;
       auto output_name = op_desc.Output("Out")[0];
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           layer, "ManyEmbLayerNormPluginDynamicV1", {output_name}, test_mode);
     }
   }

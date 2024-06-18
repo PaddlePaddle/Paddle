@@ -32,7 +32,6 @@ from paddle.base.framework import (
     program_guard,
     static_only,
 )
-from paddle.base.layers.layer_function_generator import templatedoc
 from paddle.base.param_attr import ParamAttr
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.common_ops_import import (
@@ -219,6 +218,12 @@ def fc(
                 attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False
             )
             if in_pir_mode():
+                if len(input_var.shape) > 2:
+                    new_shape = (
+                        input_var.shape[0],
+                        np.prod(input_var.shape[1:]),
+                    )
+                    input_var = paddle.reshape(input_var, new_shape)
                 tmp = paddle.matmul(input_var, w)
             else:
                 tmp = helper.create_variable_for_type_inference(dtype)
@@ -343,15 +348,13 @@ def instance_norm(
     dtype = helper.input_dtype()
 
     # use fp32 for in parameter
-    if dtype == paddle.framework.core.VarDesc.VarType.FP16:
-        dtype = paddle.framework.core.VarDesc.VarType.FP32
+    if dtype == paddle.float16:
+        dtype = paddle.float32
 
     input_shape = input.shape
     if len(input.shape) < 2 or len(input.shape) > 5:
         raise ValueError(
-            'expected 2D or 3D or 4D or 5D input (got {}D input, input shape is: {})'.format(
-                len(input.shape), input_shape
-            )
+            f'expected 2D or 3D or 4D or 5D input (got {len(input.shape)}D input, input shape is: {input_shape})'
         )
     channel_num = input_shape[1]
 
@@ -541,9 +544,7 @@ def data_norm(
     input_shape = input.shape
     if len(input_shape) < 2:
         raise ValueError(
-            "The shape pf Input < 2 (got {}D input, input shape is: {})".format(
-                len(input_shape), input_shape
-            )
+            f"The shape pf Input < 2 (got {len(input_shape)}D input, input shape is: {input_shape})"
         )
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
@@ -663,7 +664,6 @@ def data_norm(
     return helper.append_activation(data_norm_out)
 
 
-@templatedoc()
 def group_norm(
     input,
     groups,
@@ -936,8 +936,8 @@ def conv2d(
     num_channels = input.shape[3] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimension of the input({}) should be defined. "
-            "Received: {}.".format(str(input.shape), str(num_channels))
+            f"The channel dimension of the input({str(input.shape)}) should be defined. "
+            f"Received: {str(num_channels)}."
         )
     assert param_attr is not False, "param_attr should not be False here."
 
@@ -952,8 +952,8 @@ def conv2d(
         if num_channels % groups != 0:
             raise ValueError(
                 "the channel of input must be divisible by groups,"
-                "received: the channel of input is {}, the shape of input is {}"
-                ", the groups is {}".format(num_channels, input.shape, groups)
+                f"received: the channel of input is {num_channels}, the shape of input is {input.shape}"
+                f", the groups is {groups}"
             )
         num_filter_channels = num_channels // groups
 
@@ -1106,7 +1106,7 @@ def conv3d(
     and strides, paddings, dilations, groups parameters. Input(Input) and
     Output(Output) are in NCDHW or NDHWC format. Where N is batch size C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
-    and W is the width of the feature. Convlution3D is similar with Convlution2D
+    and W is the width of the feature. Convolution3D is similar with Convolution2D
     but adds one dimension(depth). If bias attribution and activation type are
     provided, bias is added to the output of the convolution, and the
     corresponding activation function is applied to the final result.
@@ -1245,15 +1245,13 @@ def conv3d(
     channel_last = data_format == "NDHWC"
     if len(input.shape) != 5:
         raise ValueError(
-            "Input should be 5D tensor, but received input with the shape of {}".format(
-                input.shape
-            )
+            f"Input should be 5D tensor, but received input with the shape of {input.shape}"
         )
     num_channels = input.shape[4] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
-            "The channel dimension of the input({}) should be defined. "
-            "Received: {}.".format(str(input.shape), str(num_channels))
+            f"The channel dimension of the input({str(input.shape)}) should be defined. "
+            f"Received: {str(num_channels)}."
         )
 
     if groups is None:
@@ -1266,9 +1264,7 @@ def conv3d(
         if num_channels % groups != 0:
             raise ValueError(
                 "The number of input channels must be divisible by Attr(groups). "
-                "Received: number of channels({}), groups({}).".format(
-                    str(num_channels), str(groups)
-                )
+                f"Received: number of channels({str(num_channels)}), groups({str(groups)})."
             )
         num_filter_channels = num_channels // groups
 
@@ -1956,9 +1952,7 @@ def conv3d_transpose(
         raise TypeError("Input of conv3d_transpose must be Tensor")
     if len(input.shape) != 5:
         raise ValueError(
-            "Input should be 5D tensor, but received input with the shape of {}".format(
-                input.shape
-            )
+            f"Input should be 5D tensor, but received input with the shape of {input.shape}"
         )
     input_channel = (
         input.shape[1] if data_format == 'NCDHW' else input.shape[-1]
@@ -2595,9 +2589,7 @@ def bilinear_tensor_product(
     dtype = helper.input_dtype('x')
     if len(x.shape) != 2 or len(y.shape) != 2:
         raise ValueError(
-            "Input x and y should be 2D tensor, but received x with the shape of {}, y with the shape of {}".format(
-                x.shape, y.shape
-            )
+            f"Input x and y should be 2D tensor, but received x with the shape of {x.shape}, y with the shape of {y.shape}"
         )
     param_shape = [size, x.shape[1], y.shape[1]]
 
@@ -2694,8 +2686,8 @@ def batch_norm(
         is_test (bool, Default False): A flag indicating whether it is in
             test phrase or not.
         momentum(float|Tensor, Default 0.9): The value used for the moving_mean and
-            moving_var computation. This should be a float number or a Tensor with
-            shape [1] and data type as float32. The updated formula is:
+            moving_var computation. This should be a float number or a 0-D Tensor with
+            shape [] and data type as float32. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
             Default is 0.9.
@@ -2765,15 +2757,13 @@ def batch_norm(
     dtype = helper.input_dtype()
 
     # use fp32 for bn parameter
-    if dtype == core.VarDesc.VarType.FP16 or dtype == core.VarDesc.VarType.BF16:
-        dtype = core.VarDesc.VarType.FP32
+    if dtype == paddle.float16 or dtype == paddle.bfloat16:
+        dtype = paddle.float32
 
     input_shape = input.shape
     if len(input.shape) < 2 or len(input.shape) > 5:
         raise ValueError(
-            'expected 2D or 3D or 4D or 5D input (got {}D input, input shape is: {})'.format(
-                len(input.shape), input_shape
-            )
+            f'expected 2D or 3D or 4D or 5D input (got {len(input.shape)}D input, input shape is: {input_shape})'
         )
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
@@ -3125,7 +3115,6 @@ class PyFuncRegistry:
 
 
 @static_only
-@templatedoc()
 def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     """
     This is used to register customized Python OP to Paddle. The design
@@ -3342,23 +3331,57 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     return out
 
 
-@templatedoc()
 def row_conv(input, future_context_size, param_attr=None, act=None):
-    """
+    r"""
     :api_attr: Static Graph
 
-    ${comment}
+    The row convolution is called lookahead convolution. It was
+    introduced in the following paper for DeepSpeech2:
+    http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf
+
+    The main motivation is that a bidirectional RNN, useful in DeepSpeech
+    like speech models, learns representation for a sequence by performing a
+    forward and a backward pass through the entire sequence. However, unlike
+    unidirectional RNNs, bidirectional RNNs are challenging to deploy in an online
+    and low-latency setting. The lookahead convolution incorporates information
+    from future subsequences in a computationally efficient manner to improve
+    unidirectional recurrent neural networks. The row convolution is
+    different from the 1D sequence convolution, and is computed as follows:
+
+    Given an input sequence :math:`X` of length :math:`t` and input dimension :math:`D`,
+    and a filter (:math:`W`) of size :math:`context \times D`,
+    the output sequence is convolved as:
+
+    .. math::
+
+        Out_{i} = \sum_{j=i}^{i + context - 1} X_{j} \cdot W_{j-i}
+
+
+    In the above equation:
+
+    * :math:`Out_{i}`: The i-th row of output variable with shape [1, D].
+
+    * :math:`context`: Future context size.
+
+    * :math:`X_{j}`: The j-th row of input variable with shape [1, D].
+
+    * :math:`W_{j-i}`: The (j-i)-th row of parameters with shape [1, D].
+
+    More details about row_conv please refer to
+    the design document
+    https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
 
     Args:
-        input (${x_type}): ${x_comment}.
+        input (Tensor): The input is a Tensor, the shape of Tensor input has shape
+            (B x T x N), B is batch size.
         future_context_size (int): Future context size. Please note, the shape
             of convolution kernel is [future_context_size + 1, D].
         param_attr (ParamAttr): Attributes of parameters, including
             name, initializer etc.
-        act (str): Non-linear activation to be applied to output variable.
+        act (str): Non-linear activation to be applied to output Tensor.
 
     Returns:
-        ${out_comment}.
+        Tensor: The output is a Tensor, which has same type and same shape as input.
 
     Examples:
 
@@ -3529,7 +3552,6 @@ py_func.registered_func = PyFuncRegistry.registered_func
 py_func.registered_func_num = PyFuncRegistry.registered_func_num
 
 
-@templatedoc()
 def layer_norm(
     input,
     scale=True,

@@ -30,17 +30,17 @@ class LookupTableDequantOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("W"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(W) of LookupTableDequantOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Ids"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Input(Ids) of LookupTableDequantOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Out"),
         true,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Output(Out) of LookupTableDequantOp should not be null."));
 
     auto table_dims = ctx->GetInputDim("W");
@@ -50,7 +50,7 @@ class LookupTableDequantOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         table_dims.size(),
         2,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "ShapeError: The dimensions of the 'lookup table' must be 2. "
             "But received lookup table's dimensions = %d, "
             "lookup table's shape = [%s].",
@@ -59,7 +59,7 @@ class LookupTableDequantOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ids_dims[ids_rank - 1],
         1,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "ShapeError: The last dimensions of the 'Ids' tensor must be 1. "
             "But received Ids's last dimensions = %d, Ids's shape = [%s].",
             ids_dims[ids_rank - 1],
@@ -69,7 +69,7 @@ class LookupTableDequantOp : public framework::OperatorWithKernel {
         common::vectorize(common::slice_ddim(ids_dims, 0, ids_rank - 1));
     PADDLE_ENFORCE_GE(table_dims[1],
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "the second dim of table_dims should be "
                           "greater or equal to 2, but the actual shape "
                           "is [%s]",

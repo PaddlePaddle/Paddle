@@ -32,11 +32,11 @@ namespace cinn {
 namespace ir {
 
 /**
- * A struct containing all the schedule primitives. Each shedule primitive is a
- * member function of IRSchedule. Schedule primitves are implmented by
+ * A struct containing all the schedule primitives. Each schedule primitive is a
+ * member function of IRSchedule. Schedule primitives are implemented by
  * StScheduleImpl manipulating the AST - IR(Expr). To support serializing and
  * replaying, each schedule primitive should append a ScheduleDesc::Step to the
- * trace_ in its corresponding function implment.
+ * trace_ in its corresponding function implement.
  */
 class IRSchedule {
  public:
@@ -195,6 +195,7 @@ class IRSchedule {
    * @param memory_type String that indicates the buffer's storage scope.
    * @return The buffer's cache.
    */
+
   Expr CacheRead(const Expr& block,
                  int read_buffer_index,
                  const std::string& memory_type);
@@ -347,7 +348,7 @@ class IRSchedule {
    * If the rfactor loop is k and rf_axis is 0, the rfactor transformation is
    * divided into 2 steps:
    * 1. get the rfactor block where the reduce loop k is transformed to the
-   * serial loop with no accumalation and a new rfactor tensor is created. The
+   * serial loop with no accumulation and a new rfactor tensor is created. The
    * axis k will be placed in the rf_axis of the new rf_tensor. The rf_block is
    * as follows: \code for (rf_k, 0, 30)      // rfactor loop k is transformed
    * to the serial loop. for (i, 0, 10)       // serial loop for (j, 0, 20) //
@@ -384,7 +385,7 @@ class IRSchedule {
    * If the rf loop is j and rf_axis is 0, the transformation is
    * divided into 2 steps:
    * 1. get the rf block where the reduce loop j is transformed to the
-   * serial loop with no accumalation and a new rf tensor is created.
+   * serial loop with no accumulation and a new rf tensor is created.
    * The axis j will be placed in the rf_axis of the new rf_tensor.
    * The rf_block is as follows:
    * \code
@@ -402,7 +403,9 @@ class IRSchedule {
    *        B[i] = B[i] + rf_B[j, i]
    * \endcode
    */
-  Expr FactorizeReduction(const Expr& rf_loop, int rf_axis);
+  Expr FactorizeReduction(const Expr& rf_loop,
+                          int rf_axis,
+                          bool with_write_back_block_init = true);
 
   /*!
    * \brief Annotate a block with a key-value pair to set as its attribute
@@ -449,7 +452,7 @@ class IRSchedule {
 
   /*!
    * \brief Insert a tag in schedule_desc to mark the beginning of post
-   * processing, the schedue primitive itself does not make any changes to the
+   * processing, the schedule primitive itself does not make any changes to the
    * IR.
    */
   void TagPostSchedule();
@@ -483,7 +486,7 @@ class IRSchedule {
 /*!
  * \brief The base class of the inliner, which handles:
  * 1) Remove the block to be lined
- * 2) Maintain a list of index variables and their substition of the buffer
+ * 2) Maintain a list of index variables and their substitution of the buffer
  * being inlined
  */
 class BaseInliner : public ir::IRMutator<> {

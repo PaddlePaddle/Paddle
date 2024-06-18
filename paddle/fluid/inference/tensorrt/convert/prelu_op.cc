@@ -120,7 +120,7 @@ class PReluOpConverter : public OpConverter {
         engine_, ParametricReLU, *input, *real_alpha_tensor);
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "prelu", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "prelu", {output_name}, test_mode);
   }
 };
 

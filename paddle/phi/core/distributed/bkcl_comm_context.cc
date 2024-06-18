@@ -42,6 +42,20 @@ void BKCLCommContext::SetDevContext(
   dev_ctx_ = std::move(dev_ctx);
 }
 
+XPUEvent BKCLCommContext::GetComputeEvent() { return compute_event_.get(); }
+
+void BKCLCommContext::SetComputeEvent(
+    std::shared_ptr<std::remove_pointer<XPUEvent>::type>&& compute_event) {
+  compute_event_ = std::move(compute_event);
+}
+
+XPUEvent BKCLCommContext::GetCommEvent() { return comm_event_.get(); }
+
+void BKCLCommContext::SetCommEvent(
+    std::shared_ptr<std::remove_pointer<XPUEvent>::type>&& comm_event) {
+  comm_event_ = std::move(comm_event);
+}
+
 void BKCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
                                 int root,

@@ -29,13 +29,18 @@
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
+
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/platform/onednn_helper.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -44,7 +49,15 @@ IfInstruction::IfInstruction(size_t id,
                              pir::Operation* op,
                              ValueExecutionInfo* value_exec_info,
                              interpreter::ExecutionConfig execution_config)
-    : InstructionBase(id, place) {
+    : InstructionBase(id, place),
+      op_(op),
+      cond_name_("if_instruction"),
+      cond_var_(nullptr),
+      output_vars_(),
+      true_branch_inter_(nullptr),
+      false_branch_inter_(nullptr),
+      true_skip_gc_names_(),
+      false_skip_gc_names_() {
   PADDLE_ENFORCE(
       op->isa<paddle::dialect::IfOp>(),
       phi::errors::PreconditionNotMet("Cond instruction only support if op"));
@@ -54,8 +67,7 @@ IfInstruction::IfInstruction(size_t id,
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
 
-  auto cond_value = if_op.operand_source(0);
-  cond_var_ = value_exec_info->GetVarByValue(cond_value);
+  cond_var_ = value_exec_info->GetVarByValue(if_op.cond());
   for (size_t i = 0; i < if_op.num_results(); ++i) {
     output_vars_.push_back(value_exec_info->GetScope()->GetVar(
         value_exec_info->GetValue2VarName().at(if_op.result(i))));
@@ -139,11 +151,6 @@ IfInstruction::IfInstruction(size_t id,
                                           execution_config);
 
   std::set<std::string> true_skip_gc_names_set;
-  for (auto value : GetYiedOpInputs(&true_branch_block)) {
-    true_branch_outputs_.push_back(true_branch_inter_->GetNameByValue(value));
-    true_skip_gc_names_.push_back(true_branch_inter_->GetNameByValue(value));
-    true_skip_gc_names_set.insert(true_branch_inter_->GetNameByValue(value));
-  }
   // NOTE(zhangbo): According to the concept of control flow, child scopes
   // should not control the lifecycle of parent scope variables.
   for (auto value : true_outside_inputs) {
@@ -166,11 +173,6 @@ IfInstruction::IfInstruction(size_t id,
                          value_exec_info->NewChild(false_scope),
                          execution_config);
   std::set<std::string> false_skip_gc_names_set;
-  for (auto value : GetYiedOpInputs(&false_branch_block)) {
-    false_branch_outputs_.push_back(false_branch_inter_->GetNameByValue(value));
-    false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
-    false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
-  }
   for (auto value : false_outside_inputs) {
     false_skip_gc_names_.push_back(false_branch_inter_->GetNameByValue(value));
     false_skip_gc_names_set.insert(false_branch_inter_->GetNameByValue(value));
@@ -185,33 +187,18 @@ IfInstruction::IfInstruction(size_t id,
 }
 
 IfInstruction::~IfInstruction() {
-  if (true_branch_inter_ != nullptr) {
-    delete true_branch_inter_;
-  }
-  if (false_branch_inter_ != nullptr) {
-    delete false_branch_inter_;
-  }
+  delete true_branch_inter_;
+  delete false_branch_inter_;
 }
 
-void IfInstruction::CopyBranchOutput(const std::vector<std::string>& var_names,
-                                     const PirInterpreter* inter) {
-  for (size_t i = 0; i < var_names.size(); ++i) {
-    auto* inner_var = inter->InnerScope()->GetVar(var_names[i]);
+void IfInstruction::SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) {
+  true_branch_inter_->SetOutputHooks(hookfuncs);
+  false_branch_inter_->SetOutputHooks(hookfuncs);
+}
 
-    if (inner_var->IsType<phi::DenseTensor>()) {
-      output_vars_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-          inner_var->Get<phi::DenseTensor>());
-
-    } else if (inner_var->IsType<phi::TensorArray>()) {
-      const auto& inner_array = inner_var->Get<phi::TensorArray>();
-      auto* output_array = output_vars_[i]->GetMutable<phi::TensorArray>();
-      // output_array->clear();
-      *output_array = inner_array;
-    } else {
-      PADDLE_THROW(
-          phi::errors::Unimplemented("unsupported type %d", inner_var->Type()));
-    }
-  }
+void IfInstruction::SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) {
+  true_branch_inter_->SetInputHooks(hookfuncs);
+  false_branch_inter_->SetInputHooks(hookfuncs);
 }
 
 void IfInstruction::Run() {
@@ -245,13 +232,23 @@ void IfInstruction::Run() {
         });
   }
   if (cond) {
+#ifdef PADDLE_WITH_DNNL
+    // Executor on being destroyed clears oneDNN cache and resets
+    // registered model data layout. This is unwanted for nested
+    // Executors (executors declared inside control ops)
+    paddle::platform::DontClearMKLDNNCache(true_branch_inter_->GetPlace());
+#endif
     true_branch_inter_->Run({}, false);
-    CopyBranchOutput(true_branch_outputs_, true_branch_inter_);
   } else {
+#ifdef PADDLE_WITH_DNNL
+    // Executor on being destroyed clears oneDNN cache and resets
+    // registered model data layout. This is unwanted for nested
+    // Executors (executors declared inside control ops)
+    paddle::platform::DontClearMKLDNNCache(false_branch_inter_->GetPlace());
+#endif
     false_branch_inter_->Run({}, false);
-    CopyBranchOutput(false_branch_outputs_, false_branch_inter_);
   }
-  // copy ouptut
+  // copy output
 }
 
 }  // namespace framework

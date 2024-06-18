@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdaGradSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, StdAdaGradSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdamSGDRule);
@@ -79,7 +78,7 @@ TEST(downpour_feature_value_accessor_test, test_shrink) {
 
   float* value = new float[acc->GetAccessorInfo().dim];
   for (auto i = 0u; i < acc->GetAccessorInfo().dim; ++i) {
-    value[i] = i * 1.0;
+    value[i] = static_cast<float>(i) * 1.0;
   }
   ASSERT_TRUE(!acc->Shrink(value));
 
@@ -98,7 +97,7 @@ TEST(downpour_feature_value_accessor_test, test_save) {
 
   float* value = new float[acc->GetAccessorInfo().dim];
   for (auto i = 0u; i < acc->GetAccessorInfo().dim; ++i) {
-    value[i] = i * 1.0;
+    value[i] = static_cast<float>(i) * 1.0;
   }
 
   // save all feature
@@ -160,7 +159,7 @@ TEST(downpour_feature_value_accessor_test, test_string_related) {
   const int field_size = 16;
   float* value = new float[field_size];
   for (auto i = 0u; i < field_size; ++i) {
-    value[i] = i;
+    value[i] = static_cast<float>(i);
   }
 
   auto str = acc->ParseToString(value, 0);
@@ -171,5 +170,4 @@ TEST(downpour_feature_value_accessor_test, test_string_related) {
   ASSERT_NE(acc->ParseFromString(str, value), 0);
   // make sure init_zero=true
 }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

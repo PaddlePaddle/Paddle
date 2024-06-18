@@ -37,15 +37,15 @@ def save_for_auto_inference(path_prefix, dist_model, cvt2cpu=False):
     Description：
         Save model parameters for auto parallel inference.
         Supporting dp + mp + pp + sharding(stage1), dp + sharding stage2-3.
-        MoE not sdupported till MoE is supported in auto parallel mode.
+        MoE not supported till MoE is supported in auto parallel mode.
 
     Args:
-        path_prefix: path prefix to save. If `path_preifx` ends with path sepreator,
+        path_prefix: path prefix to save. If `path_prefix` ends with path separator,
             the path is processed as a directory and parameters will be saved in it,
-            automatically named saved_parameters. Otherwisw, the parameters will be saved with name
-            path_preifx_dist{global_rank}.pdparams and path_preifx_dist{global_rank}.pdattrs.
+            automatically named saved_parameters. Otherwise, the parameters will be saved with name
+            path_prefix_dist{global_rank}.pdparams and path_prefix_dist{global_rank}.pdattrs.
         dist_model: model in distributed model.
-        cvt2cpu: wheather to move parameters to CPU when using sharding stage 3.
+        cvt2cpu: whether to move parameters to CPU when using sharding stage 3.
             The var is invalid if not using sharding stage 3.
 
     Returns:
@@ -121,7 +121,7 @@ def _save_param_attr(state_dict_, path, dims_mapping_dict=None):
         save params' attr dict
     Args:
         state_dict_:
-            state for which to save attrs, when the state is optimzier state, the master and LRScheduler will be reomoved.
+            state for which to save attrs, when the state is optimizer state, the master and LRScheduler will be removed.
         path:
             path to save
         dims_mapping_dict:
@@ -201,16 +201,16 @@ def _unset_dims_mapping(param):
 def _get_dims_mapping(dist_parameter, mp_group):
     """
     Description:
-        return the sliting mapping:
+        return the splitting mapping:
             {tensor_name: spiting_strategy}
     Args:
         dist_parameters(list): distributed model parameters
         mp_group(ProcessGroup): Model Parallel communication group
     Return:
-        The sliting mapping
+        The splitting mapping
     Examples:
-        spliting_strategy's format (-1, -1, -1, 0), meaing the dims
-        of  the tennsor is 4 and it is splited along the first strategy axis in mesh
+        splitting_strategy's format (-1, -1, -1, 0), meaning the dims
+        of the tensor is 4 and it is splited along the first strategy axis in mesh
 
     Mesh Examples: (2, 4) means dp=2, mp=4
 
@@ -220,9 +220,9 @@ def _get_dims_mapping(dist_parameter, mp_group):
 
     dist_shape = np.array(dist_parameter.shape)
     if hasattr(dist_parameter, "split_axis"):
-        aixs = dist_parameter.split_axis
+        axis = dist_parameter.split_axis
         mapping = [-1 for _ in dist_shape]
-        mapping[aixs] = 1
+        mapping[axis] = 1
         logger.debug(
             f"{dist_parameter.name} has attr split_axis: mapping: {mapping}"
         )
@@ -280,7 +280,7 @@ def _name_mapping_dist2single(state_dict, pp_group):
             logger.debug(f"matched: {k}: {matched}")
             assert (
                 matched is not None
-            ), f"the name of param, '{k}', is not satisfyied the format 'name_idx.xxx'"
+            ), f"the name of param, '{k}', is not satisfied the format 'name_idx.xxx'"
             name_idx = k[matched.start() : matched.end()]
             logger.debug(f"get param_type_idx: {name_idx}")
 
@@ -294,7 +294,7 @@ def _name_mapping_dist2single(state_dict, pp_group):
                 param_types[name] = [0] * pp_group.nranks
             param_types[name][pp] += 1
 
-        # check if continous
+        # check if continuous
         types_idx = {}
         for _, v in param_type_idx.items():
             if v[0] not in types_idx:
@@ -304,7 +304,7 @@ def _name_mapping_dist2single(state_dict, pp_group):
         for k, v in types_idx.items():
             assert v == list(
                 range(v[0], v[-1] + 1)
-            ), f"{k} is not continous: {v}"
+            ), f"{k} is not continuous: {v}"
 
     logger.debug(f"param type: {param_types}")
 

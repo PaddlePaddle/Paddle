@@ -18,17 +18,16 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin_arg_mapping_context.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class FlashMultiheadMatMulOpConverter : public OpConverter {
  public:
-  void flash_multihead_mamul_trt(const framework::proto::OpDesc& op,
-                                 const framework::Scope& scope,
-                                 bool test_mode) {
-    VLOG(3) << "convert a flash_multihead_mamul op to a corresponding tensorrt "
-               "network structure\n";
+  void flash_multihead_matmul_trt(const framework::proto::OpDesc& op,
+                                  const framework::Scope& scope,
+                                  bool test_mode) {
+    VLOG(3)
+        << "convert a flash_multihead_matmul op to a corresponding tensorrt "
+           "network structure\n";
 
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     if (engine_->precision() == phi::DataType::INT8) {
@@ -109,6 +108,17 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
       nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
                                static_cast<void*>(weight_data),
                                static_cast<int32_t>(weight_t->numel())};
+#if IS_TRT_VERSION_GE(8600)
+      auto* fc_weight_layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Constant, nvinfer1::Dims3(1, n, hidden_in), weight);
+      auto* fc_layer =
+          TRT_ENGINE_ADD_LAYER(engine_,
+                               MatrixMultiply,
+                               *input,
+                               nvinfer1::MatrixOperation::kNONE,
+                               *fc_weight_layer->getOutput(0),
+                               nvinfer1::MatrixOperation::kTRANSPOSE);
+#else
       nvinfer1::Weights bias{};
       // add shuffle for FullyConnected layer
       std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
@@ -137,8 +147,9 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
                                       n,
                                       weight,
                                       bias);
+#endif
       fc_layer->setName(
-          ("multihead_mamul_fc(Output: " + output_name + ")").c_str());
+          ("multihead_matmul_fc(Output: " + output_name + ")").c_str());
       // add shuffle for fc layer
       reshape_before_mha_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *fc_layer->getOutput(0));
@@ -209,16 +220,12 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
     auto creator = GetPluginRegistry()->getPluginCreator("fMHA_V2", "1");
     assert("fmha_v2 plugin creater must not be null" && creator != nullptr);
     std::vector<nvinfer1::PluginField> fields{};
-    nvinfer1::PluginFieldCollection* plugin_collection =
-        static_cast<nvinfer1::PluginFieldCollection*>(
-            malloc(sizeof(*plugin_collection) +
-                   fields.size() *
-                       sizeof(nvinfer1::PluginField)));  // remember to free
-
+    std::unique_ptr<nvinfer1::PluginFieldCollection> plugin_collection(
+        new nvinfer1::PluginFieldCollection);
     plugin_collection->nbFields = static_cast<int>(fields.size());
     plugin_collection->fields = fields.data();
-    auto plugin = creator->createPlugin("fMHA_V2", plugin_collection);
-    free(plugin_collection);
+    auto plugin = creator->createPlugin("fMHA_V2", plugin_collection.get());
+    plugin_collection.reset();
     std::vector<nvinfer1::ITensor*> plugin_inputs;
     plugin_inputs.emplace_back(reshape_before_mha_layer->getOutput(0));
     auto plugin_layer = engine_->network()->addPluginV2(
@@ -239,14 +246,14 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
     reshape_after_mha_layer->setName(
         ("shuffle_last_multihead_matmul(Output: " + output_name + ")").c_str());
     layer = reshape_after_mha_layer;
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "flash_multihead_matmul", {output_name}, test_mode);
   }
 
-  void flash_multihead_mamul(const framework::proto::OpDesc& op,
-                             const framework::Scope& scope,
-                             bool test_mode) {
-    VLOG(3) << "convert a flash_multihead_mamul op to a "
+  void flash_multihead_matmul(const framework::proto::OpDesc& op,
+                              const framework::Scope& scope,
+                              bool test_mode) {
+    VLOG(3) << "convert a flash_multihead_matmul op to a "
                "MemoryEfficientAttention OP "
                "network structure\n";
     framework::OpDesc op_desc(op, nullptr);
@@ -302,6 +309,20 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
         nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
                                  static_cast<void*>(weight_data),
                                  static_cast<int32_t>(weight_tensor->numel())};
+#if IS_TRT_VERSION_GE(8600)
+        auto* qkv_fc_weight_layer =
+            TRT_ENGINE_ADD_LAYER(engine_,
+                                 Constant,
+                                 nvinfer1::Dims3(1, hidden_out, hidden_out),
+                                 weight);
+        qkv_fc_layers[i] =
+            TRT_ENGINE_ADD_LAYER(engine_,
+                                 MatrixMultiply,
+                                 *input,
+                                 nvinfer1::MatrixOperation::kNONE,
+                                 *qkv_fc_weight_layer->getOutput(0),
+                                 nvinfer1::MatrixOperation::kTRANSPOSE);
+#else
         nvinfer1::Weights bias{};
         qkv_fc_layers[i] =
             TRT_ENGINE_ADD_LAYER(engine_,
@@ -310,7 +331,8 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
                                  hidden_out,
                                  weight,
                                  bias);
-        qkv_fc_layers[i]->setName(("multihead_mamul_fc_" + std::to_string(i) +
+#endif
+        qkv_fc_layers[i]->setName(("multihead_matmul_fc_" + std::to_string(i) +
                                    "_(Output: " + output_name + ")")
                                       .c_str());
       } else {
@@ -334,7 +356,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
                                  matrix_operation_x,
                                  *weight_reshape_before_mm[i]->getOutput(0),
                                  matrix_operation_y);
-        qkv_fc_layers[i]->setName(("multihead_mamul_matmul_" +
+        qkv_fc_layers[i]->setName(("multihead_matmul_matmul_" +
                                    std::to_string(i) +
                                    "_(Output: " + output_name + ")")
                                       .c_str());
@@ -444,7 +466,7 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
          ")")
             .c_str());
     std::vector<std::string> output_names = {output_name};
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         reshape_after_attention_layer, op_desc.Type(), output_names, test_mode);
   }
 
@@ -499,16 +521,14 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     bool use_trt_fma = PADDLE_GET_CONST(bool, op_desc.GetAttr("use_trt_fma"));
     if (use_trt_fma) {
-      flash_multihead_mamul_trt(op, scope, test_mode);
+      flash_multihead_matmul_trt(op, scope, test_mode);
     } else {
-      flash_multihead_mamul(op, scope, test_mode);
+      flash_multihead_matmul(op, scope, test_mode);
     }
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(flash_multihead_matmul,
                           FlashMultiheadMatMulOpConverter);

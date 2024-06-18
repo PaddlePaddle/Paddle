@@ -15,7 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/share_data_op.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 PD_REGISTER_STRUCT_KERNEL(share_data,
                           GPU,
                           ALL_LAYOUT,
@@ -27,4 +27,4 @@ PD_REGISTER_STRUCT_KERNEL(share_data,
                           int64_t,
                           float,
                           double,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

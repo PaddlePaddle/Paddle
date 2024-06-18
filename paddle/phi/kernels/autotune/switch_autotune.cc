@@ -15,9 +15,9 @@
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
-PD_DECLARE_bool(use_autotune);
+COMMON_DECLARE_bool(use_autotune);
 
 namespace phi {
 namespace autotune {
@@ -58,7 +58,7 @@ void AutoTuneStatus::Update() {
     // Set a small tolerance to avoid performance degradation
     // due to large cache size under dynamic shape.
     // TODO(limingshu): Currently works for conv op only, this
-    // method shall be opimized when more ops involved in.
+    // method shall be optimized when more ops involved in.
     // float miss_rate = static_cast<float>(1) - RecentHitRate();
     // if (current_steps_id_ == stop_step_id_) {
     //   AutoTuneCache::Instance().Clean(miss_rate);

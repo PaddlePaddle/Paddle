@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/common/enforce.h"
-#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/include/core/ir_context.h"
 
 namespace paddle {
 namespace dialect {
@@ -22,11 +22,17 @@ namespace dialect {
 ApiBuilder::ApiBuilder()
     : ctx_(pir::IrContext::Instance()),
       builder_(std::make_shared<pir::Builder>(ctx_)) {
-  IR_ENFORCE(builder_ != nullptr, "api builder construct error!");
+  PADDLE_ENFORCE_NE(
+      builder_,
+      nullptr,
+      phi::errors::InvalidArgument("api builder construct error!"));
 }
 
 void ApiBuilder::SetProgram(pir::Program* program) {
-  IR_ENFORCE(program != nullptr, "argument of program is nullptr");
+  PADDLE_ENFORCE_NE(
+      program,
+      nullptr,
+      phi::errors::InvalidArgument("argument of program is nullptr"));
   builder_->SetInsertionPointToBlockEnd(program->block());
 }
 
@@ -50,8 +56,10 @@ void ApiBuilder::SetParameter(const std::string& name,
 }
 
 void ApiBuilder::LoadInsertionPoint() {
-  IR_ENFORCE(!insertion_point_stack_.empty(),
-             "insertion_point_stack_ is empty.");
+  PADDLE_ENFORCE_EQ(
+      !insertion_point_stack_.empty(),
+      true,
+      phi::errors::InvalidArgument("insertion_point_stack_ is empty."));
   builder_->set_insertion_point(insertion_point_stack_.top());
   insertion_point_stack_.pop();
 }

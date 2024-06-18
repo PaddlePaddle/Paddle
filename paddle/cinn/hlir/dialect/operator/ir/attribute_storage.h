@@ -20,8 +20,9 @@
 #include <vector>
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/pir/core/attribute_base.h"
-#include "paddle/pir/core/operation.h"
+#include "paddle/pir/include/core/attribute_base.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace cinn {
 namespace dialect {
@@ -47,6 +48,12 @@ struct GroupInfo {
   std::vector<::pir::Operation*> ops;
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
+  std::unordered_map<::pir::Operation*,
+                     std::vector<cinn::hlir::framework::pir::ScheduleInfoNode>>
+      alignment_schedule_info;
+  std::vector<int64_t> reduce_axis;
+  std::vector<int64_t> loop_ranges;
+  std::vector<symbol::DimExpr> loop_ranges_expr;
 
  private:
   void Initialize() {
@@ -64,7 +71,23 @@ struct GroupInfoAttributeStorage : public pir::AttributeStorage {
   }
 
   static std::size_t HashValue(const ParamKey& key) {
-    return std::hash<std::string>{}(key.group_id);
+    size_t hash_value = std::hash<std::string>{}(key.group_id);
+
+    for (auto op : key.ops) {
+      hash_value =
+          pir::detail::hash_combine(hash_value, std::hash<void*>()(op));
+    }
+
+    for (auto d : key.loop_ranges) {
+      hash_value =
+          pir::detail::hash_combine(hash_value, std::hash<int64_t>()(d));
+    }
+
+    for (auto d : key.reduce_axis) {
+      hash_value =
+          pir::detail::hash_combine(hash_value, std::hash<int64_t>()(d));
+    }
+    return hash_value;
   }
 
   bool operator==(const ParamKey& key) const {

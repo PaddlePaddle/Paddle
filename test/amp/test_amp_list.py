@@ -20,9 +20,18 @@ from paddle.static.amp import AutoMixedPrecisionLists, fp16_lists
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or paddle.device.cuda.get_device_capability()[0] < 7.0,
+    not core.is_compiled_with_cuda() and not core.is_compiled_with_xpu(),
+    "Require compiled with CUDA or XPU.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 7.0,
     "run test when gpu's compute capability is at least 7.0.",
+)
+@unittest.skipIf(
+    core.is_compiled_with_xpu()
+    and core.get_xpu_device_version(0) < core.XPUVersion.XPU3,
+    "run test when xpu's compute capability >= xpu3.",
 )
 class TestAMPList(unittest.TestCase):
     def setUp(self):
@@ -77,6 +86,32 @@ class TestAMPList(unittest.TestCase):
         self.assertEqual(out1.dtype, paddle.float16)
         self.assertEqual(out2.dtype, paddle.float32)
         self.assertEqual(out3.dtype, paddle.float32)
+
+    def test_pir(self):
+        with paddle.pir_utils.IrGuard():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                white_list = paddle.amp.white_list()
+                black_list = paddle.amp.black_list()
+                self.check_if_op_in_list(
+                    self.default_black_list, black_list["float16"]["O2"]
+                )
+                self.check_if_op_not_in_list(
+                    ['log', 'elementwise_add'], white_list
+                )
+                with paddle.amp.auto_cast(
+                    custom_white_list={'elementwise_add'}
+                ):
+                    out1 = paddle.rand([2, 3]) + paddle.rand([2, 3])
+                    out2 = out1.mean()
+                    out3 = paddle.log(out2)
+                self.check_if_op_not_in_list(
+                    ['log', 'elementwise_add'], white_list
+                )
+                self.assertEqual(out1.dtype, core.DataType.FLOAT16)
+                self.assertEqual(out2.dtype, core.DataType.FLOAT32)
+                self.assertEqual(out3.dtype, core.DataType.FLOAT32)
 
     def test_apis(self):
         def _run_check_dtype():

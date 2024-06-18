@@ -156,7 +156,7 @@ void LoadX86DefaultParams(
   InputX86Param(model_data,
                 "X86ScheduleConv input 1 256 56 56 weight 512 256 1 1 stride 2 "
                 "2 padding 0 0 dilation 1 1",
-                // Todo: tempory fix, enhance alterlayout and test performance
+                // Todo: temporary fix, enhance alterlayout and test performance
                 {{"ic_bn", {1, 256}},
                  {"oc_bn", {16, 32}},
                  {"ow_bn", {7, 4}},

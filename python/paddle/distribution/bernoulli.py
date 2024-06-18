@@ -109,16 +109,6 @@ class Bernoulli(exponential_family.ExponentialFamily):
             [self.probs] = self._to_tensor(probs)
             self.dtype = paddle.get_default_dtype()
 
-        # Check probs range [0, 1].
-        if in_dynamic_mode():
-            """Not use `paddle.any` in static mode, which always be `True`."""
-            if (
-                paddle.any(self.probs < 0)
-                or paddle.any(self.probs > 1)
-                or paddle.any(paddle.isnan(self.probs))
-            ):
-                raise ValueError("The arg of `probs` must be in range [0, 1].")
-
         # Clip probs from [0, 1] to (0, 1) with smallest representable number `eps`.
         self.probs = _clip_probs(self.probs, self.dtype)
         self.logits = self._probs_to_logits(self.probs, is_binary=True)
@@ -333,13 +323,13 @@ class Bernoulli(exponential_family.ExponentialFamily):
         )
 
     def log_prob(self, value):
-        """Log of probability densitiy function.
+        """Log of probability density function.
 
         Args:
             value (Tensor): Value to be evaluated.
 
         Returns:
-            Tensor: Log of probability densitiy evaluated at value.
+            Tensor: Log of probability density evaluated at value.
 
         Examples:
 

@@ -15,6 +15,7 @@ limitations under the License. */
 #include <array>
 #include <ctime>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/barrier.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -25,12 +26,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #if defined PADDLE_WITH_PSCORE
@@ -47,12 +47,12 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 #include "paddle/fluid/framework/program_utils.h"
 #include "paddle/utils/string/string_helper.h"
 
-PHI_DECLARE_bool(enable_exit_when_partial_worker);
-PHI_DECLARE_int32(enable_adjust_op_order);
+COMMON_DECLARE_bool(enable_exit_when_partial_worker);
+COMMON_DECLARE_int32(enable_adjust_op_order);
 PHI_DEFINE_EXPORTED_bool(gpugraph_force_device_batch_num_equal,
                          false,
                          "enable force_device_batch_num_equal, default false");
-PHI_DECLARE_bool(enable_dump_main_program);
+COMMON_DECLARE_bool(enable_dump_main_program);
 PHI_DEFINE_EXPORTED_int32(gpugraph_offload_param_stat,
                           0,
                           "enable offload param stat, default 0");
@@ -84,8 +84,10 @@ class GPUParallelCopyer {
   GPUParallelCopyer(const phi::gpuStream_t &stream,
                     const int device_id,
                     const int stream_num)
-      : dev_stream_(stream), device_id_(device_id), max_stream_(stream_num) {
-    streams_.resize(max_stream_);
+      : dev_stream_(stream),
+        device_id_(device_id),
+        max_stream_(stream_num),
+        streams_(stream_num) {
     platform::CUDADeviceGuard guard(device_id_);
     for (size_t i = 0; i < max_stream_; ++i) {
       PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&streams_[i]));
@@ -127,7 +129,7 @@ class GPUParallelCopyer {
       ++copy_count_;
     }
   }
-  void Wait(void) {
+  void Wait() {
     if (copy_count_ == 0) {
       return;
     }
@@ -142,7 +144,7 @@ class GPUParallelCopyer {
     }
     copy_count_ = 0;
   }
-  void SyncDevStream(void) { platform::GpuStreamSync(dev_stream_); }
+  void SyncDevStream() { platform::GpuStreamSync(dev_stream_); }
 
  private:
   phi::gpuStream_t dev_stream_ = nullptr;
@@ -307,7 +309,8 @@ int HogwildWorker::IsParameter(const std::string &name, bool full_match) {
   }
 }
 void HogwildWorker::BuildShardingDepends(const ProgramDesc &program) {
-  nccl_rank_id_ = place_.GetDeviceId();
+  nccl_rank_id_ =
+      static_cast<int>(static_cast<unsigned char>(place_.GetDeviceId()));
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
   auto gpu_ps = PSGPUWrapper::GetInstance();
   nccl_rank_id_ = gpu_ps->GetNCCLRankId(nccl_rank_id_);
@@ -614,7 +617,7 @@ size_t HogwildWorker::AdjustOffloadOps(const ProgramDesc &program) {
   // gather copy inputs
   const int64_t max_gather_len =
       FLAGS_gpugraph_offload_gather_copy_maxsize * 1024 * 1024;
-  std::vector<const OperatorBase *> recyle_ops;
+  std::vector<const OperatorBase *> recycle_ops;
   std::multimap<std::string, int> name2refs;
   auto &block = program.Block(0);
   // get param length
@@ -712,7 +715,7 @@ size_t HogwildWorker::AdjustOffloadOps(const ProgramDesc &program) {
       it->second.copy_vars.clear();
       if (it->second.copy_vars.empty() && it->second.backup_vars.empty() &&
           it->second.cast_vars.empty()) {
-        recyle_ops.push_back(it->first);
+        recycle_ops.push_back(it->first);
       }
     }
     add_gc_refs_func(op);
@@ -728,13 +731,13 @@ size_t HogwildWorker::AdjustOffloadOps(const ProgramDesc &program) {
   if (out_vars != nullptr && start_op_idx < op_idx) {
     remove_gc_vars_func(start_op_idx, op_idx);
   }
-  // earse empty offload ops
-  for (auto &op : recyle_ops) {
+  // erase empty offload ops
+  for (auto &op : recycle_ops) {
     offload_vars_.erase(op);
   }
   VLOG(0) << "device id=" << thread_id_
           << ", gather offload ops size=" << offload_vars_.size()
-          << ", recyle size=" << recyle_ops.size();
+          << ", recycle size=" << recycle_ops.size();
 
   return offload_cnt;
 }
@@ -803,9 +806,9 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
       tm.Start();
       interpreter::DependencyBuilderSimplify depend_builder;
       // depend_builder.Build(ops_, start_index, sharding_mode_);  hbm not safe
-      // shoud run in debug model need to fix
+      // should run in debug model need to fix
       depend_builder.Build(ops_, start_index, false);
-      new_order = depend_builder.get_new_exexutor_order();
+      new_order = depend_builder.get_new_executor_order();
       std::vector<std::unique_ptr<OperatorBase>> new_ops;
       std::vector<size_t> final_order;
       std::vector<std::string> new_op_names;
@@ -913,9 +916,10 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
       }
       str_os << "\n";
     }
-    char filename[512] = {0};
-    snprintf(filename, sizeof(filename), "./device_%d_ops.txt", thread_id_);
-    WriteToFile(filename, str_os.str());
+    std::string filename = "./device_";
+    filename += std::to_string(thread_id_);
+    filename += "_ops.txt";
+    WriteToFile(filename.c_str(), str_os.str());
   }
   // debug
   VLOG(0) << "device id=" << thread_id_
@@ -1316,7 +1320,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
   }
 #endif
   bool infer_out_of_ins = false;
-  while (1) {
+  while (true) {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
     if (FLAGS_gpugraph_force_device_batch_num_equal) {
@@ -1428,7 +1432,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
     for (size_t i = 0; i < op_names_.size(); ++i) {
       VLOG(1) << "card:" << thread_id_ << ", op: " << op_names_[i]
               << ", mean time: " << op_total_time[i] / total_inst
-              << "s, totol time:" << op_total_time[i] << "sec";
+              << "s, total time:" << op_total_time[i] << "sec";
     }
 #else
     if (thread_id_ == 0) {
@@ -1520,7 +1524,7 @@ void HogwildWorker::TrainFiles() {
   }
 #endif
   bool infer_out_of_ins = false;
-  while (1) {
+  while (true) {
     cur_batch = device_reader_->Next();
 #if defined(PADDLE_WITH_GPU_GRAPH)
     if (FLAGS_gpugraph_force_device_batch_num_equal) {
@@ -1624,7 +1628,7 @@ void HogwildWorker::TrainFiles() {
     //     {
     //       std::lock_guard<std::mutex> lock(mutex);
     //       VLOG(0) << "worker " << thread_id_ << ": " << var_name
-    //               << " cantains inf or nan";
+    //               << " contains inf or nan";
     //       // auto all_vars = thread_scope_->LocalVarNames();
     //       std::stringstream ss;
     //       ss << "====== worker " << thread_id_ << "======\n";

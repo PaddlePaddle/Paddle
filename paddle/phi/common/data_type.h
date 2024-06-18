@@ -253,6 +253,46 @@ inline std::string DataTypeToString(const DataType& dtype) {
   }
 }
 
+inline DataType StringToDataType(const std::string& dtype) {
+  if (dtype == "Undefined(ALL_DTYPE)") {
+    return DataType::UNDEFINED;
+  } else if (dtype == "bool") {
+    return DataType::BOOL;
+  } else if (dtype == "int8") {
+    return DataType::INT8;
+  } else if (dtype == "uint8") {
+    return DataType::UINT8;
+  } else if (dtype == "int16") {
+    return DataType::INT16;
+  } else if (dtype == "uint16") {
+    return DataType::UINT16;
+  } else if (dtype == "int32") {
+    return DataType::INT32;
+  } else if (dtype == "uint32") {
+    return DataType::UINT32;
+  } else if (dtype == "int64") {
+    return DataType::INT64;
+  } else if (dtype == "uint64") {
+    return DataType::UINT64;
+  } else if (dtype == "bfloat16") {
+    return DataType::BFLOAT16;
+  } else if (dtype == "float16") {
+    return DataType::FLOAT16;
+  } else if (dtype == "float32") {
+    return DataType::FLOAT32;
+  } else if (dtype == "float64") {
+    return DataType::FLOAT64;
+  } else if (dtype == "complex64") {
+    return DataType::COMPLEX64;
+  } else if (dtype == "complex128") {
+    return DataType::COMPLEX128;
+  } else if (dtype == "pstring") {
+    return DataType::PSTRING;
+  } else {
+    PD_THROW("Invalid enum data type `", dtype, "`.");
+  }
+}
+
 }  // namespace phi
 
 namespace paddle {

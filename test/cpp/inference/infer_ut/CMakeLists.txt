@@ -177,13 +177,13 @@ if(WITH_MKL)
         ${MATH_LIB_PATH}/lib/libmklml_intel${CMAKE_SHARED_LIBRARY_SUFFIX}
         ${MATH_LIB_PATH}/lib/libiomp5${CMAKE_SHARED_LIBRARY_SUFFIX})
   endif()
-  set(MKLDNN_PATH "${PADDLE_LIB_THIRD_PARTY_PATH}mkldnn")
-  if(EXISTS ${MKLDNN_PATH})
-    include_directories("${MKLDNN_PATH}/include")
+  set(ONEDNN_PATH "${PADDLE_LIB_THIRD_PARTY_PATH}onednn")
+  if(EXISTS ${ONEDNN_PATH})
+    include_directories("${ONEDNN_PATH}/include")
     if(WIN32)
-      set(MKLDNN_LIB ${MKLDNN_PATH}/lib/mkldnn.lib)
+      set(ONEDNN_LIB ${ONEDNN_PATH}/lib/mkldnn.lib)
     else()
-      set(MKLDNN_LIB ${MKLDNN_PATH}/lib/libdnnl.so.3)
+      set(ONEDNN_LIB ${ONEDNN_PATH}/lib/libdnnl.so.3)
     endif()
   endif()
 else()
@@ -222,7 +222,7 @@ if(NOT WIN32)
   set(DEPS
       ${DEPS}
       ${MATH_LIB}
-      ${MKLDNN_LIB}
+      ${ONEDNN_LIB}
       glog
       gflags
       protobuf
@@ -233,7 +233,7 @@ else()
   set(DEPS
       ${DEPS}
       ${MATH_LIB}
-      ${MKLDNN_LIB}
+      ${ONEDNN_LIB}
       glog
       gflags_static
       libprotobuf
@@ -327,7 +327,7 @@ if(WIN32)
               ${LIB_PATH}
       COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/libiomp5md.dll
               ${LIB_PATH}
-      COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_PATH}/lib/mkldnn.dll
+      COMMAND ${CMAKE_COMMAND} -E copy ${ONEDNN_PATH}/lib/mkldnn.dll
               ${LIB_PATH})
   else()
     add_custom_command(

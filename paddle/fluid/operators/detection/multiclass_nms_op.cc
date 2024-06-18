@@ -47,22 +47,22 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(score_size == 2 || score_size == 3,
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The rank of Input(Scores) must be 2 or 3"
                             ". But received rank = %d",
                             score_size));
-      PADDLE_ENFORCE_EQ(box_dims.size(),
-                        3,
-                        platform::errors::InvalidArgument(
-                            "The rank of Input(BBoxes) must be 3"
-                            ". But received rank = %d",
-                            box_dims.size()));
+      PADDLE_ENFORCE_EQ(
+          box_dims.size(),
+          3,
+          phi::errors::InvalidArgument("The rank of Input(BBoxes) must be 3"
+                                       ". But received rank = %d",
+                                       box_dims.size()));
       if (score_size == 3) {
         PADDLE_ENFORCE_EQ(box_dims[2] == 4 || box_dims[2] == 8 ||
                               box_dims[2] == 16 || box_dims[2] == 24 ||
                               box_dims[2] == 32,
                           true,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The last dimension of Input"
                               "(BBoxes) must be 4 or 8, "
                               "represents the layout of coordinate "
@@ -74,7 +74,7 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             box_dims[1],
             score_dims[2],
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The 2nd dimension of Input(BBoxes) must be equal to "
                 "last dimension of Input(Scores), which represents the "
                 "predicted bboxes."
@@ -84,14 +84,14 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
       } else {
         PADDLE_ENFORCE_EQ(box_dims[2],
                           4,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "The last dimension of Input"
                               "(BBoxes) must be 4. But received dimension = %d",
                               box_dims[2]));
         PADDLE_ENFORCE_EQ(
             box_dims[1],
             score_dims[1],
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The 2nd dimension of Input"
                 "(BBoxes) must be equal to the 2nd dimension of Input(Scores). "
                 "But received box dimension = %d, score dimension = %d",
@@ -112,7 +112,7 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Scores"),
-        platform::CPUPlace());
+        phi::CPUPlace());
   }
 };
 
@@ -556,13 +556,13 @@ of boxes and scores.
 In the NMS step, this operator greedily selects a subset of detection bounding
 boxes that have high scores larger than score_threshold, if providing this
 threshold, then selects the largest nms_top_k confidences scores if nms_top_k
-is larger than -1. Then this operator pruns away boxes that have high IOU
+is larger than -1. Then this operator prunes away boxes that have high IOU
 (intersection over union) overlap with already selected boxes by adaptive
 threshold NMS based on parameters of nms_threshold and nms_eta.
-Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+After NMS step, at most keep_top_k number of total bboxes are to be kept
 per image if keep_top_k is larger than -1.
 This operator support multi-class and batched inputs. It applying NMS
-independently for each class. The outputs is a 2-D LoDTenosr, for each
+independently for each class. The outputs is a 2-D LoDTensor, for each
 image, the offsets in first dimension of phi::DenseTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
 means there is no detected bbox for this image.

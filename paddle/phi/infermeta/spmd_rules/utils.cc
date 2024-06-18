@@ -22,12 +22,11 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
+std::string GetBroadcastAxes(const int64_t& tensor_ndim,
                              const int64_t& broadcast_ndim,
                              const std::string& alphabet) {
   PADDLE_ENFORCE_GE(
@@ -38,15 +37,15 @@ std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
           alphabet.size(),
           broadcast_ndim));
   PADDLE_ENFORCE_GE(broadcast_ndim,
-                    tenosr_ndim,
+                    tensor_ndim,
                     phi::errors::InvalidArgument(
-                        "The broadcast ndim [%d] is less than tenosr ndim [%d]",
+                        "The broadcast ndim [%d] is less than tensor ndim [%d]",
                         broadcast_ndim,
-                        tenosr_ndim));
-  if (tenosr_ndim <= 0) {
+                        tensor_ndim));
+  if (tensor_ndim <= 0) {
     return std::string();
   }
-  return alphabet.substr(broadcast_ndim - tenosr_ndim, tenosr_ndim);
+  return alphabet.substr(broadcast_ndim - tensor_ndim, tensor_ndim);
 }
 
 // Rule1: A repicated dimension could be merged by any sharded dimension.
@@ -407,7 +406,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
     for (auto pair : partial_dim_to_type) {
       placements[pair.first] = std::make_shared<PartialStatus>(pair.second);
     }
-    new_input_attrs.emplace_back(FromPlacements(e, placements));
+    new_input_attrs.emplace_back(FromPlacements(e, placements));  // NOLINT
   }
   std::swap(input_attrs, new_input_attrs);
 }
@@ -423,13 +422,14 @@ TensorDistAttr FromPlacements(
     auto& placement = placements[mesh_dim];
     if (placement->is_shard()) {
       auto shard_placement = std::dynamic_pointer_cast<ShardStatus>(placement);
-      dims_mapping[shard_placement->get_axis()] = mesh_dim;
+      dims_mapping[shard_placement->get_axis()] =
+          static_cast<int64_t>(mesh_dim);
     }
     if (placement->is_partial()) {
       auto partial_placement =
           std::dynamic_pointer_cast<PartialStatus>(placement);
       auto reduce_type = partial_placement->get_reduce_type();
-      partial_status[mesh_dim] = reduce_type;
+      partial_status[mesh_dim] = reduce_type;  // NOLINT
     }
   }
   dst_dist_attr.set_dims_mapping(dims_mapping);
@@ -470,7 +470,7 @@ std::vector<int64_t> GetLocalShape(
   for (size_t i = 0; i < n_placement; i++) {
     auto& placement = placements.at(i);
     if (placement->is_shard()) {
-      auto mesh_dim_size = mesh.dim_size(i);
+      auto mesh_dim_size = mesh.dim_size(i);  // NOLINT
       auto shard_dim =
           std::dynamic_pointer_cast<ShardStatus>(placement)->get_axis();
       auto split_size =
@@ -604,5 +604,4 @@ TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
   return grad_out;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

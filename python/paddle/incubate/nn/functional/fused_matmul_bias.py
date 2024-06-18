@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import (
+    in_dynamic_mode,
+    in_pir_mode,
+)
 from paddle.tensor.linalg import matmul
 
 
@@ -60,6 +63,11 @@ def fused_matmul_bias(
         return _legacy_C_ops.fused_gemm_epilogue(
             x, y, bias, 'trans_x', transpose_x, 'trans_y', transpose_y
         )
+    if in_pir_mode():
+        out, _ = _C_ops.fused_gemm_epilogue(
+            x, y, bias, transpose_x, transpose_y, "none"
+        )
+        return out
 
     helper = LayerHelper('fused_matmul_bias', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -157,6 +165,17 @@ def fused_linear_activation(
             'activation',
             activation,
         )
+
+    if in_pir_mode():
+        out, _ = _C_ops.fused_gemm_epilogue(
+            x,
+            y,
+            bias,
+            trans_x,
+            trans_y,
+            activation,
+        )
+        return out
 
     helper = LayerHelper('fused_matmul_bias', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)

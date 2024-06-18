@@ -17,10 +17,10 @@
 #include <thread>
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/utils/flags.h"
 
-PD_DECLARE_int32(dist_threadpool_size);
+COMMON_DECLARE_int32(dist_threadpool_size);
 PD_DEFINE_int32(io_threadpool_size,
                 100,
                 "number of threads used for doing IO, default 100");
@@ -36,7 +36,7 @@ ThreadPool* ThreadPool::GetInstance() {
 }
 
 void ThreadPool::Init() {
-  if (threadpool_.get() == nullptr) {
+  if (threadpool_ == nullptr) {
     // TODO(Yancey1989): specify the max threads number
     int num_threads = static_cast<int>(std::thread::hardware_concurrency());
     if (FLAGS_dist_threadpool_size > 0) {
@@ -54,7 +54,7 @@ void ThreadPool::Init() {
 ThreadPool::ThreadPool(int num_threads) : running_(true) {
   threads_.resize(num_threads);
   for (auto& thread : threads_) {
-    // TODO(Yancey1989): binding the thread on the specify CPU numberw
+    // TODO(Yancey1989): binding the thread on the specify CPU number
     thread = std::make_unique<std::thread>([this] { ThreadPool::TaskLoop(); });
   }
 }
@@ -109,7 +109,7 @@ ThreadPool* ThreadPoolIO::GetInstanceIO() {
 }
 
 void ThreadPoolIO::InitIO() {
-  if (io_threadpool_.get() == nullptr) {
+  if (io_threadpool_ == nullptr) {
     // TODO(typhoonzero1986): make this configurable
     io_threadpool_ = std::make_unique<ThreadPool>(FLAGS_io_threadpool_size);
   }

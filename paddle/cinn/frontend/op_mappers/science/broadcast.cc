@@ -15,14 +15,17 @@
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
 #include "paddle/cinn/frontend/var_type_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace science_mappers {
 
 void FillConstantOpMapper(const paddle::cpp::OpDesc& op_desc,
                           const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Output("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of fill_constant op must be 1"));
   auto y_name = op_desc.Output("Y").front();
 
   auto shape = utils::ToShapeType(
@@ -49,14 +52,22 @@ void FillConstantOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void BroadcastOpMapper(const paddle::cpp::OpDesc& op_desc,
                        const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of broadcast op must be 1"));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Output("Y").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Y").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of broadcast op must be 1"));
   auto y_name = op_desc.Output("Y").front();
 
-  CHECK(op_desc.HasAttr("shape"))
-      << "The broadcast_p operator should has 'shape' attribute, but " << x_name
-      << "'s broadcast hasn't.";
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("shape"),
+      true,
+      phi::errors::InvalidArgument(
+          "The broadcast_p operator should has 'shape' attribute."));
 
   auto y_shape = utils::ToShapeType(
       utils::GetAttrOrDefault<std::vector<int64_t>>(op_desc, "shape"));

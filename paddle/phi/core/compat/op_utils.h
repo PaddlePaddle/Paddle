@@ -29,11 +29,6 @@ namespace phi {
 
 const static std::string deprecated_kernel_name = "deprecated";  // NOLINT
 
-const std::unordered_set<std::string> standard_kernel_suffixs({
-    "sr",  // SelectedRows kernel
-    "raw"  // fallback kernel of original fluid op
-});
-
 /**
  * Some fluid ops are no longer used under the corresponding official API
  * system of 2.0. These names need to correspond to the official API names
@@ -70,8 +65,9 @@ static const std::unordered_set<std::string> deprecated_op_names(
      "expand_grad",
      "expand_as_grad",
      "one_hot",
-     "top_k",
-     "top_k_grad",
+     // If remove top_k in PHI, uncomment the lines.
+     // "top_k",
+     // "top_k_grad",
      "linear_interp",
      "linear_interp_grad",
      "bilinear_interp",

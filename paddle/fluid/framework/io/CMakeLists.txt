@@ -14,6 +14,6 @@ cc_library(
   SRCS ${framework_io_srcs}
   DEPS ${framework_io_deps})
 
-if(WITH_MKLDNN)
-  add_dependencies(framework_io mkldnn)
+if(WITH_ONEDNN)
+  add_dependencies(framework_io onednn)
 endif()

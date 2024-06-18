@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 from paddle.utils import deprecated
 
 
@@ -112,22 +112,19 @@ def graph_sample_neighbors(
                 "is True."
             )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         (
             out_neighbors,
             out_count,
             out_eids,
-        ) = _legacy_C_ops.graph_sample_neighbors(
+        ) = _C_ops.graph_sample_neighbors(
             row,
             colptr,
             input_nodes,
             eids,
             perm_buffer,
-            "sample_size",
             sample_size,
-            "return_eids",
             return_eids,
-            "flag_perm_buffer",
             flag_perm_buffer,
         )
         if return_eids:

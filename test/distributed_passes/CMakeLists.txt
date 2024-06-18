@@ -37,3 +37,7 @@ foreach(TEST_OP ${TEST_OPS})
   set_tests_properties(${TEST_OP} PROPERTIES TIMEOUT 250)
   set_tests_properties(${TEST_OP} PROPERTIES LABELS "RUN_TYPE=DIST")
 endforeach()
+
+if(WITH_CUDNN_FRONTEND)
+  set_tests_properties(test_dist_fuse_resunit_pass PROPERTIES TIMEOUT 350)
+endif()

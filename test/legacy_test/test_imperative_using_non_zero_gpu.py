@@ -18,13 +18,13 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base.dygraph import guard, to_variable
+from paddle.base.dygraph import guard
 
 
 class TestImperativeUsingNonZeroGpu(unittest.TestCase):
     def run_main(self, np_arr, place):
         with guard(place):
-            var = to_variable(np_arr)
+            var = paddle.to_tensor(np_arr)
             np.testing.assert_array_equal(np_arr, var.numpy())
 
     def test_non_zero_gpu(self):

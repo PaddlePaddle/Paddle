@@ -69,7 +69,7 @@ TEST(Buffer, bind_to_multiple_tensors) {
   auto funcs = lang::Lower("func1", stages, {A, B});
 
   Target target;
-  target.arch = Target::Arch ::X86;
+  target.arch = common::X86Arch{};
   target.bits = Target::Bit ::k32;
   target.os = Target::OS ::Linux;
 

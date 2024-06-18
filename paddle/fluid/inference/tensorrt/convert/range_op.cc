@@ -35,15 +35,15 @@ class RangeOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
 
     auto zero_tensor = Add1DConstantLayer(0, output_name + "_zero_tensor_");
-    auto fquotient_tensor = FloorDiv(Sub(start, end), step);
+    auto f_quotient_tensor = FloorDiv(Sub(start, end), step);
     if (start->getType() == nvinfer1::DataType::kFLOAT) {
       auto* cast_int32_layer =
-          TRT_ENGINE_ADD_LAYER(engine_, Identity, *fquotient_tensor);
+          TRT_ENGINE_ADD_LAYER(engine_, Identity, *f_quotient_tensor);
       cast_int32_layer->setOutputType(0, nvinfer1::DataType::kINT32);
       cast_int32_layer->getOutput(0)->setType(nvinfer1::DataType::kINT32);
       quotient_tensor = cast_int32_layer->getOutput(0);
     } else {
-      quotient_tensor = fquotient_tensor;
+      quotient_tensor = f_quotient_tensor;
     }
     auto number_tensor = Max(Sub(zero_tensor, quotient_tensor), zero_tensor);
     auto* start1 = engine_->GetITensor(op_desc.Input("Start")[0]);
@@ -59,7 +59,7 @@ class RangeOpConverter : public OpConverter {
     layer->setInput(1, *start1);
     layer->setInput(2, *step);
 
-    RreplenishLayerAndOutput(layer, "range", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "range", {output_name}, test_mode);
   }
 };
 

@@ -23,9 +23,9 @@
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -61,7 +61,7 @@ std::vector<::pir::Operation*> GetConsumersInSet(
 std::vector<::pir::Operation*> GetProducers(::pir::Operation* op) {
   std::vector<::pir::Operation*> producers;
   for (auto& source : op->operands_source()) {
-    auto* producer_op = source.dyn_cast<::pir::OpResult>().owner();
+    auto* producer_op = source.defining_op();
     CHECK(producer_op);
     producers.push_back(producer_op);
   }
@@ -448,7 +448,7 @@ bool CanbeInline(::pir::Operation* op,
         done_schedule.insert(tmp);
       }
     }
-    // remove all consuemr reducer node of node from done_schedule.
+    // remove all consumer reducer node of node from done_schedule.
     std::unordered_set<::pir::Operation*> visited;
     std::queue<::pir::Operation*> candidates;
     candidates.push(op);
@@ -559,7 +559,10 @@ void LoopOrderAssignReduce(ir::IRSchedule& ir_sch,  // NOLINT
         ir_sch.Split(loops[index], {-1, idx});
         break;
       }
-      CHECK_GT(idx, 1);
+      PADDLE_ENFORCE_GT(idx,
+                        1,
+                        phi::errors::InvalidArgument(
+                            "Error! Can't find suitable split factor!"));
     }
   }
 
@@ -577,7 +580,7 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
   // If the number of current device SM is smaller than the number of SM
   // required by Warp Reduce, the performance of Warp Reduce is better.
   // Otherwise, use Block Reduce.
-  auto max_num_threads = cinn::common::DefaultNVGPUTarget().max_num_threads();
+  auto max_num_threads = cinn::common::DefaultDeviceTarget().max_num_threads();
   int need_reduce_last_count = 1;
   for (int i = 0; i < inshape.size(); i++) {
     if (find(axes.begin(), axes.end(), i) == axes.end()) {
@@ -601,8 +604,8 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
     }
     lane *= inshape[axes[index]];
     if (index == 0 && lane <= max_num_threads) {
-      LOG(FATAL)
-          << "Error! lane is less equal than max_num_threads, Please check!";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Error! lane is less equal than max_num_threads, Please check!"));
     }
     if (lane >= max_num_threads / 2) {
       if (lane <= max_num_threads) {
@@ -637,7 +640,10 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
         --idx;
       } while (idx >= max_num_threads / 2);
       // if can't be divide by(1024, 512), it's shouldn't be fused.
-      CHECK_GE(idx, max_num_threads / 2) << "Check bounds exist, can't fuse!";
+      PADDLE_ENFORCE_GE(idx,
+                        max_num_threads / 2,
+                        phi::errors::InvalidArgument(
+                            "Error! Can't find suitable split factor!"));
     } else {
       int axis = axes[index];
       int prefix = inshape[axis];
@@ -648,8 +654,10 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
           ir_sch.Split(block_name, axis, {-1, idx});
           break;
         }
-        CHECK_GT(idx, (max_num_threads / 2) / tail)
-            << "Error, it's shouldn't fuse!";
+        PADDLE_ENFORCE_GT(idx,
+                          (max_num_threads / 2) / tail,
+                          phi::errors::InvalidArgument(
+                              "Error! Can't find suitable split factor!"));
       }
     }
     LoopOrderAssignReduce(ir_sch, block_name, first_axes, target);
@@ -667,7 +675,7 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
       ir_sch.Fuse(block_name, {axes[index + 1], axes[index + 1] + 1});
     }
     LoopOrderAssignReduce(ir_sch, block_name, first_axes, target, true);
-    // fuse axis before reduce to bind blockidx.
+    // fuse axis before reduce to bind block idx.
     for (int idx = 0; idx < static_cast<int>(inshape.size() - axes.size()) - 1;
          ++idx) {
       ir_sch.Fuse(block_name, {0, 1});
@@ -713,7 +721,7 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
                                     return left + std::to_string(right) + " ";
                                   });
 
-  VLOG(4) << "LoopAssignReduceWithoutLast: THe input shape=["
+  VLOG(4) << "LoopAssignReduceWithoutLast: The input shape=["
           << cinn::utils::Join(inshape, ", ") << "], first step reduce shape=["
           << cinn::utils::Join(shape, ", ") << "]"
           << ", axes=[" << cinn::utils::Join(axes, ", ") << "], tail=" << tail;
@@ -727,7 +735,7 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
           // the loop size at axis is 1, need remove
           axes_shift_num[j] = -1;
         } else if (axes[j] > idx) {
-          // the axies value need left shift
+          // the axes value need left shift
           axes_shift_num[j]++;
         }
       }
@@ -819,7 +827,7 @@ std::vector<int> GetReducerDimAttr(::pir::Operation* reduce_op) {
                  .dims()
                  .size();
 
-  auto attr = reduce_op->attributes().at("dim");
+  auto attr = reduce_op->attributes().at("axis");
   auto attr_vec = attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
 
   std::vector<int> dim;
@@ -903,8 +911,14 @@ void MergeLoops(ir::Expr root,
   if (index < 0) {
     return;
   }
-  CHECK_GT(src.size(), index) << "\nindex -> " << index << "\n" << src[0];
-  CHECK_GT(dst.size(), index) << "\nindex -> " << index << "\n" << dst[0];
+  PADDLE_ENFORCE_GT(src.size(),
+                    index,
+                    phi::errors::InvalidArgument(
+                        "Error! src size is less than index, Please check!"));
+  PADDLE_ENFORCE_GT(dst.size(),
+                    index,
+                    phi::errors::InvalidArgument(
+                        "Error! dst size is less than index, Please check!"));
 
   if (src[0] == dst[0]) {
     return;
@@ -1001,14 +1015,19 @@ void MergeReduceToReduce(
             auto n_loops = ir_sch.GetLoops(n_tensor->name + "__reduce_init");
             auto m_loops = ir_sch.GetLoops(m_tensor->name + "__reduce_init");
 
-            CHECK_EQ(n_loops.size(), m_loops.size());
+            PADDLE_ENFORCE_EQ(n_loops.size(),
+                              m_loops.size(),
+                              phi::errors::InvalidArgument(
+                                  "Error! n_loops size is not equal to m_loops "
+                                  "size, Please check!"));
             MergeLoops(ir_sch.GetModule().GetExprs().at(0),
                        n_loops,
                        m_loops,
                        n_loops.size() - 1);
           }
         } else {
-          LOG(FATAL) << "not support this type fusion!";
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("not support this type fusion!"));
         }
       }
     } else {
@@ -1079,7 +1098,12 @@ void MergeReduceToReduce(
 
         auto n_loops = ir_sch.GetLoops(n_tensor->name);
         auto m_loops = ir_sch.GetLoops(m_tensor->name);
-        CHECK_EQ(n_loops.size(), m_loops.size());
+        PADDLE_ENFORCE_EQ(
+            n_loops.size(),
+            m_loops.size(),
+            phi::errors::InvalidArgument(
+                "Error! n_loops size is not equal to m_loops size, "
+                "Please check!"));
 
         std::vector<ir::Var> src_vars;
         std::vector<ir::Expr> dst_vars;
@@ -1112,7 +1136,8 @@ void MergeReduceToReduce(
         ir_sch.SimpleComputeAt(block, loops.back());
       }
     } else {
-      LOG(FATAL) << "Error! Unkown Reduce Type, Please Check!";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Error! Unkown Reduce Type, Please Check!"));
     }
   }
 }
@@ -1506,7 +1531,7 @@ void LoopAssignReduce(
       // copy loop info form rloops.
       copy_loop_info(nloops, rloops);
     } else {
-      LOG(FATAL) << "Error! Unkown Reduce Type!";
+      PADDLE_THROW(phi::errors::InvalidArgument("Error! Unkown Reduce Type!"));
     }
   }
 }
@@ -1565,7 +1590,7 @@ void SyncThreadWithShared(
       continue;
     }
     auto op_data = op_out_set.find(block->name)->second;
-    auto* op = op_data.dyn_cast<::pir::OpResult>().owner();
+    auto* op = op_data.defining_op();
     auto op_shape = CompatibleInfo::ValueShape(op_data);
 
     auto masters = GetMasters(op, pretty_name, ops_inline, ops_set);

@@ -47,7 +47,7 @@ class Module : public ir::IrNodeRef {
     void AddPredicate(ir::Expr predicate);
     void SetInferShapeFunc(ir::Expr infer_shape_func);
     void Clear();
-    Target::Arch GetTargetArch();
+    common::Arch GetTargetArch();
 
     Module Build();
 

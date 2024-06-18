@@ -15,15 +15,15 @@
 #pragma once
 
 #include <string>
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/check_numerics_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
-PHI_DECLARE_int32(check_nan_inf_level);
+COMMON_DECLARE_int32(check_nan_inf_level);
 
 namespace paddle {
 namespace framework {
@@ -90,6 +90,10 @@ void tensor_check(const std::string& op_type,
   VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }
 
+void InitWhiteListFormEnv();
+std::unordered_set<std::string>& op_type_nan_inf_white_list();
+std::unordered_map<std::string, std::vector<std::string>>&
+op_var_nan_inf_white_list();
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

@@ -27,9 +27,7 @@
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 namespace {
 std::mutex ipc_mutex_;
@@ -47,17 +45,16 @@ std::shared_ptr<void> GetIpcBasePtr(std::string handle) {
   // The IpcMemHandle can only open once for the same handle,
   // so here we cache it here.
   void *baseptr = nullptr;
-  auto ipc_handle =
-      reinterpret_cast<const cudaIpcMemHandle_t *>(handle.c_str());
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaIpcOpenMemHandle(
-      &baseptr, *ipc_handle, cudaIpcMemLazyEnablePeerAccess));
+  auto ipc_handle = reinterpret_cast<const gpuIpcMemHandle_t *>(handle.c_str());
+  PADDLE_ENFORCE_GPU_SUCCESS(gpuIpcOpenMemHandle(
+      &baseptr, *ipc_handle, gpuIpcMemLazyEnablePeerAccess));
   // Close ipc handle on the same device.
   int device_id = platform::GetCurrentDeviceId();
   // Add deleter to close ipc handle.
   auto sp = std::shared_ptr<void>(baseptr, [handle, device_id](void *ptr) {
     platform::CUDADeviceGuard guard(device_id);
     std::lock_guard<std::mutex> lock(ipc_mutex_);
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaIpcCloseMemHandle(ptr));
+    PADDLE_ENFORCE_GPU_SUCCESS(gpuIpcCloseMemHandle(ptr));
     ipc_handle_to_baseptr_.erase(handle);
     VLOG(6) << "cudaIpcCloseMemHandle for ptr:"
             << "\t" << ptr;
@@ -74,8 +71,6 @@ CudaIpcAllocation::~CudaIpcAllocation() {
           << "\t" << this->ptr();
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation
 
 #endif

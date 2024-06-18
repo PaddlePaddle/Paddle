@@ -32,14 +32,16 @@ namespace paddle {
 namespace distributed {
 namespace mpi {
 
-#define MPI_CHECK(cmd)                                                     \
-  do {                                                                     \
-    int r = cmd;                                                           \
-    if (r != MPI_SUCCESS) {                                                \
-      LOG(FATAL) << "Failed, MPI error in" << __FILE__ << ":" << __LINE__  \
-                 << "with error code: " << std::to_string(r) << std::endl; \
-      exit(EXIT_FAILURE);                                                  \
-    }                                                                      \
+#define MPI_CHECK(cmd)                                             \
+  do {                                                             \
+    int r = cmd;                                                   \
+    if (r != MPI_SUCCESS) {                                        \
+      std::stringstream ss;                                        \
+      ss << "Failed, MPI error in" << __FILE__ << ":" << __LINE__  \
+         << "with error code: " << std::to_string(r) << std::endl; \
+      PADDLE_THROW(phi::errors::Fatal(ss.str()));                  \
+      exit(EXIT_FAILURE);                                          \
+    }                                                              \
   } while (0)
 
 MPI_Op ToMPIType(ReduceOp reduction);

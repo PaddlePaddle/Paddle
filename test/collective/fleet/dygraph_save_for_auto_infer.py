@@ -295,14 +295,14 @@ def step_save(strategy, output_dir, seed):
     assert p.poll() == 0
 
 
-def step_load(curent_strateggy, saved_dir, seed):
+def step_load(current_strategy, saved_dir, seed):
     python_exe = sys.executable
     os.makedirs(f"{saved_dir}/load/logs", exist_ok=True)
     filename = os.path.basename(__file__)
     # load dp
     cmd = (
         f"{python_exe} -m paddle.distributed.launch --log_dir {saved_dir}/load/logs"
-        f" --gpus 0  {filename} --cmd load --strategy {curent_strateggy} --output_dir {saved_dir} --load_dir {saved_dir} --seed {seed}"
+        f" --gpus 0  {filename} --cmd load --strategy {current_strategy} --output_dir {saved_dir} --load_dir {saved_dir} --seed {seed}"
     )
     logger.info(f"exe: {cmd}")
     env = copy.copy(os.environ)

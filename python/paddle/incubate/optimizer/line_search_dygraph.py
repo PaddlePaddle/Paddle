@@ -17,7 +17,7 @@ import paddle
 
 def _cubic_interpolate(x1, f1, g1, x2, f2, g2, bounds=None):
     r"""Cubic interpolation between (x1, f1, g1) and (x2, f2, g2).
-        Use two points and their gradient to determine a cubic function and get the minimun point
+        Use two points and their gradient to determine a cubic function and get the minimum point
         between them in the cubic curve.
 
     Reference:
@@ -30,7 +30,7 @@ def _cubic_interpolate(x1, f1, g1, x2, f2, g2, bounds=None):
         bounds: bounds of interpolation area
 
     Returns:
-        min_pos: the minimun point between the specified points in the cubic curve.
+        min_pos: the minimum point between the specified points in the cubic curve.
     """
     # Compute bounds of interpolation area
     if bounds is not None:

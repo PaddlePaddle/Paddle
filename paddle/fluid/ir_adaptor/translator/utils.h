@@ -20,9 +20,9 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 namespace dialect {
@@ -42,6 +42,7 @@ struct PdOpSig {
 bool HaveOpToMultiKernelsMap(std::string op_name);
 
 const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name);
+const std::vector<PdOpSig>& SparseOpToPdOpsMapping(std::string op_name);
 
 #ifdef PADDLE_WITH_DNNL
 bool IsOneDNNOnlyOp(std::string op_name);

@@ -34,6 +34,16 @@ void Conv3dInferMeta(const MetaTensor& x,
                      MetaTensor* rulebook,
                      MetaTensor* counter);
 
+void Conv3dImplicitGemmInferMeta(const MetaTensor& x,
+                                 const MetaTensor& kernel,
+                                 const std::vector<int>& paddings,
+                                 const std::vector<int>& dilations,
+                                 const std::vector<int>& strides,
+                                 const int groups,
+                                 const bool subm,
+                                 const std::string& key,
+                                 MetaTensor* out);
+
 void Pool3dInferMeta(const MetaTensor& x,
                      const std::vector<int>& kernel_sizes,
                      const std::vector<int>& paddings,

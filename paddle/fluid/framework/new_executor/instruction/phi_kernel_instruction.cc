@@ -28,9 +28,9 @@
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/type_defs.h"
 
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 
 #include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 namespace paddle {
@@ -173,11 +173,7 @@ PhiKernelInstruction::PhiKernelInstruction(
   VLOG(6) << "finish process no need buffer";
 }
 
-PhiKernelInstruction::~PhiKernelInstruction() {
-  if (phi_kernel_ != nullptr) {
-    delete phi_kernel_;
-  }
-}
+PhiKernelInstruction::~PhiKernelInstruction() { delete phi_kernel_; }
 
 void PhiKernelInstruction::Run() {
   VLOG(6) << "Begin run op " << phi_op_name_ << " infer meta.";

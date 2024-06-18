@@ -465,9 +465,9 @@ void FusedMultiTransformerInt8XpuKernel(
       attn_layout);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "xft::fused_multi_transformer_gpt_int8");
 #else
-  LOG(FATAL)
-      << "fused_multi_transformer_gpt_int8 is not supported since it's not "
-         "compiled with XPU_XFT";
+  PADDLE_THROW(
+      phi::errors::Fatal("fused_multi_transformer_gpt_int8 is not supported "
+                         "since it's not compiled with XPU_XFT"));
 #endif
 }
 

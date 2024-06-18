@@ -14,9 +14,7 @@
 
 #include "paddle/fluid/inference/tensorrt/plugin_arg_mapping_context.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 bool PluginArgumentMappingContext::HasInput(const std::string& name) const {
   auto inputs = op_desc_->Inputs();
@@ -76,7 +74,7 @@ paddle::any PluginArgumentMappingContext::Attr(
       break;
     };
     default: {
-      LOG(ERROR) << "Can't conver op's attribute [" << attr_name
+      LOG(ERROR) << "Can't cover op's attribute [" << attr_name
                  << "] to paddle any.";
     }
   }
@@ -160,6 +158,4 @@ bool PluginArgumentMappingContext::IsForInferShape() const {
   return false;
 }
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt

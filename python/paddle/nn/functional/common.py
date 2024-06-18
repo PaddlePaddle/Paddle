@@ -182,15 +182,16 @@ def interpolate(
     mode='nearest',
     align_corners=False,
     align_mode=0,
-    data_format='NCHW',
+    data_format=None,
     name=None,
 ):
     """
 
     This API resizes a batch of images.
 
-    The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
-    or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
+    The input must be be a 3-D Tensor of the shape (num_batches, channels, in_w)
+    or (num_batches, in_w, channels), or 4-D (num_batches, channels, in_h, in_w) or
+    (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     Where in_w is width of the input tensor, in_h is the height of the input tensor,
     in_d is the depth of the input tensor.
@@ -322,8 +323,9 @@ def interpolate(
     https://en.wikipedia.org/wiki/Bicubic_interpolation
 
     Parameters:
-        x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
-                          its data format is specified by :attr:`data_format`.
+        x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8, its data format is
+             specified by :attr:`data_format`. If :attr:`data_format` is not provided, the data format will
+             be presumed according to its dimension. See details in :attr:`data_format`.
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
@@ -342,18 +344,21 @@ def interpolate(
         align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
                             it can be \'0\' for src_idx = scale_factor*(dst_index+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from:`NCW`, `NWC`,  `"NCHW"`, `"NHWC"`, `"NCDHW"`,
-            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
-            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        data_format (str, optional): Specify the data format of the input, and the data format of
+             the output will be consistent with that of the input. An optional string from:`"NCW"`,
+             `"NWC"`,  `"NCHW"`, `"NHWC"`, `"NCDHW"`, `"NDHWC"`. The default value is None.
+             When :attr:`data_format` is not specified, it will be automatically inferred from the
+             input dimension of :attr:`x`. When :attr:`x` is a 3-D Tensor, :attr:`data_format` will be
+             set to `"NCW"`; When :attr:`x` is a 4-D Tensor, :attr:`data_format` will be set to
+             `"NCHW"`; When :attr:`x` is a 5-D Tensor, :attr:`data_format` will be set to `"NCDHW"`.
+             When it is `"NCHW"`, the data should be stored in the order of:
+             `[batch_size, input_channels, input_height, input_width]`. When it is `"NCDHW"`, the
+             data should be stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
-        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
-        or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
+        A 3-D, 4-D or 5-D Tensor, with the same data format of the input :attr:`x`.
 
 
     Examples:
@@ -375,6 +380,18 @@ def interpolate(
             >>> print(output_2.shape)
             [2, 3, 12, 10]
     """
+    if data_format is None:
+        dim_size = len(x.shape)
+        if dim_size == 3:
+            data_format = 'NCW'
+        elif dim_size == 4:
+            data_format = 'NCHW'
+        elif dim_size == 5:
+            data_format = 'NCDHW'
+        else:
+            raise ValueError(
+                f"The dimension of the input tensor should only be 3-D, 4-D or 5-D, but the received dimension is {dim_size}."
+            )
     data_format = data_format.upper()
     resample = mode.upper()
     resample_type = mode.lower()
@@ -719,7 +736,7 @@ def upsample(
     mode='nearest',
     align_corners=False,
     align_mode=0,
-    data_format='NCHW',
+    data_format=None,
     name=None,
 ):
     """
@@ -727,7 +744,8 @@ def upsample(
     This API resizes a batch of images.
 
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
-    or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
+    or (num_batches, in_w, channels), or 4-D (num_batches, channels, in_h, in_w) or
+    (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     Where in_w is width of the input tensor, in_h is the height of the input tensor,
     in_d is the depth of the input tensor.
@@ -858,8 +876,9 @@ def upsample(
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
 
     Parameters:
-        x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
-                          its data format is specified by :attr:`data_format`.
+        x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8, its data format is
+             specified by :attr:`data_format`. If :attr:`data_format` is not provided, the data format will
+             be presumed according to its dimension. See details in :attr:`data_format`.
         size (list|tuple|Tensor|None, optional): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
@@ -879,19 +898,22 @@ def upsample(
         align_mode(int, optional)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
                             it can be \'0\' for src_idx = scale_factor*(dst_index+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
-            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
-            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        data_format (str, optional): Specify the data format of the input, and the data format of
+             the output will be consistent with that of the input. An optional string from:`"NCW"`,
+             `"NWC"`,  `"NCHW"`, `"NHWC"`, `"NCDHW"`, `"NDHWC"`. The default value is None.
+             When :attr:`data_format` is not specified, it will be automatically inferred from the
+             input dimension of :attr:`x`. When :attr:`x` is a 3-D Tensor, :attr:`data_format` will be
+             set to `"NCW"`; When :attr:`x` is a 4-D Tensor, :attr:`data_format` will be set to
+             `"NCHW"`; When :attr:`x` is a 5-D Tensor, :attr:`data_format` will be set to `"NCDHW"`.
+             When it is `"NCHW"`, the data should be stored in the order of:
+             `[batch_size, input_channels, input_height, input_width]`. When it is `"NCDHW"`, the
+             data should be stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
-        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
-        or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
+        A 3-D, 4-D or 5-D Tensor, with the same data format of the input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -906,6 +928,7 @@ def upsample(
             [2, 3, 12, 12]
 
     """
+
     return interpolate(
         x, size, scale_factor, mode, align_corners, align_mode, data_format
     )
@@ -1134,9 +1157,8 @@ def dropout(
         )  # semantic transfer
 
         if in_dynamic_or_pir_mode():
-            if default_main_program().random_seed != 0:
-                seed = default_main_program().random_seed
-
+            if paddle.static.default_main_program().random_seed != 0:
+                seed = paddle.static.default_main_program().random_seed
             out = _C_ops.dropout(
                 x,
                 None,
@@ -1211,15 +1233,11 @@ def dropout(
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
                 raise ValueError(
-                    "axis value should be greater than or equal to 0 and less than dimensions of x:{}, but get axis value:{} ".format(
-                        len(input_shape), max(drop_axes)
-                    )
+                    f"axis value should be greater than or equal to 0 and less than dimensions of x:{len(input_shape)}, but get axis value:{max(drop_axes)} "
                 )
             if len(drop_axes) > len(input_shape):
                 raise ValueError(
-                    "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".format(
-                        len(input_shape), len(drop_axes)
-                    )
+                    f"length of axis should not be greater than dimensions of x:{len(input_shape)}, but get length of axis: {len(drop_axes)}"
                 )
             mask_shape = [1] * len(input_shape)
             if not in_dynamic_mode():
@@ -1722,9 +1740,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
     }
     assert (
         data_format in supported_format_map[x_dim]
-    ), "input tensor dimension is {}, it's data format should be in {} but got {}".format(
-        x_dim, supported_format_map[x_dim], data_format
-    )
+    ), f"input tensor dimension is {x_dim}, it's data format should be in {supported_format_map[x_dim]} but got {data_format}"
 
     unsqueezed_dim = []
 
@@ -2075,9 +2091,11 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     smooth_label = helper.create_variable_for_type_inference(label.dtype)
     helper.append_op(
         type="label_smooth",
-        inputs={"X": label, "PriorDist": prior_dist}
-        if prior_dist
-        else {"X": label},
+        inputs=(
+            {"X": label, "PriorDist": prior_dist}
+            if prior_dist
+            else {"X": label}
+        ),
         outputs={"Out": smooth_label},
         attrs={"epsilon": float(epsilon)},
     )
@@ -2187,10 +2205,8 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     """
     if not (group is False or group is None or hasattr(group, 'is_member')):
         raise ValueError(
-            'Expected group is False, None or instance of paddle.distributed.collective.Group \
-             (got group: {})'.format(
-                group
-            )
+            f'Expected group is False, None or instance of paddle.distributed.collective.Group \
+             (got group: {group})'
         )
         return
 
@@ -2213,9 +2229,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
 
     if num_samples > num_classes:
         raise ValueError(
-            'Expected num_samples less than or equal to {}, got num_samples {}'.format(
-                num_classes, num_samples
-            )
+            f'Expected num_samples less than or equal to {num_classes}, got num_samples {num_samples}'
         )
 
     label_size = 1

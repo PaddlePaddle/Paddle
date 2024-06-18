@@ -80,7 +80,7 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     auto axis = Attr<int>("axis");
 
     framework::AttributeMap attrs;
@@ -93,9 +93,9 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
     PADDLE_ENFORCE_GT(
         n,
         0,
-        platform::errors::InvalidArgument("Input tensorarray size should > 0,"
-                                          "but the received is %d",
-                                          n));
+        phi::errors::InvalidArgument("Input tensorarray size should > 0,"
+                                     "but the received is %d",
+                                     n));
 
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;
@@ -219,7 +219,7 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     auto axis = Attr<int>("axis");
     framework::AttributeMap attrs;
     attrs["axis"] = axis;
@@ -229,9 +229,9 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
     PADDLE_ENFORCE_GT(
         n,
         0,
-        platform::errors::InvalidArgument("Input tensorarray size should > 0, "
-                                          "but the received is: %d. ",
-                                          n));
+        phi::errors::InvalidArgument("Input tensorarray size should > 0, "
+                                     "but the received is: %d. ",
+                                     n));
 
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;

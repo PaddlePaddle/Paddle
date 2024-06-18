@@ -34,11 +34,11 @@
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/phi/common/complex.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/op_result.h"
+#include "paddle/pir/include/core/value.h"
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 class OpAttrTypeMap {
  public:
@@ -55,7 +55,7 @@ class OpAttrTypeMap {
   }
 
  private:
-  OpAttrTypeMap() = default;
+  OpAttrTypeMap() : ops_attrtype_map_() {}
   std::unordered_map<
       std::string,
       std::unordered_map<std::string, paddle::framework::proto::AttrType>>
@@ -63,6 +63,7 @@ class OpAttrTypeMap {
 };
 
 extern PyTypeObject* g_vartype_pytype;
+extern PyTypeObject* g_data_type_pytype;
 extern PyTypeObject* g_blockdesc_pytype;
 extern PyTypeObject* p_tensor_type;
 
@@ -71,6 +72,7 @@ bool PyObject_CheckBool(PyObject** obj) { return PyBool_Check(*obj); }
 bool PyObject_CheckLongOrToLong(PyObject** obj) {
   if ((PyLong_Check(*obj) && !PyBool_Check(*obj)) ||
       PyObject_TypeCheck(*obj, g_vartype_pytype) ||        // NOLINT
+      PyObject_TypeCheck(*obj, g_data_type_pytype) ||      // NOLINT
       (PyObject_TypeCheck(*obj, p_tensor_type) &&          // NOLINT
        (((TensorObject*)(*obj))->tensor.numel() == 1))) {  // NOLINT
     return true;
@@ -520,7 +522,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
   } else if (obj == Py_None) {
     return {};
   } else if (PyObject_CheckLongOrToLong(&obj)) {
-    return {(int64_t)PyLong_AsLongLong(obj)};
+    return {(int64_t)PyLong_AsLongLong(obj)};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "
@@ -855,6 +857,17 @@ void CastPyArg2AttrIRBlock(PyObject* obj,
   attrs[key] = reinterpret_cast<::pir::Block*&>(vh[0]);
 }
 
+void CastPyArg2AttrIRProgram(PyObject* obj,
+                             paddle::framework::AttributeMap& attrs,  // NOLINT
+                             const std::string& key,
+                             const std::string& op_type,
+                             ssize_t arg_pos) {
+  VLOG(1) << "After Process pir::Program*";
+  const std::shared_ptr<::pir::Program> program =
+      ::py::handle(obj).cast<std::shared_ptr<::pir::Program>>();
+  attrs[key] = program;
+}
+
 void CastPyArg2AttrValues(PyObject* obj,
                           paddle::framework::AttributeMap& attrs,  // NOLINT
                           const std::string& key,
@@ -865,18 +878,14 @@ void CastPyArg2AttrValues(PyObject* obj,
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
-      // TODO(xiongkun): judge OpResult or Value;
+      // TODO(xiongkun): judge Value;
       item = PyList_GetItem(obj, i);
       ::pybind11::detail::instance* inst =
           (::pybind11::detail::instance*)item;  // NOLINT
       void** vh = inst->simple_layout ? inst->simple_value_holder
                                       : &inst->nonsimple.values_and_holders[0];
-      ::pir::OpResult* opresult = reinterpret_cast<::pir::OpResult*>(vh[0]);
-      if (opresult->impl() == nullptr) {
-        results.emplace_back(pir::Value(nullptr));
-      } else {
-        results.emplace_back(pir::Value(opresult->Value::impl()));
-      }
+      ::pir::Value* value = reinterpret_cast<::pir::Value*>(vh[0]);
+      results.emplace_back(pir::Value(value->impl()));
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
@@ -1021,11 +1030,11 @@ void ConstructAttrMapForRunProgram(
 
     if (std::set<std::string>({"cuda_graph_capture_mode"}).count(key)) {
       CastPyArg2AttrString(obj, attrs, key, op_type, arg_pos);
-    } else if (std::set<std::string>({"global_block",
-                                      "forward_global_block",
-                                      "backward_global_block"})
-                   .count(key)) {
+    } else if (std::set<std::string>({"global_block"}).count(key)) {
       CastPyArg2AttrIRBlock(obj, attrs, key, op_type, arg_pos);
+    } else if (std::set<std::string>({"forward_program", "backward_program"})
+                   .count(key)) {
+      CastPyArg2AttrIRProgram(obj, attrs, key, op_type, arg_pos);
     } else if (std::set<std::string>({"is_test", "use_interpretorcore"})
                    .count(key)) {
       CastPyArg2AttrBoolean(obj, attrs, key, op_type, arg_pos);
@@ -1137,5 +1146,4 @@ ssize_t GetIdxFromCoreOpsInfoMap(
   return -1;
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

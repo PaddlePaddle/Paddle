@@ -51,13 +51,21 @@ std::vector<ir::Tensor> ArgSort(const ir::Tensor &A,
                                 const std::string &name) {
   std::string find_func_name;
   std::string index_func_name;
-  if (target.arch == cinn::common::Target::Arch::NVGPU) {
-    find_func_name.assign("cinn_nvgpu_next_smallest_int32");
-  } else if (target.arch == cinn::common::Target::Arch::X86) {
-    find_func_name.assign("cinn_host_next_smallest_int32");
-  } else {
-    LOG(FATAL) << "ArgSort only supports X86 and NVGPU ! Please Check.\n";
-  }
+  target.arch.Match(
+      [&](common::UnknownArch) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "ArgSort only supports X86 and NVGPU ! Please Check.\n"));
+      },
+      [&](common::X86Arch) {
+        find_func_name.assign("cinn_host_next_smallest_int32");
+      },
+      [&](common::ARMArch) {
+        PADDLE_THROW(phi::errors::Fatal(
+            "ArgSort only supports X86 and NVGPU ! Please Check.\n"));
+      },
+      [&](common::NVGPUArch) {
+        find_func_name.assign("cinn_nvgpu_next_smallest_int32");
+      });
   if (is_ascend) {
     index_func_name =
         cinn::hlir::GetExternFuncName(target, A->type(), "lt_num");
@@ -214,7 +222,8 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
                                             output_shapes[0].end(),
                                             1,
                                             std::multiplies<int>());
-        if (prod_size > 1 && target.arch == Target::Arch::X86) {
+        if (prod_size > 1 &&
+            std::holds_alternative<common::X86Arch>(target.arch)) {
           pe::IRScheduleInjectiveCPU(
               ir_sch, output_shapes.front(), target, true);
         }
@@ -297,7 +306,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
                                         output_shapes[0].end(),
                                         1,
                                         std::multiplies<int>());
-    if (prod_size > 1 && target.arch == Target::Arch::X86) {
+    if (prod_size > 1 && std::holds_alternative<common::X86Arch>(target.arch)) {
       pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target, true);
     }
     std::vector<cinn::common::CINNValue> res{

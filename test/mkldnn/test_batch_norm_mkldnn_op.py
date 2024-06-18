@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
 from mkldnn_op_test import check_if_mkldnn_batchnorm_primitives_exist_in_bwd
-from op_test import _set_use_system_allocator
-from test_batch_norm_op import (
-    TestBatchNormOpInference,
+from op_test import _set_use_system_allocator, pir_executor_guard
+
+sys.path.append("../deprecated/legacy_test")
+from test_batch_norm_op import TestBatchNormOpInference
+from test_batch_norm_op_deprecated import (
     TestBatchNormOpTraining,
     _reference_grad,
     _reference_training,
@@ -71,6 +74,11 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
             scale_grad,
             bias_grad,
         )
+
+    def test_forward_backward(self):
+        super().test_forward_backward()
+        with pir_executor_guard():
+            super().test_forward_backward()
 
 
 class TestMKLDNNBatchNormOpTraining_NHWC(TestMKLDNNBatchNormOpTraining):
@@ -139,6 +147,11 @@ class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
         self.check_with_place_without_scale_and_bias(
             place, data_format, self.dtype, [2, 3, 4, 5]
         )
+        with pir_executor_guard():
+            self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
+            self.check_with_place_without_scale_and_bias(
+                place, data_format, self.dtype, [2, 3, 4, 5]
+            )
 
 
 class TestMKLDNNBatchNormOpInference_NHWC(TestMKLDNNBatchNormOpInference):
@@ -160,6 +173,8 @@ class TestMKLDNNBatchNormOpWithReluInference(TestBatchNormOpInference):
         place = core.CPUPlace()
         data_format = "NCHW"
         self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
+        with pir_executor_guard():
+            self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
 
 
 if __name__ == '__main__':

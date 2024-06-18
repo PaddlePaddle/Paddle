@@ -14,9 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/pool3d_op_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 inline void DealCeilMode(const nvinfer1::Dims &input_shape,
                          std::vector<int> ksize,
@@ -224,13 +222,11 @@ class Pool3dOpConverter : public OpConverter {
       layer = pool_layer;
     }
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "pool3d", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "pool3d", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 USE_OP_ITSELF(pool3d);
 REGISTER_TRT_OP_CONVERTER(pool3d, Pool3dOpConverter);

@@ -19,27 +19,10 @@ from .. import _C_ops
 from ..base.data_feeder import check_variable_and_dtype
 from ..framework import LayerHelper, in_dynamic_or_pir_mode
 from .layer_function_generator import (
-    add_sample_code,
     generate_activation_fn,
     generate_inplace_fn,
     generate_layer_fn,
 )
-
-__deprecated_func_name__ = {
-    'tanh_shrink': 'tanhshrink',
-    'logsigmoid': 'log_sigmoid',
-}
-
-__activations_noattr__ = [
-    'silu',
-    'logsigmoid',
-    'tanh_shrink',
-    'softplus',
-    'softsign',
-    'tanh',
-]
-
-__unary_func__ = ['abs']
 
 __inplace_unary_func__ = [
     'exp_',
@@ -74,147 +57,40 @@ __all__ = []
 # e.g.: test_program_code.py, test_dist_train.py
 globals()['_scale'] = generate_layer_fn('scale')
 
-globals()['_elementwise_div'] = generate_layer_fn('elementwise_div')
-
-for _OP in set(__activations_noattr__):
-    _new_OP = _OP
-    if _OP in __deprecated_func_name__:
-        _new_OP = __deprecated_func_name__[_OP]
-    _func = generate_activation_fn(_OP)
-    globals()[_OP] = _func
-
-for _OP in set(__unary_func__):
-    _new_OP = _OP
-    if _OP in __deprecated_func_name__:
-        _new_OP = __deprecated_func_name__[_OP]
-    _func = generate_activation_fn(_OP)
-    globals()[_OP] = _func
-
 for _OP in set(__inplace_unary_func__):
-    _new_OP = _OP
-    if _OP in __deprecated_func_name__:
-        _new_OP = __deprecated_func_name__[_OP]
     func = generate_inplace_fn(_OP)
     func.__module__ = __name__
     _func = inplace_apis_in_dygraph_only(func)
     globals()[_OP] = _func
 
-add_sample_code(
-    globals()["silu"],
-    r"""
-Examples:
-    .. code-block:: python
 
-        >>> import paddle
-        >>> import paddle.nn.functional as F
+def abs(x, name=None):
+    """
+    Perform elementwise abs for input `x`.
 
-        >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-        >>> out = F.silu(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [0.73105860, 1.76159406, 2.85772228, 3.92805505])
-""",
-)
+    .. math::
 
-add_sample_code(
-    globals()["logsigmoid"],
-    r"""
-Examples:
-    .. code-block:: python
+        out = |x|
 
-        >>> import paddle
-        >>> import paddle.nn.functional as F
+    Args:
+        x (Tensor): The input Tensor with data type int32, int64, float16, float32 and float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
-        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        >>> out = F.log_sigmoid(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [-0.91301525, -0.79813892, -0.64439666, -0.55435526])
-""",
-)
+    Returns:
+        Tensor.A Tensor with the same data type and shape as :math:`x`.
 
-add_sample_code(
-    globals()["tanh"],
-    r"""
-Examples:
-    .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-        >>> import paddle
+            >>> import paddle
 
-        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        >>> out = paddle.tanh(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
-""",
-)
-
-add_sample_code(
-    globals()["tanh_shrink"],
-    r"""
-Examples:
-    .. code-block:: python
-
-        >>> import paddle
-        >>> import paddle.nn.functional as F
-
-        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        >>> out = F.tanhshrink(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [-0.02005100, -0.00262472,  0.00033201,  0.00868741])
-""",
-)
-
-add_sample_code(
-    globals()["abs"],
-    r"""
-Examples:
-    .. code-block:: python
-
-        >>> import paddle
-
-        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        >>> out = paddle.abs(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [0.40000001, 0.20000000, 0.10000000, 0.30000001])
-""",
-)
-
-add_sample_code(
-    globals()["softplus"],
-    r"""
-Examples:
-    .. code-block:: python
-
-        >>> import paddle
-        >>> import paddle.nn.functional as F
-
-        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        >>> out = F.softplus(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [0.51301527, 0.59813893, 0.74439669, 0.85435522])
-""",
-)
-
-add_sample_code(
-    globals()["softsign"],
-    r"""
-Examples:
-    .. code-block:: python
-
-        >>> import paddle
-        >>> import paddle.nn.functional as F
-
-        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        >>> out = F.softsign(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
-""",
-)
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.abs(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.40000001, 0.20000000, 0.10000000, 0.30000001])
+    """
+    return generate_activation_fn('abs')(x, name)
 
 
 def acos(x, name=None):
@@ -1169,10 +1045,34 @@ def tan(x, name=None):
         return out
 
 
-_erf_ = generate_layer_fn('erf')
-
-
 def erf(x, name=None):
+    r"""
+    The error function.
+    For more details, see `Error function <https://en.wikipedia.org/wiki/Error_function>`_.
+
+    Equation:
+        ..  math::
+            out = \frac{2}{\sqrt{\pi}} \int_{0}^{x}e^{- \eta^{2}}d\eta
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The output of Erf, dtype: float32 or float64, the same as the input, shape: the same as the input.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.erf(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.42839241, -0.22270259,  0.11246292,  0.32862678])
+    """
     if in_dynamic_or_pir_mode():
         return _C_ops.erf(x)
 
@@ -1181,35 +1081,4 @@ def erf(x, name=None):
     for name, val in locals_var.items():
         if val is not None:
             kwargs[name] = val
-    return _erf_(**kwargs)
-
-
-erf.__doc__ = r"""
-:strong:`Erf Operator`
-For more details, see `Error function <https://en.wikipedia.org/wiki/Error_function>`_.
-
-Equation:
-    ..  math::
-        out = \frac{2}{\sqrt{\pi}} \int_{0}^{x}e^{- \eta^{2}}d\eta
-
-Args:
-
-    x (Tensor): The input tensor, it's data type should be float32, float64.
-    name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-Returns:
-
-    Tensor: The output of Erf, dtype: float32 or float64, the same as the input, shape: the same as the input.
-
-Examples:
-
-    .. code-block:: python
-
-        >>> import paddle
-
-        >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-        >>> out = paddle.erf(x)
-        >>> print(out)
-        Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [-0.42839241, -0.22270259,  0.11246292,  0.32862678])
-"""
+    return generate_layer_fn('erf')(**kwargs)

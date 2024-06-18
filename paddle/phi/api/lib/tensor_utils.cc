@@ -16,6 +16,7 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/api/lib/api_registry.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/enforce.h"
@@ -36,7 +37,7 @@ phi::Place GetPlaceFromPtr(void* data) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10000
-  cudaPointerAttributes attr;
+  cudaPointerAttributes attr = {};
   cudaError_t status = cudaPointerGetAttributes(&attr, data);
   if (status == cudaSuccess && attr.type == cudaMemoryTypeDevice) {
     return phi::GPUPlace(attr.device);
@@ -47,7 +48,7 @@ phi::Place GetPlaceFromPtr(void* data) {
                                  "supported when CUDA version >= 10.0."));
 #endif
 #else
-  hipPointerAttribute_t attr;
+  hipPointerAttribute_t attr = {};
   hipError_t status = hipPointerGetAttributes(&attr, data);
   if (status == hipSuccess && attr.memoryType == hipMemoryTypeDevice) {
     return phi::GPUPlace(attr.device);
@@ -123,7 +124,7 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
                         typeid(input.impl().get()).name()));
   auto dev_ctx = phi::distributed::GetDistTensorDeviceContext(
       static_cast<phi::distributed::DistTensor*>(input.impl().get()));
-  auto input_tensor_impl = input.impl();
+  const auto& input_tensor_impl = input.impl();
   std::shared_ptr<phi::distributed::DistTensor> dist_out_ptr = nullptr;
   if (input_tensor_impl) {
     phi::distributed::DistTensor* dist_tensor =
@@ -137,7 +138,7 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
           phi::errors::InvalidArgument(
               "Only "
               "uninitialized ``phi::distributed::DistTensor`` is allowed. "));
-      VLOG(3) << "reshard tensor which is not in current mesh, just set its "
+      VLOG(4) << "reshard tensor which is not in current mesh, just set its "
                  "dist_attr "
               << "from " << dist_tensor->dist_attr() << " to " << dist_attr;
 
@@ -151,8 +152,10 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
     }
 
     if (dist_tensor->dist_attr() != dist_attr) {
-      VLOG(6) << "reshard func, reshard tensor from "
-              << dist_tensor->dist_attr() << " to " << dist_attr;
+      auto tensor_name = (input.name().empty() ? "None" : input.name());
+      VLOG(4) << "Reshard func: tensor(" << tensor_name << ") "
+              << paddle::experimental::ReshardDebugInfo(*dist_tensor,
+                                                        dist_attr);
       auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
                                                                  dist_attr);
       dist_out_ptr = func->Eval(dev_ctx, *dist_tensor, dist_attr);

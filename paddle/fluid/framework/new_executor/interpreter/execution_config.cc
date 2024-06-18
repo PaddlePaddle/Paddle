@@ -24,9 +24,7 @@
 
 PD_DECLARE_bool(new_executor_serial_run);
 
-namespace paddle {
-namespace framework {
-namespace interpreter {
+namespace paddle::framework::interpreter {
 
 static constexpr size_t kHostNumThreads = 4;
 static constexpr size_t kDeviceNumThreads = 1;
@@ -127,7 +125,7 @@ void ExecutionConfig::Log(int log_level) {
           << "used_for_cinn = " << used_for_cinn << "\n"
           << "used_for_control_flow_op = " << used_for_control_flow_op << "\n"
           << "used_for_jit = " << used_for_jit << "\n"
-          << "deivce_num_threads = " << device_num_threads << "\n"
+          << "device_num_threads = " << device_num_threads << "\n"
           << "host_num_threads = " << host_num_threads << "\n";
 
   log_str << "force_root_scope_vars = [";
@@ -151,6 +149,4 @@ void ExecutionConfig::Log(int log_level) {
   VLOG(log_level) << log_str.str();
 }
 
-}  // namespace interpreter
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::interpreter

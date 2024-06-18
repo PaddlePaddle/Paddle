@@ -27,7 +27,7 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
-#include "paddle/fluid/string/printf.h"
+#include "paddle/utils/string/printf.h"
 #include "paddle2onnx/converter.h"
 
 #ifdef PADDLE_WITH_TESTING
@@ -155,7 +155,7 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   ///
   /// \brief Get the Output Tensor object
   ///
-  /// \param[in] name otuput name
+  /// \param[in] name output name
   /// \return output tensor
   ///
   std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
@@ -167,7 +167,7 @@ class ONNXRuntimePredictor : public PaddlePredictor {
   ///
   std::map<std::string, std::vector<int64_t>> GetInputTensorShape() override;
 
-  /// Not supoort
+  /// Not support
   bool Run(const std::vector<PaddleTensor> &inputs,
            std::vector<PaddleTensor> *output_data,
            int batch_size = -1) override;
@@ -216,7 +216,7 @@ class ONNXRuntimePredictor : public PaddlePredictor {
 
   /// \brief get the Ort Value(input Tensor).
   ///
-  /// \param[in] desc ONNXDesce(name、shape、dtype)
+  /// \param[in] desc ONNXDesc(name、shape、dtype)
   ///
   /// \param[in] device_name "cpu" or "gpu" of device
   ///

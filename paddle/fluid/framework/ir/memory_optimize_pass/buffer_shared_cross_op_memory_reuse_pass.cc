@@ -44,6 +44,10 @@ static NodeDependency ReverseNodeDependency(NodeDependency dep) {
 }
 
 class BufferSharedCrossOpMemoryReusePass : public MemoryReusePass {
+ public:
+  BufferSharedCrossOpMemoryReusePass()
+      : graph_(nullptr), ops_(), op_to_idx_(), deps_() {}
+
  protected:
   std::string ReuseType() const override { return "cross_op_memory_reuse"; }
 
@@ -245,7 +249,7 @@ void BufferSharedCrossOpMemoryReusePass::RunOnScopeIdx(size_t idx) const {
       }
     }
 
-    // After all output args have been transversed, we should check whether
+    // After all output args have been traversed, we should check whether
     // there is new unlived var after `op` runs.
     for (auto op_iter = var_to_ops.begin(); op_iter != var_to_ops.end();) {
       // erase op from `var_to_ops` first
@@ -355,7 +359,7 @@ void BufferSharedCrossOpMemoryReusePass::BuildOpDependencyMap() const {
   // BFS to fill `preceding_ops`
   graph_view.BreadthFirstVisit([&](OpHandleBase *cur_op) {
     // All preceding ops of cur_op should be:
-    //  - preceding ops of cur_op, that is connected to cur_op directely
+    //  - preceding ops of cur_op, that is connected to cur_op directly
     //  - all preceding ops of `direct preceding ops of cur_op`
     auto &all_preceding_ops_of_cur_op = preceding_ops[cur_op];
     for (auto &preceding_op : graph_view.PrecedingOps(cur_op)) {

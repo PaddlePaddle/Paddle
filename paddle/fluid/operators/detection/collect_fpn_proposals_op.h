@@ -76,7 +76,7 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GE(post_nms_topN,
                       0UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The parameter post_nms_topN must be "
                           "a positive integer. But received post_nms_topN = %d",
                           post_nms_topN));
@@ -85,7 +85,7 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         multi_layer_rois.size(),
         multi_layer_scores.size(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The number of RoIs and Scores should"
             " be the same. But received number of RoIs is %d, number of Scores "
             "is %d",

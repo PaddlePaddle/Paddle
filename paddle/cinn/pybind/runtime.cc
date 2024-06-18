@@ -74,29 +74,47 @@ cinn_buffer_t *CreateBufferFromNumpy(py::array data,
   return buffer;
 }
 
+cinn_buffer_t *CreateBufferFromNumpyImpl(common::UnknownArch, py::array data) {
+  LOG(FATAL) << "NotImplemented.";
+}
+
+cinn_buffer_t *CreateBufferFromNumpyImpl(common::X86Arch, py::array data) {
+  return CreateBufferFromNumpy(data, cinn_x86_device);
+}
+
+cinn_buffer_t *CreateBufferFromNumpyImpl(common::ARMArch, py::array data) {
+  LOG(FATAL) << "NotImplemented.";
+}
+
+cinn_buffer_t *CreateBufferFromNumpyImpl(common::NVGPUArch, py::array data) {
+#ifdef CINN_WITH_CUDA
+  std::vector<int> shape;
+  std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
+  auto *buffer = new cinn_buffer_t();
+  buffer->device = cinn_nvgpu_device;
+  buffer->memory_size = data.nbytes();
+  CUDA_CALL(cudaMalloc(&buffer->memory, data.nbytes()));
+  CUDA_CALL(cudaMemcpy(
+      buffer->memory, data.data(), data.nbytes(), cudaMemcpyHostToDevice));
+  return buffer;
+#else
+  PADDLE_THROW(phi::errors::Fatal(
+      "To use CUDA backends, you need to set WITH_CUDA ON!"));
+#endif
+}
+
+cinn_buffer_t *InterfaceCreateBufferFromNumpy(common::Arch arch,
+                                              py::array data) {
+  return std::visit(
+      [&](const auto &impl) { return CreateBufferFromNumpyImpl(impl, data); },
+      arch.variant());
+}
+
 cinn_buffer_t *CreateBufferFromNumpy(
     py::array data,
     cinn::common::Target target = cinn::common::DefaultHostTarget(),
     int align = 0) {
-  if (target == cinn::common::DefaultHostTarget()) {
-    return CreateBufferFromNumpy(data, cinn_x86_device);
-  } else if (target.arch == Target::Arch::NVGPU) {
-#ifdef CINN_WITH_CUDA
-    std::vector<int> shape;
-    std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
-    auto *buffer = new cinn_buffer_t();
-    buffer->device = cinn_nvgpu_device;
-    buffer->memory_size = data.nbytes();
-    CUDA_CALL(cudaMalloc(&buffer->memory, data.nbytes()));
-    CUDA_CALL(cudaMemcpy(
-        buffer->memory, data.data(), data.nbytes(), cudaMemcpyHostToDevice));
-    return buffer;
-#else
-    LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
-#endif
-  } else {
-    CINN_NOT_IMPLEMENTED
-  }
+  return InterfaceCreateBufferFromNumpy(target.arch, data);
 }
 
 void BufferCopyTo(const cinn_buffer_t &buffer, py::array array) {
@@ -108,7 +126,8 @@ void BufferCopyTo(const cinn_buffer_t &buffer, py::array array) {
     CUDA_CALL(cudaMemcpy(
         array_data, buffer.memory, array.nbytes(), cudaMemcpyDeviceToHost));
 #else
-    LOG(FATAL) << "To use CUDA backends, you need to set WITH_CUDA ON!";
+    PADDLE_THROW(phi::errors::Fatal(
+        "To use CUDA backends, you need to set WITH_CUDA ON!"));
 #endif
 
   } else {
@@ -135,7 +154,7 @@ py::array BufferHostMemoryToNumpy(cinn_buffer_t &buffer) {  // NOLINT
   } else if (buffer.type == cinn_bool_t()) {
     dt = py::dtype::of<bool>();
   } else {
-    LOG(FATAL) << "Not supported type found";
+    PADDLE_THROW(phi::errors::InvalidArgument("Not supported type found"));
   }
 
   py::array::ShapeContainer shape(buffer.dims, buffer.dims + buffer.dimensions);

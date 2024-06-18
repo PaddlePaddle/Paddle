@@ -23,10 +23,10 @@
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
-VariableScope::VariableScope(Scope* scope) {
+VariableScope::VariableScope(Scope* scope)
+    : var_list_(), name2id_(), vec_meta_info_(), data_transfer_added_vars_() {
   // for @EMPTY@ variable
   name2id_[kEmptyVarName] = kEmptyVarIndex;
   var_list_.push_back(nullptr);
@@ -38,8 +38,6 @@ VariableScope::VariableScope(Scope* scope) {
       platform::errors::PreconditionNotMet(
           "You have passed a nullptr to construct VariableScope."));
 }
-
-VariableScope::~VariableScope() = default;
 
 Scope* VariableScope::GetMutableScope() const { return scope_; }
 
@@ -96,7 +94,7 @@ void VariableScope::AddVar(const std::string& name,
     auto id = VarSize();
     name2id_[name] = static_cast<int>(id);
     vec_meta_info_.emplace_back(0, var_desc);
-    if (local_scope_ != nullptr) {
+    if (local_scope_ != nullptr) {  // NOLINT
       var_list_.push_back(local_scope_->FindVar(name));
     } else {
       var_list_.push_back(scope_->FindVar(name));
@@ -125,14 +123,14 @@ paddle::framework::VarDesc* VariableScope::VarDesc(int id) const {
   return vec_meta_info_[id].var_desc_;
 }
 
-void VariableScope::SetVarSikpInplace(const std::string& name, bool skip) {
+void VariableScope::SetVarSkipInplace(const std::string& name, bool skip) {
   CheckExist(name);
-  vec_meta_info_[VarId(name)].sikp_inplace_ = skip;
+  vec_meta_info_[VarId(name)].skip_inplace_ = skip;
 }
 
-bool VariableScope::GetVarSikpInplace(int id) const {
+bool VariableScope::GetVarSkipInplace(int id) const {
   CheckExist(id);
-  return vec_meta_info_[id].sikp_inplace_;
+  return vec_meta_info_[id].skip_inplace_;
 }
 
 void VariableScope::CheckExist(int id) const {
@@ -156,8 +154,13 @@ Instruction::Instruction(size_t id,
                          const platform::DeviceContext& dev_ctx)
     : is_artificial_(false),
       id_(id),
+      next_instrs_in_different_thread(),
+      next_instrs_in_same_thread(),
+      events_to_wait_(),
       op_func_node_(op_func_node),
-      dev_ctx_(dev_ctx) {
+      dev_ctx_(dev_ctx),
+      gc_check_vars_(),
+      vec_inplace_in_to_out_() {
   if (op_func_node.operator_base_ != nullptr &&
       op_func_node.operator_base_->Type() == "depend") {
     is_artificial_ = true;
@@ -315,7 +318,7 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
 void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-void Instruction::UpdataRecordStreamForGcInfo() {
+void Instruction::UpdateRecordStreamForGcInfo() {
   if (!IsInterpretercoreFastGCEnabled() ||
       KernelType() != OpFuncType::kGpuAsync) {
     return;
@@ -349,5 +352,4 @@ void Instruction::UpdataRecordStreamForGcInfo() {
 }
 #endif
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

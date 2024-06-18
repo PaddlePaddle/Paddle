@@ -105,20 +105,21 @@ inline DDim GetOutputSqueezeShape(const std::vector<int> squeeze_dims,
 
 inline DDim GetUnsqueezeShape(const std::vector<int64_t> unsqz_dims,
                               const DDim& in_dims) {
+#define UNSQUEEZE_MAX_RANK_SUPPORTED 8
   int output_rank = in_dims.size() + static_cast<int>(unsqz_dims.size());
   int cur_output_rank = in_dims.size();
   std::vector<int64_t> output_shape(output_rank, 0);
-
   // Validity Check: rank range.
   PADDLE_ENFORCE_LE(
       output_rank,
-      6,
+      UNSQUEEZE_MAX_RANK_SUPPORTED,
       phi::errors::InvalidArgument("The output "
-                                   "tensor's rank should be less than 6."));
+                                   "tensor's rank should be less than %d.",
+                                   UNSQUEEZE_MAX_RANK_SUPPORTED));
 
   for (int axis : unsqz_dims) {
     int cur = axis < 0 ? axis + cur_output_rank + 1 : axis;
-    // Vaildity Check: the axis bound
+    // Validity Check: the axis bound
     PADDLE_ENFORCE_GE(
         cur,
         0,
@@ -148,7 +149,7 @@ inline DDim GetUnsqueezeShape(const std::vector<int64_t> unsqz_dims,
       output_shape[out_idx] = in_dims[in_idx++];
     }
   }
-
+#undef UNSQUEEZE_MAX_RANK_SUPPORTED
   return common::make_ddim(output_shape);
 }
 

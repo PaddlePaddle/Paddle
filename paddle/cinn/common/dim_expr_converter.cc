@@ -11,9 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/cinn/common/dim_expr_converter.h"
+#include <unordered_map>
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/tensor.h"
 
 namespace cinn::common {
 using namespace symbol;  // NOLINT
@@ -27,9 +28,12 @@ struct DimExprToIrExprVisitor {
 
   ir::Expr operator()(const int64_t& dim) { return ir::Expr(dim); }
 
-  ir::Expr operator()(const std::string& dim_expr) {
-    Var x = ir::_Var_::Make(ir::Expr(static_cast<int64_t>(0)),
-                            ir::Expr(INT64_MAX),
+  virtual ir::Expr operator()(const std::string& dim_expr) {
+    // The dimension must be greater equal than 1, and due to the extensive use
+    // of int32 in CAS, the upper bound here is temporarily INT32_MAX, otherwise
+    // there may be a risk of overflow.
+    Var x = ir::_Var_::Make(ir::Expr(static_cast<int64_t>(1)),
+                            ir::Expr(INT32_MAX),
                             dim_expr,
                             /* is_reduce  = */ false,
                             /* is_symbolic_constant = */ true);
@@ -65,7 +69,17 @@ struct DimExprToIrExprVisitor {
     }
     ir::Expr product = ConvertToIrExpr(operands->at(0));
     for (std::size_t i = 1; i < operands->size(); ++i) {
-      product = ir::Mul::Make(product, ConvertToIrExpr(operands->at(i)));
+      // Convert Reciprocal<DimExpr>(S0) to (1 / S0) will result in precision
+      // error. For example, (S0 * S1 / S2) != (S0 * S1 * (1 / S2)). So we
+      // should use Div instead of Reciprocal here.
+      if (operands->at(i).isa<Reciprocal<DimExpr>>()) {
+        product = ir::Div::Make(
+            product,
+            ConvertToIrExpr(
+                operands->at(i).dyn_cast<Reciprocal<DimExpr>>()->data));
+      } else {
+        product = ir::Mul::Make(product, ConvertToIrExpr(operands->at(i)));
+      }
     }
     return product;
   }
@@ -91,15 +105,68 @@ struct DimExprToIrExprVisitor {
   }
 
   ir::Expr operator()(const Broadcast<DimExpr>& dim_expr) {
-    LOG(FATAL)
-        << "no support for converting from Broadcast<DimExpr> to ir::Expr";
+    PADDLE_THROW(phi::errors::Fatal(
+        "no support for converting from Broadcast<DimExpr> to ir::Expr"));
   }
 };
 
 }  // namespace
 
+struct DimExprConverterWithSymbolBindings::
+    DimExprToIrExprVisitorWithSymbolBinding : public DimExprToIrExprVisitor {
+  using SymbolBinding = cinn::dialect::SymbolBinding;
+  using ShapeSymbolBinding = cinn::dialect::ShapeSymbolBinding;
+  using DataSymbolBinding = cinn::dialect::DataSymbolBinding;
+
+  const std::vector<ir::Tensor>& inputs_;
+  std::unordered_map<std::string, cinn::dialect::SymbolBinding>
+      symbol_binding_map_;
+
+  ir::Expr operator()(const std::string& dim_expr) override {
+    CHECK(symbol_binding_map_.count(dim_expr));
+    auto symbol_binding = symbol_binding_map_[dim_expr];
+    auto [input_idx, input_dim_idx] = std::visit(
+        [](auto&& symbol_binding) -> std::pair<int64_t, int64_t> {
+          return {symbol_binding.input_tensor_idx,
+                  symbol_binding.input_tensor_dim_idx};
+        },
+        symbol_binding);
+    if (std::holds_alternative<ShapeSymbolBinding>(symbol_binding)) {
+      return inputs_[input_idx]->sym_shape[input_dim_idx]->GetDimExpr();
+    }
+    // for data binding [S0, a, b], inputs[a] is Tensor A, return A(b)
+    return inputs_[input_idx](cinn::ir::Expr(input_dim_idx));
+  }
+
+  DimExprToIrExprVisitorWithSymbolBinding(
+      const std::vector<ir::Tensor>& inputs,
+      const std::vector<SymbolBinding>& symbol_bindings)
+      : inputs_(inputs) {
+    for (const auto& symbol_binding : symbol_bindings) {
+      const auto& symbol_name = std::visit(
+          [](auto&& symbol_binding) -> std::string {
+            return symbol_binding.symbol_name;
+          },
+          symbol_binding);
+      symbol_binding_map_[symbol_name] = symbol_binding;
+    }
+  }
+};
+
 ir::Expr DimExprConverter::ConvertToIrExpr(const DimExpr& dim_expr) const {
   return DimExprToIrExprVisitor().ConvertToIrExpr(dim_expr);
+}
+
+ir::Expr DimExprConverterWithSymbolBindings::ConvertToIrExpr(
+    const DimExpr& dim_expr) const {
+  return visitor_->ConvertToIrExpr(dim_expr);
+}
+
+DimExprConverterWithSymbolBindings::DimExprConverterWithSymbolBindings(
+    const std::vector<ir::Tensor>& inputs,
+    const cinn::dialect::SymbolBindings& symbol_bindings) {
+  visitor_ = std::make_shared<DimExprToIrExprVisitorWithSymbolBinding>(
+      inputs, symbol_bindings);
 }
 
 }  // namespace cinn::common

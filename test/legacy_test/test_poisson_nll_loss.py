@@ -34,7 +34,7 @@ def ref_poisson_nll_loss(
 ):
     if epsilon <= 0:
         raise ValueError(
-            "The value of `epsilon` in PoissonNLLLoss should be positve, but received %f, which is not allowed"
+            "The value of `epsilon` in PoissonNLLLoss should be positive, but received %f, which is not allowed"
             % epsilon
         )
 
@@ -228,7 +228,7 @@ class TestPoissonNLLLossFloat64Case(TestPoissonNLLLossBasicCase):
         self.test_dynamic_case(dtype="float64")
 
 
-class TestPoissonNLLLossNoLoginputCase(TestPoissonNLLLossBasicCase):
+class TestPoissonNLLLossNoLogInputCase(TestPoissonNLLLossBasicCase):
     def test_api(self):
         self.test_static_case(log_input=False)
         self.test_dynamic_case(log_input=False)

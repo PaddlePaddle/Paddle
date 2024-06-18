@@ -94,7 +94,7 @@ class TestFCINT8OneDNNOp(OpTest):
 
     def test_check_output(self):
         int_atol = 2
-        self.check_output(int_atol)
+        self.check_output(int_atol, check_pir_onednn=True, check_dygraph=False)
 
 
 class TestFCINT8NoBiasOneDNNOp(TestFCINT8OneDNNOp):

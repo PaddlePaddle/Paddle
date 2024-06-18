@@ -197,7 +197,7 @@ class PSClient {
   // server优雅退出
   virtual std::future<int32_t> StopServer() = 0;
 
-  // server profilera
+  // server profiler
   virtual std::future<int32_t> StartProfiler() = 0;
   virtual std::future<int32_t> StopProfiler() = 0;
 
@@ -357,6 +357,14 @@ class PSClient {
       const uint16_t &dim_id UNUSED) {
     VLOG(0) << "Did not implement";
     return nullptr;
+  }
+
+  virtual ::std::future<int32_t> SetDayId(size_t table_id, int day_id) {
+    VLOG(0) << "SetDayId Did not implement";
+    std::promise<int32_t> promise;
+    std::future<int> fut = promise.get_future();
+    promise.set_value(-1);
+    return fut;
   }
 
  protected:

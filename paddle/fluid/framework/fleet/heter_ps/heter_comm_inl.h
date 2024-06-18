@@ -25,17 +25,17 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
-PHI_DECLARE_double(gpugraph_hbm_table_load_factor);
-PHI_DECLARE_bool(gpugraph_enable_gpu_direct_access);
-PHI_DECLARE_bool(gpugraph_enable_segment_merge_grads);
-PHI_DECLARE_uint64(gpugraph_merge_grads_segment_size);
-PHI_DECLARE_int32(gpugraph_dedup_pull_push_mode);
-PHI_DECLARE_bool(enable_tracker_all2all);
-PHI_DECLARE_bool(enable_all2all_use_fp16);
-PHI_DECLARE_bool(enable_sparse_inner_gather);
-PHI_DECLARE_bool(graph_embedding_split_infer_mode);
+COMMON_DECLARE_double(gpugraph_hbm_table_load_factor);
+COMMON_DECLARE_bool(gpugraph_enable_gpu_direct_access);
+COMMON_DECLARE_bool(gpugraph_enable_segment_merge_grads);
+COMMON_DECLARE_uint64(gpugraph_merge_grads_segment_size);
+COMMON_DECLARE_int32(gpugraph_dedup_pull_push_mode);
+COMMON_DECLARE_bool(enable_tracker_all2all);
+COMMON_DECLARE_bool(enable_all2all_use_fp16);
+COMMON_DECLARE_bool(enable_sparse_inner_gather);
+COMMON_DECLARE_bool(graph_embedding_split_infer_mode);
 
 namespace paddle {
 namespace framework {
@@ -1615,6 +1615,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_merge_sparse(
   }
 
   for (int i = 0; i < total_device; ++i) {
+    AnyDeviceGuard guard(resource_->dev_id(i));
     sync_stream(resource_->remote_stream(i, num));
     if (h_left[i] == -1) {
       continue;
@@ -1631,6 +1632,7 @@ void HeterComm<KeyType, ValType, GradType, GPUAccessor>::pull_merge_sparse(
                 val_type_size);
   }
 
+  AnyDeviceGuard guard2(dev_id);
   auto d_merged_vals = MemoryAlloc(place, uniq_len * val_type_size);
   auto d_merged_vals_ptr = reinterpret_cast<float *>(d_merged_vals->ptr());
   heter_comm_kernel_->dy_mf_fill_dvals(d_shard_vals_ptr,

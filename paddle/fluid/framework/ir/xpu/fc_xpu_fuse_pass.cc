@@ -499,7 +499,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
           weight_scale.size(),
           mean_len,
           platform::errors::InvalidArgument(
-              "Weight max_scale size must equal batch_norm sacle/mean size."));
+              "Weight max_scale size must equal batch_norm scale/mean size."));
       for (int i = 0; i < mean_len; i++) {
         weight_scale[i] *= fabs(bn_scale_ptr[i]);
       }
@@ -841,6 +841,35 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
     } else if (filter_data_type == phi::DataType::FLOAT16) {
       op_weights_precision = "float16";
     }
+    if (op_weights_precision == "float32" &&
+        AreScalesPresentForNodes(&var_quant_scales, {mul_w})) {
+      // convert weight to int8
+      auto* var = scope->FindVar(mul_w_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          var,
+          platform::errors::NotFound(
+              "The input persistable [%s] var of [%s] op is not found.",
+              mul_w_name));
+      auto* weight_tensor = var->GetMutable<phi::DenseTensor>();
+      float* fp32_weight_data = weight_tensor->data<float>();
+      std::vector<int8_t> weight_data;
+      weight_data.resize(weight_tensor->numel());
+      for (int i = 0; i < weight_tensor->numel(); i++) {
+        weight_data[i] = static_cast<int8_t>(fp32_weight_data[i]);
+      }
+      const auto weight_dims = weight_tensor->dims();
+      weight_tensor->clear();  // clear int weight
+      weight_tensor->set_type(phi::DataType::INT8);
+      weight_tensor->Resize(common::make_ddim(common::vectorize(weight_dims)));
+      auto* cpu_ctx = static_cast<phi::CPUContext*>(
+          platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+      auto* new_weight_data = cpu_ctx->Alloc<int8_t>(weight_tensor);
+      memcpy(new_weight_data,
+             weight_data.data(),
+             weight_tensor->numel() * sizeof(int8_t));
+      op_weights_precision = "int8";
+    }
+
     VLOG(4) << "FC fusion fuse pass is running on " << op_weights_precision
             << " precision!";
     auto* block = mul->Op()->Block();

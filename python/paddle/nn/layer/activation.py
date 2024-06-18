@@ -134,8 +134,8 @@ class GLU(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        - input: Tensor which the size of the given aixs is even.
-        - output: Tensor which the size of the given aixs is halved.
+        - input: Tensor which the size of the given axis is even.
+        - output: Tensor which the size of the given axis is halved.
 
     Examples:
         .. code-block:: python
@@ -502,13 +502,7 @@ class PReLU(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'num_parameters={}, data_format={}, init={}, dtype={}{}'.format(
-            self._num_parameters,
-            self._data_format,
-            self._init,
-            self._dtype,
-            name_str,
-        )
+        return f'num_parameters={self._num_parameters}, data_format={self._data_format}, init={self._init}, dtype={self._dtype}{name_str}'
 
 
 class RReLU(Layer):
@@ -597,9 +591,7 @@ class RReLU(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'lower={}, upper={}, training={}, dtype={}{}'.format(
-            self._lower, self._upper, self.training, self._dtype, name_str
-        )
+        return f'lower={self._lower}, upper={self._upper}, training={self.training}, dtype={self._dtype}{name_str}'
 
 
 class ReLU(Layer):
@@ -799,7 +791,7 @@ class LeakyReLU(Layer):
 
 class Sigmoid(Layer):
     r"""
-    this interface is used to construct a callable object of the ``Sigmoid`` class. This layer calcluate the `sigmoid` of input x.
+    this interface is used to construct a callable object of the ``Sigmoid`` class. This layer calculate the `sigmoid` of input x.
 
     .. math::
 
@@ -842,8 +834,8 @@ class Sigmoid(Layer):
 
 class Hardsigmoid(Layer):
     r"""
-    ``Hardsigmoid`` Activiation Layers, Construct a callable object of
-    the ``Hardsigmoid`` class. This layer calcluate the `hardsigmoid` of input x.
+    ``Hardsigmoid`` Activation Layers, Construct a callable object of
+    the ``Hardsigmoid`` class. This layer calculate the `hardsigmoid` of input x.
 
     A 3-part piecewise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
     which is much faster than sigmoid.
@@ -1172,13 +1164,14 @@ class ThresholdedReLU(Layer):
             \left\{
                 \begin{array}{rl}
                 x,& \text{if } \ x > threshold \\
-                0,& \text{otherwise}
+                value,& \text{otherwise}
                 \end{array}
             \right.
 
 
     Parameters:
         threshold (float, optional): The value of threshold for ThresholdedReLU. Default is 1.0
+        value (float, optinal): The value to replace with when x is less than threshold. Default is 0.0
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1199,17 +1192,18 @@ class ThresholdedReLU(Layer):
             [2., 0., 0.])
     """
 
-    def __init__(self, threshold=1.0, name=None):
+    def __init__(self, threshold=1.0, value=0.0, name=None):
         super().__init__()
         self._threshold = threshold
+        self._value = value
         self._name = name
 
     def forward(self, x):
-        return F.thresholded_relu(x, self._threshold, self._name)
+        return F.thresholded_relu(x, self._threshold, self._value, self._name)
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return f'threshold={self._threshold}{name_str}'
+        return f'threshold={self._threshold}, value={self._value}{name_str}'
 
 
 class Silu(Layer):

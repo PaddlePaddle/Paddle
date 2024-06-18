@@ -242,7 +242,7 @@ class VariableFactory:
 class VariableBase:
     """
     VariableBase is a basic concept and each symbols in VM stack is regarded as
-    an Variable Object in symblic tracing process.
+    an Variable Object in symbolic tracing process.
 
     There are two key data structures during Python runtime:
     PyFrameObject, which provides the instance for function logical lock usage,
@@ -384,7 +384,7 @@ class VariableBase:
                 self.graph.add_global_guarded_variable(self)
             self._reconstruct(codegen)
 
-    def _reconstruct(self, codegen: PyCodeGen):
+    def _reconstruct(self, codegen: PyCodeGen) -> None:
         """
         Abstract method to construct an opcode and append it into codegen.instructions
         """

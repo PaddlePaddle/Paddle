@@ -19,8 +19,6 @@
 #include <unordered_set>
 
 #include "paddle/cinn/common/target.h"
-#include "paddle/cinn/frontend/decomposer/use_decomposer.h"
-#include "paddle/cinn/frontend/pass/use_program_pass.h"
 #include "paddle/cinn/frontend/program_pass.h"
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph.h"
@@ -158,7 +156,7 @@ std::shared_ptr<hlir::framework::Graph> Optimize(
     const std::vector<std::string>& passes) {
   OptimizeOptions options;
 
-  bool enbale_fusion = false;
+  bool enable_fusion = false;
   if (!passes.empty()) {
     for (const auto& pass : passes) {
       auto* p_pass = ProgramPassRegistry::Global()->Find(pass);
@@ -169,15 +167,16 @@ std::shared_ptr<hlir::framework::Graph> Optimize(
       } else if (g_pass) {
         options.graph_passes.emplace_back(pass);
         if (pass == "OpFusionPass" || pass == "FusionMergePass") {
-          enbale_fusion = true;
+          enable_fusion = true;
         }
       } else {
-        LOG(FATAL) << "Pass " << pass
-                   << " unsupported in CINN! Please check.\n";
+        std::stringstream ss;
+        ss << "Pass " << pass << " unsupported in CINN! Please check.\n";
+        PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
       }
     }
 
-    if (!enbale_fusion) {
+    if (!enable_fusion) {
       options.graph_passes.emplace_back("BuildNonFusedGroupsPass");
     }
   } else {

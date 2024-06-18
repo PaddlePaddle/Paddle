@@ -21,7 +21,13 @@ template <typename T, typename Context>
 void AsRealStridedKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          DenseTensor* out) {
-  out->set_strides(DenseTensorMeta::calc_strides(out->dims()));
+  auto out_stride_v = common::vectorize(x.strides());
+  for (auto& v : out_stride_v) {
+    v *= 2;
+  }
+  out_stride_v.push_back(1);
+  out->set_strides(common::make_ddim(out_stride_v));
+
   if (x.dtype() == DataType::COMPLEX64) {
     out->set_type(DataType::FLOAT32);
   } else if (x.dtype() == DataType::COMPLEX128) {
@@ -49,6 +55,17 @@ PD_REGISTER_KERNEL(as_real,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(as_real,
                    GPU,
+                   STRIDED,
+                   phi::AsRealStridedKernel,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(as_real,
+                   Custom,
                    STRIDED,
                    phi::AsRealStridedKernel,
                    phi::dtype::complex<float>,

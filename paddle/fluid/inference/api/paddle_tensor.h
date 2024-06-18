@@ -78,7 +78,7 @@ enum class DataLayout { kUNK = -1, kAny, kNHWC, kNCHW };
 /// to device,
 /// eliminating additional CPU copy. Tensor is only used in the
 /// AnalysisPredictor.
-/// It is obtained through PaddlePredictor::GetinputTensor()
+/// It is obtained through PaddlePredictor::GetInputTensor()
 /// and PaddlePredictor::GetOutputTensor() interface.
 class PD_INFER_DECL Tensor {
  public:
@@ -142,8 +142,8 @@ class PD_INFER_DECL Tensor {
 
   /// \brief Copy the tensor data to the host memory asynchronously.
   /// \param[out] data The tensor will copy the data to the address.
-  /// \param[out] exec_stream The tensor will excute copy in this stream(Only
-  /// GPU CUDA stream suppported now).
+  /// \param[out] exec_stream The tensor will execute copy in this stream(Only
+  /// GPU CUDA stream supported now).
   template <typename T>
   void CopyToCpuAsync(T* data, void* exec_stream) const;
 
@@ -177,7 +177,7 @@ class PD_INFER_DECL Tensor {
   PlaceType place() const;
 
  protected:
-  explicit Tensor(void* scope, const void* device_contexs);
+  explicit Tensor(void* scope, const void* device_contexts);
 
   template <typename T>
   void* FindTensor() const;
@@ -201,7 +201,7 @@ class PD_INFER_DECL Tensor {
   DataType dtype_;
   bool input_or_output_;
   void* scope_{nullptr};
-  const void* device_contexs_{nullptr};
+  const void* device_contexts_{nullptr};
   PlaceType place_;
   int device_;
   std::string device_type_;

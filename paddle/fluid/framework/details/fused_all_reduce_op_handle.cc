@@ -13,20 +13,18 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/fused_all_reduce_op_handle.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/phi/backends/device_memory_aligment.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/phi/backends/device_memory_alignment.h"
 
 PD_DEFINE_bool(skip_fused_all_reduce_check, false, "");  // NOLINT
-PHI_DECLARE_bool(allreduce_record_one_event);
+COMMON_DECLARE_bool(allreduce_record_one_event);
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 typedef std::vector<
     std::vector<std::pair<std::string, const phi::DenseTensor *>>>
@@ -60,7 +58,7 @@ FusedAllReduceOpHandle::FusedAllReduceOpHandle(
       num_of_all_reduce_(num_of_all_reduce) {}
 #endif
 
-FusedAllReduceOpHandle::~FusedAllReduceOpHandle() {
+FusedAllReduceOpHandle::~FusedAllReduceOpHandle() {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto destroy_event = [](gpuEvent_t event) {
     if (event == nullptr) return;
@@ -407,6 +405,4 @@ void FusedAllReduceOpHandle::GetDTypeAndNumel(
 }
 
 std::string FusedAllReduceOpHandle::Name() const { return "fused_all_reduce"; }
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

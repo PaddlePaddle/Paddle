@@ -136,10 +136,10 @@ def set_config(config=None):
                 )
     if "dataloader" in config_dict:
         dataloader_config = config_dict["dataloader"]
-        use_autoune = False
+        use_autotune = False
         if "enable" in dataloader_config:
             if isinstance(dataloader_config['enable'], bool):
-                use_autoune = dataloader_config['enable']
+                use_autotune = dataloader_config['enable']
             else:
                 warnings.warn(
                     "The auto-tuning configuration of the dataloader is incorrect."
@@ -148,11 +148,11 @@ def set_config(config=None):
         if "tuning_steps" in dataloader_config:
             if isinstance(dataloader_config['tuning_steps'], int):
                 paddle.io.reader.set_autotune_config(
-                    use_autoune, dataloader_config['tuning_steps']
+                    use_autotune, dataloader_config['tuning_steps']
                 )
             else:
                 warnings.warn(
                     "The auto-tuning configuration of the dataloader is incorrect."
                     "The `tuning_steps` should be int. Use default parameter instead."
                 )
-                paddle.io.reader.set_autotune_config(use_autoune)
+                paddle.io.reader.set_autotune_config(use_autotune)

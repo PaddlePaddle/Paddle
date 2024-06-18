@@ -81,9 +81,7 @@ def _run_ldexp_static(x, y, device='cpu'):
 def check_dtype(input, desired_dtype):
     if input.dtype != desired_dtype:
         raise ValueError(
-            "The expected data type to be obtained is {}, but got {}".format(
-                desired_dtype, input.dtype
-            )
+            f"The expected data type to be obtained is {desired_dtype}, but got {input.dtype}"
         )
 
 

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/api/lib/api_gen_utils.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/strided_copy_kernel.h"
 
@@ -24,6 +24,7 @@ PHI_DECLARE_bool(use_stride_kernel);
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace experimental {
@@ -417,6 +418,32 @@ void TransStride(phi::DeviceContext* dev_ctx,
       return;
     }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto* custom_ctx = dynamic_cast<phi::CustomContext*>(dev_ctx);
+    if (custom_ctx) {
+      const phi::KernelKey& kernel_key = {phi::TransToPhiBackend(to->place()),
+                                          phi::DataLayout::ALL_LAYOUT,
+                                          to->dtype()};
+      using kernel_signature = void (*)(const phi::DeviceContext&,
+                                        const phi::DenseTensor&,
+                                        const std::vector<int64_t>&,
+                                        const std::vector<int64_t>&,
+                                        int64_t,
+                                        phi::DenseTensor*);
+      PD_VISIT_KERNEL("strided_copy",
+                      kernel_key,
+                      kernel_signature,
+                      false,
+                      *custom_ctx,
+                      *from,
+                      common::vectorize<int64_t>(to->dims()),
+                      common::vectorize<int64_t>(to->strides()),
+                      to->offset(),
+                      to);
+      delete from;
+      return;
+    }
+#endif
   }
 }
 
@@ -464,6 +491,31 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
                                to->offset(),
                                to);
                          }));
+      return;
+    }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    auto* custom_ctx = dynamic_cast<phi::CustomContext*>(dev_ctx);
+    if (custom_ctx) {
+      const phi::KernelKey& kernel_key = {phi::TransToPhiBackend(to->place()),
+                                          phi::DataLayout::ALL_LAYOUT,
+                                          to->dtype()};
+      using kernel_signature = void (*)(const phi::DeviceContext&,
+                                        const phi::DenseTensor&,
+                                        const std::vector<int64_t>&,
+                                        const std::vector<int64_t>&,
+                                        int64_t,
+                                        phi::DenseTensor*);
+      PD_VISIT_KERNEL("strided_copy",
+                      kernel_key,
+                      kernel_signature,
+                      false,
+                      *custom_ctx,
+                      *from,
+                      common::vectorize<int64_t>(to->dims()),
+                      common::vectorize<int64_t>(to->strides()),
+                      to->offset(),
+                      to);
       return;
     }
 #endif
@@ -519,6 +571,33 @@ void TransStride(phi::DeviceContext* dev_ctx,
                            }));
         delete from[i];
         continue;
+      }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      auto* custom_ctx = dynamic_cast<phi::CustomContext*>(dev_ctx);
+      if (custom_ctx) {
+        const phi::KernelKey& kernel_key = {
+            phi::TransToPhiBackend(to[i]->place()),
+            phi::DataLayout::ALL_LAYOUT,
+            to[i]->dtype()};
+        using kernel_signature = void (*)(const phi::DeviceContext&,
+                                          const phi::DenseTensor&,
+                                          const std::vector<int64_t>&,
+                                          const std::vector<int64_t>&,
+                                          int64_t,
+                                          phi::DenseTensor*);
+        PD_VISIT_KERNEL("strided_copy",
+                        kernel_key,
+                        kernel_signature,
+                        false,
+                        *custom_ctx,
+                        *from[i],
+                        common::vectorize<int64_t>(to[i]->dims()),
+                        common::vectorize<int64_t>(to[i]->strides()),
+                        to[i]->offset(),
+                        to[i]);
+        delete from[i];
+        return;
       }
 #endif
     }
@@ -657,6 +736,7 @@ std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
     }
     return dist_output;
   }
+  VLOG(4) << "CreateKernelDistOutput with NULL out";
   return nullptr;
 }
 

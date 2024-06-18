@@ -67,12 +67,12 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
                     },
                 ]
                 self.dims = dims
-                dics_intput = [{"X": ["expand_v2_input"]}]
+                dics_input = [{"X": ["expand_v2_input"]}]
 
                 ops_config = [
                     {
                         "op_type": "expand_v2",
-                        "op_inputs": dics_intput[0],
+                        "op_inputs": dics_input[0],
                         "op_outputs": {"Out": ["expand_v2_out"]},
                         "op_attrs": dics[0],
                     }
@@ -199,7 +199,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
                     },
                 ]
                 self.dims = dims
-                dics_intput = [
+                dics_input = [
                     {"X": ["expand_v2_input"], "Shape": ["shapeT1_data"]},
                 ]
                 ops_config = [
@@ -215,7 +215,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
                     },
                     {
                         "op_type": "expand_v2",
-                        "op_inputs": dics_intput[0],
+                        "op_inputs": dics_input[0],
                         "op_outputs": {"Out": ["expand_v2_out"]},
                         "op_attrs": dics[0],
                     },
@@ -253,7 +253,7 @@ class TrtConvertExpandV2Test2(TrtLayerAutoScanTest):
         generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        # fill_constant will be folded by constnt folding pass!
+        # fill_constant will be folded by constant folding pass!
         yield self.create_inference_config(), (1, 2), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
@@ -291,7 +291,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
                     },
                 ]
                 self.dims = dims
-                dics_intput = [
+                dics_input = [
                     {
                         "X": ["expand_v2_input"],
                         "expand_shapes_tensor": [
@@ -345,7 +345,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
                     },
                     {
                         "op_type": "expand_v2",
-                        "op_inputs": dics_intput[0],
+                        "op_inputs": dics_input[0],
                         "op_outputs": {"Out": ["expand_v2_out"]},
                         "op_attrs": dics[0],
                     },
@@ -399,7 +399,7 @@ class TrtConvertExpandV2Test3(TrtLayerAutoScanTest):
         generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        # fill_constant will be folded by constnt folding pass!
+        # fill_constant will be folded by constant folding pass!
         yield self.create_inference_config(), (1, 2), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)

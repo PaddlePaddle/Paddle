@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
-#include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/builtin_attribute.h"
+#include <glog/logging.h>
 
-namespace paddle {
-namespace dialect {
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+
+namespace paddle::dialect {
 
 const char* PhiKernelOp::attributes_name[attributes_num] = {  // NOLINT
     "op_name",
@@ -179,11 +180,8 @@ phi::KernelKey OneDNNPhiKernelOp::kernel_key() {
   return attributes().at("kernel_key").dyn_cast<KernelAttribute>().data();
 }
 
-const char* OneDNNMixedPhiKernelOp::attributes_name[attributes_num] =
-    {  // NOLINT
-        "op_name",
-        "kernel_name",
-        "kernel_key"};
+const char* OneDNNMixedPhiKernelOp::attributes_name[attributes_num] =  // NOLINT
+    {"op_name", "kernel_name", "kernel_key"};
 
 void OneDNNMixedPhiKernelOp::VerifySig() {
   VLOG(4) << "Verifying inputs, outputs and attributes for: "
@@ -261,8 +259,7 @@ phi::KernelKey OneDNNLegacyKernelOp::kernel_key() {
 }
 #endif
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PhiKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::LegacyKernelOp)

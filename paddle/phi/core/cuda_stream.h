@@ -155,7 +155,7 @@ class CUDAStream {
  private:
   Place place_;
   Stream stream_;
-  bool owned_{false};  // whether the stream is created and onwed by self
+  bool owned_{false};  // whether the stream is created and owned by self
 };
 
 }  // namespace phi

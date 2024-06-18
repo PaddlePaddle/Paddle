@@ -25,8 +25,7 @@ extern "C" {
 #include "paddle/fluid/framework/program_converter.h"
 #include "paddle/fluid/framework/version.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 BlockDesc *ProgramDesc::AppendBlock(const BlockDesc &parent) {
   auto *b = desc_.add_blocks();
@@ -78,8 +77,8 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
     // record all block desc's ptr from origin program
     old_block_desc.emplace_back(o.blocks_[i].get());
   }
-  for (size_t block_id = 0; block_id < blocks_.size(); ++block_id) {
-    auto all_ops = blocks_[block_id]->AllOps();
+  for (size_t block_id = 0; block_id < blocks_.size(); ++block_id) {  // NOLINT
+    auto all_ops = blocks_[block_id]->AllOps();                       // NOLINT
     for (size_t op_id = 0; op_id < all_ops.size(); ++op_id) {
       auto &op = all_ops[op_id];
 
@@ -92,7 +91,7 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
                         block_desc) != old_block_desc.end()) {
             // The block is owned by the origin program. Just use id to get
             // the corresponding block.
-            int sub_block_id = o.Block(block_id)
+            int sub_block_id = o.Block(block_id)  // NOLINT
                                    .Op(static_cast<int>(op_id))
                                    ->GetBlockAttrId(attr_name);
             op->SetBlockAttr(attr_name, MutableBlock(sub_block_id));
@@ -103,7 +102,7 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
             op->SetBlockAttr(attr_name, block_desc);
           }
         } else if (op->GetAttrType(attr_name) == proto::AttrType::BLOCKS) {
-          std::vector<int> sub_block_ids = o.Block(block_id)
+          std::vector<int> sub_block_ids = o.Block(block_id)  // NOLINT
                                                .Op(static_cast<int>(op_id))
                                                ->GetBlocksAttrIds(attr_name);
           std::vector<BlockDesc *> block_descs;
@@ -114,19 +113,20 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
         } else if (op->GetAttrType(attr_name, true) == proto::AttrType::VAR) {
           VarDesc *var_desc =
               PADDLE_GET_CONST(VarDesc *, op->GetAttr(attr_name, true));
-          op->SetVarAttr(attr_name,
-                         o.Block(block_id).FindVarRecursive(var_desc->Name()));
+          op->SetVarAttr(
+              attr_name,
+              o.Block(block_id).FindVarRecursive(var_desc->Name()));  // NOLINT
         } else if (op->GetAttrType(attr_name, true) == proto::AttrType::VARS) {
           std::vector<VarDesc *> vars_desc = PADDLE_GET_CONST(
               std::vector<VarDesc *>, op->GetAttr(attr_name, true));
           std::vector<VarDesc *> new_vars_desc;
-          std::transform(
-              vars_desc.begin(),
-              vars_desc.end(),
-              std::back_inserter(new_vars_desc),
-              [&](VarDesc *var_desc) {
-                return o.Block(block_id).FindVarRecursive(var_desc->Name());
-              });
+          std::transform(vars_desc.begin(),
+                         vars_desc.end(),
+                         std::back_inserter(new_vars_desc),
+                         [&](VarDesc *var_desc) {
+                           return o.Block(block_id).FindVarRecursive(
+                               var_desc->Name());  // NOLINT
+                         });
           op->SetVarsAttr(attr_name, new_vars_desc);
         }
       }
@@ -286,5 +286,4 @@ bool ProgramDesc::NeedUpdate() const {
   return need;
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

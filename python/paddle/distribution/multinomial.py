@@ -74,7 +74,7 @@ class Multinomial(distribution.Distribution):
 
         if probs.dim() < 1:
             raise ValueError(
-                'probs parameter shoule not be none and over one dimension'
+                'probs parameter should not be none and over one dimension'
             )
 
         self.probs = probs / probs.sum(-1, keepdim=True)
@@ -87,7 +87,7 @@ class Multinomial(distribution.Distribution):
 
     @property
     def mean(self):
-        """mean of multinomial distribuion.
+        """mean of multinomial distribution.
 
         Returns:
             Tensor: mean value.
@@ -115,7 +115,7 @@ class Multinomial(distribution.Distribution):
         return paddle.exp(self.log_prob(value))
 
     def log_prob(self, value):
-        """probability mass function evaluated at value
+        """probability mass function evaluated at value.
 
         Args:
             value (Tensor): value to be evaluated.

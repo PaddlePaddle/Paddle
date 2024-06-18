@@ -172,7 +172,7 @@ TEST(test02, basic) {
 
   // Currently, the execution of a LoweredFunc is scheduled by the outer
   // framework, so no need to Call inside another LoweredFunc.
-  // TODO(Superjomn) Fixit latter.
+  // TODO(Superjomn) Fix it later.
   // TEST_FUNC(matmul_main);
 
 #define TEST_LLVM_MATMUL(test_name, TARGET)                                \
@@ -196,7 +196,7 @@ TEST(test02, basic) {
   } while (false)
 
   cinn::Target target;
-  target.arch = cinn::Target::Arch::X86;
+  target.arch = cinn::common::X86Arch{};
   target.bits = cinn::Target::Bit::k32;
   target.os = cinn::Target::OS::Linux;
 

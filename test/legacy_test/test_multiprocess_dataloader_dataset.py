@@ -59,8 +59,7 @@ class RandomIterableDataset(IterableDataset):
 
 class TestTensorDataset(unittest.TestCase):
     def run_main(self, num_workers, places):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
         place = paddle.CPUPlace()
         with base.dygraph.guard(place):
             input_np = np.random.random([16, 3, 4]).astype('float32')
@@ -98,8 +97,7 @@ class TestTensorDataset(unittest.TestCase):
 
 class TestComposeDataset(unittest.TestCase):
     def test_main(self):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
 
         dataset1 = RandomDataset(10)
         dataset2 = RandomDataset(10)
@@ -118,8 +116,7 @@ class TestComposeDataset(unittest.TestCase):
 
 class TestRandomSplitApi(unittest.TestCase):
     def test_main(self):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
 
         dataset1, dataset2 = paddle.io.random_split(range(5), [1, 4])
 
@@ -139,8 +136,7 @@ class TestRandomSplitApi(unittest.TestCase):
 
 class TestRandomSplitError(unittest.TestCase):
     def test_errors(self):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
 
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [3, 8])
         self.assertRaises(ValueError, paddle.io.random_split, range(5), [8])
@@ -149,8 +145,7 @@ class TestRandomSplitError(unittest.TestCase):
 
 class TestSubsetDataset(unittest.TestCase):
     def run_main(self, num_workers, places):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
 
         input_np = np.random.random([5, 3, 4]).astype('float32')
         input = paddle.to_tensor(input_np)
@@ -201,8 +196,7 @@ class TestSubsetDataset(unittest.TestCase):
         self.assertEqual(odd_list, elements_list)
 
     def test_main(self):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
 
         places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_cuda():
@@ -213,8 +207,7 @@ class TestSubsetDataset(unittest.TestCase):
 
 class TestChainDataset(unittest.TestCase):
     def run_main(self, num_workers, places):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
 
         dataset1 = RandomIterableDataset(10)
         dataset2 = RandomIterableDataset(10)
@@ -259,8 +252,7 @@ class NumpyMixTensorDataset(Dataset):
 
 class TestNumpyMixTensorDataset(TestTensorDataset):
     def run_main(self, num_workers, places):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
         place = paddle.CPUPlace()
         with base.dygraph.guard(place):
             dataset = NumpyMixTensorDataset(16)
@@ -282,7 +274,7 @@ class TestNumpyMixTensorDataset(TestTensorDataset):
                 assert isinstance(label, base.core.eager.Tensor)
 
 
-class ComplextDataset(Dataset):
+class ComplexDataset(Dataset):
     def __init__(self, sample_num):
         self.sample_num = sample_num
 
@@ -302,13 +294,12 @@ class ComplextDataset(Dataset):
         )
 
 
-class TestComplextDataset(unittest.TestCase):
+class TestComplexDataset(unittest.TestCase):
     def run_main(self, num_workers):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
         place = paddle.CPUPlace()
         with base.dygraph.guard(place):
-            dataset = ComplextDataset(16)
+            dataset = ComplexDataset(16)
             assert len(dataset) == 16
             dataloader = DataLoader(
                 dataset,
@@ -360,8 +351,7 @@ class TestSingleFieldDataset(unittest.TestCase):
         self.dataset = SingleFieldDataset(self.sample_num)
 
     def run_main(self, num_workers):
-        paddle.static.default_startup_program().random_seed = 1
-        paddle.static.default_main_program().random_seed = 1
+        paddle.seed(1)
         place = paddle.CPUPlace()
         with base.dygraph.guard(place):
             self.init_dataset()

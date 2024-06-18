@@ -15,11 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
-#include "paddle/phi/core/flags.h"
+#include "paddle/common/flags.h"
 
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -49,7 +49,7 @@ class ConditionalBlockInferOp : public ConditionalOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const phi::Place &dev_place) const override {
     bool need_run = false;
     if (Attr<bool>("is_scalar_condition")) {
       // When is_scalar_condition is True, the conditional variable is a scalar,
@@ -72,7 +72,7 @@ class ConditionalBlockInferOp : public ConditionalOp {
       auto *scope_var = scope.FindVar(Output("Scope"));
       PADDLE_ENFORCE_NOT_NULL(
           scope_var,
-          platform::errors::PreconditionNotMet(
+          phi::errors::PreconditionNotMet(
               "Scope must be set in ConditionalBlockInferOp."));
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
       scopes->resize(1);

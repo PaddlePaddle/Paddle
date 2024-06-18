@@ -121,9 +121,7 @@ def _measure_program_real_op_cost_multipass(program, place, run_iters, verbose):
             )
         )
         logger.info(
-            '[+] var: "{}", shape={}, dtype="{}".\n'.format(
-                var_name, str(var_shape), str(var_dtype)
-            )
+            f'[+] var: "{var_name}", shape={str(var_shape)}, dtype="{str(var_dtype)}".\n'
         ) if verbose else None
         np_dtype = (
             convert_dtype(var_dtype)
@@ -276,16 +274,14 @@ def measure_program_real_op_cost(
     assert any(
         isinstance(place, supported_place)
         for supported_place in supported_places
-    ), 'Current place ({}) does not support runtime profiling. "place" should be one of the following: {}.'.format(
-        str(place), str(supported_places)
-    )
+    ), f'Current place ({str(place)}) does not support runtime profiling. "place" should be one of the following: {str(supported_places)}.'
     assert isinstance(run_iters, int) and run_iters >= 1, (
         'Invalid parameter run_iters set. run_iters '
         'should be an integer >= 1.'
     )
     if run_iters == 1:
         warnings.warn(
-            'run_iters was set to 1, profiling results might be inaccurate due to outilers.'
+            'run_iters was set to 1, profiling results might be inaccurate due to outliers.'
         )
 
     logger = get_logger(log_level=logging.INFO)

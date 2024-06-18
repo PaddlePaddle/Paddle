@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/pir/core/op_base.h"
+#include "paddle/pir/include/core/op_base.h"
 
 namespace paddle {
 namespace dialect {
@@ -25,13 +25,12 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
   struct Concept {
     explicit Concept(void (*infer_meta)(phi::InferMetaContext *),
                      std::vector<pir::Type> (*infer_meta_by_value)(
-                         const std::vector<pir::Value> &,
-                         const pir::AttributeMap &))
+                         const std::vector<pir::Value> &, pir::AttributeMap *))
         : infer_meta_(infer_meta), infer_meta_by_value_(infer_meta_by_value) {}
 
     void (*infer_meta_)(phi::InferMetaContext *);
     std::vector<pir::Type> (*infer_meta_by_value_)(
-        const std::vector<pir::Value> &, const pir::AttributeMap &);
+        const std::vector<pir::Value> &, pir::AttributeMap *);
   };
 
   template <class ConcreteOp>
@@ -41,8 +40,8 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
     }
     static inline std::vector<pir::Type> InferMetaByValue(
         const std::vector<pir::Value> &input_values,
-        const pir::AttributeMap &attributes) {
-      return ConcreteOp::InferMeta(input_values, attributes);
+        pir::AttributeMap *p_attributes) {
+      return ConcreteOp::InferMeta(input_values, p_attributes);
     }
     Model() : Concept(InferMeta, InferMetaByValue) {}
   };
@@ -56,8 +55,8 @@ class InferMetaInterface : public pir::OpInterfaceBase<InferMetaInterface> {
   }
 
   std::vector<pir::Type> InferMeta(const std::vector<pir::Value> &input_values,
-                                   const pir::AttributeMap &attributes) {
-    return impl_->infer_meta_by_value_(input_values, attributes);
+                                   pir::AttributeMap *p_attributes) {
+    return impl_->infer_meta_by_value_(input_values, p_attributes);
   }
 
  private:

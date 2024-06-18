@@ -63,11 +63,11 @@ def get_msg_dict(msg):
     fields = msg.DESCRIPTOR.fields
     for f in fields:
         v = getattr(msg, f.name)
-        # NOTE(zhiqiu): convert repeated filed to list to
+        # NOTE(zhiqiu): convert repeated field to list to
         # avoid segment fault when the process exit?
         # WHY?
         # I guess the type or value of protobuf item is NULL when
-        # dealloc.
+        # deallocated.
         if f.label == google.protobuf.descriptor.FieldDescriptor.LABEL_REPEATED:
             if (
                 f.type
@@ -263,45 +263,6 @@ class DistributedStrategy:
             )
 
     @property
-    def execution_strategy(self):
-        """
-        Configure ExecutionStrategy for DistributedStrategy
-
-        Examples:
-            .. code-block:: python
-
-                >>> import paddle
-                >>> exe_strategy = paddle.static.ExecutionStrategy()
-                >>> exe_strategy.num_threads = 10
-                >>> exe_strategy.num_iteration_per_drop_scope = 10
-                >>> exe_strategy.num_iteration_per_run = 10
-
-                >>> strategy = paddle.distributed.fleet.DistributedStrategy()
-                >>> strategy.execution_strategy = exe_strategy
-
-        """
-        execution_strategy = paddle.static.ExecutionStrategy()
-        fields = self.strategy.execution_strategy.DESCRIPTOR.fields
-        for f in fields:
-            setattr(
-                execution_strategy,
-                f.name,
-                getattr(self.strategy.execution_strategy, f.name),
-            )
-        return execution_strategy
-
-    @execution_strategy.setter
-    @is_strict_auto
-    def execution_strategy(self, strategy):
-        fields = self.strategy.execution_strategy.DESCRIPTOR.fields
-        for f in fields:
-            setattr(
-                self.strategy.execution_strategy,
-                f.name,
-                getattr(strategy, f.name),
-            )
-
-    @property
     def build_strategy(self):
         """
 
@@ -384,9 +345,9 @@ class DistributedStrategy:
     def a_sync(self):
         """
 
-        Indicating whether we are using asynchronous stocastic gradient descent updates
+        Indicating whether we are using asynchronous stochastic gradient descent updates
         for training. This property is valid when we are using parameter server training,
-        which is implied by setting approperate RoleMaker
+        which is implied by setting appropriate RoleMaker
         Default value: True
 
         Examples:
@@ -413,9 +374,7 @@ class DistributedStrategy:
             self.a_sync_configs = {"k_steps": 0}
         else:
             raise ValueError(
-                "The type of `flag` is invalid, expected type is bool, but received {}".format(
-                    type(flag)
-                )
+                f"The type of `flag` is invalid, expected type is bool, but received {type(flag)}"
             )
 
     @property
@@ -423,7 +382,7 @@ class DistributedStrategy:
         """
 
         Set a_sync update configurations. In general, asynchronous parameter server
-        training has serveral configurable settings that can be configured through
+        training has several configurable settings that can be configured through
         a dict.
 
         **Notes**:
@@ -529,9 +488,7 @@ class DistributedStrategy:
             self.strategy.adam_d2sum = flag
         else:
             raise ValueError(
-                "The type of `flag` is invalid, expected type is bool, but received {}".format(
-                    type(flag)
-                )
+                f"The type of `flag` is invalid, expected type is bool, but received {type(flag)}"
             )
 
     @trainer_desc_configs.setter
@@ -982,7 +939,7 @@ class DistributedStrategy:
     def amp_configs(self):
         """
 
-        Set automatic mixed precision training configurations. In general, amp has serveral configurable
+        Set automatic mixed precision training configurations. In general, amp has several configurable
         settings that can be configured through a dict.
 
         **Notes**:
@@ -1002,7 +959,7 @@ class DistributedStrategy:
 
             custom_black_list(list[str]): Users' custom black list which forbidden execution fp16.
 
-            custom_black_varnames(list[str]): Users' custom black varibles' names.
+            custom_black_varnames(list[str]): Users' custom black variables' names.
 
             use_pure_fp16(bool): Whether to use the pure fp16 training. Default False.
 
@@ -1095,7 +1052,7 @@ class DistributedStrategy:
     @property
     def qat_configs(self):
         """
-        Set quantization training configurations. In general, qat has serveral configurable
+        Set quantization training configurations. In general, qat has several configurable
         settings that can be configured through a dict.
         **Notes**:
             channel_wise_abs_max(bool): Whether to use `per_channel` quantization training. Default is True.
@@ -1494,11 +1451,11 @@ class DistributedStrategy:
             communication. Default is segment_broadcast_MB.
 
             segment_broadcast_MB(float, optional): segment by the parameters broadcast volume. sharding will introduce parameter broadcast operations into program, and
-            after every segment_broadcast_MB size parameter being broadcasted, the program will be cutted into one segment.
+            after every segment_broadcast_MB size parameter being broadcasted, the program will be cut into one segment.
             This configuration will affect the communication speed in sharding training, and should be an empirical value decided by your model size and network topology.
             Only enable when sharding_segment_strategy = segment_broadcast_MB. Default is 32.0 .
 
-            segment_anchors(list): list of anchors used to segment the program, which allows a finner control of program segmentation.
+            segment_anchors(list): list of anchors used to segment the program, which allows a finer control of program segmentation.
             this strategy is experimental by now. Only enable when sharding_segment_strategy = segment_anchors.
 
             sharding_degree(int, optional): specific the number of gpus within each sharding parallelism group; and sharding will be turn off if sharding_degree=1.  Default is 8.
@@ -1506,17 +1463,17 @@ class DistributedStrategy:
             gradient_merge_acc_step(int, optional): specific the accumulation steps in gradient merge; and gradient merge will be turn off if gradient_merge_acc_step=1.  Default is 1.
 
             optimize_offload(bool, optional): enable the optimizer offload which will offload the moment vars to Host memory in order to saving GPU memory for fitting larger model.
-            the moment var will be prefetch from and offloaded to Host memory during update stage. it is a stragtegy that trades off between training speed and GPU memory, and is recommened to be turn on only when gradient_merge_acc_step large, where
+            the moment var will be prefetch from and offloaded to Host memory during update stage. it is a strategy that trades off between training speed and GPU memory, and is recommended to be turn on only when gradient_merge_acc_step large, where
             the number of time of update stage will be relatively small compared with forward&backward's.  Default is False.
 
-            dp_degree(int, optional): specific the number of data parallelism group; when dp_degree >= 2, it will introduce dp_degree ways data parallelism as the outer parallelsim for the inner parallelsim. User is responsible to ensure global_world_size = mp_degree * sharding_degree * pp_degree * dp_degree. Default is 1.
+            dp_degree(int, optional): specific the number of data parallelism group; when dp_degree >= 2, it will introduce dp_degree ways data parallelism as the outer parallelism for the inner parallelism. User is responsible to ensure global_world_size = mp_degree * sharding_degree * pp_degree * dp_degree. Default is 1.
 
             mp_degree(int, optional): [Hybrid parallelism ONLY] specific the number of gpus within each megatron parallelism group; and megatron parallelism will turn be off if mp_degree=1.  Default is 1.
 
             pp_degree(int, optional): [Hybrid parallelism ONLY] specific the number of gpus within each pipeline parallelism group; and pipeline parallelism will turn be off if pp_degree=1.  Default is 1.
 
-            pp_allreduce_in_optimize(bool, optional): [Hybrid parallelism ONLY] move the allreduce operations from backward stage to update(optimize) stage when pipeline parallelsim is on.
-            This configuration will affect the communication speed of Hybrid parallelism training depeneded on network topology. this strategy is experimental by now..  Default is False.
+            pp_allreduce_in_optimize(bool, optional): [Hybrid parallelism ONLY] move the allreduce operations from backward stage to update(optimize) stage when pipeline parallelism is on.
+            This configuration will affect the communication speed of Hybrid parallelism training depended on network topology. this strategy is experimental by now..  Default is False.
 
             optimize_cast(bool, optional): [Hybrid parallelism ONLY] Move the cast op of AMP which cast fp32 param to fp16 param to optimizer. optimize_cast will persist fp16 param, it
             will take more memory, but will be faster, trade space for time. Recommend to turn on only when using pipeline or gradient_merge_acc_step large.
@@ -1714,7 +1671,7 @@ class DistributedStrategy:
         different parts of neural networks are running on different GPUS.
         There are Tensor queue buffer between each pair of neighborhood GPUS
         that are responsible for synchronizing hidden Tensor results between
-        GPUs. Pipeline parallelism consists of serveral producer-consumer style
+        GPUs. Pipeline parallelism consists of several producer-consumer style
         hardware pairs, such as GPU-GPU, CPU-GPU, GPU-XPU. The best way to speedup
         pipeline parallelism is to make the size of Tensor in Tensor queue smaller,
         so that we will have a faster producer for downstream consumers.
@@ -2021,7 +1978,7 @@ class DistributedStrategy:
     def dgc_configs(self):
         r"""
 
-        Set Deep Gradient Compression training configurations. In general, dgc has serveral configurable
+        Set Deep Gradient Compression training configurations. In general, dgc has several configurable
         settings that can be configured through a dict.
 
         **Notes**:
@@ -2177,7 +2134,7 @@ class DistributedStrategy:
         **Notes**:
         **lars_coeff (float)**: trust ratio in lars formula.
         **lars_weight_decay** (float): weight decay coefficient in lars formula.
-        **epsilon (float)**: argument is used to avoid potential devision-by-zero
+        **epsilon (float)**: argument is used to avoid potential division-by-zero
         when compute the local lr;
         **exclude_from_weight_decay ([string])**: is a list of name strings of layers which
         will be exclude from weight decay in lars formula.
@@ -2431,7 +2388,7 @@ class DistributedStrategy:
     def qat_configs(self):
         """
 
-        Set quantization training configurations. In general, qat has serveral configurable
+        Set quantization training configurations. In general, qat has several configurable
         settings that can be configured through a dict.
 
         **Notes**:
@@ -2446,7 +2403,7 @@ class DistributedStrategy:
 
             algo(str): Other quantization training algorithm.
 
-        Exampless:
+        Examples:
             .. code-block:: python
 
                 >>> import paddle.distributed.fleet as fleet
@@ -2506,7 +2463,7 @@ class DistributedStrategy:
 
         Indicating whether to use exhaustive search method to choose convolution algorithms.
         Exhaustive search attempts all cuDNN algorithms to choose the fastest algorithm.
-        This method is time-consuming, the choosed algorithm will be cached for the given layer specifications.
+        This method is time-consuming, the chosen algorithm will be cached for the given layer specifications.
         Once the layer specifications (like batch size, feature map size) are changed, it will search again.
         Default Value: True
 
@@ -2660,7 +2617,7 @@ class DistributedStrategy:
 
         env_draws = line + "\n"
         for f in fields:
-            if "build_strategy" in f.name or "execution_strategy" in f.name:
+            if "build_strategy" in f.name:
                 continue
             if "_configs" in f.name:
                 continue
@@ -2736,15 +2693,5 @@ class DistributedStrategy:
             )
         build_strategy_str += border + "\n"
 
-        execution_strategy_str = h1_format.format("Execution Strategy")
-        execution_strategy_str += line + "\n"
-
-        fields = self.strategy.execution_strategy.DESCRIPTOR.fields
-        for f in fields:
-            execution_strategy_str += h2_format.format(
-                f.name, str(getattr(self.strategy.execution_strategy, f.name))
-            )
-        execution_strategy_str += border + "\n"
-
-        result_res += build_strategy_str + execution_strategy_str
+        result_res += build_strategy_str
         return result_res

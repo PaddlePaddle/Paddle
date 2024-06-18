@@ -28,7 +28,7 @@ from paddle.base.framework import _current_expected_place
     "GPU is not supported",
 )
 # Special cases for swin transformer, will ignore grad check
-class TestOneDNNlementwiseAddSrcDifferentShape(TestElementwiseAddOp):
+class TestOneDNNElementwiseAddSrcDifferentShape(TestElementwiseAddOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.check_pir_onednn = True

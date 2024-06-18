@@ -15,7 +15,8 @@
 import paddle
 from paddle.base import core
 from paddle.base.backward import _append_grad_suffix_
-from paddle.base.framework import Variable
+from paddle.base.framework import Variable, in_pir_mode
+from paddle.base.libpaddle.pir import build_pylayer_op, cf_yield
 from paddle.common_ops_import import LayerHelper, check_type, in_dygraph_mode
 from paddle.utils import flatten, map_structure
 
@@ -196,7 +197,7 @@ def _rename_var_recursively_(cur_block, var_old_to_new):
                 op._rename_output(old_var_name, new_var_name)
 
     # NOTE(MarioLulab): block attr type with the name of "blocks" or "sub_block" indicates
-    # the block might be excuted. We should rename the var name in these blocks recursively
+    # the block might be executed. We should rename the var name in these blocks recursively
     block_attr_names = ["blocks", "sub_block"]
 
     for op in cur_block.ops:
@@ -234,6 +235,42 @@ def copy_var_from_parent_block(parent_block_var, layer_helper):
         )
         paddle.assign(parent_block_var, current_block_var)
     return current_block_var
+
+
+class PyLayerBackwardFunction:
+    _register_backward_funcs = []
+
+    def __init__(self, backward_function, hook_check_func):
+        if backward_function is None or not callable(backward_function):
+            raise TypeError('func must be a Python function')
+
+        self._func = backward_function
+
+        # Note: Used to verify the number of `Value` inputs to ``forward_fn`` the same as the
+        # number of `Value` outputs to ``backward_fn``, and the number of `Value` outputs to ``forward_fn``
+        # the same as the number of `Value` inputs to ``backward_fn``.
+        self._hook_check_func = hook_check_func
+
+        '''
+        Why record self here?
+           For increasing reference count of self.
+           It seems that to release Python object
+           whose reference count is 1 would cause
+           segmentation fault error in C++ side.
+           May be lack of Python GC in C++ side?
+        '''
+        PyLayerBackwardFunction._register_backward_funcs.append(self)
+
+    def __call__(self, *output_grads):
+        assert self._hook_check_func
+
+        input_grads = self._func(*output_grads)
+        if not isinstance(input_grads, (list, tuple)):
+            input_grads = (input_grads,)
+
+        self._hook_check_func(output_grads, input_grads)
+
+        return input_grads
 
 
 def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
@@ -320,9 +357,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
         for input_var in inputs:
             if input_var.stop_gradient is False:
                 raise ValueError(
-                    "``stop_gradient`` attr of all inputs to ``forward_fn`` are expected to be True, when ``backward_fn == None``, but {}.stop_gradient got {}".format(
-                        input_var.name, input_var.stop_gradient
-                    )
+                    f"``stop_gradient`` attr of all inputs to ``forward_fn`` are expected to be True, when ``backward_fn == None``, but {input_var.name}.stop_gradient got {input_var.stop_gradient}"
                 )
 
     # judge if in dy2st or not, by checking binding args of `forward_fn` and `backward_fn`
@@ -331,6 +366,94 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
     static_pylayer_context = (
         fwd_fn_ctx if fwd_fn_ctx and (fwd_fn_ctx == bwd_fn_ctx) else None
     )
+
+    if in_pir_mode():
+        fwd_inputs = [
+            inp for inp in inputs if isinstance(inp, paddle.pir.Value)
+        ]
+        pylayer_op = build_pylayer_op(fwd_inputs)
+        outputs = None
+        if forward_fn is not None:
+            if not callable(forward_fn):
+                raise ValueError("`forward_fn` should be callable")
+            with pylayer_op.forward_block():
+                outputs = forward_fn(*inputs)
+
+            if outputs is None:
+                return None
+
+            fwd_outputs = [
+                out
+                for out in flatten(outputs)
+                if isinstance(out, paddle.pir.Value)
+            ]
+
+            with pylayer_op.forward_block():
+                if fwd_outputs is not None:
+                    cf_yield(flatten(fwd_outputs))
+            pylayer_op.update_output()
+        if backward_fn is not None:
+            if not callable(backward_fn):
+                raise ValueError("`bakcward_fn` should be callable")
+
+            def hook_inputs_outputs_check_function(output_grads, input_grads):
+                # 1. Verify the number of `Value` inputs to ``forward_fn`` the same as the
+                # number of `Value` outputs to ``backward_fn``
+                forward_inputs = [
+                    x
+                    for x in flatten(inputs)
+                    if isinstance(x, paddle.pir.Value)
+                ]
+                if len(input_grads) != len(forward_inputs):
+                    raise ValueError(
+                        f"The number of input grads should be equal to the number of inputs, but got {len(input_grads)} and {len(inputs)}."
+                    )
+                for inp_grad, fwd_input in zip(input_grads, forward_inputs):
+                    assert (
+                        inp_grad.dtype == fwd_input.dtype
+                    ), f"dtype of inp_grad({inp_grad.dtype}) and fwd_input({fwd_input.dtype}) should be the same"
+                    assert (
+                        inp_grad.shape == fwd_input.shape
+                    ), f"shape of inp_grad({inp_grad.shape}) and fwd_input({fwd_input.shape}) should be the same"
+                    assert (
+                        inp_grad.type() == fwd_input.type()
+                    ), f"type of inp_grad({inp_grad.type}) and fwd_input({fwd_input.type}) should be the same"
+
+                # 2. Verify the number of `Value` outputs to ``forward_fn``
+                # the same as the number of `Value` inputs to ``backward_fn``
+                forward_outputs = [
+                    x
+                    for x in flatten(fwd_outputs)
+                    if isinstance(x, paddle.pir.Value)
+                ]
+                if len(output_grads) != len(forward_outputs):
+                    raise ValueError(
+                        f"The number of output grads should be equal to the number of outputs, but got {len(output_grads)} and {len(fwd_outputs)}."
+                    )
+                for out_grad, fwd_output in zip(output_grads, forward_outputs):
+                    assert (
+                        out_grad.dtype == fwd_output.dtype
+                    ), f"dtype of out_grad({out_grad.dtype}) and fwd_output({fwd_output.dtype}) should be the same"
+                    assert (
+                        out_grad.shape == fwd_output.shape
+                    ), f"shape of out_grad({out_grad.shape}) and fwd_output({fwd_output.shape}) should be the same"
+                    assert (
+                        out_grad.type() == fwd_output.type()
+                    ), f"type of out_grad({out_grad.type}) and fwd_output({fwd_output.type}) should be the same"
+
+            bwd_fn = PyLayerBackwardFunction(
+                backward_fn, hook_check_func=hook_inputs_outputs_check_function
+            )
+            pylayer_op.register_backward_function(bwd_fn)
+
+        # NOTE: Replace pir.Value of `outputs` with pylayer_op.result, because value of `outputs` which is inside pylayer block can't be reference outside the block.
+        op_result_idx = 0
+        outputs = flatten(outputs)
+        for i in range(len(outputs)):
+            if isinstance(outputs[i], paddle.pir.Value):
+                outputs[i] = pylayer_op.results()[op_result_idx]
+                op_result_idx += 1
+        return outputs[0] if len(outputs) == 1 else outputs
 
     check_type(name, "name", (str, type(None)), "base.layers.static_pylayer")
     helper = LayerHelper('static_pylayer', **locals())
@@ -365,9 +488,7 @@ def static_pylayer(forward_fn, inputs, backward_fn=None, name=None):
             bwd_var_name = _append_grad_suffix_(fwd_var_name)
             if not current_block.desc.has_var_recursive(fwd_var_name.encode()):
                 raise ValueError(
-                    "Grad var {} , we can't find its related forward var {}".format(
-                        bwd_var_name, fwd_var_name
-                    )
+                    f"Grad var {bwd_var_name} , we can't find its related forward var {fwd_var_name}"
                 )
 
             var = current_block.create_var(

@@ -41,16 +41,16 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class TestElementwiseDivGradGradWithoutDout
-    : public TestElementwiseOpGradGrad<T> {
+class TestElementwiseDivGradGradWithDout : public TestElementwiseOpGradGrad<T> {
  public:
-  TestElementwiseDivGradGradWithoutDout(const platform::Place &place,
-                                        const framework::DDim &dims)
-      : TestElementwiseOpGradGrad<T>("elementwise_div_grad_grad",
-                                     place,
-                                     dims,
-                                     {"Y", "Out", "DDX", "DDY", "DX"},
-                                     {"Y@GRAD", "DDOut"}) {}
+  TestElementwiseDivGradGradWithDout(const platform::Place &place,
+                                     const framework::DDim &dims)
+      : TestElementwiseOpGradGrad<T>(
+            "elementwise_div_grad_grad",
+            place,
+            dims,
+            {"Y", "Out", "Out@GRAD", "DDX", "DDY", "DX"},
+            {"Y@GRAD", "DDOut", "DOut"}) {}
 
   using TestElementwiseOpGradGrad<T>::feed_datas_;
   using TestElementwiseOpGradGrad<T>::expected_outs_;
@@ -59,6 +59,7 @@ class TestElementwiseDivGradGradWithoutDout
     size_t numel = static_cast<size_t>(common::product(dims_));
     std::vector<T> dy(numel);
     std::vector<T> ddout(numel);
+    std::vector<T> dout(numel);
     for (size_t i = 0; i < numel; ++i) {
       // dY(Y@GRAD) = Out * dX * ddY / Y - dX * ddX / Y
       dy[i] = (feed_datas_["DX"][i] / feed_datas_["Y"][i]) *
@@ -68,9 +69,12 @@ class TestElementwiseDivGradGradWithoutDout
       ddout[i] = (feed_datas_["DDX"][i] -
                   feed_datas_["Out"][i] * feed_datas_["DDY"][i]) /
                  (feed_datas_["Y"][i]);
+      // dOut = - DX * DDy
+      dout[i] = -feed_datas_["DX"][i] * feed_datas_["DDY"][i];
     }
     expected_outs_["Y@GRAD"] = dy;
     expected_outs_["DDOut"] = ddout;
+    expected_outs_["DOut"] = dout;
   }
 
   std::unique_ptr<framework::OperatorBase> CreateTestOp() override {
@@ -78,27 +82,28 @@ class TestElementwiseDivGradGradWithoutDout
         this->op_type_,
         {{"Y", {"Y"}},
          {"Out", {"Out"}},
+         {"Out@GRAD", {"Out@GRAD"}},
          {"DDX", {"DDX"}},
          {"DDY", {"DDY"}},
          {"DX", {"DX"}}},
-        {{"Y@GRAD", {"Y@GRAD"}}, {"DDOut", {"DDOut"}}},
+        {{"Y@GRAD", {"Y@GRAD"}}, {"DDOut", {"DDOut"}}, {"DOut", {"DOut"}}},
         {{"use_mkldnn", false}, {"axis", 0}});
     return op;
   }
 };
 
-TEST(test_elementwise_div_grad_grad_without_dout, cpu_place) {
+TEST(test_elementwise_div_grad_grad, cpu_place) {
   framework::DDim dims({32, 64});
   platform::CPUPlace p;
-  TestElementwiseDivGradGradWithoutDout<float> test(p, dims);
+  TestElementwiseDivGradGradWithDout<float> test(p, dims);
   ASSERT_TRUE(test.Check());
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-TEST(test_elementwise_div_grad_grad_without_dout, gpu_place) {
+TEST(test_elementwise_div_grad_grad, gpu_place) {
   framework::DDim dims({32, 64});
   platform::CUDAPlace p(0);
-  TestElementwiseDivGradGradWithoutDout<float> test(p, dims);
+  TestElementwiseDivGradGradWithDout<float> test(p, dims);
   ASSERT_TRUE(test.Check());
 }
 #endif

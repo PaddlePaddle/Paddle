@@ -21,6 +21,8 @@ limitations under the License. */
 
 #ifdef PADDLE_USE_OPENBLAS
 #include <cblas.h>
+#elif PADDLE_USE_ACCELERATE
+#include <Accelerate/Accelerate.h>
 #endif
 
 #include <memory>
@@ -271,7 +273,7 @@ struct RowwiseAdd<phi::CPUContext, T> {
                   const phi::DenseTensor& vector,
                   phi::DenseTensor* output) {
     auto in_dims = input.dims();
-    auto out_dims = output->dims();
+    const auto& out_dims = output->dims();
     auto size = input.numel() / in_dims[0];
     PADDLE_ENFORCE_EQ(
         vector.numel(),

@@ -18,11 +18,14 @@
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/parser/ir_parser.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/parser/ir_parser.h"
 
 namespace paddle {
 namespace dialect {
+// __force_backend__ in ["gpu","gpudnn","cpu",""]
+inline const char kForceBackendAttr[] = "__force_backend__";
+
 class IntArrayAttribute : public pir::Attribute {
  public:
   using Attribute::Attribute;
@@ -37,6 +40,8 @@ class IntArrayAttribute : public pir::Attribute {
   static IntArrayAttribute Parse(pir::IrParser &parser);  // NOLINT
 
   const phi::IntArray &data() const;
+
+  static std::string name() { return "a_intarray"; }
 };
 
 class ScalarAttribute : public pir::Attribute {
@@ -59,7 +64,9 @@ class ScalarAttribute : public pir::Attribute {
     return TransToIrAttribute(scalar, ctx);
   }
 
-  phi::Scalar data();
+  phi::Scalar data() const;
+
+  static std::string name() { return "a_scalar"; }
 };
 
 class DataTypeAttribute : public pir::Attribute {
@@ -76,6 +83,8 @@ class DataTypeAttribute : public pir::Attribute {
   static DataTypeAttribute Parse(pir::IrParser &parser);  // NOLINT
 
   phi::DataType data() const;
+
+  static std::string name() { return "a_dtype"; }
 };
 
 class PlaceAttribute : public pir::Attribute {
@@ -91,6 +100,7 @@ class PlaceAttribute : public pir::Attribute {
   static PlaceAttribute Parse(pir::IrParser &parser);  // NOLINT
 
   phi::Place data() const;
+  static std::string name() { return "a_place"; }
 };
 
 class DataLayoutAttribute : public pir::Attribute {
@@ -106,6 +116,7 @@ class DataLayoutAttribute : public pir::Attribute {
 
   static DataLayoutAttribute Parse(pir::IrParser &parser);  // NOLINT
   phi::DataLayout data() const;
+  static std::string name() { return "a_layout"; }
 };
 
 }  // namespace dialect

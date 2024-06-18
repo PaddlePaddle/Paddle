@@ -37,7 +37,7 @@ StringTensor::StringTensor(const std::shared_ptr<phi::Allocation>& holder,
                            const StringTensorMeta& meta)
     : meta_(meta), holder_(holder) {}
 
-StringTensor::StringTensor(const StringTensor& other) {
+StringTensor::StringTensor(const StringTensor& other) {  // NOLINT
   this->meta_ = other.meta();
   holder_ = other.holder_;
 }
@@ -49,7 +49,8 @@ StringTensor& StringTensor::operator=(const StringTensor& other) {
   return *this;
 }
 
-StringTensor& StringTensor::operator=(StringTensor&& other) noexcept {
+StringTensor& StringTensor::operator=(  // NOLINT
+    StringTensor&& other) noexcept {
   meta_ = std::move(other.meta_);
   std::swap(holder_, other.holder_);
   return *this;
@@ -79,8 +80,8 @@ const dtype::pstring* StringTensor::data() const {
       holder_,
       phi::errors::PreconditionNotMet(
           "The storage must be valid when call the mutable data function."));
-  return reinterpret_cast<const dtype::pstring*>(
-      reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset;
+  return reinterpret_cast<const dtype::pstring*>(ptr);
 }
 
 dtype::pstring* StringTensor::data() {
@@ -88,8 +89,8 @@ dtype::pstring* StringTensor::data() {
       holder_,
       phi::errors::PreconditionNotMet(
           "The storage must be valid when call the mutable data function."));
-  return reinterpret_cast<dtype::pstring*>(
-      reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset;
+  return reinterpret_cast<dtype::pstring*>(ptr);
 }
 
 void StringTensor::set_meta(const StringTensorMeta& meta) {
@@ -173,8 +174,8 @@ void* StringTensor::AllocateFrom(Allocator* allocator,
     init_holder();
     meta_.offset = 0;
   }
-  return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
-                                 meta_.offset);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset;
+  return reinterpret_cast<void*>(ptr);
 }
 
 dtype::pstring* StringTensor::mutable_data(const phi::Place& place,
@@ -201,8 +202,8 @@ dtype::pstring* StringTensor::mutable_data(const phi::Place& place,
     init_holder();
     meta_.offset = 0;
   }
-  return reinterpret_cast<dtype::pstring*>(
-      reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset);
+  uintptr_t ptr = reinterpret_cast<uintptr_t>(holder_->ptr()) + meta_.offset;
+  return reinterpret_cast<dtype::pstring*>(ptr);
 }
 
 }  // namespace phi

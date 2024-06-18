@@ -28,9 +28,9 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/split.h"
-#include "paddle/phi/core/flags.h"
+#include "paddle/utils/string/split.h"
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif
@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/phi/backends/c_comm_lib.h"
 #endif
 
-PHI_DECLARE_int32(get_host_by_name_time);
+COMMON_DECLARE_int32(get_host_by_name_time);
 
 namespace paddle {
 namespace platform {
@@ -82,7 +82,7 @@ static int SocketSend(int fd, const char* buffer, int size) {
   int offset = 0;
   int bytes = 0;
   while (offset < size) {
-    bytes = send(fd, buffer + offset, size - offset, 0);
+    bytes = send(fd, buffer + offset, size - offset, 0);  // NOLINT
     if (bytes == -1) {
       if (errno != EINTR && errno != EWOULDBLOCK && errno != EAGAIN) {
         // send failed
@@ -100,7 +100,7 @@ static int SocketRecv(int fd, char* buffer, int size) {
   int offset = 0;
   int bytes = 0;
   while (offset < size) {
-    bytes = recv(fd, buffer + offset, size - offset, 0);
+    bytes = recv(fd, buffer + offset, size - offset, 0);  // NOLINT
     if (bytes == 0) {
       // closed by client, maybe probing alive client
       return 0;
@@ -163,7 +163,7 @@ int CreateListenSocket(const std::string& ep) {
   int opt = 1;
 
   // NOTE. The linger is used for skipping TIME-WAIT status forcefully.
-  linger ling;
+  linger ling = {};
   ling.l_onoff = 1;
   ling.l_linger = 0;
 
@@ -185,7 +185,7 @@ int CreateListenSocket(const std::string& ep) {
       "setsockopt");
 #endif
 
-  struct sockaddr_in address;
+  struct sockaddr_in address = {};
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = htons(port);
@@ -219,7 +219,7 @@ static int SocketAccept(int server_fd, const CommHead head) {
   static_assert(sizeof(CommHead) <= 1024,
                 "sizeof(CommHead) must <= buffer size");
 
-  struct sockaddr_in client_addr;
+  struct sockaddr_in client_addr = {};
   socklen_t addr_length = sizeof(client_addr);
   std::array<char, 1024> buffer{0};
   int conn = -1;
@@ -255,7 +255,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
   std::string host = addr[0];
   int port = std::stoi(addr[1]);
 
-  struct sockaddr_in server_addr;
+  struct sockaddr_in server_addr = {};
   memset(&server_addr, 0, sizeof(server_addr));
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = htons(port);

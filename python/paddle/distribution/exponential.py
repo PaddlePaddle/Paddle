@@ -76,14 +76,11 @@ class Exponential(exponential_family.ExponentialFamily):
             [self.rate] = self._to_tensor(rate)
             self.dtype = paddle.get_default_dtype()
 
-        if not paddle.all(self.rate > 0):
-            raise ValueError("The arg of `rate` must be positive.")
-
         super().__init__(self.rate.shape)
 
     @property
     def mean(self):
-        """Mean of exponential distribuion.
+        """Mean of exponential distribution.
 
         Returns:
             Tensor: mean value.
@@ -134,7 +131,7 @@ class Exponential(exponential_family.ExponentialFamily):
         return -paddle.log(uniform) / self.rate
 
     def prob(self, value):
-        r"""Probability density funciotn evaluated at value.
+        r"""Probability density function evaluated at value.
 
         .. math::
 

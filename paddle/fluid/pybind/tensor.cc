@@ -55,7 +55,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
@@ -74,7 +73,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -125,7 +123,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/pybind.h"  // NOLINT
 #include "paddle/fluid/pybind/reader_py.h"
 #include "paddle/fluid/pybind/tensor_py.h"
-#include "paddle/fluid/string/to_string.h"
+#include "paddle/utils/string/to_string.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
@@ -160,10 +158,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
-#ifdef PADDLE_WITH_CINN
-#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
-#endif
-
+#include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/pybind/complex.h"
@@ -171,13 +166,12 @@ limitations under the License. */
 #include "paddle/fluid/pybind/tensor.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-PHI_DECLARE_bool(use_mkldnn);
-PHI_DECLARE_bool(use_shm_cache);
+COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_shm_cache);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -473,6 +467,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              return common::DataLayoutToString(self.layout());
            })
       .def("_share_data_with", &phi::DenseTensor::ShareDataWith)
+      .def("_share_data_nocheck_with", &phi::DenseTensor::ShareDataNoCheckWith)
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
       .def("__str__",
            [](const phi::DenseTensor &self) {
@@ -480,30 +475,25 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              ostr << self;
              return ostr.str();
            }) /* ------ End of original Tensor ------ */
-      .def("__init__",
-           [](phi::DenseTensor &instance,
-              const std::vector<std::vector<size_t>>
-                  &recursive_sequence_lengths) {
-             LoD new_lod;
-             new_lod.reserve(recursive_sequence_lengths.size());
-             std::copy(recursive_sequence_lengths.begin(),
-                       recursive_sequence_lengths.end(),
-                       std::back_inserter(new_lod));
-             LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
-             PADDLE_ENFORCE_EQ(
-                 CheckLoD(new_offset_lod, -1),
-                 true,
-                 platform::errors::InvalidArgument(
-                     "The provided recursive_sequence_lengths info is "
-                     "invalid, "
-                     "the LoD converted by recursive_sequence_lengths is %s",
-                     new_lod));
-             new (&instance) phi::DenseTensor(new_offset_lod);
-           })
-      .def("__init__",
-           [](phi::DenseTensor &instance) {
-             new (&instance) phi::DenseTensor();
-           })
+      .def(py::init([](const std::vector<std::vector<size_t>>
+                           &recursive_sequence_lengths) {
+        LoD new_lod;
+        new_lod.reserve(recursive_sequence_lengths.size());
+        std::copy(recursive_sequence_lengths.begin(),
+                  recursive_sequence_lengths.end(),
+                  std::back_inserter(new_lod));
+        LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
+        PADDLE_ENFORCE_EQ(
+            CheckLoD(new_offset_lod, -1),
+            true,
+            platform::errors::InvalidArgument(
+                "The provided recursive_sequence_lengths info is "
+                "invalid, "
+                "the LoD converted by recursive_sequence_lengths is %s",
+                new_lod));
+        return std::make_unique<phi::DenseTensor>(new_offset_lod);
+      }))
+      .def(py::init([]() { return std::make_unique<phi::DenseTensor>(); }))
       // We implement offset based LOD in C++ while we use length based with
       // Python API. So we changed set_lod to set_recursive_sequence_lengths
       // to
@@ -863,7 +853,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         )DOC")
 #endif
       .def("_share_filename",
-           [](phi::DenseTensor &self) {
+           [](phi::DenseTensor &self, bool use_file_descriptor) {
              if (!self.IsInitialized() || self.numel() == 0)
                throw std::runtime_error(
                    "Tensor not initialized or numel is 0. could not pass to "
@@ -890,6 +880,10 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
                int flags = memory::allocation::MAPPED_SHAREDMEM |
                            memory::allocation::MAPPED_EXCLUSIVE;
+               if (use_file_descriptor) {
+                   flags = flags | memory::allocation::MAPPED_KEEPFD |
+                           memory::allocation::MAPPED_UNLINK;
+               }
                std::string handle = memory::allocation::GetIPCName();
                int find_id = -1;
                if (FLAGS_use_shm_cache) {
@@ -898,9 +892,10 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                if (find_id != -1) {
                  handle = memory::allocation::MemoryMapAllocationPool::Instance().GetById(find_id).file_name_; // NOLINT
                }
+               int shared_fd = -1;
                auto shared_holder =
                    memory::allocation::AllocateRefcountedMemoryMapAllocation(
-                       handle, flags, data_size, find_id);
+                       handle, shared_fd, flags, data_size, find_id);
 
                // copy data & reset holder
                if (platform::is_cuda_pinned_place(holder->place())) {
@@ -918,8 +913,10 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              int type_idx = static_cast<int>(self.type());
 
              return py::make_tuple(mmap_allocation->ipc_name(),
+                                   mmap_allocation->shared_fd(),
                                    mmap_allocation->size(), type_idx,
-                                   common::vectorize(self.dims()), self.lod());
+                                   common::vectorize(self.dims()), self.lod(),
+                                   use_file_descriptor);
            },
            R"DOC(
            Serialize CPU lod tensor in shared memory to tuple.
@@ -939,30 +936,37 @@ void BindTensor(pybind11::module &m) {  // NOLINT
        )DOC")
       .def("_new_shared_filename",
            [](py::tuple t) {  // __setstate__
-             if (t.size() != 5)
+             if (t.size() != 7)
                throw std::runtime_error("Invalid Tensor meta info state!");
 
              phi::DenseTensor tensor;
 
              // 2. Rebuild Allocation
              const std::string &ipc_name = t[0].cast<std::string>();
-             size_t size = t[1].cast<size_t>();
+             const int shared_fd = t[1].cast<int>();
+             const bool use_file_descriptor = t[6].cast<bool>();
+
+             size_t size = t[2].cast<size_t>();
              int flags = memory::allocation::MAPPED_SHAREDMEM |
                          memory::allocation::MAPPED_NOCREATE;
+             if (use_file_descriptor) {
+                 flags = flags | memory::allocation::MAPPED_KEEPFD |
+                         memory::allocation::MAPPED_UNLINK;
+             }
              int find_id = -1;
              if (FLAGS_use_shm_cache) {
                find_id = memory::allocation::MemoryMapAllocationPool::Instance().FindFromCache(flags, size, ipc_name, /*check_refcount*/ false); // NOLINT
              }
              auto shared_holder =
                  memory::allocation::AllocateRefcountedMemoryMapAllocation(
-                     ipc_name, flags, size, find_id);
+                     ipc_name, shared_fd, flags, size, find_id);
 
              // 3. Rebuild Tensor
              tensor.ResetHolderWithType(
                  shared_holder,
-                 static_cast<phi::DataType>(t[2].cast<int>()));
-             tensor.Resize(common::make_ddim(t[3].cast<std::vector<int>>()));
-             tensor.set_lod(t[4].cast<framework::LoD>());
+                 static_cast<phi::DataType>(t[3].cast<int>()));
+             tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
+             tensor.set_lod(t[5].cast<framework::LoD>());
 
              return tensor;
            },
@@ -970,7 +974,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            Deserialize CPU lod tensor from shared memory.
 
            Params:
-               tuple: contrains ipc file name, data size, data type,
+               tuple: contains ipc file name, data size, data type,
                       tensor dims and lod information.
 
            Examples:
@@ -1070,25 +1074,35 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              self.unsafe_mutable_value()->ShareDataWith(src.value());
              return self;
            })
-      .def("_share_data_with", [](DistTensor &self, const DistTensor &src) {
-        self.unsafe_set_dims(src.dims());
-        self.unsafe_set_dist_attr(src.dist_attr());
-        self.unsafe_mutable_value()->ShareDataWith(src.value());
-        return self;
-      });
+      .def("_share_data_nocheck_with",
+           [](DistTensor &self, const DistTensor &src) {
+             self.unsafe_set_dims(src.dims());
+             self.unsafe_set_dist_attr(src.dist_attr());
+             self.unsafe_mutable_value()->ShareDataNoCheckWith(src.value());
+             return self;
+           })
+      .def("_share_data_with",
+           [](DistTensor &self, const DistTensor &src) {
+             self.unsafe_set_dims(src.dims());
+             self.unsafe_set_dist_attr(src.dist_attr());
+             if (!IsCurRankInMesh(self.process_mesh()) &&
+                 !IsCurRankInMesh(src.dist_attr().process_mesh())) {
+               self.unsafe_mutable_value()->ShareDataNoCheckWith(src.value());
+             } else {
+               self.unsafe_mutable_value()->ShareDataWith(src.value());
+             }
+             return self;
+           })
+      .def("_unsafe_set_skip_check_mesh",
+           &DistTensor::unsafe_set_skip_check_mesh)
+      .def("_clear", &DistTensor::clear);
 #endif
 
   py::class_<phi::SelectedRows>(m, "SelectedRows")
-      .def("__init__",
-           [](phi::SelectedRows &instance) {
-             new (&instance) phi::SelectedRows();
-           })
-      .def("__init__",
-           [](phi::SelectedRows &instance,
-              const std::vector<int64_t> rows,
-              const int64_t &height) {
-             new (&instance) phi::SelectedRows(rows, height);
-           })
+      .def(py::init([]() { return std::make_unique<phi::SelectedRows>(); }))
+      .def(py::init([](const std::vector<int64_t> rows, const int64_t &height) {
+        return std::make_unique<phi::SelectedRows>(rows, height);
+      }))
       .def(
           "get_tensor",
           [](phi::SelectedRows &self) { return self.mutable_value(); },
@@ -1119,10 +1133,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       });
 
   py::class_<phi::SparseCooTensor>(m, "SparseCooTensor")
-      .def("__init__",
-           [](phi::SparseCooTensor &instance) {
-             new (&instance) phi::SparseCooTensor();
-           })
+      .def(py::init([]() { return std::make_unique<phi::SparseCooTensor>(); }))
       .def("numel",
            [](const phi::SparseCooTensor &self) -> int64_t {
              return self.numel();

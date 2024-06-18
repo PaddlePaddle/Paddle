@@ -21,12 +21,12 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs//concat_and_split_functor.h"
 
 #if defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
@@ -46,19 +46,19 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
     PADDLE_ENFORCE_GE(rank,
                       0,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "greater than or equal to 0.",
                           rank));
     PADDLE_ENFORCE_GE(nranks,
                       2,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The value of nranks (%d) for c_concat must be "
                           "greater than or equal to 2.",
                           nranks));
     PADDLE_ENFORCE_LT(rank,
                       nranks,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "less than that of nranks (%d).",
                           rank,
@@ -67,7 +67,7 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_XPU_BKCL)
     auto& dev_ctx = ctx.template device_context<phi::XPUContext>();
     phi::DenseTensor temp_out;
-    framework::DDim temp_out_dims = x->dims();
+    phi::DDim temp_out_dims = x->dims();
     temp_out_dims[0] *= nranks;
     temp_out.Resize(temp_out_dims);
     dev_ctx.template Alloc(&temp_out, x->dtype());
@@ -95,7 +95,7 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
       if (FLAGS_dynamic_static_unified_comm) {
         PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                           true,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "You choose to use new communication library by "
                               "setting environment "
                               "variable FLAGS_dynamic_static_unified_comm "
@@ -107,7 +107,7 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_NE(
             comm_ctx,
             nullptr,
-            platform::errors::Unavailable(
+            phi::errors::Unavailable(
                 "BKCLCommContext is nullptr, collective op should "
                 "has ring_id attr."));
         stream = comm_ctx->GetStream();
@@ -118,7 +118,7 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             nranks,
             comm->nranks(),
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "nranks: %s should equal to %s", nranks, comm->nranks()));
         stream = comm->stream();
         VLOG(3) << "old BKCLCommContext has rid " << rid;
@@ -151,7 +151,7 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
     dev_ctx.template Alloc(out, x->dtype());
     functor(dev_ctx, inputs, axis, out);
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should compile with XPU."));
 #endif
   }
@@ -160,7 +160,6 @@ class CConcatOpXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_concat,
                           XPU,
@@ -169,4 +168,5 @@ PD_REGISTER_STRUCT_KERNEL(c_concat,
                           float,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16,
+                          phi::dtype::bfloat16) {}

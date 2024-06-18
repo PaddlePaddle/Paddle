@@ -188,7 +188,7 @@ class TrtConvertMulticlassNMSTest(TrtLayerAutoScanTest):
         # the order of tensorrt outputs are not consistent with paddle
         for key, arr in tensor.items():
             if key == "nms_output_boxes":
-                basline_arr = np.array(
+                baseline_arr = np.array(
                     sorted(
                         baseline[key].reshape((-1, 6)),
                         key=lambda i: [i[0], i[1]],
@@ -198,19 +198,19 @@ class TrtConvertMulticlassNMSTest(TrtLayerAutoScanTest):
                     sorted(arr.reshape((-1, 6)), key=lambda i: [i[0], i[1]])
                 )
             else:
-                basline_arr = np.array(baseline[key].reshape((-1, 1)))
+                baseline_arr = np.array(baseline[key].reshape((-1, 1)))
                 arr = np.array(arr.reshape((-1, 1)))
 
             self.assertTrue(
-                basline_arr.shape == arr.shape,
+                baseline_arr.shape == arr.shape,
                 "The output shapes are not equal, the baseline shape is "
-                + str(basline_arr.shape)
+                + str(baseline_arr.shape)
                 + ', but got '
                 + str(arr.shape),
             )
-            diff = abs(basline_arr - arr)
+            diff = abs(baseline_arr - arr)
             np.testing.assert_allclose(
-                basline_arr,
+                baseline_arr,
                 arr,
                 rtol=rtol,
                 atol=atol,

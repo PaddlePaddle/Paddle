@@ -45,7 +45,9 @@ class TestReshapeOp(OpTest):
         self.infered_shape = (12, 10)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_pir=True)
+        self.check_output(
+            no_check_set=['XShape'], check_pir=True, check_symbol_infer=True
+        )
 
     def test_check_grad(self):
         self.check_grad(
@@ -734,16 +736,22 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
             self.assertEqual(result[3].shape, (1,))
 
 
-class TestReshapePirOpResultListShape(unittest.TestCase):
-    def test_opresult_list_shape(self):
+class TestReshapePirValueListShape(unittest.TestCase):
+    def test_value_list_shape(self):
         with paddle.pir_utils.IrGuard():
-            x = paddle.static.data(
-                'x',
-                [3],
-            )
+            x = paddle.static.data('x', [3])
             shape = [1, paddle.full([], 3)]
             out = paddle.reshape(x, shape)
-            np.testing.assert_array_equal(tuple(out.shape), (-1, -1))
+            self.assertEqual(out.shape, [1, -1])
+
+
+class TestReshapePirTensorWithZeroShape(unittest.TestCase):
+    def test_tensor_with_zero_shape(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data('x', [10, -1])
+            shape = [0, paddle.shape(x)[1]]
+            out = paddle.reshape(x, shape)
+            self.assertEqual(out.shape, [10, -1])
 
 
 if __name__ == "__main__":

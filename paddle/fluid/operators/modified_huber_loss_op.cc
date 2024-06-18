@@ -33,16 +33,16 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dims.size(),
         2,
-        platform::errors::InvalidArgument("Input(input) rank should be 2, "
-                                          "but received input rank(%d) != 2",
-                                          x_dims.size()));
+        phi::errors::InvalidArgument("Input(input) rank should be 2, "
+                                     "but received input rank(%d) != 2",
+                                     x_dims.size()));
 
     if (ctx->IsRuntime() ||
         (common::product(x_dims) > 0 && common::product(y_dims) > 0)) {
       PADDLE_ENFORCE_EQ(
           x_dims,
           y_dims,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The Input(input) and Input(label) should have the same "
               "shape, but received input shape [%s] != label shape [%s]",
               x_dims,
@@ -52,7 +52,7 @@ class ModifiedHuberLossOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(x_dims[1],
                         1,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The second dimension of Input(input) should be 1, "
                             "but received second dimension of input (%d) != 1",
                             x_dims[1]));
@@ -123,7 +123,7 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           intermediate_dims,
           y_dims,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The shape of Intermediate variable which will be reused in "
               "backward processing should the same as "
               "the shape of Input(label), but received Intermediate variable "
@@ -134,7 +134,7 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           out_grad_dims,
           y_dims,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The shape of output gradient should be the same as "
               "the shape of Input(label), but received the output gradient "
               "shape [%s] != label shape [%s]",

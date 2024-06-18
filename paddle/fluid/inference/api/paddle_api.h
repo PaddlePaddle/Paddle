@@ -167,7 +167,7 @@ struct PD_INFER_DECL PaddleTensor {
 /// to device,
 /// eliminating additional CPU copy. ZeroCopyTensor is only used in the
 /// AnalysisPredictor.
-/// It is obtained through PaddlePredictor::GetinputTensor()
+/// It is obtained through PaddlePredictor::GetInputTensor()
 /// and PaddlePredictor::GetOutputTensor() interface.
 
 class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
@@ -289,12 +289,11 @@ class PD_INFER_DECL PaddlePredictor {
   }
   /// \brief Run the network with zero-copied inputs and outputs.
   /// Be inherited by AnalysisPredictor and only used in ZeroCopy scenarios.
-  /// This will save the IO copy for transfering inputs and outputs to predictor
-  /// workspace
-  /// and get some performance improvement.
-  /// To use it, one should call the AnalysisConfig.SwitchUseFeedFetchOp(false)
-  /// and then use the `GetInputTensor` and `GetOutputTensor`
-  /// to directly write or read the input/output tensors.
+  /// This will save the IO copy for transferring inputs and outputs to
+  /// predictor workspace and get some performance improvement. To use it, one
+  /// should call the AnalysisConfig.SwitchUseFeedFetchOp(false) and then use
+  /// the `GetInputTensor` and `GetOutputTensor` to directly write or read the
+  /// input/output tensors.
   /// \param switch_stream Whether the stream is switched.
   /// \return Whether the run is successful
   virtual bool ZeroCopyRun(bool switch_stream = false) { return false; }
@@ -318,7 +317,7 @@ class PD_INFER_DECL PaddlePredictor {
 
   ///
   /// \brief Register a output hook function to operate the intermediate tensor
-  /// of op output. when using this function, memory reuse should be tured off.
+  /// of op output. when using this function, memory reuse should be turned off.
   /// The hook function signature is void(const std::string&, const
   /// std::string&, const paddle::Tensor&>). Here, the first parameter is op's
   /// type, the second param is output var name of the op, and the third
@@ -468,7 +467,7 @@ PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
 
 }  // namespace paddle
 
-// forward declation
+// forward declaration
 using cudaStream_t = struct CUstream_st*;
 using hipStream_t = struct ihipStream_t*;
 
@@ -524,6 +523,7 @@ class PD_INFER_DECL InternalUtils {
 
   static void SyncStream(paddle_infer::Predictor* pred);
   static void SyncStream(cudaStream_t stream);
+  static void SyncStream(hipStream_t stream);
   template <typename T>
   static void CopyFromCpuWithIoStream(paddle_infer::Tensor* t,
                                       const T* data,

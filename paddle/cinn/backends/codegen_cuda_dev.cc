@@ -21,10 +21,13 @@
 #include <set>
 #include <unordered_set>
 
+#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-
+#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 namespace cinn {
 namespace backends {
 
@@ -81,6 +84,7 @@ void CodeGenCUDA_Dev::Compile(const ir::Module &module,
 }
 
 void CodeGenCUDA_Dev::Compile(const ir::LoweredFunc &func) {
+  dyn_shared_mem_offset_ = Expr(-1);
   IrPrinter::Visit(Expr(func));
 }
 
@@ -118,10 +122,12 @@ std::vector<Expr> FilterDeallocTempBuffers(const std::vector<Expr> &frees) {
   std::vector<Expr> filtered;
   for (const Expr &free : frees) {
     const ir::Free *op = free.As<ir::Free>();
-    CHECK_NOTNULL(op);
+    PADDLE_ENFORCE_NOT_NULL(
+        op, phi::errors::InvalidArgument("Free is not a free node"));
     bool has_symbolic_constant = false;
     const ir::_Buffer_ *buffer = op->destination.As<ir::_Buffer_>();
     for (Expr shape : buffer->shape) {
+      shape = common::AutoSimplify(shape);
       ir::ir_utils::CollectIRNodes(shape, [&](const Expr *x) {
         if (x->as_var()) {
           CHECK(x->as_var()->is_symbolic_constant)
@@ -183,8 +189,8 @@ void CodeGenCUDA_Dev::Visit(const ir::Free *op) {
 }
 
 void CodeGenCUDA_Dev::Visit(const ir::_Var_ *op) {
-  if (utils::Startswith(op->name, "threadIdx") ||
-      utils::Startswith(op->name, "blockIdx")) {
+  if (utils::StartsWith(op->name, "threadIdx") ||
+      utils::StartsWith(op->name, "blockIdx")) {
     str_ += "(int)";
     str_ += op->name;
   } else {
@@ -216,13 +222,22 @@ void CodeGenCUDA_Dev::Visit(const ir::Max *op) {
 void CodeGenCUDA_Dev::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
   str_ += "void ";
   if (op->cuda_axis_info.valid()) {
+    bool has_symbol_in_thread_num = false;
     int thread_num = 1;
     for (int i = 0; i < 3; i++) {
-      thread_num *= op->cuda_axis_info.block_dim(i);
+      ir::Expr block_dim = op->cuda_axis_info.block_dim(i);
+      if (block_dim.is_constant()) {
+        thread_num *= block_dim.get_constant();
+      } else {
+        has_symbol_in_thread_num = true;
+        break;
+      }
     }
-    str_ += "__launch_bounds__(";
-    str_ += std::to_string(thread_num);
-    str_ += ") ";
+    if (!has_symbol_in_thread_num) {
+      str_ += "__launch_bounds__(";
+      str_ += std::to_string(thread_num);
+      str_ += ") ";
+    }
   }
 
   str_ += op->name;
@@ -279,7 +294,7 @@ std::string CodeGenCUDA_Dev::Compile(const ir::Module &module,
       Compile(func);
     }
   } else {
-    LOG(FATAL) << "Not supported OutputKind";
+    PADDLE_THROW(phi::errors::InvalidArgument("Not supported OutputKind"));
   }
 
   if (for_nvrtc_) {
@@ -291,7 +306,10 @@ std::string CodeGenCUDA_Dev::Compile(const ir::Module &module,
 void CodeGenCUDA_Dev::PrintIncludes() { str_ += GetSourceHeader(); }
 
 void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
-  CHECK_NE(buffer->type(), Void());
+  PADDLE_ENFORCE_NE(
+      buffer->type(),
+      Void(),
+      phi::errors::InvalidArgument("buffer type should not be void"));
   // Calculate buffer size and determine if it contains a symbolic constant
   Expr buffer_size(1);
   for (int i = 0; i < buffer->shape.size(); i++) {
@@ -307,46 +325,62 @@ void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
     }
     return false;
   });
-  // print func of static allocation
-  auto print_gpu_memory = [&](const std::string &mark) {
-    str_ += mark;
-    str_ += GetTypeRepr(buffer->dtype);
-    str_ += " ";
-    str_ += buffer->name;
-    str_ += " ";
 
-    str_ += "[ ";
-    IrPrinter::Visit(buffer_size);
-    str_ += " ]";
-  };
-  // print func of dynamic allocation
-  auto print_gpu_local_memory_dynamic_allocation = [&]() {
-    str_ += GetTypeRepr(buffer->dtype);
+  if (buffer->memory_type == ir::MemoryType::GPUShared) {
+    if (MathEqual(dyn_shared_mem_offset_, Expr(-1))) {
+      // The first shared memory buffer, uint8_t as a byte
+      str_ += "extern __shared__ uint8_t dyn_shared_buffer[];\n  ";
+      dyn_shared_mem_offset_ = Expr(0);
+    }
+    std::string type_name = GetTypeRepr(buffer->dtype);
+    str_ += type_name;
     str_ += " *";
     str_ += buffer->name;
-    str_ += " = new ";
-    str_ += GetTypeRepr(buffer->dtype);
-    str_ += "[ ";
-    IrPrinter::Visit(buffer_size);
+    str_ += " = (";
+    str_ += type_name;
+    str_ += "*)&dyn_shared_buffer[ ";
+    IrPrinter::Visit(dyn_shared_mem_offset_);
     str_ += " ]";
-  };
-  // print
-  switch (buffer->memory_type) {
-    case ir::MemoryType::GPUShared:
-      print_gpu_memory("__shared__ ");
-      break;
 
-    case ir::MemoryType::GPULocal:
-      if (has_symbolic_constant) {
-        print_gpu_local_memory_dynamic_allocation();
-      } else {
-        print_gpu_memory("");
-      }
-      break;
+    int type_bytes = buffer->dtype.bytes();
+    dyn_shared_mem_offset_ =
+        dyn_shared_mem_offset_ + buffer_size * Expr(type_bytes);
+    optim::Simplify(&dyn_shared_mem_offset_);
+    VLOG(6) << "dyn_shared_mem_offset_ = " << dyn_shared_mem_offset_;
+  } else if (buffer->memory_type == ir::MemoryType::GPULocal) {
+    // print func of static allocation
+    auto print_gpu_memory = [&](const std::string &mark) {
+      str_ += mark;
+      str_ += GetTypeRepr(buffer->dtype);
+      str_ += " ";
+      str_ += buffer->name;
+      str_ += " ";
 
-    default:
-      LOG(FATAL) << "CUDA device codegen not support memory " << buffer->name
-                 << ", type " << buffer->memory_type;
+      str_ += "[ ";
+      IrPrinter::Visit(buffer_size);
+      str_ += " ]";
+    };
+    // print func of dynamic allocation
+    auto print_gpu_local_memory_dynamic_allocation = [&]() {
+      str_ += GetTypeRepr(buffer->dtype);
+      str_ += " *";
+      str_ += buffer->name;
+      str_ += " = new ";
+      str_ += GetTypeRepr(buffer->dtype);
+      str_ += "[ ";
+      IrPrinter::Visit(buffer_size);
+      str_ += " ]";
+    };
+    if (has_symbolic_constant) {
+      print_gpu_local_memory_dynamic_allocation();
+    } else {
+      print_gpu_memory("");
+    }
+  } else {
+    std::stringstream ss;
+    ss << "CUDA device codegen not support memory " << buffer->name << ", type "
+       << buffer->memory_type;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 
@@ -400,7 +434,7 @@ void CodeGenCUDA_Dev::Visit(const ir::Let *op) {
   // identify vectorized tensors by checking their dtypes are customized_type
   // with customized_type::kcuda_builtin_vector_t prefix, and save their names
   if (op->type().is_customized() &&
-      utils::Startswith(
+      utils::StartsWith(
           op->type().customized_type(),
           cinn::common::customized_type::kcuda_builtin_vector_t)) {
     str_ += GetTypeRepr(op->type());
@@ -411,7 +445,7 @@ void CodeGenCUDA_Dev::Visit(const ir::Let *op) {
     str_ += " ";
     IrPrinter::Visit(op->symbol);
     vectorized_tensor_names_.insert(utils::GetStreamCnt(op->symbol));
-    // skip "=0" in "half8 temp = 0;" sincethe operator= of half8 may not
+    // skip "=0" in "half8 temp = 0;" since the operator= of half8 may not
     // overloaded.
     if (op->body.As<ir::IntImm>() && op->body.As<ir::IntImm>()->value == 0) {
       return;
@@ -478,6 +512,37 @@ void CodeGenCUDA_Dev::Visit(const ir::Store *op) {
   } else {
     CodeGenC::Visit(op);
   }
+}
+
+ir::Expr CalculateSharedMemory(const ir::Buffer &buffer) {
+  Expr buffer_size(1);
+  for (int i = 0; i < buffer->shape.size(); i++) {
+    buffer_size = buffer_size * buffer->shape[i];
+  }
+  int type_bytes = buffer->dtype.bytes();
+  return buffer_size * Expr(type_bytes);
+}
+
+ir::Expr CalculateSharedMemory(const ir::Expr &func_expr) {
+  auto func = func_expr.as_lowered_func();
+  PADDLE_ENFORCE_NOT_NULL(
+      func, ::common::errors::InvalidType("expr is not a lowered_func"));
+  auto alloc_temp_buffers = func->PrepareAllocTempBufferExprs();
+  ir::Expr shm_size{0};
+  for (const auto &alloc : alloc_temp_buffers) {
+    PADDLE_ENFORCE_NOT_NULL(
+        alloc.As<ir::Alloc>(),
+        ::common::errors::InvalidType("expr is not a Alloc node"));
+    PADDLE_ENFORCE_NOT_NULL(
+        alloc.As<ir::Alloc>()->destination.as_buffer(),
+        ::common::errors::InvalidType("expr is not a Buffer node"));
+
+    auto buffer = alloc.As<ir::Alloc>()->destination.as_buffer_ref();
+    if (buffer->memory_type == ir::MemoryType::GPUShared) {
+      shm_size = shm_size + CalculateSharedMemory(buffer);
+    }
+  }
+  return common::AutoSimplify(shm_size);
 }
 
 }  // namespace backends

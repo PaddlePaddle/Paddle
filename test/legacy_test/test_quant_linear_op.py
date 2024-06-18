@@ -96,8 +96,8 @@ def quant_linear(
             this layer. Only "relu" is supported. For more information,
             please refer to :ref:`api_guide_activations_en` . Default: None.
         quant_round_type (int, optional): The round type of float to int. 0 means rounding to nearest ties to even and 1 means rounding to nearest ties away from zero. Default: 1.
-        quant_max_bound (float, optional): The max bound of float type to int type. Defualt: 127.0.
-        quant_min_bound (float, optional): The min bound of float type to int type. Defualt: -127.0.
+        quant_max_bound (float, optional): The max bound of float type to int type. Default: 127.0.
+        quant_min_bound (float, optional): The min bound of float type to int type. Default: -127.0.
         name (str, optional): The default value is None. Normally there is no need for user to set
             it. For more information, please refer to :ref:`api_guide_Name` .
 

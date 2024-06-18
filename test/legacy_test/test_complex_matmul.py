@@ -31,37 +31,29 @@ class TestComplexMatMulLayer(unittest.TestCase):
     def compare_by_basic_api(self, x, y, np_result):
         for place in self._places:
             with dg.guard(place):
-                x_var = dg.to_variable(x)
-                y_var = dg.to_variable(y)
+                x_var = paddle.to_tensor(x)
+                y_var = paddle.to_tensor(y)
                 result = paddle.matmul(x_var, y_var)
                 pd_result = result.numpy()
                 np.testing.assert_allclose(
                     pd_result,
                     np_result,
                     rtol=1e-05,
-                    err_msg='\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n'.format(
-                        place,
-                        pd_result[~np.isclose(pd_result, np_result)],
-                        np_result[~np.isclose(pd_result, np_result)],
-                    ),
+                    err_msg=f'\nplace: {place}\npaddle diff result:\n {pd_result[~np.isclose(pd_result, np_result)]}\nnumpy diff result:\n {np_result[~np.isclose(pd_result, np_result)]}\n',
                 )
 
     def compare_op_by_basic_api(self, x, y, np_result):
         for place in self._places:
             with dg.guard(place):
-                x_var = dg.to_variable(x)
-                y_var = dg.to_variable(y)
+                x_var = paddle.to_tensor(x)
+                y_var = paddle.to_tensor(y)
                 result = x_var.matmul(y_var)
                 pd_result = result.numpy()
                 np.testing.assert_allclose(
                     pd_result,
                     np_result,
                     rtol=1e-05,
-                    err_msg='\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n'.format(
-                        place,
-                        pd_result[~np.isclose(pd_result, np_result)],
-                        np_result[~np.isclose(pd_result, np_result)],
-                    ),
+                    err_msg=f'\nplace: {place}\npaddle diff result:\n {pd_result[~np.isclose(pd_result, np_result)]}\nnumpy diff result:\n {np_result[~np.isclose(pd_result, np_result)]}\n',
                 )
 
     def test_complex_xy(self):

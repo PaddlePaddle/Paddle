@@ -880,7 +880,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
                 loss_scale = 1.0 / scale
                 self.assertAlmostEqual(float(op.attr('value')), loss_scale)
 
-        # check program (allreudce)
+        # check program (allreduce)
         ops = [op.type for op in main_prog_ops]
         self.assertEqual(
             ops,

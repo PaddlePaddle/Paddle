@@ -19,7 +19,7 @@ limitations under the License. */
 #include <mutex>   // NOLINT
 #include <thread>  // NOLINT
 
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
 namespace paddle {
@@ -32,7 +32,7 @@ int test_predictor(const AnalysisConfig& config_in,
   std::unique_ptr<PaddlePredictor> predictor;
   {
     std::unique_lock<std::mutex> lock(mutex);
-    predictor = std::move(CreatePaddlePredictor(config));
+    predictor = CreatePaddlePredictor(config);
   }
   if (barrier) {
     barrier->Wait();
@@ -75,7 +75,7 @@ int test_predictor_zero_copy(const AnalysisConfig& config_in,
   std::unique_ptr<PaddlePredictor> predictor;
   {
     std::unique_lock<std::mutex> lock(mutex);
-    predictor = std::move(CreatePaddlePredictor(config));
+    predictor = CreatePaddlePredictor(config);
   }
   if (barrier) {
     barrier->Wait();
@@ -121,25 +121,6 @@ TEST(AnalysisPredictor, native_xpu) {
   test_predictor_zero_copy(config);
 }
 #endif
-
-#ifdef LITE_SUBGRAPH_WITH_XPU
-TEST(AnalysisPredictor, lite_xpu) {
-  AnalysisConfig config;
-  config.EnableXpu();
-  config.SetModel(FLAGS_infer_model + "/" + "mul_model");
-  config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32);
-  test_predictor(config);
-  test_predictor_zero_copy(config);
-}
-#endif
-
-TEST(AnalysisPredictor, lite_engine) {
-  AnalysisConfig config;
-  config.SetModel(FLAGS_infer_model + "/" + "mul_model");
-  config.EnableLiteEngine(paddle::AnalysisConfig::Precision::kFloat32);
-  test_predictor(config);
-  test_predictor_zero_copy(config);
-}
 
 }  // namespace inference
 }  // namespace paddle

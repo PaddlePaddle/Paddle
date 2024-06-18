@@ -26,6 +26,7 @@ from get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import convert_float_to_uint16
 from op_test_xpu import XPUOpTest
 
 import paddle
@@ -46,7 +47,10 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             self.set_dtype()
             self.set_value()
             self.set_shape()
-            self.data = np.ones(self.shape).astype(self.dtype)
+            dtype = self.dtype
+            if self.dtype == "bfloat16":
+                dtype = "float32"
+            self.data = np.ones(self.shape).astype(dtype)
             self.program = paddle.static.Program()
 
         def set_shape(self):
@@ -59,6 +63,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             if self.in_type == np.bool_:
                 self.dtype = "bool"
+            elif self.in_type == np.uint16:
+                self.dtype = "bfloat16"
 
         def _call_setitem(self, x):
             x[0, 0] = self.value
@@ -94,7 +100,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             self._get_answer()
             static_out = self._run_static()
             dynamic_out = self._run_dynamic()
-
+            if self.dtype == "bfloat16":
+                self.data = convert_float_to_uint16(self.data)
             error_msg = (
                 "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
             )
@@ -219,6 +226,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 self.dtype = "float32"
             elif self.in_type == np.bool_:
                 self.dtype = "bool"
+            elif self.in_type == np.uint16:
+                self.dtype = "bfloat16"
             else:
                 self.dtype = self.in_type
 
@@ -308,9 +317,9 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             self.data[0:, 1:2:2, :] = self.value
 
     # 1.2.3 step < 0
-    class XPUTestSetValueItemSliceNegetiveStep(XPUTestSetValueApi):
+    class XPUTestSetValueItemSliceNegativeStep(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
+            if self.in_type in [np.float16, np.uint16]:
                 self.dtype = "float32"
             elif self.in_type == np.bool_:
                 self.dtype = "bool"
@@ -333,8 +342,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[5:2:-1] = self.value
 
-    class XPUTestSetValueItemSliceNegetiveStep2(
-        XPUTestSetValueItemSliceNegetiveStep
+    class XPUTestSetValueItemSliceNegativeStep2(
+        XPUTestSetValueItemSliceNegativeStep
     ):
         def set_shape(self):
             self.shape = [5]
@@ -353,8 +362,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[1::-1] = self.value
 
-    class XPUTestSetValueItemSliceNegetiveStep3(
-        XPUTestSetValueItemSliceNegetiveStep
+    class XPUTestSetValueItemSliceNegativeStep3(
+        XPUTestSetValueItemSliceNegativeStep
     ):
         def set_shape(self):
             self.shape = [3]
@@ -372,12 +381,14 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _get_answer(self):
             self.data[::-1] = self.value
 
-    class XPUTestSetValueItemSliceNegetiveStep4(XPUTestSetValueApi):
+    class XPUTestSetValueItemSliceNegativeStep4(XPUTestSetValueApi):
         def set_dtype(self):
             if self.in_type == np.float16:
                 self.dtype = "float32"
             elif self.in_type == np.bool_:
                 self.dtype = "bool"
+            elif self.in_type == np.uint16:
+                self.dtype = "bfloat16"
             else:
                 self.dtype = self.in_type
 
@@ -400,7 +411,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
         # 1.2.3 step < 0 and stride < -1
 
-    class XPUTestSetValueItemSliceNegetiveStep5(XPUTestSetValueApi):
+    class XPUTestSetValueItemSliceNegativeStep5(XPUTestSetValueApi):
         def set_dtype(self):
             if self.in_type == np.float16:
                 self.dtype = "float32"
@@ -500,6 +511,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 self.dtype = "float32"
             elif self.in_type == np.bool_:
                 self.dtype = "bool"
+            elif self.in_type == np.uint16:
+                self.dtype = "bfloat16"
             else:
                 self.dtype = self.in_type
 
@@ -608,7 +621,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
     # 1.5 item is None
     class XPUTestSetValueItemNone1(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
+            if self.in_type in [np.float16, np.uint16]:
                 self.dtype = "float32"
             elif self.in_type == np.bool_:
                 self.dtype = "bool"
@@ -961,7 +974,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
     # 3. Test different shape of value
     class XPUTestSetValueValueShape1(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
+            if self.in_type in [np.float16, np.uint16]:
                 self.dtype = "float32"
             elif self.in_type == np.bool_:
                 self.dtype = "bool"
@@ -1230,16 +1243,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             np.testing.assert_array_equal(
                 inps.grad.numpy(),
                 input_grad,
-                err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
-                    input_grad, inps.grad.numpy()
-                ),
+                err_msg=f'The gradient of value should be \n{input_grad},\n but received {inps.grad.numpy()}',
             )
             np.testing.assert_array_equal(
                 value.grad.numpy(),
                 value_grad,
-                err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
-                    value_grad, value.grad.numpy()
-                ),
+                err_msg=f'The gradient of input should be \n{value_grad},\n but received {value.grad.numpy()}',
             )
 
             # case 2
@@ -1266,16 +1275,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             np.testing.assert_array_equal(
                 inps2.grad.numpy(),
                 input_grad2,
-                err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
-                    input_grad, inps2.grad.numpy()
-                ),
+                err_msg=f'The gradient of value should be \n{input_grad},\n but received {inps2.grad.numpy()}',
             )
             np.testing.assert_array_equal(
                 value2.grad.numpy(),
                 value_grad2,
-                err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
-                    value_grad, value2.grad.numpy()
-                ),
+                err_msg=f'The gradient of input should be \n{value_grad},\n but received {value2.grad.numpy()}',
             )
 
             # case 3
@@ -1324,16 +1329,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             np.testing.assert_array_equal(
                 inps.grad.numpy(),
                 input_grad,
-                err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
-                    input_grad, inps.grad.numpy()
-                ),
+                err_msg=f'The gradient of value should be \n{input_grad},\n but received {inps.grad.numpy()}',
             )
             np.testing.assert_array_equal(
                 value.grad.numpy(),
                 value_grad,
-                err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
-                    value_grad, value.grad.numpy()
-                ),
+                err_msg=f'The gradient of input should be \n{value_grad},\n but received {value.grad.numpy()}',
             )
 
             # case 4: step >0
@@ -1372,16 +1373,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             np.testing.assert_array_equal(
                 inps.grad.numpy(),
                 input_grad,
-                err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
-                    input_grad, inps.grad.numpy()
-                ),
+                err_msg=f'The gradient of value should be \n{input_grad},\n but received {inps.grad.numpy()}',
             )
             np.testing.assert_array_equal(
                 value.grad.numpy(),
                 value_grad,
-                err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
-                    value_grad, value.grad.numpy()
-                ),
+                err_msg=f'The gradient of input should be \n{value_grad},\n but received {value.grad.numpy()}',
             )
 
             # case 5:a[0].shape==value.shape
@@ -1426,16 +1423,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             np.testing.assert_array_equal(
                 inps.grad.numpy(),
                 input_grad,
-                err_msg='The gradient of value should be \n{},\n but reveived {}'.format(
-                    input_grad, inps.grad.numpy()
-                ),
+                err_msg=f'The gradient of value should be \n{input_grad},\n but received {inps.grad.numpy()}',
             )
             np.testing.assert_array_equal(
                 value.grad.numpy(),
                 value_grad,
-                err_msg='The gradient of input should be \n{},\n but reveived {}'.format(
-                    value_grad, value.grad.numpy()
-                ),
+                err_msg=f'The gradient of input should be \n{value_grad},\n but received {value.grad.numpy()}',
             )
 
             # case 6: pass stop_gradient from value to x

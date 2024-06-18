@@ -12,24 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
+import typing
 from collections import defaultdict
 from collections.abc import Sequence
+from typing import Any, Dict, TypeVar, Union
 from uuid import uuid4
 from weakref import WeakKeyDictionary
 
 import numpy as np
+from typing_extensions import TypeGuard
 
 import paddle
+from paddle._typing import ShapeLike
 from paddle.pir.core import convert_np_dtype_to_dtype_
 
 from ..base.data_feeder import check_dtype, convert_dtype
 from ..base.framework import (
     Block,
     Variable,
-    _current_expected_place,
     in_dygraph_mode,
 )
+from ..pir import Value
+
+_T = TypeVar("_T")
+
+Structure = Union[
+    _T, Dict[str, "Structure[_T]"], typing.Sequence["Structure[_T]"]
+]
 
 
 def convert_to_list(value, n, name, dtype=int):
@@ -102,7 +114,7 @@ def convert_to_list(value, n, name, dtype=int):
         return value_list
 
 
-def is_sequence(seq):
+def is_sequence(seq: Any) -> TypeGuard[typing.Sequence[Any]]:
     """
     Whether `seq` is an entry or nested structure
     """
@@ -140,24 +152,10 @@ def _hash_with_id(*args):
     return hash(info)
 
 
-def _sorted(dict_):
-    """
-    Returns a sorted list of the dict keys, with error if keys not sortable.
-    """
-    try:
-        return sorted(dict_.keys())
-    except TypeError:
-        raise TypeError("nest only supports dicts with sortable keys.")
-
-
 def _yield_value(iterable):
     if isinstance(iterable, dict):
-        # Iterate through dictionaries in a deterministic order by sorting the
-        # keys. Notice this means that we ignore the original order of `OrderedDict`
-        # instances. This is intentional, to avoid potential bugs caused by mixing
-        # ordered and plain dicts (e.g., flattening a dict but using a
-        # corresponding `OrderedDict` to pack it back).
-        for key in _sorted(iterable):
+        # NOTE: Keep order unchanged as python dict is ordered since python3.6
+        for key in iterable:
             yield iterable[key]
     else:
         yield from iterable
@@ -178,7 +176,7 @@ def to_sequence(nest):
         return [nest]
 
 
-def flatten(nest):
+def flatten(nest: Structure[_T]) -> typing.Sequence[_T]:
     """
         :alias_main: paddle.flatten
         :alias: paddle.flatten,paddle.tensor.flatten,paddle.tensor.manipulation.flatten
@@ -197,12 +195,7 @@ def _sequence_like(instance, args):
     Convert the sequence `args` to the same type as `instance`.
     """
     if isinstance(instance, dict):
-        # Pack dictionaries in a deterministic order by sorting the keys.
-        # Notice this means that we ignore the original order of `OrderedDict`
-        # instances. This is intentional, to avoid potential bugs caused by mixing
-        # ordered and plain dicts (e.g., flattening a dict but using a
-        # corresponding `OrderedDict` to pack it back).
-        result = dict(zip(_sorted(instance), args))
+        result = dict(zip(instance, args))
         return type(instance)((key, result[key]) for key in instance.keys())
     elif (
         isinstance(instance, tuple)
@@ -307,9 +300,7 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
         if type_nest1 != type_nest2:
             raise TypeError(
                 "The two structures don't have the same sequence type. First "
-                "structure has type {}, while second structure has type {}.".format(
-                    type_nest1, type_nest2
-                )
+                f"structure has type {type_nest1}, while second structure has type {type_nest2}."
             )
         if isinstance(nest1, dict):
             keys1 = set(nest1.keys())
@@ -317,9 +308,7 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
             if keys1 != keys2:
                 raise ValueError(
                     "The two dictionaries don't have the same set of keys. First "
-                    "structure has keys {}, while second structure has keys {}.".format(
-                        keys1, keys2
-                    )
+                    f"structure has keys {keys1}, while second structure has keys {keys2}."
                 )
     nest1_as_sequence = list(_yield_value(nest1))
     nest2_as_sequence = list(_yield_value(nest2))
@@ -386,10 +375,7 @@ def _contain_var(list_or_tuple):
     return False
 
 
-def get_int_tensor_list(ele_list, place=None, default_dtype='int64'):
-    if place is None:
-        place = _current_expected_place()
-
+def get_int_tensor_list(ele_list, default_dtype='int64'):
     int_tensor_list = []
     for ele in ele_list:
         if isinstance(ele, paddle.pir.Value):
@@ -400,11 +386,11 @@ def get_int_tensor_list(ele_list, place=None, default_dtype='int64'):
                 ele = paddle.reshape(ele, [])
             int_tensor_list.append(ele)
         else:
-            temp_out = paddle.full(
-                [],
-                ele,
-                convert_np_dtype_to_dtype_(np.dtype(default_dtype)),
-                place,
+            temp_out = paddle.tensor.fill_constant(
+                shape=[],
+                dtype=convert_np_dtype_to_dtype_(np.dtype(default_dtype)),
+                value=ele,
+                force_cpu=True,
             )
             int_tensor_list.append(temp_out)
     return int_tensor_list
@@ -468,6 +454,11 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
     """
     from paddle.tensor import fill_constant
 
+    if _contain_var(old_list):
+        for ele in old_list:
+            if isinstance(ele, paddle.pir.Value):
+                dtype = ele.dtype
+
     new_list_tensor = []
     for ele in old_list:
         if isinstance(ele, (Variable, paddle.pir.Value)):
@@ -496,11 +487,11 @@ def check_shape(shape):
     """
     Check shape type and shape elements type before passing it to fill_constant
     """
-    if isinstance(shape, Variable):
+    if isinstance(shape, (Variable, Value)):
         check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant')
-    else:
+    elif isinstance(shape, (list, tuple)):
         for ele in shape:
-            if not isinstance(ele, Variable):
+            if not isinstance(ele, (Variable, Value)):
                 if ele < 0:
                     raise ValueError(
                         "All elements in ``shape`` must be positive when it's a list or tuple"
@@ -509,6 +500,13 @@ def check_shape(shape):
                     raise TypeError(
                         "All elements in ``shape`` must be integers when it's a list or tuple"
                     )
+            else:
+                check_dtype(
+                    ele.dtype,
+                    'element of shape',
+                    ['int32', 'int64'],
+                    'fill_constant',
+                )
 
 
 def try_set_static_shape_tensor(tensor, shape):
@@ -591,3 +589,28 @@ def get_inputs_outputs_in_block(block):
                     inner_outputs.add(out_var_name)
 
     return inner_inputs, inner_outputs
+
+
+def is_same_shape(shape1: ShapeLike, shape2: ShapeLike) -> bool:
+    """
+    Check whether two shapes are the same. Deal with the dynamic shape.
+    """
+    if paddle.in_dynamic_mode():
+        return shape1 == shape2
+
+    def is_tensor(x):
+        return isinstance(x, (paddle.static.Variable, paddle.pir.Value))
+
+    def is_dynamic_axis(axis):
+        return is_tensor(axis) or axis == -1
+
+    if is_tensor(shape1) or is_tensor(shape2):
+        return True
+    if len(shape1) != len(shape2):
+        return False
+    for s1, s2 in zip(shape1, shape2):
+        if is_dynamic_axis(s1) or is_dynamic_axis(s2):
+            continue
+        if s1 != s2:
+            return False
+    return True

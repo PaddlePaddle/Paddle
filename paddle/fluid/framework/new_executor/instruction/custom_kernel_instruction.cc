@@ -18,21 +18,41 @@
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void CustomKernelInstruction::BuildCustomContext(
     const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
+  auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
+  // check inplace
+  for (auto const& pair : op_inplace_map) {
+    pir::Value output_value =
+        op_->result(op_yaml_info.OutputName2Id().at(pair.second));
+    if (paddle::framework::detail::IsDuplicableVar(pair.first) &&
+        !IsInvalid(output_value)) {
+      // make sure ctx has valid inplace optional outputs
+      PADDLE_ENFORCE(
+          paddle::framework::detail::IsOptionalVar(pair.second),
+          phi::errors::InvalidArgument(
+              "Custom operator couldn't find custom output name for %s. If "
+              "you are using inplace optional inputs & outputs, please "
+              "check "
+              "your InplaceMap and `Outputs` again and make sure %s is "
+              "wrapped by `paddle::Optional`",
+              pair.second,
+              pair.second));
+    }
+  }
+
   Scope* inner_scope = value_exec_info_.GetScope();
   VLOG(6) << "Build custom op infermeta param inner_scope[" << inner_scope
           << "]";
 
   auto attr_map = op_->attributes();
-  CheckDefaultInferShapeDtype(op_yaml_info);
+
   // EmplaceBackInputs
   auto& vec_input_tensor_params = op_yaml_info.TensorParams(true);
   auto& name2id = op_yaml_info.InputName2Id();
@@ -64,9 +84,9 @@ void CustomKernelInstruction::BuildCustomContext(
         input_name2id_map_[t] = input_index;
         input_index++;
         input_ptrs_.emplace_back(nullptr);
-        custom_kernel_ctx_.EmplaceBackInput(std::move(paddle::Tensor()));
+        custom_kernel_ctx_.EmplaceBackInput(paddle::Tensor());
       }
-      VLOG(8) << "ctx->EmplaceBackInput : an optioanl input " << t;
+      VLOG(8) << "ctx->EmplaceBackInput : an optional input " << t;
       continue;
     }
     auto in_var_name = value_exec_info_.GetVarName(ptr);
@@ -259,10 +279,9 @@ void CustomKernelInstruction::BuildCustomContext(
               out_name));
       VLOG(3) << "Custom Operator: BuildContext - inplace optional outputs : "
               << out_name << " is None.";
-      cache_out_ptrs_.emplace_back(nullptr);
-      custom_kernel_ctx_.EmplaceBackOutput(std::move(paddle::Tensor()));
+      custom_kernel_ctx_.EmplaceBackOutput(paddle::Tensor());
 
-      VLOG(8) << "ctx->EmplaceBackOutput : an optioanl output";
+      VLOG(8) << "ctx->EmplaceBackOutput : an optional output";
       continue;
     }
 
@@ -323,7 +342,7 @@ void CustomKernelInstruction::BuildCustomContext(
 
   auto& op_inputs = OpMetaInfoHelper::GetInputs(*custom_op_meta_);
   auto& op_outputs = OpMetaInfoHelper::GetOutputs(*custom_op_meta_);
-  auto& op_inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
+
   // handle inplace map
   custom_kernel_ctx_.UpdatePlainOutputs(op_inputs, op_outputs, op_inplace_map);
   VLOG(6) << "Done build custom context";
@@ -334,7 +353,18 @@ CustomKernelInstruction::CustomKernelInstruction(
     const platform::Place& place,
     pir::Operation* op,
     const ValueExecutionInfo& value_exec_info)
-    : InstructionBase(id, place), value_exec_info_(value_exec_info) {
+    : InstructionBase(id, place),
+      input_name2id_map_(),
+      vec_input_name2id_map_(),
+      input_shapes_(),
+      vec_input_shapes_(),
+      custom_attrs_(),
+      input_dtypes_(),
+      vec_input_dtypes_(),
+      input_ptrs_(),
+      vec_input_ptrs_(),
+      cache_out_ptrs_(),
+      value_exec_info_(value_exec_info) {
   auto op_attributes = op->attributes();
   auto op_name =
       op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
@@ -426,75 +456,6 @@ void CustomKernelInstruction::UpdateOutputMeta(
   }
 }
 
-void CustomKernelInstruction::CheckDefaultInferShapeDtype(
-    const paddle::dialect::OpYamlInfoParser& op_yaml_info) {
-  if (infershape_func_ && inferdtype_func_) {
-    return;
-  }
-  auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
-  if (inplace_map.empty()) {  // general case, assure single input and output
-    PADDLE_ENFORCE_EQ(
-        OpMetaInfoHelper::GetInputs(*custom_op_meta_).size(),
-        1UL,
-        phi::errors::Unavailable(
-            "Your custom operator contains multiple inputs. "
-            "We only allow a custom operator that contains only one input "
-            "and only one output without setting the "
-            "InferShapeFn/InferDtypeFn. "
-            "At this time, the input shape/dtype will be directly set to "
-            "the output shape/dtype.\n"
-            "Please set the InferShapeFn/InferDtypeFn of custom "
-            "operator by .SetInferShapeFn(PD_INFER_SHAPE(...)) / "
-            ".SetInferDtypeFn(PD_INFER_DTYPE(...))"));
-    PADDLE_ENFORCE_EQ(
-        OpMetaInfoHelper::GetOutputs(*custom_op_meta_).size(),
-        1UL,
-        phi::errors::Unavailable(
-            "Your custom operator contains multiple outputs. "
-            "We only allow a custom operator that contains only one input "
-            "and only one output without setting the "
-            "InferShapeFn/InferDtypeFn. "
-            "At this time, the input shape/dtype will be directly set to "
-            "the output shape/dtype.\n"
-            "Please set the InferShapeFn/InferDtypeFn of custom "
-            "operator by .SetInferShapeFn(PD_INFER_SHAPE(...)) / "
-            ".SetInferDtypeFn(PD_INFER_DTYPE(...))"));
-  } else {  // inplace case
-    PADDLE_ENFORCE_EQ(
-        inplace_map.size(),
-        op_yaml_info.OutputNames().size(),
-        phi::errors::Unavailable(
-            "Your custom operator uses `SetInplaceMap` without setting the "
-            "InferShapeFn/InferDtypeFn. However, `Outputs` size = %d does not "
-            "match the "
-            "`InplaceMap` size = %d. Please check `SetInplaceMap` again or set "
-            "the InferShapeFn/InferDtypeFn of custom operator by "
-            ".SetInferShapeFn(PD_INFER_SHAPE(...)) / "
-            ".SetInferDtypeFn(PD_INFER_DTYPE(...))",
-            op_yaml_info.OutputNames().size(),
-            inplace_map.size()));
-
-    for (auto const& pair : inplace_map) {
-      pir::Value output_value =
-          op_->result(op_yaml_info.OutputName2Id().at(pair.second));
-      if (paddle::framework::detail::IsDuplicableVar(pair.first) &&
-          !IsInvalid(output_value)) {
-        // make sure ctx has valid inplace optional outputs
-        PADDLE_ENFORCE(
-            paddle::framework::detail::IsOptionalVar(pair.second),
-            phi::errors::InvalidArgument(
-                "Custom operator couldn't find custom output name for %s. If "
-                "you are using inplace optional inputs & outputs, please "
-                "check "
-                "your InplaceMap and `Outputs` again and make sure %s is "
-                "wrapped by `paddle::Optional`",
-                pair.second,
-                pair.second));
-      }
-    }
-  }
-}
-
 void CustomKernelInstruction::BuildShapeDtype() {
   input_shapes_.clear();
   input_dtypes_.clear();
@@ -523,91 +484,28 @@ void CustomKernelInstruction::BuildShapeDtype() {
   }
 }
 
-std::vector<std::vector<int64_t>>
-CustomKernelInstruction::RunDefaultInferShape() {
-  std::vector<std::vector<int64_t>> output_shapes;
-  auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
-  if (inplace_map.empty()) {  // general case, assure single input and output
-    VLOG(3) << "Custom Operator: Default InferShape - share ddim.";
-    if (input_shapes_.size() == 1) {
-      output_shapes = input_shapes_;
-    } else if (vec_input_shapes_.size() == 1) {
-      output_shapes = vec_input_shapes_[0];
-    } else {
-      PADDLE_THROW(phi::errors::Unavailable(
-          "We only allow a custom operator that contains only one input "
-          "and only one output without setting the InferShapeFn. "));
-    }
-  } else {  // inplace case
-    for (auto const& pair : inplace_map) {
-      if (paddle::framework::detail::IsDuplicableVar(pair.second)) {
-        int input_index = vec_input_name2id_map_[pair.first];
-        auto input_shape = vec_input_shapes_[input_index];
-        output_shapes.insert(
-            output_shapes.end(), input_shape.begin(), input_shape.end());
-      } else {
-        int input_index = input_name2id_map_[pair.first];
-        auto input_shape = input_shapes_[input_index];
-        output_shapes.push_back(input_shape);
-      }
-    }
-  }
-  return output_shapes;
-}
-
-std::vector<DataType> CustomKernelInstruction::RunDefaultInferDtype() {
-  std::vector<DataType> output_dtypes;
-  auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(*custom_op_meta_);
-  if (inplace_map.empty()) {  // general case, assure single input and output
-    VLOG(3) << "Custom Operator: Default InferDtype - share ddim.";
-    if (input_dtypes_.size() == 1) {
-      output_dtypes = input_dtypes_;
-    } else if (vec_input_dtypes_.size() == 1) {
-      output_dtypes = vec_input_dtypes_[0];
-    } else {
-      PADDLE_THROW(phi::errors::Unavailable(
-          "We only allow a custom operator that contains only one input "
-          "and only one output without setting the InferDtypeFn. "));
-    }
-  } else {  // inplace case
-    for (auto const& pair : inplace_map) {
-      if (paddle::framework::detail::IsDuplicableVar(pair.second)) {
-        int input_index = vec_input_name2id_map_[pair.first];
-        auto input_dtype = vec_input_dtypes_[input_index];
-        output_dtypes.insert(
-            output_dtypes.end(), input_dtype.begin(), input_dtype.end());
-      } else {
-        int input_index = input_name2id_map_[pair.first];
-        auto input_dtype = input_dtypes_[input_index];
-        output_dtypes.push_back(input_dtype);
-      }
-    }
-  }
-  return output_dtypes;
-}
-
 void CustomKernelInstruction::Run() {
   VLOG(3) << "Custom Operator: InferShape - calc output ddim.";
   BuildShapeDtype();
-  std::vector<std::vector<int64_t>> output_shapes;
-  std::vector<phi::DataType> output_dtypes;
-  if (infershape_func_) {
-    output_shapes =
-        infershape_func_(input_shapes_, vec_input_shapes_, custom_attrs_);
-  } else {
-    output_shapes = RunDefaultInferShape();
-  }
-
-  if (inferdtype_func_) {
-    output_dtypes =
-        inferdtype_func_(input_dtypes_, vec_input_dtypes_, custom_attrs_);
-  } else {
-    output_dtypes = RunDefaultInferDtype();
-  }
+  std::vector<std::vector<int64_t>> output_shapes =
+      RunInferShape(infershape_func_,
+                    *custom_op_meta_,
+                    input_shapes_,
+                    input_name2id_map_,
+                    vec_input_shapes_,
+                    vec_input_name2id_map_,
+                    custom_attrs_);
+  std::vector<phi::DataType> output_dtypes =
+      RunInferDtype(inferdtype_func_,
+                    *custom_op_meta_,
+                    input_dtypes_,
+                    input_name2id_map_,
+                    vec_input_dtypes_,
+                    vec_input_name2id_map_,
+                    custom_attrs_);
   UpdateOutputMeta(output_shapes, output_dtypes);
 
   VLOG(6) << "Run custom op " << custom_op_name_ << " kernel.";
   kernel_func_(&custom_kernel_ctx_);
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

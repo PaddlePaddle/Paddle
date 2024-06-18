@@ -27,7 +27,7 @@
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/tracer_base.h"
 
-PHI_DECLARE_int64(host_trace_level);
+COMMON_DECLARE_int64(host_trace_level);
 
 namespace paddle {
 namespace platform {

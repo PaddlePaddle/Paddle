@@ -245,9 +245,7 @@ class Fleet:
                 )
             else:
                 raise ValueError(
-                    "`is_collective` should be instance of `bool`, but got {}".format(
-                        type(is_collective)
-                    )
+                    f"`is_collective` should be instance of `bool`, but got {type(is_collective)}"
                 )
         else:
             if isinstance(role_maker, RoleMakerBase):
@@ -255,9 +253,7 @@ class Fleet:
                 self._is_collective = role_maker._is_collective
             else:
                 raise ValueError(
-                    "`role_maker` should be subclass of `RoleMakerBase`, but got {}".format(
-                        type(role_maker)
-                    )
+                    f"`role_maker` should be subclass of `RoleMakerBase`, but got {type(role_maker)}"
                 )
         self._role_maker._generate_role()
 
@@ -391,7 +387,7 @@ class Fleet:
         )
         if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] AllReduce Test Timeout! {ret} > {perf_threshold_time}"
+                f"[Perf Warning] AllReduce Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test reduce perf
@@ -412,7 +408,7 @@ class Fleet:
         )
         if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] Reduce Test Timeout! {ret} > {perf_threshold_time}"
+                f"[Perf Warning] Reduce Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test broadcast perf
@@ -435,7 +431,7 @@ class Fleet:
         )
         if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] Broadcast Test Timeout! {ret} > {perf_threshold_time}"
+                f"[Perf Warning] Broadcast Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test allgather perf
@@ -459,7 +455,7 @@ class Fleet:
         )
         if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] Allgather Test Timeout! {ret} > {perf_threshold_time}"
+                f"[Perf Warning] Allgather Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     # test reduce_scatter perf
@@ -502,7 +498,7 @@ class Fleet:
         )
         if perf_threshold_time > -1 and ret > perf_threshold_time:
             logger.warning(
-                f"[Perf Warnning] ReduceScatter Test Timeout! {ret} > {perf_threshold_time}"
+                f"[Perf Warning] ReduceScatter Test Timeout! {ret} > {perf_threshold_time}"
             )
 
     def _collective_perf_impl(self, round=50, context={}, hcg=None):
@@ -1194,7 +1190,7 @@ class Fleet:
 
             dirname(str, optional): The saving directory path.
                                 When you need to save the parameter to the memory, set it to None.
-            main_program(Program, optional): The program whose persistbale tensors will
+            main_program(Program, optional): The program whose persistable tensors will
                                              be saved. Default: None.
 
 
@@ -1297,6 +1293,30 @@ class Fleet:
         self._runtime_handle._save_dense_params(
             executor, dirname, scope, program, var_names
         )
+
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def set_date(self, table_id, day_id):
+        """
+        set_date for gpups table
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                >>> import paddle.distributed.fleet as fleet
+                >>> fleet.init()
+
+                >>> # build net
+                >>> # fleet.distributed_optimizer(...)
+
+                >>> fleet.set_date(0, "20250101")
+
+        """
+        self._runtime_handle._set_date(table_id, day_id)
 
     @is_non_distributed_check
     @inited_runtime_handler
@@ -1419,7 +1439,7 @@ class Fleet:
                 ...         init_loss_scaling=128.0,
                 ...         use_dynamic_loss_scaling=True,
                 ...         use_pure_fp16=True)
-                ...     # If you don't use the default_startup_program(), you sholud pass
+                ...     # If you don't use the default_startup_program(), you should pass
                 ...     # your defined `startup_program` into `minimize`.
                 ...     optimizer.minimize(loss)
                 ...     exe.run(paddle.static.default_startup_program())

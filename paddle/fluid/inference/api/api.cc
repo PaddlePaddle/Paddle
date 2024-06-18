@@ -14,13 +14,13 @@
 
 #include <sstream>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/commit.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/utils/flags.h"
 
 namespace paddle {
 
@@ -28,6 +28,8 @@ int PaddleDtypeSize(PaddleDType dtype) {
   switch (dtype) {
     case PaddleDType::FLOAT32:
       return sizeof(float);
+    case PaddleDType::BFLOAT16:
+      return sizeof(uint16_t);
     case PaddleDType::INT64:
       return sizeof(int64_t);
     case PaddleDType::INT32:
@@ -122,7 +124,7 @@ void PaddleBuf::Free() {
 
 NativeConfig::NativeConfig() {
   LOG(WARNING) << "The paddle::NativeConfig interface is going to be "
-                  "deprecated in the next release, plase use the latest "
+                  "deprecated in the next release, please use the latest "
                   "paddle_infer::Config instead.";
 }
 

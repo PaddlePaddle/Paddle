@@ -48,7 +48,7 @@ class Jacobian:
 
     Notes:
 
-        Eclipsis index is not supported currently.
+        Ellipsis index is not supported currently.
 
     Args:
 
@@ -404,7 +404,7 @@ def _multi_index(indexes, shape):
 
     Currently supporting following input format:
         * ([positive|negative|slice], ...), the right-most elements can be
-            omited.
+            omitted.
 
     The standard format after converted is slice tuple which contains N elements:
         * ([positive|slice], ..., [positive|slice])
@@ -495,7 +495,7 @@ def jacobian(
 
     Returns:
 
-        Union[Tuple[Tuple[Jacobian, ...], ...], Tuple[Jacobian, ...], Jacobian]: Jacobian(s) of ys deriveted from xs.
+        Union[Tuple[Tuple[Jacobian, ...], ...], Tuple[Jacobian, ...], Jacobian]: Jacobian(s) of ys derived from xs.
 
     Examples:
 
@@ -579,7 +579,7 @@ def hessian(
 
     Returns:
 
-        Union[Tuple[Tuple[Hessian, ...], ...], Tuple[Hessian, ...], Hessian]: Hessian(s) of ys deriveted from xs.
+        Union[Tuple[Tuple[Hessian, ...], ...], Tuple[Hessian, ...], Hessian]: Hessian(s) of ys derived from xs.
 
     Examples:
 

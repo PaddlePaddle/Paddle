@@ -32,13 +32,13 @@ cuda_config=OFF
 cudnn_config=OFF
 
 mklcblas_config=ON
-mkldnn_config=ON
+onednn_config=ON
 
 function mklcblas_off {
   mklcblas_config=OFF
 }
-function mkldnn_off {
-  mkldnn_config=OFF
+function onednn_off {
+  onednn_config=OFF
 }
 
 
@@ -93,7 +93,7 @@ function cmake_ {
     mkdir -p $build_dir
     cd $build_dir
     set -x
-    cmake ${workspace} -DCINN_ONLY=ON -DWITH_CINN=ON -DWITH_GPU=${cuda_config} \
+    cmake ${workspace} -DWITH_CINN=ON -DWITH_GPU=${cuda_config} \
       -DWITH_TESTING=ON  -DWITH_MKL=${mklcblas_config}  -DCINN_WITH_CUDNN=${cudnn_config} \
       -DPY_VERSION=${py_version}
     set +x
@@ -192,7 +192,7 @@ function CINNRT {
     mkdir -p $build_dir
     cd $build_dir
     set -x
-    cmake ${workspace} -DCINN_ONLY=ON -DWITH_CINN=ON -DWITH_GPU=${cuda_config} \
+    cmake ${workspace} -DWITH_CINN=ON -DWITH_GPU=${cuda_config} \
       -DWITH_TESTING=ON  -DWITH_MKL=${mklcblas_config} -DPUBLISH_LIBS=ON
     set +x
     make cinnopt -j $JOBS
@@ -204,11 +204,11 @@ function main {
         case $i in
             mklcblas_off)
                 mklcblas_off
-                mkldnn_off
+                onednn_off
                 shift
                 ;;
-            mkldnn_off)
-                mkldnn_off
+            onednn_off)
+                onednn_off
                 shift
                 ;;
             gpu_on)

@@ -15,103 +15,16 @@
 import contextlib
 import random
 import unittest
-from functools import partial
 
 import numpy as np
 
 import paddle
 from paddle import base, regularizer
-from paddle.base import core, framework
-from paddle.base.backward import append_backward
+from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 
-class TestL2Decay(unittest.TestCase):
-    def test_l2decay_regularizer(self):
-        paddle.enable_static()
-        program = framework.Program()
-        block = program.global_block()
-        mul_x = block.create_parameter(
-            dtype="float32",
-            shape=[5, 10],
-            lod_level=0,
-            name="mul.x",
-            regularizer=regularizer.L2Decay(0.5),
-        )
-        self.assertIsNotNone(mul_x.regularizer)
-        self.assertTrue(isinstance(mul_x.regularizer, regularizer.L2Decay))
-        mul_y = block.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
-        )
-        mul_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
-        )
-        block.append_op(
-            type="mul",
-            inputs={"X": mul_x, "Y": mul_y},
-            outputs={"Out": mul_out},
-            attrs={"x_num_col_dims": 1},
-        )
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out"
-        )
-        block.append_op(
-            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
-        )
-        params_grads = append_backward(mean_out)
-        self.assertEqual(len(params_grads), 1)
-        count_ops = len(block.ops)
-        optimizer = paddle.optimizer.Adam()
-        params_grads = optimizer.append_regularization_ops(params_grads)
-        self.assertEqual(len(params_grads), 1)
-        self.assertEqual(len(block.ops), count_ops + 2)
-        self.assertEqual(block.ops[-1].type, 'sum')
-        self.assertEqual(block.ops[-2].type, 'scale')
-
-
 class TestL1Decay(unittest.TestCase):
-    def test_l2decay_regularizer(self):
-        paddle.enable_static()
-        program = framework.Program()
-        block = program.global_block()
-        mul_x = block.create_parameter(
-            dtype="float32",
-            shape=[5, 10],
-            lod_level=0,
-            name="mul.x",
-            regularizer=regularizer.L1Decay(0.5),
-        )
-        self.assertIsNotNone(mul_x.regularizer)
-        self.assertTrue(isinstance(mul_x.regularizer, regularizer.L1Decay))
-        mul_y = block.create_var(
-            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
-        )
-        mul_out = block.create_var(
-            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
-        )
-        block.append_op(
-            type="mul",
-            inputs={"X": mul_x, "Y": mul_y},
-            outputs={"Out": mul_out},
-            attrs={"x_num_col_dims": 1},
-        )
-        mean_out = block.create_var(
-            dtype="float32", shape=[1], lod_level=0, name="mean.out"
-        )
-        block.append_op(
-            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
-        )
-        params_grads = append_backward(mean_out)
-        self.assertEqual(len(params_grads), 1)
-        count_ops = len(block.ops)
-        optimizer = paddle.optimizer.Adam()
-        params_grads = optimizer.append_regularization_ops(params_grads)
-        self.assertEqual(len(params_grads), 1)
-        self.assertEqual(len(block.ops), count_ops + 3)
-        self.assertEqual(block.ops[-1].type, 'sum')
-        self.assertEqual(block.ops[-2].type, 'scale')
-        self.assertEqual(block.ops[-3].type, 'sign')
-
     def test_l1decay_regularizer(self):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.static.Program()
@@ -145,40 +58,6 @@ class TestL1Decay(unittest.TestCase):
                 self.assertEqual(block.ops[-1].name(), 'pd_op.add_n')
                 self.assertEqual(block.ops[-3].name(), 'pd_op.scale')
                 self.assertEqual(block.ops[-5].name(), 'pd_op.sign')
-
-
-def bow_net(
-    data,
-    label,
-    dict_dim,
-    is_sparse=False,
-    emb_dim=8,
-    hid_dim=8,
-    hid_dim2=6,
-    class_dim=2,
-):
-    """
-    BOW net
-    This model is from https://github.com/PaddlePaddle/models:
-    base/PaddleNLP/text_classification/nets.py
-    """
-    emb = paddle.static.nn.embedding(
-        input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
-    )
-    bow = paddle.static.nn.sequence_lod.sequence_pool(
-        input=emb, pool_type='sum'
-    )
-    bow_tanh = paddle.tanh(bow)
-    fc_1 = paddle.static.nn.fc(x=bow_tanh, size=hid_dim, activation="tanh")
-    fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim2, activation="tanh")
-    prediction = paddle.static.nn.fc(
-        x=[fc_2], size=class_dim, activation="softmax"
-    )
-    cost = paddle.nn.functional.cross_entropy(
-        input=prediction, label=label, reduction='none', use_softmax=False
-    )
-    avg_cost = paddle.mean(x=cost)
-    return avg_cost
 
 
 class TestRegularizer(unittest.TestCase):
@@ -276,26 +155,6 @@ class TestRegularizer(unittest.TestCase):
             param_sum = self.run_program(place, [data, label])
         return param_sum
 
-    def test_l2(self):
-        for place in self.get_places():
-            dense_sparse_p_sum = []
-            for sparse in [True, False]:
-                model = partial(bow_net, is_sparse=sparse)
-                framework_l2 = self.check_l2decay_regularizer(place, model)
-                l2 = self.check_l2decay(place, model)
-                assert len(l2) == len(framework_l2)
-                for i in range(len(l2)):
-                    assert np.isclose(a=framework_l2[i], b=l2[i], rtol=5e-5)
-                dense_sparse_p_sum.append(framework_l2)
-
-            assert len(dense_sparse_p_sum[0]) == len(dense_sparse_p_sum[1])
-            for i in range(len(dense_sparse_p_sum[0])):
-                assert np.isclose(
-                    a=dense_sparse_p_sum[0][i],
-                    b=dense_sparse_p_sum[1][i],
-                    rtol=5e-5,
-                )
-
     @test_with_pir_api
     def test_repeated_regularization(self):
         l1 = paddle.regularizer.L1Decay(coeff=0.1)
@@ -313,9 +172,7 @@ class TestRegularizer(unittest.TestCase):
             sgd = paddle.optimizer.SGD(learning_rate=0.1, weight_decay=l2)
             sgd.minimize(loss)
         with base.dygraph.guard():
-            input = base.dygraph.to_variable(
-                np.random.randn(3, 2).astype('float32')
-            )
+            input = paddle.to_tensor(np.random.randn(3, 2).astype('float32'))
             paddle.seed(1)
             paddle.framework.random._manual_program_seed(1)
 

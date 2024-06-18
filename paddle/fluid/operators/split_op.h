@@ -20,26 +20,26 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/split_kernel.h"
 namespace paddle {
 namespace operators {
-static inline std::vector<framework::DDim> UpdateOutsDims(
+static inline std::vector<phi::DDim> UpdateOutsDims(
     const bool is_runtime,
     const bool each_section_is_known,
-    const framework::DDim in_dims,
+    const phi::DDim in_dims,
     const size_t num,
     std::vector<int> sections,
     const size_t axis,
     const int outs_number) {
-  std::vector<framework::DDim> outs_dims(outs_number, in_dims);
+  std::vector<phi::DDim> outs_dims(outs_number, in_dims);
   int64_t input_axis_dim = in_dims[axis];
   if (num > 0) {
     if (is_runtime || input_axis_dim > 0) {
       PADDLE_ENFORCE_EQ(
           input_axis_dim % num,
           0,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The input's size along the split dimension "
               "must be evenly divisible by Attr(num_or_sections). "
               "But received Attr(num_or_sections) "
@@ -75,7 +75,7 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
         PADDLE_ENFORCE_LE(
             num_of_unk,
             1,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Only one dimension value of Attr(num_or_sections) "
                 "in SplitOp can be -1. "
                 "But received Attr(num_or_sections) = [%s].",
@@ -89,7 +89,7 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
         PADDLE_ENFORCE_LT(
             sum_of_section,
             input_axis_dim,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Sum of Attr(num_or_sections) other than unknown section "
                 "must be less than the input's "
                 "size "
@@ -105,7 +105,7 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
         PADDLE_ENFORCE_EQ(
             sum_of_section,
             input_axis_dim,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Sum of Attr(num_or_sections) must be equal to the input's "
                 "size "
                 "along the split dimension. But received Attr(num_or_sections)"

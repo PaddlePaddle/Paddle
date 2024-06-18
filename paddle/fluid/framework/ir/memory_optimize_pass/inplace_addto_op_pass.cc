@@ -137,7 +137,7 @@ void InplaceAddToOpPass::Run(Graph *graph) const {
     auto *op = op_vars_pair.first;
 
     // The original gradient accumulation is g = sum(g_0, g_1,..., g_n), and it
-    // could be changed as follws if inplace addto is enabled:
+    // could be changed as follows if inplace addto is enabled:
     // g_sum_0 = g_0
     // g_sum_1 = grad_add(g_sum_0, g_1)
     // g_sum_2 = grad_add(g_sum_1, g_2)

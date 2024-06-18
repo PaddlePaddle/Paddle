@@ -19,13 +19,13 @@ extern "C" {
 }
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
 
-inline void HashOutputSize(const framework::DDim& in_dims,
+inline void HashOutputSize(const phi::DDim& in_dims,
                            std::vector<int64_t>& out_dims,  // NOLINT
                            int num_hash) {
   out_dims.reserve(in_dims.size() + 1);

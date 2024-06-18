@@ -24,26 +24,16 @@ gather_srcs(
   visualize_helper.cc
   compile_error.cc)
 
-# TODO(Aurelius84): pir_compiler depends on op_dialect_vjp and could
-# not found under CINN_ONLY mode
-if(NOT CINN_ONLY)
-  cinn_cc_library(pir_compiler SRCS pir_compiler.cc DEPS cinnapi op_dialect_vjp)
-endif()
+cinn_cc_library(pir_compiler SRCS pir_compiler.cc DEPS cinnapi op_dialect_vjp)
 
 if(WITH_CUDA)
   cinn_nv_test(test_hlir_framework_buffer SRCS buffer_test.cc DEPS cinncore)
   cinn_cc_test(test_hlir_framework_accuracy_checker SRCS
                accuracy_checker_test.cc DEPS cinncore)
-  cinn_cc_test(test_hlir_framework_parallel_compiler SRCS
-               parallel_compiler_test.cc DEPS cinncore)
 else()
   cinn_cc_test(test_hlir_framework_buffer SRCS buffer_test.cc DEPS cinncore)
 endif()
 
-if(WITH_CUDA)
-  cinn_cc_test(test_hlir_framework_op_lowering SRCS op_lowering_test.cc DEPS
-               cinncore decomposer_test_helper)
-endif()
 cinn_cc_test(test_hlir_framework_tensor SRCS tensor_test.cc DEPS cinncore)
 cinn_cc_test(test_hlir_framework_scope SRCS scope_test.cc DEPS cinncore)
 cinn_cc_test(test_hlir_framework_instruction SRCS instruction_test.cc DEPS
@@ -52,5 +42,3 @@ cinn_cc_test(test_hlir_framework_op SRCS op_test.cc DEPS cinncore)
 cinn_cc_test(test_hlir_framework_print_graph_pass SRCS print_graph_pass_test.cc
              DEPS cinncore)
 cinn_cc_test(test_hlir_framework_graph SRCS graph_test.cc DEPS cinncore)
-cinn_cc_test(test_hlir_framework_graph_compiler SRCS graph_compiler_test.cc
-             DEPS cinncore)

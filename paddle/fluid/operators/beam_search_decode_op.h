@@ -35,12 +35,11 @@ struct BeamSearchDecodeFunctor {
         score_tensor_(score_tensor) {
     tensor_on_gpu_ = false;
     // First make a copy of GPU data on CPU
-    if (platform::is_gpu_place(step_ids_origin_[0].place())) {
-      if (platform::is_gpu_place(step_ids_origin_[0].place())) {
+    if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU) {
+      if (step_ids_origin_[0].place().GetType() == phi::AllocationType::GPU) {
         tensor_on_gpu_ = true;
       }
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(step_ids_origin_[0].place());
       // Copy all tensors in the input tensor array
       for (auto& step_id : step_ids_origin_) {
@@ -49,7 +48,7 @@ struct BeamSearchDecodeFunctor {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
           }
-          framework::TensorCopy(step_id, platform::CPUPlace(), *dev_ctx, &out);
+          framework::TensorCopy(step_id, phi::CPUPlace(), *dev_ctx, &out);
           dev_ctx->Wait();
         }
 
@@ -57,12 +56,12 @@ struct BeamSearchDecodeFunctor {
         step_ids_.push_back(out);
       }
     }
-    if (platform::is_gpu_place(step_scores_origin_[0].place())) {
-      if (platform::is_gpu_place(step_scores_origin_[0].place())) {
+    if (step_scores_origin_[0].place().GetType() == phi::AllocationType::GPU) {
+      if (step_scores_origin_[0].place().GetType() ==
+          phi::AllocationType::GPU) {
         tensor_on_gpu_ = true;
       }
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
       auto* dev_ctx = pool.Get(step_scores_origin_[0].place());
       // Copy all tensors in the input tensor array
       for (auto& step_score : step_scores_origin_) {
@@ -71,8 +70,7 @@ struct BeamSearchDecodeFunctor {
           if (tensor_on_gpu_) {
             dev_ctx->Wait();
           }
-          framework::TensorCopy(
-              step_score, platform::CPUPlace(), *dev_ctx, &out);
+          framework::TensorCopy(step_score, phi::CPUPlace(), *dev_ctx, &out);
           dev_ctx->Wait();
         }
 
@@ -85,7 +83,7 @@ struct BeamSearchDecodeFunctor {
   template <typename T>
   void apply_mix() const {
     if (std::is_same<bool, T>::value) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "beam search decode op does not support bool!"));
 
     } else {
@@ -125,7 +123,7 @@ class BeamSearchDecodeOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GT(
         step_num,
         0UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "beam search steps, which is the"
             "size of Input(Ids) LoDTensorArray. beam search steps should "
             "be larger than 0, but received %d. ",
@@ -134,7 +132,7 @@ class BeamSearchDecodeOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GT(
         source_num,
         0UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "source_num is the sequence number of the"
             "first decoding step, indicating by Input(Ids)[0].lod[0].size. "
             "The number of source_num should be larger than"
@@ -145,7 +143,7 @@ class BeamSearchDecodeOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           ids->at(i).lod().size(),
           2UL,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "For the i step in beam search steps,"
               "the size of Input(Ids)[i].lod() should larger than 2,"
               "but received %d. ",

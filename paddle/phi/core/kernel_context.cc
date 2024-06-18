@@ -119,7 +119,7 @@ const AttrType& KernelContext::AttrAt(size_t idx) const {
     return paddle::get<AttrType>(attrs_.at(idx));
   } catch (paddle::bad_variant_access const& ex) {
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "Attribute cast error in Op Kernel Context."));
+        "Attribute %d cast error in Op Kernel Context.", idx));
   }
 }
 

@@ -53,6 +53,9 @@ class SendRecvMeta:
     """Mainly used to help p2p communication context information"""
 
     def __init__(self):
+        self.init_or_erase_meta()
+
+    def init_or_erase_meta(self):
         self.send_shape_message = None
         self.send_dtype_message = None
 
@@ -156,30 +159,42 @@ class SendRecvMeta:
                 )
                 self._send_dims_shape_dtype(d, group=group)
 
-    def set_send_message(self, tensor):
+    def _obtain_send_message(self, tensor):
         if isinstance(tensor, (paddle.Tensor, framework.core.eager.Tensor)):
-            self.send_shape_message = tensor.shape
-            self.send_dtype_message = paddle_2_number(tensor.dtype)
-        elif isinstance(tensor, tuple):
-            self.send_shape_message = tuple(
-                [d.shape for d in tensor if not d.stop_gradient]
-            )
-            self.send_dtype_message = tuple(
-                [
-                    paddle_2_number(d.dtype)
-                    for d in tensor
-                    if not d.stop_gradient
-                ]
-            )
+            return tensor.shape, paddle_2_number(tensor.dtype)
+        else:
+            shapes = []
+            dtypes = []
+            for d in tensor:
+                assert isinstance(
+                    d, (paddle.Tensor, framework.core.eager.Tensor)
+                )
+                if d.stop_gradient:
+                    continue
+                shape, dtype = self._obtain_send_message(d)
+                shapes.append(shape)
+                dtypes.append(dtype)
+            return tuple(shapes), tuple(dtypes)
 
-    def __repr__(self):
-        return "send_shape_message: {}, send_dtype_message: {}, recv_shape_message: {}, recv_dtype_message: {}, recv_stop_gradient: {}".format(
+    def set_send_message(self, tensor):
+        (
             self.send_shape_message,
             self.send_dtype_message,
-            self.recv_shape_message,
-            self.recv_dtype_message,
-            self.recv_stop_gradient,
-        )
+        ) = self._obtain_send_message(tensor)
+
+    def check_send_message(self, tensor):
+        if self.send_shape_message is None or self.send_dtype_message is None:
+            return
+        actual_shape, actual_dtype = self._obtain_send_message(tensor)
+        assert (
+            self.send_shape_message == actual_shape
+        ), f"send_shape_message: {self.send_shape_message}, actual_shape: {actual_shape}"
+        assert (
+            self.send_dtype_message == actual_dtype
+        ), f"send_dtype_message: {self.send_dtype_message}, actual_dtype: {actual_dtype}"
+
+    def __repr__(self):
+        return f"send_shape_message: {self.send_shape_message}, send_dtype_message: {self.send_dtype_message}, recv_shape_message: {self.recv_shape_message}, recv_dtype_message: {self.recv_dtype_message}, recv_stop_gradient: {self.recv_stop_gradient}"
 
 
 def _is_valid_send_recv_partial(tensor, mp_degree):
@@ -292,22 +307,253 @@ def batch_send_recv_on_calc_stream(p2p_op_list):
             op(tensor, comm_group, peer, nranks, rank_id)
 
 
-def _process_p2p_tuple_or_tensor(
+def _batch_p2p_tuple_or_tensor(
     tensors, p2p_func, pp_rank, pp_group, mp_degree=1, mp_rank=0
 ):
-    ops = []
-    if isinstance(tensors, tuple):
-        for tensor in tensors:
-            op = P2PonCalcStream(
-                p2p_func, tensor, pp_rank, pp_group, mp_degree, mp_rank
-            )
-            ops.append(op)
-    else:
-        op = P2PonCalcStream(
-            p2p_func, tensors, pp_rank, pp_group, mp_degree, mp_rank
-        )
-        ops.append(op)
+    if not isinstance(tensors, tuple):
+        tensors = (tensors,)
+    ops = [
+        P2PonCalcStream(p2p_func, tensor, pp_rank, pp_group, mp_degree, mp_rank)
+        for tensor in tensors
+    ]
     return ops
+
+
+def _batched_p2p_ops(
+    tensor_send_prev, tensor_recv_prev, tensor_send_next, tensor_recv_next, hcg
+):
+    ops = []
+    pipe_group = hcg.get_pipe_parallel_group()
+    mp_degree = hcg.get_model_parallel_world_size()
+    mp_rank = hcg.get_model_parallel_rank()
+    mp_group = hcg.get_model_parallel_group()
+
+    # start to p2p communicate
+    if not _sync_send:
+        if tensor_send_prev is not None:
+            src_rank = hcg._get_p2p_prev_rank()
+            ops.extend(
+                _batch_p2p_tuple_or_tensor(
+                    tensor_send_prev,
+                    _send_on_calc_stream,
+                    src_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+        if tensor_recv_prev is not None:
+            dst_rank = hcg._get_p2p_prev_rank()
+            ops.extend(
+                _batch_p2p_tuple_or_tensor(
+                    tensor_recv_prev,
+                    _recv_on_calc_stream,
+                    dst_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+        if tensor_send_next is not None:
+            src_rank = hcg._get_p2p_next_rank()
+            ops.extend(
+                _batch_p2p_tuple_or_tensor(
+                    tensor_send_next,
+                    _send_on_calc_stream,
+                    src_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+        if tensor_recv_next is not None:
+            dst_rank = hcg._get_p2p_next_rank()
+            ops.extend(
+                _batch_p2p_tuple_or_tensor(
+                    tensor_recv_next,
+                    _recv_on_calc_stream,
+                    dst_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+    else:
+        # Some devices(NPU for example) do not support asynchronized send op, So the order is
+        # recv_prev -> send_next -> recv_next -> send_prev
+        # When using this order, the environment variable
+        # 'PADDLE_P2P_SYNC_SEND' should be set True
+        if tensor_recv_prev is not None:
+            dst_rank = hcg._get_p2p_prev_rank()
+            ops.extend(
+                _batch_p2p_tuple_or_tensor(
+                    tensor_recv_prev,
+                    _recv_on_calc_stream,
+                    dst_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+        if tensor_send_next is not None:
+            src_rank = hcg._get_p2p_next_rank()
+            ops.extend(
+                _batch_p2p_tuple_or_tensor(
+                    tensor_send_next,
+                    _send_on_calc_stream,
+                    src_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+        if tensor_recv_next is not None:
+            dst_rank = hcg._get_p2p_next_rank()
+            ops.extend(
+                _batch_p2p_tuple_or_tensor(
+                    tensor_recv_next,
+                    _recv_on_calc_stream,
+                    dst_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+        if tensor_send_prev is not None:
+            src_rank = hcg._get_p2p_prev_rank()
+            ops.extend(
+                _batch_p2p_tuple_or_tensor(
+                    tensor_send_prev,
+                    _send_on_calc_stream,
+                    src_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+
+    if len(ops) > 0:
+        batch_send_recv_on_calc_stream(ops)
+        if distutils.util.strtobool(
+            os.getenv('FLAGS_p2p_device_synchronize', '0')
+        ):
+            paddle.device.cuda.synchronize()
+
+    tensors_for_all_gather = []
+    if tensor_recv_prev is not None:
+        if isinstance(tensor_recv_prev, tuple):
+            for d in tensor_recv_prev:
+                tensors_for_all_gather.append(d)
+        else:
+            tensors_for_all_gather.append(tensor_recv_prev)
+    if tensor_recv_next is not None:
+        if isinstance(tensor_recv_next, tuple):
+            for d in tensor_recv_next:
+                tensors_for_all_gather.append(d)
+        else:
+            tensors_for_all_gather.append(tensor_recv_next)
+
+    for tensor in tensors_for_all_gather:
+        allgather_partial(
+            tensor,
+            nranks=mp_degree,
+            rank_id=mp_rank,
+            group=mp_group,
+            use_calc_stream=True,
+        )
+
+
+def _p2p_ops_tuple_or_tensor(tensors, p2p_func, pp_rank, pp_group):
+    if not isinstance(tensors, tuple):
+        tensors = (tensors,)
+    reqs = []
+    for tensor in tensors:
+        reqs.append(p2p_func(tensor, pp_rank, pp_group))
+    return reqs
+
+
+def _p2p_ops(
+    tensor_send_prev, tensor_recv_prev, tensor_send_next, tensor_recv_next, hcg
+):
+    reqs = []
+    group = hcg.get_pipe_parallel_group()
+    if hcg.get_stage_id() % 2 == 0:
+        if tensor_send_next is not None:
+            reqs.extend(
+                _p2p_ops_tuple_or_tensor(
+                    tensor_send_next,
+                    paddle.distributed.isend,
+                    hcg._get_p2p_next_rank(),
+                    group,
+                )
+            )
+        if tensor_recv_prev is not None:
+            reqs.extend(
+                _p2p_ops_tuple_or_tensor(
+                    tensor_recv_prev,
+                    paddle.distributed.irecv,
+                    hcg._get_p2p_prev_rank(),
+                    group,
+                )
+            )
+
+        if tensor_send_prev is not None:
+            reqs.extend(
+                _p2p_ops_tuple_or_tensor(
+                    tensor_send_prev,
+                    paddle.distributed.isend,
+                    _hcg._get_p2p_prev_rank(),
+                    group,
+                )
+            )
+
+        if tensor_recv_next is not None:
+            reqs.extend(
+                _p2p_ops_tuple_or_tensor(
+                    tensor_recv_next,
+                    paddle.distributed.irecv,
+                    hcg._get_p2p_next_rank(),
+                    group,
+                )
+            )
+    else:
+        if tensor_recv_prev is not None:
+            reqs.extend(
+                _p2p_ops_tuple_or_tensor(
+                    tensor_recv_prev,
+                    paddle.distributed.irecv,
+                    hcg._get_p2p_prev_rank(),
+                    group,
+                )
+            )
+        if tensor_send_next is not None:
+            reqs.extend(
+                _p2p_ops_tuple_or_tensor(
+                    tensor_send_next,
+                    paddle.distributed.isend,
+                    hcg._get_p2p_next_rank(),
+                    group,
+                )
+            )
+        if tensor_recv_next is not None:
+            reqs.extend(
+                _p2p_ops_tuple_or_tensor(
+                    tensor_recv_next,
+                    paddle.distributed.irecv,
+                    hcg._get_p2p_next_rank(),
+                    group,
+                )
+            )
+        if tensor_send_prev is not None:
+            reqs.extend(
+                _p2p_ops_tuple_or_tensor(
+                    tensor_send_prev,
+                    paddle.distributed.isend,
+                    hcg._get_p2p_prev_rank(),
+                    group,
+                )
+            )
+    return reqs
 
 
 def _p2p_helper(
@@ -317,6 +563,8 @@ def _p2p_helper(
     recv_next,
     sync_recv=True,
     send_recv_meta=None,
+    batch_p2p_comm=True,
+    wait_on_reqs=True,
 ):
     global _hcg
 
@@ -368,145 +616,22 @@ def _p2p_helper(
                 shape=send_shape_msg, dtype=number_2_dtype(send_dtype_msg)
             )
 
-    ops = []
-    pipe_group = _hcg.get_pipe_parallel_group()
+    p2p_func = _batched_p2p_ops if batch_p2p_comm else _p2p_ops
+    reqs = p2p_func(
+        tensor_send_prev,
+        tensor_recv_prev,
+        tensor_send_next,
+        tensor_recv_next,
+        _hcg,
+    )
 
-    # start to p2p communicate
-    if not _sync_send:
-        if tensor_send_prev is not None:
-            src_rank = _hcg._get_p2p_prev_rank()
-            ops.extend(
-                _process_p2p_tuple_or_tensor(
-                    tensor_send_prev,
-                    _send_on_calc_stream,
-                    src_rank,
-                    pipe_group,
-                    mp_degree,
-                    mp_rank,
-                )
-            )
-        if tensor_recv_prev is not None:
-            dst_rank = _hcg._get_p2p_prev_rank()
-            ops.extend(
-                _process_p2p_tuple_or_tensor(
-                    tensor_recv_prev,
-                    _recv_on_calc_stream,
-                    dst_rank,
-                    pipe_group,
-                    mp_degree,
-                    mp_rank,
-                )
-            )
-        if tensor_send_next is not None:
-            src_rank = _hcg._get_p2p_next_rank()
-            ops.extend(
-                _process_p2p_tuple_or_tensor(
-                    tensor_send_next,
-                    _send_on_calc_stream,
-                    src_rank,
-                    pipe_group,
-                    mp_degree,
-                    mp_rank,
-                )
-            )
-        if tensor_recv_next is not None:
-            dst_rank = _hcg._get_p2p_next_rank()
-            ops.extend(
-                _process_p2p_tuple_or_tensor(
-                    tensor_recv_next,
-                    _recv_on_calc_stream,
-                    dst_rank,
-                    pipe_group,
-                    mp_degree,
-                    mp_rank,
-                )
-            )
-    else:
-        # Some devices(NPU for example) do not support asynchronized send op, So the order is
-        # recv_prev -> send_next -> recv_next -> send_prev
-        # When using this order, the environment variable
-        # 'PADDLE_P2P_SYNC_SEND' should be set True
-        if tensor_recv_prev is not None:
-            dst_rank = _hcg._get_p2p_prev_rank()
-            ops.extend(
-                _process_p2p_tuple_or_tensor(
-                    tensor_recv_prev,
-                    _recv_on_calc_stream,
-                    dst_rank,
-                    pipe_group,
-                    mp_degree,
-                    mp_rank,
-                )
-            )
-        if tensor_send_next is not None:
-            src_rank = _hcg._get_p2p_next_rank()
-            ops.extend(
-                _process_p2p_tuple_or_tensor(
-                    tensor_send_next,
-                    _send_on_calc_stream,
-                    src_rank,
-                    pipe_group,
-                    mp_degree,
-                    mp_rank,
-                )
-            )
-        if tensor_recv_next is not None:
-            dst_rank = _hcg._get_p2p_next_rank()
-            ops.extend(
-                _process_p2p_tuple_or_tensor(
-                    tensor_recv_next,
-                    _recv_on_calc_stream,
-                    dst_rank,
-                    pipe_group,
-                    mp_degree,
-                    mp_rank,
-                )
-            )
-        if tensor_send_prev is not None:
-            src_rank = _hcg._get_p2p_prev_rank()
-            ops.extend(
-                _process_p2p_tuple_or_tensor(
-                    tensor_send_prev,
-                    _send_on_calc_stream,
-                    src_rank,
-                    pipe_group,
-                    mp_degree,
-                    mp_rank,
-                )
-            )
+    # NOTE(shenliang03): batch_p2p_comm no need wait because of using calculate stream
+    if wait_on_reqs and not batch_p2p_comm and len(reqs) > 0:
+        for req in reqs:
+            req.wait()
+        reqs = None
 
-    if len(ops) > 0:
-        batch_send_recv_on_calc_stream(ops)
-
-        if distutils.util.strtobool(
-            os.getenv('FLAGS_p2p_device_synchronize', '0')
-        ):
-            paddle.device.cuda.synchronize()
-
-    tensors_for_all_gather = []
-    if tensor_recv_prev is not None:
-        if isinstance(tensor_recv_prev, tuple):
-            for d in tensor_recv_prev:
-                tensors_for_all_gather.append(d)
-        else:
-            tensors_for_all_gather.append(tensor_recv_prev)
-    if tensor_recv_next is not None:
-        if isinstance(tensor_recv_next, tuple):
-            for d in tensor_recv_next:
-                tensors_for_all_gather.append(d)
-        else:
-            tensors_for_all_gather.append(tensor_recv_next)
-
-    for tensor in tensors_for_all_gather:
-        allgather_partial(
-            tensor,
-            nranks=mp_degree,
-            rank_id=mp_rank,
-            group=mp_group,
-            use_calc_stream=True,
-        )
-
-    return tensor_recv_prev, tensor_recv_next
+    return tensor_recv_prev, tensor_recv_next, reqs
 
 
 class P2pHelper:
@@ -514,20 +639,25 @@ class P2pHelper:
         self._send_recv_meta = SendRecvMeta()
         self._use_cache = use_cache
 
-    def _send_meta(self, output_tensor):
+    def _send_meta(self, output_tensor, skip_check_meta=False):
         if not self._send_recv_meta.has_send_meta:
             self._send_recv_meta.set_send_message(output_tensor)
             self._send_recv_meta.send_meta(
                 output_tensor, _hcg.get_pipe_parallel_group()
             )
             self._send_recv_meta.has_send_meta = self._use_cache
+        elif not skip_check_meta:
+            self._send_recv_meta.check_send_message(output_tensor)
 
     def _recv_meta(self):
         if not self._send_recv_meta.has_recv_meta:
             self._send_recv_meta.recv_meta(_hcg.get_pipe_parallel_group())
             self._send_recv_meta.has_recv_meta = self._use_cache
 
-    def recv_forward(self, pp_first_stage, sync_recv=True):
+    def clear_meta_cache(self):
+        self._send_recv_meta.init_or_erase_meta()
+
+    def recv_forward(self, pp_first_stage, sync_recv=True, batch_p2p_comm=True):
         global _timers
         if _timers is not None:
             _timers("recv_forward").start()
@@ -536,43 +666,51 @@ class P2pHelper:
         else:
             self._recv_meta()
 
-            input_tensor, _ = _p2p_helper(
+            input_tensor, _, _ = _p2p_helper(
                 tensor_send_next=None,
                 tensor_send_prev=None,
                 recv_prev=True,
                 recv_next=False,
                 sync_recv=sync_recv,
                 send_recv_meta=self._send_recv_meta,
+                batch_p2p_comm=batch_p2p_comm,
             )
         if _timers is not None:
             _timers("recv_forward").stop()
         return input_tensor
 
-    def recv_backward(self, pp_last_stage, sync_recv=True):
+    def recv_backward(self, pp_last_stage, sync_recv=True, batch_p2p_comm=True):
         global _timers
         if _timers is not None:
             _timers("recv_backward").start()
         if pp_last_stage:
             output_tensor_grad = None
         else:
-            _, output_tensor_grad = _p2p_helper(
+            _, output_tensor_grad, _ = _p2p_helper(
                 tensor_send_next=None,
                 tensor_send_prev=None,
                 recv_prev=False,
                 recv_next=True,
                 sync_recv=sync_recv,
                 send_recv_meta=self._send_recv_meta,
+                batch_p2p_comm=batch_p2p_comm,
             )
         if _timers is not None:
             _timers("recv_backward").stop()
         return output_tensor_grad
 
-    def send_forward(self, output_tensor, pp_last_stage):
+    def send_forward(
+        self,
+        output_tensor,
+        pp_last_stage,
+        batch_p2p_comm=True,
+        skip_check_meta=False,
+    ):
         global _timers
         if _timers is not None:
             _timers("send_forward").start()
         if not pp_last_stage:
-            self._send_meta(output_tensor)
+            self._send_meta(output_tensor, skip_check_meta=skip_check_meta)
 
             _p2p_helper(
                 tensor_send_next=output_tensor,
@@ -580,11 +718,14 @@ class P2pHelper:
                 recv_prev=False,
                 recv_next=False,
                 send_recv_meta=self._send_recv_meta,
+                batch_p2p_comm=batch_p2p_comm,
             )
         if _timers is not None:
             _timers("send_forward").stop()
 
-    def send_backward(self, input_tensor_grad, pp_first_stage):
+    def send_backward(
+        self, input_tensor_grad, pp_first_stage, batch_p2p_comm=True
+    ):
         global _timers
         if _timers is not None:
             _timers("send_backward").start()
@@ -595,50 +736,62 @@ class P2pHelper:
                 recv_prev=False,
                 recv_next=False,
                 send_recv_meta=self._send_recv_meta,
+                batch_p2p_comm=batch_p2p_comm,
             )
         if _timers is not None:
             _timers("send_backward").stop()
 
-    def send_forward_recv_backward(self, output_tensor, pp_last_stage):
+    def send_forward_recv_backward(
+        self, output_tensor, pp_last_stage, batch_p2p_comm=True
+    ):
         global _timers
         if _timers is not None:
             _timers("send_forward_recv_backward").start()
         if pp_last_stage:
             output_tensor_grad = None
         else:
-            _, output_tensor_grad = _p2p_helper(
+            _, output_tensor_grad, _ = _p2p_helper(
                 tensor_send_next=output_tensor,
                 tensor_send_prev=None,
                 recv_prev=False,
                 recv_next=True,
                 send_recv_meta=self._send_recv_meta,
+                batch_p2p_comm=batch_p2p_comm,
             )
         if _timers is not None:
             _timers("send_forward_recv_backward").stop()
         return output_tensor_grad
 
-    def send_backward_recv_forward(self, input_tensor_grad, pp_first_stage):
+    def send_backward_recv_forward(
+        self, input_tensor_grad, pp_first_stage, batch_p2p_comm=True
+    ):
         global _timers
         if _timers is not None:
             _timers("send_backward_recv_forward").start()
         if pp_first_stage:
             input_tensor = None
         else:
-            input_tensor, _ = _p2p_helper(
+            input_tensor, _, _ = _p2p_helper(
                 tensor_send_next=None,
                 tensor_send_prev=input_tensor_grad,
                 recv_prev=True,
                 recv_next=False,
                 send_recv_meta=self._send_recv_meta,
+                batch_p2p_comm=batch_p2p_comm,
             )
         if _timers is not None:
             _timers("send_backward_recv_forward").stop()
         return input_tensor
 
     def send_forward_backward_recv_forward_backward(
-        self, output_tensor, input_tensor_grad, recv_prev, recv_next
+        self,
+        output_tensor,
+        input_tensor_grad,
+        recv_prev,
+        recv_next,
+        batch_p2p_comm=True,
     ):
-        # always have to send dytpe info to downstream
+        # always have to send dtype info to downstream
         global _timers
         if _timers is not None:
             _timers("send_forward_backward_recv_forward_backward").start()
@@ -648,20 +801,27 @@ class P2pHelper:
         if recv_prev:
             self._recv_meta()
 
-        input_tensor, output_tensor_grad = _p2p_helper(
+        input_tensor, output_tensor_grad, _ = _p2p_helper(
             tensor_send_next=output_tensor,
             tensor_send_prev=input_tensor_grad,
             recv_prev=recv_prev,
             recv_next=recv_next,
             sync_recv=False,
             send_recv_meta=self._send_recv_meta,
+            batch_p2p_comm=batch_p2p_comm,
         )
         if _timers is not None:
             _timers("send_forward_backward_recv_forward_backward").stop()
         return input_tensor, output_tensor_grad
 
-    def send_forward_recv_forward(self, output_tensor, recv_prev):
-        # always have to send dytpe info to downstream
+    def send_forward_recv_forward(
+        self,
+        output_tensor,
+        recv_prev,
+        batch_p2p_comm=True,
+        overlap_p2p_comm=False,
+    ):
+        # always have to send dtype info to downstream
         global _timers
         if _timers is not None:
             _timers("send_forward_recv_forward").start()
@@ -672,32 +832,48 @@ class P2pHelper:
         if recv_prev:
             self._recv_meta()
 
-        input_tensor, _ = _p2p_helper(
+        input_tensor, _, wait_handles = _p2p_helper(
             tensor_send_next=output_tensor,
             tensor_send_prev=None,
             recv_prev=recv_prev,
             recv_next=False,
             sync_recv=False,
             send_recv_meta=self._send_recv_meta,
+            batch_p2p_comm=batch_p2p_comm,
+            wait_on_reqs=(not overlap_p2p_comm),
         )
         if _timers is not None:
             _timers("send_forward_recv_forward").stop()
+
+        if overlap_p2p_comm:
+            return input_tensor, wait_handles
         return input_tensor
 
-    def send_backward_recv_backward(self, input_tensor_grad, recv_next):
+    def send_backward_recv_backward(
+        self,
+        input_tensor_grad,
+        recv_next,
+        batch_p2p_comm=True,
+        overlap_p2p_comm=False,
+    ):
         global _timers
         if _timers is not None:
             _timers("send_backward_recv_backward").start()
-        _, output_tensor_grad = _p2p_helper(
+        _, output_tensor_grad, wait_handles = _p2p_helper(
             tensor_send_next=None,
             tensor_send_prev=input_tensor_grad,
             recv_prev=False,
             recv_next=recv_next,
             sync_recv=False,
             send_recv_meta=self._send_recv_meta,
+            batch_p2p_comm=batch_p2p_comm,
+            wait_on_reqs=(not overlap_p2p_comm),
         )
         if _timers is not None:
             _timers("send_backward_recv_backward").stop()
+
+        if overlap_p2p_comm:
+            return output_tensor_grad, wait_handles
         return output_tensor_grad
 
     def __repr__(self):

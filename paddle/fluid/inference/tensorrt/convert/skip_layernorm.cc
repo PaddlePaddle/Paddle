@@ -17,9 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class SkipLayerNormOpConverter : public OpConverter {
  public:
@@ -67,17 +65,19 @@ class SkipLayerNormOpConverter : public OpConverter {
 
     if ((x_rank == 2 && y_rank == 4) || (y_rank == 2 && x_rank == 4)) {
       if (x_rank == 2 && y_rank == 4) {
-        auto* reshape_before_skiplayn =
+        auto* reshape_before_skip_layer_n =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input1);
         std::vector<nvinfer1::ITensor*> reshape_before_tensor;
         reshape_before_tensor.push_back(GetEleTensorOfShape(Shape(input1), 0));
         reshape_before_tensor.push_back(GetEleTensorOfShape(Shape(input1), 1));
         reshape_before_tensor.push_back(Add1DConstantLayer(1));
         reshape_before_tensor.push_back(Add1DConstantLayer(1));
-        reshape_before_skiplayn->setInput(1, *Concat(reshape_before_tensor));
-        reshape_before_skiplayn->setName(
-            ("reshape_before_skiplayn(Output: " + output_name + ")").c_str());
-        input1 = reshape_before_skiplayn->getOutput(0);
+        reshape_before_skip_layer_n->setInput(1,
+                                              *Concat(reshape_before_tensor));
+        reshape_before_skip_layer_n->setName(
+            ("reshape_before_skip_layer_n(Output: " + output_name + ")")
+                .c_str());
+        input1 = reshape_before_skip_layer_n->getOutput(0);
 
         if (enable_int8) {
           if (op_desc.HasAttr("X")) {
@@ -85,17 +85,19 @@ class SkipLayerNormOpConverter : public OpConverter {
           }
         }
       } else {
-        auto* reshape_before_skiplayn =
+        auto* reshape_before_skip_layer_n =
             TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input2);
         std::vector<nvinfer1::ITensor*> reshape_before_tensor;
         reshape_before_tensor.push_back(GetEleTensorOfShape(Shape(input2), 0));
         reshape_before_tensor.push_back(GetEleTensorOfShape(Shape(input2), 1));
         reshape_before_tensor.push_back(Add1DConstantLayer(1));
         reshape_before_tensor.push_back(Add1DConstantLayer(1));
-        reshape_before_skiplayn->setInput(1, *Concat(reshape_before_tensor));
-        reshape_before_skiplayn->setName(
-            ("reshape_before_skiplayn(Output: " + output_name + ")").c_str());
-        input2 = reshape_before_skiplayn->getOutput(0);
+        reshape_before_skip_layer_n->setInput(1,
+                                              *Concat(reshape_before_tensor));
+        reshape_before_skip_layer_n->setName(
+            ("reshape_before_skip_layer_n(Output: " + output_name + ")")
+                .c_str());
+        input2 = reshape_before_skip_layer_n->getOutput(0);
 
         if (enable_int8) {
           if (op_desc.HasAttr("Y")) {
@@ -145,17 +147,15 @@ class SkipLayerNormOpConverter : public OpConverter {
            scale_weight.values,
            GetPluginFieldType(scale_weight.type),
            static_cast<int32_t>(scale_weight.count)}};
-      nvinfer1::PluginFieldCollection* pluginPtr =
-          static_cast<nvinfer1::PluginFieldCollection*>(
-              malloc(sizeof(nvinfer1::PluginFieldCollection) +
-                     fields.size() * sizeof(nvinfer1::PluginField)));
+      std::unique_ptr<nvinfer1::PluginFieldCollection> pluginPtr(
+          new nvinfer1::PluginFieldCollection);
       pluginPtr->nbFields = static_cast<int32_t>(fields.size());
       pluginPtr->fields = fields.data();
 
-      auto pluginObj =
-          creator->createPlugin("CustomSkipLayerNormPluginDynamic", pluginPtr);
+      auto pluginObj = creator->createPlugin("CustomSkipLayerNormPluginDynamic",
+                                             pluginPtr.get());
 
-      free(pluginPtr);
+      pluginPtr.reset();
 
       auto plugin_layer = engine_->network()->addPluginV2(
           inputs.data(), inputs.size(), *pluginObj);
@@ -209,18 +209,15 @@ class SkipLayerNormOpConverter : public OpConverter {
                           smooth_scale.data(),
                           nvinfer1::PluginFieldType::kFLOAT32,
                           static_cast<int32_t>(smooth_scale.size())});
-        nvinfer1::PluginFieldCollection* pluginPtr =
-            static_cast<nvinfer1::PluginFieldCollection*>(
-                malloc(sizeof(nvinfer1::PluginFieldCollection) +
-                       fields.size() *
-                           sizeof(nvinfer1::PluginField)));  // remember to free
+        std::unique_ptr<nvinfer1::PluginFieldCollection> pluginPtr(
+            new nvinfer1::PluginFieldCollection);
         pluginPtr->nbFields = static_cast<int32_t>(fields.size());
         pluginPtr->fields = fields.data();
 
         auto pluginObj = creator->createPlugin(
-            "CustomSkipLayerNormPluginDynamicWithSmooth", pluginPtr);
+            "CustomSkipLayerNormPluginDynamicWithSmooth", pluginPtr.get());
 
-        free(pluginPtr);
+        pluginPtr.reset();
 
         auto plugin_layer = engine_->network()->addPluginV2(
             inputs.data(), inputs.size(), *pluginObj);
@@ -233,18 +230,15 @@ class SkipLayerNormOpConverter : public OpConverter {
                 "layer"));
         layer = plugin_layer;
       } else {
-        nvinfer1::PluginFieldCollection* pluginPtr =
-            static_cast<nvinfer1::PluginFieldCollection*>(
-                malloc(sizeof(nvinfer1::PluginFieldCollection) +
-                       fields.size() *
-                           sizeof(nvinfer1::PluginField)));  // remember to free
+        std::unique_ptr<nvinfer1::PluginFieldCollection> pluginPtr(
+            new nvinfer1::PluginFieldCollection);
         pluginPtr->nbFields = static_cast<int32_t>(fields.size());
         pluginPtr->fields = fields.data();
 
         auto pluginObj = creator->createPlugin(
-            "CustomSkipLayerNormPluginDynamic", pluginPtr);
+            "CustomSkipLayerNormPluginDynamic", pluginPtr.get());
 
-        free(pluginPtr);
+        pluginPtr.reset();
 
         auto plugin_layer = engine_->network()->addPluginV2(
             inputs.data(), inputs.size(), *pluginObj);
@@ -257,12 +251,10 @@ class SkipLayerNormOpConverter : public OpConverter {
         layer = plugin_layer;
       }
     }
-    RreplenishLayerAndOutput(layer, "skip_layernorm", {output_name}, test_mode);
+    ReplenishLayerAndOutput(layer, "skip_layernorm", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(skip_layernorm, SkipLayerNormOpConverter);

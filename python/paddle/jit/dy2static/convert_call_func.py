@@ -69,9 +69,7 @@ class ConversionOptions:
             setattr(func, CONVERSION_OPTIONS, self)
         else:
             translator_logger.warn(
-                "Only support @not_to_static to type(function) or type(method), but recevied {}".format(
-                    type(func)
-                )
+                f"Only support @not_to_static to type(function) or type(method), but received {type(func)}"
             )
 
 
@@ -220,15 +218,13 @@ def convert_call(func):
 
     if inspect.isgeneratorfunction(func):
         # NOTE(xiongkun03): inspect.isfunction() will return True even though func is a generator function.
-        # If we don't deal generatorfunction here, we will regard it as normal function and get errors in some
+        # If we don't deal generator function here, we will regard it as normal function and get errors in some
         # occasion.
         number_of_stars = 30
         translator_logger.warn(
             "\n\n"
             + "*" * number_of_stars
-            + "\nYour function:`{}` doesn't support to transform to static function because it is a generator function, it will be run as-is.".format(
-                func.__name__
-            )
+            + f"\nYour function:`{func.__name__}` doesn't support to transform to static function because it is a generator function, it will be run as-is."
             + "\n"
             + "*" * number_of_stars
             + "\n\n"
@@ -304,7 +300,7 @@ def convert_call(func):
                 _, forward_func = unwrap_decorators(func.forward)
                 func._original_funcs['forward'] = forward_func.__func__
                 forward_func = convert_to_static(forward_func)
-                # Bound mothod will be convert into plain function after `convert_to_static`.
+                # Bound method will be convert into plain function after `convert_to_static`.
                 # So descriptor mechanism is used to bound `self` instance on function to
                 # keep it as bound method.
                 func.forward = forward_func.__get__(func)

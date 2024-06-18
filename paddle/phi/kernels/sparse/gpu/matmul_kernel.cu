@@ -57,7 +57,7 @@ void MatmulKernelImpl(const Context& dev_ctx,
       2,
       phi::errors::InvalidArgument("the dims size of Input(x) and "
                                    "Input(y) must be greater than "
-                                   "or eaqual to 2."));
+                                   "or equal to 2."));
 
   for (size_t i = 0; i < x_ndims - 2; ++i) {
     PADDLE_ENFORCE_EQ(xdim_vec[i],
@@ -71,7 +71,7 @@ void MatmulKernelImpl(const Context& dev_ctx,
       ydim_vec[y_ndims - 2],
       phi::errors::PreconditionNotMet(
           "The shape of Input(x) and Input(y) is not suitable for matmul "
-          "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
+          "opetation, x_dim[-1] must be equal to y_dim[-2]."));
 
   // InferMeta of DenseTensor 'out'
   std::vector<int64_t> out_dim_vec(ydim_vec);
@@ -143,7 +143,7 @@ void MatmulCsrCsrKernel(const Context& dev_ctx,
       2,
       phi::errors::InvalidArgument("the dims size of Input(x) and "
                                    "Input(y) must be greater than "
-                                   "or eaqual to 2."));
+                                   "or equal to 2."));
 
   for (size_t i = 0; i < x_ndims - 2; ++i) {
     PADDLE_ENFORCE_EQ(xdim_vec[i],
@@ -157,7 +157,7 @@ void MatmulCsrCsrKernel(const Context& dev_ctx,
       ydim_vec[y_ndims - 2],
       phi::errors::PreconditionNotMet(
           "The shape of Input(x) and Input(y) is not suitable for matmul "
-          "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
+          "opetation, x_dim[-1] must be equal to y_dim[-2]."));
 
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SPGEMM(
@@ -222,7 +222,7 @@ void MaskedMatmulCsrKernel(const Context& dev_ctx,
       2,
       phi::errors::InvalidArgument("the dims size of Input(x) and "
                                    "Input(y) must be greater than "
-                                   "or eaqual to 2."));
+                                   "or equal to 2."));
 
   for (size_t i = 0; i < x_ndims - 2; ++i) {
     PADDLE_ENFORCE_EQ(xdim_vec[i],
@@ -240,21 +240,21 @@ void MaskedMatmulCsrKernel(const Context& dev_ctx,
       ydim_vec[y_ndims - 2],
       phi::errors::PreconditionNotMet(
           "The shape of Input(x) and Input(y) is not suitable for matmul "
-          "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
+          "opetation, x_dim[-1] must be equal to y_dim[-2]."));
 
   PADDLE_ENFORCE_EQ(
       maskdim_vec[mask_ndims - 2],
       xdim_vec[x_ndims - 2],
       phi::errors::PreconditionNotMet(
           "The shape of Input(x) and Input(y) is not suitable for matmul "
-          "opetation, mask_dim[-2] must be eaqual to x_dim[-2]."));
+          "opetation, mask_dim[-2] must be equal to x_dim[-2]."));
 
   PADDLE_ENFORCE_EQ(
       maskdim_vec[mask_ndims - 1],
       ydim_vec[y_ndims - 1],
       phi::errors::PreconditionNotMet(
           "The shape of Input(x) and Input(y) is not suitable for matmul "
-          "opetation, mask_dim[-1] must be eaqual to y_dim[-1]."));
+          "opetation, mask_dim[-1] must be equal to y_dim[-1]."));
 
   // InferMeta of SparseCsrTensor 'out', CreateLikeInferMeta
   EmptyLikeCsrKernel<T, Context>(dev_ctx, mask, out);

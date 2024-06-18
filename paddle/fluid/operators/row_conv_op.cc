@@ -14,9 +14,9 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -24,7 +24,7 @@ namespace operators {
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+using EigenMatrix = phi::EigenMatrix<T, MajorType, IndexType>;
 
 class RowConvOp : public framework::OperatorWithKernel {
  public:
@@ -39,7 +39,7 @@ class RowConvOp : public framework::OperatorWithKernel {
     auto filter_dims = ctx->GetInputDim("Filter");
     PADDLE_ENFORCE_EQ(filter_dims.size(),
                       2,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(Filter)'s dimensions should be 2. Received: "
                           "Input(Filter)'s shape: [%s].",
                           filter_dims));

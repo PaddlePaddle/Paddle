@@ -13,21 +13,65 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/group_schedule/tactic/tile_tactic.h"
+#include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
 
 namespace cinn {
 namespace ir {
 
+class TileTactic final : public ScheduleTactic {
+ public:
+  void Init(ScheduleContext* context) override;
+
+  void Apply(ir::IRSchedule* sch, const std::string& block_id) override;
+
+  std::string TacticName() const override { return "TileTactic"; }
+
+ private:
+  ScheduleContext* context_;
+};
+
 void TileTactic::Init(ScheduleContext* context) {
   context_ = context;
-  // fake strategy
-  auto GetFirstFactor = [](int num) {
+  // TODO(BiynXu): Create schedule config and bucket info based on hardware
+  // information, and get the config here. now it is a naive strategy.
+  auto GetFirstFactor = [](int64_t num) -> int64_t {
     if (num == 1) return 1;
     int factor = 1;
-    for (int i = num - 1; i >= 1; --i) {
+    for (int64_t i = num - 1; i >= 1; --i) {
       if (num % i == 0) {
         return i;
       }
+    }
+  };
+  auto GetTreeReduceSize = [&](const ir::Expr& total_rb_extent) -> int64_t {
+    const int64_t max_num_threads =
+        cinn::common::DefaultDeviceTarget().max_num_threads();
+    int64_t nums_thread_per_block = max_num_threads;
+    if (total_rb_extent.is_constant()) {
+      int64_t extent = static_cast<int64_t>(total_rb_extent.get_constant());
+      nums_thread_per_block = GetFirstFactor(extent);
+    } else {
+      if (context->bucket_info.space.size() == 2 &&
+          context->bucket_info.space[1].iter_type == "R") {
+        nums_thread_per_block = context_->bucket_info.space[1].lower_bound;
+      } else {
+        PADDLE_THROW(::common::errors::Unimplemented(
+            "Now, the function GetTreeReduceSize doesn't support the cases "
+            "except SR"));
+      }
+    }
+    return nums_thread_per_block > max_num_threads ? max_num_threads
+                                                   : nums_thread_per_block;
+  };
+  auto GetNumThreadPerBlock = [&](int64_t lower_bound) -> int64_t {
+    // When designing the tile config, we can further subdivided.
+    if (lower_bound >= 1024) {
+      return 256;
+    } else if (lower_bound >= 256) {
+      return 32;
+    } else {
+      return 4;
     }
   };
 
@@ -38,57 +82,39 @@ void TileTactic::Init(ScheduleContext* context) {
   context_->iter_space_info.rb_space.clear();
   context_->iter_space_info.sp_space.clear();
 
-  if (has_sp_iter) {
-    int sp_factor = GetFirstFactor(context_->bucket_info.sp_lower_bound);
-    context_->iter_space_info.sp_space.emplace_back(
-        ir::Expr(context_->bucket_info.sp_lower_bound / sp_factor),
-        has_rb_iter ? IterativeSpaceInfo::AxisType::kCudaBlockY
-                    : IterativeSpaceInfo::AxisType::kCudaBlockX);
-    VLOG(6) << "sp_space: <"
-            << std::get<0>(context_->iter_space_info.sp_space.back())
-            << ", AxisType["
-            << static_cast<int>(
-                   std::get<1>(context_->iter_space_info.sp_space.back()))
-            << "]>";
-    context_->iter_space_info.sp_space.emplace_back(
-        ir::Expr(sp_factor),
-        has_rb_iter ? IterativeSpaceInfo::AxisType::kCudaBlockX
-                    : IterativeSpaceInfo::AxisType::kCudaThreadX);
-    VLOG(6) << "sp_space: <"
-            << std::get<0>(context_->iter_space_info.sp_space.back())
-            << ", AxisType["
-            << static_cast<int>(
-                   std::get<1>(context_->iter_space_info.sp_space.back()))
-            << "]>";
-    context_->iter_space_info.sp_space.emplace_back(
-        ir::Expr(-1), IterativeSpaceInfo::AxisType::kSerial);
-    VLOG(6) << "sp_space: <"
-            << std::get<0>(context_->iter_space_info.sp_space.back())
-            << ", AxisType["
-            << static_cast<int>(
-                   std::get<1>(context_->iter_space_info.sp_space.back()))
-            << "]>";
-  }
-
+  // naive strategy
   if (has_rb_iter) {
+    // If there is a reduce dimension.
+    // Bind all spatial axis on cuda block.
+    context_->iter_space_info.sp_space.emplace_back(
+        context_->iter_space_info.total_sp_extent,
+        IterativeSpaceInfo::AxisType::kCudaBlockX);
+    // Bind first part of reduce axis on cuda thread to do tree form reduction.
     context_->iter_space_info.rb_space.emplace_back(
-        ir::Expr(context_->bucket_info.rb_lower_bound),
+        ir::Expr(GetTreeReduceSize(context_->iter_space_info.total_rb_extent)),
         IterativeSpaceInfo::AxisType::kCudaThreadX);
-    VLOG(6) << "rb_space: <"
-            << std::get<0>(context_->iter_space_info.rb_space.back())
-            << ", AxisType["
-            << static_cast<int>(
-                   std::get<1>(context_->iter_space_info.rb_space.back()))
-            << "]>";
+    // The rest part of reduce axis will be executed serially.
     context_->iter_space_info.rb_space.emplace_back(
         ir::Expr(-1), IterativeSpaceInfo::AxisType::kSerial);
-    VLOG(6) << "rb_space: <"
-            << std::get<0>(context_->iter_space_info.rb_space.back())
-            << ", AxisType["
-            << static_cast<int>(
-                   std::get<1>(context_->iter_space_info.rb_space.back()))
-            << "]>";
+  } else {
+    // If there is no reduce dimension.
+    // Divide the spatial space into two parts, one bound to cuda block and the
+    // other bound to cuda thread.
+    context_->iter_space_info.sp_space.emplace_back(
+        ir::Expr(-1), IterativeSpaceInfo::AxisType::kCudaBlockX);
+    if (context->bucket_info.space.size() == 2 &&
+        context->bucket_info.space[1].iter_type == "R") {
+      context_->iter_space_info.sp_space.emplace_back(
+          ir::Expr(
+              GetNumThreadPerBlock(context_->bucket_info.space[1].upper_bound)),
+          IterativeSpaceInfo::AxisType::kCudaThreadX);
+    } else {
+      PADDLE_THROW(::common::errors::Unimplemented(
+          "Now, the function GetTreeReduceSize doesn't support the cases "
+          "except SR"));
+    }
   }
+  VLOG(6) << context_->iter_space_info.PrintIterSpace();
 }
 
 void TileTactic::Apply(ir::IRSchedule* sch, const std::string& block_id) {
@@ -113,6 +139,10 @@ void TileTactic::Apply(ir::IRSchedule* sch, const std::string& block_id) {
   sch->Split(loops[0], sp_factors);
   VLOG(6) << "after split sp loop of " << block_id << ": "
           << sch->GetModule().GetExprs()[0];
+}
+
+std::unique_ptr<ScheduleTactic> CreateTileTactic() {
+  return std::make_unique<TileTactic>();
 }
 
 }  // namespace ir

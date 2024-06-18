@@ -27,6 +27,7 @@
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
+#include "paddle/cinn/optim/eliminate_common_factor_of_local_index.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/optim/resize_buffer.h"
@@ -221,7 +222,13 @@ class ReplaceIndexToBindExpr : public ir::IRMutator<> {
         schedule_block_realize->schedule_block.As<ir::ScheduleBlock>()
             ->iter_vars;
 
-    CHECK_EQ(iter_values.size(), iter_vars.size());
+    PADDLE_ENFORCE_EQ(iter_values.size(),
+                      iter_vars.size(),
+                      phi::errors::InvalidArgument(
+                          "The size of iter values and iter vars is not equal,"
+                          "where iter values:%d but iter vars:%d.",
+                          iter_values.size(),
+                          iter_vars.size()));
     for (int idx = 0; idx < iter_values.size(); ++idx) {
       ReplaceVarWithExpr(&body, iter_vars[idx], iter_values[idx]);
     }
@@ -260,7 +267,7 @@ class ReplaceLoopVarToGpu : public ir::IRMutator<> {
     ir::IRMutator<>::Visit(&for_ir->body, &for_ir->body);
   }
   void Visit(const ir::PolyFor *op, Expr *expr) override {
-    LOG(FATAL) << "Unkown PolyFor!";
+    PADDLE_THROW(phi::errors::InvalidArgument("Unkown PolyFor!"));
   }
 };
 
@@ -319,6 +326,8 @@ class LocalAxisVisitor : public ir::IRMutator<> {
  private:
   void Visit(const ir::Store *op, Expr *expr) override {
     auto store = expr->As<ir::Store>();
+
+    ir::IRMutator<>::Visit(op, expr);
     if (!store->tensor.as_tensor_ref()->buffer.defined()) {
       return;
     }
@@ -332,11 +341,11 @@ class LocalAxisVisitor : public ir::IRMutator<> {
         indice = cinn::common::AutoSimplify(indice);
       }
     }
-    ir::IRMutator<>::Visit(op, expr);
   }
 
   void Visit(const ir::Load *op, Expr *expr) override {
     auto load = expr->As<ir::Load>();
+
     if (load->is_addr_scalar()) {
       return;
     }
@@ -417,7 +426,7 @@ class ReplaceVarToZero : public ir::IRMutator<> {
 };
 
 void OptimizeExprGPU(Expr *expr) {
-  VLOG(2) << "Before Optimize Expr:\n" << *expr;
+  VLOG(4) << "Before Optimize Expr:\n" << *expr;
 
   // copy var nodes to prevent one modification leading to multiple changes
   RestructureVarNodes restructure_var_nodes;
@@ -442,12 +451,14 @@ void OptimizeExprGPU(Expr *expr) {
   LocalAxisVisitor local_axis_visitor;
   local_axis_visitor(expr);
 
+  EliminateCommonFactorOfLocalIndex(expr);
+
   ResizeBufferToMaxVarRange(expr);
 
   ReplaceVarToZero replace_var_to_zero;
   replace_var_to_zero(expr);
 
-  VLOG(2) << "After Optimize Expr: \n" << *expr;
+  VLOG(4) << "After Optimize Expr: \n" << *expr;
 }
 
 }  // namespace optim

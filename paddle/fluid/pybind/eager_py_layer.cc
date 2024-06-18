@@ -119,6 +119,9 @@ PyObject* new_tensor_with_impl(paddle::Tensor* tensor) {
     new (&(v->tensor)) paddle::Tensor();
     v->tensor.set_impl(tensor->impl());
     v->tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
+    egr::EagerUtils::autograd_meta(&v->tensor)
+        ->SetStopGradient(
+            egr::EagerUtils::autograd_meta(tensor)->StopGradient());
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "tp_alloc return null, can not new a PyObject."));
@@ -478,9 +481,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
 
     for (size_t i = 0; i < inputs_autograd_meta.size(); i++) {
       if (ctx->forward_input_tensor_is_duplicable[i]) {
+        std::vector<const paddle::Tensor*> tmp;
         for (auto t : inputs_tensor[i]) {
-          grad_node->SetGradOutMeta(*t, i);
+          tmp.push_back(t);
         }
+        grad_node->SetGradOutMeta(tmp, i);
       } else {
         grad_node->SetGradOutMeta(*inputs_tensor[i][0], i);
       }
@@ -490,9 +495,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       if (ctx->forward_output_tensor_is_duplicable[i]) {
         egr::EagerUtils::SetOutRankWithSlot(&outputs_autograd_meta[i], i);
         egr::EagerUtils::SetHistory(&outputs_autograd_meta[i], grad_node);
-        for (auto t : outputs_tensor[i]) {
-          grad_node->SetGradInMeta(*t, i);
-        }
+        grad_node->SetGradInMeta(outputs_tensor[i], i);
       } else {
         egr::EagerUtils::SetOutRankWithSlot(outputs_autograd_meta[i][0], i);
         egr::EagerUtils::SetHistory(outputs_autograd_meta[i][0], grad_node);
@@ -775,7 +778,7 @@ void BindEagerPyLayer(PyObject* module) {
   Py_INCREF(&PyBaseObject_Type);
   type->tp_base = reinterpret_cast<PyTypeObject*>(&PyBaseObject_Type);
   type->tp_flags |=
-      Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;
+      Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HEAPTYPE;  // NOLINT
 #if PY_VERSION_HEX >= 0x03050000
   type->tp_as_async = &heap_type->as_async;
 #endif

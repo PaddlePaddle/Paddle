@@ -17,11 +17,11 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/utils.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
@@ -45,7 +45,7 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The ring_id (%d) for alltoall op must be non-negative.", ring_id));
     auto place = ctx.GetPlace();
 
@@ -59,7 +59,7 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -70,7 +70,7 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
           comm_context_manager.Get(std::to_string(ring_id)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
       stream = comm_ctx->GetStream();
@@ -88,12 +88,12 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
       stream = ctx.cuda_device_context().stream();
     }
 
-    framework::DDim x_dims = x->dims();
-    framework::DDim out_dims(x_dims);
+    phi::DDim x_dims = x->dims();
+    phi::DDim out_dims(x_dims);
     PADDLE_ENFORCE_EQ(
         x_dims[0] % nranks,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The first dimension size (%d) of the input tensor must be "
             "divisible by the number of ranks (%d).",
             x_dims[0],
@@ -114,24 +114,23 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
       comm_ctx->GroupEnd();
       VLOG(3) << "new comm_context_manager has rid " << ring_id;
     } else {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
       for (auto i = 0; i < nranks; ++i) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclSend(
             send_buf + offset, send_numel, dtype, i, comm->comm(), stream));
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRecv(
             recv_buf + offset, send_numel, dtype, i, comm->comm(), stream));
         offset += send_numel;
       }
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupEnd());
       VLOG(3) << "old NCCLCommContext has rid " << ring_id;
     }
 #else
-    PADDLE_THROW(
-        platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+    PADDLE_THROW(phi::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
 #endif
 #else
     PADDLE_THROW(
-        platform::errors::Unavailable("PaddlePaddle should compile with GPU."));
+        phi::errors::Unavailable("PaddlePaddle should compile with GPU."));
 #endif
   }
 };
@@ -140,7 +139,6 @@ class AllToAllOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(alltoall,
                           GPU,
@@ -149,9 +147,9 @@ PD_REGISTER_STRUCT_KERNEL(alltoall,
                           float,
                           double,
 #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-                          plat::bfloat16,
+                          phi::dtype::bfloat16,
 #endif
                           int,
                           int64_t,
-                          plat::float16) {
+                          phi::dtype::float16) {
 }

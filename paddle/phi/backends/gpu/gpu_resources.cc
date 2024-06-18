@@ -51,7 +51,7 @@ void InitGpuProperties(Place place,
                        int* multi_process,
                        int* max_threads_per_mp,
                        int* max_threads_per_block,
-                       std::array<int, 3>* max_grid_dim_size) {
+                       std::array<unsigned int, 3>* max_grid_dim_size) {
   backends::gpu::GPUDeviceGuard guard(place.GetDeviceId());
   *compute_capability =
       backends::gpu::GetGPUComputeCapability(place.GetDeviceId());
@@ -278,7 +278,7 @@ void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
     auto compile_miopen_version = MIOPEN_VERSION / 10;
     if (local_miopen_version < static_cast<size_t>(compile_miopen_version)) {
       LOG_FIRST_N(WARNING, 1)
-          << "WARNING: device: " << place.device
+          << "WARNING: device: " << static_cast<int>(place.device)
           << ". The installed Paddle is compiled with MIOPEN "
           << compile_miopen_version / 100 << "." << compile_miopen_version % 100
           << ", but MIOPEN version in your machine is "
@@ -297,7 +297,7 @@ void InitDnnHandle(dnnHandle_t* handle, gpuStream_t stream, Place place) {
         (version < 9000) ? (version % 1000) / 100 : (version % 10000) / 100;
     if (version < static_cast<size_t>(CUDNN_VERSION)) {
       LOG_FIRST_N(WARNING, 1)
-          << "WARNING: device: " << place.device
+          << "WARNING: device: " << static_cast<int>(place.device)
           << ". The installed Paddle is compiled with CUDNN " << CUDNN_MAJOR
           << "." << CUDNN_MINOR << ", but CUDNN version in your machine is "
           << local_cudnn_major << "." << local_cudnn_minor

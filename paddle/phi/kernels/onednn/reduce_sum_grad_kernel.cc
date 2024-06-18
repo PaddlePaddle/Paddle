@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/reduce_sum_grad_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/onednn/reduce_kernel_impl.h"
+#include "paddle/phi/kernels/reduce_kernel_impl.h"
 
 namespace phi {
 template <typename T, typename Context>
@@ -43,4 +44,5 @@ void SumGradKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(
     sum_grad, OneDNN, ONEDNN, phi::SumGradKernel, float, phi::dtype::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+  kernel->check_if_onednn_kernel_support_ = phi::ReduceGradCheckIfOneDNNSupport;
 }

@@ -18,7 +18,6 @@ from ..base.backward import append_backward, gradients
 from ..base.compiler import (
     BuildStrategy,
     CompiledProgram,
-    ExecutionStrategy,
     IpuCompiledProgram,
     IpuStrategy,
 )
@@ -82,7 +81,6 @@ __all__ = [
     'IpuStrategy',
     'Print',
     'py_func',
-    'ExecutionStrategy',
     'name_scope',
     'program_guard',
     'WeightNormParamAttr',

@@ -18,7 +18,7 @@ limitations under the License. */
 #include <mutex>
 
 #include "paddle/phi/backends/dynload/dynamic_loader.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 // Because lapack doesn't provide appropriate header file,
 // we should expose API statement yourself.

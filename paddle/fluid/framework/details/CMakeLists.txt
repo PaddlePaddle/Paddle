@@ -7,12 +7,6 @@ if(WITH_PSCORE)
   endif()
   set_source_files_properties(
     reduce_op_handle.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  set_source_files_properties(
-    threaded_ssa_graph_executor.cc PROPERTIES COMPILE_FLAGS
-                                              ${DISTRIBUTE_COMPILE_FLAGS})
-  set_source_files_properties(
-    async_ssa_graph_executor.cc PROPERTIES COMPILE_FLAGS
-                                           ${DISTRIBUTE_COMPILE_FLAGS})
 endif()
 
 set(op_handle_srcs
@@ -54,8 +48,8 @@ set(op_handle_deps
     selected_rows_utils
     reference_count_pass_helper)
 
-if(WITH_MKLDNN)
-  set(op_handle_deps ${op_handle_deps} mkldnn)
+if(WITH_ONEDNN)
+  set(op_handle_deps ${op_handle_deps} onednn)
 endif()
 
 if(WITH_DGC)
@@ -80,36 +74,6 @@ else()
 endif()
 
 add_dependencies(detail_op_handle framework_proto auto_parallel_proto xxhash)
-
-set(ssa_graph_executor_srcs
-    ssa_graph_executor.cc
-    threaded_ssa_graph_executor.cc
-    parallel_ssa_graph_executor.cc
-    async_ssa_graph_executor.cc
-    bind_threaded_ssa_graph_executor.cc
-    fast_threaded_ssa_graph_executor.cc
-    scope_buffered_ssa_graph_executor.cc
-    scope_buffered_monitor.cc)
-set(SSA_GRAPH_EXECUTOR_DEPS
-    graph
-    framework_proto
-    detail_op_handle
-    reference_count_pass
-    eager_deletion_pass
-    buffer_shared_inplace_op_pass
-    buffer_shared_cross_op_memory_reuse_pass
-    inplace_addto_op_pass
-    set_reader_device_info_utils
-    scope
-    simple_threadpool
-    device_context
-    profiler
-    selected_rows_utils)
-
-cc_library(
-  ssa_graph_executor
-  SRCS ${ssa_graph_executor_srcs}
-  DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
 
 set(IR_PASS_DEPS
     graph_viz_pass
@@ -147,10 +111,6 @@ if(WITH_CUDNN_FRONTEND)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} fuse_resunit_pass)
 endif()
 
-if(WITH_CINN)
-  set(IR_PASS_DEPS ${IR_PASS_DEPS} paddle2cinn)
-endif()
-
 if(NOT APPLE
    AND NOT WIN32
    AND (WITH_GPU OR WITH_ROCM))
@@ -161,6 +121,6 @@ cc_library(
   SRCS build_strategy.cc
   DEPS pass_builder ${IR_PASS_DEPS})
 
-if(WITH_MKLDNN)
-  target_link_libraries(build_strategy mkldnn_placement_pass)
+if(WITH_ONEDNN)
+  target_link_libraries(build_strategy onednn_placement_pass)
 endif()

@@ -25,7 +25,6 @@ class Operation;
 namespace paddle {
 namespace framework {
 class Scope;
-
 class CustomKernelInstruction : public InstructionBase {
  public:
   CustomKernelInstruction(size_t id,
@@ -49,11 +48,6 @@ class CustomKernelInstruction : public InstructionBase {
 
   void UpdateOutputMeta(const std::vector<std::vector<int64_t>>& output_shapes,
                         const std::vector<DataType>& output_dtypes);
-
-  std::vector<std::vector<int64_t>> RunDefaultInferShape();
-  std::vector<DataType> RunDefaultInferDtype();
-  void CheckDefaultInferShapeDtype(
-      const paddle::dialect::OpYamlInfoParser& op_yaml_info);
 
   paddle::CustomOpKernelContext custom_kernel_ctx_;
 

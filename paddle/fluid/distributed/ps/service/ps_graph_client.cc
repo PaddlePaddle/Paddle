@@ -73,7 +73,7 @@ void PsGraphClient::FinalizeWorker() {
   }
   simple::global_rpc_server().finalize();
 }
-// add maco
+// add macro
 #define DIM_PASS_ID(dim_id, pass_id) \
   uint32_t((uint32_t(dim_id) << 16) | pass_id)
 #define GET_PASS_ID(id) (id & 0xffff)

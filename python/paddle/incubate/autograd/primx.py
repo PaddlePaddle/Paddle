@@ -23,17 +23,13 @@ from paddle.base.framework import Operator, default_main_program
 from paddle.incubate.autograd.utils import as_tensors
 
 from .composite_rules import _composite
-from .primops import add, fill_const
 from .primreg import (
     lookup_composite,
     lookup_orig2prim,
     lookup_prim2orig,
-    op_position_inputs,
-    op_position_output,
 )
-from .primrules import _jvp, _orig2prim, _prim2orig, _transpose
+from .primrules import _orig2prim, _prim2orig
 from .utils import (
-    flatten,
     flatten_and_remove_none,
     get_input_var_list,
     get_output_var_list,
@@ -141,15 +137,19 @@ class VarMap:
     def add_rec(self, key_vars, value_vars):
         if value_vars is None:
             return
-        if isinstance(key_vars, paddle.base.framework.Variable):
-            if not isinstance(value_vars, paddle.base.framework.Variable):
+        if isinstance(
+            key_vars, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
+            if not isinstance(
+                value_vars, (paddle.base.framework.Variable, paddle.pir.Value)
+            ):
                 raise TypeError(
                     f'value_vars must be Variable, but got {type(value_vars)}'
                 )
             self.tab[id(key_vars)] = id(value_vars)
         else:
             assert len(key_vars) == len(value_vars), (
-                f'len(key_vars) shoule be equal to len(value_vars), '
+                f'len(key_vars) should be equal to len(value_vars), '
                 f'but len(key_vars)={len(key_vars)} and len(value_vars)={len(value_vars)}.'
             )
             for key_var, value_var in zip(key_vars, value_vars):
@@ -189,7 +189,7 @@ class VarMap:
 # TODO(lml): supporting control flow, nested blocks, and block other than current block of main program.
 class Transform:
     """An object that maintains the state of transformations applied to a
-    primitve program."""
+    primitive program."""
 
     def __init__(self, block):
         assert (
@@ -212,7 +212,9 @@ class Transform:
     def add_vars_rec(self, new_vars):
         if new_vars is None:
             return
-        if isinstance(new_vars, paddle.base.framework.Variable):
+        if isinstance(
+            new_vars, (paddle.base.framework.Variable, paddle.pir.Value)
+        ):
             self.vars.update({id(new_vars): new_vars})
             return
         if not isinstance(new_vars, list):
@@ -246,7 +248,7 @@ class Transform:
 
     def var2dot_rec(self, vars):
         """Lookup var2dot recursively."""
-        if isinstance(vars, paddle.base.framework.Variable):
+        if isinstance(vars, (paddle.base.framework.Variable, paddle.pir.Value)):
             dot = self.var2dot.lookup(vars)
             return dot
 
@@ -254,185 +256,13 @@ class Transform:
         return dots
 
     def dot2bar_rec(self, dots):
-        if isinstance(dots, paddle.base.framework.Variable):
+        if isinstance(dots, (paddle.base.framework.Variable, paddle.pir.Value)):
             bar = self.dot2bar.lookup(dots)
             assert bar is not None, 'bar must be not None'
             return bar
 
         bars = [self.dot2bar_rec(dot) for dot in dots]
         return bars
-
-    def linearize(self, xs, ys, xs_dot=None):
-        """Performs the linearization transform, a.k.a, forward mode AD
-        transform, on a primitive lowered program.
-
-        Args:
-            xs: a list of input variables
-            ys: a list of output variables
-            xs_dot: optional, a list of gradient input variables. The list size
-                must be equal to `len(xs)`. The shape and dtype of each element
-                must be the same as in `xs`
-
-        Returns:
-            (xs_dot, ys_dot): a tuple of two lists. `xs_dot` is the list of
-            gradient inputs of the resulting linearized program. `ys_dot` is
-            the list gradient outputs of the resulting linearized program
-
-        """
-        if xs_dot is None:
-            xs_dot = [fill_const(1.0, shape=x.shape, dtype=x.dtype) for x in xs]
-            self.add_vars(xs_dot)
-        else:
-            assert len(xs) == len(xs_dot), (
-                f'len(xs) should be equal to len(xs_dot), '
-                f'but len(xs)={len(xs)} and len(xs_dot)={len(xs_dot)}'
-            )
-
-        for x, dot in zip(xs, xs_dot):
-            assert x.dtype == dot.dtype, (
-                f'x.dtype should be equal to dot.dtype, '
-                f'but x.dtype={x.dtype} and dot.dtype={dot.dtype}'
-            )
-            assert x.shape == dot.shape, (
-                f'x.shape should be equal to dot.shape, '
-                f'but x.shape={x.shape} and dot.shape={dot.shape}'
-            )
-            self.var2dot.add(x, dot)
-
-        path, unused_xs, _ = topo_path(xs, ys, self.block)
-
-        # No need to track unused inputs
-        for x in unused_xs:
-            self.var2dot.delete(x)
-
-        for op in path:
-            # An input var may not be on the input-output path, which implies
-            # there may be None's in `ins_dot`. In this case we place
-            # the original input in the position of the otherwise forward
-            # gradient.
-            ins = op_position_inputs(op)
-            jvp_ins = self.var2dot_rec(ins)
-            # apply op's forward ad rule
-            outs_dot = _jvp(op, *jvp_ins)
-            self.add_vars_rec(outs_dot)
-            outs = op_position_output(op)
-            self.var2dot.add_rec(outs, outs_dot)
-
-        ys_dot = [self.var2dot.lookup(y) for y in ys]
-        return xs_dot, ys_dot
-
-    def transpose(self, ys_dot, xs_dot, ys_bar=None, retain_fwd=False):
-        """Performs the transpose transform, a.k.a, reverse mode AD
-        transform, on a linearized primitive program.
-
-        Note, `transpose` is supposed to be used in couple with `linearize`.
-
-        Args:
-            ys_dot: a list of outputs of the linearized program.
-            xs_dot: a list of inputs of the linearized program.
-            ys_bar: optional, a list of inputs of the resulting transposed
-                program. The list size must be equal to `len(ys_dot)`. The shape
-                and dtype of each element must be the same as in `ys_dot`
-
-        Returns:
-            (ys_bar, xs_bar): a tuple of two lists. `ys_bar` is the list of
-            inputs of the resulting transposed program. `xs_bar` is
-            the list outputs of the resulting transposed program
-
-        """
-        assert all(v is not None for v in xs_dot), '`xs_dot` includes None.'
-        assert all(v is not None for v in ys_dot), '`ys_dot` includes None.'
-
-        if ys_bar is None:
-            ys_bar = []
-            for y in ys_dot:
-                ys_bar.append(fill_const(1.0, shape=y.shape, dtype=y.dtype))
-            self.add_vars(ys_bar)
-        else:
-            assert len(ys_dot) == len(ys_bar), (
-                f'len(ys_dot) should be equal to len(ys_bar), '
-                f'but len(ys_dot)={len(ys_dot)} and len(ys_bar)={len(ys_bar)}'
-            )
-            for y_dot, y_bar in zip(ys_dot, ys_bar):
-                assert y_dot.shape == y_bar.shape, (
-                    f'y_dot.shape should be equal to y_bar.shape, '
-                    f'but y_dot.shape={y_dot.shape} and y_bar.shape={y_bar.shape}'
-                )
-                assert y_dot.dtype == y_bar.dtype, (
-                    f'y_dot.dtype should be equal to y_bar.dtype, '
-                    f'but y_dot.dtype={y_dot.dtype} and y_bar.dtype={y_bar.dtype}'
-                )
-
-        for dot, bar in zip(ys_dot, ys_bar):
-            self.dot2bar.add(dot, bar)
-
-        # find all the relevant forward gradients
-        path, unused_xs_dot, _ = topo_path(xs_dot, ys_dot, self.block)
-
-        # No need to track unused inputs
-        for dot in unused_xs_dot:
-            self.dot2bar.delete(dot)
-
-        dotvars = output_vars_on_path(path)
-        dotvars.update((id(var), var) for var in xs_dot)
-
-        is_dot = lambda v: id(v) in dotvars
-
-        for op in reversed(path):
-            out = op_position_output(op)
-            out_bar_rec = self.dot2bar_rec(out)
-            ins_bar_rec = _transpose(op, is_dot, out_bar_rec)
-
-            # TODO(Tongxin): this is hacky. Tuple implies the Transpose rule
-            # returns multiple entities. There should be better ways to handle
-            # outputs.
-            if isinstance(ins_bar_rec, tuple):
-                ins_bar_rec = list(ins_bar_rec)
-            else:
-                ins_bar_rec = [ins_bar_rec]
-            self.add_vars_rec(ins_bar_rec)
-
-            ins_bar = flatten(ins_bar_rec)
-            ins = flatten(op_position_inputs(op))
-            assert len(ins) == len(ins_bar), (
-                f'len(ins) should be equal to len(ins_bar), '
-                f'but len(ins)={len(ins)} and len(ins_bar)={len(ins_bar)}'
-            )
-
-            for dot, bar in zip(ins, ins_bar):
-                if bar is not None:
-                    # aggregate gradient
-                    grad = self.dot2bar.lookup(dot)
-                    if grad is None:
-                        self.dot2bar.add(dot, bar)
-                    else:
-                        grad = add(grad, bar)
-                        self.add_vars([grad])
-                        self.dot2bar.add(dot, grad)
-
-        xs_bar = [self.dot2bar.lookup(x) for x in xs_dot]
-
-        if not retain_fwd and len(path) > 0:
-            vars_to_remove = set()
-            for op in path:
-                vars_to_remove.update(
-                    flatten_and_remove_none(get_output_var_list(op))
-                )
-
-            op_indexes = []
-
-            block = self.block
-            for i, op in enumerate(block.ops):
-                if op in path:
-                    op_indexes.append(i)
-                    path.pop(0)
-                    if len(path) == 0:
-                        break
-
-            self.erase_ops(op_indexes)
-            self.erase_dots(vars_to_remove)
-
-        return ys_bar, xs_bar
 
 
 # TODO(lml): supporting control flow, nested blocks, and block other than current block of main program.
@@ -555,13 +385,15 @@ def _lower_composite(
     start_idx=-1,
     backward_length=-1,
 ):
-    """The operators in block wich satisfy the filter conditon will be decomposite into primitives."""
+    """The operators in block which satisfy the filter condition will be decomposite into primitives."""
 
     def bind(args, to_bind, value_table):
         for i in range(len(args)):
             if isinstance(args[i], list):
                 bind(args[i], to_bind, value_table)
-            if not isinstance(args[i], paddle.base.framework.Variable):
+            if not isinstance(
+                args[i], (paddle.base.framework.Variable, paddle.pir.Value)
+            ):
                 continue
             elif args[i] is not None and args[i].name in to_bind:
                 args[i] = value_table[to_bind[args[i].name]]
@@ -633,12 +465,12 @@ def _lower_composite(
             op_name = op.type
 
             # NOTE: why need _sync_with_cpp here
-            # _sync_wich_cpp after every copied operator is very slow.
-            # However, _sync_wich_cpp only support continuous block currently.
+            # _sync_with_cpp after every copied operator is very slow.
+            # However, _sync_with_cpp only support continuous block currently.
             # The lowering transformation will generate program which is
             # crossed combination of copy block and lower block, such as
             # op1(copy) -> op2(copy) -> op3(lower) -> op4(lower) -> op5(copy) -> op6(copy)
-            # It will cause _sync_wich_cpp error.
+            # It will cause _sync_with_cpp error.
             # So, _sync_with_cpp will be executed only once after every continuous copy block.
             lower = (
                 (lookup_fn(op_name) is not None)

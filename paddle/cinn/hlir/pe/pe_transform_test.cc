@@ -15,7 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/backends/cuda_util.h"
 #include "paddle/cinn/backends/llvm/execution_engine.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"
@@ -132,7 +132,7 @@ TEST(ScatterAssign, ScatterAssign) {
   builder.AddFunction(func);
 
   auto module = builder.Build();
-  auto host_module_device_module = backends::SplitCudaAndHostModule(module);
+  auto host_module_device_module = backends::SplitDeviceAndHostModule(module);
   auto &host_module = std::get<0>(host_module_device_module);
   auto &device_module = std::get<1>(host_module_device_module);
 
@@ -176,7 +176,7 @@ TEST(SliceAssign, SliceAssign) {
   builder.AddFunction(func);
 
   auto module = builder.Build();
-  auto host_module_device_module = backends::SplitCudaAndHostModule(module);
+  auto host_module_device_module = backends::SplitDeviceAndHostModule(module);
   auto &host_module = std::get<0>(host_module_device_module);
   auto &device_module = std::get<1>(host_module_device_module);
 
@@ -217,7 +217,7 @@ TEST(Concat, ConcatCase0) {
   builder.AddFunction(func);
 
   auto module = builder.Build();
-  auto host_module_device_module = backends::SplitCudaAndHostModule(module);
+  auto host_module_device_module = backends::SplitDeviceAndHostModule(module);
   auto &host_module = std::get<0>(host_module_device_module);
   auto &device_module = std::get<1>(host_module_device_module);
 

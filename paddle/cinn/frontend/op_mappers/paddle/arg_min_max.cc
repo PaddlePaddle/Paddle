@@ -15,6 +15,7 @@
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
 #include "paddle/cinn/frontend/var_type_utils.h"
+#include "paddle/common/enforce.h"
 
 namespace cinn {
 namespace frontend {
@@ -47,24 +48,39 @@ Variable ArgImpl<ArgType::ArgMin>(NetBuilder* builder,
 template <ArgType type>
 void ArgOpMapperHelper(const paddle::cpp::OpDesc& op_desc,
                        const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of Argmax/Argmin op must be 1."));
   auto x_name = op_desc.Input("X").front();
 
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The output of Argmax/Argmin op must be 1."));
   auto out_name = op_desc.Output("Out").front();
 
   auto x = ctx.GetVar(x_name);
   auto axis = utils::GetAttrOrDefault<int64_t>(op_desc, "axis", -1);
-  CHECK(op_desc.HasAttr("axis"))
-      << "Argmax/Argmin op should has attribute \"axis\"! Please check.";
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("axis"),
+      true,
+      phi::errors::InvalidArgument("Argmax/Argmin op should has attribute "
+                                   "\"axis\"! Please check."));
 
   auto keepdims = utils::GetAttrOrDefault<bool>(op_desc, "keepdims", false);
-  CHECK(op_desc.HasAttr("keepdims"))
-      << "Argmax/Argmin op should has attribute \"keepdims\"! Please check.";
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("keepdims"),
+      true,
+      phi::errors::InvalidArgument("Argmax/Argmin op should has attribute"
+                                   " \"keepdims\"! Please check."));
 
   auto flatten = utils::GetAttrOrDefault<bool>(op_desc, "flatten", false);
-  CHECK(op_desc.HasAttr("flatten"))
-      << "Argmax/Argmin op should has attribute \"flatten\"! Please check.";
+  PADDLE_ENFORCE_EQ(
+      op_desc.HasAttr("flatten"),
+      true,
+      phi::errors::InvalidArgument("Argmax/Argmin op should has attribute"
+                                   " \"flatten\"! Please check."));
 
   auto dtype = utils::GetPaddleDtype(
       op_desc, "dtype", paddle::cpp::VarDescAPI::Type::INT64);
@@ -72,7 +88,7 @@ void ArgOpMapperHelper(const paddle::cpp::OpDesc& op_desc,
       << "the indices dtype must be int32 or int64, but got dtype = " << dtype;
 
   int ndim = x->shape.size();
-  // If flatten = true, flatten x and do opration on axis 0.
+  // If flatten = true, flatten x and do operation on axis 0.
   if (flatten) {
     x = ctx.Builder()->Reshape(x, {-1});
     axis = 0;

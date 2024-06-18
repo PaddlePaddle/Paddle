@@ -29,11 +29,11 @@ namespace allocation {
 
 class AutoGrowthBestFitAllocator : public Allocator {
  public:
-  AutoGrowthBestFitAllocator(
-      const std::shared_ptr<Allocator> &underlying_allocator,
-      size_t alignment,
-      size_t chunk_size = 0,
-      bool allow_free_idle_chunk = true);
+  AutoGrowthBestFitAllocator(std::shared_ptr<Allocator> underlying_allocator,
+                             size_t alignment,
+                             size_t chunk_size = 0,
+                             bool allow_free_idle_chunk = true,
+                             int extra_padding_size = 0);
 
   bool IsAllocThreadSafe() const override { return true; }
 
@@ -47,7 +47,7 @@ class AutoGrowthBestFitAllocator : public Allocator {
     return FreeIdleChunks();
   }
 
- private:
+ protected:
   uint64_t FreeIdleChunks();
   void Trace() const;
 
@@ -93,6 +93,7 @@ class AutoGrowthBestFitAllocator : public Allocator {
   size_t alignment_;
   size_t chunk_size_;
   bool allow_free_idle_chunk_;
+  int extra_padding_size_;
 
   // stat info
   size_t total_alloc_times_;

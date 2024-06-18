@@ -16,6 +16,8 @@
 
 #include <string>
 #include "paddle/cinn/common/integer_set.h"
+#include "paddle/cinn/ir/group_schedule/config/group_tile_config.h"
+#include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule_block_graph.h"
 
@@ -41,26 +43,50 @@ struct IterativeSpaceInfo {
   // total rb extent
   ir::Expr total_rb_extent;
   // original loop order with same iteration order as the memory order
-  std::vector<ir::Expr> memory_consistent_order_space;
+  std::vector<std::pair<std::string, ir::Expr>> memory_consistent_order_space;
+  // memory consistent order space info with merging continuous same type
+  // [S: 16, S: a, R: 32] -> [S: 16 * a, R: 32]
+  std::vector<std::pair<std::string, ir::Expr>>
+      memory_consistent_order_homogeneous_merged_space;
   // index that transform from memory consistent order to rb last order
   // for example:
   // the memory consistent order axis is [A, B, C], and the B axis is reduce，
   // the rb last order axis is [A, C, B], and rb_last_order is [0, 2, 1].
   std::vector<int> rb_last_order;
-};
 
-struct BucketInfo {
-  int sp_lower_bound = 0;
-  int sp_upper_bound = UINT_MAX;
-  int rb_lower_bound = 0;
-  int rb_upper_bound = UINT_MAX;
+  std::string PrintIterSpace() const {
+    std::stringstream ss;
+    ss << "[sp space]: ";
+    for (const auto& axis : sp_space) {
+      ss << "<" << std::get<0>(axis) << ", AxisType = ["
+         << static_cast<int>(std::get<1>(axis)) << "]>  ";
+    }
+    ss << "\n[rb space]: ";
+    for (const auto& axis : rb_space) {
+      ss << "<" << std::get<0>(axis) << ", AxisType = ["
+         << static_cast<int>(std::get<1>(axis)) << "]>  ";
+    }
+    ss << "\n[memory_consistent_order_space]: [";
+    for (const auto& item : memory_consistent_order_space) {
+      ss << item.first << "(" << item.second << "), ";
+    }
+    ss << "] ";
+    ss << "\n[memory_consistent_order_homogeneous_merged_space]: [";
+    for (const auto& item : memory_consistent_order_homogeneous_merged_space) {
+      ss << item.first << "(" << item.second << "), ";
+    }
+    ss << "] ";
+    return ss.str();
+  }
 };
 
 struct ScheduleContext {
+  // TODO(BiynXu): Unify fields with similar meanings
   std::unordered_set<std::string> output_names;
   Target target;
   IterativeSpaceInfo iter_space_info;
   BucketInfo bucket_info;
+  ScheduleConfig config;
 };
 
 class ScheduleTactic {

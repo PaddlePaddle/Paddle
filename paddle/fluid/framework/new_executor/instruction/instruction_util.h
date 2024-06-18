@@ -22,9 +22,9 @@
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/event.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
 namespace paddle {
 namespace framework {
 
@@ -42,8 +42,6 @@ platform::DeviceContext* ParseDeviceContext(
 
 OpFuncType AnalyseOpFuncType(::pir::Operation* op,
                              const platform::Place& place);
-
-std::vector<pir::Value> GetYiedOpInputs(pir::Block* block);
 
 void GetInputIds(pir::Operation* op,
                  const ValueExecutionInfo& value_exec_info,
@@ -66,5 +64,6 @@ void InsertInplacedExternalInputsToOuts(
     std::unordered_map<pir::Value, std::vector<int>>* outputs);
 
 bool GetCondData(const phi::DenseTensor& cond);
+
 }  // namespace framework
 }  // namespace paddle

@@ -21,12 +21,11 @@
 #include <iostream>
 
 #include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 using namespace std;  // NOLINT
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 ::paddle::distributed::PSParameter load_from_prototxt(
     const std::string& filename) {
@@ -58,7 +57,7 @@ void PSCore::InitGFlag(const std::string& gflags) {
   }
   auto it = flags.begin();
   flags.insert(it, "exe default");
-  char* flags_ptr[flags.size()];
+  std::vector<char*> flags_ptr(flags.size());
   for (size_t i = 0; i < flags.size(); ++i) {
     flags_ptr[i] = (char*)(flags[i].c_str());  // NOLINT
   }
@@ -134,5 +133,4 @@ int PSCore::StopServer() {
   return 0;
 }
 ::paddle::distributed::PSParameter* PSCore::GetParam() { return &_ps_param; }
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

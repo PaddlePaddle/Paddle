@@ -102,42 +102,42 @@ function(register_cu_kernel TARGET)
   endforeach()
 endfunction()
 
-# Just for those mkldnn kernels locating at "fluid/operators/mkldnn/", such as 'layer_norm_mkldnn_op.cc'.
+# Just for those onednn kernels locating at "fluid/operators/onednn/", such as 'layer_norm_onednn_op.cc'.
 # Add other file modes if need in the future.
-function(register_mkldnn_kernel TARGET)
+function(register_onednn_kernel TARGET)
   set(options "")
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
-  cmake_parse_arguments(register_mkldnn_kernel "${options}" "${oneValueArgs}"
+  cmake_parse_arguments(register_onednn_kernel "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
 
-  set(mkldnn_cc_srcs)
+  set(onednn_cc_srcs)
   set(op_common_deps operator op_registry phi layer
                      common_infer_shape_functions)
-  foreach(mkldnn_src ${register_mkldnn_kernel_SRCS})
-    if(${mkldnn_src} MATCHES ".*_mkldnn_op.cc$")
-      list(APPEND mkldnn_cc_srcs mkldnn/${mkldnn_src})
+  foreach(onednn_src ${register_onednn_kernel_SRCS})
+    if(${onednn_src} MATCHES ".*_onednn_op.cc$")
+      list(APPEND onednn_cc_srcs onednn/${onednn_src})
     endif()
   endforeach()
-  list(LENGTH mkldnn_cc_srcs mkldnn_cc_srcs_len)
-  if(${mkldnn_cc_srcs_len} EQUAL 0)
+  list(LENGTH onednn_cc_srcs onednn_cc_srcs_len)
+  if(${onednn_cc_srcs_len} EQUAL 0)
     message(
       FATAL_ERROR
-        "The MKLDNN kernel file of ${TARGET} should contains at least one *.*_mkldnn_op.cc file"
+        "The MKLDNN kernel file of ${TARGET} should contains at least one *.*_onednn_op.cc file"
     )
   endif()
-  if(WITH_MKLDNN)
+  if(WITH_ONEDNN)
     cc_library(
       ${TARGET}
-      SRCS ${mkldnn_cc_srcs}
+      SRCS ${onednn_cc_srcs}
       DEPS ${op_library_DEPS} ${op_common_deps})
   endif()
   set(OP_LIBRARY
       ${TARGET} ${OP_LIBRARY}
       CACHE INTERNAL "op libs")
-  foreach(mkldnn_src ${mkldnn_cc_srcs})
+  foreach(onednn_src ${onednn_cc_srcs})
     set(op_name "")
-    find_register(${mkldnn_src} "REGISTER_OP_KERNEL" op_name)
+    find_register(${onednn_src} "REGISTER_OP_KERNEL" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, MKLDNN);\n")
     endif()
@@ -161,8 +161,8 @@ function(op_library TARGET)
   set(miopen_cu_srcs)
   set(CUDNN_FILE)
   set(MIOPEN_FILE)
-  set(mkldnn_cc_srcs)
-  set(MKLDNN_FILE)
+  set(onednn_cc_srcs)
+  set(ONEDNN_FILE)
   set(op_common_deps operator op_registry phi layer
                      common_infer_shape_functions)
 
@@ -237,10 +237,10 @@ function(op_library TARGET)
         list(APPEND miopen_cu_srcs ${MIOPEN_FILE}.cu)
       endif()
     endif()
-    if(WITH_MKLDNN)
-      string(REPLACE "_op" "_mkldnn_op" MKLDNN_FILE "${TARGET}")
-      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mkldnn/${MKLDNN_FILE}.cc)
-        list(APPEND mkldnn_cc_srcs mkldnn/${MKLDNN_FILE}.cc)
+    if(WITH_ONEDNN)
+      string(REPLACE "_op" "_onednn_op" ONEDNN_FILE "${TARGET}")
+      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/onednn/${ONEDNN_FILE}.cc)
+        list(APPEND onednn_cc_srcs onednn/${ONEDNN_FILE}.cc)
       endif()
     endif()
     if(WITH_XPU)
@@ -275,8 +275,8 @@ function(op_library TARGET)
         list(APPEND cudnn_cu_cc_srcs ${src})
       elseif(WITH_GPU AND ${src} MATCHES ".*\\.cu.cc$")
         list(APPEND cu_cc_srcs ${src})
-      elseif(WITH_MKLDNN AND ${src} MATCHES ".*_mkldnn_op.cc$")
-        list(APPEND mkldnn_cc_srcs ${src})
+      elseif(WITH_ONEDNN AND ${src} MATCHES ".*_onednn_op.cc$")
+        list(APPEND onednn_cc_srcs ${src})
       elseif(WITH_XPU AND ${src} MATCHES ".*_op_xpu.cc$")
         list(APPEND xpu_cc_srcs ${src})
       elseif(WITH_XPU_KP AND ${src} MATCHES ".*\\.xpu$")
@@ -349,7 +349,7 @@ function(op_library TARGET)
     if(WITH_UNITY_BUILD AND op_library_UNITY)
       # Combine the cc and cu source files.
       compose_unity_target_sources(${UNITY_TARGET} cc ${cc_srcs} ${cu_cc_srcs}
-                                   ${cudnn_cu_cc_srcs} ${mkldnn_cc_srcs})
+                                   ${cudnn_cu_cc_srcs} ${onednn_cc_srcs})
       compose_unity_target_sources(${UNITY_TARGET} cu ${cudnn_cu_srcs}
                                    ${cu_srcs})
       if(TARGET ${UNITY_TARGET})
@@ -369,7 +369,7 @@ function(op_library TARGET)
       nv_library(
         ${TARGET}
         SRCS ${cc_srcs} ${cu_cc_srcs} ${cudnn_cu_cc_srcs} ${cudnn_cu_srcs}
-             ${mkldnn_cc_srcs} ${cu_srcs}
+             ${onednn_cc_srcs} ${cu_srcs}
         DEPS ${op_library_DEPS} ${op_common_deps})
     endif()
   elseif(WITH_ROCM)
@@ -389,19 +389,19 @@ function(op_library TARGET)
     hip_library(
       ${TARGET}
       SRCS ${cc_srcs} ${hip_cc_srcs} ${miopen_cu_cc_srcs} ${miopen_cu_srcs}
-           ${mkldnn_cc_srcs} ${hip_srcs}
+           ${onednn_cc_srcs} ${hip_srcs}
       DEPS ${op_library_DEPS} ${op_common_deps})
   elseif(WITH_XPU_KP AND ${xpu_kp_cc_srcs_len} GREATER 0)
     xpu_library(
       ${TARGET}
-      SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs} ${xpu_kp_cc_srcs}
+      SRCS ${cc_srcs} ${onednn_cc_srcs} ${xpu_cc_srcs} ${xpu_kp_cc_srcs}
       DEPS ${op_library_DEPS} ${op_common_deps})
   else()
     # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
     if(WITH_UNITY_BUILD AND op_library_UNITY)
       # Combine the cc source files.
       compose_unity_target_sources(${UNITY_TARGET} cc ${cc_srcs}
-                                   ${mkldnn_cc_srcs} ${xpu_cc_srcs})
+                                   ${onednn_cc_srcs} ${xpu_cc_srcs})
       if(TARGET ${UNITY_TARGET})
         # If `UNITY_TARGET` exists, add source files to `UNITY_TARGET`.
         target_sources(${UNITY_TARGET} PRIVATE ${unity_target_cc_sources})
@@ -417,7 +417,7 @@ function(op_library TARGET)
     else()
       cc_library(
         ${TARGET}
-        SRCS ${cc_srcs} ${mkldnn_cc_srcs} ${xpu_cc_srcs}
+        SRCS ${cc_srcs} ${onednn_cc_srcs} ${xpu_cc_srcs}
         DEPS ${op_library_DEPS} ${op_common_deps})
     endif()
   endif()
@@ -426,7 +426,7 @@ function(op_library TARGET)
   list(LENGTH hip_srcs hip_srcs_len)
   list(LENGTH cu_cc_srcs cu_cc_srcs_len)
   list(LENGTH hip_cc_srcs hip_cc_srcs_len)
-  list(LENGTH mkldnn_cc_srcs mkldnn_cc_srcs_len)
+  list(LENGTH onednn_cc_srcs onednn_cc_srcs_len)
   list(LENGTH xpu_cc_srcs xpu_cc_srcs_len)
   list(LENGTH miopen_cu_cc_srcs miopen_cu_cc_srcs_len)
 
@@ -463,7 +463,7 @@ function(op_library TARGET)
     find_register(${cc_src} "REGISTER_OPERATOR" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
-      # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in mkldnn
+      # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in onednn
       set(TARGET ${op_name})
       set(pybind_flag 1)
     endif()
@@ -474,7 +474,7 @@ function(op_library TARGET)
     find_register(${cc_src} "REGISTER_ACTIVATION_OP" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
-      # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in mkldnn
+      # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in onednn
       set(TARGET ${op_name})
       set(pybind_flag 1)
     endif()
@@ -483,7 +483,7 @@ function(op_library TARGET)
     find_register(${cc_src} "REGISTER_OP_WITHOUT_GRADIENT" op_name)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
-      # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in mkldnn
+      # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in onednn
       set(TARGET ${op_name})
       set(pybind_flag 1)
     endif()
@@ -494,10 +494,10 @@ function(op_library TARGET)
     if(NOT ${op_name} EQUAL "")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CPU);\n")
       # why change TARGET here?
-      # when building padle with on_infer, the REGISTER_OPERATOR(*_grad) will be removed before compiling (see details in remove_grad_op_and_kernel.py)
+      # when building paddle with on_infer, the REGISTER_OPERATOR(*_grad) will be removed before compiling (see details in remove_grad_op_and_kernel.py)
       # in elementwise_op.cc, it will find REGISTER_OPERATOR(grad_add) and set TARGET to grad_add
-      # and, in the following "mkldnn" part, it will add USE_OP_DEVICE_KERNEL(grad_add, MKLDNN) to pybind.h
-      # however, grad_add has no mkldnn kernel.
+      # and, in the following "onednn" part, it will add USE_OP_DEVICE_KERNEL(grad_add, MKLDNN) to pybind.h
+      # however, grad_add has no onednn kernel.
       set(TARGET ${op_name})
       set(pybind_flag 1)
     endif()
@@ -520,6 +520,21 @@ function(op_library TARGET)
     endif()
   endforeach()
 
+  # pybind USE_OP_DEVICE_KERNEL for operators/onednn/*
+  list(APPEND onednn_srcs ${onednn_cc_srcs})
+  foreach(onednn_src ${onednn_srcs})
+    set(op_name "")
+    # Add PHI Kernel Registry Message
+    find_phi_register(${onednn_src} ${pybind_file} "PD_REGISTER_KERNEL")
+    find_phi_register(${onednn_src} ${pybind_file} "PD_REGISTER_STRUCT_KERNEL")
+    find_phi_register(${onednn_src} ${pybind_file}
+                      "PD_REGISTER_KERNEL_FOR_ALL_DTYPE")
+    find_register(${onednn_src} "REGISTER_OP_CUDA_KERNEL" op_name)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
+      set(pybind_flag 1)
+    endif()
+  endforeach()
   # pybind USE_OP_DEVICE_KERNEL for ROCm
   list(APPEND hip_srcs ${hip_cc_srcs})
   # message("hip_srcs ${hip_srcs}")
@@ -595,14 +610,14 @@ function(op_library TARGET)
   endif()
 
   # pybind USE_OP_DEVICE_KERNEL for MKLDNN
-  if(WITH_MKLDNN AND ${mkldnn_cc_srcs_len} GREATER 0)
+  if(WITH_ONEDNN AND ${onednn_cc_srcs_len} GREATER 0)
     # Append first implemented MKLDNN activation operator
-    if(${MKLDNN_FILE} STREQUAL "activation_mkldnn_op")
+    if(${ONEDNN_FILE} STREQUAL "activation_onednn_op")
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(softplus, MKLDNN);\n")
     else()
-      foreach(mkldnn_src ${mkldnn_cc_srcs})
+      foreach(onednn_src ${onednn_cc_srcs})
         set(op_name "")
-        find_register(${mkldnn_src} "REGISTER_OP_KERNEL" op_name)
+        find_register(${onednn_src} "REGISTER_OP_KERNEL" op_name)
         if(NOT ${op_name} EQUAL "")
           file(APPEND ${pybind_file}
                "USE_OP_DEVICE_KERNEL(${op_name}, MKLDNN);\n")
@@ -651,7 +666,7 @@ function(register_operators)
     GLOB OPS
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
     "*_op.cc")
-  string(REPLACE "_mkldnn" "" OPS "${OPS}")
+  string(REPLACE "_onednn" "" OPS "${OPS}")
   string(REPLACE "_xpu" "" OPS "${OPS}")
   string(REPLACE ".cc" "" OPS "${OPS}")
   list(REMOVE_DUPLICATES OPS)

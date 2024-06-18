@@ -25,16 +25,16 @@ void TransposeGradStridedKernel(const Context& dev_ctx,
                                 const std::vector<int>& axis,
                                 DenseTensor* x_grad) {
   size_t axis_size = axis.size();
-  std::vector<int> formated_axis = axis;
+  std::vector<int> formatted_axis = axis;
   for (size_t i = 0; i < axis_size; i++) {
     if (axis[i] < 0) {
-      formated_axis[i] = static_cast<int>(axis[i] + axis_size);
+      formatted_axis[i] = static_cast<int>(axis[i] + axis_size);
     }
   }
 
   std::vector<int> reversed_axis(axis);
   for (int i = 0; i < static_cast<int>(axis_size); i++) {
-    reversed_axis[formated_axis[i]] = i;
+    reversed_axis[formatted_axis[i]] = i;
   }
 
   TransposeStridedKernel<Context>(dev_ctx, out_grad, reversed_axis, x_grad);
@@ -42,5 +42,6 @@ void TransposeGradStridedKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(
-    transpose_grad, STRIDED, phi::TransposeGradStridedKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(transpose_grad,
+                                         STRIDED,
+                                         phi::TransposeGradStridedKernel) {}

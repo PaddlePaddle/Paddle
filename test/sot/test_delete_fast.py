@@ -28,7 +28,7 @@ def test_delete_fast(a):
     return a
 
 
-class TestExecutor(TestCaseBase):
+class TestDeleteFast(TestCaseBase):
     def test_simple(self):
         a = paddle.to_tensor(1)
         self.assert_results(test_delete_fast, a)

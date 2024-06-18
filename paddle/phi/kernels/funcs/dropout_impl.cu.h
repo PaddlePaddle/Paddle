@@ -349,36 +349,19 @@ void DropoutFwGPUKernelDriver(
     } else {
       bool copy_in_kernel = GetSeedDataAndIncrement(
           dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment);
-#ifdef PADDLE_WITH_HIP
-      VectorizedRandomGenerator<T>
-          <<<grid_size, block_size, 0, stream>>>(0,
-                                                 size,
-                                                 seed_data,
-                                                 dropout_prob,
-                                                 x_data,
-                                                 mask_data,
-                                                 y_data,
-                                                 upscale_in_train,
-                                                 increment,
-                                                 main_offset);
-#else
-      void* functionPtr =
-          reinterpret_cast<void*>(&(VectorizedRandomGenerator<T>));
-      cudaFunction_t cudaFunc;
-      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, functionPtr));
-
       const phi::GPUContext* dev_ctx_p = &dev_ctx;
       auto gen_cuda = dev_ctx.GetGenerator();
       auto state_index = gen_cuda->GetStateIndex();
 
       phi::backends::gpu::CUDAGraphNodeLauncher::parameterSetter_t
           parameterSetter = [offset, dev_ctx_p, state_index, is_fix_seed](
-                                phi::backends::gpu::CUDAKernelParams& params) {
+                                phi::backends::gpu::gpuKernelParams& params) {
             if (!is_fix_seed) {
-              // we assume seed is null pointer
-              // seed copy to cpu is meaningless here
+          // we assume seed is null pointer
+          // seed copy to cpu is meaningless here
+#ifndef PADDLE_WITH_HIP
               assert(seed_tensor_ptr == nullptr);
-
+#endif
               auto gen_cuda = dev_ctx_p->GetGenerator();
               // ensure the generator use correct state index
               gen_cuda->SetStateIndex(state_index);
@@ -394,8 +377,21 @@ void DropoutFwGPUKernelDriver(
             }
           };
 
-      phi::backends::gpu::CUDAGraphNodeLauncher::cudaKernelCallback_t
+      phi::backends::gpu::CUDAGraphNodeLauncher::gpuKernelCallback_t
           cudaKernelCallback = [=](unsigned int id) {
+            void* functionPtr =
+                reinterpret_cast<void*>(&(VectorizedRandomGenerator<T>));
+#ifdef PADDLE_WITH_HIP
+            hipFunction_t cudaFunc =
+                reinterpret_cast<hipFunction_t>(functionPtr);
+#else
+            cudaFunction_t cudaFunc;
+            PADDLE_ENFORCE_GPU_SUCCESS(
+                cudaGetFuncBySymbol(&cudaFunc, functionPtr));
+#endif
+            VLOG(10) << "[cudaKernelCallback] cudaFunc = " << cudaFunc
+                     << " functionPtr = " << functionPtr;
+
             VectorizedRandomGenerator<T>
                 <<<grid_size, block_size, 0, stream>>>(id,
                                                        size,
@@ -407,13 +403,13 @@ void DropoutFwGPUKernelDriver(
                                                        upscale_in_train,
                                                        increment,
                                                        main_offset);
+            return cudaFunc;
           };
       phi::backends::gpu::CUDAGraphNodeLauncher::Instance().KernelNodeLaunch(
-          cudaFunc, parameterSetter, cudaKernelCallback);
+          parameterSetter, cudaKernelCallback);
 
       VLOG(10) << "NON_CUDA_GRAPH seed = " << seed_data
                << ", increment = " << increment;
-#endif
     }
   } else {
     if (upscale_in_train) {

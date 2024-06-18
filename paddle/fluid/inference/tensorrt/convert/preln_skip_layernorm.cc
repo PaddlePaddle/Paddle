@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class PrelnSkipLayerNormOpConverter : public OpConverter {
  public:
@@ -100,7 +98,7 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
     std::vector<std::string> output_names;
     output_names.push_back(op_desc.Output("Out_0")[0]);
     output_names.push_back(op_desc.Output("Out_1")[0]);
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "preln_skip_layernorm", {output_names}, test_mode);
 #else
     PADDLE_THROW(platform::errors::Fatal(
@@ -110,8 +108,6 @@ class PrelnSkipLayerNormOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(preln_skip_layernorm, PrelnSkipLayerNormOpConverter);

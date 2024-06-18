@@ -29,7 +29,6 @@
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
-#include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
@@ -42,21 +41,19 @@
 #include "paddle/phi/core/kernel_factory.h"
 
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
-PHI_DECLARE_bool(use_mkldnn);
-PHI_DECLARE_bool(check_nan_inf);
-PHI_DECLARE_string(static_runtime_data_save_path);
-PHI_DECLARE_bool(save_static_runtime_data);
+COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_string(static_runtime_data_save_path);
+COMMON_DECLARE_bool(save_static_runtime_data);
 
-namespace paddle {
-namespace framework {
-namespace interpreter {
+namespace paddle::framework::interpreter {
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
@@ -117,10 +114,9 @@ const std::vector<WorkQueueOptions> ConstructWorkQueueOptions(
 AsyncWorkQueue::AsyncWorkQueue(size_t host_num_threads,
                                size_t device_num_threads,
                                EventsWaiter* waiter)
-    : host_num_thread_(host_num_threads) {
-  queue_group_ = CreateWorkQueueGroup(
-      ConstructWorkQueueOptions(host_num_threads, device_num_threads, waiter));
-}
+    : host_num_thread_(host_num_threads),
+      queue_group_(CreateWorkQueueGroup(ConstructWorkQueueOptions(
+          host_num_threads, device_num_threads, waiter))) {}
 
 void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
                              std::function<void()> fn) {
@@ -478,7 +474,7 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
               op_device));
 #else
       VLOG(1) << string::Sprintf(
-          "Cannot use get_all_custom_device_type because you have installed"
+          "Cannot use get_all_custom_device_type because you have installed "
           "CPU/GPU version PaddlePaddle.\n"
           "If you want to use get_all_custom_device_type, please try to "
           "install CustomDevice version "
@@ -605,8 +601,6 @@ void BuildOpFuncList(const platform::Place& place,
         main_program, block.ID(), ops_unique);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
         main_program, block.ID(), ops_unique);
-    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-        main_program, block.ID(), ops_unique);
   }
 
 #ifdef PADDLE_WITH_DNNL
@@ -707,7 +701,7 @@ void BuildOpFuncList(const platform::Place& place,
       }
       op_func_node.stream_priority_ = dist_attr->stream_priority();
       op_func_node.scheduling_priority_ = dist_attr->scheduling_priority();
-      // set mannual event information
+      // set manual event information
       op_func_node.force_record_event_ = dist_attr->force_record_event();
       op_func_node.events_to_wait_ = dist_attr->events_to_wait();
       op_func_node.event_to_record_ = dist_attr->event_to_record();
@@ -1342,6 +1336,7 @@ void PrintValuesAndVariables(
         GetOriginOutputNames(op_name);
 
     // 1. output string
+    VLOG(10) << "Generate output string ...";
     std::string ret_value_str = "Value   : (";
     std::string ret_variable_str = "Variable: (";
     if (!op.results().empty()) {
@@ -1387,10 +1382,12 @@ void PrintValuesAndVariables(
     ret_variable_str += ") = ";
 
     // 2. op name
+    VLOG(10) << "Generate op name ...";
     ret_value_str += op_name;
     ret_variable_str += op_name;
 
     // 3. input string
+    VLOG(10) << "Generate input string ...";
     ret_value_str += "(";
     ret_variable_str += "(";
     if (!op.operands().empty()) {
@@ -1465,6 +1462,4 @@ const std::vector<std::string> GetInstructionCallStack(
   }
   return vec_str;
 }
-}  // namespace interpreter
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::interpreter

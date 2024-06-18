@@ -20,9 +20,25 @@ limitations under the License. */
 #include <curand_kernel.h>
 #endif
 
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_fp16.h>
+#include <hip/hip_runtime.h>
+#include <hiprand.h>
+#include <hiprand_kernel.h>
+#endif
+
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
+
+#ifdef PADDLE_WITH_HIP
+#define GPU(str) hip##str
+#define GPURAND(str) hiprand##str
+#else
+#define GPU(str) cuda##str
+#define GPURAND(str) curand##str
+#endif
 
 namespace phi {
 namespace fusion {
@@ -63,26 +79,29 @@ inline phi::backends::gpu::GpuLaunchConfig Get1DBlocksAnd2DGrids(
 }
 
 template <int VecSize>
-__forceinline__ __device__ void RandVec(curandStatePhilox4_32_10_t *state,
+__forceinline__ __device__ void RandVec(GPURAND(StatePhilox4_32_10_t) * state,
                                         float *data);
 
 template <>
-__forceinline__ __device__ void RandVec<1>(curandStatePhilox4_32_10_t *state,
+__forceinline__ __device__ void RandVec<1>(GPURAND(StatePhilox4_32_10_t) *
+                                               state,
                                            float *data) {
-  data[0] = curand_uniform(state);
+  data[0] = GPURAND(_uniform)(state);
 }
 
 template <>
-__forceinline__ __device__ void RandVec<2>(curandStatePhilox4_32_10_t *state,
+__forceinline__ __device__ void RandVec<2>(GPURAND(StatePhilox4_32_10_t) *
+                                               state,
                                            float *data) {
-  data[0] = curand_uniform(state);
-  data[1] = curand_uniform(state);
+  data[0] = GPURAND(_uniform)(state);
+  data[1] = GPURAND(_uniform)(state);
 }
 
 template <>
-__forceinline__ __device__ void RandVec<4>(curandStatePhilox4_32_10_t *state,
+__forceinline__ __device__ void RandVec<4>(GPURAND(StatePhilox4_32_10_t) *
+                                               state,
                                            float *data) {
-  float4 rand4 = curand_uniform4(state);
+  float4 rand4 = GPURAND(_uniform4)(state);
   data[0] = rand4.x;
   data[1] = rand4.y;
   data[2] = rand4.w;
@@ -90,7 +109,8 @@ __forceinline__ __device__ void RandVec<4>(curandStatePhilox4_32_10_t *state,
 }
 
 template <>
-__forceinline__ __device__ void RandVec<8>(curandStatePhilox4_32_10_t *state,
+__forceinline__ __device__ void RandVec<8>(GPURAND(StatePhilox4_32_10_t) *
+                                               state,
                                            float *data) {
   RandVec<4>(state, data);
   RandVec<4>(state, data + 4);
@@ -99,7 +119,7 @@ __forceinline__ __device__ void RandVec<8>(curandStatePhilox4_32_10_t *state,
 template <typename T>
 inline void SetZero(const phi::GPUContext &ctx, T *ptr, const size_t size) {
   PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMemsetAsync(ptr, 0, size * sizeof(T), ctx.stream()));
+      GPU(MemsetAsync)(ptr, 0, size * sizeof(T), ctx.stream()));
 }
 
 /**

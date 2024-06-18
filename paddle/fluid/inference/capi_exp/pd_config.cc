@@ -187,9 +187,11 @@ int32_t PD_ConfigXpuDeviceId(__pd_keep PD_Config* pd_config) {
 
 void PD_ConfigEnableCustomDevice(__pd_keep PD_Config* pd_config,
                                  char* device_type,
-                                 int32_t device_id) {
+                                 int32_t device_id,
+                                 PD_PrecisionType precision) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableCustomDevice(device_type, device_id);
+  config->EnableCustomDevice(
+      device_type, device_id, ConvertToCxxPrecisionType(precision));
 }
 PD_Bool PD_ConfigUseCustomDevice(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
@@ -355,31 +357,6 @@ void PD_ConfigEnableTensorRtDla(__pd_keep PD_Config* pd_config,
 PD_Bool PD_ConfigTensorRtDlaEnabled(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->tensorrt_dla_enabled();  // NOLINT
-}
-
-void PD_ConfigEnableLiteEngine(__pd_keep PD_Config* pd_config,
-                               PD_PrecisionType precision,
-                               PD_Bool zero_copy,
-                               size_t passes_filter_num,
-                               const char** passes_filter,
-                               size_t ops_filter_num,
-                               const char** ops_filter) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  std::vector<std::string> passes_filters, ops_filters;
-  for (size_t index = 0; index < passes_filter_num; ++index) {
-    passes_filters.emplace_back(passes_filter[index]);
-  }
-  for (size_t index = 0; index < ops_filter_num; ++index) {
-    ops_filters.emplace_back(ops_filter[index]);
-  }
-  config->EnableLiteEngine(ConvertToCxxPrecisionType(precision),
-                           zero_copy,
-                           passes_filters,
-                           ops_filters);
-}
-PD_Bool PD_ConfigLiteEngineEnabled(__pd_keep PD_Config* pd_config) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  return config->lite_engine_enabled();  // NOLINT
 }
 
 void PD_ConfigSwitchIrDebug(__pd_keep PD_Config* pd_config, PD_Bool x) {

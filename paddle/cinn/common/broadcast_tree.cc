@@ -17,8 +17,11 @@
 #include <optional>
 #include <unordered_map>
 
-#include "paddle/cinn/common/dim_expr_simplify.h"
-#include "paddle/cinn/common/dim_expr_util.h"
+#include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
+
+COMMON_DECLARE_int64(pir_broadcast_tree_limit);
 
 namespace cinn::common {
 
@@ -92,6 +95,9 @@ template <typename DoEachT>
 bool SearchBroadcastImpl(const symbol::Broadcast<symbol::DimExpr>& variadic,
                          const DoEachT& DoEach) {
   const auto& operands = *(variadic.operands);
+  if (operands.size() > 3) {
+    PADDLE_THROW(phi::errors::Fatal("Too many broadcast leaves to compile!"));
+  }
   for (const auto& operand : operands) {
     CHECK(!operand.isa<int64_t>());
     if (SearchBroadcast(operand, DoEach)) return true;
@@ -115,6 +121,124 @@ void ForEachBroadcastDimExpr(const BroadcastLeaf& leaves,
     }
   }
 }
+
+using Pattern2Placement = std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
+
+Pattern2Placement ConstructCstrLhsEqRhsReplacement(
+    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition) {
+  auto [lhs, rhs] = *broadcastable_condition;
+  if (SubstituteDimExpr(rhs, Pattern2Placement{{lhs, rhs}}) != rhs) {
+    return Pattern2Placement{{rhs, lhs}};
+  }
+  if (SubstituteDimExpr(lhs, Pattern2Placement{{rhs, lhs}}) != lhs) {
+    return Pattern2Placement{{lhs, rhs}};
+  }
+  if (rhs.isa<std::string>()) return Pattern2Placement{{rhs, lhs}};
+  if (lhs.isa<std::string>()) return Pattern2Placement{{lhs, rhs}};
+  return Pattern2Placement{{lhs, rhs}};
+}
+
+Pattern2Placement ConstructCstrLhsEqOneReplacement(
+    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition) {
+  const auto& [lhs, rhs] = *broadcastable_condition;
+  return Pattern2Placement{{lhs, symbol::DimExpr{1}}};
+}
+
+Pattern2Placement ConstructCstrRhsEqOneReplacement(
+    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition) {
+  const auto& [lhs, rhs] = *broadcastable_condition;
+  return Pattern2Placement{{rhs, symbol::DimExpr{1}}};
+}
+
+symbol::DimExpr GetCstrLhsEqRhsDimExpr(
+    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
+    const symbol::DimExpr& dim_expr) {
+  const auto& pattern2replacement =
+      ConstructCstrLhsEqRhsReplacement(broadcastable_condition);
+  return symbol::SimplifyDimExpr(
+      symbol::SubstituteDimExpr(dim_expr, pattern2replacement));
+}
+
+symbol::DimExpr GetCstrLhsEqOneDimExpr(
+    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
+    const symbol::DimExpr& dim_expr) {
+  const auto& pattern2replacement =
+      ConstructCstrLhsEqOneReplacement(broadcastable_condition);
+  return symbol::SimplifyDimExpr(
+      symbol::SubstituteDimExpr(dim_expr, pattern2replacement));
+}
+
+symbol::DimExpr GetCstrRhsEqOneDimExpr(
+    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
+    const symbol::DimExpr& dim_expr) {
+  const auto& pattern2replacement =
+      ConstructCstrRhsEqOneReplacement(broadcastable_condition);
+  return symbol::SimplifyDimExpr(
+      symbol::SubstituteDimExpr(dim_expr, pattern2replacement));
+}
+
+typedef symbol::DimExpr (*ConvertDimExprT)(
+    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
+    const symbol::DimExpr& dim_expr);
+
+template <ConvertDimExprT ConvertDimExpr>
+BroadcastLeaf ConvertBroadcastLeaf(
+    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
+    const BroadcastLeaf& leaves) {
+  BroadcastLeaf ret{};
+  for (const auto& dim_exprs : *leaves) {
+    std::vector<symbol::DimExpr> converted{};
+    converted.reserve(dim_exprs.size());
+    for (const auto& dim_expr : dim_exprs) {
+      converted.push_back(ConvertDimExpr(broadcastable_condition, dim_expr));
+    }
+    ret->emplace_back(std::move(converted));
+  }
+  return ret;
+}
+
+BroadcastLeaf GetCstrLhsEqRhsLeaves(
+    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
+    const BroadcastLeaf& leaves) {
+  return ConvertBroadcastLeaf<&GetCstrLhsEqRhsDimExpr>(broadcastable_condition,
+                                                       leaves);
+}
+
+BroadcastLeaf GetCstrLhsEqOneLeaves(
+    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
+    const BroadcastLeaf& leaves) {
+  return ConvertBroadcastLeaf<&GetCstrLhsEqOneDimExpr>(broadcastable_condition,
+                                                       leaves);
+}
+
+BroadcastLeaf GetCstrRhsEqOneLeaves(
+    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
+    const BroadcastLeaf& leaves) {
+  return ConvertBroadcastLeaf<&GetCstrRhsEqOneDimExpr>(broadcastable_condition,
+                                                       leaves);
+}
+
+BroadcastBranch<BroadcastTree> ConstructBroadcastBranch(
+    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
+    const BroadcastLeaf& leaves,
+    int* num_of_leaves) {
+  BroadcastLeaf cstr_lhs_eq_rhs_leaves =
+      GetCstrLhsEqRhsLeaves(broadcastable_condition, leaves);
+  BroadcastLeaf cstr_lhs_eq_one_leaves =
+      GetCstrLhsEqOneLeaves(broadcastable_condition, leaves);
+  BroadcastLeaf cstr_rhs_eq_one_leaves =
+      GetCstrRhsEqOneLeaves(broadcastable_condition, leaves);
+  return BroadcastBranch<BroadcastTree>{
+      /*broadcastable_condition*/ broadcastable_condition,
+      /*cstr_lhs_eq_rhs_branch*/
+      ConstructBroadcastTree(cstr_lhs_eq_rhs_leaves, num_of_leaves),
+      /*cstr_lhs_eq_one_branch*/
+      ConstructBroadcastTree(cstr_lhs_eq_one_leaves, num_of_leaves),
+      /*cstr_rhs_eq_one_branch*/
+      ConstructBroadcastTree(cstr_rhs_eq_one_leaves, num_of_leaves)};
+}
+
+}  // namespace
 
 std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
     const BroadcastLeaf& leaves) {
@@ -172,7 +296,10 @@ std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
   if (ret.has_value()) return ret.value();
   ForEachBroadcastDimExpr(leaves, [&](const auto& broadcast) -> bool {
     const auto& operands = broadcast.operands;
-    CHECK_GE(operands->size(), 2);
+    PADDLE_ENFORCE_GE(operands->size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The operands size should be greater than 2."));
     CHECK(operands->at(0) != operands->at(1));
     ret = symbol::Broadcastable<symbol::DimExpr>{operands->at(0),
                                                  operands->at(1)};
@@ -181,119 +308,19 @@ std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
   return ret;
 }
 
-using Pattern2Placement = std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
-
-Pattern2Placement ConstructCstrLhsEqRhsReplacement(
-    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition) {
-  auto [lhs, rhs] = *broadcastable_condition;
-  if (rhs.isa<std::string>()) return Pattern2Placement{{rhs, lhs}};
-  if (lhs.isa<std::string>()) return Pattern2Placement{{lhs, rhs}};
-  return Pattern2Placement{{lhs, rhs}};
-}
-
-Pattern2Placement ConstructCstrLhsEqOneReplacement(
-    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition) {
-  const auto& [lhs, rhs] = *broadcastable_condition;
-  return Pattern2Placement{{lhs, symbol::DimExpr{1}}};
-}
-
-Pattern2Placement ConstructCstrRhsEqOneReplacement(
-    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition) {
-  const auto& [lhs, rhs] = *broadcastable_condition;
-  return Pattern2Placement{{rhs, symbol::DimExpr{1}}};
-}
-
-symbol::DimExpr GetCstrLhsEqRhsDimExpr(
-    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
-    const symbol::DimExpr& dim_expr) {
-  const auto& pattern2replacement =
-      ConstructCstrLhsEqRhsReplacement(broadcastable_condition);
-  return SimplifyDimExpr(SubstituteDimExpr(dim_expr, pattern2replacement));
-}
-
-symbol::DimExpr GetCstrLhsEqOneDimExpr(
-    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
-    const symbol::DimExpr& dim_expr) {
-  const auto& pattern2replacement =
-      ConstructCstrLhsEqOneReplacement(broadcastable_condition);
-  return SimplifyDimExpr(SubstituteDimExpr(dim_expr, pattern2replacement));
-}
-
-symbol::DimExpr GetCstrRhsEqOneDimExpr(
-    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
-    const symbol::DimExpr& dim_expr) {
-  const auto& pattern2replacement =
-      ConstructCstrRhsEqOneReplacement(broadcastable_condition);
-  return SimplifyDimExpr(SubstituteDimExpr(dim_expr, pattern2replacement));
-}
-
-typedef symbol::DimExpr (*ConvertDimExprT)(
-    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
-    const symbol::DimExpr& dim_expr);
-
-template <ConvertDimExprT ConvertDimExpr>
-BroadcastLeaf ConvertBroadcastLeaf(
-    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
-    const BroadcastLeaf& leaves) {
-  BroadcastLeaf ret{};
-  for (const auto& dim_exprs : *leaves) {
-    std::vector<symbol::DimExpr> converted{};
-    converted.reserve(dim_exprs.size());
-    for (const auto& dim_expr : dim_exprs) {
-      converted.push_back(ConvertDimExpr(broadcastable_condition, dim_expr));
-    }
-    ret->emplace_back(std::move(converted));
-  }
-  return ret;
-}
-
-BroadcastLeaf GetCstrLhsEqRhsLeaves(
-    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
-    const BroadcastLeaf& leaves) {
-  return ConvertBroadcastLeaf<&GetCstrLhsEqRhsDimExpr>(broadcastable_condition,
-                                                       leaves);
-}
-
-BroadcastLeaf GetCstrLhsEqOneLeaves(
-    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
-    const BroadcastLeaf& leaves) {
-  return ConvertBroadcastLeaf<&GetCstrLhsEqOneDimExpr>(broadcastable_condition,
-                                                       leaves);
-}
-
-BroadcastLeaf GetCstrRhsEqOneLeaves(
-    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
-    const BroadcastLeaf& leaves) {
-  return ConvertBroadcastLeaf<&GetCstrRhsEqOneDimExpr>(broadcastable_condition,
-                                                       leaves);
-}
-
-BroadcastBranch<BroadcastTree> ConstructBroadcastBranch(
-    const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
-    const BroadcastLeaf& leaves) {
-  BroadcastLeaf cstr_lhs_eq_rhs_leaves =
-      GetCstrLhsEqRhsLeaves(broadcastable_condition, leaves);
-  BroadcastLeaf cstr_lhs_eq_one_leaves =
-      GetCstrLhsEqOneLeaves(broadcastable_condition, leaves);
-  BroadcastLeaf cstr_rhs_eq_one_leaves =
-      GetCstrRhsEqOneLeaves(broadcastable_condition, leaves);
-  // clang-format off
-  return BroadcastBranch<BroadcastTree>{
-      /*broadcastable_condition*/ broadcastable_condition,
-      /*cstr_lhs_eq_rhs_branch*/ ConstructBroadcastTree(cstr_lhs_eq_rhs_leaves),
-      /*cstr_lhs_eq_one_branch*/ ConstructBroadcastTree(cstr_lhs_eq_one_leaves),
-      /*cstr_rhs_eq_one_branch*/ ConstructBroadcastTree(cstr_rhs_eq_one_leaves)
-    };
-  // clang-format on
-}
-
-}  // namespace
-
-BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves) {
+BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves,
+                                     int* num_of_leaves) {
   std::optional<symbol::Broadcastable<symbol::DimExpr>>
       broadcastable_condition = GetFirstCstrBroadcastable(leaves);
-  if (!broadcastable_condition.has_value()) return leaves;
-  return ConstructBroadcastBranch(broadcastable_condition.value(), leaves);
+  if (!broadcastable_condition.has_value()) {
+    (*num_of_leaves)++;
+    if (*num_of_leaves > FLAGS_pir_broadcast_tree_limit) {
+      PADDLE_THROW(phi::errors::Fatal("Too many broadcast leaves to compile!"));
+    }
+    return leaves;
+  }
+  return ConstructBroadcastBranch(
+      broadcastable_condition.value(), leaves, num_of_leaves);
 }
 
 namespace {

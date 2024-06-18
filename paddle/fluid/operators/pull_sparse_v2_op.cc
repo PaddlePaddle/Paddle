@@ -25,18 +25,18 @@ class PullSparseV2Op : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("Ids").size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Input(Ids) of PullSparseV2Op can not be null"));
     PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(),
                       1UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Output(Out) of PullSparseV2Op can not be null"));
 
     auto hidden_size =
         static_cast<uint32_t>(ctx->Attrs().Get<int>("EmbeddingDim"));
     auto all_ids_dim = ctx->GetInputsDim("Ids");
     const size_t n_ids = all_ids_dim.size();
-    std::vector<framework::DDim> outs_dims;
+    std::vector<phi::DDim> outs_dims;
     outs_dims.resize(n_ids);
     for (size_t i = 0; i < n_ids; ++i) {
       const auto ids_dims = all_ids_dim[i];

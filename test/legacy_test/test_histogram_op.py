@@ -50,7 +50,7 @@ class TestHistogramOpAPI(unittest.TestCase):
     def test_dygraph(self):
         with base.dygraph.guard():
             inputs_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
-            inputs = base.dygraph.to_variable(inputs_np)
+            inputs = paddle.to_tensor(inputs_np)
             actual = paddle.histogram(inputs, bins=5, min=1, max=5)
             expected = np.array([0, 3, 0, 2, 1]).astype(np.int64)
             self.assertTrue(
@@ -115,6 +115,29 @@ class TestHistogramOpError(unittest.TestCase):
             paddle.histogram(input=input_value, bins=1, min=-np.inf, max=5)
 
         with self.assertRaises(TypeError):
+            self.run_network(net_func)
+
+    @test_with_pir_api
+    def test_input_range_error(self):
+        """Test range of input is out of bound"""
+
+        def net_func():
+            input_value = paddle.to_tensor(
+                [
+                    -7095538316670326452,
+                    -6102192280439741006,
+                    2040176985344715288,
+                    -6276983991026997920,
+                    -6570715756420355710,
+                    -5998045007776667296,
+                    -6763099356862306438,
+                    3166073479842736625,
+                ],
+                dtype=paddle.int64,
+            )
+            paddle.histogram(input=input_value, bins=1, min=0, max=0)
+
+        with self.assertRaises(ValueError):
             self.run_network(net_func)
 
     @test_with_pir_api

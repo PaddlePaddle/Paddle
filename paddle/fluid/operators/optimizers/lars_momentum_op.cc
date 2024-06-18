@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace paddle {
 namespace operators {
@@ -71,14 +71,14 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddAttr<float>("mu", "(float) Momentum coefficient");
     AddAttr<float>("lars_coeff", "(float, default 0.001) LARS coefficient.")
-        .SetDefault(0.001);
+        .SetDefault(0.001f);
     AddAttr<std::vector<float>>(
         "lars_weight_decay",
         "(std::vector<float>, default 0.0005) LARS weight decay params")
-        .SetDefault({0.0005});
+        .SetDefault({0.0005f});
     AddAttr<float>("epsilon",
                    "(float, default 0.0) epsilon to avoid Division by Zero.")
-        .SetDefault(0.0);
+        .SetDefault(0.0f);
     AddAttr<bool>("multi_precision",
                   "(bool, default false) "
                   "Whether to use multi-precision during weight updating.")

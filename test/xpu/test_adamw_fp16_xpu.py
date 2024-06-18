@@ -59,7 +59,7 @@ class TestAdamWFP16XPU(unittest.TestCase):
         state_dict_1["linear_0.b_0_moment1_0.SCALE_VALUE"] = 12.3125
         adam.set_state_dict(state_dict_1)
 
-        # check overwrited value
+        # check overwritten value
         state_dict_2 = adam.state_dict()
         self.assertTrue("linear_0.w_0_moment1_0.SCALE_VALUE" in state_dict_2)
         self.assertTrue("linear_0.b_0_moment1_0.SCALE_VALUE" in state_dict_2)

@@ -26,11 +26,11 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/platform/flags.h"
 PD_DECLARE_bool(convert_all_blocks);
@@ -40,9 +40,7 @@ PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir,
                               "FLAGS_print_sub_graph_dir is used "
                               "to print the nodes of sub_graphs.");
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 namespace {
 
 template <class NodeComparator = ir::NodeComp>
@@ -134,11 +132,10 @@ bool VarDescIsConsistency(const Graph &graph) {
   }
   for (auto &iter : var_name2node_set) {
     auto &first_node = *iter.second.begin();
-    bool is_persistable = std::any_of(iter.second.begin(),
-                                      iter.second.end(),
-                                      [&first_node](const ir::Node *node) {
-                                        return node->Var()->Persistable();
-                                      });
+    bool is_persistable = std::any_of(
+        iter.second.begin(), iter.second.end(), [](const ir::Node *node) {
+          return node->Var()->Persistable();
+        });
     if (is_persistable) {
       bool is_consistency =
           std::all_of(iter.second.begin(),
@@ -297,21 +294,19 @@ std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
 
   // traverse the graph
   int num_ops = static_cast<int>(op_queue.size());
-  while (num_ops) {
-    for (auto cur_op : op_queue) {
-      if (!cur_op || in_degree[cur_op] > 0) continue;
-      // visit this node
-      // put all the output var of this op valid.
-      for (auto *out_var : cur_op->outputs) {
-        if (!out_var) continue;
-        set_out_ops_ready(out_var);
-      }
-      VLOG(8) << "visit " << cur_op->Name();
-      nodes.push_back(cur_op);
-
-      cur_op = nullptr;
-      num_ops--;
+  for (auto cur_op : op_queue) {
+    if (!cur_op || in_degree[cur_op] > 0) continue;
+    // visit this node
+    // put all the output var of this op valid.
+    for (auto *out_var : cur_op->outputs) {
+      if (!out_var) continue;
+      set_out_ops_ready(out_var);
     }
+    VLOG(8) << "visit " << cur_op->Name();
+    nodes.push_back(cur_op);
+
+    cur_op = nullptr;
+    num_ops--;
   }
 
   return nodes;
@@ -416,7 +411,7 @@ void CleanIndividualNodes(Graph *graph) {
   }
 }
 
-std::vector<Node *> TopologyVarientSort(const Graph &graph,
+std::vector<Node *> TopologyVariantSort(const Graph &graph,
                                         SortKind sort_kind) {
   switch (sort_kind) {
     case SortKind::TS:
@@ -788,7 +783,7 @@ static void GraphToBlock(const Graph &graph,
   std::vector<Node *> nodes;
   if (sort_kind != nullptr) {
     // Inference Memory Optimize relays on this branch.
-    nodes = TopologyVarientSort(graph, *sort_kind);
+    nodes = TopologyVariantSort(graph, *sort_kind);
   } else {
     if (FLAGS_convert_all_blocks) {
       nodes = TopologySortGraphByDescOrder(graph);
@@ -967,6 +962,4 @@ std::vector<std::vector<std::vector<ir::Node::Dep>>> GetOpDependencies(
   return deps;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

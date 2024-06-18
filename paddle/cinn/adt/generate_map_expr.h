@@ -20,17 +20,16 @@
 
 namespace cinn::hlir::framework::pir {
 
-struct Group;
-using GroupList = std::vector<std::shared_ptr<Group>>;
+struct OpLoweringGroup;
 
 }  // namespace cinn::hlir::framework::pir
 
 namespace cinn::adt {
 
 MapExpr GenerateMapExpr(
-    const std::shared_ptr<cinn::hlir::framework::pir::Group>& group);
+    const std::shared_ptr<cinn::hlir::framework::pir::OpLoweringGroup>& group);
 
 void TryGenerateMapExprFromGroup(
-    const std::shared_ptr<hlir::framework::pir::Group>& fusion_group);
+    const std::shared_ptr<hlir::framework::pir::OpLoweringGroup>& fusion_group);
 
 }  // namespace cinn::adt

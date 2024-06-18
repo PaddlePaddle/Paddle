@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -46,7 +45,7 @@ SpmdInfo SliceInferSpmdBase(const DistMetaTensor& input,
                             const std::vector<int64_t>& decrease_axis) {
   // Step0: Verify input args based on slice logic
   auto input_shape = common::vectorize(input.dims());
-  int input_ndim = input_shape.size();
+  int input_ndim = static_cast<int>(input_shape.size());
   int output_ndim = input_ndim - static_cast<int>(decrease_axis.size());
   auto input_dist_attr_src = input.dist_attr();
   std::vector<int64_t> input_dims_mapping = input_dist_attr_src.dims_mapping();
@@ -77,8 +76,8 @@ SpmdInfo SliceInferSpmdBase(const DistMetaTensor& input,
   // cannot be sharded, if it is sharded, set it to replicated.
   TensorDistAttr input_dist_attr_dst =
       CopyTensorDistAttrForOutput(input_dist_attr_src);
-  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
+  for (auto axe : axes) {
+    int axis = axe < 0 ? axe + input_ndim : axe;
     input_dims_mapping[axis] = -1;
   }
   input_dist_attr_dst.set_dims_mapping(input_dims_mapping);
@@ -124,9 +123,10 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
   auto output_shape = common::vectorize(output.dims());
   int out_ndim = output_shape.size();
   auto out_dist_attr = output.dist_attr();
-  int out_dims_mapping_size = out_dist_attr.dims_mapping().size();
+  int out_dims_mapping_size =
+      static_cast<int>(out_dist_attr.dims_mapping().size());
   auto input_shape = common::vectorize(input.dims());
-  int input_ndim = input_shape.size();
+  int input_ndim = static_cast<int>(input_shape.size());
   auto input_dist_attr = input.dist_attr();
   std::vector<int64_t> input_dims_mapping = input_dist_attr.dims_mapping();
 
@@ -163,18 +163,18 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
     out_axes[i] = input_axes[input_axis];
   }
 
-  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
+  for (auto axe : axes) {
+    int axis = axe < 0 ? axe + input_ndim : axe;
     // the sliced axis cannot be sharded, set its notation
     // with the special '1' to set its dim mapping to -1.
     input_axes[axis] = '1';
   }
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: merge output shardings
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   std::vector<int64_t> out_dims_mapping = output.dist_attr().dims_mapping();
-  axes_sharding_info.emplace_back(std::make_pair(out_axes, out_dims_mapping));
+  axes_sharding_info.emplace_back(out_axes, out_dims_mapping);
 
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
@@ -189,8 +189,8 @@ SpmdInfo SliceInferSpmdReverseBase(const DistMetaTensor& input,
   // step2.3 get new dist attribute for output. the sliced
   // cannot be sharded, if it is sharded, set it to replicated.
   out_dims_mapping = GetDimsMappingForAxes(out_axes, axis_to_dim_map, true);
-  for (int i = 0; i < static_cast<int>(axes.size()); i++) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
+  for (auto axe : axes) {
+    int axis = axe < 0 ? axe + input_ndim : axe;
     out_dims_mapping[axis] = -1;
   }
   auto out_dist_attr_dst = CopyTensorDistAttrForOutput(out_dist_attr);
@@ -243,7 +243,7 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
                             const std::vector<int64_t>& decrease_axis) {
   // Step0: Verify input args based on slice logic
   auto input_shape = common::vectorize(input.dims());
-  int input_ndim = input_shape.size();
+  int input_ndim = static_cast<int>(input_shape.size());
   auto input_dist_attr = input.dist_attr();
 
   input_dist_attr = UnShardTensorDims(input_dist_attr, axes);
@@ -257,8 +257,8 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
         [output_axis_to_input_axis_mapping[i]] = i;
   }
   std::vector<int64_t> mapped_axes;
-  for (size_t i = 0; i < axes.size(); ++i) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
+  for (const auto& axe : axes) {
+    int axis = axe < 0 ? axe + input_ndim : axe;
     if (reverse_output_axis_to_input_axis_mapping.count(axis) > 0) {
       mapped_axes.push_back(reverse_output_axis_to_input_axis_mapping[axis]);
     }
@@ -267,7 +267,8 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
   out_dist_attr = UnShardTensorDims(out_dist_attr, mapped_axes);
   auto output_shape = common::vectorize(out_grad.dims());
   int out_ndim = output_shape.size();
-  int out_dims_mapping_size = out_dist_attr.dims_mapping().size();
+  int out_dims_mapping_size =
+      static_cast<int>(out_dist_attr.dims_mapping().size());
   int decrease_axis_num = decrease_axis.size();
 
   PADDLE_ENFORCE_EQ(
@@ -298,13 +299,11 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
     out_axes[i] = input_axes[output_axis_to_input_axis_mapping[i]];
   }
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: merge input shardings
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
-  axes_sharding_info.emplace_back(
-      std::make_pair(out_axes, out_dist_attr.dims_mapping()));
-  axes_sharding_info.emplace_back(
-      std::make_pair(input_axes, input_dist_attr.dims_mapping()));
+  axes_sharding_info.emplace_back(out_axes, out_dist_attr.dims_mapping());
+  axes_sharding_info.emplace_back(input_axes, input_dist_attr.dims_mapping());
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
 
@@ -379,5 +378,4 @@ SpmdInfo StridedSliceGradInferSpmdDynamic(const DistMetaTensor& input,
   return SliceGradInferBase(input, out_grad, axes_bridge, {});
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

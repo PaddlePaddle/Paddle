@@ -88,6 +88,9 @@ InplaceVersion& InplaceVersionCounter() { return *inplace_version_counter_; }
 /*! The internal of two tensors share the same memory block. */
 DenseTensor& ShareDataWith(const DenseTensor& src);
 
+/*! The internal of two tensors share the same memory block without checking the memory size for dist-tensor. */
+DenseTensor& ShareDataNoCheckWith(const DenseTensor& src);
+
 /*! The internal of two tensors share the same inplace version counter. */
 DenseTensor& ShareInplaceVersionCounterWith(const DenseTensor& src);
 

@@ -1,11 +1,10 @@
 if(NOT WITH_ROCM)
-  cc_test(
-    if_op_test
-    SRCS if_op_test.cc
-    DEPS pir op_dialect_vjp pir_transforms op_dialect gtest)
+  paddle_test(if_op_test SRCS if_op_test.cc)
+  if(WITH_ONNXRUNTIME AND WIN32)
+    # Copy onnxruntime for some c++ test in Windows, since the test will
+    # be build only in CI, so suppose the generator in Windows is Ninja.
+    copy_onnx(if_op_test)
+  endif()
 
-  cc_test(
-    while_op_test
-    SRCS while_op_test.cc
-    DEPS pir op_dialect_vjp pir_transforms op_dialect gtest device_event_base)
+  paddle_test(while_op_test SRCS while_op_test.cc)
 endif()

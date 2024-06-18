@@ -45,22 +45,22 @@ TEST(from_blob, CPU) {
   ASSERT_EQ(paddle::GetPlaceFromPtr(data), phi::CPUPlace());
 
   // 2. test API
-  auto test_tesnor = from_blob(data, {1, 2, 2}, DataType::INT64);
+  auto test_tensor = from_blob(data, {1, 2, 2}, DataType::INT64);
 
   // 3. check result
   // 3.1 check tensor attributes
-  ASSERT_EQ(test_tesnor.dims().size(), 3);
-  ASSERT_EQ(test_tesnor.dims()[0], 1);
-  ASSERT_EQ(test_tesnor.dims()[1], 2);
-  ASSERT_EQ(test_tesnor.dims()[2], 2);
-  ASSERT_EQ(test_tesnor.numel(), 4);
-  ASSERT_EQ(test_tesnor.is_cpu(), true);
-  ASSERT_EQ(test_tesnor.dtype(), DataType::INT64);
-  ASSERT_EQ(test_tesnor.layout(), phi::DataLayout::NCHW);
-  ASSERT_EQ(test_tesnor.is_dense_tensor(), true);
+  ASSERT_EQ(test_tensor.dims().size(), 3);
+  ASSERT_EQ(test_tensor.dims()[0], 1);
+  ASSERT_EQ(test_tensor.dims()[1], 2);
+  ASSERT_EQ(test_tensor.dims()[2], 2);
+  ASSERT_EQ(test_tensor.numel(), 4);
+  ASSERT_EQ(test_tensor.is_cpu(), true);
+  ASSERT_EQ(test_tensor.dtype(), DataType::INT64);
+  ASSERT_EQ(test_tensor.layout(), phi::DataLayout::NCHW);
+  ASSERT_EQ(test_tensor.is_dense_tensor(), true);
 
   // 3.2 check tensor values
-  auto* test_tensor_data = test_tesnor.template data<int64_t>();
+  auto* test_tensor_data = test_tensor.template data<int64_t>();
   for (int64_t i = 0; i < 4; i++) {
     ASSERT_EQ(test_tensor_data[i], 4 - i);
   }
@@ -69,7 +69,7 @@ TEST(from_blob, CPU) {
   ASSERT_EQ(data, test_tensor_data);
 
   // 3.4 test other API
-  auto test_tensor_pow = paddle::experimental::pow(test_tesnor, 2);
+  auto test_tensor_pow = paddle::experimental::pow(test_tensor, 2);
   auto* test_tensor_pow_data = test_tensor_pow.template data<int64_t>();
   for (int64_t i = 0; i < 4; i++) {
     ASSERT_EQ(test_tensor_pow_data[i],
@@ -84,8 +84,8 @@ using phi::memory_utils::Copy;
 TEST(GetPlaceFromPtr, GPU) {
   using paddle::GetPlaceFromPtr;
 
-  float cpu_data[6];
-  auto cpu_data_place = GetPlaceFromPtr(cpu_data);
+  std::array<float, 6> cpu_data = {};
+  auto cpu_data_place = GetPlaceFromPtr(cpu_data.data());
   ASSERT_EQ(cpu_data_place, phi::CPUPlace());
   std::cout << "cpu_data_place: " << cpu_data_place << std::endl;
 
@@ -109,7 +109,7 @@ TEST(GetPlaceFromPtr, GPU) {
 
 TEST(from_blob, GPU) {
   // 1. create data
-  float cpu_data[6] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f};
+  std::array<float, 6> cpu_data = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f};
   phi::GPUPlace gpu0(0);
   phi::Allocator* allocator = paddle::GetAllocator(gpu0);
   auto gpu_allocation = allocator->Allocate(sizeof(cpu_data));
@@ -119,51 +119,51 @@ TEST(from_blob, GPU) {
   Copy(gpu0,
        gpu_data,
        phi::CPUPlace(),
-       cpu_data,
+       cpu_data.data(),
        sizeof(cpu_data),
        ctx->stream());
 
   // 2. test API
-  auto gpu_tesnor = from_blob(gpu_data, {2, 3}, DataType::FLOAT32);
+  auto gpu_tensor = from_blob(gpu_data, {2, 3}, DataType::FLOAT32);
 
   // 3. check result
   // 3.1 check tensor attributes
-  ASSERT_EQ(gpu_tesnor.dims().size(), 2);
-  ASSERT_EQ(gpu_tesnor.dims()[0], 2);
-  ASSERT_EQ(gpu_tesnor.dims()[1], 3);
-  ASSERT_EQ(gpu_tesnor.numel(), 6);
-  // ASSERT_EQ(gpu_tesnor.is_gpu(), true);
-  ASSERT_EQ(gpu_tesnor.dtype(), DataType::FLOAT32);
+  ASSERT_EQ(gpu_tensor.dims().size(), 2);
+  ASSERT_EQ(gpu_tensor.dims()[0], 2);
+  ASSERT_EQ(gpu_tensor.dims()[1], 3);
+  ASSERT_EQ(gpu_tensor.numel(), 6);
+  // ASSERT_EQ(gpu_tensor.is_gpu(), true);
+  ASSERT_EQ(gpu_tensor.dtype(), DataType::FLOAT32);
 
   // 3.2 check tensor values
-  auto* gpu_tesnor_data = gpu_tesnor.template data<float>();
-  float gpu_tesnor_data_cpu[6];
+  auto* gpu_tensor_data = gpu_tensor.template data<float>();
+  std::array<float, 6> gpu_tensor_data_cpu = {};
   Copy(phi::CPUPlace(),
-       gpu_tesnor_data_cpu,
+       gpu_tensor_data_cpu.data(),
        gpu0,
-       gpu_tesnor_data,
+       gpu_tensor_data,
        sizeof(cpu_data),
        ctx->stream());
   for (int64_t i = 0; i < 6; i++) {
     ASSERT_NEAR(
-        gpu_tesnor_data_cpu[i], static_cast<float>((i + 1) * 0.1f), 1e-5);
+        gpu_tensor_data_cpu[i], static_cast<float>((i + 1) * 0.1f), 1e-5);
   }
 
   // 3.3 check whether memory is shared
-  ASSERT_EQ(gpu_data, gpu_tesnor_data);
+  ASSERT_EQ(gpu_data, gpu_tensor_data);
 
   // 3.4 test other API
-  auto gpu_tesnor_pow = paddle::experimental::pow(gpu_tesnor, 2);
-  auto* gpu_tesnor_pow_data = gpu_tesnor_pow.template data<float>();
-  float gpu_tesnor_pow_data_cpu[6];
+  auto gpu_tensor_pow = paddle::experimental::pow(gpu_tensor, 2);
+  auto* gpu_tensor_pow_data = gpu_tensor_pow.template data<float>();
+  std::array<float, 6> gpu_tensor_pow_data_cpu = {};
   Copy(phi::CPUPlace(),
-       gpu_tesnor_pow_data_cpu,
+       gpu_tensor_pow_data_cpu.data(),
        gpu0,
-       gpu_tesnor_pow_data,
+       gpu_tensor_pow_data,
        sizeof(cpu_data),
        ctx->stream());
   for (int64_t i = 0; i < 6; i++) {
-    ASSERT_NEAR(gpu_tesnor_pow_data_cpu[i],
+    ASSERT_NEAR(gpu_tensor_pow_data_cpu[i],
                 static_cast<float>(std::pow(i + 1, 2) * 0.01f),
                 1e-5);
   }
@@ -184,7 +184,7 @@ TEST(from_blob, Option) {
     isdelete++;
   };
   {
-    auto test_tesnor = from_blob(data,
+    auto test_tensor = from_blob(data,
                                  {1, 2, 2, 1},
                                  DataType::INT64,
                                  phi::DataLayout::NHWC,
@@ -192,7 +192,7 @@ TEST(from_blob, Option) {
                                  deleter);
 
     // check tensor attributes
-    ASSERT_EQ(test_tesnor.layout(), phi::DataLayout::NHWC);  // check layout
+    ASSERT_EQ(test_tensor.layout(), phi::DataLayout::NHWC);  // check layout
 
     // check deleter
     ASSERT_EQ(isdelete, 0);

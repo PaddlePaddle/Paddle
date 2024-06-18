@@ -16,33 +16,33 @@ limitations under the License. */
 
 using phi::distributed::auto_parallel::str_join;
 
-#define EXTRACT_SHAPE_AND_DIST_ATTR(x)                                      \
-  auto x##_shape = phi::vectorize(x.dims());                                \
-  int x##_ndim = x##_shape.size();                                          \
-  auto x##_dist_attr_src = x.dist_attr();                                   \
-  const auto& x##_dims_mapping_src = x##_dist_attr_src.dims_mapping();      \
-  PADDLE_ENFORCE_EQ(x##_ndim,                                               \
-                    x##_dims_mapping_src.size(),                            \
-                    phi::errors::InvalidArgument(                           \
-                        "[%d] [%d] The Tensor [%d]'s rank [%d] and Loss's " \
-                        "dims_mapping size [%d] are not matched.",          \
-                        __FILE__,                                           \
-                        __LINE__,                                           \
-                        #x,                                                 \
-                        x##_ndim,                                           \
+#define EXTRACT_SHAPE_AND_DIST_ATTR(x)                                 \
+  auto x##_shape = phi::vectorize(x.dims());                           \
+  int x##_ndim = x##_shape.size();                                     \
+  const auto& x##_dist_attr_src = x.dist_attr();                       \
+  const auto& x##_dims_mapping_src = x##_dist_attr_src.dims_mapping(); \
+  PADDLE_ENFORCE_EQ(x##_ndim,                                          \
+                    x##_dims_mapping_src.size(),                       \
+                    phi::errors::InvalidArgument(                      \
+                        "[%d] [%d] The Tensor [%d]'s rank [%d] and "   \
+                        "dims_mapping size [%d] are not matched.",     \
+                        __FILE__,                                      \
+                        __LINE__,                                      \
+                        #x,                                            \
+                        x##_ndim,                                      \
                         x##_dims_mapping_src.size()))
 
-#define EXTRACT_SHAPE_AND_DIST_ATTR_WITH_DIM_CK(x)                          \
-  EXTRACT_SHAPE_AND_DIST_ATTR(x);                                           \
-  PADDLE_ENFORCE_EQ(x##_ndim,                                               \
-                    x##_dims_mapping_src.size(),                            \
-                    phi::errors::InvalidArgument(                           \
-                        "[%d] [%d] The Tensor [%d]'s rank [%d] and Loss's " \
-                        "dims_mapping size [%d] are not matched.",          \
-                        __FILE__,                                           \
-                        __LINE__,                                           \
-                        #x,                                                 \
-                        x##_ndim,                                           \
+#define EXTRACT_SHAPE_AND_DIST_ATTR_WITH_DIM_CK(x)                   \
+  EXTRACT_SHAPE_AND_DIST_ATTR(x);                                    \
+  PADDLE_ENFORCE_EQ(x##_ndim,                                        \
+                    x##_dims_mapping_src.size(),                     \
+                    phi::errors::InvalidArgument(                    \
+                        "[%d] [%d] The Tensor [%d]'s rank [%d] and " \
+                        "dims_mapping size [%d] are not matched.",   \
+                        __FILE__,                                    \
+                        __LINE__,                                    \
+                        #x,                                          \
+                        x##_ndim,                                    \
                         x##_dims_mapping_src.size()))
 
 #define LOG_SPMD_INPUT(name)                                                  \
@@ -50,7 +50,7 @@ using phi::distributed::auto_parallel::str_join;
     VLOG(4) << #name;                                                         \
     VLOG(4) << "shape: [" << str_join(name##_shape) << "] "                   \
             << "src_dist_attr: [" << name##_dist_attr_src.to_string() << "] " \
-            << "src_dist_attr: [" << name##_dist_attr_dst.to_string() << "]"; \
+            << "dst_dist_attr: [" << name##_dist_attr_dst.to_string() << "]"; \
   } while (0)
 
 #define LOG_SPMD_OUTPUT(name)                             \

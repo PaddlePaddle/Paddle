@@ -18,12 +18,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
@@ -42,32 +42,32 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     auto global_count_type =
         framework::TransToProtoVarType(global_count->dtype());
     if (local_count_type != framework::proto::VarType::INT64) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Please use int64 type in local_count."));
     }
     if (global_count_type != framework::proto::VarType::INT64) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Please use int64 type in global_count."));
     }
     auto out = ctx.Output<phi::DenseTensor>("Out");
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
     phi::DenseTensor cpu_local_count;
-    if (platform::is_cpu_place(local_count->place())) {
+    if (local_count->place().GetType() == phi::AllocationType::CPU) {
       cpu_local_count_data = local_count->data<int64_t>();
     } else {
       framework::TensorCopySync(
-          *local_count, platform::CPUPlace(), &cpu_local_count);
+          *local_count, phi::CPUPlace(), &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
     }
     auto global_count_len = 0;
     phi::DenseTensor cpu_global_count;
-    if (platform::is_cpu_place(global_count->place())) {
+    if (global_count->place().GetType() == phi::AllocationType::CPU) {
       cpu_global_count_data = global_count->data<int64_t>();
       global_count_len = global_count->numel();
     } else {
       framework::TensorCopySync(
-          *global_count, platform::CPUPlace(), &cpu_global_count);
+          *global_count, phi::CPUPlace(), &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
       global_count_len = cpu_global_count.numel();
     }
@@ -79,7 +79,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The ring_id (%d) for global scatter op must be non-negative.",
             ring_id));
 
@@ -95,7 +95,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     if (FLAGS_dynamic_static_unified_comm) {
       PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                         true,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "You choose to use new communication library by "
                             "setting environment "
                             "variable FLAGS_dynamic_static_unified_comm True. "
@@ -106,7 +106,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
           comm_context_manager.Get(std::to_string(ring_id)));
       PADDLE_ENFORCE_NE(comm_ctx,
                         nullptr,
-                        platform::errors::Unavailable(
+                        phi::errors::Unavailable(
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
 
@@ -133,7 +133,7 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
     for (auto i = 0; i < global_count_len; ++i) {
       fwd_count += cpu_global_count_data[i];
     }
-    framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
+    phi::DDim out_dims = common::make_ddim({fwd_count, in_feat});
     int64_t* expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
     auto tot_experts = n_expert * nranks;
@@ -173,40 +173,39 @@ struct GlobalScatterFunctor<phi::GPUContext, T> {
       auto recv_buf = out->data<T>();
 
       for (auto i = 0; i < n_expert; ++i) {
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
         for (auto j = 0; j < nranks; ++j) {
           int idx = i + j * n_expert;
           if (cpu_local_count_data[idx]) {
-            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclSend(
-                send_buf + expert_ptr[idx] * in_feat,
-                cpu_local_count_data[idx] * in_feat,
-                dtype,
-                j,
-                comm->comm(),
-                stream));
+            PADDLE_ENFORCE_GPU_SUCCESS(
+                phi::dynload::ncclSend(send_buf + expert_ptr[idx] * in_feat,
+                                       cpu_local_count_data[idx] * in_feat,
+                                       dtype,
+                                       j,
+                                       comm->comm(),
+                                       stream));
           }
           if (cpu_global_count_data[idx]) {
-            PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
-                recv_buf + recv_ptr * in_feat,
-                cpu_global_count_data[idx] * in_feat,
-                dtype,
-                j,
-                comm->comm(),
-                stream));
+            PADDLE_ENFORCE_GPU_SUCCESS(
+                phi::dynload::ncclRecv(recv_buf + recv_ptr * in_feat,
+                                       cpu_global_count_data[idx] * in_feat,
+                                       dtype,
+                                       j,
+                                       comm->comm(),
+                                       stream));
             recv_ptr += cpu_global_count_data[idx];
           }
         }
-        PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+        PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupEnd());
       }
     }
 
 #else
-    PADDLE_THROW(
-        platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+    PADDLE_THROW(phi::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
 #endif
 #else
     PADDLE_THROW(
-        platform::errors::Unavailable("PaddlePaddle should compile with GPU."));
+        phi::errors::Unavailable("PaddlePaddle should compile with GPU."));
 #endif
   }
 };
@@ -224,32 +223,32 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
     auto global_count_type =
         framework::TransToProtoVarType(global_count->dtype());
     if (local_count_type != framework::proto::VarType::INT64) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Please use int64 type in local_count."));
     }
     if (global_count_type != framework::proto::VarType::INT64) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
+      PADDLE_THROW(phi::errors::InvalidArgument(
           "Please use int64 type in global_count."));
     }
     auto out = ctx.Output<phi::DenseTensor>("Out");
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
     phi::DenseTensor cpu_local_count;
-    if (platform::is_cpu_place(local_count->place())) {
+    if (local_count->place().GetType() == phi::AllocationType::CPU) {
       cpu_local_count_data = local_count->data<int64_t>();
     } else {
       framework::TensorCopySync(
-          *local_count, platform::CPUPlace(), &cpu_local_count);
+          *local_count, phi::CPUPlace(), &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
     }
     auto global_count_len = 0;
     phi::DenseTensor cpu_global_count;
-    if (platform::is_cpu_place(global_count->place())) {
+    if (global_count->place().GetType() == phi::AllocationType::CPU) {
       cpu_global_count_data = global_count->data<int64_t>();
       global_count_len = global_count->numel();
     } else {
       framework::TensorCopySync(
-          *global_count, platform::CPUPlace(), &cpu_global_count);
+          *global_count, phi::CPUPlace(), &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
       global_count_len = cpu_global_count.numel();
     }
@@ -258,7 +257,7 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
     PADDLE_ENFORCE_GE(
         ring_id,
         0,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The ring_id (%d) for global scatter op must be non-negative.",
             ring_id));
 
@@ -274,7 +273,7 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
     for (auto i = 0; i < global_count_len; ++i) {
       fwd_count += cpu_global_count_data[i];
     }
-    framework::DDim out_dims = common::make_ddim({fwd_count, in_feat});
+    phi::DDim out_dims = common::make_ddim({fwd_count, in_feat});
     int64_t* expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
     auto tot_experts = n_expert * nranks;
@@ -316,12 +315,11 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
 #endif
 
 #else
-    PADDLE_THROW(
-        platform::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
+    PADDLE_THROW(phi::errors::Unavailable("NCCL version >= 2.7.3 is needed."));
 #endif
 #else
     PADDLE_THROW(
-        platform::errors::Unavailable("PaddlePaddle should compile with GPU."));
+        phi::errors::Unavailable("PaddlePaddle should compile with GPU."));
 #endif
   }
 };
@@ -346,7 +344,6 @@ class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(global_scatter,
                           GPU,
@@ -356,4 +353,4 @@ PD_REGISTER_STRUCT_KERNEL(global_scatter,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

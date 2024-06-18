@@ -26,11 +26,11 @@ class CAllGatherOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AllGather");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Input", "Out", "AllGather");
     int nranks = ctx->Attrs().Get<int>("nranks");
-    PADDLE_ENFORCE_GE(nranks,
-                      2,
-                      platform::errors::InvalidArgument(
-                          "The value of nranks should be >=2."));
-    framework::DDim dim = ctx->GetInputDim("X");
+    PADDLE_ENFORCE_GE(
+        nranks,
+        2,
+        phi::errors::InvalidArgument("The value of nranks should be >=2."));
+    phi::DDim dim = ctx->GetInputDim("X");
     // 0D use stack/unstack while others use concat/split
     if (dim.size() == 0) {
       dim = common::make_ddim({nranks});
@@ -68,7 +68,6 @@ reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_allgather,
                              ops::CAllGatherOp,
@@ -85,4 +84,4 @@ PD_REGISTER_STRUCT_KERNEL(c_allgather,
                           int64_t,
                           uint8_t,
                           bool,
-                          plat::float16) {}
+                          phi::dtype::float16) {}

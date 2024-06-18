@@ -25,7 +25,7 @@
 #include "paddle/fluid/distributed/ps/table/common_table.h"
 #include "paddle/fluid/distributed/ps/table/depends/dense.h"
 #include "paddle/fluid/distributed/ps/table/depends/initializers.h"
-#include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace distributed {

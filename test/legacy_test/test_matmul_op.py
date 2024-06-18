@@ -149,11 +149,7 @@ def generate_compatible_shapes_ndim(dim, transpose_X, transpose_Y):
 for dim in [4]:
     for transpose_X in [False, True]:
         for transpose_Y in [False, True]:
-            test_name = (
-                'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
-                    dim, dim, transpose_X, transpose_Y
-                )
-            )
+            test_name = f'TestMatMulOp_dimX_{dim}_dim_Y_{dim}_transX_{transpose_X}_transY_{transpose_Y}'
             shape_X, shape_Y = generate_compatible_shapes_ndim(
                 dim, transpose_X, transpose_Y
             )
@@ -190,9 +186,7 @@ class API_TestMm(unittest.TestCase):
                 expected_result,
                 rtol=1e-05,
                 atol=1e-05,
-                err_msg='two value is            {}\n{}, check diff!'.format(
-                    np_res, expected_result
-                ),
+                err_msg=f'two value is            {np_res}\n{expected_result}, check diff!',
             )
 
     def test_dygraph_without_out(self):
@@ -200,8 +194,8 @@ class API_TestMm(unittest.TestCase):
         with base.dygraph.guard(device):
             input_array1 = np.random.rand(3, 4).astype("float64")
             input_array2 = np.random.rand(4, 3).astype("float64")
-            data1 = base.dygraph.to_variable(input_array1)
-            data2 = base.dygraph.to_variable(input_array2)
+            data1 = paddle.to_tensor(input_array1)
+            data2 = paddle.to_tensor(input_array2)
             out = paddle.mm(data1, data2)
             expected_result = np.matmul(input_array1, input_array2)
         np.testing.assert_allclose(expected_result, out.numpy(), rtol=1e-05)
@@ -213,56 +207,42 @@ class Test_API_Matmul(unittest.TestCase):
         with base.dygraph.guard(device):
             input_array1 = np.random.rand(3, 4).astype("float64")
             input_array2 = np.random.rand(4, 3).astype("float64")
-            data1 = base.dygraph.to_variable(input_array1)
-            data2 = base.dygraph.to_variable(input_array2)
+            data1 = paddle.to_tensor(input_array1)
+            data2 = paddle.to_tensor(input_array2)
             out = paddle.matmul(data1, data2)
             expected_result = np.matmul(input_array1, input_array2)
         np.testing.assert_allclose(expected_result, out.numpy(), rtol=1e-05)
 
 
 class API_TestMmError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with paddle_static_guard():
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             def test_error1():
-                with paddle.base.program_guard(
-                    paddle.base.Program(), paddle.base.Program()
-                ):
-                    data1 = paddle.static.data(
-                        name="data1", shape=[10, 2], dtype="float32"
-                    )
-                    data2 = paddle.static.data(
-                        name="data2", shape=[3, 10], dtype="float32"
-                    )
-                    paddle.mm(data1, data2)
+                data1 = paddle.static.data(
+                    name="data1", shape=[10, 2], dtype="float32"
+                )
+                data2 = paddle.static.data(
+                    name="data2", shape=[3, 10], dtype="float32"
+                )
+                paddle.mm(data1, data2)
 
             self.assertRaises(ValueError, test_error1)
 
             def test_error2():
-                with paddle.base.program_guard(
-                    paddle.base.Program(), paddle.base.Program()
-                ):
-                    data1 = paddle.static.data(
-                        name="data1", shape=[-1, 10, 2], dtype="float32"
-                    )
-                    data2 = paddle.static.data(
-                        name="data2", shape=[-1, 2, 10], dtype="float32"
-                    )
-                    paddle.mm(data1, data2)
+                data3 = paddle.static.data(
+                    name="data3", shape=[10, 10, 2], dtype="float32"
+                )
+                data4 = paddle.static.data(
+                    name="data4", shape=[3, 2, 10], dtype="float32"
+                )
+                paddle.mm(data3, data4)
 
-            test_error2()
-
-            def test_error3():
-                with base.program_guard(base.Program(), base.Program()):
-                    data1 = paddle.static.data(
-                        name="data1", shape=[10, 10, 2], dtype="float32"
-                    )
-                    data2 = paddle.static.data(
-                        name="data2", shape=[3, 2, 10], dtype="float32"
-                    )
-                    paddle.mm(data1, data2)
-
-            self.assertRaises(ValueError, test_error3)
+            self.assertRaises(ValueError, test_error2)
 
 
 if __name__ == "__main__":

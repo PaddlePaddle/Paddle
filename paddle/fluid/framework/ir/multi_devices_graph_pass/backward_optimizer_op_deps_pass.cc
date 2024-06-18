@@ -18,9 +18,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class BackWardOpDepsPass : public ir::Pass {
  protected:
@@ -68,7 +66,7 @@ class BackWardOpDepsPass : public ir::Pass {
       AddDep(graph, opt_handles[i - 1], opt_handles[i]);
     }
 
-    VLOG(10) << "add deps between backward and optimze:";
+    VLOG(10) << "add deps between backward and optimize:";
     AddDep(graph,
            backward_op_handles[backward_op_handles.size() - 1],
            opt_handles[0]);
@@ -195,9 +193,7 @@ class BackWardOpDepsPass : public ir::Pass {
     }
   }
 };
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(backward_optimizer_op_deps_pass,
               paddle::framework::ir::BackWardOpDepsPass);

@@ -60,9 +60,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   std::shared_ptr<ProgramDesc> GetMutableCopyProgram() override;
 
-  void Build(
-      const std::vector<std::string>& feed_names,
-      std::vector<paddle::framework::OpFuncNode>* op_func_nodes) override;
+  void Build(const std::vector<std::string>& feed_names,
+             std::vector<paddle::framework::OpFuncNode>* op_func_nodes,
+             bool switch_stream = false) override;
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
@@ -101,15 +101,19 @@ class ProgramInterpreter : public InterpreterBaseImpl {
     input_hookfuncs_ = hookfuncs;
   }
 
+  void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) override {}
+
+  void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) override {}
+
   std::unordered_map<std::string, std::shared_ptr<EventInter>>*
   GetForceEventsToWaitInfo() {
-    return force_evnets_to_wait_;
+    return force_events_to_wait_;
   }
 
   void SetForceEventsToWaitInfo(
       std::unordered_map<std::string, std::shared_ptr<EventInter>>*
-          force_evnets_to_wait) {
-    force_evnets_to_wait_ = force_evnets_to_wait;
+          force_events_to_wait) {
+    force_events_to_wait_ = force_events_to_wait;
   }
 
   bool IsStaticBuild() const override { return static_build_; }
@@ -127,8 +131,6 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   void BuildSkipShareLoDInfo();
   void UpdateSyncOpNum();
   void AnalyseExecuteOrderForTrace();
-  void BuildOpFuncNode(
-      std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
 
   // inplace
   void BuildInplace();
@@ -205,7 +207,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   ExecutionConfig execution_config_;
 
   std::unordered_map<std::string, std::shared_ptr<EventInter>>*
-      force_evnets_to_wait_;
+      force_events_to_wait_;
 
   VariableScope var_scope_;
   Scope* local_scope_{nullptr};  // not owned
@@ -223,9 +225,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // var
   std::map<size_t, std::set<size_t>> last_live_ops_;
 
-  // (*dependecy_count_)[i] contains the number of dependencies that the i-th op
-  // need to wait
-  std::shared_ptr<std::vector<size_t>> dependecy_count_;
+  // (*dependency_count_)[i] contains the number of dependencies that the i-th
+  // op need to wait
+  std::shared_ptr<std::vector<size_t>> dependency_count_;
 
   std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
   std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;

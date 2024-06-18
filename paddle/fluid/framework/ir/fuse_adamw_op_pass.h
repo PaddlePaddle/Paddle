@@ -52,7 +52,7 @@ struct AdamWConfig {
       "ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"};
   const std::vector<std::string> replace_inputs_name = {
       "Params", "Grads", "Moments1", "Moments2", "Beta1Pows", "Beta2Pows"};
-  const std::vector<std::string> repalce_outputs_name = {"ParamsOut",
+  const std::vector<std::string> replace_outputs_name = {"ParamsOut",
                                                          "Moments1Out",
                                                          "Moments2Out",
                                                          "Beta1PowsOut",

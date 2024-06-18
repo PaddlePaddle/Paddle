@@ -21,8 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -31,7 +30,7 @@ std::string GetInputBroadcastNotation(const std::vector<int64_t>& shape,
                                       const int max_ndim,
                                       const std::string& alphabet,
                                       std::vector<int>* broadcast_axis_count) {
-  int ndim = shape.size();
+  int ndim = static_cast<int>(shape.size());
   int start_dim = max_ndim - ndim;
   std::string axes_notation = GetBroadcastAxes(ndim, max_ndim, alphabet);
 
@@ -54,8 +53,8 @@ void GetBinaryNotations(const std::vector<int64_t>& x_shape,
                         std::string* x_axes,
                         std::string* y_axes,
                         std::string* out_axes) {
-  int x_ndim = x_shape.size();
-  int y_ndim = y_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
+  int y_ndim = static_cast<int>(y_shape.size());
   int max_ndim = std::max(x_ndim, y_ndim);
   int ninputs = 2;
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
@@ -82,7 +81,7 @@ void GetBinaryNotations(const std::vector<int64_t>& x_shape,
 SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
   // Step0: Verify Input Args Based on Elementwise Logic
   auto x_shape = common::vectorize(x.dims());
-  int x_ndim = x_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(x_ndim,
@@ -98,7 +97,7 @@ SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
   std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
   std::string out_axes = x_axes;
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
   std::pair<std::string, std::vector<int64_t>> axes_sharding_info(
       x_axes, x_dims_mapping);
@@ -124,13 +123,62 @@ SpmdInfo ElementwiseUnaryInferSpmd(const DistMetaTensor& x) {
   return {{x_dst_dist_attr}, {out_dist_attr}};
 }
 
+// NOTE(lizhiyu): This function is only for `cast` right now to support partial
+// propagation
+SpmdInfo ElementwiseUnaryWithPartialInferSpmd(const DistMetaTensor& x) {
+  // Step0: Verify Input Args Based on Elementwise Logic
+  auto x_shape = common::vectorize(x.dims());
+  int x_ndim = static_cast<int>(x_shape.size());
+  TensorDistAttr x_dist_attr_src = x.dist_attr();
+  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
+  PADDLE_ENFORCE_EQ(x_ndim,
+                    x_dims_mapping.size(),
+                    phi::errors::InvalidArgument(
+                        "ElementwiseUnary, The Tensor X's rank [%d] and X's "
+                        "dims_mapping size [%d] are not matched.",
+                        x_ndim,
+                        x_dims_mapping.size()));
+
+  // Step1: Build Einsum Notation
+  std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
+  std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
+  std::string out_axes = x_axes;
+
+  // Step2: Sharding Propagation
+  // Step2.1: Merge input shardings
+  std::pair<std::string, std::vector<int64_t>> axes_sharding_info(
+      x_axes, x_dims_mapping);
+  std::unordered_map<std::string, int64_t> axis_to_dim_map =
+      ShardingMergeForTensors({axes_sharding_info});
+
+  // step2.2: Infer output dims mapping from merged input dims mapping
+  std::vector<int64_t> out_dims_mapping =
+      GetDimsMappingForAxes(out_axes, axis_to_dim_map);
+
+  // initialize output dist_attr's process_mesh, batch_dim and dynamic dims with
+  // input dist_attr.
+  TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  out_dist_attr.set_dims_mapping(out_dims_mapping);
+  out_dist_attr.set_partial_status(x_dist_attr_src.partial_status());
+  TensorDistAttr x_dst_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
+  x_dst_dist_attr.set_dims_mapping(out_dims_mapping);
+  x_dst_dist_attr.set_partial_status(x_dist_attr_src.partial_status());
+
+  VLOG(4) << "ElementwiseWithPartialSPMDRule InferForward:";
+  VLOG(4) << "Input0 shape: [" << str_join(x_shape) << "] "
+          << "src_dims_mapping: [" << str_join(x_dims_mapping) << "] ";
+  VLOG(4) << "Output dims_mapping: [" + str_join(out_dims_mapping) + "]\n\n";
+
+  return {{x_dst_dist_attr}, {out_dist_attr}};
+}
+
 SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
                                           const DistMetaTensor& out) {
   // Step0: Verify Input Args Based on Elementwise Logic
   auto x_shape = common::vectorize(x.dims());
-  int x_ndim = x_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
   auto out_shape = common::vectorize(out.dims());
-  int out_ndim = out_shape.size();
+  int out_ndim = static_cast<int>(out_shape.size());
   TensorDistAttr out_dist_attr_src = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
@@ -155,7 +203,7 @@ SpmdInfo ElementwiseUnaryInferSpmdReverse(const DistMetaTensor& x,
   std::string x_axes = GetBroadcastAxes(x_ndim, x_ndim, alphabet);
   std::string out_axes = x_axes;
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge output shardings
   std::pair<std::string, std::vector<int64_t>> axes_sharding_info(
       out_axes, out_dims_mapping);
@@ -184,9 +232,9 @@ SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
                                     const DistMetaTensor& y) {
   // Step0: Verify Input Args Based on Elementwise Logic
   auto x_shape = common::vectorize(x.dims());
-  int x_ndim = x_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
   auto y_shape = common::vectorize(y.dims());
-  int y_ndim = y_shape.size();
+  int y_ndim = static_cast<int>(y_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
   TensorDistAttr y_dist_attr_src = y.dist_attr();
   std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
@@ -210,13 +258,13 @@ SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
   std::string x_axes, y_axes, out_axes;
   GetBinaryNotations(x_shape, y_shape, &x_axes, &y_axes, &out_axes);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(
           {{x_axes, x_dims_mapping}, {y_axes, y_dims_mapping}});
 
-  // Step2.2: Infer output dimsmapping from merged input dimsmapping
+  // Step2.2: Infer output dims mapping from merged input dims mapping
   std::vector<int64_t> out_dims_mapping =
       GetDimsMappingForAxes(out_axes, axis_to_dim_map);
 
@@ -254,11 +302,11 @@ SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
                                            const DistMetaTensor& out) {
   // Step0: Verify Input Args Based on Elementwise Logic
   auto x_shape = common::vectorize(x.dims());
-  int x_ndim = x_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
   auto y_shape = common::vectorize(y.dims());
-  int y_ndim = y_shape.size();
+  int y_ndim = static_cast<int>(y_shape.size());
   auto out_shape = common::vectorize(out.dims());
-  int out_ndim = out_shape.size();
+  int out_ndim = static_cast<int>(out_shape.size());
   int max_ndim = std::max(x_ndim, y_ndim);
   TensorDistAttr out_dist_attr = out.dist_attr();
   std::vector<int64_t> out_dims_mapping = out_dist_attr.dims_mapping();
@@ -283,7 +331,7 @@ SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
   std::string x_axes, y_axes, out_axes;
   GetBinaryNotations(x_shape, y_shape, &x_axes, &y_axes, &out_axes);
 
-  // Step2: Sharding Propogation
+  // Step2: Sharding Propagation
   // Step2.1: Merge output shardings
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors({{out_axes, out_dims_mapping}});
@@ -316,14 +364,17 @@ SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
 
 SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
                                        const DistMetaTensor& out_grad) {
-  return {{out_grad.dist_attr(), out_grad.dist_attr()}, {out_grad.dist_attr()}};
+  auto dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
+  dist_attr.set_dims_mapping(out_grad.dist_attr().dims_mapping());
+  return {{dist_attr, dist_attr}, {dist_attr}};
 }
 
 SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
                                        const DistMetaTensor& out,
                                        const DistMetaTensor& out_grad) {
-  return {{out_grad.dist_attr(), out_grad.dist_attr(), out_grad.dist_attr()},
-          {out_grad.dist_attr()}};
+  auto dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
+  dist_attr.set_dims_mapping(out_grad.dist_attr().dims_mapping());
+  return {{dist_attr, dist_attr, dist_attr}, {dist_attr}};
 }
 
 bool DimsNotEqualOrHasBroadcastDim(const DistMetaTensor& x,
@@ -387,7 +438,7 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
                                    "the rank of input as [%d].",
                                    out_grad.dims().size(),
                                    y.dims().size()));
-  // The backward rule of elementwise follows the princple: the dist_attr
+  // The backward rule of elementwise follows the principle: the dist_attr
   // of input should equal to out_grad.
   // Caution the special case when the inputs calculate together with different
   // shape it means one of the input is broadcast to same shape with the other
@@ -479,5 +530,4 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
   info.first.emplace(info.first.begin() + 2, out_grad.dist_attr());
   return info;
 }
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

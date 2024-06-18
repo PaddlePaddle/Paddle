@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/utils/any.h"
-#include "paddle/utils/flags.h"
 
 PD_DECLARE_bool(convert_all_blocks);
 PD_DECLARE_bool(all_blocks_convert_trt);
@@ -69,7 +69,7 @@ namespace ir {
  *   Write-After-Read
  *     a = op1(x)
  *     x = op2(b)
- *     A control-dependency connection is created bettwen op1 and op2 such that
+ *     A control-dependency connection is created between op1 and op2 such that
  *     op1->op2, so as to ensure correct order.
  *
  *   Write-After-Write
@@ -86,7 +86,7 @@ namespace ir {
 class Graph {
  public:
   // Construct a main_graph with some sub_graphs
-  explicit Graph(const ProgramDesc &program);
+  TEST_API explicit Graph(const ProgramDesc &program);
 
   // Construct a main_graph with some sub_graphs, and the 1st sub_graph is
   // constructed with ops[start_op_index, end_op_index)
@@ -477,7 +477,7 @@ class Graph {
   std::unordered_set<ir::Node *> node_set_;
   size_t num_node_created_{0};  // help to generate a unique node id.
   // NOTE(Aurelius84): Whether is constructed with partial ProgramDesc.
-  // In case of @to_static, whole trainning program is splited into two
+  // In case of @to_static, whole training program is splited into two
   // parts: forward graph and backward graph, which can be executed
   // independently.
   bool is_partial_{false};

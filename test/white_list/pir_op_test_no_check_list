@@ -1,5 +1,7 @@
+test_assign_pos_op
 test_bernoulli_op
 test_dirichlet_op
+test_empty_op
 test_exponential_op
 test_gumbel_softmax_op
 test_multinomial_op

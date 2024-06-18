@@ -12,9 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/core/lod_utils.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 namespace paddle {
 namespace framework {
@@ -45,7 +45,7 @@ struct LoDTensorToArrayFunctorImpl {
 };
 
 struct LoDTensorToArrayFunctor {
-  using argument_type = platform::Place;
+  using argument_type = phi::Place;
   using result_type = void;
   std::vector<const phi::DenseTensor *> ref_inputs_;
   mutable std::vector<phi::DenseTensor *> outputs_;
@@ -61,16 +61,16 @@ struct LoDTensorToArrayFunctor {
 
   template <typename Place>
   void operator()(Place place) const {
-    auto &pool = platform::DeviceContextPool::Instance();
+    auto &pool = phi::DeviceContextPool::Instance();
     auto *dev_ctx = pool.Get(place);
-    if (std::is_same<Place, platform::CPUPlace>::value) {
+    if (std::is_same<Place, phi::CPUPlace>::value) {
       Apply(static_cast<phi::CPUContext *>(dev_ctx));
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       Apply(static_cast<phi::GPUContext *>(dev_ctx));
 #else
       PADDLE_THROW(
-          platform::errors::Unavailable("Paddle is not compiled with CUDA."));
+          phi::errors::Unavailable("Paddle is not compiled with CUDA."));
 #endif
     }
   }
@@ -80,15 +80,14 @@ struct LoDTensorToArrayFunctor {
     LoDTensorToArrayFunctorImpl<DeviceContext> func;
     func.prev_functor_ = this;
     func.dev_ctx_ = dev_ctx;
-    framework::VisitDataType(framework::TransToProtoVarType(input_.dtype()),
-                             func);
+    phi::VisitDataType(input_.dtype(), func);
   }
 };
 
 template <typename DeviceContext>
 template <typename T>
 void LoDTensorToArrayFunctorImpl<DeviceContext>::apply() {
-  math::SplitFunctor<DeviceContext, T> func;
+  phi::funcs::SplitFunctor<DeviceContext, T> func;
   func(*dev_ctx_,
        prev_functor_->input_,
        prev_functor_->ref_inputs_,
@@ -106,7 +105,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const phi::Place &place) const override {
     auto &x = GET_DATA_SAFELY(
                   scope.FindVar(Input("X")), "Input", "X", "LoDTensorToArray")
                   .Get<phi::DenseTensor>();
@@ -126,11 +125,11 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
     PADDLE_ENFORCE_LT(
         rank_level,
         x.lod().size(),
-        platform::errors::InvalidArgument("Input should be a phi::DenseTensor, "
-                                          "and its lod_level should be at "
-                                          "least %d, but given is %d.",
-                                          rank_level + 1,
-                                          x.lod().size()));
+        phi::errors::InvalidArgument("Input should be a phi::DenseTensor, "
+                                     "and its lod_level should be at "
+                                     "least %d, but given is %d.",
+                                     rank_level + 1,
+                                     x.lod().size()));
     out.resize(max_seq_len);
     std::vector<std::vector<CopyRange>> copy_ranges(max_seq_len);
 
@@ -215,18 +214,18 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE_EQ(
         context->HasInput("X"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Input(X) of LoDTensorToArrayOp should not be null."));
     PADDLE_ENFORCE_EQ(
         context->HasInput("RankTable"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Input(RankTable) of LoDTensorToArrayOp should not be null."));
 
     PADDLE_ENFORCE_EQ(
         context->HasOutput("Out"),
         true,
-        platform::errors::NotFound(
+        phi::errors::NotFound(
             "Output(Out) of LoDTensorToArrayOp should not be null."));
 
     auto x_dim = context->GetInputDim("X");

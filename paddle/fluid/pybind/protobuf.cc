@@ -35,8 +35,7 @@ limitations under the License. */
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 PyTypeObject *g_vartype_pytype = nullptr;
 PyTypeObject *g_blockdesc_pytype = nullptr;
@@ -97,15 +96,13 @@ void BindProgramDesc(pybind11::module *m) {
   pybind11::class_<pd::ProgramDesc, std::shared_ptr<pd::ProgramDesc>>(
       *m, "ProgramDesc", "")
       .def(pybind11::init<>())
-      .def("__init__",
-           [](pd::ProgramDesc &self, const pd::ProgramDesc &other) {
-             new (&self) pd::ProgramDesc(other);
-           })
-      .def("__init__",
-           [](pd::ProgramDesc &self, const pybind11::bytes &binary_str) {
-             std::string str(binary_str);
-             new (&self) pd::ProgramDesc(str);
-           })
+      .def(py::init([](const pd::ProgramDesc &other) {
+        return std::make_unique<pd::ProgramDesc>(other);
+      }))
+      .def(py::init([](const pybind11::bytes &binary_str) {
+        std::string str(binary_str);
+        return std::make_unique<pd::ProgramDesc>(str);
+      }))
       .def("append_block",
            &pd::ProgramDesc::AppendBlock,
            pybind11::return_value_policy::reference)
@@ -223,7 +220,7 @@ void BindBlockDesc(pybind11::module *m) {
       .def("_move_from", &pd::BlockDesc::MoveFrom);
 }
 
-void BindVarDsec(pybind11::module *m) {
+void BindVarDesc(pybind11::module *m) {
   pybind11::class_<pd::VarDesc> var_desc(*m, "VarDesc", "");
   var_desc.def(pybind11::init<const std::string &>())
       .def("name", &pd::VarDesc::Name, pybind11::return_value_policy::reference)
@@ -335,10 +332,8 @@ void BindOpDesc(pybind11::module *m) {
 
   pybind11::class_<pd::OpDesc> op_desc(*m, "OpDesc", "");
   op_desc
-      .def(
-          "__init__",
-          [](pd::OpDesc &self) { new (&self) pd::OpDesc(); },
-          pybind11::return_value_policy::reference)
+      .def(py::init([]() { return std::make_unique<pd::OpDesc>(); }),
+           pybind11::return_value_policy::reference)
       .def("copy_from", &pd::OpDesc::CopyFrom)
       .def("type", &pd::OpDesc::Type)
       .def("set_type", &pd::OpDesc::SetType)
@@ -502,10 +497,8 @@ void BindOpDesc(pybind11::module *m) {
 void BindJitProperty(pybind11::module *m) {
   pybind11::class_<jit::Property> property(*m, "Property");
   property
-      .def(
-          "__init__",
-          [](jit::Property &self) { new (&self) jit::Property(); },
-          pybind11::return_value_policy::reference)
+      .def(py::init([]() { return std::make_unique<jit::Property>(); }),
+           pybind11::return_value_policy::reference)
       .def("size", &jit::Property::Size)
       .def("set_float",
            py::overload_cast<const std::string &, const float &>(
@@ -553,5 +546,4 @@ void BindJitProperty(pybind11::module *m) {
       .def("parse_from_string", DeserializeMessage<jit::Property>);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

@@ -25,15 +25,14 @@ REGISTER_GENERATE_PASS(generate_fc_fuse) {
       VLOG(3) << "exec lambda func.";
       auto mul = OP_(mul)({{"X", x}, {"Y", y}}).Out("Out");
       auto ewadd = OP_(elementwise_add)({{"X", mul}, {"Y", z}}).Out("Out");
-      if (with_relu) {
+      if (with_relu) {  // NOLINT
         return OP_(relu)({"X", ewadd}).Out("Out");
       } else {
         return ewadd;
       }
     };
     // replace
-    SUBGRAPH_(replace) = [subgraph = &replace, with_relu](
-                             VAR_(x), VAR_(y), VAR_(z)) {
+    SUBGRAPH_(replace) = [subgraph = &replace](VAR_(x), VAR_(y), VAR_(z)) {
       auto& fc = OP_(fc)({{"Input", x}, {"W", y}, {"Bias", z}});
       return fc.Out("Out");
     };

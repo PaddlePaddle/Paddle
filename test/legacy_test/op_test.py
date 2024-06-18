@@ -56,7 +56,7 @@ from white_list import (
 )
 
 import paddle
-from paddle import base
+from paddle import base, pir
 from paddle.autograd.ir_backward import grad as ir_grad
 from paddle.base import Scope, core, unique_name
 from paddle.base.backward import append_backward
@@ -96,7 +96,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
         check_out_dtype(base.layers.pad_constant_like, [([2,3,2,3], 'float64'), ([1, 3, 1,3], )], ['float32', 'float64', 'int64'], target_index=1, pad_value=0.)
 
     """
-    with paddle_static_guard():
+    with paddle.pir_utils.OldIrGuard():
         for i, expect_dtype in enumerate(expect_dtypes):
             with paddle.static.program_guard(paddle.static.Program()):
                 input_t = []
@@ -114,7 +114,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
                         )
                     input_t.append(
                         paddle.static.data(
-                            name='data_%s' % index, shape=shape, dtype=dtype
+                            name=f'data_{index}', shape=shape, dtype=dtype
                         )
                     )
 
@@ -123,9 +123,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
 
                 if out_dtype != expect_dtype:
                     raise ValueError(
-                        "Expected out.dtype is {}, but got {} from {}.".format(
-                            expect_dtype, out_dtype, api_fn.__name__
-                        )
+                        f"Expected out.dtype is {expect_dtype}, but got {out_dtype} from {api_fn.__name__}."
                     )
 
 
@@ -166,19 +164,19 @@ def get_numeric_gradient(
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
     tensor_to_check_dtype = tensor_to_check._dtype()
-    if tensor_to_check_dtype == core.VarDesc.VarType.FP32:
+    if tensor_to_check_dtype == paddle.float32:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype == core.VarDesc.VarType.FP64:
+    elif tensor_to_check_dtype == paddle.float64:
         tensor_to_check_dtype = np.float64
-    elif tensor_to_check_dtype == core.VarDesc.VarType.FP16:
+    elif tensor_to_check_dtype == paddle.float16:
         tensor_to_check_dtype = np.float16
         # set delta as np.float16, will automatic convert to float32, float64
         delta = np.array(delta).astype(np.float16)
-    elif tensor_to_check_dtype == core.VarDesc.VarType.BF16:
+    elif tensor_to_check_dtype == paddle.bfloat16:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX64:
+    elif tensor_to_check_dtype == paddle.complex64:
         tensor_to_check_dtype = np.complex64
-    elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX128:
+    elif tensor_to_check_dtype == paddle.complex128:
         tensor_to_check_dtype = np.complex128
     else:
         raise ValueError(
@@ -196,7 +194,7 @@ def get_numeric_gradient(
             # numpy.dtype does not have bfloat16, thus we use numpy.uint16 to
             # store bfloat16 data, and need to be converted to float to check
             # the floating precision.
-            if tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+            if tensor_to_check._dtype() == paddle.bfloat16:
                 output_numpy = convert_uint16_to_float(output_numpy)
             sum.append(output_numpy.astype(tensor_to_check_dtype).mean())
         return tensor_to_check_dtype(np.array(sum).sum() / len(output_names))
@@ -208,7 +206,7 @@ def get_numeric_gradient(
             numpy_tensor = np.array(tensor).astype(np.float16)
             numpy_tensor = numpy_tensor.flatten()
             return numpy_tensor[i]
-        elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+        elif tensor_to_check._dtype() == paddle.bfloat16:
             numpy_tensor = np.array(tensor).astype(np.uint16)
             numpy_tensor = numpy_tensor.flatten()
             return struct.unpack(
@@ -225,7 +223,7 @@ def get_numeric_gradient(
             return tensor._get_complex128_element(i)
         else:
             raise TypeError(
-                "Unsupported test data type %s." % tensor_to_check_dtype
+                f"Unsupported test data type {tensor_to_check_dtype}."
             )
 
     def __set_elem__(tensor, i, e):
@@ -236,7 +234,7 @@ def get_numeric_gradient(
             numpy_tensor[i] = e
             numpy_tensor = numpy_tensor.reshape(shape)
             tensor.set(numpy_tensor, place)
-        elif tensor_to_check._dtype() == core.VarDesc.VarType.BF16:
+        elif tensor_to_check._dtype() == paddle.bfloat16:
             numpy_tensor = np.array(tensor).astype(np.uint16)
             shape = numpy_tensor.shape
             numpy_tensor = numpy_tensor.flatten()
@@ -253,7 +251,7 @@ def get_numeric_gradient(
             return tensor._set_complex128_element(i, e)
         else:
             raise TypeError(
-                "Unsupported test data type %s." % tensor_to_check_dtype
+                f"Unsupported test data type {tensor_to_check_dtype}."
             )
 
     # we only compute gradient of one element each time.
@@ -433,6 +431,9 @@ class OpTest(unittest.TestCase):
         cls._check_cinn = False
         cls.check_pir_onednn = False
 
+        # Todo(CZ): to be removed in future
+        core._clear_prim_vjp_skip_default_ops()
+
         np.random.seed(123)
         random.seed(124)
 
@@ -500,10 +501,10 @@ class OpTest(unittest.TestCase):
                 and not hasattr(cls, "exist_check_grad")
             ):
                 raise AssertionError(
-                    "This test of %s op needs check_grad." % cls.op_type
+                    f"This test of {cls.op_type} op needs check_grad."
                 )
 
-            # check for op test with fp64 precision, but not check mkldnn op test for now
+            # check for op test with fp64 precision, but not check onednn op test for now
             if (
                 cls.dtype in [np.float32, np.float64]
                 and cls.op_type
@@ -517,8 +518,7 @@ class OpTest(unittest.TestCase):
                 and not cls.check_prim_pir
             ):
                 raise AssertionError(
-                    "This test of %s op needs check_grad with fp64 precision."
-                    % cls.op_type
+                    f"This test of {cls.op_type} op needs check_grad with fp64 precision."
                 )
 
             if (
@@ -527,7 +527,7 @@ class OpTest(unittest.TestCase):
                 not in check_shape_white_list.NEED_TO_FIX_OP_LIST
             ):
                 raise AssertionError(
-                    "Input's shape should be large than or equal to 100 for "
+                    "Number of element(s) of input should be large than or equal to 100 for "
                     + cls.op_type
                     + " Op."
                 )
@@ -895,11 +895,11 @@ class OpTest(unittest.TestCase):
         if isinstance(value, tuple):
             data = value[0]
             lod = value[1]
-            v = base.dygraph.base.to_variable(value=data)
+            v = paddle.to_tensor(data)
             v.value().get_tensor().set_recursive_sequence_lengths(lod)
             return v
         else:
-            return base.dygraph.base.to_variable(value)
+            return paddle.to_tensor(value)
 
     def get_sequence_batch_size_1_input(self, lod=None, shape=None):
         """Get LoD input data whose batch size is 1.
@@ -1060,7 +1060,7 @@ class OpTest(unittest.TestCase):
                     name_temp = name
                 else:
                     nplist_value_temp = np_list[name]
-                    name_temp = unique_name.generate("%s_out" % (name))
+                    name_temp = unique_name.generate(f"{name}_out")
                 v = create_var(
                     nplist_value_temp,
                     name_temp,
@@ -1088,9 +1088,7 @@ class OpTest(unittest.TestCase):
             np_dyg = np.array(dygraph_outs[name])
             assert (
                 np_api.shape == np_dyg.shape
-            ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
-                self.op_type, name, np_dyg.shape, np_api.shape
-            )
+            ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {np_dyg.shape}, but actual shape is {np_api.shape}"
             np.testing.assert_allclose(
                 np_api,
                 np_dyg,
@@ -1145,7 +1143,7 @@ class OpTest(unittest.TestCase):
             return result
 
         with base.dygraph.base.guard(place=place):
-            block = base.default_main_program().global_block()
+            block = base.framework.default_main_program().global_block()
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
             dygraph_tensor_inputs = (
@@ -1185,10 +1183,9 @@ class OpTest(unittest.TestCase):
                 return None
             if not hasattr(self, "python_api"):
                 print(kernel_sig)
-            assert hasattr(self, "python_api"), (
-                "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_dygraph = True"
-                % self.op_type
-            )
+            assert hasattr(
+                self, "python_api"
+            ), f"Detect there is KernelSignature for `{self.op_type}` op, please set the `self.python_api` if you set check_dygraph = True"
             args = OpTestUtils.prepare_python_api_arguments(
                 self.python_api,
                 dygraph_tensor_inputs,
@@ -1212,7 +1209,7 @@ class OpTest(unittest.TestCase):
             self.op_type
         )  # for ci check, please not delete it for now
         with base.dygraph.base.guard(place=place):
-            block = base.default_main_program().global_block()
+            block = base.framework.default_main_program().global_block()
 
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
@@ -1250,7 +1247,7 @@ class OpTest(unittest.TestCase):
 
     def get_kernel_signature(self, place, egr_inps=None, egr_oups=None):
         with base.dygraph.base.guard(place=place):
-            block = base.default_main_program().global_block()
+            block = base.framework.default_main_program().global_block()
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
             dygraph_tensor_inputs = (
@@ -1289,10 +1286,9 @@ class OpTest(unittest.TestCase):
                 return None
             if not hasattr(self, "python_api"):
                 print(kernel_sig)
-            assert hasattr(self, "python_api"), (
-                "Detect there is KernelSignature for `%s` op, please set the `self.python_api` if you set check_dygraph = True"
-                % self.op_type
-            )
+            assert hasattr(
+                self, "python_api"
+            ), f"Detect there is KernelSignature for `{self.op_type}` op, please set the `self.python_api` if you set check_dygraph = True"
             return kernel_sig
 
     def get_ir_input_attr_dict_and_feed(self, stop_gradient):
@@ -1529,7 +1525,11 @@ class OpTest(unittest.TestCase):
         for_inplace_test=None,
         check_cinn=False,
     ):
-        with static_guard():
+        with paddle.pir_utils.OldIrGuard():
+            if hasattr(self, "attrs"):
+                for k, v in self.attrs.items():
+                    if isinstance(v, paddle.base.core.DataType):
+                        self.attrs[k] = paddle.pir.core.datatype_to_vartype[v]
             program = Program()
             block = program.global_block()
             op = self._append_ops(block)
@@ -1594,6 +1594,7 @@ class OpTest(unittest.TestCase):
                 program = compiled_prog
 
             executor = Executor(place)
+
             outs = executor.run(
                 program,
                 feed=feed_map,
@@ -1609,6 +1610,42 @@ class OpTest(unittest.TestCase):
             return outs, fetch_list, feed_map, original_program, op.desc
         else:
             return outs, fetch_list
+
+    def _infer_and_compare_symbol(self):
+        """Don't caculate the program, only infer the shape of var"""
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            with scope_guard(Scope()):
+                # prepare inps attributes feed
+                (
+                    static_inputs,
+                    attrs,
+                    input_dict,
+                    feed,
+                ) = self.get_ir_input_attr_dict_and_feed(stop_gradient=True)
+
+                # run the program with pass
+                pm = pir.PassManager()
+                paddle.base.libpaddle.pir.infer_symbolic_shape_pass(pm, program)
+                pm.run(program)
+
+                # compare expect & actual
+                shape_analysis = (
+                    paddle.base.libpaddle.pir.get_shape_constraint_ir_analysis(
+                        program
+                    )
+                )
+                for var in program.list_vars():
+                    shape_or_data = shape_analysis.get_shape_or_data_for_var(
+                        var
+                    )
+                    expect_shape = var.shape
+                    expect_data = []
+                    if not shape_or_data.is_equal(expect_shape, expect_data):
+                        raise AssertionError(
+                            f"Operator {self.op_type} Value {var.name}'s shape or data is different from expected."
+                        )
+                return True
 
     def _compare_expect_and_actual_outputs(
         self, place, fetch_list, expect_outs, actual_outs, inplace_atol=None
@@ -1635,14 +1672,12 @@ class OpTest(unittest.TestCase):
             actual_out = np.array(actual_outs[i])
             assert (
                 actual_out.shape == expect_out.shape
-            ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
-                self.op_type, name, expect_out.shape, actual_out.shape
-            )
+            ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_out.shape}, but actual shape is {actual_out.shape}"
             if inplace_atol is not None:
                 np.testing.assert_allclose(
                     expect_out,
                     actual_out,
-                    rtol=1e-05,
+                    rtol=1e-03 if self.dtype == np.uint16 else 1e-5,
                     atol=inplace_atol,
                     err_msg='Operator ('
                     + self.op_type
@@ -1691,37 +1726,38 @@ class OpTest(unittest.TestCase):
         Returns:
             grad_program (program): The program which contains the grad_op.
         """
-        grad_program = Program()
-        grad_block = grad_program.global_block()
-        new_op_desc = grad_block.desc.append_op()
-        new_op_desc.copy_from(grad_op_desc)
-        grad_program._sync_with_cpp()
+        with paddle.pir_utils.OldIrGuard():
+            grad_program = Program()
+            grad_block = grad_program.global_block()
+            new_op_desc = grad_block.desc.append_op()
+            new_op_desc.copy_from(grad_op_desc)
+            grad_program._sync_with_cpp()
 
-        # Create grad vars based on fwd vars (shape and dtype)
-        for arg in (
-            grad_op_desc.input_arg_names() + grad_op_desc.output_arg_names()
-        ):
-            fwd_var_name = op_grad_to_var.get(arg, None)
-            if fwd_var_name is None:
-                fwd_var_name = arg
-            fwd_var = fwd_program.global_block().vars.get(fwd_var_name)
-            assert fwd_var is not None, f"{fwd_var_name} cannot be found"
-            grad_var = grad_block.create_var(
-                name=arg,
-                dtype=fwd_var.dtype,
-                shape=fwd_var.shape,
-                type=fwd_var.type,
-                persistable=False,
-            )
+            # Create grad vars based on fwd vars (shape and dtype)
+            for arg in (
+                grad_op_desc.input_arg_names() + grad_op_desc.output_arg_names()
+            ):
+                fwd_var_name = op_grad_to_var.get(arg, None)
+                if fwd_var_name is None:
+                    fwd_var_name = arg
+                fwd_var = fwd_program.global_block().vars.get(fwd_var_name)
+                assert fwd_var is not None, f"{fwd_var_name} cannot be found"
+                grad_var = grad_block.create_var(
+                    name=arg,
+                    dtype=fwd_var.dtype,
+                    shape=fwd_var.shape,
+                    type=fwd_var.type,
+                    persistable=False,
+                )
 
-            # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op,
-            # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]).
-            # Set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
-            # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
-            if 0 in grad_var.shape:
-                grad_var.persistable = True
-        grad_program._sync_with_cpp()
-        return grad_program
+                # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op,
+                # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]).
+                # Set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
+                # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
+                if 0 in grad_var.shape:
+                    grad_var.persistable = True
+            grad_program._sync_with_cpp()
+            return grad_program
 
     def _construct_grad_feed_map_from_forward(
         self, place, fwd_res, grad_op_desc, op_grad_to_var
@@ -1964,7 +2000,9 @@ class OpTest(unittest.TestCase):
         if getattr(self, "no_need_check_inplace", False):
             return
 
-        if os.getenv("FLAGS_enable_pir_in_executor"):
+        if os.getenv("FLAGS_enable_pir_in_executor") or os.getenv(
+            "FLAGS_enable_pir_api"
+        ):
             return
 
         has_infer_inplace = base.core.has_infer_inplace(self.op_type)
@@ -2030,6 +2068,7 @@ class OpTest(unittest.TestCase):
         check_pir=False,
         check_auto_parallel=False,
         check_pir_onednn=False,
+        check_symbol_infer=False,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2139,9 +2178,7 @@ class OpTest(unittest.TestCase):
                 expect_np = np.array(expect_np)
                 assert (
                     actual_np.shape == expect_np.shape
-                ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
-                    self.op_type, name, expect_np.shape, actual_np.shape
-                )
+                ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_np.shape}, but actual shape is {actual_np.shape}"
                 np.testing.assert_allclose(
                     actual_np,
                     expect_np,
@@ -2308,9 +2345,7 @@ class OpTest(unittest.TestCase):
                 expect_np = np.array(expect_np)
                 assert (
                     actual_np.shape == expect_np.shape
-                ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
-                    self.op_type, name, expect_np.shape, actual_np.shape
-                )
+                ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_np.shape}, but actual shape is {actual_np.shape}"
                 np.testing.assert_allclose(
                     actual_np,
                     expect_np,
@@ -2421,9 +2456,7 @@ class OpTest(unittest.TestCase):
                 expect_np = np.array(expect_np)
                 assert (
                     actual_np.shape == expect_np.shape
-                ), "Operator ({}) : Output ({}) shape mismatch, expect shape is {}, but actual shape is {}".format(
-                    self.op_type, name, expect_np.shape, actual_np.shape
-                )
+                ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_np.shape}, but actual shape is {actual_np.shape}"
                 np.testing.assert_allclose(
                     actual_np,
                     expect_np,
@@ -2533,6 +2566,20 @@ class OpTest(unittest.TestCase):
                     return True
                 return super()._is_skip_name(name)
 
+        class SymbolInferChecker(Checker):
+            def check(self):
+                """return None means ok, raise Error means failed."""
+                self.init()
+                self.infer_and_compare_symbol()
+
+            def init(self):
+                self.checker_name = "symbol infer checker"
+
+            def infer_and_compare_symbol(self):
+                """infer symbol and compare it with actualy shape and data"""
+                self.is_python_api_test = True
+                self.op_test._infer_and_compare_symbol()
+
         # set some flags by the combination of arguments.
         if self.is_float16_op():
             self.dtype = np.float16
@@ -2574,15 +2621,16 @@ class OpTest(unittest.TestCase):
                 not in no_check_set_white_list.no_check_set_white_list
             ):
                 raise AssertionError(
-                    "no_check_set of op %s must be set to None." % self.op_type
+                    f"no_check_set of op {self.op_type} must be set to None."
                 )
 
         if check_prim:
-            prim_checker = PrimForwardChecker(self, place)
-            prim_checker.check()
-            # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            self.__class__.check_prim = True
-            self.__class__.op_type = self.op_type
+            with paddle.pir_utils.OldIrGuard():
+                prim_checker = PrimForwardChecker(self, place)
+                prim_checker.check()
+                # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
+                self.__class__.check_prim = True
+                self.__class__.op_type = self.op_type
 
         if check_prim_pir:
             with paddle.pir_utils.IrGuard():
@@ -2643,7 +2691,9 @@ class OpTest(unittest.TestCase):
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
 
-        if check_pir_onednn:
+        if check_pir_onednn and isinstance(
+            place, paddle.base.libpaddle.CPUPlace
+        ):
             with pir_executor_guard():
                 pir_onednn_static_checker = StaticChecker(self, self.outputs)
                 pir_onednn_static_checker.check()
@@ -2661,6 +2711,15 @@ class OpTest(unittest.TestCase):
                 with paddle.pir_utils.IrGuard():
                     pir_checker = PirChecker(self, self.outputs)
                     pir_checker.check()
+
+        if check_symbol_infer:
+            if (
+                type(place) is paddle.base.libpaddle.CPUPlace
+                or type(place) is paddle.base.libpaddle.CUDAPlace
+            ):
+                with paddle.pir_utils.IrGuard():
+                    symbol_checker = SymbolInferChecker(self, self.outputs)
+                    symbol_checker.check()
 
         # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
@@ -2775,6 +2834,7 @@ class OpTest(unittest.TestCase):
         check_pir=False,
         check_auto_parallel=False,
         check_pir_onednn=False,
+        check_symbol_infer=False,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -2803,6 +2863,7 @@ class OpTest(unittest.TestCase):
                 check_pir=check_pir,
                 check_auto_parallel=check_auto_parallel,
                 check_pir_onednn=check_pir_onednn,
+                check_symbol_infer=check_symbol_infer,
             )
             if not res and only_check_prim:
                 continue
@@ -2863,9 +2924,7 @@ class OpTest(unittest.TestCase):
         for a, b, name in zip(numeric_grads, analytic_grads, names):
             assert tuple(a.shape) == tuple(
                 b.shape
-            ), "Operator ({}) : Output ({}) gradient shape mismatch, expect shape is {}, but actual shape is {}".format(
-                self.op_type, name, a.shape, b.shape
-            )
+            ), f"Operator ({self.op_type}) : Output ({name}) gradient shape mismatch, expect shape is {a.shape}, but actual shape is {b.shape}"
             # Used by bfloat16 for now to solve precision problem
             if self.is_bfloat16_op():
                 if a.size == 0:
@@ -2877,13 +2936,7 @@ class OpTest(unittest.TestCase):
                     atol=atol,
                     equal_nan=False,
                     err_msg=(
-                        "Operator {} error, {} variable {} (shape: {}, dtype: {}) max gradient diff over limit"
-                    ).format(
-                        self.op_type,
-                        msg_prefix,
-                        name,
-                        str(a.shape),
-                        self.dtype,
+                        f"Operator {self.op_type} error, {msg_prefix} variable {name} (shape: {str(a.shape)}, dtype: {self.dtype}) max gradient diff over limit"
                     ),
                 )
             else:
@@ -3097,7 +3150,7 @@ class OpTest(unittest.TestCase):
             analytic_grads,
             inputs_to_check,
             max_relative_error,
-            "Gradient Check On %s" % str(place),
+            f"Gradient Check On {str(place)}",
             atol=atol,
         )
 
@@ -3134,18 +3187,19 @@ class OpTest(unittest.TestCase):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
         if check_prim:
-            self._check_grad_helper()
-            prim_grad_checker = PrimGradChecker(
-                self,
-                place,
-                inputs_to_check,
-                output_names,
-                no_grad_set,
-                user_defined_grad_outputs,
-            )
-            prim_grad_checker.check()
-            # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            self.__class__.check_prim = True
+            with paddle.pir_utils.OldIrGuard():
+                self._check_grad_helper()
+                prim_grad_checker = PrimGradChecker(
+                    self,
+                    place,
+                    inputs_to_check,
+                    output_names,
+                    no_grad_set,
+                    user_defined_grad_outputs,
+                )
+                prim_grad_checker.check()
+                # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
+                self.__class__.check_prim = True
 
         if check_prim_pir:
             with paddle.pir_utils.IrGuard():
@@ -3214,6 +3268,13 @@ class OpTest(unittest.TestCase):
                         python_api_info=python_api_info,
                     )
                     runtime_envs = get_subprocess_runtime_envs(place)
+
+                    num_devices = len(
+                        runtime_envs["CUDA_VISIBLE_DEVICES"].split(",")
+                    )
+                    if num_devices > paddle.device.cuda.device_count():
+                        self.skipTest("number of GPUs is not enough")
+
                     start_command = get_subprocess_command(
                         runtime_envs["CUDA_VISIBLE_DEVICES"],
                         generated_grad_test_path,
@@ -3253,6 +3314,11 @@ class OpTest(unittest.TestCase):
         if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
             op_attrs["use_mkldnn"] = False
             use_onednn = True
+        if hasattr(self, "attrs"):
+            for k, v in self.attrs.items():
+                if isinstance(v, paddle.base.core.DataType):
+                    self.attrs[k] = paddle.pir.core.datatype_to_vartype[v]
+
         self.op = create_op(
             self.scope,
             self.op_type,
@@ -3298,22 +3364,25 @@ class OpTest(unittest.TestCase):
         if numeric_place is None:
             numeric_place = place
 
-        numeric_grads = self.check_grad_with_place_for_static(
-            user_defined_grads,
-            inputs_to_check,
-            place,
-            output_names,
-            no_grad_set,
-            user_defined_grad_outputs,
-            numeric_place,
-            numeric_grad_delta,
-            in_place,
-            check_cinn,
-            max_relative_error,
-            atol,
-        )
+        with paddle.pir_utils.OldIrGuard():
+            numeric_grads = self.check_grad_with_place_for_static(
+                user_defined_grads,
+                inputs_to_check,
+                place,
+                output_names,
+                no_grad_set,
+                user_defined_grad_outputs,
+                numeric_place,
+                numeric_grad_delta,
+                in_place,
+                check_cinn,
+                max_relative_error,
+                atol,
+            )
 
-        if check_pir_onednn:
+        if check_pir_onednn and isinstance(
+            place, paddle.base.libpaddle.CPUPlace
+        ):
             with pir_executor_guard():
                 self.check_grad_with_place_for_static(
                     user_defined_grads,
@@ -3356,7 +3425,7 @@ class OpTest(unittest.TestCase):
                     dygraph_dygraph_grad,
                     inputs_to_check,
                     max_relative_error,
-                    "Gradient Check On %s" % str(place),
+                    f"Gradient Check On {str(place)}",
                     atol=atol,
                 )
 
@@ -3396,7 +3465,7 @@ class OpTest(unittest.TestCase):
                     pir_grad,
                     inputs_to_check,
                     max_relative_error,
-                    "Gradient Check On %s" % str(place),
+                    f"Gradient Check On {str(place)}",
                     atol=atol,
                 )
 
@@ -3428,7 +3497,7 @@ class OpTest(unittest.TestCase):
             check_dygraph = False
 
         with base.dygraph.base.guard(place=place):
-            block = base.default_main_program().global_block()
+            block = base.framework.default_main_program().global_block()
 
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
@@ -3470,11 +3539,11 @@ class OpTest(unittest.TestCase):
                 for cast_input in cast_inputs:
                     if isinstance(cast_input, paddle.Tensor):
                         cast_outputs.append(
-                            paddle.cast(cast_input, core.VarDesc.VarType.FP32)
+                            paddle.cast(cast_input, paddle.float32)
                         )
                     else:
                         raise TypeError(
-                            "Unsupported test data type %s." % type(cast_input)
+                            f"Unsupported test data type {type(cast_input)}."
                         )
 
                 outputs = {}
@@ -3653,7 +3722,7 @@ class OpTest(unittest.TestCase):
         parallel=False,
         check_cinn=False,
     ):
-        with static_guard():
+        with paddle.pir_utils.OldIrGuard():
             prog = Program()
             scope = core.Scope()
             ir_scope = core.Scope()
@@ -3840,12 +3909,12 @@ class OpTest(unittest.TestCase):
                         range(len(user_defined_grad_outputs)),
                     ):
                         grad_val = paddle.static.data(
-                            name='val_grad_%s' % idx,
+                            name=f'val_grad_{idx}',
                             shape=grad_out_value.shape,
                             dtype=grad_out_value.dtype,
                         )
                         grad_outputs.append(grad_val)
-                        feed.update({'val_grad_%s' % idx: grad_out_value})
+                        feed.update({f'val_grad_{idx}': grad_out_value})
                     # delete the inputs which no need to calculate grad
                     for no_grad_val in no_grad_set:
                         del static_inputs[no_grad_val]
@@ -3884,8 +3953,7 @@ class OpTest(unittest.TestCase):
                             )
                         else:
                             raise TypeError(
-                                "Unsupported test data type %s."
-                                % type(cast_input)
+                                f"Unsupported test data type {type(cast_input)}."
                             )
 
                     outputs = {}

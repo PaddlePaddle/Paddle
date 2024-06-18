@@ -168,7 +168,7 @@ int GetOpRole(const proto::OpDesc& op_desc) {
     }
   }
   // If attr op_role is not found, it may be operator created in c++ test, like
-  // prune_test.cc. In that case, the op_role should be defaut value, which is
+  // prune_test.cc. In that case, the op_role should be default value, which is
   // kNotSpecified.
   return static_cast<int>(OpRole::kNotSpecified);
 }
@@ -261,7 +261,7 @@ void prune_impl(const proto::ProgramDesc& input,
   for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
     auto& op_desc = *op_iter;
 
-    // TODO(wanghaipeng03) reconstruct the follwing if/else block
+    // TODO(wanghaipeng03) reconstruct the following if/else block
     //                     to extract common code
     //
     // bool should_run_flag = false;
@@ -281,7 +281,7 @@ void prune_impl(const proto::ProgramDesc& input,
     //
     // should_run.push_back(should_run_flag);
     // if (should_run_flag) {
-    //   for (auto & var: op_desc.iputs()) {
+    //   for (auto & var: op_desc.inputs()) {
     //     for (....) {
     //       if (.....) {
     //         dependent_vars->insert(argu);
@@ -304,7 +304,7 @@ void prune_impl(const proto::ProgramDesc& input,
           add_dependent_var(argu);
         }
       }
-      // NOTE(dev): All attibute with VarDesc type is considered as Input,
+      // NOTE(dev): All attribute with VarDesc type is considered as Input,
       // so they shall be added into dependent_vars.
       for (auto& attr : op_desc.attrs()) {
         if (attr.type() == proto::AttrType::VAR) {
@@ -391,7 +391,7 @@ void prune_impl(const proto::ProgramDesc& input,
           std::vector<int> sub_indices;
           GetSubBlocksIndices(*op, &sub_indices);
           for (auto& sub_index : sub_indices) {
-            // create a copy of dependent_vars to avoid being overwrited by the
+            // create a copy of dependent_vars to avoid being overwritten by the
             // other sub_block
             std::unordered_set<std::string> dependent_vars_copy =
                 sub_block_dependent_vars;
@@ -438,7 +438,7 @@ void prune_impl(const proto::ProgramDesc& input,
         add_var_names(arg);
       }
     }
-    // NOTE(dev): All attibute with VarDesc type is considered as Input,
+    // NOTE(dev): All attribute with VarDesc type is considered as Input,
     // so they shall be added into dependent_vars.
     for (auto& attr : op.attrs()) {
       if (attr.type() == proto::AttrType::VAR) {

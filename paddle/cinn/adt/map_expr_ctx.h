@@ -20,8 +20,8 @@
 #include "paddle/cinn/adt/map_expr.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/dialect/shape/ir/shape_op.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_op.h"
 
 namespace cinn::adt {
 

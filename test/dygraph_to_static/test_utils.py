@@ -17,7 +17,8 @@ import unittest
 
 from dygraph_to_static_utils import Dy2StTestBase, test_legacy_and_pir
 
-from paddle.jit.dy2static.utils import index_in_list, is_paddle_func
+from paddle.jit.dy2static.transformers.utils import index_in_list
+from paddle.jit.dy2static.utils import is_paddle_func
 
 
 class TestIndexInList(Dy2StTestBase):

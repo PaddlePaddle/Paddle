@@ -44,6 +44,8 @@ int32_t SSDSparseTable::Initialize() {
 
 int32_t SSDSparseTable::InitializeShard() { return 0; }
 
+void SSDSparseTable::SetDayId(int day_id) { _day_id = day_id; }
+
 int32_t SSDSparseTable::Pull(TableContext& context) {
   CHECK(context.value_type == Sparse);
   if (context.use_ptr) {
@@ -76,11 +78,11 @@ int32_t SSDSparseTable::PullSparse(float* pull_values,
                                    const uint64_t* keys,
                                    size_t num) {
   CostTimer timer("pserver_downpour_sparse_select_all");
-  size_t value_size = _value_accesor->GetAccessorInfo().size / sizeof(float);
+  size_t value_size = _value_accessor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_size =
-      _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
+      _value_accessor->GetAccessorInfo().mf_size / sizeof(float);
   size_t select_value_size =
-      _value_accesor->GetAccessorInfo().select_size / sizeof(float);
+      _value_accessor->GetAccessorInfo().select_size / sizeof(float);
 
   {  // 从table取值 or create
     std::vector<std::future<int>> tasks(_real_local_shard_num);
@@ -102,7 +104,6 @@ int32_t SSDSparseTable::PullSparse(float* pull_values,
                mf_value_size,
                select_value_size,
                pull_values,
-               keys,
                &missed_keys]() -> int {
                 auto& keys = task_keys[shard_id];
                 auto& local_shard = _local_shards[shard_id];
@@ -127,7 +128,7 @@ int32_t SSDSparseTable::PullSparse(float* pull_values,
                         feature_value.resize(data_size);
                         float* data_ptr =
                             const_cast<float*>(feature_value.data());
-                        _value_accesor->Create(&data_buffer_ptr, 1);
+                        _value_accessor->Create(&data_buffer_ptr, 1);
                         memcpy(data_ptr,
                                data_buffer_ptr,
                                data_size * sizeof(float));
@@ -160,7 +161,7 @@ int32_t SSDSparseTable::PullSparse(float* pull_values,
                   int pull_data_idx = keys[i].second;
                   float* select_data =
                       pull_values + pull_data_idx * select_value_size;
-                  _value_accesor->Select(
+                  _value_accessor->Select(
                       &select_data, (const float**)&data_buffer_ptr, 1);
                 }
                 return 0;
@@ -183,16 +184,16 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
                                       size_t num,
                                       uint16_t pass_id) {
   CostTimer timer("pserver_ssd_sparse_select_all");
-  size_t value_size = _value_accesor->GetAccessorInfo().size / sizeof(float);
+  size_t value_size = _value_accessor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_size =
-      _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
+      _value_accessor->GetAccessorInfo().mf_size / sizeof(float);
 
   {  // 从table取值 or create
     RocksDBCtx context;
     std::vector<std::future<int>> tasks;
     RocksDBItem* cur_ctx = context.switch_item();
     cur_ctx->reset();
-    FixedFeatureValue* ret = NULL;
+    FixedFeatureValue* ret = nullptr;
     auto& local_shard = _local_shards[shard_id];
     float data_buffer[value_size];  // NOLINT
     float* data_buffer_ptr = data_buffer;
@@ -227,7 +228,7 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
                 auto& feature_value = local_shard[cur_key];
                 int init_size = value_size - mf_value_size;
                 feature_value.resize(init_size);
-                _value_accesor->Create(&data_buffer_ptr, 1);
+                _value_accessor->Create(&data_buffer_ptr, 1);
                 memcpy(const_cast<float*>(feature_value.data()),
                        data_buffer_ptr,
                        init_size * sizeof(float));
@@ -247,7 +248,11 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
                               sizeof(uint64_t));
                 ret = &feature_value;
               }
-              _value_accesor->UpdatePassId(ret->data(), pass_id);
+
+              _value_accessor->UpdateTimeDecay(ret->data(), true);
+#ifdef PADDLE_WITH_PSLIB
+              _value_accessor->UpdatePassId(ret->data(), pass_id);
+#endif
               int pull_data_idx = cur_ctx->batch_index[idx];
               pull_values[pull_data_idx] = reinterpret_cast<char*>(ret);
             }
@@ -259,7 +264,10 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
       } else {
         ret = itr.value_ptr();
         // int pull_data_idx = keys[i].second;
-        _value_accesor->UpdatePassId(ret->data(), pass_id);
+        _value_accessor->UpdateTimeDecay(ret->data(), true);
+#ifdef PADDLE_WITH_PSLIB
+        _value_accessor->UpdatePassId(ret->data(), pass_id);
+#endif
         pull_values[i] = reinterpret_cast<char*>(ret);
       }
     }
@@ -290,7 +298,7 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
           auto& feature_value = local_shard[cur_key];
           int init_size = value_size - mf_value_size;
           feature_value.resize(init_size);
-          _value_accesor->Create(&data_buffer_ptr, 1);
+          _value_accessor->Create(&data_buffer_ptr, 1);
           memcpy(const_cast<float*>(feature_value.data()),
                  data_buffer_ptr,
                  init_size * sizeof(float));
@@ -308,7 +316,10 @@ int32_t SSDSparseTable::PullSparsePtr(int shard_id,
               shard_id, reinterpret_cast<char*>(&cur_key), sizeof(uint64_t));
           ret = &feature_value;
         }
-        _value_accesor->UpdatePassId(ret->data(), pass_id);
+        _value_accessor->UpdateTimeDecay(ret->data(), true);
+#ifdef PADDLE_WITH_PSLIB
+        _value_accessor->UpdatePassId(ret->data(), pass_id);
+#endif
         int pull_data_idx = cur_ctx->batch_index[idx];
         pull_values[pull_data_idx] = reinterpret_cast<char*>(ret);
       }
@@ -323,11 +334,11 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
                                    size_t num) {
   CostTimer timer("pserver_downpour_sparse_update_all");
   // 构造value push_value的数据指针
-  size_t value_col = _value_accesor->GetAccessorInfo().size / sizeof(float);
+  size_t value_col = _value_accessor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_col =
-      _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
+      _value_accessor->GetAccessorInfo().mf_size / sizeof(float);
   size_t update_value_col =
-      _value_accesor->GetAccessorInfo().update_size / sizeof(float);
+      _value_accessor->GetAccessorInfo().update_size / sizeof(float);
   {
     std::vector<std::future<int>> tasks(_real_local_shard_num);
     std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
@@ -358,13 +369,13 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
                   auto itr = local_shard.find(key);
                   if (itr == local_shard.end()) {
                     if (FLAGS_pserver_enable_create_feasign_randomly &&
-                        !_value_accesor->CreateValue(1, update_data)) {
+                        !_value_accessor->CreateValue(1, update_data)) {
                       continue;
                     }
                     auto value_size = value_col - mf_value_col;
                     auto& feature_value = local_shard[key];
                     feature_value.resize(value_size);
-                    _value_accesor->Create(&data_buffer_ptr, 1);
+                    _value_accessor->Create(&data_buffer_ptr, 1);
                     memcpy(const_cast<float*>(feature_value.data()),
                            data_buffer_ptr,
                            value_size * sizeof(float));
@@ -376,17 +387,17 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
 
                   if (value_size ==
                       value_col) {  // 已拓展到最大size, 则就地update
-                    _value_accesor->Update(&value_data, &update_data, 1);
+                    _value_accessor->Update(&value_data, &update_data, 1);
                   } else {
                     // 拷入buffer区进行update，然后再回填，不需要的mf则回填时抛弃了
                     memcpy(data_buffer_ptr,
                            value_data,
                            value_size * sizeof(float));
-                    _value_accesor->Update(&data_buffer_ptr, &update_data, 1);
-                    if (_value_accesor->NeedExtendMF(data_buffer)) {
+                    _value_accessor->Update(&data_buffer_ptr, &update_data, 1);
+                    if (_value_accessor->NeedExtendMF(data_buffer)) {
                       feature_value.resize(value_col);
                       value_data = const_cast<float*>(feature_value.data());
-                      _value_accesor->Create(&value_data, 1);
+                      _value_accessor->Create(&value_data, 1);
                     }
                     memcpy(value_data,
                            data_buffer_ptr,
@@ -416,7 +427,7 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
   //批量update
   {
       CostTimer accessor_timer("pslib_downpour_sparse_update_accessor");
-      _value_accesor->update(transposed_value_data, (const
+      _value_accessor->update(transposed_value_data, (const
   float**)transposed_update_data, num);
   }
   copy_eigen_to_matrix(value_matrix, value_ptrs->data());
@@ -429,11 +440,11 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
                                    size_t num) {
   CostTimer timer("pserver_downpour_sparse_update_all");
   // 构造value push_value的数据指针
-  size_t value_col = _value_accesor->GetAccessorInfo().size / sizeof(float);
+  size_t value_col = _value_accessor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_col =
-      _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
-  size_t update_value_col =
-      _value_accesor->GetAccessorInfo().update_size / sizeof(float);
+      _value_accessor->GetAccessorInfo().mf_size / sizeof(float);
+  // size_t update_value_col =
+  // _value_accessor->GetAccessorInfo().update_size / sizeof(float);
   {
     std::vector<std::future<int>> tasks(_real_local_shard_num);
     std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
@@ -445,13 +456,8 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
     for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
       tasks[shard_id] =
           _shards_task_pool[shard_id % _shards_task_pool.size()]->enqueue(
-              [this,
-               shard_id,
-               value_col,
-               mf_value_col,
-               update_value_col,
-               values,
-               &task_keys]() -> int {
+              [this, shard_id, value_col, mf_value_col, values, &task_keys]()
+                  -> int {
                 auto& keys = task_keys[shard_id];
                 auto& local_shard = _local_shards[shard_id];
                 float data_buffer[value_col];  // NOLINT
@@ -463,13 +469,13 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
                   auto itr = local_shard.find(key);
                   if (itr == local_shard.end()) {
                     if (FLAGS_pserver_enable_create_feasign_randomly &&
-                        !_value_accesor->CreateValue(1, update_data)) {
+                        !_value_accessor->CreateValue(1, update_data)) {
                       continue;
                     }
                     auto value_size = value_col - mf_value_col;
                     auto& feature_value = local_shard[key];
                     feature_value.resize(value_size);
-                    _value_accesor->Create(&data_buffer_ptr, 1);
+                    _value_accessor->Create(&data_buffer_ptr, 1);
                     memcpy(const_cast<float*>(feature_value.data()),
                            data_buffer_ptr,
                            value_size * sizeof(float));
@@ -481,17 +487,17 @@ int32_t SSDSparseTable::PushSparse(const uint64_t* keys,
 
                   if (value_size ==
                       value_col) {  // 已拓展到最大size, 则就地update
-                    _value_accesor->Update(&value_data, &update_data, 1);
+                    _value_accessor->Update(&value_data, &update_data, 1);
                   } else {
                     // 拷入buffer区进行update，然后再回填，不需要的mf则回填时抛弃了
                     memcpy(data_buffer_ptr,
                            value_data,
                            value_size * sizeof(float));
-                    _value_accesor->Update(&data_buffer_ptr, &update_data, 1);
-                    if (_value_accesor->NeedExtendMF(data_buffer)) {
+                    _value_accessor->Update(&data_buffer_ptr, &update_data, 1);
+                    if (_value_accessor->NeedExtendMF(data_buffer)) {
                       feature_value.resize(value_col);
                       value_data = const_cast<float*>(feature_value.data());
-                      _value_accesor->Create(&value_data, 1);
+                      _value_accessor->Create(&value_data, 1);
                     }
                     memcpy(value_data,
                            data_buffer_ptr,
@@ -519,7 +525,7 @@ int32_t SSDSparseTable::Shrink(const std::string& param) {
     LOG(INFO) << "SSDSparseTable begin shrink shard:" << i;
     auto& shard = _local_shards[i];
     for (auto it = shard.begin(); it != shard.end();) {
-      if (_value_accesor->Shrink(it.value().data())) {
+      if (_value_accessor->Shrink(it.value().data())) {
         it = shard.erase(it);
         mem_count++;
       } else {
@@ -528,7 +534,7 @@ int32_t SSDSparseTable::Shrink(const std::string& param) {
     }
     auto* it = _db->get_iterator(i);
     for (it->SeekToFirst(); it->Valid(); it->Next()) {
-      if (_value_accesor->Shrink(
+      if (_value_accessor->Shrink(
               ::paddle::string::str_to_float(it->value().data()))) {
         _db->del_data(i, it->key().data(), it->key().size());
         ssd_count++;
@@ -554,7 +560,7 @@ int32_t SSDSparseTable::UpdateTable() {
     auto& shard = _local_shards[i];
     // from mem to ssd
     for (auto it = shard.begin(); it != shard.end();) {
-      if (_value_accesor->SaveSSD(it.value().data())) {
+      if (_value_accessor->SaveSSD(it.value().data())) {
         _db->put(i,
                  reinterpret_cast<const char*>(&it.key()),
                  sizeof(uint64_t),
@@ -601,7 +607,7 @@ int32_t SSDSparseTable::Save(const std::string& path,
 #ifdef PADDLE_WITH_GPU_GRAPH
 int32_t SSDSparseTable::Save_v2(const std::string& path,
                                 const std::string& param) {
-  auto* save_filtered_slots = _value_accesor->GetSaveFilteredSlots();
+  auto* save_filtered_slots = _value_accessor->GetSaveFilteredSlots();
   if (save_filtered_slots && (save_filtered_slots->size()) <= 0) {
     return Save(path, param);
   }
@@ -693,21 +699,23 @@ int32_t SSDSparseTable::SaveWithString(const std::string& path,
                                           _shard_idx,
                                           file_start_idx + file_num);
     }
-    channel_config.converter = _value_accesor->Converter(save_param).converter;
+    channel_config.converter = _value_accessor->Converter(save_param).converter;
     channel_config.deconverter =
-        _value_accesor->Converter(save_param).deconverter;
+        _value_accessor->Converter(save_param).deconverter;
     auto write_channel =
         _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
     ::paddle::framework::ChannelReader<std::pair<uint64_t, std::vector<float>>>
         reader(fs_channel[file_num].get());
     std::pair<uint64_t, std::vector<float>> out_str;
     while (reader >> out_str) {
-      std::string format_value = _value_accesor->ParseToString(
+      std::string format_value = _value_accessor->ParseToString(
           out_str.second.data(), out_str.second.size());
       if (0 != write_channel->write_line(::paddle::string::format_string(
                    "%lu %s", out_str.first, format_value.c_str()))) {
-        LOG(FATAL) << "SSDSparseTable save failed, retry it! path:"
-                   << channel_config.path;
+        std::stringstream ss;
+        ss << "SSDSparseTable save failed, retry it! path:"
+           << channel_config.path;
+        PADDLE_THROW(phi::errors::Fatal(ss.str()));
       }
     }
     write_channel->close();
@@ -731,9 +739,9 @@ int32_t SSDSparseTable::SaveWithString(const std::string& path,
         if (_config.enable_sparse_table_cache() &&
             (save_param == 1 || save_param == 2)) {
           // get_field get right decayed show
-          tk.push(i, _value_accesor->GetField(it.value().data(), "show"));
+          tk.push(i, _value_accessor->GetField(it.value().data(), "show"));
         }
-        if (_value_accesor->Save(it.value().data(), save_param)) {
+        if (_value_accessor->Save(it.value().data(), save_param)) {
           std::vector<float> feature_value;
           feature_value.resize(it.value().size());
           memcpy(const_cast<float*>(feature_value.data()),
@@ -748,9 +756,9 @@ int32_t SSDSparseTable::SaveWithString(const std::string& path,
     if (save_param != 1) {
       auto* it = _db->get_iterator(i);
       for (it->SeekToFirst(); it->Valid(); it->Next()) {
-        bool need_save = _value_accesor->Save(
+        bool need_save = _value_accessor->Save(
             ::paddle::string::str_to_float(it->value().data()), save_param);
-        _value_accesor->UpdateStatAfterSave(
+        _value_accessor->UpdateStatAfterSave(
             ::paddle::string::str_to_float(it->value().data()), save_param);
         if (need_save) {
           std::vector<float> feature_value;
@@ -771,7 +779,7 @@ int32_t SSDSparseTable::SaveWithString(const std::string& path,
     fs_channel[i]->Close();
     feasign_size_all += feasign_size;
     for (auto it = shard.begin(); it != shard.end(); ++it) {
-      _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+      _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
     }
   }
   for (size_t i = 0; i < threads.size(); i++) {
@@ -858,9 +866,9 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
     shard_num = file_num;
     part_num = 0;
     FsChannelConfig channel_config;
-    channel_config.converter = _value_accesor->Converter(save_param).converter;
+    channel_config.converter = _value_accessor->Converter(save_param).converter;
     channel_config.deconverter =
-        _value_accesor->Converter(save_param).deconverter;
+        _value_accessor->Converter(save_param).deconverter;
 
     auto get_filename = [](int compress,
                            int save_param,
@@ -921,7 +929,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
         float* value = reinterpret_cast<float*>(cursor);
         int dim = len / sizeof(float);
 
-        std::string format_value = _value_accesor->ParseToString(value, dim);
+        std::string format_value = _value_accessor->ParseToString(value, dim);
         if (0 != write_channel->write_line(::paddle::string::format_string(
                      "%lu %s", k, format_value.c_str()))) {
           VLOG(0) << "SSDSparseTable save failed, retry it! path:"
@@ -958,9 +966,9 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
         if (_config.enable_sparse_table_cache() &&
             (save_param == 1 || save_param == 2)) {
           // get_field get right decayed show
-          tk.push(i, _value_accesor->GetField(it.value().data(), "show"));
+          tk.push(i, _value_accessor->GetField(it.value().data(), "show"));
         }
-        if (_value_accesor->Save(it.value().data(), save_param)) {
+        if (_value_accessor->Save(it.value().data(), save_param)) {
           uint32_t len = sizeof(uint64_t) + it.value().size() * sizeof(float) +
                          sizeof(uint32_t);
           int region_idx = i;
@@ -987,7 +995,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
                  it.value().data(),
                  sizeof(float) * it.value().size());
           // if (save_param == 1 || save_param == 2) {
-          //     _value_accesor->update_time_decay((float*)(buf + read_count),
+          //     _value_accessor->update_time_decay((float*)(buf + read_count),
           //     false);
           // }
           ++feasign_size;
@@ -1007,9 +1015,9 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
       region->_file_idx = file_idx;
       auto* it = _db->get_iterator(i);
       for (it->SeekToFirst(); it->Valid(); it->Next()) {
-        bool need_save = _value_accesor->Save(
+        bool need_save = _value_accessor->Save(
             ::paddle::string::str_to_float(it->value().data()), save_param);
-        _value_accesor->UpdateStatAfterSave(
+        _value_accessor->UpdateStatAfterSave(
             ::paddle::string::str_to_float(it->value().data()), save_param);
         if (need_save) {
           uint32_t len =
@@ -1037,7 +1045,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
 
           memcpy(buf + read_count, it->value().data(), it->value().size());
           // if (save_param == 2) {
-          //     _value_accesor->update_time_decay((float*)(buf + read_count),
+          //     _value_accessor->update_time_decay((float*)(buf + read_count),
           //     false);
           // }
           ++feasign_size;
@@ -1050,7 +1058,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
     }
     feasign_size_all += feasign_size;
     for (auto it = shard.begin(); it != shard.end(); ++it) {
-      _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+      _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
     }
   }
   for (auto& channel : busy_channel) {
@@ -1161,14 +1169,14 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
     shard_num = file_num;
     part_num = 0;
     FsChannelConfig channel_config;
-    channel_config.converter = _value_accesor->Converter(save_param).converter;
+    channel_config.converter = _value_accessor->Converter(save_param).converter;
     channel_config.deconverter =
-        _value_accesor->Converter(save_param).deconverter;
+        _value_accessor->Converter(save_param).deconverter;
     FsChannelConfig channel_config_for_slot_feature;
     channel_config_for_slot_feature.converter =
-        _value_accesor->Converter(save_param).converter;
+        _value_accessor->Converter(save_param).converter;
     channel_config_for_slot_feature.deconverter =
-        _value_accesor->Converter(save_param).deconverter;
+        _value_accessor->Converter(save_param).deconverter;
 
     auto get_filename = [](int compress,
                            int save_param,
@@ -1232,7 +1240,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
         float* value = reinterpret_cast<float*>(cursor);
         int dim = len / sizeof(float);
 
-        std::string format_value = _value_accesor->ParseToString(value, dim);
+        std::string format_value = _value_accessor->ParseToString(value, dim);
         if (0 != write_channel->write_line(paddle::string::format_string(
                      "%lu %s", k, format_value.c_str()))) {
           VLOG(0) << "SSDSparseTable save failed, retry it! path:"
@@ -1284,7 +1292,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
         float* value = reinterpret_cast<float*>(cursor);
         int dim = len / sizeof(float);
 
-        std::string format_value = _value_accesor->ParseToString(value, dim);
+        std::string format_value = _value_accessor->ParseToString(value, dim);
         if (0 != write_channel_for_slot_feature->write_line(
                      ::paddle::string::format_string(
                          "%lu %s", k, format_value.c_str()))) {
@@ -1330,9 +1338,9 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
         if (_config.enable_sparse_table_cache() &&
             (save_param == 1 || save_param == 2)) {
           // get_field get right decayed show
-          tk.push(i, _value_accesor->GetField(it.value().data(), "show"));
+          tk.push(i, _value_accessor->GetField(it.value().data(), "show"));
         }
-        if (_value_accesor->Save(it.value().data(), save_param)) {
+        if (_value_accessor->Save(it.value().data(), save_param)) {
           uint32_t len = sizeof(uint64_t) + it.value().size() * sizeof(float) +
                          sizeof(uint32_t);
           int region_idx = i;
@@ -1359,13 +1367,13 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
                  it.value().data(),
                  sizeof(float) * it.value().size());
           // if (save_param == 1 || save_param == 2) {
-          //     _value_accesor->update_time_decay((float*)(buf + read_count),
+          //     _value_accessor->update_time_decay((float*)(buf + read_count),
           //     false);
           // }
           ++feasign_size;
 
           // write slot feature
-          if (_value_accesor->SaveFilterSlot(it.value().data())) {
+          if (_value_accessor->SaveFilterSlot(it.value().data())) {
             if (!region_for_slot_feature->buff_remain(len)) {
               busy_channel_for_slot_feature[region_idx]->Put(
                   region_for_slot_feature);
@@ -1391,8 +1399,8 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
                    it.value().data(),
                    sizeof(float) * it.value().size());
             // if (save_param == 1 || save_param == 2) {
-            //     _value_accesor->update_time_decay((float*)(buf + read_count),
-            //     false);
+            //     _value_accessor->update_time_decay((float*)(buf +
+            //     read_count), false);
             // }
             ++feasign_size_for_slot_feature;
           }
@@ -1418,9 +1426,9 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
 
       auto* it = _db->get_iterator(i);
       for (it->SeekToFirst(); it->Valid(); it->Next()) {
-        bool need_save = _value_accesor->Save(
+        bool need_save = _value_accessor->Save(
             ::paddle::string::str_to_float(it->value().data()), save_param);
-        _value_accesor->UpdateStatAfterSave(
+        _value_accessor->UpdateStatAfterSave(
             ::paddle::string::str_to_float(it->value().data()), save_param);
 
         if (need_save) {
@@ -1449,14 +1457,14 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
 
           memcpy(buf + read_count, it->value().data(), it->value().size());
           // if (save_param == 2) {
-          //     _value_accesor->update_time_decay((float*)(buf + read_count),
+          //     _value_accessor->update_time_decay((float*)(buf + read_count),
           //     false);
           // }
           ++feasign_size;
 
           // write feature
 
-          if (_value_accesor->SaveFilterSlot(
+          if (_value_accessor->SaveFilterSlot(
                   paddle::string::str_to_float(it->value().data()))) {
             if (!region_for_slot_feature->buff_remain(len)) {
               busy_channel_for_slot_feature[region_idx]->Put(
@@ -1481,8 +1489,8 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
             memcpy(
                 buf_2 + read_count_2, it->value().data(), it->value().size());
             // if (save_param == 2) {
-            //     _value_accesor->update_time_decay((float*)(buf + read_count),
-            //     false);
+            //     _value_accessor->update_time_decay((float*)(buf +
+            //     read_count), false);
             // }
             ++feasign_size_for_slot_feature;
           }
@@ -1499,7 +1507,7 @@ int32_t SSDSparseTable::SaveWithStringMultiOutput_v2(const std::string& path,
     feasign_size_all += feasign_size;
     feasign_size_all_for_slot_feature += feasign_size_for_slot_feature;
     for (auto it = shard.begin(); it != shard.end(); ++it) {
-      _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+      _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
     }
   }
   for (auto& channel : busy_channel) {
@@ -1600,9 +1608,9 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
     shard_num = file_num;
     part_num = 0;
     FsChannelConfig channel_config;
-    channel_config.converter = _value_accesor->Converter(save_param).converter;
+    channel_config.converter = _value_accessor->Converter(save_param).converter;
     channel_config.deconverter =
-        _value_accesor->Converter(save_param).deconverter;
+        _value_accessor->Converter(save_param).deconverter;
 
     auto get_filename = [](int compress,
                            int save_param,
@@ -1647,8 +1655,10 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
           last_file_idx = region->_file_idx;
         }
         if (0 != write_channel->write(region->_buf, region->_cur)) {
-          LOG(FATAL) << "DownpourSparseSSDTable save failed, retry it! path:"
-                     << channel_config.path;
+          std::stringstream ss;
+          ss << "DownpourSparseSSDTable save failed, retry it! path:"
+             << channel_config.path;
+          PADDLE_THROW(phi::errors::Fatal(ss.str()));
           CHECK(false);
         }
         region->reset();
@@ -1685,11 +1695,13 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
           float* value = reinterpret_cast<float*>(cursor);
           int dim = len / sizeof(float);
 
-          std::string format_value = _value_accesor->ParseToString(value, dim);
+          std::string format_value = _value_accessor->ParseToString(value, dim);
           if (0 != write_channel->write_line(paddle::string::format_string(
                        "%lu %s", k, format_value.c_str()))) {
-            LOG(FATAL) << "SSDSparseTable save failed, retry it! path:"
-                       << channel_config.path;
+            std::stringstream ss;
+            ss << "SSDSparseTable save failed, retry it! path:"
+               << channel_config.path;
+            PADDLE_THROW(phi::errors::Fatal(ss.str()));
           }
           remain -= len;
           cursor += len;
@@ -1720,9 +1732,9 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
         if (_config.enable_sparse_table_cache() &&
             (save_param == 1 || save_param == 2)) {
           // get_field get right decayed show
-          tk.push(i, _value_accesor->GetField(it.value().data(), "show"));
+          tk.push(i, _value_accessor->GetField(it.value().data(), "show"));
         }
-        if (_value_accesor->Save(it.value().data(), save_param)) {
+        if (_value_accessor->Save(it.value().data(), save_param)) {
           uint32_t len = sizeof(uint64_t) + it.value().size() * sizeof(float) +
                          sizeof(uint32_t);
           int region_idx = i;
@@ -1756,9 +1768,9 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
       region->_file_idx = file_idx;
       auto* it = _db->get_iterator(i);
       for (it->SeekToFirst(); it->Valid(); it->Next()) {
-        bool need_save = _value_accesor->Save(
+        bool need_save = _value_accessor->Save(
             paddle::string::str_to_float(it->value().data()), save_param);
-        _value_accesor->UpdateStatAfterSave(
+        _value_accessor->UpdateStatAfterSave(
             paddle::string::str_to_float(it->value().data()), save_param);
         if (need_save) {
           uint32_t len =
@@ -1785,7 +1797,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
 
           memcpy(buf + read_count, it->value().data(), it->value().size());
           // if (save_param == 2) {
-          //     _value_accesor->update_time_decay((float*)(buf + read_count),
+          //     _value_accessor->update_time_decay((float*)(buf + read_count),
           //     false);
           // }
           ++feasign_size;
@@ -1798,7 +1810,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
     }
     feasign_size_all += feasign_size;
     for (auto it = shard.begin(); it != shard.end(); ++it) {
-      _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+      _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
     }
   }
   for (auto& channel : busy_channel) {
@@ -1840,7 +1852,7 @@ int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
 
 int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
                                           const std::string& param) {
-  auto* save_filtered_slots = _value_accesor->GetSaveFilteredSlots();
+  auto* save_filtered_slots = _value_accessor->GetSaveFilteredSlots();
   if (save_filtered_slots && (save_filtered_slots->size()) <= 0) {
     return SaveWithBinary(path, param);
   }
@@ -1912,13 +1924,13 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
     part_num = 0;
     FsChannelConfig channel_config;
     FsChannelConfig channel_config_for_slot_feature;
-    channel_config.converter = _value_accesor->Converter(save_param).converter;
+    channel_config.converter = _value_accessor->Converter(save_param).converter;
     channel_config.deconverter =
-        _value_accesor->Converter(save_param).deconverter;
+        _value_accessor->Converter(save_param).deconverter;
     channel_config_for_slot_feature.converter =
-        _value_accesor->Converter(save_param).converter;
+        _value_accessor->Converter(save_param).converter;
     channel_config_for_slot_feature.deconverter =
-        _value_accesor->Converter(save_param).deconverter;
+        _value_accessor->Converter(save_param).deconverter;
 
     auto get_filename = [](int compress,
                            int save_param,
@@ -1971,8 +1983,10 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           last_file_idx = region->_file_idx;
         }
         if (0 != write_channel->write(region->_buf, region->_cur)) {
-          LOG(FATAL) << "DownpourSparseSSDTable save failed, retry it! path:"
-                     << channel_config.path;
+          std::stringstream ss;
+          ss << "DownpourSparseSSDTable save failed, retry it! path:"
+             << channel_config.path;
+          PADDLE_THROW(phi::errors::Fatal(ss.str()));
           CHECK(false);
         }
         region->reset();
@@ -2001,9 +2015,10 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
         if (0 !=
             write_channel_for_slot_feature->write(
                 region_for_slot_feature->_buf, region_for_slot_feature->_cur)) {
-          LOG(FATAL)
-              << "DownpourSparseSSDTable save feature failed, retry it! path:"
-              << channel_config_for_slot_feature.path;
+          std::stringstream ss;
+          ss << "DownpourSparseSSDTable save feature failed, retry it! path:"
+             << channel_config_for_slot_feature.path;
+          PADDLE_THROW(phi::errors::Fatal(ss.str()));
           CHECK(false);
         }
         region_for_slot_feature->reset();
@@ -2041,11 +2056,13 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           float* value = reinterpret_cast<float*>(cursor);
           int dim = len / sizeof(float);
 
-          std::string format_value = _value_accesor->ParseToString(value, dim);
+          std::string format_value = _value_accessor->ParseToString(value, dim);
           if (0 != write_channel->write_line(paddle::string::format_string(
                        "%lu %s", k, format_value.c_str()))) {
-            LOG(FATAL) << "SSDSparseTable save failed, retry it! path:"
-                       << channel_config.path;
+            std::stringstream ss;
+            ss << "SSDSparseTable save failed, retry it! path:"
+               << channel_config.path;
+            PADDLE_THROW(phi::errors::Fatal(ss.str()));
           }
           remain -= len;
           cursor += len;
@@ -2090,12 +2107,14 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
           float* value = reinterpret_cast<float*>(cursor);
           int dim = len / sizeof(float);
 
-          std::string format_value = _value_accesor->ParseToString(value, dim);
+          std::string format_value = _value_accessor->ParseToString(value, dim);
           if (0 != write_channel_for_slot_feature->write_line(
                        paddle::string::format_string(
                            "%lu %s", k, format_value.c_str()))) {
-            LOG(FATAL) << "SSDSparseTable save feature failed, retry it! path:"
-                       << channel_config_for_slot_feature.path;
+            std::stringstream ss;
+            ss << "SSDSparseTable save feature failed, retry it! path:"
+               << channel_config_for_slot_feature.path;
+            PADDLE_THROW(phi::errors::Fatal(ss.str()));
           }
           remain -= len;
           cursor += len;
@@ -2134,9 +2153,9 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
         if (_config.enable_sparse_table_cache() &&
             (save_param == 1 || save_param == 2)) {
           // get_field get right decayed show
-          tk.push(i, _value_accesor->GetField(it.value().data(), "show"));
+          tk.push(i, _value_accessor->GetField(it.value().data(), "show"));
         }
-        if (_value_accesor->Save(it.value().data(), save_param)) {
+        if (_value_accessor->Save(it.value().data(), save_param)) {
           uint32_t len = sizeof(uint64_t) + it.value().size() * sizeof(float) +
                          sizeof(uint32_t);
           int region_idx = i;
@@ -2159,7 +2178,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
                  sizeof(float) * it.value().size());
           ++feasign_size;
           // write slot feature
-          if (_value_accesor->SaveFilterSlot(it.value().data())) {
+          if (_value_accessor->SaveFilterSlot(it.value().data())) {
             if (!region_for_slot_feature->buff_remain(len)) {
               busy_channel_for_slot_feature[region_idx]->Put(
                   region_for_slot_feature);
@@ -2199,9 +2218,9 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
 
       auto* it = _db->get_iterator(i);
       for (it->SeekToFirst(); it->Valid(); it->Next()) {
-        bool need_save = _value_accesor->Save(
+        bool need_save = _value_accessor->Save(
             paddle::string::str_to_float(it->value().data()), save_param);
-        _value_accesor->UpdateStatAfterSave(
+        _value_accessor->UpdateStatAfterSave(
             paddle::string::str_to_float(it->value().data()), save_param);
         if (need_save) {
           uint32_t len =
@@ -2228,13 +2247,13 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
 
           memcpy(buf + read_count, it->value().data(), it->value().size());
           // if (save_param == 2) {
-          //     _value_accesor->update_time_decay((float*)(buf + read_count),
+          //     _value_accessor->update_time_decay((float*)(buf + read_count),
           //     false);
           // }
           ++feasign_size;
 
           // write slot feature
-          if (_value_accesor->SaveFilterSlot(
+          if (_value_accessor->SaveFilterSlot(
                   paddle::string::str_to_float(it->value().data()))) {
             if (!region_for_slot_feature->buff_remain(len)) {
               busy_channel_for_slot_feature[region_idx]->Put(
@@ -2258,8 +2277,8 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
             memcpy(
                 buf_2 + read_count_2, it->value().data(), it->value().size());
             // if (save_param == 2) {
-            //     _value_accesor->update_time_decay((float*)(buf + read_count),
-            //     false);
+            //     _value_accessor->update_time_decay((float*)(buf +
+            //     read_count), false);
             // }
             ++feasign_size_for_slot_feature;
           }
@@ -2276,7 +2295,7 @@ int32_t SSDSparseTable::SaveWithBinary_v2(const std::string& path,
     feasign_size_all += feasign_size;
     feasign_size_all_for_slot_feature += feasign_size_for_slot_feature;
     for (auto it = shard.begin(); it != shard.end(); ++it) {
-      _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+      _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
     }
   }
 
@@ -2374,10 +2393,10 @@ int64_t SSDSparseTable::CacheShuffle(
 
     auto& shard = _local_shards[i];
     for (auto it = shard.begin(); it != shard.end(); ++it) {
-      if (_value_accesor->SaveCache(
+      if (_value_accessor->SaveCache(
               it.value().data(), save_param, cache_threshold)) {
-        std::string format_value =
-            _value_accesor->ParseToString(it.value().data(), it.value().size());
+        std::string format_value = _value_accessor->ParseToString(
+            it.value().data(), it.value().size());
         std::pair<uint64_t, std::string> pkv(it.key(), format_value.c_str());
         writer << pkv;
         ++feasign_size;
@@ -2459,9 +2478,9 @@ int32_t SSDSparseTable::SaveCache(
   // not compress cache model
   channel_config.path = ::paddle::string::format_string(
       "%s/part-%03d", table_path.c_str(), _shard_idx);
-  channel_config.converter = _value_accesor->Converter(save_param).converter;
+  channel_config.converter = _value_accessor->Converter(save_param).converter;
   channel_config.deconverter =
-      _value_accesor->Converter(save_param).deconverter;
+      _value_accessor->Converter(save_param).deconverter;
   auto write_channel = _afs_client.open_w(channel_config, 1024 * 1024 * 40);
   std::vector<std::pair<uint64_t, std::string>> data;
   bool is_write_failed = false;
@@ -2502,17 +2521,19 @@ int32_t SSDSparseTable::Load(const std::string& path,
   }
 
   int load_param = atoi(param.c_str());
-  size_t expect_shard_num = _sparse_table_shard_num;
-  if (file_list.size() != expect_shard_num) {
-    LOG(WARNING) << "SSDSparseTable file_size:" << file_list.size()
-                 << " not equal to expect_shard_num:" << expect_shard_num;
-    return -1;
-  }
   if (file_list.empty()) {
     LOG(WARNING) << "SSDSparseTable load file is empty, path:" << path;
     return -1;
   }
+  _value_accessor->SetDayId(_day_id);
+  VLOG(1) << " Load Set Dayid:" << _day_id;
   if (load_param > 3) {
+    size_t expect_shard_num = _sparse_table_shard_num;
+    if (file_list.size() != expect_shard_num) {
+      LOG(WARNING) << "SSDSparseTable file_size:" << file_list.size()
+                   << " not equal to expect_shard_num:" << expect_shard_num;
+      return -1;
+    }
     size_t file_start_idx = _shard_idx * _avg_local_shard_num;
     return LoadWithString(file_start_idx,
                           file_start_idx + _real_local_shard_num,
@@ -2536,9 +2557,9 @@ int32_t SSDSparseTable::LoadWithString(
   load_param -= 4;
 #endif
   size_t feature_value_size =
-      _value_accesor->GetAccessorInfo().size / sizeof(float);
+      _value_accessor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_size =
-      _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
+      _value_accessor->GetAccessorInfo().mf_size / sizeof(float);
 
 #ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
@@ -2559,9 +2580,9 @@ int32_t SSDSparseTable::LoadWithString(
     channel_config.path = file_list[file_num + file_start_idx];
     VLOG(1) << "SSDSparseTable::load begin load " << channel_config.path
             << " into local shard " << file_num;
-    channel_config.converter = _value_accesor->Converter(load_param).converter;
+    channel_config.converter = _value_accessor->Converter(load_param).converter;
     channel_config.deconverter =
-        _value_accesor->Converter(load_param).deconverter;
+        _value_accessor->Converter(load_param).deconverter;
 
     std::string line_data;
     auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
@@ -2591,11 +2612,11 @@ int32_t SSDSparseTable::LoadWithString(
     ssd_values.clear();
     tmp_key.clear();
     std::string line_data;
-    char* end = NULL;
+    char* end = nullptr;
     int local_shard_id = i % _avg_local_shard_num;
     auto& shard = _local_shards[local_shard_id];
-    float data_buffer[FLAGS_pserver_load_batch_size *
-                      feature_value_size];  // NOLINT
+    float data_buffer[FLAGS_pserver_load_batch_size *  // NOLINT
+                      feature_value_size];
     float* data_buffer_ptr = data_buffer;
     uint64_t mem_count = 0;
     uint64_t ssd_count = 0;
@@ -2619,12 +2640,12 @@ int32_t SSDSparseTable::LoadWithString(
         }
       }
       size_t value_size =
-          _value_accesor->ParseFromString(++end, data_buffer_ptr);
+          _value_accessor->ParseFromString(++end, data_buffer_ptr);
       filter_begin = butil::gettimeofday_ms();
-      if (!_value_accesor->FilterSlot(data_buffer_ptr)) {
+      if (!_value_accessor->FilterSlot(data_buffer_ptr)) {
         filter_time += butil::gettimeofday_ms() - filter_begin;
         // ssd or mem
-        if (_value_accesor->SaveSSD(data_buffer_ptr)) {
+        if (_value_accessor->SaveSSD(data_buffer_ptr)) {
           tmp_key.emplace_back(key);
           ssd_keys.emplace_back(reinterpret_cast<char*>(&tmp_key.back()),
                                 sizeof(uint64_t));
@@ -2647,7 +2668,7 @@ int32_t SSDSparseTable::LoadWithString(
         } else {
           auto& value = shard[key];
           value.resize(value_size);
-          _value_accesor->ParseFromString(end, value.data());
+          _value_accessor->ParseFromString(end, value.data());
           mem_count++;
           if (value_size > feature_value_size - mf_value_size) {
             mem_mf_count++;
@@ -2687,9 +2708,9 @@ int32_t SSDSparseTable::LoadWithString(
 
 int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
   size_t feature_value_size =
-      _value_accesor->GetAccessorInfo().size / sizeof(float);
+      _value_accessor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_size =
-      _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
+      _value_accessor->GetAccessorInfo().mf_size / sizeof(float);
   // task pool _file_num_one_shard default 7
   auto task_pool = std::make_shared<::ThreadPool>(_real_local_shard_num * 7);
   auto filelists = _afs_client.list(::paddle::string::format_string(
@@ -2699,9 +2720,9 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
 
   for (int shard_idx = 0; shard_idx < _real_local_shard_num; shard_idx++) {
     // FsChannelConfig channel_config;
-    // channel_config.converter = _value_accesor->Converter(param).converter;
+    // channel_config.converter = _value_accessor->Converter(param).converter;
     // channel_config.deconverter =
-    // _value_accesor->Converter(param).deconverter;
+    // _value_accessor->Converter(param).deconverter;
     for (auto& filename : filelists) {
       std::vector<std::string> split_filename_string =
           ::paddle::string::split_string<std::string>(filename, "-");
@@ -2721,9 +2742,9 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
                                         param]() -> int {
         // &channel_config]() -> int {
         FsChannelConfig channel_config;
-        channel_config.converter = _value_accesor->Converter(param).converter;
+        channel_config.converter = _value_accessor->Converter(param).converter;
         channel_config.deconverter =
-            _value_accesor->Converter(param).deconverter;
+            _value_accessor->Converter(param).deconverter;
         int err_no = 0;
         uint64_t mem_count = 0;
         uint64_t mem_mf_count = 0;
@@ -2826,7 +2847,9 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
                     abort();
                   }
                   last_k = k;
-                  _value_accesor->UpdatePassId(convert_value, 0);
+#ifdef PADDLE_WITH_PSLIB
+                  _value_accessor->UpdatePassId(convert_value, 0);
+#endif
                   rocksdb::Status status = sst_writer.Put(
                       rocksdb::Slice(reinterpret_cast<char*>(&k),
                                      sizeof(uint64_t)),
@@ -2842,7 +2865,9 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
                   }
                 } else {
                   auto& feature_value = shard[k];
-                  _value_accesor->UpdatePassId(convert_value, 0);
+#ifdef PADDLE_WITH_PSLIB
+                  _value_accessor->UpdatePassId(convert_value, 0);
+#endif
                   feature_value.resize(dim);
                   memcpy(const_cast<float*>(feature_value.data()),
                          convert_value,
@@ -2896,7 +2921,7 @@ int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
     auto sst_filelist = _afs_client.list(::paddle::string::format_string(
         "%s_%d/part-*", FLAGS_rocksdb_path.c_str(), shard_idx));
     if (!sst_filelist.empty()) {
-      int ret = _db->ingest_externel_file(shard_idx, sst_filelist);
+      int ret = _db->ingest_external_file(shard_idx, sst_filelist);
       if (ret) {
         VLOG(0) << "ingest file failed";
         abort();
@@ -2978,7 +3003,7 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
             std::vector<DataType> datas;
             datas.reserve(shard.size() * 0.8);
             for (auto it = shard.begin(); it != shard.end(); ++it) {
-              if (!_value_accesor->SaveMemCache(
+              if (!_value_accessor->SaveMemCache(
                       it.value().data(), 0, show_threshold, pass_id)) {
                 datas.emplace_back(it.it);
               }
@@ -3038,7 +3063,7 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
               }
               VLOG(0) << "write sst_file shard " << shard_id << ": "
                       << butil::gettimeofday_ms() - show_begin << " ms";
-              int ret = _db->ingest_externel_file(shard_id, {filename});
+              int ret = _db->ingest_external_file(shard_id, {filename});
               if (ret) {
                 VLOG(0) << "ingest file failed"
                         << ", " << status.getState();
@@ -3047,7 +3072,7 @@ int32_t SSDSparseTable::CacheTable(uint16_t pass_id) {
             }
 
             for (auto it = shard.begin(); it != shard.end();) {
-              if (!_value_accesor->SaveMemCache(
+              if (!_value_accessor->SaveMemCache(
                       it.value().data(), 0, show_threshold, pass_id)) {
                 it = shard.erase(it);
               } else {

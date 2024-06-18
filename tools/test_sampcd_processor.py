@@ -103,19 +103,23 @@ class Test_get_api_md5(unittest.TestCase):
     def test_get_api_md5(self):
         res = get_api_md5('paddle/fluid/API_PR.spec')
         self.assertEqual(
-            "ff0f188c95030158cc6398d2a6c55one", res['paddle.one_plus_one']
+            "ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ff0f188c95030158cc6398d2a6c55one",
+            res['paddle.one_plus_one'],
         )
         self.assertEqual(
-            "ff0f188c95030158cc6398d2a6c55two", res['paddle.two_plus_two']
+            "ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ff0f188c95030158cc6398d2a6c55two",
+            res['paddle.two_plus_two'],
         )
         self.assertEqual(
-            "ff0f188c95030158cc6398d2a6cthree", res['paddle.three_plus_three']
+            "ArgSpec(args=[], varargs=None, keywords=None, defaults=(,)), ff0f188c95030158cc6398d2a6cthree",
+            res['paddle.three_plus_three'],
         )
         self.assertEqual(
             "ff0f188c95030158cc6398d2a6c5four", res['paddle.four_plus_four']
         )
         self.assertEqual(
-            "ff0f188c95030158cc6398d2a6c5five", res['paddle.five_plus_five']
+            "ArgSpec(), ff0f188c95030158cc6398d2a6c5five",
+            res['paddle.five_plus_five'],
         )
 
 
@@ -302,8 +306,8 @@ class TestGetTestResults(unittest.TestCase):
                     >>> import paddle
                     >>> a = paddle.to_tensor(.2)
                     >>> print(a)
-                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [0.20000000])
+                    Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    0.20000000)
             """,
             'set_default': """
             placeholder
@@ -319,8 +323,8 @@ class TestGetTestResults(unittest.TestCase):
                     >>> paddle.set_default_dtype('float64')
                     >>> a = paddle.to_tensor(.2)
                     >>> print(a)
-                    Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
-                    [0.20000000])
+                    Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+                    0.20000000)
             """,
             'after_set_default': """
             placeholder
@@ -335,8 +339,8 @@ class TestGetTestResults(unittest.TestCase):
                     >>> import paddle
                     >>> a = paddle.to_tensor(.2)
                     >>> print(a)
-                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [0.20000000])
+                    Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    0.20000000)
             """,
         }
 
@@ -509,10 +513,10 @@ class TestGetTestResults(unittest.TestCase):
                     >>> import paddle
                     >>> paddle.device.set_device('gpu')
                     >>> a = paddle.to_tensor(.2)
-                    >>> # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.20000000])
+                    >>> # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True, 0.20000000)
                     >>> print(a)
-                    Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                    [0.20000000])
+                    Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                    0.20000000)
 
             """,
             'cpu_to_cpu': """
@@ -528,10 +532,10 @@ class TestGetTestResults(unittest.TestCase):
                     >>> import paddle
                     >>> paddle.device.set_device('cpu')
                     >>> a = paddle.to_tensor(.2)
-                    >>> # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True, [0.20000000])
+                    >>> # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True, 0.20000000)
                     >>> print(a)
-                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [0.20000000])
+                    Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    0.20000000)
 
             """,
             'gpu_to_cpu': """
@@ -547,10 +551,10 @@ class TestGetTestResults(unittest.TestCase):
                     >>> import paddle
                     >>> paddle.device.set_device('gpu')
                     >>> a = paddle.to_tensor(.2)
-                    >>> # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True, [0.20000000])
+                    >>> # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True, 0.20000000)
                     >>> print(a)
-                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [0.20000000])
+                    Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    0.20000000)
 
             """,
             'cpu_to_gpu': """
@@ -566,10 +570,10 @@ class TestGetTestResults(unittest.TestCase):
                     >>> import paddle
                     >>> paddle.device.set_device('cpu')
                     >>> a = paddle.to_tensor(.2)
-                    >>> # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True, [0.20000000])
+                    >>> # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True, 0.20000000)
                     >>> print(a)
-                    Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                    [0.20000000])
+                    Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                    0.20000000)
             """,
             'gpu_to_cpu_array': """
             placeholder
@@ -701,8 +705,8 @@ class TestGetTestResults(unittest.TestCase):
                     >>> paddle.device.set_device('gpu')
                     >>> a = paddle.to_tensor(.123456789)
                     >>> print(a)
-                    Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                    [0.123456780])
+                    Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                    0.123456780)
 
             """,
             'cpu_to_cpu': """
@@ -719,8 +723,8 @@ class TestGetTestResults(unittest.TestCase):
                     >>> paddle.device.set_device('cpu')
                     >>> a = paddle.to_tensor(.123456789)
                     >>> print(a)
-                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [0.123456780])
+                    Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    0.123456780)
 
             """,
             'gpu_to_cpu': """
@@ -737,8 +741,8 @@ class TestGetTestResults(unittest.TestCase):
                     >>> paddle.device.set_device('gpu')
                     >>> a = paddle.to_tensor(.123456789)
                     >>> print(a)
-                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [0.123456780])
+                    Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    0.123456780)
 
             """,
             'cpu_to_gpu': """
@@ -755,8 +759,8 @@ class TestGetTestResults(unittest.TestCase):
                     >>> paddle.device.set_device('cpu')
                     >>> a = paddle.to_tensor(.123456789)
                     >>> print(a)
-                    Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                    [0.123456780])
+                    Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                    0.123456780)
             """,
             'gpu_to_cpu_array': """
             placeholder
@@ -2046,7 +2050,7 @@ class TestGetTestResults(unittest.TestCase):
 
     def test_bad_statements(self):
         docstrings_to_test = {
-            'bad_fluid': """
+            'good_fluid': """
             this is docstring...
 
             Examples:
@@ -2191,9 +2195,9 @@ class TestGetTestResults(unittest.TestCase):
             tr_10,
         ) = test_results
 
-        self.assertIn('bad_fluid', tr_0.name)
-        self.assertTrue(tr_0.badstatement)
-        self.assertFalse(tr_0.passed)
+        self.assertIn('good_fluid', tr_0.name)
+        self.assertFalse(tr_0.badstatement)
+        self.assertTrue(tr_0.passed)
 
         self.assertIn('bad_fluid_from', tr_1.name)
         self.assertTrue(tr_1.badstatement)

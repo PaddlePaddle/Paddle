@@ -26,7 +26,8 @@ from predictor_utils import PredictorTools
 
 import paddle
 from paddle import base
-from paddle.base.dygraph import to_variable
+from paddle.framework import use_pir_api
+from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import Linear
 from paddle.optimizer import Adam
@@ -184,9 +185,7 @@ class TestMNISTWithToStatic(TestMNIST):
             dygraph_loss_cpu,
             dygraph_loss_mkldnn,
             rtol=1e-05,
-            err_msg='cpu dygraph is {}\n mkldnn dygraph is \n{}'.format(
-                dygraph_loss_cpu, dygraph_loss_mkldnn
-            ),
+            err_msg=f'cpu dygraph is {dygraph_loss_cpu}\n mkldnn dygraph is \n{dygraph_loss_mkldnn}',
         )
 
     def train(self, to_static=False):
@@ -209,8 +208,8 @@ class TestMNISTWithToStatic(TestMNIST):
                     .reshape(-1, 1)
                 )
 
-                img = to_variable(dy_x_data)
-                label = to_variable(y_data)
+                img = paddle.to_tensor(dy_x_data)
+                label = paddle.to_tensor(y_data)
 
                 label.stop_gradient = True
                 prediction, acc, avg_loss = mnist(img, label=label)
@@ -222,13 +221,7 @@ class TestMNISTWithToStatic(TestMNIST):
                 mnist.clear_gradients()
                 if batch_id % 10 == 0:
                     print(
-                        "Loss at epoch {} step {}: loss: {:}, acc: {}, cost: {}".format(
-                            epoch,
-                            batch_id,
-                            avg_loss.numpy(),
-                            acc.numpy(),
-                            time() - start,
-                        )
+                        f"Loss at epoch {epoch} step {batch_id}: loss: {avg_loss.numpy()}, acc: {acc.numpy()}, cost: {time() - start}"
                     )
                     start = time()
                 if batch_id == 50:
@@ -236,16 +229,15 @@ class TestMNISTWithToStatic(TestMNIST):
                     prediction, acc, avg_loss = mnist(img, label)
                     loss_data.append(float(avg_loss))
                     # new save load check
-                    # TODO(@xiongkun): enable this after new save load is supported in pir.
-                    if not paddle.framework.use_pir_api():
-                        self.check_jit_save_load(
-                            mnist,
-                            [dy_x_data],
-                            [img, label],
-                            to_static,
-                            prediction,
-                            [img.name],
-                        )
+                    self.check_jit_save_load(
+                        mnist,
+                        [dy_x_data],
+                        [img, label],
+                        to_static,
+                        prediction,
+                        0,
+                        [img.name],
+                    )
                     break
         return loss_data
 
@@ -256,6 +248,7 @@ class TestMNISTWithToStatic(TestMNIST):
         input_spec,
         to_static,
         gt_out,
+        gt_out_index,
         input_names_after_prune,
     ):
         if to_static:
@@ -264,13 +257,16 @@ class TestMNISTWithToStatic(TestMNIST):
             )
             model_save_dir = os.path.join(self.temp_dir.name, 'inference')
             model_save_prefix = os.path.join(model_save_dir, 'mnist')
-            model_filename = "mnist" + INFER_MODEL_SUFFIX
+            MODEL_SUFFIX = (
+                PIR_INFER_MODEL_SUFFIX if use_pir_api() else INFER_MODEL_SUFFIX
+            )
+            model_filename = "mnist" + MODEL_SUFFIX
             params_filename = "mnist" + INFER_PARAMS_SUFFIX
             paddle.jit.save(
                 layer=model,
                 path=model_save_prefix,
                 input_spec=input_spec,
-                output_spec=[gt_out],
+                output_spec=[gt_out_index] if use_pir_api() else [gt_out],
                 input_names_after_prune=input_names_after_prune,
             )
             # load in static graph mode
@@ -287,6 +283,7 @@ class TestMNISTWithToStatic(TestMNIST):
             np.testing.assert_allclose(
                 gt_out.numpy(), dygraph_infer_out, rtol=1e-05
             )
+
             # load in Paddle-Inference
             predictor_infer_out = (
                 self.predictor_load_and_run_inference_analysis(

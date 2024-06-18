@@ -137,7 +137,7 @@ int32_t MemorySparseTable::Load(const std::string &path,
   }
 
   size_t feature_value_size =
-      _value_accesor->GetAccessorInfo().size / sizeof(float);
+      _value_accessor->GetAccessorInfo().size / sizeof(float);
 
 #ifdef PADDLE_WITH_HETERPS
   int thread_num = _real_local_shard_num;
@@ -148,13 +148,13 @@ int32_t MemorySparseTable::Load(const std::string &path,
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < _real_local_shard_num; ++i) {
-    FsChannelConfig channel_config;
+    FsChannelConfig channel_config = {};
     channel_config.path = file_list[file_start_idx + i];
     VLOG(1) << "MemorySparseTable::load begin load " << channel_config.path
             << " into local shard " << i;
-    channel_config.converter = _value_accesor->Converter(load_param).converter;
+    channel_config.converter = _value_accessor->Converter(load_param).converter;
     channel_config.deconverter =
-        _value_accesor->Converter(load_param).deconverter;
+        _value_accessor->Converter(load_param).deconverter;
 
     bool is_read_failed = false;
     int retry_num = 0;
@@ -164,7 +164,7 @@ int32_t MemorySparseTable::Load(const std::string &path,
       err_no = 0;
       std::string line_data;
       auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
-      char *end = NULL;
+      char *end = nullptr;
       auto &shard = _local_shards[i];
       try {
         while (read_channel->read_line(line_data) == 0 &&
@@ -172,7 +172,8 @@ int32_t MemorySparseTable::Load(const std::string &path,
           uint64_t key = std::strtoul(line_data.data(), &end, 10);
           auto &value = shard[key];
           value.resize(feature_value_size);
-          int parse_size = _value_accesor->ParseFromString(++end, value.data());
+          int parse_size =
+              _value_accessor->ParseFromString(++end, value.data());
           value.resize(parse_size);
         }
         read_channel->close();
@@ -218,7 +219,7 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string> &file_list,
     return 0;
   }
   size_t feature_value_size =
-      _value_accesor->GetAccessorInfo().size / sizeof(float);
+      _value_accessor->GetAccessorInfo().size / sizeof(float);
   end_idx =
       end_idx < _m_sparse_table_shard_num ? end_idx : _m_sparse_table_shard_num;
   int thread_num = (end_idx - start_idx) < 15 ? (end_idx - start_idx) : 15;
@@ -226,11 +227,11 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string> &file_list,
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
   for (int i = start_idx; i < end_idx; ++i) {
-    FsChannelConfig channel_config;
+    FsChannelConfig channel_config = {};
     channel_config.path = file_list[i];
-    channel_config.converter = _value_accesor->Converter(load_param).converter;
+    channel_config.converter = _value_accessor->Converter(load_param).converter;
     channel_config.deconverter =
-        _value_accesor->Converter(load_param).deconverter;
+        _value_accessor->Converter(load_param).deconverter;
 
     bool is_read_failed = false;
     int retry_num = 0;
@@ -240,7 +241,7 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string> &file_list,
       err_no = 0;
       std::string line_data;
       auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
-      char *end = NULL;
+      char *end = nullptr;
       int m_local_shard_id = i % _m_avg_local_shard_num;
       std::unordered_set<size_t> global_shard_idx;
       std::string global_shard_idx_str;
@@ -272,7 +273,8 @@ int32_t MemorySparseTable::LoadPatch(const std::vector<std::string> &file_list,
 
           auto &value = shard[key];
           value.resize(feature_value_size);
-          int parse_size = _value_accesor->ParseFromString(++end, value.data());
+          int parse_size =
+              _value_accessor->ParseFromString(++end, value.data());
           value.resize(parse_size);
         }
         read_channel->close();
@@ -349,7 +351,7 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < _real_local_shard_num; ++i) {
-    FsChannelConfig channel_config;
+    FsChannelConfig channel_config = {};
     if (_config.compress_in_save() && (save_param == 0 || save_param == 3)) {
       channel_config.path =
           ::paddle::string::format_string("%s/part-%03d-%05d.gz",
@@ -362,9 +364,9 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
                                                             _shard_idx,
                                                             file_start_idx + i);
     }
-    channel_config.converter = _value_accesor->Converter(save_param).converter;
+    channel_config.converter = _value_accessor->Converter(save_param).converter;
     channel_config.deconverter =
-        _value_accesor->Converter(save_param).deconverter;
+        _value_accessor->Converter(save_param).deconverter;
     bool is_write_failed = false;
     int feasign_size = 0;
     int retry_num = 0;
@@ -374,7 +376,7 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
     // for incremental training, batch_model increase unseenday before save
     if (save_param == 3) {
       for (auto it = shard.begin(); it != shard.end(); ++it) {
-        _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+        _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
       }
     }
 #endif
@@ -387,13 +389,13 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
       for (auto it = shard.begin(); it != shard.end(); ++it) {
         if (_config.enable_sparse_table_cache() &&
             (save_param == 1 || save_param == 2) &&
-            _value_accesor->Save(it.value().data(), 4)) {
+            _value_accessor->Save(it.value().data(), 4)) {
           CostTimer timer10("sprase table top push");
-          tk.push(i, _value_accesor->GetField(it.value().data(), "show"));
+          tk.push(i, _value_accessor->GetField(it.value().data(), "show"));
         }
 
-        if (_value_accesor->Save(it.value().data(), save_param)) {
-          std::string format_value = _value_accesor->ParseToString(
+        if (_value_accessor->Save(it.value().data(), save_param)) {
+          std::string format_value = _value_accessor->ParseToString(
               it.value().data(), it.value().size());
           if (0 != write_channel->write_line(::paddle::string::format_string(
                        "%lu %s", it.key(), format_value.c_str()))) {
@@ -426,12 +428,12 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
     feasign_size_all += feasign_size;
 #ifndef PADDLE_WITH_GPU_GRAPH
     for (auto it = shard.begin(); it != shard.end(); ++it) {
-      _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+      _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
     }
 #else
     if (save_param != 3) {
       for (auto it = shard.begin(); it != shard.end(); ++it) {
-        _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+        _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
       }
     }
 #endif
@@ -446,7 +448,7 @@ int32_t MemorySparseTable::Save(const std::string &dirname,
 #ifdef PADDLE_WITH_GPU_GRAPH
 int32_t MemorySparseTable::Save_v2(const std::string &dirname,
                                    const std::string &param) {
-  auto *save_filtered_slots = _value_accesor->GetSaveFilteredSlots();
+  auto *save_filtered_slots = _value_accessor->GetSaveFilteredSlots();
   if (save_filtered_slots == nullptr || (save_filtered_slots->size()) <= 0) {
     return Save(dirname, param);
   }
@@ -493,7 +495,7 @@ int32_t MemorySparseTable::Save_v2(const std::string &dirname,
 
 #pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < _real_local_shard_num; ++i) {
-    FsChannelConfig channel_config;
+    FsChannelConfig channel_config = {};
     FsChannelConfig channel_config_for_slot_feature;
 
     if (_config.compress_in_save() && (save_param == 0 || save_param == 3)) {
@@ -518,13 +520,13 @@ int32_t MemorySparseTable::Save_v2(const std::string &dirname,
                                         _shard_idx,
                                         file_start_idx + i);
     }
-    channel_config.converter = _value_accesor->Converter(save_param).converter;
+    channel_config.converter = _value_accessor->Converter(save_param).converter;
     channel_config.deconverter =
-        _value_accesor->Converter(save_param).deconverter;
+        _value_accessor->Converter(save_param).deconverter;
     channel_config_for_slot_feature.converter =
-        _value_accesor->Converter(save_param).converter;
+        _value_accessor->Converter(save_param).converter;
     channel_config_for_slot_feature.deconverter =
-        _value_accesor->Converter(save_param).deconverter;
+        _value_accessor->Converter(save_param).deconverter;
 
     bool is_write_failed = false;
     bool is_write_failed_for_slot_feature = false;
@@ -539,7 +541,7 @@ int32_t MemorySparseTable::Save_v2(const std::string &dirname,
     // for incremental training, batch_model increase unseenday before save
     if (save_param == 3) {
       for (auto it = shard.begin(); it != shard.end(); ++it) {
-        _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+        _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
       }
     }
 #endif
@@ -559,13 +561,13 @@ int32_t MemorySparseTable::Save_v2(const std::string &dirname,
       for (auto it = shard.begin(); it != shard.end(); ++it) {
         if (_config.enable_sparse_table_cache() &&
             (save_param == 1 || save_param == 2) &&
-            _value_accesor->Save(it.value().data(), 4)) {
+            _value_accessor->Save(it.value().data(), 4)) {
           CostTimer timer10("sparse table top push");
-          tk.push(i, _value_accesor->GetField(it.value().data(), "show"));
+          tk.push(i, _value_accessor->GetField(it.value().data(), "show"));
         }
 
-        if (_value_accesor->Save(it.value().data(), save_param)) {
-          std::string format_value = _value_accesor->ParseToString(
+        if (_value_accessor->Save(it.value().data(), save_param)) {
+          std::string format_value = _value_accessor->ParseToString(
               it.value().data(), it.value().size());
           if (0 != write_channel->write_line(::paddle::string::format_string(
                        "%lu %s", it.key(), format_value.c_str()))) {
@@ -578,7 +580,7 @@ int32_t MemorySparseTable::Save_v2(const std::string &dirname,
           }
           ++feasign_size;
           // save non 9008 slot's feasign
-          if (_value_accesor->SaveFilterSlot(it.value().data())) {
+          if (_value_accessor->SaveFilterSlot(it.value().data())) {
             if (0 != write_channel_for_slot_feature->write_line(
                          paddle::string::format_string(
                              "%lu %s", it.key(), format_value.c_str()))) {
@@ -632,12 +634,12 @@ int32_t MemorySparseTable::Save_v2(const std::string &dirname,
     feasign_size_all_for_slot_feature += feasign_size_for_slot_feature;
 #ifndef PADDLE_WITH_GPU_GRAPH
     for (auto it = shard.begin(); it != shard.end(); ++it) {
-      _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+      _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
     }
 #else
     if (save_param != 3) {
       for (auto it = shard.begin(); it != shard.end(); ++it) {
-        _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+        _value_accessor->UpdateStatAfterSave(it.value().data(), save_param);
       }
     }
 #endif
@@ -668,15 +670,15 @@ int32_t MemorySparseTable::SavePatch(const std::string &path, int save_param) {
   omp_set_num_threads(thread_num);
 #pragma omp parallel for schedule(dynamic)
   for (int i = 0; i < _m_real_local_shard_num; ++i) {
-    FsChannelConfig channel_config;
+    FsChannelConfig channel_config = {};
     channel_config.path = ::paddle::string::format_string("%s/part-%03d-%05d",
                                                           table_path.c_str(),
                                                           _shard_idx,
                                                           file_start_idx + i);
 
-    channel_config.converter = _value_accesor->Converter(save_param).converter;
+    channel_config.converter = _value_accessor->Converter(save_param).converter;
     channel_config.deconverter =
-        _value_accesor->Converter(save_param).deconverter;
+        _value_accessor->Converter(save_param).deconverter;
 
     bool is_write_failed = false;
     int feasign_size = 0;
@@ -693,8 +695,8 @@ int32_t MemorySparseTable::SavePatch(const std::string &path, int save_param) {
         if (j % _m_real_local_shard_num == i) {
           auto &shard = _local_shards_patch_model[j];
           for (auto it = shard.begin(); it != shard.end(); ++it) {
-            if (_value_accesor->Save(it.value().data(), save_param)) {
-              std::string format_value = _value_accesor->ParseToString(
+            if (_value_accessor->Save(it.value().data(), save_param)) {
+              std::string format_value = _value_accessor->ParseToString(
                   it.value().data(), it.value().size());
               if (0 !=
                   write_channel->write_line(::paddle::string::format_string(
@@ -785,13 +787,13 @@ int64_t MemorySparseTable::CacheShuffle(
     writer.Reset(tmp_channels[i].get());
 
     for (auto table_ptr : table_ptrs) {
-      auto value_accesor = table_ptr->ValueAccesor();
+      auto value_accessor = table_ptr->GetValueAccessor();
       shard_type *shard_ptr = static_cast<shard_type *>(table_ptr->GetShard(i));
 
       for (auto it = shard_ptr->begin(); it != shard_ptr->end(); ++it) {
-        if (value_accesor->SaveCache(
+        if (value_accessor->SaveCache(
                 it.value().data(), save_param, cache_threshold)) {
-          std::string format_value = value_accesor->ParseToString(
+          std::string format_value = value_accessor->ParseToString(
               it.value().data(), it.value().size());
           std::pair<uint64_t, std::string> pkv(it.key(), format_value.c_str());
           writer << pkv;
@@ -868,13 +870,13 @@ int32_t MemorySparseTable::SaveCache(
   _afs_client.remove(::paddle::string::format_string(
       "%s/part-%03d", table_path.c_str(), _shard_idx));
   uint32_t feasign_size = 0;
-  FsChannelConfig channel_config;
+  FsChannelConfig channel_config = {};
   // not compress cache model
   channel_config.path = ::paddle::string::format_string(
       "%s/part-%03d", table_path.c_str(), _shard_idx);
-  channel_config.converter = _value_accesor->Converter(save_param).converter;
+  channel_config.converter = _value_accessor->Converter(save_param).converter;
   channel_config.deconverter =
-      _value_accesor->Converter(save_param).deconverter;
+      _value_accessor->Converter(save_param).deconverter;
   auto write_channel = _afs_client.open_w(channel_config, 1024 * 1024 * 40);
   std::vector<std::pair<uint64_t, std::string>> data;
   bool is_write_failed = false;
@@ -922,7 +924,7 @@ int64_t MemorySparseTable::LocalMFSize() {
               auto &local_shard = _local_shards[shard_id];
               for (auto it = local_shard.begin(); it != local_shard.end();
                    ++it) {
-                if (_value_accesor->HasMF(it.value().size())) {
+                if (_value_accessor->HasMF(it.value().size())) {
                   size_arr[shard_id] += 1;
                 }
               }
@@ -976,11 +978,11 @@ int32_t MemorySparseTable::PullSparse(float *pull_values,
   std::vector<std::future<int>> tasks(_real_local_shard_num);
 
   const size_t value_size =
-      _value_accesor->GetAccessorInfo().size / sizeof(float);
+      _value_accessor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_size =
-      _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
+      _value_accessor->GetAccessorInfo().mf_size / sizeof(float);
   size_t select_value_size =
-      _value_accesor->GetAccessorInfo().select_size / sizeof(float);
+      _value_accessor->GetAccessorInfo().select_size / sizeof(float);
   // std::atomic<uint32_t> missed_keys{0};
 
   std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
@@ -1018,7 +1020,7 @@ int32_t MemorySparseTable::PullSparse(float *pull_values,
                     auto &feature_value = local_shard[key];
                     feature_value.resize(data_size);
                     float *data_ptr = feature_value.data();
-                    _value_accesor->Create(&data_buffer_ptr, 1);
+                    _value_accessor->Create(&data_buffer_ptr, 1);
                     memcpy(
                         data_ptr, data_buffer_ptr, data_size * sizeof(float));
                   }
@@ -1033,7 +1035,7 @@ int32_t MemorySparseTable::PullSparse(float *pull_values,
                 }
                 auto offset = item.second;
                 float *select_data = pull_values + select_value_size * offset;
-                _value_accesor->Select(
+                _value_accessor->Select(
                     &select_data, (const float **)&data_buffer_ptr, 1);
               }
 
@@ -1053,9 +1055,9 @@ int32_t MemorySparseTable::PullSparsePtr(int shard_id,  // fake num
                                          size_t num,
                                          uint16_t pass_id) {
   CostTimer timer("pscore_sparse_select_all");
-  size_t value_size = _value_accesor->GetAccessorInfo().size / sizeof(float);
+  size_t value_size = _value_accessor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_size =
-      _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
+      _value_accessor->GetAccessorInfo().mf_size / sizeof(float);
 
   std::vector<std::future<int>> tasks(_real_local_shard_num);
   std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(
@@ -1088,7 +1090,7 @@ int32_t MemorySparseTable::PullSparsePtr(int shard_id,  // fake num
                   auto &feature_value = local_shard[key];
                   feature_value.resize(data_size);
                   float *data_ptr = feature_value.data();
-                  _value_accesor->Create(&data_buffer_ptr, 1);
+                  _value_accessor->Create(&data_buffer_ptr, 1);
                   memcpy(data_ptr, data_buffer_ptr, data_size * sizeof(float));
                   ret = &feature_value;
                 } else {
@@ -1119,11 +1121,11 @@ int32_t MemorySparseTable::PushSparse(const uint64_t *keys,
   }
 
   const size_t value_col =
-      _value_accesor->GetAccessorInfo().size / sizeof(float);
+      _value_accessor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_col =
-      _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
+      _value_accessor->GetAccessorInfo().mf_size / sizeof(float);
   size_t update_value_col =
-      _value_accesor->GetAccessorInfo().update_size / sizeof(float);
+      _value_accessor->GetAccessorInfo().update_size / sizeof(float);
 
   for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
     tasks[shard_id] = _shards_task_pool[shard_id % _task_pool_size]->enqueue(
@@ -1147,13 +1149,13 @@ int32_t MemorySparseTable::PushSparse(const uint64_t *keys,
             auto itr = local_shard.find(key);
             if (itr == local_shard.end()) {
               if (FLAGS_pserver_enable_create_feasign_randomly &&
-                  !_value_accesor->CreateValue(1, update_data)) {
+                  !_value_accessor->CreateValue(1, update_data)) {
                 continue;
               }
               auto value_size = value_col - mf_value_col;
               auto &feature_value = local_shard[key];
               feature_value.resize(value_size);
-              _value_accesor->Create(&data_buffer_ptr, 1);
+              _value_accessor->Create(&data_buffer_ptr, 1);
               memcpy(feature_value.data(),
                      data_buffer_ptr,
                      value_size * sizeof(float));
@@ -1165,16 +1167,16 @@ int32_t MemorySparseTable::PushSparse(const uint64_t *keys,
             size_t value_size = feature_value.size();
 
             if (value_size == value_col) {  // 已拓展到最大size, 则就地update
-              _value_accesor->Update(&value_data, &update_data, 1);
+              _value_accessor->Update(&value_data, &update_data, 1);
             } else {
               // 拷入buffer区进行update，然后再回填，不需要的mf则回填时抛弃了
               memcpy(data_buffer_ptr, value_data, value_size * sizeof(float));
-              _value_accesor->Update(&data_buffer_ptr, &update_data, 1);
+              _value_accessor->Update(&data_buffer_ptr, &update_data, 1);
 
-              if (_value_accesor->NeedExtendMF(data_buffer)) {
+              if (_value_accessor->NeedExtendMF(data_buffer)) {
                 feature_value.resize(value_col);
                 value_data = feature_value.data();
-                _value_accesor->Create(&value_data, 1);
+                _value_accessor->Create(&value_data, 1);
               }
               memcpy(value_data, data_buffer_ptr, value_size * sizeof(float));
             }
@@ -1208,21 +1210,13 @@ int32_t MemorySparseTable::PushSparse(const uint64_t *keys,
     task_keys[shard_id].push_back({keys[i], i});
   }
 
-  size_t value_col = _value_accesor->GetAccessorInfo().size / sizeof(float);
+  size_t value_col = _value_accessor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_col =
-      _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
-  size_t update_value_col =
-      _value_accesor->GetAccessorInfo().update_size / sizeof(float);
+      _value_accessor->GetAccessorInfo().mf_size / sizeof(float);
 
   for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
     tasks[shard_id] = _shards_task_pool[shard_id % _task_pool_size]->enqueue(
-        [this,
-         shard_id,
-         value_col,
-         mf_value_col,
-         update_value_col,
-         values,
-         &task_keys]() -> int {
+        [this, shard_id, value_col, mf_value_col, values, &task_keys]() -> int {
           auto &keys = task_keys[shard_id];
           auto &local_shard = _local_shards[shard_id];
           float data_buffer[value_col];  // NOLINT
@@ -1234,13 +1228,13 @@ int32_t MemorySparseTable::PushSparse(const uint64_t *keys,
             auto itr = local_shard.find(key);
             if (itr == local_shard.end()) {
               if (FLAGS_pserver_enable_create_feasign_randomly &&
-                  !_value_accesor->CreateValue(1, update_data)) {
+                  !_value_accessor->CreateValue(1, update_data)) {
                 continue;
               }
               auto value_size = value_col - mf_value_col;
               auto &feature_value = local_shard[key];
               feature_value.resize(value_size);
-              _value_accesor->Create(&data_buffer_ptr, 1);
+              _value_accessor->Create(&data_buffer_ptr, 1);
               memcpy(feature_value.data(),
                      data_buffer_ptr,
                      value_size * sizeof(float));
@@ -1250,15 +1244,15 @@ int32_t MemorySparseTable::PushSparse(const uint64_t *keys,
             float *value_data = feature_value.data();
             size_t value_size = feature_value.size();
             if (value_size == value_col) {  // 已拓展到最大size, 则就地update
-              _value_accesor->Update(&value_data, &update_data, 1);
+              _value_accessor->Update(&value_data, &update_data, 1);
             } else {
               // 拷入buffer区进行update，然后再回填，不需要的mf则回填时抛弃了
               memcpy(data_buffer_ptr, value_data, value_size * sizeof(float));
-              _value_accesor->Update(&data_buffer_ptr, &update_data, 1);
-              if (_value_accesor->NeedExtendMF(data_buffer)) {
+              _value_accessor->Update(&data_buffer_ptr, &update_data, 1);
+              if (_value_accessor->NeedExtendMF(data_buffer)) {
                 feature_value.resize(value_col);
                 value_data = feature_value.data();
-                _value_accesor->Create(&value_data, 1);
+                _value_accessor->Create(&value_data, 1);
               }
               memcpy(value_data, data_buffer_ptr, value_size * sizeof(float));
             }
@@ -1286,7 +1280,7 @@ int32_t MemorySparseTable::Shrink(const std::string &param) {
     int feasign_size = 0;
     auto &shard = _local_shards[shard_id];
     for (auto it = shard.begin(); it != shard.end();) {
-      if (_value_accesor->Shrink(it.value().data())) {
+      if (_value_accessor->Shrink(it.value().data())) {
         it = shard.erase(it);
         ++feasign_size;
       } else {

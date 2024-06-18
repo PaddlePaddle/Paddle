@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include <google/protobuf/text_format.h>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/string/string_helper.h"
-#include "paddle/utils/flags.h"
+#include "paddle/utils/string/string_helper.h"
 
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
 #define STEP_COUNTER "@PS_STEP_COUNTER@"
@@ -33,12 +33,18 @@ using phi::SelectedRows;
 const uint32_t MAX_FEASIGN_NUM = 1024 * 100 * 100;
 
 inline double GetCurrentUS() {
-  struct timeval time;
+  struct timeval time = {0, 0};
   gettimeofday(&time, NULL);
   return 1e+6 * time.tv_sec + time.tv_usec;
 }
 
-Communicator::Communicator() = default;
+Communicator::Communicator()
+    : envs(),
+      trainers_(0),
+      send_varname_to_ctx_(),
+      recv_varname_to_ctx_(),
+      recv_scope_(nullptr),
+      xpu_temp_scope_(nullptr) {}
 
 void Communicator::InitGFlag(const std::string &gflags) {
   VLOG(3) << "Init With Gflags:" << gflags;
@@ -51,12 +57,12 @@ void Communicator::InitGFlag(const std::string &gflags) {
   }
   auto it = flags.begin();
   flags.insert(it, "exe default");
-  char *flags_ptr[flags.size()];
+  std::vector<char *> flags_ptr(flags.size());
   for (size_t i = 0; i < flags.size(); ++i) {
-    flags_ptr[i] = (char *)(flags[i].c_str());  // NOLINT
+    flags_ptr[i] = const_cast<char *>(flags[i].c_str());  // NOLINT
   }
   int params_cnt = flags.size();
-  char **params_ptr = &(flags_ptr[0]);
+  char **params_ptr = flags_ptr.data();
   ::paddle::flags::ParseCommandLineFlags(&params_cnt, &params_ptr);
 }
 
@@ -254,8 +260,8 @@ void Communicator::RpcSendSparseParam(const std::string &varname,
     push_g_vec.push_back(tensor->data<float>() + i * dim);
   }
 
-  DownpourBrpcClosure *closure = new DownpourBrpcClosure(
-      request_call_num, [this, request_call_num](void *done) {
+  DownpourBrpcClosure *closure =
+      new DownpourBrpcClosure(request_call_num, [request_call_num](void *done) {
         int ret = 0;
         auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
         for (size_t i = 0; i < request_call_num; ++i) {
@@ -422,8 +428,8 @@ void Communicator::SendGlobalStep(const CommContext &ctx,
   auto *data = out_t->mutable_data<int64_t>({1}, platform::CPUPlace());
   data[0] = static_cast<int64_t>(batches);
   VLOG(3) << "Communicator::SendGlobalStep send: " << batches;
-  DownpourBrpcClosure *closure = new DownpourBrpcClosure(
-      request_call_num, [this, request_call_num](void *done) {
+  DownpourBrpcClosure *closure =
+      new DownpourBrpcClosure(request_call_num, [request_call_num](void *done) {
         int ret = 0;
         auto *closure = (DownpourBrpcClosure *)done;  // NOLINT
         for (size_t i = 0; i < request_call_num; ++i) {

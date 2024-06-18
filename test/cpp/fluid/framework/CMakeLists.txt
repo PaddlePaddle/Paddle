@@ -1,11 +1,14 @@
 add_subdirectory(details)
 
-cc_test(
-  data_type_test
-  SRCS data_type_test.cc
-  DEPS data_type place tensor)
+paddle_test(data_type_test SRCS data_type_test.cc)
 
-cc_test(
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(data_type_test)
+endif()
+
+nv_test(
   tensor_test
   SRCS tensor_test.cc
   DEPS tensor isfinite_op)
@@ -20,26 +23,20 @@ elseif(WITH_ROCM)
     SRCS tensor_util_test.cc tensor_util_test.cu
     DEPS tensor dlpack_tensor isfinite_op)
 else()
-  cc_test(
+  nv_test(
     tensor_util_test
     SRCS tensor_util_test.cc
     DEPS tensor dlpack_tensor isfinite_op)
 endif()
 
-cc_test(
+nv_test(
   copy_same_tensor_test
   SRCS copy_same_tensor_test.cc
   DEPS tensor)
 
-cc_test(
-  eigen_test
-  SRCS eigen_test.cc
-  DEPS tensor)
+paddle_test(eigen_test SRCS eigen_test.cc)
 
-cc_test(
-  lod_tensor_test
-  SRCS lod_tensor_test.cc
-  DEPS phi common lod_tensor)
+paddle_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS common)
 
 if(WITH_GPU)
   nv_test(
@@ -53,35 +50,17 @@ elseif(WITH_ROCM)
     DEPS lod_tensor)
 endif()
 
-cc_test(
-  reader_test
-  SRCS reader_test.cc
-  DEPS reader)
+paddle_test(reader_test SRCS reader_test.cc)
 
-cc_test(
-  threadpool_test
-  SRCS threadpool_test.cc
-  DEPS phi common)
+paddle_test(threadpool_test SRCS threadpool_test.cc DEPS common)
 
-cc_test(
-  var_type_traits_test
-  SRCS var_type_traits_test.cc
-  DEPS var_type_traits)
+paddle_test(var_type_traits_test SRCS var_type_traits_test.cc)
 
-cc_test(
-  device_worker_test
-  SRCS device_worker_test.cc
-  DEPS device_worker)
+paddle_test(device_worker_test SRCS device_worker_test.cc)
 
-cc_test(
-  scope_test
-  SRCS scope_test.cc
-  DEPS scope)
+paddle_test(scope_test SRCS scope_test.cc)
 
-cc_test(
-  variable_test
-  SRCS variable_test.cc
-  DEPS tensor var_type_traits)
+paddle_test(variable_test SRCS variable_test.cc)
 
 if(WITH_GPU)
   nv_test(
@@ -106,36 +85,18 @@ elseif(WITH_ROCM)
     SRCS data_type_transform_test.cc data_type_transform_test.cu
     DEPS data_type_transform)
 elseif(WITH_XPU)
-  cc_test(
-    data_type_transform_test
-    SRCS data_type_transform_test.cc
-    DEPS data_type_transform)
+  paddle_test(data_type_transform_test SRCS data_type_transform_test.cc)
 else()
-  cc_test(
-    data_type_transform_test
-    SRCS data_type_transform_test.cc
-    DEPS data_type_transform)
+  paddle_test(data_type_transform_test SRCS data_type_transform_test.cc)
 endif()
 
-cc_test(
-  data_layout_transform_test
-  SRCS data_layout_transform_test.cc
-  DEPS data_layout_transform)
+paddle_test(data_layout_transform_test SRCS data_layout_transform_test.cc)
 
-cc_test(
-  attribute_test
-  SRCS attribute_test.cc
-  DEPS attribute framework_proto proto_desc)
+paddle_test(attribute_test SRCS attribute_test.cc)
 
-cc_test(
-  program_desc_test
-  SRCS program_desc_test.cc
-  DEPS proto_desc device_context)
+paddle_test(program_desc_test SRCS program_desc_test.cc)
 
-cc_test(
-  op_desc_test
-  SRCS op_desc_test.cc
-  DEPS proto_desc)
+paddle_test(op_desc_test SRCS op_desc_test.cc)
 
 cc_test(
   op_version_registry_test
@@ -237,7 +198,7 @@ endif()
 cc_test(
   prune_test
   SRCS prune_test.cc
-  DEPS op_info prune recurrent_op device_context)
+  DEPS op_info prune device_context)
 cc_test(
   var_type_inference_test
   SRCS var_type_inference_test.cc
@@ -306,43 +267,9 @@ cc_test(
   SRCS fleet/test_fleet.cc
   DEPS fleet_wrapper gloo_wrapper framework_io string_helper)
 
-if(WITH_CINN)
-  paddle_test(
-    cinn_cache_key_test
-    SRCS
-    paddle2cinn/cinn_cache_key_test.cc
-    DEPS
-    paddle2cinn
-    graph
-    python)
-  set_tests_properties(cinn_cache_key_test PROPERTIES LABELS "RUN_TYPE=CINN")
-
-  paddle_test(build_cinn_pass_test SRCS paddle2cinn/build_cinn_pass_test.cc)
-  set_tests_properties(build_cinn_pass_test PROPERTIES LABELS "RUN_TYPE=CINN")
-  # target_link_libraries(build_cinn_pass_test ${PYTHON_LIBRARIES})
-
-  paddle_test(cinn_zero_tensor_trick_pass_test SRCS
-              paddle2cinn/cinn_zero_tensor_trick_pass_test.cc DEPS paddle2cinn)
-  set_tests_properties(cinn_zero_tensor_trick_pass_test
-                       PROPERTIES LABELS "RUN_TYPE=CINN")
-  target_link_libraries(cinn_zero_tensor_trick_pass_test ${PYTHON_LIBRARIES})
-
-  paddle_test(transform_desc_test SRCS paddle2cinn/transform_desc_test.cc DEPS
-              paddle2cinn)
-  set_tests_properties(transform_desc_test PROPERTIES LABELS "RUN_TYPE=CINN")
-
-  paddle_test(
-    transform_type_test
-    SRCS
-    paddle2cinn/transform_type_test.cc
-    DEPS
-    paddle2cinn
-    cinnapi
-    cinn_op_dialect)
-  set_tests_properties(transform_type_test PROPERTIES LABELS "RUN_TYPE=CINN")
-endif()
-
 cc_test(
   workqueue_test
   SRCS new_executor/workqueue_test.cc
   DEPS standalone_executor)
+
+add_subdirectory(ir)

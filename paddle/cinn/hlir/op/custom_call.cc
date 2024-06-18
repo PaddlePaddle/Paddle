@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/backends/codegen_cuda_util.h"
+#include "paddle/cinn/backends/codegen_device_util.h"
 #include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -25,6 +26,7 @@
 #include "paddle/cinn/hlir/pe/transform.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 #ifdef CINN_WITH_CUDNN
 #include <cudnn.h>
@@ -100,12 +102,15 @@ std::shared_ptr<OpStrategy> StrategyForCustomCall(
         ir::Argument(kernel_args, ir::Argument::IO::kOutput),
         ir::Argument(kernel_args_num, ir::Argument::IO::kInput)};
     // if target is nvgpu, add stream.
-    if (target == cinn::common::DefaultNVGPUTarget()) {
-      ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
-
-      host_args.push_back(kernel_stream);
-      arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);
-    }
+    target.arch.Match(
+        [&](common::NVGPUArch) {
+          ir::Var kernel_stream(KERNEL_STREAM, type_of<void *>());
+          host_args.push_back(kernel_stream);
+          arguments.emplace_back(kernel_stream, ir::Argument::IO::kOutput);
+        },
+        [&](std::variant<common::UnknownArch,
+                         common::X86Arch,
+                         common::ARMArch>) {});
     auto call_extern_api = ir::Call::Make(Void(),
                                           custom_call_api,
                                           host_args,
@@ -231,14 +236,14 @@ std::vector<ir::Expr> CustomCallArgsForCublas(
 
     if (is_infer) {
       CHECK_EQ(a_width, b_width)
-          << "The K dimension of mul shold be equal! Please check.";
+          << "The K dimension of mul should be equal! Please check.";
       trans_b = true;
     } else {
       CHECK_EQ(a_width, b_height)
-          << "The K dimension of mul shold be equal! Please check.";
+          << "The K dimension of mul should be equal! Please check.";
     }
   } else {
-    LOG(FATAL) << "Unkown Matmul Setting!";
+    PADDLE_THROW(phi::errors::InvalidArgument("Unkown Matmul Setting!"));
   }
 
   CHECK_EQ(a_shape.size(), 4);
@@ -365,14 +370,14 @@ std::vector<ir::Expr> CustomCallArgsForBatchedCublas(
 
     if (is_infer) {
       CHECK_EQ(a_width, b_width)
-          << "The K dimension of mul shold be equal! Please check.";
+          << "The K dimension of mul should be equal! Please check.";
       trans_b = true;
     } else {
       CHECK_EQ(a_width, b_height)
-          << "The K dimension of mul shold be equal! Please check.";
+          << "The K dimension of mul should be equal! Please check.";
     }
   } else {
-    LOG(FATAL) << "Unkown Matmul Setting!";
+    PADDLE_THROW(phi::errors::InvalidArgument("Unkown Matmul Setting!"));
   }
 
   CHECK_EQ(a_shape.size(), 4);
@@ -878,10 +883,12 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
     void operator()(int64_t v) { *scalar_ = static_cast<int>(v); }
     void operator()(bool v) { *scalar_ = v ? 0xFFFFFFFF : 0; }
 
-#define EXPAND_MEMSET_TYPE_UNSUPPORT(TYPE)                                    \
-  void operator()(const TYPE &) {                                             \
-    LOG(FATAL) << "The type of \"value\" of memset custom_call not support: " \
-               << #TYPE;                                                      \
+#define EXPAND_MEMSET_TYPE_UNSUPPORT(TYPE)                            \
+  void operator()(const TYPE &) {                                     \
+    std::stringstream ss;                                             \
+    ss << "The type of \"value\" of memset custom_call not support: " \
+       << #TYPE;                                                      \
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));             \
   }
 
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::string)
@@ -891,6 +898,8 @@ std::vector<ir::Expr> CustomCallArgsForMemset(
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<double>)
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<bool>)
     EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<std::string>)
+    EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<symbol::DimExpr>)
+    EXPAND_MEMSET_TYPE_UNSUPPORT(std::vector<cinn::dialect::SymbolBinding>)
 #undef EXPAND_MEMSET_TYPE_UNSUPPORT
   };
 
@@ -937,7 +946,7 @@ std::vector<ir::Expr> CustomCallArgsForMemcpy(
   return {Expr(count)};
 }
 
-bool RegisteryCustomCallArgsFunc() {
+bool RegisterCustomCallArgsFunc() {
 #ifdef CINN_WITH_CUDA
   CustomCallArgsFuncRegistry::Global().Register(
       "cinn_call_cublas",
@@ -1025,7 +1034,7 @@ bool RegisteryCustomCallArgsFunc() {
   return true;
 }
 
-static bool registry_custom_call_list_func = RegisteryCustomCallArgsFunc();
+static bool registry_custom_call_list_func = RegisterCustomCallArgsFunc();
 }  // namespace op
 }  // namespace hlir
 }  // namespace cinn

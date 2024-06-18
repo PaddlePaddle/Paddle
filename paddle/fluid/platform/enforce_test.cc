@@ -529,9 +529,10 @@ struct CannotToStringType {
 };
 
 TEST(enforce, cannot_to_string_type) {
-  static_assert(!phi::enforce::details::CanToString<CannotToStringType>::kValue,
-                "CannotToStringType must not be converted to string");
-  static_assert(phi::enforce::details::CanToString<int>::kValue,
+  static_assert(
+      !common::enforce::details::CanToString<CannotToStringType>::kValue,
+      "CannotToStringType must not be converted to string");
+  static_assert(common::enforce::details::CanToString<int>::kValue,
                 "int can be converted to string");
   CannotToStringType obj1(3), obj2(4), obj3(3);
 
@@ -593,8 +594,9 @@ TEST(enforce, cannot_to_string_type) {
 }
 
 TEST(GET_DATA_SAFELY_MACRO, SUCCESS) {
-  int* a = new int(10);
+  int* a = new int(10);  // NOLINT
   GET_DATA_SAFELY(a, "Input", "X", "dummy");
+  delete a;
 }
 
 TEST(GET_DATA_SAFELY_MACRO, FAIL) {

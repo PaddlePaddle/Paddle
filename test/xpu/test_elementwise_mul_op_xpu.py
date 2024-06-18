@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -86,7 +87,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     check_dygraph=False,
                 )
 
-        def test_check_grad_ingore_x(self):
+        def test_check_grad_ignore_x(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(
@@ -97,7 +98,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                     check_dygraph=False,
                 )
 
-        def test_check_grad_ingore_y(self):
+        def test_check_grad_ignore_y(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
                 self.check_grad_with_place(
@@ -211,6 +212,25 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             self.y = self.gen_data_depend_on_dtype([2, 2, 10, 10])
             self.cal_x = self.x.reshape(1, 1, 10, 10)
             self.axis = 2
+
+    @check_run_big_shape_test()
+    class TestElementwiseMulOpLargeShape1(ElementwiseMulOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([8192, 1])
+            self.y = self.gen_data_depend_on_dtype([1, 64])
+
+    @check_run_big_shape_test()
+    class TestElementwiseMulOpLargeShape2(ElementwiseMulOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([1, 8192, 5, 128])
+            self.y = self.gen_data_depend_on_dtype([1, 8192, 1, 128])
+
+    @check_run_big_shape_test()
+    class TestElementwiseMulOpLargeShape3(ElementwiseMulOp):
+        def init_data(self):
+            self.x = self.gen_data_depend_on_dtype([8192, 1728])
+            self.y = self.gen_data_depend_on_dtype([8192])
+            self.cal_y = self.y.reshape([8192, 1])
 
 
 support_types = get_xpu_op_support_types('elementwise_mul')

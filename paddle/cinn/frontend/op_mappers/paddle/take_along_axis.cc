@@ -15,17 +15,23 @@
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
 #include "paddle/cinn/frontend/syntax.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void TakeAlongAxis2OpMapper(const paddle::cpp::OpDesc& op_desc,
                             const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("Input").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Input").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of TakeAlongAxis op must be 1."));
   auto x_name = op_desc.Input("Input").front();
   auto x = ctx.GetVar(x_name);
-  CHECK_EQ(op_desc.Input("Index").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("Index").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of TakeAlongAxis op must be 1."));
   auto index_name = op_desc.Input("Index").front();
   auto index = ctx.GetVar(index_name);
 
@@ -37,7 +43,10 @@ void TakeAlongAxis2OpMapper(const paddle::cpp::OpDesc& op_desc,
 
   auto out = ctx.Builder()->Gather(x, index, axis);
 
-  CHECK_EQ(op_desc.Output("Result").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Output("Result").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The output of TakeAlongAxis op must be 1."));
   auto out_name = op_desc.Output("Result").front();
   ctx.AddVar(out_name, out);
   ctx.AddVarModelToProgram(out_name, out->id);

@@ -401,7 +401,7 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           !key || query == key || query->data<T>() == key->data<T>(),
           true,
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "key is expected to be nullptr or the same as "
               "query, but received key=%p, query=%p.",
               key,
@@ -616,22 +616,22 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+
 #ifdef PADDLE_WITH_HIP
 PD_REGISTER_STRUCT_KERNEL(fused_gate_attention,
                           GPU,
                           ALL_LAYOUT,
                           ops::FusedGateAttentionOpKernel,
                           float,
-                          plat::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::float16,
+                          phi::dtype::bfloat16) {}
 PD_REGISTER_STRUCT_KERNEL(fused_gate_attention_grad,
                           GPU,
                           ALL_LAYOUT,
                           ops::FusedGateAttentionGradKernel,
                           float,
-                          plat::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::float16,
+                          phi::dtype::bfloat16) {}
 #else
 PD_REGISTER_STRUCT_KERNEL(fused_gate_attention,
                           GPU,
@@ -639,14 +639,14 @@ PD_REGISTER_STRUCT_KERNEL(fused_gate_attention,
                           ops::FusedGateAttentionOpKernel,
                           float,
                           double,
-                          plat::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::float16,
+                          phi::dtype::bfloat16) {}
 PD_REGISTER_STRUCT_KERNEL(fused_gate_attention_grad,
                           GPU,
                           ALL_LAYOUT,
                           ops::FusedGateAttentionGradKernel,
                           float,
                           double,
-                          plat::float16,
-                          plat::bfloat16) {}
+                          phi::dtype::float16,
+                          phi::dtype::bfloat16) {}
 #endif

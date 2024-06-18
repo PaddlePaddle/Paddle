@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/library_type.h"
@@ -24,9 +25,8 @@ limitations under the License. */
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_factory.h"
-#include "paddle/utils/flags.h"
 
-PHI_DECLARE_bool(use_stride_kernel);
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace paddle {
 namespace framework {
@@ -107,7 +107,7 @@ inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
   bool ret =
       (l != DataLayout::kAnyLayout && r != DataLayout::kAnyLayout && l != r);
 #ifdef PADDLE_WITH_DNNL
-  // Layout transform needed for either non-MKLDNN to MKLDNN or vice versa
+  // Layout transform needed for either non-MKLDNN to OneDNN or vice versa
   ret |= (l != DataLayout::ONEDNN && r == DataLayout::ONEDNN);
   ret |= (l == DataLayout::ONEDNN && r != DataLayout::ONEDNN);
 #endif

@@ -22,9 +22,9 @@
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/value.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 namespace translator {
@@ -74,7 +74,7 @@ class TranslationContext {
   Container container_;
   TranslationContext* parent_ = nullptr;
   std::vector<std::unique_ptr<TranslationContext>>
-      sons_;  // used to seperate different block
+      sons_;  // used to separate different block
 };
 
 class ProgramTranslator {
@@ -89,8 +89,7 @@ class ProgramTranslator {
 
   void Translate();
 
-  std::unordered_map<std::string, std::vector<pir::OpResult>>
-  VarDesc2OpResult();
+  std::unordered_map<std::string, std::vector<pir::Value>> VarDesc2Value();
 
  private:
   const ProgramDesc* legacy_program_;  // not owned
@@ -101,11 +100,11 @@ class ProgramTranslator {
   std::unordered_map<std::string, VarDesc*> parameter_name_mappings_;
   std::unordered_set<std::string> parameter_visited_;
 
-  /// In the legacy program desc, there are two special named varibales:
+  /// In the legacy program desc, there are two special named variables:
   /// 1. "feed", the input variable of feed op
   /// 2. "fetch", the output variable of fetch op
   /// However, new feed has no input and new fetch has no output
-  /// So we don't handle these two vairables when
+  /// So we don't handle these two variables when
   /// `Get/SetParameterFromSingleBlock`
   static const std::unordered_set<std::string> no_cast_var_names;
 
@@ -125,7 +124,7 @@ class ProgramTranslator {
   void GetParameterForSingleBlock(const BlockDesc& block);
   void SetParameterFromSingleBlock(const BlockDesc& block);
   void SetStopGradientAttributeForAllValue(const BlockDesc& block);
-  void SetIsPersisableAttributeForAllValue(const BlockDesc& block);
+  void SetIsPersistableAttributeForAllValue(const BlockDesc& block);
 
   const VariableDefiningInfo& GetValueOrCreateInTop(
       const std::string& var_name, TranslationContext* translation_ctx);

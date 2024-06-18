@@ -13,11 +13,10 @@
 # limitations under the License.
 
 from paddle.base import unique_name
-from paddle.jit.dy2static.utils import BaseNodeVisitor, index_in_list
-from paddle.jit.dy2static.variable_trans_func import create_bool_node
 from paddle.utils import gast
 
 from .base import BaseTransformer, ForNodeVisitor
+from .utils import BaseNodeVisitor, create_bool_node, index_in_list
 
 __all__ = []
 
@@ -120,9 +119,13 @@ class BreakContinueTransformer(BaseNodeVisitor):
         self.visit(self.root)
 
     def visit_Break(self, node):
+        function_def_node_index = _find_ancestor_function_def_index(
+            self.ancestor_nodes
+        )
         loop_node_index = _find_ancestor_loop_index(node, self.ancestor_nodes)
         assert loop_node_index != -1, "SyntaxError: 'break' outside loop"
         loop_node = self.ancestor_nodes[loop_node_index]
+        function_def_node = self.ancestor_nodes[function_def_node_index]
 
         # 1. Map the 'break/continue' stmt with an unique boolean variable V.
         variable_name = unique_name.generate(BREAK_NAME_PREFIX)
@@ -140,7 +143,7 @@ class BreakContinueTransformer(BaseNodeVisitor):
 
         # 4. For 'break' add break into condition of the loop.
         assign_false_node = create_bool_node(variable_name, False)
-        self._add_stmt_before_cur_node(loop_node_index, assign_false_node)
+        function_def_node.body.insert(0, assign_false_node)
 
         cond_var_node = gast.UnaryOp(
             op=gast.Not(),
@@ -164,9 +167,13 @@ class BreakContinueTransformer(BaseNodeVisitor):
             for_to_while.transform()
 
     def visit_Continue(self, node):
+        function_def_node_index = _find_ancestor_function_def_index(
+            self.ancestor_nodes
+        )
         loop_node_index = _find_ancestor_loop_index(node, self.ancestor_nodes)
         assert loop_node_index != -1, "SyntaxError: 'continue' outside loop"
         loop_node = self.ancestor_nodes[loop_node_index]
+        function_def_node = self.ancestor_nodes[function_def_node_index]
 
         # 1. Map the 'break/continue' stmt with an unique boolean variable V.
         variable_name = unique_name.generate(CONTINUE_NAME_PREFIX)
@@ -185,6 +192,9 @@ class BreakContinueTransformer(BaseNodeVisitor):
         # 4. For 'continue', set continue to False at the beginning of each loop
         assign_false_node = create_bool_node(variable_name, False)
         loop_node.body.insert(0, assign_false_node)
+        # Add a same assign statement to the beginning of function body to avoid
+        # generate the UndefinedVar
+        function_def_node.body.insert(0, assign_false_node)
 
     def _remove_stmts_after_break_continue(
         self, break_continue_node, break_continue_name, loop_node_index
@@ -294,6 +304,13 @@ class BreakContinueTransformer(BaseNodeVisitor):
 def _find_ancestor_loop_index(node, ancestor_nodes):
     for i in range(len(ancestor_nodes) - 1, -1, -1):
         if isinstance(ancestor_nodes[i], (gast.For, gast.While)):
+            return i
+    return -1
+
+
+def _find_ancestor_function_def_index(ancestor_nodes):
+    for i in range(len(ancestor_nodes) - 1, -1, -1):
+        if isinstance(ancestor_nodes[i], gast.FunctionDef):
             return i
     return -1
 

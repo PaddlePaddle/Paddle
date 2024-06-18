@@ -14,9 +14,12 @@
 
 import re
 import sys
+import unittest
 
 import numpy as np
 from op_test import OpTest
+
+sys.path.append("../../fft")
 from spectral_op_np import fft_c2c, fft_c2r, fft_r2c
 
 import paddle
@@ -309,3 +312,7 @@ class TestFFTR2COp(OpTest):
             ["X"],
             "Out",
         )
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -194,7 +194,7 @@ auto CreateMatmulVectorizeModule(Target target, int m, int n, int k) {
 }
 
 ir::Module CreateMatmulLoopPermutation(Target target, int m, int n, int k_) {
-  target.arch = Target::Arch::X86;
+  target.arch = common::X86Arch{};
   target.bits = Target::Bit::k32;
   target.os = Target::OS::Linux;
 

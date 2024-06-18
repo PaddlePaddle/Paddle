@@ -15,7 +15,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 #include "test/cpp/inference/api/trt_test_helper.h"
 
 namespace paddle {
@@ -33,44 +33,44 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   tmp_input.reserve(run_batch * run_seq_len);
   tmp_four_input.reserve(run_batch * run_seq_len);
 
-  int64_t i0[run_seq_len] = {
+  std::array<int64_t, 128> i0 = {
       1,    3558, 4,   75,  491, 89, 340, 313, 93,   4,   255,   10, 75,    321,
       4095, 1902, 4,   134, 49,  75, 311, 14,  44,   178, 543,   15, 12043, 2,
       75,   201,  340, 9,   14,  44, 486, 218, 1140, 279, 12043, 2};
-  int64_t i1[run_seq_len] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-                             10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-                             20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-                             30, 31, 32, 33, 34, 35, 36, 37, 38, 39};
-  int64_t i2[run_seq_len] = {
+  std::array<int64_t, 128> i1 = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+                                 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+                                 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+                                 30, 31, 32, 33, 34, 35, 36, 37, 38, 39};
+  std::array<int64_t, 128> i2 = {
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  float i3[run_seq_len] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-                           1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-                           1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-                           1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+  std::array<float, 128> i3 = {
+      1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+      1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+      1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
 
   // first input
   auto input_t = predictor->GetInputTensor(input_names[0]);
   input_t->Reshape({run_batch, run_seq_len, 1});
-  input_t->copy_from_cpu(i0);
+  input_t->copy_from_cpu(i0.data());
 
   // second input
   auto input_t2 = predictor->GetInputTensor(input_names[1]);
   input_t2->Reshape({run_batch, run_seq_len, 1});
-  input_t2->copy_from_cpu(i1);
+  input_t2->copy_from_cpu(i1.data());
 
   // third input.
   auto input_t3 = predictor->GetInputTensor(input_names[2]);
   input_t3->Reshape({run_batch, run_seq_len, 1});
-  input_t3->copy_from_cpu(i2);
+  input_t3->copy_from_cpu(i2.data());
 
   auto input_t4 = predictor->GetInputTensor(input_names[3]);
   input_t4->Reshape({run_batch, run_seq_len, 1});
-  input_t4->copy_from_cpu(i3);
+  input_t4->copy_from_cpu(i3.data());
 
   ASSERT_TRUE(predictor->ZeroCopyRun());
 

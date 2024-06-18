@@ -36,7 +36,7 @@ from ..framework import (
 __all__ = []
 
 
-def argsort(x, axis=-1, descending=False, name=None):
+def argsort(x, axis=-1, descending=False, stable=False, name=None):
     """
     Sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
@@ -49,6 +49,9 @@ def argsort(x, axis=-1, descending=False, name=None):
         descending (bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
+        stable (bool, optional): Whether to use stable sorting algorithm or not.
+            When using stable sorting algorithm, the order of equivalent elements
+            will be preserved. Default is False.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -98,15 +101,36 @@ def argsort(x, axis=-1, descending=False, name=None):
              [[2, 0, 2, 0],
               [1, 1, 0, 2],
               [0, 2, 1, 1]]])
+
+            >>> x = paddle.to_tensor([1, 0]*40, dtype='float32')
+            >>> out1 = paddle.argsort(x, stable=False)
+            >>> out2 = paddle.argsort(x, stable=True)
+
+            >>> print(out1)
+            Tensor(shape=[80], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [55, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 1 , 57, 59, 61,
+             63, 65, 67, 69, 71, 73, 75, 77, 79, 17, 11, 13, 25, 7 , 3 , 27, 23, 19,
+             15, 5 , 21, 9 , 10, 64, 62, 68, 60, 58, 8 , 66, 14, 6 , 70, 72, 4 , 74,
+             76, 2 , 78, 0 , 20, 28, 26, 30, 32, 24, 34, 36, 22, 38, 40, 12, 42, 44,
+             18, 46, 48, 16, 50, 52, 54, 56])
+
+            >>> print(out2)
+            Tensor(shape=[80], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1 , 3 , 5 , 7 , 9 , 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35,
+             37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63, 65, 67, 69, 71,
+             73, 75, 77, 79, 0 , 2 , 4 , 6 , 8 , 10, 12, 14, 16, 18, 20, 22, 24, 26,
+             28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62,
+             64, 66, 68, 70, 72, 74, 76, 78])
     """
     if in_dynamic_or_pir_mode():
-        _, ids = _C_ops.argsort(x, axis, descending)
+        _, ids = _C_ops.argsort(x, axis, descending, stable)
         return ids
     else:
         check_variable_and_dtype(
             x,
             'x',
             [
+                'uint16',
                 'float16',
                 'float32',
                 'float64',
@@ -129,7 +153,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             type='argsort',
             inputs={'X': x},
             outputs={'Out': out, 'Indices': ids},
-            attrs={'axis': axis, 'descending': descending},
+            attrs={'axis': axis, 'descending': descending, 'stable': stable},
         )
         return ids
 
@@ -238,7 +262,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
-        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
+        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimensions is one fewer than x since the axis is squeezed. Default is False.
         dtype (str, optional): Data type of the output tensor which can
                     be int32, int64. The default value is 'int64', and it will
                     return the int64 indices.
@@ -500,7 +524,7 @@ def nonzero(x, as_tuple=False):
         return tuple(list_out)
 
 
-def sort(x, axis=-1, descending=False, name=None):
+def sort(x, axis=-1, descending=False, stable=False, name=None):
     """
 
     Sorts the input along the given axis, and returns the sorted output tensor. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
@@ -514,6 +538,9 @@ def sort(x, axis=-1, descending=False, name=None):
         descending (bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
+        stable (bool, optional): Whether to use stable sorting algorithm or not.
+            When using stable sorting algorithm, the order of equivalent elements
+            will be preserved. Default is False.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -557,7 +584,7 @@ def sort(x, axis=-1, descending=False, name=None):
               [5. 7. 7. 9.]]]
     """
     if in_dynamic_or_pir_mode():
-        outs, _ = _C_ops.argsort(x, axis, descending)
+        outs, _ = _C_ops.argsort(x, axis, descending, stable)
         return outs
     else:
         helper = LayerHelper("sort", **locals())
@@ -571,7 +598,7 @@ def sort(x, axis=-1, descending=False, name=None):
             type='argsort',
             inputs={'X': x},
             outputs={'Out': out, 'Indices': ids},
-            attrs={'axis': axis, 'descending': descending},
+            attrs={'axis': axis, 'descending': descending, 'stable': stable},
         )
         return out
 
@@ -585,7 +612,7 @@ def mode(x, axis=-1, keepdim=False, name=None):
         axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. Default is -1.
-        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
+        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimensions is one fewer than x since the axis is squeezed. Default is False.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1099,8 +1126,8 @@ def searchsorted(
     Find the index of the corresponding `sorted_sequence` in the innermost dimension based on the given `values`.
 
     Args:
-        sorted_sequence (Tensor): An input N-D or 1-D tensor with type int32, int64, float32, float64. The value of the tensor monotonically increases in the innermost dimension.
-        values (Tensor): An input N-D tensor value with type int32, int64, float32, float64.
+        sorted_sequence (Tensor): An input N-D or 1-D tensor with type int32, int64, float16, float32, float64, bfloat16. The value of the tensor monotonically increases in the innermost dimension.
+        values (Tensor): An input N-D tensor value with type int32, int64, float16, float32, float64, bfloat16.
         out_int32 (bool, optional): Data type of the output tensor which can be int32, int64. The default value is False, and it indicates that the output data type is int64.
         right (bool, optional): Find the upper or lower bounds of the sorted_sequence range in the innermost dimension based on the given `values`. If the value of the sorted_sequence is nan or inf, return the size of the innermost dimension.
                                The default value is False and it shows the lower bounds.
@@ -1142,13 +1169,13 @@ def searchsorted(
         check_variable_and_dtype(
             sorted_sequence,
             'SortedSequence',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
             'paddle.searchsorted',
         )
         check_variable_and_dtype(
             values,
             'Values',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
             'paddle.searchsorted',
         )
 
@@ -1175,7 +1202,7 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
         axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way
             as axis + R. The default is None. And if the axis is None, it will computed as -1 by default.
-        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimentions is one fewer than x since the axis is squeezed. Default is False.
+        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimensions is one fewer than x since the axis is squeezed. Default is False.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1239,7 +1266,7 @@ def top_p_sampling(x, ps, threshold=None, seed=None, name=None):
     Args:
         x(Tensor): A N-D Tensor with type float32, float16 and bfloat16.
         ps(Tensor): A 1-D Tensor with type float32, float16 and bfloat16.
-            it is the cumulative probalitity threshold to limit low probality input.
+            it is the cumulative probability threshold to limit low probability input.
         threshold(Tensor): A 1-D Tensor with type float32, float16 and bfloat16.
             it is the absolute probability threshold to limit input, it will take effect simultaneously with `ps`, if not set, the default value is 0.f.
         seed(int, optional): the random seed,
@@ -1281,7 +1308,7 @@ def top_p_sampling(x, ps, threshold=None, seed=None, name=None):
     if seed is None:
         seed = -1
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.top_p_sampling(x, ps, threshold, seed)
 
     inputs = {"x": x, "ps": ps, "threshold": threshold}

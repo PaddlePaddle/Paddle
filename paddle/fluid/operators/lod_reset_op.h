@@ -23,8 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #endif
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/framework/string_array.h"
@@ -54,7 +54,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             static_cast<int64_t>(last_level.back()),
             in->dims()[0],
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "The last value of Input(Y)'s last level LoD should be equal "
                 "to the first dimension of Input(X). But received the last "
                 "value of Input(Y)'s last level LoD is %d, the first dimension "
@@ -66,8 +66,8 @@ class LoDResetKernel : public framework::OpKernel<T> {
       } else {
         auto* lod = lod_t->data<int>();
         phi::DenseTensor lod_cpu;
-        if (platform::is_gpu_place(lod_t->place())) {
-          framework::TensorCopySync(*lod_t, platform::CPUPlace(), &lod_cpu);
+        if (lod_t->place().GetType() == phi::AllocationType::GPU) {
+          framework::TensorCopySync(*lod_t, phi::CPUPlace(), &lod_cpu);
           lod = lod_cpu.data<int>();
         }
         level0 = std::vector<int>(lod, lod + lod_t->numel());
@@ -79,20 +79,20 @@ class LoDResetKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GT(
         level0.size(),
         1UL,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The size of target LoD should be greater than 1. But received the "
             "size of target LoD is %d.",
             level0.size()));
     PADDLE_ENFORCE_EQ(static_cast<int64_t>(level0[0]),
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Target LoD should be a vector starting from 0. But "
                           "target LoD starts from %d.",
                           static_cast<int64_t>(level0[0])));
     PADDLE_ENFORCE_EQ(
         static_cast<int64_t>(level0.back()),
         in->dims()[0],
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The last value of 'Target LoD''s last level LoD should be equal "
             "to the first dimension of Input(X). But received the 'Target LoD' "
             "is %s, Input(X)'s shape is %s.",
@@ -101,7 +101,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < level0.size() - 1; ++i) {
       PADDLE_ENFORCE_GE(level0[i + 1],
                         level0[i],
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "'Target LoD' should be an ascending "
                             "vector. But received the Target LoD is %s.",
                             common::make_ddim(level0)));

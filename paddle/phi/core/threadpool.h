@@ -30,9 +30,9 @@
 namespace phi {
 
 struct ExceptionHandler {
-  mutable std::future<std::unique_ptr<phi::enforce::EnforceNotMet>> future_;
+  mutable std::future<std::unique_ptr<common::enforce::EnforceNotMet>> future_;
   explicit ExceptionHandler(
-      std::future<std::unique_ptr<phi::enforce::EnforceNotMet>>&& f)
+      std::future<std::unique_ptr<common::enforce::EnforceNotMet>>&& f)
       : future_(std::move(f)) {}
   void operator()() const {
     auto ex = this->future_.get();
@@ -53,10 +53,10 @@ class ThreadPool {
   explicit ThreadPool(int num_threads);
 
   using Task =
-      std::packaged_task<std::unique_ptr<phi::enforce::EnforceNotMet>()>;
+      std::packaged_task<std::unique_ptr<common::enforce::EnforceNotMet>()>;
 
   // Returns the singleton of ThreadPool.
-  static ThreadPool* GetInstance();
+  TEST_API static ThreadPool* GetInstance();
 
   ~ThreadPool();
 
@@ -70,24 +70,24 @@ class ThreadPool {
   }
 
   template <typename Callback>
-  std::future<std::unique_ptr<phi::enforce::EnforceNotMet>> RunAndGetException(
-      Callback fn) {
-    Task task([fn]() -> std::unique_ptr<phi::enforce::EnforceNotMet> {
+  std::future<std::unique_ptr<common::enforce::EnforceNotMet>>
+  RunAndGetException(Callback fn) {
+    Task task([fn]() -> std::unique_ptr<common::enforce::EnforceNotMet> {
       try {
         fn();
-      } catch (phi::enforce::EnforceNotMet& ex) {
-        return std::unique_ptr<phi::enforce::EnforceNotMet>(
-            new phi::enforce::EnforceNotMet(ex));
+      } catch (common::enforce::EnforceNotMet& ex) {
+        return std::unique_ptr<common::enforce::EnforceNotMet>(
+            new common::enforce::EnforceNotMet(ex));
       } catch (const std::exception& e) {
         PADDLE_THROW(phi::errors::Fatal(
-            "Unexpected exception is catched in thread pool. All "
+            "Unexpected exception is caught in thread pool. All "
             "throwable exception in Paddle should be an EnforceNotMet."
             "The exception is:\n %s.",
             e.what()));
       }
       return nullptr;
     });
-    std::future<std::unique_ptr<phi::enforce::EnforceNotMet>> f =
+    std::future<std::unique_ptr<common::enforce::EnforceNotMet>> f =
         task.get_future();
     {
       std::unique_lock<std::mutex> lock(mutex_);
@@ -129,7 +129,7 @@ class ThreadPoolIO : ThreadPool {
   static void InitIO();
 
  private:
-  // NOTE: threadpool in base will be inhereted here.
+  // NOTE: threadpool in base will be inherited here.
   static std::unique_ptr<ThreadPool> io_threadpool_;
   static std::once_flag io_init_flag_;
 };

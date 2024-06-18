@@ -21,7 +21,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph.base import to_variable
 from paddle.nn import Embedding
 from paddle.optimizer import Adam
 from paddle.optimizer.lr import LRScheduler
@@ -298,10 +297,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 init_cell_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32'
                 )
-                x = to_variable(x_data)
-                y = to_variable(y_data)
-                init_hidden = to_variable(init_hidden_data)
-                init_cell = to_variable(init_cell_data)
+                x = paddle.to_tensor(x_data)
+                y = paddle.to_tensor(y_data)
+                init_hidden = paddle.to_tensor(init_hidden_data)
+                init_cell = paddle.to_tensor(init_cell_data)
                 dy_loss, last_hidden, last_cell = ptb_model(
                     x, y, init_hidden, init_cell
                 )
@@ -401,10 +400,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 init_cell_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32'
                 )
-                x = to_variable(x_data)
-                y = to_variable(y_data)
-                init_hidden = to_variable(init_hidden_data)
-                init_cell = to_variable(init_cell_data)
+                x = paddle.to_tensor(x_data)
+                y = paddle.to_tensor(y_data)
+                init_hidden = paddle.to_tensor(init_hidden_data)
+                init_cell = paddle.to_tensor(init_cell_data)
                 dy_loss, last_hidden, last_cell = ptb_model(
                     x, y, init_hidden, init_cell
                 )
@@ -523,10 +522,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 init_cell_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32'
                 )
-                x = to_variable(x_data)
-                y = to_variable(y_data)
-                init_hidden = to_variable(init_hidden_data)
-                init_cell = to_variable(init_cell_data)
+                x = paddle.to_tensor(x_data)
+                y = paddle.to_tensor(y_data)
+                init_hidden = paddle.to_tensor(init_hidden_data)
+                init_cell = paddle.to_tensor(init_cell_data)
                 dy_loss, last_hidden, last_cell = ptb_model(
                     x, y, init_hidden, init_cell
                 )
@@ -641,10 +640,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 init_cell_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32'
                 )
-                x = to_variable(x_data)
-                y = to_variable(y_data)
-                init_hidden = to_variable(init_hidden_data)
-                init_cell = to_variable(init_cell_data)
+                x = paddle.to_tensor(x_data)
+                y = paddle.to_tensor(y_data)
+                init_hidden = paddle.to_tensor(init_hidden_data)
+                init_cell = paddle.to_tensor(init_cell_data)
                 dy_loss, last_hidden, last_cell = ptb_model(
                     x, y, init_hidden, init_cell
                 )
@@ -760,10 +759,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 init_cell_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32'
                 )
-                x = to_variable(x_data)
-                y = to_variable(y_data)
-                init_hidden = to_variable(init_hidden_data)
-                init_cell = to_variable(init_cell_data)
+                x = paddle.to_tensor(x_data)
+                y = paddle.to_tensor(y_data)
+                init_hidden = paddle.to_tensor(init_hidden_data)
+                init_cell = paddle.to_tensor(init_cell_data)
                 dy_loss, last_hidden, last_cell = ptb_model(
                     x, y, init_hidden, init_cell
                 )
@@ -860,10 +859,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 init_cell_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32'
                 )
-                x = to_variable(x_data)
-                y = to_variable(y_data)
-                init_hidden = to_variable(init_hidden_data)
-                init_cell = to_variable(init_cell_data)
+                x = paddle.to_tensor(x_data)
+                y = paddle.to_tensor(y_data)
+                init_hidden = paddle.to_tensor(init_hidden_data)
+                init_cell = paddle.to_tensor(init_cell_data)
                 dy_loss, last_hidden, last_cell = ptb_model(
                     x, y, init_hidden, init_cell
                 )
@@ -973,10 +972,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 init_cell_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32'
                 )
-                x = to_variable(x_data)
-                y = to_variable(y_data)
-                init_hidden = to_variable(init_hidden_data)
-                init_cell = to_variable(init_cell_data)
+                x = paddle.to_tensor(x_data)
+                y = paddle.to_tensor(y_data)
+                init_hidden = paddle.to_tensor(init_hidden_data)
+                init_cell = paddle.to_tensor(init_cell_data)
                 dy_loss, last_hidden, last_cell = ptb_model(
                     x, y, init_hidden, init_cell
                 )

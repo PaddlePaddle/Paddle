@@ -54,7 +54,6 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/xccl_context.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
-#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
@@ -62,9 +61,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/pybind/uva_utils.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/type_defs.h"
 
-PHI_DECLARE_bool(set_to_1d);
 namespace paddle {
 namespace pybind {
 
@@ -163,7 +162,7 @@ static void InitVarBaseOnly(imperative::VarBase *self,
           << " / stop_gradient: " << stop_gradient;
   new (self) imperative::VarBase(name_);
   if (stop_gradient != -1) {
-    self->SetOverridedStopGradient(stop_gradient);
+    self->SetOverriddenStopGradient(stop_gradient);
   }
   self->SetPersistable(persistable);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
@@ -251,7 +250,7 @@ static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
   self->SetPersistable(persistable);
   auto *tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
   if (stop_gradient != -1) {
-    self->SetOverridedStopGradient(stop_gradient);
+    self->SetOverriddenStopGradient(stop_gradient);
   }
   SetTensorFromPyArray<P>(tensor, array, place, zero_copy);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
@@ -431,7 +430,7 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
     dst.SetPersistable(src->Persistable());
     dst.SetDataType(src->DataType());
     dst.SetType(src->Type());
-    dst.SetOverridedStopGradient(src->OverridedStopGradient());
+    dst.SetOverriddenStopGradient(src->OverriddenStopGradient());
     if (!src->SharedVar()->IsEmpty()) {
       if (src->Var().IsType<phi::DenseTensor>()) {
         auto &src_tensor = src->Var().Get<phi::DenseTensor>();
@@ -635,10 +634,23 @@ void BindImperative(py::module *m_ptr) {
           egr::Controller::Instance().SetCurrentTracer(tracer);
           imperative::SetCurrentTracer(tracer);
         });
-  py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
-      .def("create_program_desc",
-           &imperative::jit::ProgramDescTracer::CreateProgramDesc)
-      .def("reset", &imperative::jit::ProgramDescTracer::Reset);
+  m.def("_get_amp_attrs",
+        []() { return egr::Controller::Instance().GetCurrentAmpAttrs(); });
+  m.def("_set_amp_op_list",
+        [](std::unordered_set<std::string> &allow_ops,
+           std::unordered_set<std::string> &block_ops) {
+          imperative::AmpOperators::Instance().GetMutableAllowOps()->swap(
+              allow_ops);
+          imperative::AmpOperators::Instance().GetMutableBlockOps()->swap(
+              block_ops);
+          VLOG(5) << "AMP operators changed, "
+                  << imperative::AmpOperators::Instance();
+        });
+  m.def("_get_amp_op_list", []() {
+    return std::make_tuple(
+        *(imperative::AmpOperators::Instance().GetMutableAllowOps()),
+        *(imperative::AmpOperators::Instance().GetMutableBlockOps()));
+  });
 
   py::enum_<paddle::imperative::AmpLevel>(m, "AmpLevel", py::arithmetic())
       .value("O0", paddle::imperative::AmpLevel::O0)
@@ -648,13 +660,21 @@ void BindImperative(py::module *m_ptr) {
       .value("O3", paddle::imperative::AmpLevel::O3)
       .export_values();
 
+  py::class_<imperative::AmpAttrs, std::shared_ptr<imperative::AmpAttrs>>(
+      m, "AmpAttrs", R"DOC()DOC")
+      .def_property("_use_promote",
+                    &imperative::AmpAttrs::GetUsePromote,
+                    &imperative::AmpAttrs::SetUsePromote)
+      .def_property("_amp_level",
+                    &imperative::AmpAttrs::GetAmpLevel,
+                    &imperative::AmpAttrs::SetAmpLevel)
+      .def_property("_amp_dtype",
+                    &imperative::AmpAttrs::GetAmpDtype,
+                    &imperative::AmpAttrs::SetAmpDtype);
+
   py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
       m, "Tracer", R"DOC()DOC")
-      .def("__init__",
-           [](imperative::Tracer &self) { new (&self) imperative::Tracer(); })
-      .def_property("_enable_program_desc_tracing",
-                    &imperative::Tracer::IsProgramDescTracingEnabled,
-                    &imperative::Tracer::SetEnableProgramDescTracing)
+      .def(py::init([]() { return std::make_unique<imperative::Tracer>(); }))
       .def_property("_use_promote",
                     &imperative::Tracer::GetUsePromote,
                     &imperative::Tracer::SetUsePromote)
@@ -718,9 +738,6 @@ void BindImperative(py::module *m_ptr) {
                   "but got Unknown Type!"));
             }
           })
-      .def("_get_program_desc_tracer",
-           &imperative::Tracer::GetProgramDescTracer,
-           py::return_value_policy::reference)
       .def("_generate_unique_name",
            &imperative::Tracer::GenerateUniqueName,
            py::arg("key") = "dygraph_tmp")
@@ -1330,8 +1347,9 @@ void BindImperative(py::module *m_ptr) {
           auto *index_data = index_tensor.data<int64_t>();
           auto *buffer_data =
               buffer_tensor->mutable_data<float>(buffer_tensor->place());
-          const int &slice_size = src_tensor.numel() / src_tensor.dims()[0];
-          const int &copy_bytes = slice_size * sizeof(float);
+          const int &slice_size =
+              static_cast<int>(src_tensor.numel()) / src_tensor.dims()[0];
+          const int &copy_bytes = static_cast<int>(slice_size) * sizeof(float);
           int64_t c = 0;
           for (int64_t i = 0; i < index_tensor.numel(); i++) {
             std::memcpy(buffer_data + c * slice_size,

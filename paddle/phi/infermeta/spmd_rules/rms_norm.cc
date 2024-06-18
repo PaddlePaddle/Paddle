@@ -62,7 +62,7 @@ SpmdInfo RmsNormInferSpmd(const DistMetaTensor& x,
   // Step2.3: update input dims mapping
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
-  // TODO(zhiqiu): support shardding on scale and bias
+  // TODO(zhiqiu): support sharding on scale and bias
   // Now, apply replicating.
   TensorDistAttr scale_dist_attr_dst =
       CopyTensorDistAttrForOutput(scale_dist_attr_src);
@@ -101,10 +101,8 @@ SpmdInfo RmsNormInferSpmdReverse(const DistMetaTensor& x,
   std::string scale_axes(1, x_axes[x_ndim - 1]);
 
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
-  axes_sharding_info.emplace_back(
-      std::make_pair(out_axes, out_dims_mapping_src));
-  axes_sharding_info.emplace_back(
-      std::make_pair(variance_axes, invvar_dims_mapping_src));
+  axes_sharding_info.emplace_back(out_axes, out_dims_mapping_src);
+  axes_sharding_info.emplace_back(variance_axes, invvar_dims_mapping_src);
   std::unordered_map<std::string, int64_t> axis_to_dim_map =
       ShardingMergeForTensors(axes_sharding_info);
 
@@ -166,12 +164,12 @@ SpmdInfo RmsNormGradInferSpmd(const DistMetaTensor& x,
   dist_attrs.push_back(out_grad_dist_attr_src);
 
   std::vector<std::vector<int64_t>> shapes = {x_shape, invvar_shape, x_shape};
-  std::vector<std::string> anotations;
-  std::string align_anotation;
-  std::tie(anotations, align_anotation) =
+  std::vector<std::string> annotations;
+  std::string align_annotation;
+  std::tie(annotations, align_annotation) =
       BuildRmsNormGradEinsum(x_shape.size());
   AlignDimsSharding(
-      &dist_attrs, shapes, anotations, {}, align_anotation, false);
+      &dist_attrs, shapes, annotations, {}, align_annotation, false);
   auto x_dist_attr_dst = std::move(dist_attrs[0]);
   auto invvar_dist_attr_dst = std::move(dist_attrs[1]);
   auto out_grad_dist_attr_dst = std::move(dist_attrs[2]);

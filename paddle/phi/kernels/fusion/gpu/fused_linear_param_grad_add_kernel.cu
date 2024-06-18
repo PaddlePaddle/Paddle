@@ -24,6 +24,7 @@
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 namespace phi {
@@ -68,23 +69,44 @@ void FusedLinearParamGradAddImpl(const Context &ctx,
 
   if (!has_bias) return;
 
+  // if dbias is given, dbias_out will share memory with dbias:
+  //       dbias_tmp = sum(dout), dbias_out = dbias + dbias_tmp
+  // else: dbias_out = sum(dout)
+  DenseTensor dbias_tmp_tensor;
+  if (dbias) {
+    if (kIsMultiPrecision) {
+      dbias_tmp_tensor = phi::EmptyLike<MT, Context>(ctx, dbias.get());
+    } else {
+      dbias_tmp_tensor = phi::EmptyLike<T, Context>(ctx, dbias.get());
+    }
+  }
+  DenseTensor *dbias_tmp = !dbias ? dbias_out : &dbias_tmp_tensor;
+
   if (!fuse_bias_grad) {
     auto dout_copy = dout;
     dout_copy.Resize({M, N});
     if (kIsMultiPrecision) {
-      *dbias_out = phi::Sum<T, Context>(
-          ctx, dout_copy, {0}, phi::CppTypeToDataType<MT>::Type(), false);
+      phi::SumKernel<T, Context>(ctx,
+                                 dout_copy,
+                                 {0},
+                                 phi::CppTypeToDataType<MT>::Type(),
+                                 false,
+                                 dbias_tmp);
     } else {
-      *dbias_out = phi::Sum<T, Context>(
-          ctx, dout_copy, {0}, phi::CppTypeToDataType<T>::Type(), false);
+      phi::SumKernel<T, Context>(ctx,
+                                 dout_copy,
+                                 {0},
+                                 phi::CppTypeToDataType<T>::Type(),
+                                 false,
+                                 dbias_tmp);
     }
   }
 
   if (dbias) {
     if (kIsMultiPrecision) {
-      phi::AddKernel<MT, Context>(ctx, *dbias_out, dbias.get(), dbias_out);
+      phi::AddKernel<MT, Context>(ctx, dbias.get(), *dbias_tmp, dbias_out);
     } else {
-      phi::AddKernel<T, Context>(ctx, *dbias_out, dbias.get(), dbias_out);
+      phi::AddKernel<T, Context>(ctx, dbias.get(), *dbias_tmp, dbias_out);
     }
   }
 }
@@ -132,6 +154,10 @@ void FusedLinearParamGradAdd(const Context &ctx,
                              DenseTensor *dbias_out) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
+  if (std::is_same<T, MT>::value) {
+    multi_precision = false;
+  }
+
   bool use_addto = false;
   if (dweight_out) {
     if (dweight_out->dtype() == phi::DataType::FLOAT16) {
@@ -164,12 +190,27 @@ void FusedLinearParamGradAdd(const Context &ctx,
     }
   }
 
-  if (std::is_same<T, MT>::value) {
-    multi_precision = false;
-  }
-
   if (has_bias && dbias_out) {
-    ctx.template Alloc<T>(dbias_out);
+    if (dbias) {
+      *dbias_out = dbias.get();
+      if (multi_precision) {
+        PADDLE_ENFORCE_EQ(
+            dbias_out->dtype(),
+            phi::CppTypeToDataType<MT>::Type(),
+            phi::errors::InvalidArgument("Invaid data type error."));
+      } else {
+        PADDLE_ENFORCE_EQ(
+            dbias_out->dtype(),
+            phi::CppTypeToDataType<T>::Type(),
+            phi::errors::InvalidArgument("Invaid data type error."));
+      }
+    } else {
+      if (multi_precision) {
+        ctx.template Alloc<MT>(dbias_out);
+      } else {
+        ctx.template Alloc<T>(dbias_out);
+      }
+    }
   }
 
   int64_t K = x.dims()[x.dims().size() - 1];

@@ -19,6 +19,7 @@
 
 #include <memory>
 
+#include "paddle/cinn/common/arch_util.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/common/target.h"
 
@@ -37,11 +38,11 @@ class MemoryInterface {
 };
 
 /**
- * MemoryManager holds a map of MemoryInterface for each articture.
+ * MemoryManager holds a map of MemoryInterface for each architecture.
  */
 class MemoryManager final {
  public:
-  using key_t = cinn::common::Target::Arch;
+  using key_t = cinn::common::Arch;
 
   static MemoryManager& Global() {
     static auto* x = new MemoryManager;
@@ -56,12 +57,14 @@ class MemoryManager final {
 
   MemoryInterface* RetrieveSafely(key_t key) {
     auto* res = Retrieve(key);
-    CHECK(res) << "no MemoryInterface for architecture [" << key << "]";
+    CHECK(res) << "no MemoryInterface for architecture [" << GetArchName(key)
+               << "]";
     return res;
   }
 
   MemoryInterface* Register(key_t key, MemoryInterface* item) {
-    CHECK(!memory_mngs_.count(key)) << "Duplicate register [" << key << "]";
+    CHECK(!memory_mngs_.count(key))
+        << "Duplicate register [" << GetArchName(key) << "]";
     memory_mngs_[key].reset(item);
     return item;
   }
@@ -69,8 +72,7 @@ class MemoryManager final {
  private:
   MemoryManager();
 
-  absl::flat_hash_map<cinn::common::Target::Arch,
-                      std::unique_ptr<MemoryInterface>>
+  absl::flat_hash_map<cinn::common::Arch, std::unique_ptr<MemoryInterface>>
       memory_mngs_;
 
   CINN_DISALLOW_COPY_AND_ASSIGN(MemoryManager);

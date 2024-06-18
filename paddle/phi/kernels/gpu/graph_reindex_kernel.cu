@@ -67,53 +67,34 @@ std::shared_ptr<phi::Allocation> FillHashTable(const Context& dev_ctx,
       input, num_input, len_hashtable, keys, key_index);
 
   // Get item index count.
-  auto item_count =
-      phi::memory_utils::Alloc(place, (num_input + 1) * sizeof(int));
-  int* item_count_ptr = reinterpret_cast<int*>(item_count->ptr());
-#ifdef PADDLE_WITH_HIP
-  hipMemset(item_count_ptr, 0, sizeof(int) * (num_input + 1));
-#else
-  cudaMemset(item_count_ptr, 0, sizeof(int) * (num_input + 1));
-#endif
+  thrust::device_vector<int> item_count(num_input + 1, 0);
   GetItemIndexCount<T><<<grid, block, 0, dev_ctx.stream()>>>(
-      input, item_count_ptr, num_input, len_hashtable, keys, key_index);
+      input,
+      thrust::raw_pointer_cast(item_count.data()),
+      num_input,
+      len_hashtable,
+      keys,
+      key_index);
 
-  size_t temp_storage_bytes = 0;
-  cub::DeviceScan::ExclusiveSum(
-      NULL, temp_storage_bytes, item_count_ptr, item_count_ptr, num_input + 1);
-  auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
-  cub::DeviceScan::ExclusiveSum(d_temp_storage->ptr(),
-                                temp_storage_bytes,
-                                item_count_ptr,
-                                item_count_ptr,
-                                num_input + 1);
-  int total_unique_items = 0;
-#ifdef PADDLE_WITH_HIP
-  hipMemcpy(&total_unique_items,
-            item_count_ptr + num_input,
-            sizeof(int),
-            hipMemcpyDeviceToHost);
-#else
-  cudaMemcpy(&total_unique_items,
-             item_count_ptr + num_input,
-             sizeof(int),
-             cudaMemcpyDeviceToHost);
-#endif
+  thrust::exclusive_scan(
+      item_count.begin(), item_count.end(), item_count.begin());
 
+  int total_unique_items = item_count[num_input];
   auto unique_items =
       phi::memory_utils::AllocShared(place, total_unique_items * sizeof(T));
   T* unique_items_data = reinterpret_cast<T*>(unique_items->ptr());
   *final_nodes_len = total_unique_items;
 
   // Get unique items
-  FillUniqueItems<T><<<grid, block, 0, dev_ctx.stream()>>>(input,
-                                                           num_input,
-                                                           len_hashtable,
-                                                           unique_items_data,
-                                                           item_count_ptr,
-                                                           keys,
-                                                           values,
-                                                           key_index);
+  FillUniqueItems<T><<<grid, block, 0, dev_ctx.stream()>>>(
+      input,
+      num_input,
+      len_hashtable,
+      unique_items_data,
+      thrust::raw_pointer_cast(item_count.data()),
+      keys,
+      values,
+      key_index);
   return unique_items;
 }
 

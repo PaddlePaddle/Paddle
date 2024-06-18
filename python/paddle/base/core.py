@@ -249,7 +249,7 @@ def less_than_ver(a, b):
 # NOTE(zhiqiu): An error may occurs when import paddle in linux platform with glibc < 2.22,
 # the error message of which is "dlopen: cannot load any more object with static TLS".
 # This happens when:
-# (1) the number of dynamic shared librarys (DSO) loaded > 14,
+# (1) the number of dynamic shared libraries (DSO) loaded > 14,
 # (2) after that, load a dynamic shared library (DSO) with static TLS.
 # For paddle, the problem is that 'libgomp' is a DSO with static TLS, and it is loaded after 14 DSOs.
 # So, here is a tricky way to solve the problem by pre load 'libgomp' before 'libpaddle.so'.
@@ -291,11 +291,14 @@ try:
         _device_synchronize,
         _dygraph_debug_level,
         _get_all_register_op_kernels,
+        _get_amp_attrs,
+        _get_amp_op_list,
         _get_current_stream,
         _get_eager_deletion_vars,
         _get_phi_kernel_name,
         _get_registered_phi_kernels,
         _get_use_default_grad_op_desc_maker_ops,
+        _is_compiled_with_gpu_graph,
         _is_compiled_with_heterps,
         _is_dygraph_debug_enabled,
         _is_program_version_supported,
@@ -304,12 +307,13 @@ try:
         _promote_types_if_complex_exists,
         _RecordEvent,
         _Scope,
-        _set_cached_executor_build_strategy,
+        _set_amp_op_list,
         _set_current_stream,
         _set_eager_deletion_mode,
         _set_fuse_parameter_group_size,
         _set_fuse_parameter_memory_size,
         _set_paddle_lib_path,
+        _set_warmup,
         _switch_tracer,
         _test_enforce_gpu_success,
         _xpu_device_synchronize,
@@ -317,7 +321,7 @@ try:
 
     # isort: off
 
-    # custom devivce
+    # custom device
     from .libpaddle import (  # noqa: F401
         CustomDeviceEvent,
         CustomDeviceStream,
@@ -357,9 +361,6 @@ try:
             _set_process_signal_handler,
             _throw_error_if_process_failed,
         )
-
-    # CINN
-    from .libpaddle import is_run_with_cinn  # noqa: F401
 
 except Exception as e:
     if has_paddle_dy_lib:
@@ -417,6 +418,26 @@ def set_paddle_lib_path():
 set_paddle_lib_path()
 
 
+# This api is used for check of model output.
+# In some cases, model does not straightly return data which can be used for check.
+# When this flag is set true, required data should be returned in model.
+def _model_return_data():
+    flag = os.getenv("FLAGS_model_return_data")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
+# This api is used for check whether prim is on
+def _prim_return_log():
+    flag = os.getenv("FLAGS_prim_log")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
 # We have 3 FLAGS to judge whether prim is enabled
 # FLAGS_prim_forward: Open or close forward prim strategy
 # FLAGS_prim_backward: Open or close backward prim strategy
@@ -433,9 +454,9 @@ def __sync_stat_with_flag(flag):
         flag_value = os.getenv("FLAGS_prim_forward")
         assert flag_value is not None
         flag_value = flag_value.lower()
-        if flag_value == "false":
+        if flag_value in ("false", "0"):
             __set_fwd_prim_enabled(False)
-        elif flag_value == "true":
+        elif flag_value in ("true", "1"):
             __set_fwd_prim_enabled(True)
         else:
             raise TypeError(f"flag {flag} should be true or false.")
@@ -444,9 +465,9 @@ def __sync_stat_with_flag(flag):
         flag_value = os.getenv("FLAGS_prim_backward")
         assert flag_value is not None
         flag_value = flag_value.lower()
-        if flag_value == "false":
+        if flag_value in ("false", "0"):
             __set_bwd_prim_enabled(False)
-        elif flag_value == "true":
+        elif flag_value in ("true", "1"):
             __set_bwd_prim_enabled(True)
         else:
             raise TypeError(f"flag {flag} should be true or false.")
@@ -455,9 +476,9 @@ def __sync_stat_with_flag(flag):
         flag_value = os.getenv("FLAGS_prim_all")
         assert flag_value is not None
         flag_value = flag_value.lower()
-        if flag_value == "false":
+        if flag_value in ("false", "0"):
             __set_all_prim_enabled(False)
-        elif flag_value == "true":
+        elif flag_value in ("true", "1"):
             __set_all_prim_enabled(True)
         else:
             raise TypeError(f"flag {flag} should be true or false.")
@@ -480,8 +501,12 @@ def _test_use_sync(value):
     __sync_stat_with_flag(value)
 
 
-# ops in forward_blacklisk will not be replaced by composite ops.
-prim_config = {"forward_blacklist": set(), "composite_ops_record": set()}
+# ops in forward_blacklist will not be replaced by composite ops.
+prim_config = {
+    "forward_blacklist": set(),
+    "composite_ops_record": set(),
+    "backward_blacklist": set(),
+}
 
 
 def _get_batch_norm_none_var(op):
@@ -516,17 +541,32 @@ decomp_ops_contain_unused_output = {
 
 
 # This api is used for development for dynamic shape in prim, and will be removed in future.
-def _enable_prim_dynamic_shape():
-    flag = os.getenv("FLAGS_prim_skip_dynamic")
+def _enable_prim_skip_dynamic_shape():
+    flag = os.getenv("FLAGS_prim_skip_dynamic", "1")
     if flag and flag.lower() in ("1", "true"):
         return True
     else:
         return False
 
 
-# This api is used for development for sinking decomp in c++, and will be removed in future.
-def _enable_sink_decomp():
-    flag = os.getenv("FLAGS_sink_decomp", "true")
+def _enable_prim_dynamic_shape():
+    flag = os.getenv("FLAGS_prim_enable_dynamic")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
+def _enable_dist_prim_all():
+    flag = os.getenv("FLAGS_dist_prim_all")
+    if flag and flag.lower() in ("1", "true"):
+        return True
+    else:
+        return False
+
+
+def _enable_auto_recompute():
+    flag = os.getenv("FLAGS_enable_auto_recompute")
     if flag and flag.lower() in ("1", "true"):
         return True
     else:
@@ -548,6 +588,7 @@ def _reset_prim_forward_blacklist():
 def _set_prim_backward_blacklist(*args):
     ops = set(args)
     for item in ops:
+        prim_config["backward_blacklist"].add(item)
         if not isinstance(item, str):
             raise TypeError("all items in set must belong to string")
     _set_bwd_prim_blacklist(ops)
@@ -555,25 +596,25 @@ def _set_prim_backward_blacklist(*args):
 
 def _set_prim_backward_enabled(value):
     __set_bwd_prim_enabled(bool(value))
-    if os.getenv("FLAGS_prim_log") == "1":
+    if _prim_return_log():
         print("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
 
 
 def _set_prim_forward_enabled(value):
     __set_fwd_prim_enabled(bool(value))
-    if os.getenv("FLAGS_prim_log") == "1":
+    if _prim_return_log():
         print("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
 
 
 def set_prim_eager_enabled(value):
     __set_eager_prim_enabled(bool(value))
-    if os.getenv("FLAGS_prim_log") == "1":
+    if _prim_return_log():
         print("eager prim enabled: ", bool(_is_eager_prim_enabled()))
 
 
 def _set_prim_all_enabled(value):
     __set_all_prim_enabled(bool(value))
-    if os.getenv("FLAGS_prim_log") == "1":
+    if _prim_return_log():
         print(
             "all prim enabled: ",
             bool(_is_fwd_prim_enabled() and _is_bwd_prim_enabled()),
@@ -583,7 +624,7 @@ def _set_prim_all_enabled(value):
 def __sync_prim_backward_status():
     flag_value = os.getenv("FLAGS_prim_backward")
     if flag_value is None:
-        if os.getenv("FLAGS_prim_log") == "1":
+        if _prim_return_log():
             print("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
     else:
         __sync_stat_with_flag("FLAGS_prim_backward")
@@ -592,7 +633,7 @@ def __sync_prim_backward_status():
 def __sync_prim_forward_status():
     flag_value = os.getenv("FLAGS_prim_forward")
     if flag_value is None:
-        if os.getenv("FLAGS_prim_log") == "1":
+        if _prim_return_log():
             print("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
     else:
         __sync_stat_with_flag("FLAGS_prim_forward")
@@ -605,3 +646,41 @@ def check_and_set_prim_all_enabled():
         __sync_prim_forward_status()
     else:
         __sync_stat_with_flag("FLAGS_prim_all")
+
+
+check_and_set_prim_all_enabled()
+
+
+SKIPPED_PRIM_VJP_DEFAULT_OPS = ["matmul_grad"]
+
+
+def _clear_prim_vjp_skip_default_ops():
+    for item in SKIPPED_PRIM_VJP_DEFAULT_OPS:
+        _remove_skip_comp_ops(item)
+
+
+# Since some decomposition of special ops like matmul_grad will reduce performance and is difficult to optimize currently by CINN.
+# This api is used for development for in prim and cinn, and will be removed in future.
+def _check_and_set_prim_vjp_skip_default_ops():
+    flag = os.getenv("FLAGS_prim_vjp_skip_default_ops", "1")
+    if flag and flag.lower() in ("1", "true"):
+        _set_prim_backward_blacklist(*SKIPPED_PRIM_VJP_DEFAULT_OPS)
+        return True
+    else:
+        _clear_prim_vjp_skip_default_ops()
+        return False
+
+
+_check_and_set_prim_vjp_skip_default_ops()
+
+
+def _check_prim_vjp_ops():
+    ops_org = os.getenv("FLAGS_prim_backward_blacklist", "")
+    if ops_org:
+        ops = []
+        for item in ops_org.split(";"):
+            ops.append(item.strip())
+        _set_prim_backward_blacklist(*ops)
+
+
+_check_prim_vjp_ops()

@@ -15,7 +15,7 @@
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
-
+#include "paddle/common/enforce.h"
 /** \brief A macro that guards the beginning of each implementation of schedule
  */
 #define CINN_IR_SCHEDULE_BEGIN() try {
@@ -26,10 +26,11 @@
  * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
  * printing
  */
-#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
-  }                                                            \
-  catch (const utils::ErrorHandler& err_hanlder) {             \
-    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
+#define CINN_IR_SCHEDULE_END(err_msg_level)                                 \
+  }                                                                         \
+  catch (const utils::ErrorHandler& err_handler) {                          \
+    PADDLE_THROW(                                                           \
+        phi::errors::Fatal(err_handler.FormatErrorMessage(err_msg_level))); \
   }
 
 namespace cinn {
@@ -42,11 +43,11 @@ void DyScheduleImpl::ComputeAt(const Expr& block,
   std::string primitive = "ComputeAt";
   std::ostringstream os;
   if (!block.As<ir::ScheduleBlockRealize>()) {
-    os << "Expr prama(block) should be a ScheduleBlockRealize!\n";
+    os << "Expr param(block) should be a ScheduleBlockRealize!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
   if (!loop.As<ir::For>()) {
-    os << "Expr prama(loop) should be a For node!\n";
+    os << "Expr param(loop) should be a For node!\n";
     throw IRScheduleErrorHandler(primitive, os.str(), module_expr_);
   }
   Expr root = this->GetRootBlock(block);
@@ -116,7 +117,11 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   root = this->GetRootBlock(this_block);
   loops = GetLoopsOfExpr(this_loop, root);
 
-  CHECK_LE(loops.size(), block_loops.size());
+  PADDLE_ENFORCE_LE(
+      loops.size(),
+      block_loops.size(),
+      phi::errors::InvalidArgument("The size of loops should be less than or "
+                                   "equal to the size of block_loops."));
 
   std::vector<Var> replaced_var;
   std::vector<Expr> substitute_expr;
@@ -152,13 +157,14 @@ void DyScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   // collect if
   auto if_checker = [](const Expr* x) { return x->As<ir::IfThenElse>(); };
   auto if_set = ir::ir_utils::CollectIRNodesWithoutTensor(body, if_checker);
+  auto checker = [block_name](const Expr* x) {
+    return x->As<ir::ScheduleBlockRealize>() &&
+           x->As<ir::ScheduleBlockRealize>()
+                   ->schedule_block.As<ScheduleBlock>()
+                   ->name == block_name;
+  };
   for (auto if_expr : if_set) {
-    auto checker = [block_name](const Expr* x) {
-      return x->As<ir::ScheduleBlockRealize>() &&
-             x->As<ir::ScheduleBlockRealize>()
-                     ->schedule_block.As<ScheduleBlock>()
-                     ->name == block_name;
-    };
+    if (Contains(result, if_expr)) continue;
     if (ir::ir_utils::CollectIRNodesWithoutTensor(if_expr, checker, true)
             .size() > 0) {
       result =
@@ -359,14 +365,23 @@ void StScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   root = this->GetRootBlock(this_block);
   loops = GetLoopsOfExpr(this_loop, root);
 
-  CHECK_LE(loops.size(), block_loops.size());
+  PADDLE_ENFORCE_LE(
+      loops.size(),
+      block_loops.size(),
+      phi::errors::InvalidArgument("The size of loops should be less than or "
+                                   "equal to the size of block_loops."));
 
   std::vector<Var> replaced_var;
   std::vector<Expr> substitute_expr;
   for (int i = 0; i < loops.size(); ++i) {
     VLOG(3) << i << "-th loop is:\n " << loops[i];
     VLOG(3) << i << "-th block_loop:\n" << block_loops[i];
-    CHECK_EQ(GetLoopExtent(loops[i]), GetLoopExtent(block_loops[i]));
+    PADDLE_ENFORCE_EQ(
+        GetLoopExtent(loops[i]),
+        GetLoopExtent(block_loops[i]),
+        phi::errors::InvalidArgument(
+            "Extent of loop in Expr Param(loop) and extent of loop in Expr "
+            "Param(block) should be equal correspondingly."));
     if (block_loops[i].As<ir::For>()->bind_info().valid() &&
         !loops[i].As<ir::For>()->bind_info().valid()) {
       loops[i].As<ir::For>()->set_bind_info(

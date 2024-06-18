@@ -32,6 +32,8 @@ void FusedRopeKernel(const Context& dev_ctx,
                      const paddle::optional<DenseTensor>& cos,
                      const paddle::optional<DenseTensor>& position_ids,
                      bool use_neox_rotary_style,
+                     bool time_major,
+                     float rotary_emb_base,
                      DenseTensor* out_q,
                      DenseTensor* out_k,
                      DenseTensor* out_v) {
@@ -39,11 +41,15 @@ void FusedRopeKernel(const Context& dev_ctx,
   if (numel <= 0) return;
   dev_ctx.template Alloc<T>(out_q);
 
-  // q.shape: [batch_size, seq_len, num_heads, head_dim]
-  auto batch_size = q.dims()[0];
-  auto seq_len = q.dims()[1];
-  auto num_heads = q.dims()[2];
+  phi::Array<int64_t, 3> inputs_num_heads;
+
+  // q.shape: [seq_len, batch_size, num_heads, head_dim] if time_major else
+  // [batch_size, seq_len, num_heads, head_dim]
+  auto batch_size = time_major ? q.dims()[1] : q.dims()[0];
+  auto seq_len = time_major ? q.dims()[0] : q.dims()[1];
+  inputs_num_heads[0] = q.dims()[2];
   auto head_dim = q.dims()[3];
+
   PADDLE_ENFORCE_EQ(head_dim % 2,
                     0,
                     phi::errors::InvalidArgument(
@@ -65,19 +71,21 @@ void FusedRopeKernel(const Context& dev_ctx,
 
   ins_data[0] = q.data<T>();
   outs_data[0] = out_q->data<T>();
-  int num_inputs = 0;
+  int num_inputs = 1;
 
-  if (k.get_ptr()) {
+  if (k) {
     dev_ctx.template Alloc<T>(out_k);
-    ins_data[1] = k->data<T>();
-    outs_data[1] = out_k->data<T>();
+    ins_data[num_inputs] = k->data<T>();
+    outs_data[num_inputs] = out_k->data<T>();
+    inputs_num_heads[num_inputs] = k->dims()[2];
     num_inputs++;
   }
 
-  if (v.get_ptr()) {
+  if (v) {
     dev_ctx.template Alloc<T>(out_v);
-    ins_data[2] = v->data<T>();
-    outs_data[2] = out_v->data<T>();
+    ins_data[num_inputs] = v->data<T>();
+    outs_data[num_inputs] = out_v->data<T>();
+    inputs_num_heads[num_inputs] = v->dims()[2];
     num_inputs++;
   }
 
@@ -91,7 +99,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                       cos.get_ptr()->dims(),
                       phi::errors::InvalidArgument(
                           "The dims of sin and cos must be the same. But "
-                          "recieved sin's dims is {%s}, cos's dims is {%s}.",
+                          "received sin's dims is {%s}, cos's dims is {%s}.",
                           sin.get_ptr()->dims(),
                           cos.get_ptr()->dims()));
 
@@ -101,7 +109,7 @@ void FusedRopeKernel(const Context& dev_ctx,
         (dims_size == 2 || dims_size == 4),
         true,
         phi::errors::InvalidArgument("The dims of sin and cos is expected to "
-                                     "be 2 or 4, but recieved %d.",
+                                     "be 2 or 4, but received %d.",
                                      dims_size));
     if (dims_size == 4) {
       // sin.shape: [1, seq_len, 1, head_dim]
@@ -113,7 +121,7 @@ void FusedRopeKernel(const Context& dev_ctx,
     }
     int sin_seq_len_dim = (dims_size) == 4 ? 1 : 0;
 
-    if (position_ids.get_ptr()) {
+    if (position_ids) {
       PADDLE_ENFORCE_EQ(
           (sin_dims[dims_size - 1] == head_dim &&
            sin_dims[sin_seq_len_dim] >= seq_len),
@@ -121,7 +129,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           phi::errors::InvalidArgument(
               "The seq_len of sin and cos must be greater than or equal to "
               "this of q. The head_dim of sin and cos must be the same as this "
-              "of q. But recieved sin's "
+              "of q. But received sin's "
               "shape is {%s}, q's shape is {%s}.",
               sin_dims,
               q.dims()));
@@ -131,7 +139,7 @@ void FusedRopeKernel(const Context& dev_ctx,
                         2,
                         phi::errors::InvalidArgument(
                             "The dims of position_ids is expected to "
-                            "be 2, but recieved %d.",
+                            "be 2, but received %d.",
                             position_ids_dims.size()));
 
       PADDLE_ENFORCE_EQ(
@@ -140,7 +148,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           true,
           phi::errors::InvalidArgument(
               "The batch_size and seq_len of position_ids must be the same as "
-              "those of q. But recieved position_ids's "
+              "those of q. But received position_ids's "
               "shape is {%s}, q's shape is {%s}.",
               position_ids_dims,
               q.dims()));
@@ -153,7 +161,7 @@ void FusedRopeKernel(const Context& dev_ctx,
           true,
           phi::errors::InvalidArgument(
               "The seq_len and head_dim of sin and cos "
-              "must be the same as those of q. But recieved sin's "
+              "must be the same as those of q. But received sin's "
               "shape is {%s}, q's shape is {%s}.",
               sin_dims,
               q.dims()));
@@ -165,35 +173,110 @@ void FusedRopeKernel(const Context& dev_ctx,
     flag_sin_cos = true;
   }
 
+  bool is_same_num_heads = true;
+  auto prev_num_heads = inputs_num_heads[0];
+  for (int i = 1; i < num_inputs; ++i) {
+    if (prev_num_heads != inputs_num_heads[i]) {
+      is_same_num_heads = false;
+      break;
+    }
+    prev_num_heads = inputs_num_heads[i];
+  }
+
   int sign = 1;
-  if (use_neox_rotary_style) {
-    VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
-        <<<grid, block, 0, stream>>>(ins_data,
-                                     sin_cos_data,
-                                     position_ids_data,
-                                     flag_sin_cos,
-                                     sign,
-                                     batch_size,
-                                     seq_len,
-                                     num_heads,
-                                     head_dim,
-                                     outs_data,
-                                     num_inputs,
-                                     div_c);
+  VectorizedFusedRopeCudaKernelFunc<T, MPType, vec_size> kernel_func =
+      use_neox_rotary_style
+          ? VectorizedFusedRopeWithRotateEveryTwoKernel<T, MPType, vec_size>
+          : VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>;
+
+  if (is_same_num_heads) {
+    int64_t batch_stride = time_major ? q.strides()[1] : q.strides()[0];
+    int64_t seq_stride = time_major ? q.strides()[0] : q.strides()[1];
+    kernel_func<<<grid, block, 0, stream>>>(ins_data,
+                                            sin_cos_data,
+                                            position_ids_data,
+                                            flag_sin_cos,
+                                            sign,
+                                            batch_size,
+                                            seq_len,
+                                            inputs_num_heads[0],
+                                            head_dim,
+                                            batch_stride,
+                                            seq_stride,
+                                            num_inputs,
+                                            div_c,
+                                            rotary_emb_base,
+                                            outs_data);
   } else {
-    VectorizedFusedRopeWithRotateHalfKernel<T, MPType, vec_size>
-        <<<grid, block, 0, stream>>>(ins_data,
-                                     sin_cos_data,
-                                     position_ids_data,
-                                     flag_sin_cos,
-                                     sign,
-                                     batch_size,
-                                     seq_len,
-                                     num_heads,
-                                     head_dim,
-                                     outs_data,
-                                     num_inputs,
-                                     div_c);
+    // Multi Query Attention (MQA) or Group Query Attention (GQA)
+    PADDLE_ENFORCE_EQ(
+        (inputs_num_heads[0] != inputs_num_heads[num_inputs - 1]) &&
+            (inputs_num_heads[0] % inputs_num_heads[num_inputs - 1] == 0),
+        true,
+        phi::errors::InvalidArgument(
+            "The MQA or GQA mode is entered, when the number of heads of qkv "
+            "is not exactly the same two by two. This mode requires "
+            "num_heads of q to be divisible by k,v."
+            "But recieved num_heads of q is %d, num_heads of k,v is %d",
+            inputs_num_heads[0],
+            inputs_num_heads[num_inputs - 1]));
+
+    if (k.get_ptr() && v.get_ptr()) {
+      PADDLE_ENFORCE_EQ(
+          inputs_num_heads[1] == inputs_num_heads[2],
+          true,
+          phi::errors::InvalidArgument(
+              "The num_heads of k must be equal to the num_heads of v when v "
+              "is not none."
+              "But recieved num_heads of k is %d, num_heads of v is %d",
+              inputs_num_heads[1],
+              inputs_num_heads[2]));
+    }
+    // rotary position embedding Q
+    int64_t batch_stride_q = time_major ? q.strides()[1] : q.strides()[0];
+    int64_t seq_stride_q = time_major ? q.strides()[0] : q.strides()[1];
+
+    kernel_func<<<grid, block, 0, stream>>>(ins_data,
+                                            sin_cos_data,
+                                            position_ids_data,
+                                            flag_sin_cos,
+                                            sign,
+                                            batch_size,
+                                            seq_len,
+                                            inputs_num_heads[0],
+                                            head_dim,
+                                            batch_stride_q,
+                                            seq_stride_q,
+                                            1,
+                                            div_c,
+                                            rotary_emb_base,
+                                            outs_data);
+
+    // rotary position embedding K,V
+    phi::Array<const T*, 3> input_kv{ins_data[1], ins_data[2], nullptr};
+    phi::Array<T*, 3> out_kv{outs_data[1], outs_data[2], nullptr};
+    int64_t batch_stride_kv = time_major
+                                  ? inputs_num_heads[1] * head_dim
+                                  : seq_len * inputs_num_heads[1] * head_dim;
+    int64_t seq_stride_kv = time_major
+                                ? batch_size * inputs_num_heads[1] * head_dim
+                                : inputs_num_heads[1] * head_dim;
+
+    kernel_func<<<grid, block, 0, stream>>>(input_kv,
+                                            sin_cos_data,
+                                            position_ids_data,
+                                            flag_sin_cos,
+                                            sign,
+                                            batch_size,
+                                            seq_len,
+                                            inputs_num_heads[1],
+                                            head_dim,
+                                            batch_stride_kv,
+                                            seq_stride_kv,
+                                            num_inputs - 1,
+                                            div_c,
+                                            rotary_emb_base,
+                                            out_kv);
   }
 }
 }  // namespace fusion

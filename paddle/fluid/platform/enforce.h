@@ -39,9 +39,9 @@ limitations under the License. */
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_HIP
-#include <hiprand.h>
+#include <hiprand/hiprand.h>
 #include <miopen/miopen.h>
-#include <rocblas.h>
+#include <rocblas/rocblas.h>
 #include <thrust/system/hip/error.h>
 #include <thrust/system_error.h>  // NOLINT
 #endif
@@ -61,13 +61,13 @@ limitations under the License. */
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/utils/flags.h"
 
-#include "paddle/fluid/string/printf.h"
-#include "paddle/fluid/string/to_string.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
+#include "paddle/utils/string/printf.h"
+#include "paddle/utils/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
@@ -101,14 +101,14 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #endif
-#include "paddle/phi/core/flags.h"
 
-PHI_DECLARE_int32(call_stack_level);
+COMMON_DECLARE_int32(call_stack_level);
 
 namespace paddle {
 namespace platform {
 using namespace ::phi::enforce;  // NOLINT
 using ::common::demangle;
+using ::common::enforce::EnforceNotMet;
 
 /** HELPER MACROS AND FUNCTIONS **/
 

@@ -78,7 +78,7 @@ struct SelectedRowsAdd<phi::CPUContext, T> {
         in1_row_numel,
         out_value->numel() / out_rows.size(),
         phi::errors::InvalidArgument(
-            "The input and oupput width must be equal."
+            "The input and output width must be equal."
             "But received input width = [%d], output width = [%d]",
             in1_row_numel,
             out_value->numel() / out_rows.size()));
@@ -856,7 +856,6 @@ struct MergeAverage<phi::CPUContext, T> {
     auto input_height = has_value_input->height();
     phi::SelectedRows& out = *output;
     std::set<int64_t> merged_row_set;
-    size_t row_num = 0;
     for (auto* input : inputs) {
       if (input->rows().empty()) {
         continue;
@@ -870,7 +869,6 @@ struct MergeAverage<phi::CPUContext, T> {
           input_height,
           input->height(),
           phi::errors::InvalidArgument("All input should have same height."));
-      row_num += input->rows().size();
       merged_row_set.insert(input->rows().begin(), input->rows().end());
     }
 

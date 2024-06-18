@@ -18,13 +18,11 @@
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 bool ParsePlace(const pir::Type& type, OpFuncType* type_) {
   if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
     auto place =
         type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>().place();
-    place == phi::CPUPlace();
     if (place == phi::GPUPlace()) {
       *type_ = OpFuncType::kGpuAsync;
       return true;
@@ -122,5 +120,4 @@ void TuplePushInstruction::Run() {
     }
   }
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

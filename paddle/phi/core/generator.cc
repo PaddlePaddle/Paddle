@@ -47,7 +47,7 @@ const std::shared_ptr<Generator>& DefaultXPUGenerator(int64_t device_id) {
   });
   if (device_id < 0) {
     PADDLE_THROW(
-        phi::errors::InvalidArgument("xpu device id shoule be greater than 0"));
+        phi::errors::InvalidArgument("xpu device id should be greater than 0"));
   }
 
   std::call_once(xpu_device_flags[device_id], [device_id]() {
@@ -78,7 +78,7 @@ const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id) {
   });
   if (device_id < 0) {
     PADDLE_THROW(phi::errors::InvalidArgument(
-        "cuda device id shoule be greater than 0"));
+        "cuda device id should be greater than 0"));
   }
 
   std::call_once(cuda_device_flags[device_id], [device_id]() {
@@ -272,7 +272,7 @@ uint64_t Generator::Random64() {
 
 std::pair<uint64_t, uint64_t> Generator::IncrementOffset(uint64_t increment) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
   std::lock_guard<std::mutex> lock(mu_);
   uint64_t offset = state().offset;
   state().offset = offset + increment;

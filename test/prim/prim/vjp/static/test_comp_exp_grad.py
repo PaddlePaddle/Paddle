@@ -101,6 +101,8 @@ class TestExpGradComp(unittest.TestCase):
                 )
                 y = paddle.exp(x)
                 x_cotangent = paddle.static.gradients(y, x, v)
+            if x_cotangent == [None]:
+                x_cotangent = []
             exe = paddle.static.Executor()
             exe.run(sp)
             return exe.run(

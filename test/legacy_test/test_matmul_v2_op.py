@@ -68,7 +68,9 @@ class TestMatMulV2Op(OpTest):
         self.init_kernel_type()
         self.config()
         self.op_type = "matmul_v2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.tensor.matmul
+        self.public_python_api = paddle.tensor.matmul
         if self.is_bfloat16_op():
             x = np.random.random(self.x_shape).astype(np.float32)
             y = np.random.random(self.y_shape).astype(np.float32)
@@ -114,6 +116,7 @@ class TestMatMulV2Op(OpTest):
                 if hasattr(self, 'check_cinn')
                 else True,
                 check_pir=True,
+                check_prim_pir=True,
             )
         else:
             self.check_grad(
@@ -123,6 +126,7 @@ class TestMatMulV2Op(OpTest):
                 if hasattr(self, 'check_cinn')
                 else True,
                 check_pir=True,
+                check_prim_pir=True,
             )
 
 
@@ -164,6 +168,7 @@ class TestMatMulOp3(TestMatMulV2Op):
                 else True,
                 check_pir=True,
                 check_auto_parallel=True,
+                check_prim_pir=True,
             )
         else:
             self.check_grad(
@@ -174,6 +179,7 @@ class TestMatMulOp3(TestMatMulV2Op):
                 else True,
                 check_pir=True,
                 check_auto_parallel=True,
+                check_prim_pir=True,
             )
 
 
@@ -388,7 +394,9 @@ class TestMatMulV2OpAutoParallel(OpTest):
         self.init_kernel_type()
         self.config()
         self.op_type = "matmul_v2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.tensor.matmul
+        self.public_python_api = paddle.tensor.matmul
         x = np.random.random(self.x_shape).astype(self.dtype)
         y = np.random.random(self.y_shape).astype(self.dtype)
         # -0.1 ~ 0.1
@@ -411,7 +419,12 @@ class TestMatMulV2OpAutoParallel(OpTest):
                 check_auto_parallel=True,
             )
         else:
-            self.check_grad(['X', 'Y'], 'Out', check_auto_parallel=True)
+            self.check_grad(
+                ['X', 'Y'],
+                'Out',
+                check_auto_parallel=True,
+                check_prim_pir=True,
+            )
 
 
 # --------------------test matmul fp16--------------------
@@ -450,6 +463,7 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                     if hasattr(self, 'check_cinn')
                     else True,
                     check_pir=True,
+                    check_prim_pir=True,
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
@@ -527,6 +541,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 if hasattr(self, 'check_cinn')
                 else True,
                 check_pir=True,
+                check_prim_pir=True,
             )
 
         def test_check_grad_y(self):
@@ -544,6 +559,7 @@ def create_test_bf16_class(parent, atol=0.01):
                 if hasattr(self, 'check_cinn')
                 else True,
                 check_pir=True,
+                check_prim_pir=True,
             )
 
         def test_check_grad(self):
@@ -719,7 +735,7 @@ class TestComplexMatMulOp(OpTest):
             check_cinn=False,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
@@ -727,7 +743,7 @@ class TestComplexMatMulOp(OpTest):
             check_cinn=False,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',
@@ -772,7 +788,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             check_cinn=False,
         )
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(
             ['Y'],
             'Out',
@@ -780,7 +796,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             check_cinn=False,
         )
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'],
             'Out',

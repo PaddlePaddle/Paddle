@@ -31,9 +31,9 @@
 #include "paddle/utils/optional.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #ifdef __NVCC__
@@ -60,7 +60,7 @@ static void CheckCommContextHasRingId(
     const distributed::CommContextManager &comm_context_manager, int ring_id) {
   PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "You choose to use new communication library by "
                         "setting environment "
                         "variable FLAGS_dynamic_static_unified_comm True. "
@@ -1773,7 +1773,7 @@ void DistributedFusedLambKernel(
         comm_context_manager.Get(std::to_string(ring_ids[0])));
     PADDLE_ENFORCE_NE(comm_ctx,
                       nullptr,
-                      paddle::platform::errors::Unavailable(
+                      phi::errors::Unavailable(
                           "NCCLCommContext is nullptr, collective op should "
                           "has ring_id attr."));
 

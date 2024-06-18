@@ -90,7 +90,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
-    paddle::experimental::IntArray* padddings,
+    paddle::experimental::IntArray* paddings,
     std::string* attr) {
   // for pad
   if ((DesiredLayout() == phi::DataLayout::UNDEFINED)) {

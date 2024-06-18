@@ -111,7 +111,7 @@ struct TestBroadcastOpHandle {
       nccl_ctxs_.reset(new platform::NCCLContextMap(place_list_));
 #else
       PADDLE_THROW(
-          platform::errors::PreconditionNotMet("Not compiled with NCLL."));
+          platform::errors::PreconditionNotMet("Not compiled with NCCL."));
 #endif
     } else {
       int count = 8;

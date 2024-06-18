@@ -29,20 +29,18 @@
 #endif
 #if CUDA_VERSION >= 10020
 
-namespace paddle {
-namespace memory {
-namespace allocation {
+namespace paddle::memory::allocation {
 
 CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
     const platform::CUDAPlace& place)
-    : place_(place) {
+    : place_(place), virtual_mem_base_(0), prop_{} {
   CUmemAllocationProp prop = {};
 
   // Setup the properties common for all the chunks
   // The allocations will be device pinned memory.
   // This property structure describes the physical location where the memory
-  // will be allocated via cuMemCreate allong with additional properties In this
-  // case, the allocation will be pinnded device memory local to a given device.
+  // will be allocated via cuMemCreate along with additional properties In this
+  // case, the allocation will be pinned device memory local to a given device.
   prop.type = CU_MEM_ALLOCATION_TYPE_PINNED;
   prop.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
   prop.location.id = place.device;  // NOLINT
@@ -225,11 +223,9 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   virtual_mem_alloced_offset_ += size;
 
   return new Allocation(
-      reinterpret_cast<void*>(ptr), size, platform::Place(place_));
+      reinterpret_cast<void*>(ptr), size, platform::Place(place_));  // NOLINT
 }
 
-}  // namespace allocation
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::allocation
 
 #endif

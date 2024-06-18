@@ -67,6 +67,8 @@ class ProcessMesh {
   bool empty() const { return (shape_.empty() || process_ids_.empty()); }
   bool contains(int64_t process_id) const;
 
+  size_t hash() const { return std::hash<std::string>{}(to_string()); }
+
   // ProcessMesh from_string(const std::string& mesh_str);
   std::string to_string() const;
 

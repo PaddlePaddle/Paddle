@@ -44,8 +44,8 @@ class Identity(Layer):
         kwargs: any keyword argument (unused)
 
     Shape:
-        - input: Multi-dimentional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
-        - output: Multi-dimentional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
+        - input: Multi-dimensional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
+        - output: Multi-dimensional tensor with shape :math:`[batch\_size, n1, n2, ...]` .
 
     Examples:
         .. code-block:: python
@@ -118,8 +118,8 @@ class Linear(Layer):
         **bias** (Parameter): the learnable bias of this layer.
 
     Shape:
-        - input: Multi-dimentional tensor with shape :math:`[batch\_size, *, in\_features]` . Its data types are float16, float32, float64 ,The default is float32 .
-        - output: Multi-dimentional tensor with shape :math:`[batch\_size, *, out\_features]` . The data type is the same as the input .
+        - input: Multi-dimensional tensor with shape :math:`[batch\_size, *, in\_features]` . Its data types are float16, float32, float64 ,The default is float32 .
+        - output: Multi-dimensional tensor with shape :math:`[batch\_size, *, out\_features]` . The data type is the same as the input .
 
     Examples:
         .. code-block:: python
@@ -189,9 +189,7 @@ class Linear(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'in_features={}, out_features={}, dtype={}{}'.format(
-            self.weight.shape[0], self.weight.shape[1], self._dtype, name_str
-        )
+        return f'in_features={self.weight.shape[0]}, out_features={self.weight.shape[1]}, dtype={self._dtype}{name_str}'
 
 
 class Upsample(Layer):
@@ -199,7 +197,8 @@ class Upsample(Layer):
     This op resizes a batch of images.
 
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
-    or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
+    or (num_batches, in_w, channels), or 4-D (num_batches, channels, in_h, in_w) or
+    (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     Where in_w is width of the input tensor, in_h is the height of the input tensor,
     in_d is the depth of the input tensor.
@@ -338,8 +337,7 @@ class Upsample(Layer):
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
 
     Parameters:
-        x (Tensor): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
-                          its data format is specified by :attr:`data_format`.
+
         size (list|tuple|Tensor|None): Output shape of image resize
              layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w)
              when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor.
@@ -358,18 +356,21 @@ class Upsample(Layer):
         align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
                             it can be \'0\' for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
-            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
-            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        data_format (str, optional): Specify the data format of the input, and the data format of
+             the output will be consistent with that of the input. An optional string from:`"NCW"`,
+             `"NWC"`,  `"NCHW"`, `"NHWC"`, `"NCDHW"`, `"NDHWC"`. The default value is None.
+             When :attr:`data_format` is not specified, it will be automatically inferred from the
+             input dimension of :attr:`x`. When :attr:`x` is a 3-D Tensor, :attr:`data_format` will be
+             set to `"NCW"`; When :attr:`x` is a 4-D Tensor, :attr:`data_format` will be set to
+             `"NCHW"`; When :attr:`x` is a 5-D Tensor, :attr:`data_format` will be set to `"NCDHW"`.
+             When it is `"NCHW"`, the data should be stored in the order of:
+             `[batch_size, input_channels, input_height, input_width]`. When it is `"NCDHW"`, the
+             data should be stored in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
-        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
-        or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
+        A callable object of Upsample.
 
     Examples:
         .. code-block:: python
@@ -392,7 +393,7 @@ class Upsample(Layer):
         mode='nearest',
         align_corners=False,
         align_mode=0,
-        data_format='NCHW',
+        data_format=None,
         name=None,
     ):
         super().__init__()
@@ -405,6 +406,18 @@ class Upsample(Layer):
         self.name = name
 
     def forward(self, x):
+        if self.data_format is None:
+            dim_size = len(x.shape)
+            if dim_size == 3:
+                self.data_format = 'NCW'
+            elif dim_size == 4:
+                self.data_format = 'NCHW'
+            elif dim_size == 5:
+                self.data_format = 'NCDHW'
+            else:
+                raise ValueError(
+                    f"The dimension of the input tensor should only be 3-D, 4-D or 5-D, but the received dimension is {dim_size}."
+                )
         out = F.interpolate(
             x,
             size=self.size,
@@ -424,14 +437,7 @@ class Upsample(Layer):
         else:
             main_str = f'size={self.size}'
         name_str = f', name={self.name}' if self.name else ''
-        return '{}, mode={}, align_corners={}, align_mode={}, data_format={}{}'.format(
-            main_str,
-            self.mode,
-            self.align_corners,
-            self.align_mode,
-            self.data_format,
-            name_str,
-        )
+        return f'{main_str}, mode={self.mode}, align_corners={self.align_corners}, align_mode={self.align_mode}, data_format={self.data_format}{name_str}'
 
 
 class UpsamplingNearest2D(Layer):
@@ -705,13 +711,7 @@ class Bilinear(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'in1_features={}, in2_features={}, out_features={}, dtype={}{}'.format(
-            self._in1_features,
-            self._in2_features,
-            self._out_features,
-            self._dtype,
-            name_str,
-        )
+        return f'in1_features={self._in1_features}, in2_features={self._in2_features}, out_features={self._out_features}, dtype={self._dtype}{name_str}'
 
 
 class Dropout(Layer):
@@ -1074,9 +1074,68 @@ class Pad1D(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
-            self._pad, self._mode, self._value, self._data_format, name_str
+        return f'padding={self._pad}, mode={self._mode}, value={self._value}, data_format={self._data_format}{name_str}'
+
+
+class ZeroPad1D(Layer):
+    """
+    This interface is used to construct a callable object of the ``ZeroPad1D`` class.
+    Pads the input tensor boundaries with zero.
+
+    Parameters:
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
+            The pad has the form (pad_left, pad_right).
+        data_format (str): An string from: "NCL", "NLC". Specify the data format of the input data.
+           Default is  "NCL"
+        name (str, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x(Tensor): The input tensor of zeropad1d operator, which is a 3-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of zeropad1d operator, which is a 3-D tensor.
+          The data type is same as input x.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> input_shape = (1, 2, 3)
+            >>> pad = [1, 2]
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> my_pad = nn.ZeroPad1D(padding=pad)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 2, 6], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0., 1., 2., 3., 0., 0.],
+              [0., 4., 5., 6., 0., 0.]]])
+    """
+
+    def __init__(self, padding, data_format="NCL", name=None):
+        super().__init__()
+        self._pad = _npairs(padding, 1)
+        self._mode = 'constant'
+        self._value = 0.0
+        self._data_format = data_format
+        self._name = name
+
+    def forward(self, x):
+        return F.pad(
+            x,
+            pad=self._pad,
+            mode=self._mode,
+            value=self._value,
+            data_format=self._data_format,
+            name=self._name,
         )
+
+    def extra_repr(self):
+        name_str = f', name={self._name}' if self._name else ''
+        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
 
 
 class Pad2D(Layer):
@@ -1148,9 +1207,7 @@ class Pad2D(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
-            self._pad, self._mode, self._value, self._data_format, name_str
-        )
+        return f'padding={self._pad}, mode={self._mode}, value={self._value}, data_format={self._data_format}{name_str}'
 
 
 class ZeroPad2D(Layer):
@@ -1291,9 +1348,71 @@ class Pad3D(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'padding={}, mode={}, value={}, data_format={}{}'.format(
-            self._pad, self._mode, self._value, self._data_format, name_str
+        return f'padding={self._pad}, mode={self._mode}, value={self._value}, data_format={self._data_format}{name_str}'
+
+
+class ZeroPad3D(Layer):
+    """
+    This interface is used to construct a callable object of the ``ZeroPad3D`` class.
+    Pads the input tensor boundaries with zero.
+
+    Parameters:
+        padding (Tensor | List[int] | int): The padding size with data type int. If is int, use the
+            same padding in all dimensions. Else [len(padding)/2] dimensions of input will be padded.
+            The pad has the form (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
+        data_format (str): An string from: "NCDHW", "NDHWC". Specify the data format of the input data.
+           Default is  "NCDHW"
+        name (str, optional) : The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - x(Tensor): The input tensor of zeropad3d operator, which is a 5-D tensor.
+          The data type can be float32, float64.
+        - output(Tensor): The output tensor of zeropad3d operator, which is a 5-D tensor.
+          The data type is same as input x.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+
+            >>> input_shape = (1, 1, 1, 2, 3)
+            >>> pad = [1, 0, 1, 2, 0, 0]
+            >>> data = paddle.arange(paddle.prod(paddle.to_tensor(input_shape)), dtype="float32").reshape(input_shape) + 1
+            >>> my_pad = nn.ZeroPad3D(padding=pad)
+            >>> result = my_pad(data)
+            >>> print(result)
+            Tensor(shape=[1, 1, 1, 5, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[[0., 0., 0., 0.],
+                [0., 1., 2., 3.],
+                [0., 4., 5., 6.],
+                [0., 0., 0., 0.],
+                [0., 0., 0., 0.]]]]])
+    """
+
+    def __init__(self, padding, data_format="NCDHW", name=None):
+        super().__init__()
+        self._pad = _npairs(padding, 3)
+        self._mode = 'constant'
+        self._value = 0.0
+        self._data_format = data_format
+        self._name = name
+
+    def forward(self, x):
+        return F.pad(
+            x,
+            pad=self._pad,
+            mode=self._mode,
+            value=self._value,
+            data_format=self._data_format,
+            name=self._name,
         )
+
+    def extra_repr(self):
+        name_str = f', name={self._name}' if self._name else ''
+        return f'padding={self._pad}, data_format={self._data_format}{name_str}'
 
 
 class CosineSimilarity(Layer):
@@ -1591,13 +1710,7 @@ class Unfold(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.format(
-            self.kernel_sizes,
-            self.dilations,
-            self.paddings,
-            self.strides,
-            name_str,
-        )
+        return f'kernel_size={self.kernel_sizes}, dilation={self.dilations}, padding={self.paddings}, stride={self.strides}{name_str}'
 
 
 class Fold(Layer):
@@ -1689,13 +1802,7 @@ class Fold(Layer):
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.format(
-            self.kernel_sizes,
-            self.dilations,
-            self.paddings,
-            self.strides,
-            name_str,
-        )
+        return f'kernel_size={self.kernel_sizes}, dilation={self.dilations}, padding={self.paddings}, stride={self.strides}{name_str}'
 
 
 class Flatten(Layer):

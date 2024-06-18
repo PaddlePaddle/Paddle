@@ -21,7 +21,7 @@
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
 #include "paddle/cinn/utils/string.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace pass {
@@ -48,8 +48,14 @@ void GetBroadcastPattern(
   if (*pattern == framework::kBroadcast) {
     auto inlinks = op_node->inlinks();
     auto outlinks = op_node->outlinks();
-    CHECK_EQ(inlinks.size(), 2U);
-    CHECK_EQ(outlinks.size(), 1U);
+    PADDLE_ENFORCE_EQ(
+        inlinks.size(),
+        2U,
+        phi::errors::InvalidArgument("Broadcast op should have 2 inputs"));
+    PADDLE_ENFORCE_EQ(
+        outlinks.size(),
+        1U,
+        phi::errors::InvalidArgument("Broadcast op should have 1 output"));
     std::vector<framework::shape_t> input_shapes;
     for (auto link : inlinks) {
       auto source = link->source();
@@ -83,7 +89,7 @@ class DomTree {
       const std::vector<GraphNode*>& nodes) {
     int size = nodes.size();
     dom_nodes_.resize(nodes.size());
-    // construct postdom tree, reverse topological_order
+    // construct post dom tree, reverse topological_order
     for (int i = size - 1; i >= 0; i--) {
       auto* dom_node = CreateDomNode(nodes[i]);
       CHECK(dom_node);
@@ -160,7 +166,7 @@ class DomTree {
           parent = dom_node;
           CHECK(parent);
         } else {
-          // if the out_var links to more than one opnode, then we need to find
+          // if the out_var links to more than one op_node, then we need to find
           // the LCA
           parent = LCA(parent, dom_node, pattern);
         }
@@ -170,7 +176,7 @@ class DomTree {
         VLOG(2) << sink->id() << "'s op pattern is " << op_pattern;
         if (op_node->attrs.attr_store.count("pre_run") &&
             absl::get<bool>(op_node->attrs.attr_store["pre_run"])) {
-          // not fuse pre_run opnode
+          // not fuse pre_run op_node
           op_pattern = framework::kNonFusible;
           VLOG(3) << op_node->op()->name << " do pre_run and not fuse";
         }
@@ -233,7 +239,11 @@ class GraphPartition {
   std::vector<std::vector<Node*>> Partition(
       const std::vector<GraphNode*>& graph_nodes,
       const std::vector<DomNode*>& dom_nodes) {
-    CHECK_EQ(graph_nodes.size(), dom_nodes.size());
+    PADDLE_ENFORCE_EQ(
+        graph_nodes.size(),
+        dom_nodes.size(),
+        phi::errors::InvalidArgument(
+            "graph_nodes size should be equal to dom_nodes size"));
     InitGroups(graph_nodes);
     for (int i = 0; i < 2; i++) {
       FuseGroups(graph_nodes, dom_nodes, i);
@@ -264,7 +274,7 @@ class GraphPartition {
         auto pattern = op_pattern_dict[op_node->op()];
         if (op_node->attrs.attr_store.count("pre_run") &&
             absl::get<bool>(op_node->attrs.attr_store["pre_run"])) {
-          // not fuse pre_run opnode
+          // not fuse pre_run op_node
           pattern = framework::kNonFusible;
           VLOG(3) << op_node->op()->name << " do pre_run and not fuse";
         }
@@ -412,7 +422,8 @@ class GraphPartition {
       parent->master_node = child->master_node;
       if (child->pattern > framework::kBroadcast &&
           parent->pattern > framework::kBroadcast) {
-        LOG(FATAL) << "can't fuse 2 groups both with complex pattern";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "can't fuse 2 groups both with complex pattern"));
       } else {
         parent->pattern =
             child->pattern > parent->pattern ? child->pattern : parent->pattern;
@@ -456,8 +467,16 @@ class GraphPartition {
   void FuseGroups(const std::vector<GraphNode*>& graph_nodes,
                   const std::vector<DomNode*>& dom_nodes,
                   int phase) {
-    CHECK_EQ(graph_nodes.size(), dom_nodes.size());
-    CHECK_EQ(group_nodes_.size(), dom_nodes.size());
+    PADDLE_ENFORCE_EQ(
+        graph_nodes.size(),
+        dom_nodes.size(),
+        phi::errors::InvalidArgument(
+            "graph_nodes size should be equal to dom_nodes size"));
+    PADDLE_ENFORCE_EQ(
+        group_nodes_.size(),
+        dom_nodes.size(),
+        phi::errors::InvalidArgument(
+            "group_nodes size should be equal to dom_nodes size"));
     for (int i = 0; i < graph_nodes.size(); i++) {
       auto* graph_node = graph_nodes[i];
       auto* dom_node = dom_nodes[i];
@@ -520,7 +539,11 @@ class GraphPartition {
   }
   void SplitGroups(const std::vector<cinn::common::GraphNode*>& graph_nodes) {
     // split groups sorted by topo order
-    CHECK_EQ(graph_nodes.size(), group_nodes_.size());
+    PADDLE_ENFORCE_EQ(
+        graph_nodes.size(),
+        group_nodes_.size(),
+        phi::errors::InvalidArgument(
+            "graph_nodes size should be equal to group_nodes size"));
     absl::flat_hash_map<int, std::vector<Node*>> group_maps;
     std::set<int> root_indice;
     for (int i = 0; i < graph_nodes.size(); i++) {
@@ -549,7 +572,7 @@ class GraphPartition {
 void OpFusionPass(Graph* graph) {
   auto store_nodes = std::get<0>(graph->topological_order());
   int node_size = store_nodes.size();
-  // construct postdom tree, reverse topological_order
+  // construct post dom tree, reverse topological_order
   DomTree tree;
   auto& dom_nodes = tree.CreatePostDomTree(store_nodes);
   // graph partition

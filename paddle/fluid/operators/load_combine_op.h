@@ -40,7 +40,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GT(out_var_names.size(),
                       0UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The number of variables to be loaded is %d, expect "
                           "it to be greater than 0.",
                           out_var_names.size()));
@@ -49,7 +49,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           static_cast<bool>(fin),
           true,
-          platform::errors::Unavailable(
+          phi::errors::Unavailable(
               "LoadCombine operator fails to open file %s, please check "
               "whether the model file is complete or damaged.",
               filename));
@@ -58,7 +58,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_NE(
           filename.empty(),
           true,
-          platform::errors::Unavailable(
+          phi::errors::Unavailable(
               "LoadCombine operator fails to open file %s, please check "
               "whether the model file is complete or damaged.",
               filename));
@@ -69,11 +69,11 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
 
   void LoadParamsFromBuffer(
       const framework::ExecutionContext &context,
-      const platform::Place &place,
+      const phi::Place &place,
       std::istream *buffer,
       bool load_as_fp16,
       const std::vector<std::string> &out_var_names) const {
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
     auto out_vars = context.MultiOutputVar("Out");
 
@@ -81,14 +81,14 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
       VLOG(4) << "loading tensor: " << out_var_names[i];
       PADDLE_ENFORCE_NOT_NULL(
           out_vars[i],
-          platform::errors::InvalidArgument(
+          phi::errors::InvalidArgument(
               "The variable %s to be loaded cannot be found.",
               out_var_names[i]));
       // Error checking
       PADDLE_ENFORCE_EQ(
           static_cast<bool>(*buffer),
           true,
-          platform::errors::Unavailable(
+          phi::errors::Unavailable(
               "An error occurred while loading model parameters. "
               "Please check whether the model file is complete or damaged."));
       if (out_vars[i]->IsType<framework::Vocab>()) {
@@ -101,7 +101,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
           framework::NFD(it->first, &tmp);
           if (tmp.empty()) {
             VLOG(0) << "The string " << it->first
-                    << " was converted to unicode failedly! "
+                    << " was converted to unicode unsuccessfully! "
                     << "Then dropped to load it.";
             continue;
           }
@@ -142,7 +142,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
     buffer->peek();
     PADDLE_ENFORCE_EQ(buffer->eof(),
                       true,
-                      platform::errors::Unavailable(
+                      phi::errors::Unavailable(
                           "Not allowed to load partial data via "
                           "load_combine_op, please use load_op instead."));
   }

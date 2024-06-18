@@ -23,9 +23,9 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 
@@ -127,7 +127,7 @@ inline bool elementwise_fuse_broadcast(
   return true;
 }
 
-inline bool honrizontal_elementwise_fuse_reduce(
+inline bool horizontal_elementwise_fuse_reduce(
     const std::shared_ptr<ir::Group>& first,
     const std::shared_ptr<ir::Group>& second) {
   std::shared_ptr<ir::Group> ele_group, reduce_group;
@@ -146,7 +146,7 @@ inline bool honrizontal_elementwise_fuse_reduce(
   auto ele_node_shape =
       GetValueShape((*ele_group->master_ops.begin())->result(0));
   int32_t size_ele = ::common::product(ele_node_shape);
-  // TODO(phlrain): seems extrame danger herem, why compare multi Master Node?
+  // TODO(phlrain): seems extreme danger here, why compare multi Master Node?
   for (auto* master : reduce_group->master_ops) {
     auto master_node_shape = GetValueShape(master->result(0));
     int32_t size_master = ::common::product(master_node_shape);
@@ -242,7 +242,7 @@ inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   // }
 
   auto input_shape = GetValueShape(reducer->operand_source(0));
-  auto reduce_axes = GetVectorAttr(reducer, "dim");
+  auto reduce_axes = GetVectorAttr(reducer, "axis");
 
   // int max_num_threads = helper->target_.max_num_threads();
   int max_num_threads = 1000;
@@ -349,7 +349,7 @@ inline bool horizontal_relation(const std::shared_ptr<ir::Group>& first,
   };
   auto selected_nodes = select_node_set(second_set, op_pattern_kind);
 
-  auto check_depency = [&](::pir::Operation* node) {
+  auto check_dependency = [&](::pir::Operation* node) {
     std::queue<::pir::Operation*> candidates;
     std::unordered_set<::pir::Operation*> visited_set;
     candidates.push(node);
@@ -360,8 +360,7 @@ inline bool horizontal_relation(const std::shared_ptr<ir::Group>& first,
       // visit all producer node
       // Get all the input Op
       for (size_t i = 0; i < candidate->num_operands(); ++i) {
-        auto producer =
-            candidate->operand_source(i).dyn_cast<pir::OpResult>().owner();
+        auto producer = candidate->operand_source(i).defining_op();
         // check dependency.
         if (first_set.count(producer)) {
           return true;
@@ -382,7 +381,7 @@ inline bool horizontal_relation(const std::shared_ptr<ir::Group>& first,
   };
 
   for (auto node : selected_nodes) {
-    if (check_depency(node)) {
+    if (check_dependency(node)) {
       return false;
     }
   }
@@ -438,10 +437,10 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
         ::common::vectorize(GetValueShape(reducer->operand_source(0)));
     auto reducer_output_shape =
         ::common::vectorize(GetValueShape(reducer->result(0)));
-    std::vector<int64_t> reduce_axes = GetVectorAttr(reducer, "dim");
+    std::vector<int64_t> reduce_axes = GetVectorAttr(reducer, "axis");
 
-    auto keep_dim =
-        reducer->attribute("keep_dim").dyn_cast<pir::BoolAttribute>().data();
+    auto keepdim =
+        reducer->attribute("keepdim").dyn_cast<pir::BoolAttribute>().data();
     for (auto& axis : reduce_axes) {
       if (axis == -1) {
         axis = reducer_input_shape.size() - 1;
@@ -511,7 +510,7 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
 
       // auto broadcast_axes = absl::get<std::vector<int>>(
       //     broadcaster->attrs.attr_store.at("broadcast_axes"));
-      // TODO(phlrain) : suport here
+      // TODO(phlrain) : support here
       std::vector<int64_t> broadcaster_output_shape =
           GetVectorAttr(broadcaster, "out_shape");
       std::vector<int64_t> broadcast_axes =
@@ -526,7 +525,7 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
         return false;
       }
 
-      if (keep_dim) {
+      if (keepdim) {
         continue;
       } else {
         // if reducer_output_shape = [1]
@@ -580,27 +579,27 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   auto reducer_1_input_shape = GetValueShape(reducer_1->operand_source(0));
   auto reducer_1_output_shape = GetValueShape(reducer_1->result(0));
 
-  auto reducer_0_reduce_dim = GetVectorAttr(reducer_0, "dim");
-  auto reducer_1_reduce_dim = GetVectorAttr(reducer_1, "dim");
+  auto reducer_0_reduce_axes = GetVectorAttr(reducer_0, "axis");
+  auto reducer_1_reduce_axes = GetVectorAttr(reducer_1, "axis");
 
-  for (auto& dim : reducer_0_reduce_dim) {
+  for (auto& dim : reducer_0_reduce_axes) {
     // if dim = -1, set as shape.size() - 1
     if (dim == -1) {
-      dim = reducer_0_reduce_dim.size() - 1;
+      dim = reducer_0_reduce_axes.size() - 1;
     }
   }
 
-  for (auto& dim : reducer_1_reduce_dim) {
+  for (auto& dim : reducer_1_reduce_axes) {
     // if dim = -1,  set as shape.size() - 1
     if (dim == -1) {
-      dim = reducer_1_reduce_dim.size() - 1;
+      dim = reducer_1_reduce_axes.size() - 1;
     }
   }
 
   // check shape is same
   if (reducer_0_input_shape == reducer_1_input_shape &&
       reducer_0_output_shape == reducer_1_output_shape &&
-      reducer_0_reduce_dim == reducer_1_reduce_dim) {
+      reducer_0_reduce_axes == reducer_1_reduce_axes) {
     auto shared_size = 0;
     for (auto& fusion_group : {first, second}) {
       for (auto* master : fusion_group->master_ops) {
@@ -619,10 +618,10 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
     return true;
   }
 
-  if (WithoutLastDimInReduce(reducer_0_input_shape, reducer_0_reduce_dim) &&
-      WithoutLastDimInReduce(reducer_1_input_shape, reducer_1_reduce_dim) &&
+  if (WithoutLastDimInReduce(reducer_0_input_shape, reducer_0_reduce_axes) &&
+      WithoutLastDimInReduce(reducer_1_input_shape, reducer_1_reduce_axes) &&
       reducer_0_output_shape == reducer_1_output_shape &&
-      reducer_0_reduce_dim == reducer_1_reduce_dim) {
+      reducer_0_reduce_axes == reducer_1_reduce_axes) {
     auto shared_size = 0;
     for (auto& fusion_group : {first, second}) {
       for (auto* master : fusion_group->master_ops) {

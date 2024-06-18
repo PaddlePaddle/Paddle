@@ -59,7 +59,7 @@ class GpuCpuMapMatmulV2ToMulPass : public FusePassBase {
 };
 
 /*
- * Map matmul_v2 to matmul, not supoort broadcast.
+ * Map matmul_v2 to matmul, not support broadcast.
  */
 class GpuCpuMapMatmulV2ToMatmulPass : public FusePassBase {
  public:

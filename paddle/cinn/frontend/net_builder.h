@@ -293,7 +293,7 @@ class NetBuilder {
 
   /**
    * @brief This OP is used to sum one or more variable of the input.
-   * @param x A Varaible list. The shape and data type of the list elements
+   * @param x A Variable list. The shape and data type of the list elements
    * should be consistent.
    * @return The sum of input `x`. its shape and data types are consistent with
    * `x`.
@@ -654,7 +654,7 @@ class NetBuilder {
    * where N is batch size, C is the number of channels, H is the height of the
    * feature, and W is the width of the feature.
    * @param y The output variable of pooling operator.
-   * @param dy The gradient variable of pooling operator's otuput.
+   * @param dy The gradient variable of pooling operator's output.
    * @param pooling_type pooling type, can be “max” for max-pooling and “avg”
    * for average-pooling
    * @param ksize The pool kernel size. If pool kernel size is a tuple or list,
@@ -972,7 +972,7 @@ class NetBuilder {
   Variable BitcastConvert(const Variable& x, const std::string& dtype);
 
   /**
-   *  @brief Returns a one-hot tensor where the locations repsented by indices
+   *  @brief Returns a one-hot tensor where the locations represented by indices
    * take value `on_value`, other locations take value `off_value`.
    *  @param on_value Value to fill at indices. Its shape must be [1].
    *  @param on_value Value to fill at all other positions besides indices. Its

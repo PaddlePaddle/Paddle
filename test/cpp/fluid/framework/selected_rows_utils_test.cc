@@ -11,7 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/selected_rows_utils.h"
 
-#include <time.h>
+#include <ctime>
 
 #include <thread>  // NOLINT
 
@@ -52,7 +52,7 @@ TEST_F(SelectedRowsTester, complete_dims) {
   ASSERT_EQ(selected_rows_->GetCompleteDims(), common::make_ddim({10, 100}));
 }
 
-TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
+TEST_F(SelectedRowsTester, SerializeAndDeserialize) {
   phi::SelectedRows dst_tensor;
   phi::CPUContext cpu_ctx(place_);
   std::ostringstream oss;

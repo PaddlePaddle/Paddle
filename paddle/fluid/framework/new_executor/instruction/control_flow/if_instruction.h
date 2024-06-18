@@ -48,10 +48,11 @@ class IfInstruction : public InstructionBase {
 
   PirInterpreter* FalseBranchInterpreter() const { return false_branch_inter_; }
 
- private:
-  void CopyBranchOutput(const std::vector<std::string>& var_names,
-                        const PirInterpreter* inter);
+  void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs);
 
+  void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
+
+ private:
   ::pir::Operation* op_;
 
   std::string cond_name_{"if_instruction"};
@@ -63,10 +64,6 @@ class IfInstruction : public InstructionBase {
   PirInterpreter* true_branch_inter_ = nullptr;
 
   PirInterpreter* false_branch_inter_ = nullptr;
-
-  std::vector<std::string> true_branch_outputs_;
-
-  std::vector<std::string> false_branch_outputs_;
 
   // TODO(zhangbo): Currently, only the output of IfOp is included. In the
   // future, need to consider how to support IfGradOp using IfOp value.

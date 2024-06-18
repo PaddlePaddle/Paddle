@@ -16,17 +16,18 @@
 
 import unittest
 
-import cinn
 import numpy as np
-from cinn import Target, ir, lang, runtime, utils
-from cinn.poly import create_stages
+
+from paddle import cinn
+from paddle.cinn import Target, ir, lang, runtime, utils
+from paddle.cinn.poly import create_stages
 
 
-class TestMamul(unittest.TestCase):
+class TestMatmul(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
         self.target = Target()
-        self.target.arch = Target.Arch.X86
+        self.target.arch = Target.X86Arch()
         self.target.bits = Target.Bit.k32
         self.target.os = Target.OS.Linux
         self.m = 1024

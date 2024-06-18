@@ -30,19 +30,18 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/pir/core/attribute.h"
-#include "paddle/pir/core/block.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_type.h"
+#include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/block.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_op.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_type.h"
 
-namespace paddle {
-namespace translator {
+namespace paddle::translator {
 
 using ProgramDesc = ::paddle::framework::ProgramDesc;
 using BlockDesc = ::paddle::framework::BlockDesc;
@@ -126,6 +125,9 @@ static std::vector<std::string> GetExternalInputs(const BlockDesc& block) {
   std::unordered_set<std::string> inner_outputs;
   for (auto op_desc : block.AllOps()) {
     for (const auto& n : op_desc->Inputs()) {
+      if (op_desc->Type() == "transpose2_grad" && n.first == "XShape") {
+        continue;
+      }
       const auto& input_var_names = n.second;
       for (const auto& var_name : input_var_names) {
         if (inner_outputs.count(var_name) == 0) {
@@ -185,7 +187,7 @@ void ProgramTranslator::Translate() {
 
   for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
     const BlockDesc& block = legacy_program_->Block(block_idx);
-    SetIsPersisableAttributeForAllValue(block);
+    SetIsPersistableAttributeForAllValue(block);
   }
 }
 
@@ -309,7 +311,7 @@ void ProgramTranslator::TranslateIfOperation(
     TranslationContext* translation_ctx,
     pir::Block* dst_block,
     bool for_bwd) {
-  VLOG(8) << "=============>Start to translate if op:" << op;
+  LOG_FIRST_N(INFO, 1) << "Translate ConditionalBlockOp";
   auto& type_translator = TypeTranslator::instance();
 
   auto cond_op_cond = op->Input("Cond")[0];
@@ -347,7 +349,9 @@ void ProgramTranslator::TranslateIfOperation(
   pir::AttributeMap attribute_map;
   std::vector<pir::Type> if_op_output_types;
   for (auto var_desc : cond_op_output_vars) {
-    IR_ENFORCE(var_desc != nullptr, "[control flow] Output should not be null");
+    PADDLE_ENFORCE_NOT_NULL(var_desc,
+                            phi::errors::PreconditionNotMet(
+                                "[control flow] Output should not be null"));
     pir::Type translated_var_type =
         type_translator[var_desc->GetType()](ctx_, *var_desc);
     if_op_output_types.emplace_back(translated_var_type);
@@ -359,7 +363,7 @@ void ProgramTranslator::TranslateIfOperation(
   // NOTE(zhangbo): If program has if_grad_op and if_grad_op sub_block use some
   // value defined in if_op, we should insert tuple_push_op into if_op sub_block
   // and tuple_pop_op into if_grad_op sub_block.
-  if (!for_bwd && push_pop_var_names_[op].size() != 0) {
+  if (!for_bwd && !push_pop_var_names_[op].empty()) {
     pir::Operation* create_stack_op = pir::Operation::Create(
         {},
         {},
@@ -384,7 +388,7 @@ void ProgramTranslator::TranslateIfOperation(
     auto* true_block_context = translation_ctx->CreateInnerContext();
 
     // insert tuple_pop op to if_grad
-    if (for_bwd && push_pop_var_names_[op].size() != 0) {
+    if (for_bwd && !push_pop_var_names_[op].empty()) {
       pir::Operation* tuple_pop_op = pir::Operation::Create(
           {cond_to_stack_value_[cond_grad_to_cond_[op]][1]},
           {},
@@ -404,8 +408,8 @@ void ProgramTranslator::TranslateIfOperation(
                    true_block_context,
                    &true_region.front());
 
-    // insert tuple_push op to true block before yeild op
-    if (!for_bwd && push_pop_var_names_[op].size() != 0) {
+    // insert tuple_push op to true block before yield op
+    if (!for_bwd && !push_pop_var_names_[op].empty()) {
       std::vector<pir::Value> local_values;
       local_values.push_back(cond_to_stack_value_[op][0]);
       for (auto& var_name : push_pop_var_names_[op]) {
@@ -421,30 +425,30 @@ void ProgramTranslator::TranslateIfOperation(
       true_region.front().push_back(tuple_push_op);
     }
 
-    // insert yeild op to true block
-    auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
-    std::vector<pir::Value> true_yeild_inputs;
+    // insert yield op to true block
+    auto yield_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
+    std::vector<pir::Value> true_yield_inputs;
     for (auto& out_name : cond_op_outputs) {
       if (for_bwd && out_name.find("@RENAME@block") != std::string::npos) {
         out_name = out_name.substr(0, out_name.find("@RENAME@block"));
       }
-      true_yeild_inputs.push_back(true_block_context->at(out_name).value);
+      true_yield_inputs.push_back(true_block_context->at(out_name).value);
     }
     true_region.front().push_back(
-        pir::Operation::Create(true_yeild_inputs, {}, {}, yeild_info));
+        pir::Operation::Create(true_yield_inputs, {}, {}, yield_info));
 
     // NOTE(zhangbo): The if_op of PIR requires that both true and false
     // branches must exist, and the number of outputs and dtypes must be
     // consistent. Only inconsistent shape is allowed. To be compatible with the
     // old IR design, only true branches are allowed. The false branch may
-    // require yeild some fake variables.
+    // require yield some fake variables.
     pir::Region& false_region = if_op->region(1);
     if (false_region.empty()) false_region.emplace_back();
     auto* false_block_context = translation_ctx->CreateInnerContext();
-    std::vector<pir::Value> false_yeild_inputs;
+    std::vector<pir::Value> false_yield_inputs;
     for (size_t id = 0; id < cond_op_outputs.size(); id++) {
       if (false_block_context->count(cond_op_outputs[id]) == 0) {
-        auto true_type = true_yeild_inputs[id].type();
+        auto true_type = true_yield_inputs[id].type();
         pir::Operation* init_op =
             InsertInitOpOrCreateArrayToBlock(&false_region.front(), true_type);
         PADDLE_ENFORCE_NOT_NULL(
@@ -455,11 +459,11 @@ void ProgramTranslator::TranslateIfOperation(
         false_block_context->PushValue(
             cond_op_outputs[id], VariableDefiningInfo(init_op->result(0)));
       }
-      false_yeild_inputs.push_back(
+      false_yield_inputs.push_back(
           false_block_context->at(cond_op_outputs[id]).value);
     }
     false_region.front().push_back(
-        pir::Operation::Create(false_yeild_inputs, {}, {}, yeild_info));
+        pir::Operation::Create(false_yield_inputs, {}, {}, yield_info));
   }
   VLOG(4) << "[general op][conditional_block] IfOp true block translate end.";
 
@@ -479,7 +483,7 @@ void ProgramTranslator::TranslateWhileOperation(
     const OpDesc* op,
     TranslationContext* translation_ctx,
     pir::Block* dst_block) {
-  VLOG(8) << "=============>Start to translate while op:" << op;
+  LOG_FIRST_N(INFO, 1) << "Translate WhileOp";
   auto& sub_block = legacy_program_->Block(op->GetBlockAttrId("sub_block"));
   auto& inputs = op->Output("Out");
   auto& cond_var = op->Input("Condition")[0];
@@ -501,7 +505,7 @@ void ProgramTranslator::TranslateWhileOperation(
     auto val_type = tc_value.value.type();
     op_inputs.push_back(tc_value.value);
     op_outputs_type.push_back(val_type);
-    body_block_context->PushValue(loop_var, body_block->AddArgument(val_type));
+    body_block_context->PushValue(loop_var, body_block->AddArg(val_type));
   }
 
   pir::Operation* while_op =
@@ -512,13 +516,13 @@ void ProgramTranslator::TranslateWhileOperation(
   TranslateBlock(
       sub_block, 0, sub_block.OpSize(), body_block_context, body_block);
 
-  auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
-  std::vector<pir::Value> yeild_inputs{body_block_context->at(cond_var).value};
+  auto yield_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
+  std::vector<pir::Value> yield_inputs{body_block_context->at(cond_var).value};
   for (auto& loop_var : loop_vars) {
-    yeild_inputs.push_back(body_block_context->at(loop_var).value);
+    yield_inputs.push_back(body_block_context->at(loop_var).value);
   }
   body_block->push_back(
-      pir::Operation::Create(yeild_inputs, {}, {}, yeild_info));
+      pir::Operation::Create(yield_inputs, {}, {}, yield_info));
   for (size_t idx = 0; idx < loop_vars.size(); ++idx) {
     translation_ctx->PushValue(loop_vars[idx], while_op->result(idx));
   }
@@ -644,7 +648,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
 void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
   const auto& ops = block.AllOps();
   for (auto op_desc = ops.rbegin(); op_desc != ops.rend(); op_desc++) {
-    if ((*op_desc)->Type() == "data") {
+    if ((*op_desc)->Type() == "data" || (*op_desc)->Type() == "feed") {
       continue;
     }
 
@@ -684,10 +688,12 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
           pir::Block::Iterator insert_pos = std::find(
               block->begin(), block->end(), *defining_op_result.owner());
 
-          IR_ENFORCE(
-              insert_pos != block->end(),
-              "Parameter %s must have corresponding its defining operation",
-              var_name);
+          PADDLE_ENFORCE_NE(insert_pos,
+                            block->end(),
+                            phi::errors::InvalidArgument(
+                                "Parameter %s must have corresponding its "
+                                "defining operation",
+                                var_name));
           insert_pos++;
 
           block->insert(insert_pos, op);
@@ -751,7 +757,7 @@ const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
   auto var_desc = block.FindVarRecursive(var_name);
   pir::Builder builder(ctx_, program_->block(), program_->block()->begin());
   auto dtype = ::phi::TransToPhiDataType(var_desc->GetDataType());
-  auto val = pir::OpResult(nullptr);
+  auto val = pir::Value(nullptr);
   if (var_desc->GetType() ==
       paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
     val = builder.Build<dialect::CreateArrayOp>(dtype).result(0);
@@ -768,13 +774,13 @@ const VariableDefiningInfo& ProgramTranslator::CreateUndefinedVariable(
   return param_map_.at(var_name);
 }
 
-void ProgramTranslator::SetIsPersisableAttributeForAllValue(
+void ProgramTranslator::SetIsPersistableAttributeForAllValue(
     const BlockDesc& block) {
-  // Currently we set is persisable for operation that generated a value
+  // Currently we set is persistable for operation that generated a value
   // connected with VarDesc
   for (const auto& [var_name, value_list] : param_map_) {
     if (no_cast_var_names.count(var_name) != 0) continue;
-    VLOG(10) << "[op translated][is persisable]" << var_name;
+    VLOG(10) << "[op translated][is persistable]" << var_name;
     VarDesc* var = block.FindVarRecursive(var_name);
     if (var == nullptr) {
       continue;
@@ -787,37 +793,34 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
           defining_op,
           phi::errors::PreconditionNotMet(
               "Defining operator of [%s] can not be nullptr", var_name));
-      VLOG(8) << "[op translated][is persisable]" << var_name
+      VLOG(8) << "[op translated][is persistable]" << var_name
               << " from: " << defining_op->name();
-      std::vector<pir::Attribute> is_persisable;
-      if (defining_op->HasAttribute(kAttrIsPersisable)) {
-        is_persisable = defining_op->attribute(kAttrIsPersisable)
-                            .dyn_cast<pir::ArrayAttribute>()
-                            .AsVector();
+      std::vector<pir::Attribute> is_persistable;
+      if (defining_op->HasAttribute(kAttrIsPersistable)) {
+        is_persistable = defining_op->attribute(kAttrIsPersistable)
+                             .dyn_cast<pir::ArrayAttribute>()
+                             .AsVector();
       } else {
-        is_persisable = std::vector<pir::Attribute>(
+        is_persistable = std::vector<pir::Attribute>(
             defining_op->num_results(), pir::BoolAttribute::get(ctx_, false));
       }
-      is_persisable[value.index()] =
+      is_persistable[value.index()] =
           pir::BoolAttribute::get(ctx_, var->Persistable());
-      defining_op->set_attribute(kAttrIsPersisable,
-                                 pir::ArrayAttribute::get(ctx_, is_persisable));
+      defining_op->set_attribute(
+          kAttrIsPersistable, pir::ArrayAttribute::get(ctx_, is_persistable));
     }
   }
 }
 
-std::unordered_map<std::string, std::vector<pir::OpResult>>
-ProgramTranslator::VarDesc2OpResult() {
-  std::unordered_map<std::string, std::vector<pir::OpResult>>
-      var_desc_2_opresult;
+std::unordered_map<std::string, std::vector<pir::Value>>
+ProgramTranslator::VarDesc2Value() {
+  std::unordered_map<std::string, std::vector<pir::Value>> var_desc_2_value;
   for (const auto& [var_name, value_info_list] : param_map_) {
     for (const auto& value_info : value_info_list) {
-      var_desc_2_opresult[var_name].push_back(
-          value_info.value.dyn_cast<pir::OpResult>());
+      var_desc_2_value[var_name].push_back(value_info.value);
     }
   }
-  return var_desc_2_opresult;
+  return var_desc_2_value;
 }
 
-}  // namespace translator
-}  // namespace paddle
+}  // namespace paddle::translator

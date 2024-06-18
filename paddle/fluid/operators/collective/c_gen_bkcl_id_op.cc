@@ -24,17 +24,17 @@ limitations under the License. */
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
 
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 namespace paddle {
 namespace operators {
 
 static void GenBKCLID(std::vector<BKCLUniqueId>* bkcl_ids) {
   for (size_t i = 0; i < bkcl_ids->size(); ++i) {
     BKCLResult_t ret = bkcl_get_unique_id(&(*bkcl_ids)[i]);
-    PADDLE_ENFORCE_EQ(BKCL_SUCCESS,
-                      ret,
-                      platform::errors::PreconditionNotMet(
-                          "bkcl get unique id failed [%d]", ret));
+    PADDLE_ENFORCE_EQ(
+        BKCL_SUCCESS,
+        ret,
+        phi::errors::PreconditionNotMet("bkcl get unique id failed [%d]", ret));
   }
 }
 
@@ -46,8 +46,8 @@ static void CopyBKCLIDToVar(const std::vector<BKCLUniqueId>& bkcl_ids,
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
         var,
-        platform::errors::NotFound("Variable with name %s is not found",
-                                   var_name.c_str()));
+        phi::errors::NotFound("Variable with name %s is not found",
+                              var_name.c_str()));
     auto bkcl_id = var->GetMutable<BKCLUniqueId>();
     memcpy(bkcl_id, &bkcl_ids[i], sizeof(BKCLUniqueId));
   }
@@ -62,7 +62,7 @@ class CGenBKCLIdOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
+               const phi::Place& dev_place) const override {
     int rank = Attr<int>("rank");
     int ring_id = Attr<int>("ring_id");
 

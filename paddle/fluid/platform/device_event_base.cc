@@ -66,9 +66,9 @@ void DeviceEventRecordCPU(DeviceEvent* event, const DeviceContext* context) {
   auto* wrapper = static_cast<CPUDeviceEventWrapper*>(event->GetEvent().get());
 
   std::unique_lock<std::mutex> lock(wrapper->mutex_);
-  // NOTE: As for CudaEvent_t, it can be used to Record() repeatly. CudaEvent_t
-  // internally reset its status from finished into initialized.
-  // So we simulate the process here.
+  // NOTE: As for CudaEvent_t, it can be used to Record() repeatedly.
+  // CudaEvent_t internally reset its status from finished into initialized. So
+  // we simulate the process here.
   if (wrapper->status_.load() == EventStatus::SUCCESS) {
     VLOG(3) << "Found EventStatus is SUCCESS before RecordCPU. Reset it into "
                "INITIALIZED.";

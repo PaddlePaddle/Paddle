@@ -141,3 +141,7 @@ class TestIndexFillAPI3(TestIndexFillAPIBase):
         self.x_shape = (10, 15, 10)
         self.axis = 1
         self.value = 0.5
+
+
+if __name__ == "__main__":
+    unittest.main()

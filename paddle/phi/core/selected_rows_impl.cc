@@ -188,7 +188,7 @@ void SelectedRowsImpl::Get(const phi::DenseTensor& ids,
         value->numel() / value->dims()[0],
         phi::errors::InvalidArgument(
             "Output tensor should have the same shape with table "
-            "except the first dimmension, excepted value width not counting "
+            "except the first dimension, excepted value width not counting "
             "the first dimension is %d, actual value width is %d.",
             value_width,
             value->numel() / value->dims()[0]));
@@ -204,7 +204,7 @@ void SelectedRowsImpl::Get(const phi::DenseTensor& ids,
         phi::VisitDataType(value_->dtype(),
                            TensorCopyVisitor(value,
                                              i * value_width,
-                                             *value_.get(),
+                                             *value_,
                                              index * value_width,
                                              value_width));
       }

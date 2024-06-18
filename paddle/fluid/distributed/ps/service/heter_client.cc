@@ -32,7 +32,7 @@ int GetMicroId(const platform::DeviceContext& ctx,
   PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
                     true,
                     platform::errors::InvalidArgument(
-                        "the type of micro id shoulde be LoDTensor."));
+                        "the type of micro id should be LoDTensor."));
   auto micro_id = -1;
   auto* tensor = var->GetMutable<phi::DenseTensor>();
   if (platform::is_cpu_place(tensor->place())) {

@@ -29,7 +29,7 @@ class Graph;
 }  // namespace framework
 }  // namespace paddle
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
 namespace paddle {
@@ -68,6 +68,7 @@ static const std::vector<std::string> xpu_support_subgraph_passes = {
     "constant_folding_pass",
     "delete_elementwise_mul_op_pass",
     "generate_sequence_xpu_fuse_pass",
+    "group_norm_silu_xpu_fuse_pass",
     "embedding_with_eltwise_add_xpu_fuse_pass",
     "multi_encoder_xpu_fuse_pass",
     "multi_encoder_xpu_adaptive_seqlen_fuse_pass",
@@ -82,6 +83,7 @@ static const std::vector<std::string> xpu_support_subgraph_passes = {
     "fc_xpu_fuse_pass",
     "link_xpu_op_max_pass",
     "xpu_delete_cast_op_pass",
+    "spatial_transformer_resblock_xpu_fuse_pass",
 };
 
 static std::vector<std::string> support_subgraph_generate_passes;

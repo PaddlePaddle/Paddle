@@ -21,11 +21,12 @@
 #include <map>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/cinn/common/object.h"
 #include "paddle/cinn/common/shared.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace common {
 
@@ -61,8 +62,11 @@ struct UnionFindNode : public Object {
 
   template <typename T>
   T* safe_as() {
-    CHECK_EQ(std::strcmp(T::__type_info__, type_info()), 0)
-        << "Want a " << T::__type_info__ << " but get a " << type_info();
+    PADDLE_ENFORCE_EQ(
+        std::strcmp(T::__type_info__, type_info()),
+        0,
+        phi::errors::InvalidArgument(
+            "Want a %d but get a %d", T::__type_info__, type_info()));
     return reinterpret_cast<T*>(this);
   }
 
@@ -95,6 +99,45 @@ struct UnionFind {
   }
 
   std::vector<cinn::common::Shared<UnionFindNode>> nodes;
+};
+
+template <typename T>
+class UnionFindSet {
+ public:
+  T Find(const T& x) {
+    if (parent_.find(x) == parent_.end()) {
+      return x;
+    }
+    if (parent_[x] != x) {
+      parent_[x] = Find(parent_[x]);
+    }
+    return parent_[x];
+  }
+
+  void Union(const T& p, const T& q) {
+    if (parent_.find(p) == parent_.end()) {
+      parent_[p] = p;
+    }
+    if (parent_.find(q) == parent_.end()) {
+      parent_[q] = q;
+    }
+    parent_[Find(q)] = Find(p);
+  }
+
+  std::vector<std::vector<T>> Clusters() const {
+    std::unordered_map<T, std::vector<T>> clusters_map;
+    for (auto it = parent_.begin(); it != parent_.end(); it++) {
+      clusters_map[it->second].emplace_back(it->first);
+    }
+    std::vector<std::vector<T>> clusters;
+    for (auto it = clusters_map.begin(); it != clusters_map.end(); it++) {
+      clusters.emplace_back(it->second);
+    }
+    return clusters;
+  }
+
+ private:
+  std::unordered_map<T, T> parent_;
 };
 
 }  // namespace common

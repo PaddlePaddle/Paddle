@@ -14,3 +14,6 @@
 
 from . import rules  # noqa: F401
 from .decomp import decompose  # noqa: F401
+from .recompute import (
+    auto_recompute,  # noqa: F401
+)

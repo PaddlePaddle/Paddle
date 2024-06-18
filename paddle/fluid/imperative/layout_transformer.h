@@ -337,7 +337,7 @@ class TransposeOpTransformer
     auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
     if (var_layout == desired_layout && desired_layout == DataLayout::NHWC) {
       auto axis = PADDLE_GET_CONST(std::vector<int>, (*attrs)["axis"]);
-      // NHWC->NCHW, permutaion will be set as follows.
+      // NHWC->NCHW, permutation will be set as follows.
       std::vector<int> perm = {0, 3, 1, 2};
       // fuse the transpose Ops by transforming axis.
       std::vector<int> fusion_axis = {

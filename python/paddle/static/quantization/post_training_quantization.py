@@ -25,7 +25,7 @@ except:
 
 from paddle.base.framework import IrGraph, _get_var
 
-from ... import io, static
+from ... import static
 from ...framework import core
 from ...utils import unique_name
 from ..log_helper import get_logger
@@ -312,24 +312,16 @@ class PostTrainingQuantization:
         assert executor is not None, "The executor cannot be None."
         assert data_loader is not None, "data_loader cannot be None."
 
-        assert isinstance(
-            data_loader, io.DataLoader
-        ), "data_loader only accepts `paddle.io.DataLoader`."
-
         assert batch_size > 0, "The batch_size should be greater than 0."
         assert (
             algo in self._support_algo_type
         ), "The algo should be KL, hist, mse, avg, abs_max, min_max or ptf."
         assert (
             activation_quantize_type in self._support_activation_quantize_type
-        ), "The activation_quantize_type ({}) should in ({}).".format(
-            activation_quantize_type, self._support_activation_quantize_type
-        )
+        ), f"The activation_quantize_type ({activation_quantize_type}) should in ({self._support_activation_quantize_type})."
         assert (
             weight_quantize_type in self._support_weight_quantize_type
-        ), "The weight_quantize_type ({}) should in ({}).".format(
-            weight_quantize_type, self._support_weight_quantize_type
-        )
+        ), f"The weight_quantize_type ({weight_quantize_type}) should in ({self._support_weight_quantize_type})."
 
         # Save input params
         self._bias_correction = bias_correction
@@ -400,7 +392,7 @@ class PostTrainingQuantization:
         assert (
             activation_bits == weight_bits
         ), "activation_bits and weight_bits must be the same, other cases are not supported."
-        support_deploy_backend = [None, "tensorrt", "mkldnn", "arm"]
+        support_deploy_backend = [None, "tensorrt", "mkldnn", "onednn", "arm"]
         if not deploy_backend:
             self.quant_config = BaseQuantizer(
                 quantizable_op_type=quantizable_op_type,
@@ -411,7 +403,10 @@ class PostTrainingQuantization:
                 quantizable_op_type=quantizable_op_type,
                 quant_bits=weight_bits,
             )
-        elif deploy_backend.lower() == "mkldnn":
+        elif (
+            deploy_backend.lower() == "mkldnn"
+            or deploy_backend.lower() == "onednn"
+        ):
             self.quant_config = MKLDNNQuantizer(
                 quantizable_op_type=quantizable_op_type,
                 quant_bits=weight_bits,
@@ -422,9 +417,7 @@ class PostTrainingQuantization:
                 quant_bits=weight_bits,
             )
         else:
-            assert "Deploy Backend {} not support, please choose one of {}.".format(
-                deploy_backend, support_deploy_backend
-            )
+            assert f"Deploy Backend {deploy_backend} not support, please choose one of {support_deploy_backend}."
 
     def quantize(self):
         '''
@@ -1116,10 +1109,10 @@ class PostTrainingQuantization:
             if var_name not in self._sampling_act_histogram:
                 min_val = self._sampling_act_abs_min_max[var_name][0]
                 max_val = self._sampling_act_abs_min_max[var_name][1]
-                hist, hist_edeges = np.histogram(
+                hist, hist_edges = np.histogram(
                     [], bins=self._histogram_bins, range=(min_val, max_val)
                 )
-                self._sampling_act_histogram[var_name] = [hist, hist_edeges]
+                self._sampling_act_histogram[var_name] = [hist, hist_edges]
 
     def _calculate_kl_hist_threshold(self):
         '''
@@ -1155,16 +1148,16 @@ class PostTrainingQuantization:
                 var_name not in self._sampling_act_histogram
             ):
                 continue
-            hist, hist_edeges = self._sampling_act_histogram[var_name]
+            hist, hist_edges = self._sampling_act_histogram[var_name]
             if self._algo == "KL":
-                bin_width = hist_edeges[1] - hist_edeges[0]
+                bin_width = hist_edges[1] - hist_edges[0]
                 self._quantized_var_threshold[var_name] = cal_kl_threshold(
                     hist, bin_width, self._activation_bits
                 )
             elif self._algo == "hist":
                 self._quantized_var_threshold[
                     var_name
-                ] = self._get_hist_scaling_factor(hist, hist_edeges)
+                ] = self._get_hist_scaling_factor(hist, hist_edges)
 
     def _update_program(self):
         '''
@@ -1356,17 +1349,13 @@ class PostTrainingQuantization:
                 out_var_name not in threshold_map
             ):
                 _logger.warning(
-                    "{} is zero-size tensor and unable to calibrate, so skip quant it.".format(
-                        out_var_name
-                    )
+                    f"{out_var_name} is zero-size tensor and unable to calibrate, so skip quant it."
                 )
                 return
             else:
                 assert (
                     out_var_name in threshold_map
-                ), "The output ({}) of {} node does not have threshold.".format(
-                    out_var_name, op_node.type
-                )
+                ), f"The output ({out_var_name}) of {op_node.type} node does not have threshold."
             if self._onnx_format:
                 # For easy extension, every var_node set a dict to save parameters of quant.
                 self._calibration_scales[out_var_name] = {}
@@ -1644,9 +1633,7 @@ class WeightQuantization:
         ], "Input error: weight_bits should be 8 or 16."
         assert (
             weight_quantize_type in self._supported_weight_quantize_type
-        ), "Input error: weight_quantize_type should in {}".format(
-            self._supported_weight_quantize_type
-        )
+        ), f"Input error: weight_quantize_type should in {self._supported_weight_quantize_type}"
 
         quantized_model_dir = os.path.join(save_model_dir, "quantized_model")
         self._quantize_weight_to_int(
@@ -1995,7 +1982,7 @@ class WeightQuantization:
 
     def _calculate_threshold(self, input, threshold_rate, histogram_bins=5000):
         input_abs = np.abs(input)
-        hist, hist_edeges = np.histogram(
+        hist, hist_edges = np.histogram(
             input_abs, bins=histogram_bins, range=(0, np.max(input_abs))
         )
         hist = hist / float(sum(hist))
@@ -2006,5 +1993,5 @@ class WeightQuantization:
             if hist_sum >= 1.0 - threshold_rate:
                 hist_index = i + 1
                 break
-        bin_width = hist_edeges[1] - hist_edeges[0]
+        bin_width = hist_edges[1] - hist_edges[0]
         return hist_index * bin_width

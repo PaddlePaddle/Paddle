@@ -21,7 +21,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
 
 namespace paddle {
 namespace framework {
@@ -185,7 +185,18 @@ static double GetDenseTensorEleSum(const Scope& scope,
   return std::numeric_limits<double>::quiet_NaN();
 }
 
-InstructionBase::InstructionBase(size_t id, const platform::Place& place) {
+InstructionBase::InstructionBase(size_t id, const platform::Place& place)
+    : next_instrs_in_different_thread_(),
+      next_instrs_in_same_thread_(),
+      events_to_wait_info_(),
+      events_to_wait_(),
+      gc_check_vars_(),
+      eager_gc_vars_(),
+      vec_inplace_in_to_out_(),
+      inplace_back_map_(),
+      input_index_(),
+      output_index_(),
+      no_need_buffer_values_() {
   id_ = id;
 
   is_artificial_ = false;
@@ -288,7 +299,7 @@ void InstructionBase::InitInputsOutputsIds(
     ::pir::Operation* op, const ValueExecutionInfo& value_exec_info) {
   auto op_attributes = op->attributes();
   std::string op_name;
-  if (op_attributes.count("op_name ")) {
+  if (op_attributes.count("op_name")) {
     op_name =
         op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   }
@@ -359,10 +370,6 @@ std::string InstructionBase::DebugStringEx(
         if (row_size >= 0) {
           ss << "row_size=" << row_size << ";";
         }
-        double ele_sum = GetDenseTensorEleSum(*scope, var_name);
-        if (!std::isnan(ele_sum)) {
-          ss << "ele_sum=" << ele_sum << ";";
-        }
       }
     }
     ++it;
@@ -389,10 +396,6 @@ std::string InstructionBase::DebugStringEx(
         int row_size = GetRowSize(*scope, var_name);
         if (row_size >= 0) {
           ss << "row_size=" << row_size << ";";
-        }
-        double ele_sum = GetDenseTensorEleSum(*scope, var_name);
-        if (!std::isnan(ele_sum)) {
-          ss << "ele_sum=" << ele_sum << ";";
         }
       }
     }

@@ -182,7 +182,7 @@ std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
     Tensor* out, const phi::distributed::ArgDistAttr& dist_attr);
 
 // DistTensor need to set initial dist attr after the dims setted, it is
-// constructed based dims and current process mesh, beforce calling this
+// constructed based dims and current process mesh, before calling this
 // function, the out should hold correct dims
 void SetReplicatedDistAttrForOutput(
     phi::distributed::DistTensor* out,

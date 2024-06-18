@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
 from op_test import OpTest
+
+sys.path.append("../deprecated/legacy_test")
 from test_pool2d_op import TestPool2D_Op, max_pool2D_forward_naive
 
 from paddle.base import core
@@ -24,6 +27,7 @@ from paddle.base import core
 class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.check_pir_onednn = True
 
     def init_data_type(self):
         self.dtype = np.int8
@@ -52,9 +56,12 @@ class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_output_with_place(
-            core.CPUPlace(), atol=1e-5, check_dygraph=False
+            core.CPUPlace(),
+            atol=1e-5,
+            check_dygraph=False,
+            check_pir_onednn=True,
         )
 
     def test_check_grad(self):

@@ -28,7 +28,7 @@
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/utils/registry.h"
 #include "paddle/cinn/utils/type_defs.h"
-
+#include "paddle/common/enforce.h"
 template <typename R, typename... Args>
 inline auto MakeOpFunction(R (*func)(Args...)) {
   return std::function<R(Args...)>(func);
@@ -209,9 +209,10 @@ template <typename ValueType>
 const ValueType& OpValueType<ValueType>::operator[](const Operator* op) const {
   CHECK(op) << "The input op is nullptr and it is invalid! Please check again.";
   const uint32_t idx = op->index;
-  CHECK_LT(idx, data.size())
-      << "Attribute " << attr_name << " has not been registered for Operator "
-      << op->name;
+  PADDLE_ENFORCE_LT(idx,
+                    data.size(),
+                    phi::errors::InvalidArgument(
+                        "Attribute  has not been registered for Operator"));
   return data[idx];
 }
 
@@ -239,7 +240,7 @@ bool OpValueType<ValueType>::Find(const Operator* op) const {
   static ::cinn::hlir::framework::Operator& __make_##HlirOp##_##OpName
 
 /**
- * @def CINNR_REGISTER_OP
+ * @def CINN_REGISTER_OP
  * \brief Register a new operator, or set attribute of the corresponding op.
  *
  * @param OpName The name of registry

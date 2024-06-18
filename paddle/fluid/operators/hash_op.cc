@@ -46,7 +46,7 @@ class HashOp : public framework::OperatorWithKernel {
     auto dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(dims.size(),
                       2UL,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "The input of hash_op's dimensions must be 2"));
     std::vector<int64_t> out_dims;
     int num_hash = ctx->Attrs().Get<int>("num_hash");

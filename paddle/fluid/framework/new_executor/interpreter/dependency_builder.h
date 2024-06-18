@@ -17,6 +17,7 @@
 #include <map>
 #include <vector>
 
+#include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 
 PD_DECLARE_bool(new_executor_sequential_run);
@@ -27,7 +28,7 @@ class InstructionBase;
 namespace interpreter {
 
 // DependencyBuilder provides some dependency adding function to handle the
-// dependency that cannot be explicitly expresed by a Program. It is a
+// dependency that cannot be explicitly expressed by a Program. It is a
 // compromise of the incomplete expression ability of the Program. Do not add
 // too many functions here at will, that will bring great burden to the
 // Interpretercore.
@@ -57,9 +58,16 @@ class DependencyBuilder {
 
   void ShareDependencyFrom(const DependencyBuilder& src);
 
+  bool IsSameDeviceContext(size_t op1, size_t op2) const {
+    return &((*instructions_)[op1].DeviceContext()) ==
+           &((*instructions_)[op2].DeviceContext());
+  }
+
+  virtual const std::string& GetInstructionName(size_t op_idx) const;
+
  protected:
   void AddDependencyForCoalesceTensorOp();
-  void AddDependencyForCommunicationOp();
+  virtual void AddDependencyForCommunicationOp();
   virtual void AddDependencyForRandomOp();
   void AddDependencyForReadOp();
   void AddDependencyForSequentialRun();
@@ -116,7 +124,16 @@ class PirDependencyBuilder : public DependencyBuilder {
 
   void ShareDependencyFrom(const PirDependencyBuilder& src);
 
+  bool IsSameDeviceContext(size_t op1, size_t op2) const {
+    return &((instructions_)[op1]->DeviceContext()) ==
+           &((instructions_)[op2]->DeviceContext());
+  }
+
+  const std::string& GetInstructionName(size_t op_idx) const override;
+
  private:
+  void AddDependencyForCommunicationOp() override;
+
   void AddDependencyForRandomOp() override;
 
   std::vector<paddle::framework::InstructionBase*> instructions_;  // not_owned
@@ -146,7 +163,7 @@ class DependencyBuilderSimplify {
         phi::errors::Unavailable("op_happen_before is not yet built"));
     return op_happens_before_.at(prior_op_idx).at(posterior_op_idx);
   }
-  std::vector<size_t> get_new_exexutor_order();
+  std::vector<size_t> get_new_executor_order();
 
  private:
   void AddDependencyForCoalesceTensorOp();

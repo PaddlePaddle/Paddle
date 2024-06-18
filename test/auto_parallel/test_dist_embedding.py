@@ -90,7 +90,7 @@ class TestDistPNorm(unittest.TestCase):
                 'c_embedding_grad',
                 'c_allreduce_sum',
                 'scale',
-            ]
+            ], f"Unexpexted op types: {op_types}"
 
 
 if __name__ == "__main__":

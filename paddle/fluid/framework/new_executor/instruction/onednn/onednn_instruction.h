@@ -69,11 +69,14 @@ class OneDNNPhiKernelInstruction : public InstructionBase {
   const ValueExecutionInfo* value_exec_info_;  // not owned
 
   std::set<int> data_format_tensors_{};
+  std::set<int> skip_format_tensors_{};
   phi::DataLayout input_layout_{phi::DataLayout::kAnyLayout};
   std::map<std::string, phi::Attribute> extra_attr_{};
   std::map<std::string, phi::Attribute> ctx_attr_{};
   std::map<std::string, std::vector<std::string>> inputs_{};
   std::map<std::string, std::vector<std::string>> outputs_{};
+  std::string kernel_name_;
+  phi::KernelKey kernel_key_;
 };
 }  // namespace framework
 }  // namespace paddle

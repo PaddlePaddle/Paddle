@@ -201,7 +201,7 @@ void SingleGroupOptimizePass::InitNodeToGroups() {
 
 CINN_REGISTER_HELPER(SingleGroupOptimizePass) {
   CINN_REGISTER_PASS(SingleGroupOptimizePass)
-      .describe("Optimize singel group to improve performance.")
+      .describe("Optimize single group to improve performance.")
       .set_change_structure(true)
       .set_body(cinn::hlir::pass::SingleGroupOptimizePassImpl);
 

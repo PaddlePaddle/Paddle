@@ -16,30 +16,14 @@ limitations under the License. */
 
 #include <unordered_set>
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/scope.h"
 
-namespace paddle {
-namespace inference {
-namespace analysis {
+namespace paddle::inference::analysis {
 
 void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
-  std::string model_opt_cache_dir = argument->optim_cache_dir();
-  if (!model_opt_cache_dir.empty()) {
-    if (!PathExists(model_opt_cache_dir)) {
-      PADDLE_ENFORCE_NE(
-          MKDIR(model_opt_cache_dir.c_str()),
-          -1,
-          platform::errors::PreconditionNotMet(
-              "Can not create optimize cache directory: %s, Make sure you "
-              "have permission to write",
-              model_opt_cache_dir));
-    }
-  } else {
-    model_opt_cache_dir = argument->Has("model_dir")
-                              ? argument->model_dir()
-                              : GetDirRoot(argument->model_program_path());
-  }
+  std::string model_opt_cache_dir = argument->optimized_model_save_path();
 
   auto& scope = argument->scope();
   auto* graph = argument->main_graph_ptr();
@@ -51,6 +35,22 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
   optimized_program_desc.CopyFrom(*argument->main_program().Proto());
 
   framework::ir::GraphToProgram(*graph, &optimized_program_desc);
+
+  // TODO(minghaipeng): Move the following code to a separate clean pass.
+  // Remove the scale and zero point parameters from optimized program.
+  auto scale_and_zero_point_param = graph->GetOrInit<std::vector<std::string>>(
+      framework::ir::kScaleAndZeroPointParamAttr);
+  framework::BlockDesc* block = optimized_program_desc.MutableBlock(0);
+  for (auto& var_desc : block->AllVars()) {
+    auto var_name = var_desc->Name();
+    if (var_desc->Persistable() && scope.FindVar(var_name) &&
+        std::count(scale_and_zero_point_param.begin(),
+                   scale_and_zero_point_param.end(),
+                   var_name) > 0) {
+      scope.EraseVars({var_name});
+      block->RemoveVar(var_desc->Name());
+    }
+  }
 
   auto IsPersistable = [](const framework::VarDesc* var) {
     if (var->Persistable() &&
@@ -135,6 +135,4 @@ std::string SaveOptimizedModelPass::repr() const {
   return "save_optimized_model_pass";
 }
 
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::analysis

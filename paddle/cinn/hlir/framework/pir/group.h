@@ -21,10 +21,10 @@
 
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/value.h"
-#include "paddle/pir/dialect/shape/utils/shape_analysis.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/core/operation.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 namespace cinn {
 
@@ -61,43 +61,7 @@ struct Group {
 
   std::shared_ptr<Group> Clone(::pir::Block* target_block,
                                ::pir::IrMapping& ir_mapping,
-                               const Options& option = Options()) const {
-    CHECK_EQ(option.OnlyCloneOps(), true)
-        << "Only Support Clone Group ops information.";
-    std::vector<::pir::Operation*> new_ops;
-    // Mapper from original to new ops.
-    std::unordered_map<::pir::Operation*, ::pir::Operation*> ops_mapper;
-    auto clone_options = ::pir::CloneOptions(false, true, false);
-    for (auto* op : ops) {
-      VLOG(4) << "clone op :" << op->name();
-      auto* new_op = op->Clone(ir_mapping, clone_options);
-      // NOTE(dev): Must call block.insert to deal with ownership, otherwise it
-      // will lead memory-leak.
-      target_block->insert(target_block->end(), new_op);
-      new_ops.push_back(new_op);
-      ops_mapper[op] = new_op;
-    }
-    // Construct Base information for new Group
-    auto new_group = std::make_shared<Group>(new_ops);
-    for (auto& iter : this->input_ops) {
-      new_group->input_ops[ops_mapper.at(iter.first)] = iter.second;
-    }
-    for (auto* op : this->output_ops) {
-      new_group->output_ops.insert(ops_mapper.at(op));
-    }
-    for (const auto& output_value : this->output_values) {
-      new_group->output_values.push_back(output_value);
-    }
-
-    return new_group;
-  }
-
-  const symbol::ShapeOrDataDimExprs& GetShapeOrDataExprs(
-      const ::pir::Value& value) const {
-    CHECK(value_to_shape_or_data_exprs.count(value))
-        << "value not found in value_to_shape_or_data_exprs";
-    return value_to_shape_or_data_exprs.at(value);
-  }
+                               const Options& option = Options()) const;
 
   // distance to last group.
   int depth{0};
@@ -126,16 +90,6 @@ struct Group {
   std::vector<std::shared_ptr<Group>> fused_sub_groups;
   // if as sub-group, used for belong groups.
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
-
-  std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
-      value_to_shape_or_data_exprs;
-
-  // for op lowering.
-  std::vector<std::string> input_names;
-  std::vector<std::string> output_names;
-  std::vector<::pir::Value> output_values;
-  std::string fn_name{""};
-  std::map<int, CINNKernelInfo::ArgDimIdx> int_args_map;
 
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
@@ -193,7 +147,7 @@ struct Group {
           continue;
         }
 
-        if (!ops_set.count(value.dyn_cast<::pir::OpResult>().owner())) {
+        if (!ops_set.count(value.defining_op())) {
           // if the input value owner op is not in OpSet, it's the group's input
           group_inputs.insert(value);
           continue;
@@ -219,11 +173,11 @@ struct Group {
     return group_outputs;
   }
 
-  std::vector<::pir::Value> GetGroupOutputValues() const {
-    std::unordered_set<::pir::Operation*> group_ops_set;
-    for (auto* op : this->ops) {
-      group_ops_set.insert(op);
-    }
+  std::string GetFuncName() { return "fn_" + group_id + unique_id; }
+
+  std::vector<::pir::Value> GenerateGroupOutputValues() const {
+    std::unordered_set<::pir::Operation*> group_ops_set(this->ops.begin(),
+                                                        this->ops.end());
 
     std::vector<::pir::Value> output_values;
     for (auto* op : this->ops) {
@@ -243,21 +197,6 @@ struct Group {
       }
     }
     return output_values;
-  }
-
-  std::string GetFuncName() { return "fn_" + group_id + unique_id; }
-
-  std::shared_ptr<adt::MapExprCtx> mut_map_expr_ctx() {
-    CHECK_NOTNULL(map_expr_ctx_);
-    return map_expr_ctx_;
-  }
-
-  const adt::MapExprCtx& map_expr_ctx() const {
-    return *CHECK_NOTNULL(map_expr_ctx_);
-  }
-
-  void set_map_expr_ctx(const std::shared_ptr<adt::MapExprCtx>& map_expr_ctx) {
-    map_expr_ctx_ = map_expr_ctx;
   }
 
  public:
@@ -291,27 +230,20 @@ struct Group {
 
   OpPatternKind kind() const { return op_pattern_kind; }
 
-  std::string FuncName() const {
-    if (fn_name == "") {
-      // TODO(Aurelius84): Polish this implementation.
-      const_cast<Group*>(this)->fn_name = CompatibleInfo::GroupOpsName(ops);
-    }
-    return this->fn_name;
-  }
-
  private:
   // input groups
   std::unordered_set<std::shared_ptr<Group>,
                      SharedGroupHasher,
                      SharedGroupComparator>
       producer_groups_;
-  // output grous
+  // output groups
   std::unordered_set<std::shared_ptr<Group>,
                      SharedGroupHasher,
                      SharedGroupComparator>
       consumer_groups_;
-  std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
 };
+
+std::ostream& operator<<(std::ostream& os, const Group& group);
 
 }  // namespace pir
 }  // namespace framework

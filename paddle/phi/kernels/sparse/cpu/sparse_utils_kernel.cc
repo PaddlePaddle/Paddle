@@ -182,10 +182,10 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
                         "SparseCsrTensor only support 2-D or 3-D matrix"));
   const int64_t non_zero_num = x.nnz();
 
-  int batchs = static_cast<int>(x_dims.size() == 2 ? 1 : x_dims[0]);
+  int batches = static_cast<int>(x_dims.size() == 2 ? 1 : x_dims[0]);
   int rows = static_cast<int>(x_dims.size() == 2 ? x_dims[0] : x_dims[1]);
 
-  phi::DenseTensor crows = phi::Empty<IntT>(dev_ctx, {batchs * (rows + 1)});
+  phi::DenseTensor crows = phi::Empty<IntT>(dev_ctx, {batches * (rows + 1)});
   phi::DenseTensor cols = phi::Empty<IntT>(dev_ctx, {non_zero_num});
   phi::DenseTensor values = phi::EmptyLike<T, CPUContext>(dev_ctx, x.values());
   if (non_zero_num <= 0) {
@@ -198,18 +198,18 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
 
   const auto& coo_indices = x.indices();
   const auto& coo_values = x.values();
-  const IntT* batchs_ptr = coo_indices.data<IntT>();
+  const IntT* batches_ptr = coo_indices.data<IntT>();
   const IntT* coo_rows_data =
-      x_dims.size() == 2 ? batchs_ptr : batchs_ptr + non_zero_num;
+      x_dims.size() == 2 ? batches_ptr : batches_ptr + non_zero_num;
   const IntT* coo_cols_data = coo_rows_data + non_zero_num;
   const T* coo_values_data = coo_values.data<T>();
 
-  std::vector<int64_t> offsets(batchs, 0);
-  if (batchs > 1) {
+  std::vector<int64_t> offsets(batches, 0);
+  if (batches > 1) {
     for (int i = 0; i < non_zero_num; i++) {
-      if (i == non_zero_num - 1 || batchs_ptr[i] != batchs_ptr[i + 1]) {
-        const int start = batchs_ptr[i];
-        const int end = i == non_zero_num - 1 ? batchs : batchs_ptr[i + 1];
+      if (i == non_zero_num - 1 || batches_ptr[i] != batches_ptr[i + 1]) {
+        const int start = batches_ptr[i];
+        const int end = i == non_zero_num - 1 ? batches : batches_ptr[i + 1];
         for (int j = start; j < end; j++) {
           offsets[j] = i + 1;
         }
@@ -219,7 +219,7 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
     offsets[0] = non_zero_num;
   }
 
-  for (int b = 0; b < batchs; b++) {
+  for (int b = 0; b < batches; b++) {
     int batch_start = 0;
     int batch_non_zero_num = static_cast<int>(offsets[b]);
     if (b > 0) {
@@ -262,9 +262,9 @@ void CooToDenseCPUKernel(const CPUContext& dev_ctx,
                          const SparseCooTensor& x,
                          DenseTensor* out) {
   const auto non_zero_num = x.nnz();
-  const auto dense_dims = x.dims();
-  const auto indices = x.indices();
-  const auto values = x.values();
+  const auto& dense_dims = x.dims();
+  const auto& indices = x.indices();
+  const auto& values = x.values();
   const auto indices_dims = common::vectorize<int>(indices.dims());
   int64_t sparse_dim = indices_dims[0];
   if (indices_dims.size() == 1) {
@@ -328,7 +328,9 @@ PD_REGISTER_KERNEL(dense_to_coo,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(csr_to_coo,
                    CPU,
@@ -342,7 +344,9 @@ PD_REGISTER_KERNEL(csr_to_coo,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(coo_to_csr,
                    CPU,
@@ -356,7 +360,9 @@ PD_REGISTER_KERNEL(coo_to_csr,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(dense_to_csr,
                    CPU,
@@ -369,7 +375,9 @@ PD_REGISTER_KERNEL(dense_to_csr,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(coo_to_dense,
                    CPU,
@@ -383,7 +391,9 @@ PD_REGISTER_KERNEL(coo_to_dense,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(csr_to_dense,
                    CPU,
@@ -397,7 +407,9 @@ PD_REGISTER_KERNEL(csr_to_dense,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 PD_REGISTER_KERNEL(values_coo,
                    CPU,
@@ -411,7 +423,9 @@ PD_REGISTER_KERNEL(values_coo,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -442,7 +456,9 @@ PD_REGISTER_KERNEL(values_csr,
                    int16_t,
                    int,
                    int64_t,
-                   bool) {
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
@@ -456,4 +472,6 @@ PD_REGISTER_KERNEL(sparse_coo_tensor,
                    uint8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

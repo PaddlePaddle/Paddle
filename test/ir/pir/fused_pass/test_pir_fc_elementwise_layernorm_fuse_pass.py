@@ -78,9 +78,13 @@ class TestFcElementwiseLayerNormFusePattern(PassTest):
                                     )
                                     out = layer_norm(add_out)
                                     out = paddle.assign(out)
-                                    self.pass_list.append('fc_fuse_pass')
-                                    self.pass_list.append(
-                                        'fc_elementwise_layernorm_fuse_pass'
+                                    self.pass_attr_list.append(
+                                        {'matmul_add_act_fuse_pass': {}}
+                                    )
+                                    self.pass_attr_list.append(
+                                        {
+                                            'fc_elementwise_layernorm_fuse_pass': {}
+                                        }
                                     )
                                     self.feeds = {
                                         "x": np.random.random(x_shape).astype(

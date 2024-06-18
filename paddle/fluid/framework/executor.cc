@@ -20,22 +20,20 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/framework/trainer_factory.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
-#include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #ifdef PADDLE_WITH_DNNL
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/onednn_helper.h"
 #endif
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/phi/core/flags.h"
 
 PD_DECLARE_bool(benchmark);
-PHI_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_mkldnn);
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 namespace {
 // block id starts from 0. This id is used to represent the codeblock
 // wrapping the first block 0.
@@ -44,7 +42,7 @@ int kProgramId = -1;
 
 ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id)
-    : prog_(prog), block_id_(block_id) {}
+    : prog_(prog), block_id_(block_id), ops_(), unused_vars_() {}
 
 void ExecutorPrepareContext::PrepareUnusedVars(
     const std::vector<std::string>& keep_vars, bool force_disable_gc) {
@@ -53,8 +51,6 @@ void ExecutorPrepareContext::PrepareUnusedVars(
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
         prog_, static_cast<int>(block_id_), ops_);
     operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
-        prog_, static_cast<int>(block_id_), ops_);
-    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
         prog_, static_cast<int>(block_id_), ops_);
   }
 
@@ -99,7 +95,7 @@ void Executor::CreateVariables(const ProgramDesc& pdesc,
   while (ancestor_scope->parent()) {
     ancestor_scope = ancestor_scope->parent();
   }
-  if (ancestor_scope != scope) {
+  if (ancestor_scope != scope) {  // NOLINT
     for (auto& var : global_block.AllVars()) {
       if (var->Name() == framework::kEmptyVarName) {
         continue;
@@ -609,8 +605,7 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
   }
 #else
   LOG(WARNING)
-      << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
+      << "'MKLDNN' is not supported, Please re-compile with WITH_ONEDNN option";
 #endif
 }
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

@@ -305,9 +305,7 @@ class VersionManager:
                 md5 = combine_hash(md5, tuple(flat_elem))
             else:
                 raise RuntimeError(
-                    "Support types with list, tuple and dict, but received {} with {}.".format(
-                        type(elem), elem
-                    )
+                    f"Support types with list, tuple and dict, but received {type(elem)} with {elem}."
                 )
 
         return md5.hexdigest()
@@ -331,7 +329,7 @@ def clean_object_if_change_cflags(so_path, extension):
     """
     If already compiling source before, we should check whether cflags
     have changed and delete the built object to re-compile the source
-    even though source file content keeps unchanaged.
+    even though source file content keeps unchanged.
     """
 
     def serialize(path, version_info):
@@ -362,9 +360,7 @@ def clean_object_if_change_cflags(so_path, extension):
         # delete shared library file if version is changed to re-compile it.
         if so_version is not None and so_version != versioner.version:
             log_v(
-                "Re-Compiling {}, because specified cflags have been changed. New signature {} has been saved into {}.".format(
-                    so_name, versioner.version, version_file
-                )
+                f"Re-Compiling {so_name}, because specified cflags have been changed. New signature {versioner.version} has been saved into {version_file}."
             )
             os.remove(so_path)
             # update new version information
@@ -418,13 +414,13 @@ def prepare_win_cudaflags(cflags):
     return cflags
 
 
-def add_std_without_repeat(cflags, compiler_type, use_std14=False):
+def add_std_without_repeat(cflags, compiler_type, use_std17=False):
     """
-    Append -std=c++11/14 in cflags if without specific it before.
+    Append -std=c++14/17 in cflags if without specific it before.
     """
     cpp_flag_prefix = '/std:' if compiler_type == 'msvc' else '-std='
     if not any(cpp_flag_prefix in flag for flag in cflags):
-        suffix = 'c++14' if use_std14 else 'c++11'
+        suffix = 'c++17' if use_std17 else 'c++14'
         cpp_flag = cpp_flag_prefix + suffix
         cflags.append(cpp_flag)
 
@@ -630,13 +626,8 @@ def create_sym_link_if_not_exist():
                 os.symlink(core_path, new_dll_core_path)
             except Exception:
                 warnings.warn(
-                    "Failed to create soft symbol link for {}.\n You can run prompt as administrator and execute the "
-                    "following command manually: `mklink {} {}`. Now it will create hard link for {} trickly.".format(
-                        raw_core_name,
-                        new_dll_core_path,
-                        core_path,
-                        raw_core_name,
-                    )
+                    f"Failed to create soft symbol link for {raw_core_name}.\n You can run prompt as administrator and execute the "
+                    f"following command manually: `mklink {new_dll_core_path} {core_path}`. Now it will create hard link for {raw_core_name} trickly."
                 )
                 run_cmd(f'mklink /H {new_dll_core_path} {core_path}')
         # libpaddle with lib suffix
@@ -652,9 +643,7 @@ def create_sym_link_if_not_exist():
                 assert os.path.exists(new_lib_core_path)
             except Exception:
                 raise RuntimeError(
-                    "Failed to create soft symbol link for {}.\n Please execute the following command manually: `ln -s {} {}`".format(
-                        raw_core_name, core_path, new_lib_core_path
-                    )
+                    f"Failed to create soft symbol link for {raw_core_name}.\n Please execute the following command manually: `ln -s {core_path} {new_lib_core_path}`"
                 )
 
         # libpaddle without suffix
@@ -924,9 +913,7 @@ def get_build_directory(verbose=False):
             )
 
         log_v(
-            "$PADDLE_EXTENSION_DIR is not set, using path: {} by default.".format(
-                root_extensions_directory
-            ),
+            f"$PADDLE_EXTENSION_DIR is not set, using path: {root_extensions_directory} by default.",
             verbose,
         )
 
@@ -938,7 +925,7 @@ def get_build_directory(verbose=False):
 
 def parse_op_info(op_name):
     """
-    Parse input names and outpus detail information from registered custom op
+    Parse input names and outputs detail information from registered custom op
     from OpInfoMap.
     """
     if op_name not in OpProtoHolder.instance().op_proto_map:
@@ -1164,15 +1151,15 @@ def _custom_api_content(op_name):
     )
     API_TEMPLATE = textwrap.dedent(
         """
-        import paddle.base.core as core
-        from paddle.framework import in_dynamic_mode
+        from paddle import _C_ops
+        from paddle.framework import in_dynamic_or_pir_mode
         from paddle.base.layer_helper import LayerHelper
 
         def {op_name}({params_list}):
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.
-            if in_dynamic_mode():
-                outs = core.eager._run_custom_op("{op_name}", {params_list})
+            if in_dynamic_or_pir_mode():
+                outs = _C_ops._run_custom_op("{op_name}", {params_list})
                 {dynamic_content}
             else:
                 {static_content}
@@ -1326,6 +1313,7 @@ def _jit_compile(file_path, verbose=False):
     """
     Build shared library in subprocess
     """
+    assert os.path.exists(file_path)
     ext_dir = os.path.dirname(file_path)
     setup_file = os.path.basename(file_path)
 
@@ -1356,7 +1344,7 @@ def _jit_compile(file_path, verbose=False):
 
 def parse_op_name_from(sources):
     """
-    Parse registerring custom op name from sources.
+    Parse registering custom op name from sources.
     """
 
     def regex(content):

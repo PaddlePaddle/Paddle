@@ -150,8 +150,8 @@ class LowerImpl {
   std::vector<Tensor> CollectTemporaryTensors();
 
   /**
-   * \brief Check both the tensor_args and sclar_args not contain duplication
-   * (different arguemnt with the same name).
+   * \brief Check both the tensor_args and scalar_args not contain duplication
+   * (different argument with the same name).
    */
   void CheckArgsUnique();
 
@@ -304,7 +304,7 @@ struct MarkParallelMutator : public ir::IRMutator<Expr*> {
     auto it = parallels.find(tensor_n->name);
     if (it != parallels.end()) {
       for (int level : it->second) {
-        VLOG(1) << "Mark " << level << " Paralled";
+        VLOG(1) << "Mark " << level << " Parallelled";
         CHECK_LT(level, stack.size());
         stack[level]->set_parallel();
       }

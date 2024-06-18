@@ -21,7 +21,7 @@
 #include "paddle/cinn/common/float16.h"
 #endif
 #include <queue>
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -86,7 +86,9 @@ ir::Tensor GetTensor(
     return lang::Placeholder<uint64_t>(node_data->id(),
                                        shape_dict.at(node_data->id()));
   } else {
-    LOG(FATAL) << "Unsupport dtype: " << dtype;
+    std::stringstream ss;
+    ss << "Unsupport dtype: " << dtype;
+    PADDLE_THROW(phi::errors::InvalidArgument(ss.str()));
   }
 }
 
@@ -196,7 +198,9 @@ std::vector<int> GetInputShape(
                            << node->id() << "\"";
 
   auto* producer_data = in_links.front()->source()->safe_as<NodeData>();
-  CHECK_NOTNULL(producer_data);
+  PADDLE_ENFORCE_NOT_NULL(producer_data,
+                          phi::errors::InvalidArgument(
+                              "The input node data should not be nullptr."));
   return shape_dict.at(producer_data->id());
 }
 
@@ -319,13 +323,13 @@ std::unordered_map<Node*, Node*> BuildVirtualConsumer(
 
     auto output_shape = GetOutputShape(t_node, shape_dict);
     if (!found && t_node != e_node && e_node) {
-      auto enode_output_shape = GetOutputShape(e_node, shape_dict);
+      auto e_node_output_shape = GetOutputShape(e_node, shape_dict);
       if (std::accumulate(output_shape.begin(),
                           output_shape.end(),
                           1,
                           std::multiplies<int>()) ==
-          std::accumulate(enode_output_shape.begin(),
-                          enode_output_shape.end(),
+          std::accumulate(e_node_output_shape.begin(),
+                          e_node_output_shape.end(),
                           1,
                           std::multiplies<int>())) {
         virtual_consumers[t_node] = e_node;
@@ -583,7 +587,10 @@ void LoopOrderAssignReduce(ir::IRSchedule& ir_sch,  // NOLINT
         ir_sch.Split(loops[index], {-1, idx});
         break;
       }
-      CHECK_GT(idx, 1);
+      PADDLE_ENFORCE_GT(idx,
+                        1,
+                        phi::errors::InvalidArgument(
+                            "Cannot find the split factor for loop."));
     }
   }
 
@@ -622,7 +629,7 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
           // the loop size at axis is 1, need remove
           axes_shift_num[j] = -1;
         } else if (axes[j] > idx) {
-          // the axies value need left shift
+          // the axes value need left shift
           axes_shift_num[j]++;
         }
       }
@@ -715,7 +722,7 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
   // If the number of current device SM is smaller than the number of SM
   // required by Warp Reduce, the performance of Warp Reduce is better.
   // Otherwise, use Block Reduce.
-  auto max_num_threads = cinn::common::DefaultNVGPUTarget().max_num_threads();
+  auto max_num_threads = cinn::common::DefaultDeviceTarget().max_num_threads();
   int need_reduce_last_count = 1;
   for (int i = 0; i < inshape.size(); i++) {
     if (find(axes.begin(), axes.end(), i) == axes.end()) {
@@ -739,8 +746,8 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
     }
     lane *= inshape[axes[index]];
     if (index == 0 && lane <= max_num_threads) {
-      LOG(FATAL)
-          << "Error! lane is less equal than max_num_threads, Please check!";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Error! lane is less equal than max_num_threads, Please check!"));
     }
     if (lane >= max_num_threads / 2) {
       if (lane <= max_num_threads) {
@@ -775,7 +782,11 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
         --idx;
       } while (idx >= max_num_threads / 2);
       // if can't be divide by(1024, 512), it's shouldn't be fused.
-      CHECK_GE(idx, max_num_threads / 2) << "Check bounds exist, can't fuse!";
+      PADDLE_ENFORCE_GE(
+          idx,
+          max_num_threads / 2,
+          phi::errors::InvalidArgument(
+              "Error! Can't be divide by(1024, 512), Please check!"));
     } else {
       int axis = axes[index];
       int prefix = inshape[axis];
@@ -786,8 +797,11 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
           ir_sch.Split(block_name, axis, {-1, idx});
           break;
         }
-        CHECK_GT(idx, (max_num_threads / 2) / tail)
-            << "Error, it's shouldn't fuse!";
+        PADDLE_ENFORCE_GT(
+            idx,
+            (max_num_threads / 2) / tail,
+            phi::errors::InvalidArgument(
+                "Error! Can't be divide by(1024, 512), Please check!"));
       }
     }
     LoopOrderAssignReduce(ir_sch, block_name, first_axes, target);
@@ -805,7 +819,7 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
       ir_sch.Fuse(block_name, {axes[index + 1], axes[index + 1] + 1});
     }
     LoopOrderAssignReduce(ir_sch, block_name, first_axes, target, true);
-    // fuse axis before reduce to bind blockidx.
+    // fuse axis before reduce to bind block idx.
     for (int idx = 0; idx < static_cast<int>(inshape.size() - axes.size()) - 1;
          ++idx) {
       ir_sch.Fuse(block_name, {0, 1});
@@ -902,7 +916,7 @@ Node* GetMasterToComputeAt(
         done_schedule.insert(tmp);
       }
     }
-    // remove all consuemr reducer node of node from done_schedule.
+    // remove all consumer reducer node of node from done_schedule.
     std::unordered_set<Node*> visited;
     std::queue<Node*> candidates;
     candidates.push(node);
@@ -1001,7 +1015,7 @@ void LoopAssignReduce(
   // shape and axis.
   CHECK(shape_dict.count(reducer->inlinks_in_order()[0]->source()->id()));
   auto shape = shape_dict.at(reducer->inlinks_in_order()[0]->source()->id());
-  auto axes = absl::get<std::vector<int>>(reducer->attrs.attr_store.at("dim"));
+  auto axes = absl::get<std::vector<int>>(reducer->attrs.attr_store.at("axis"));
   if (axes.empty()) {
     for (int idx = 0; idx < shape.size(); idx++) {
       axes.push_back(idx);
@@ -1181,7 +1195,7 @@ void LoopAssignReduce(
       // copy loop info form rloops.
       copy_loop_info(nloops, rloops);
     } else {
-      LOG(FATAL) << "Error! Unkown Reduce Type!";
+      PADDLE_THROW(phi::errors::InvalidArgument("Error! Unkown Reduce Type!"));
     }
   }
 }
@@ -1225,8 +1239,16 @@ void MergeLoops(ir::Expr root,
   if (index < 0) {
     return;
   }
-  CHECK_GT(src.size(), index) << "\nindex -> " << index << "\n" << src[0];
-  CHECK_GT(dst.size(), index) << "\nindex -> " << index << "\n" << dst[0];
+  PADDLE_ENFORCE_GT(
+      src.size(),
+      index,
+      phi::errors::InvalidArgument(
+          "The index of src should be less than the size of src."));
+  PADDLE_ENFORCE_GT(
+      dst.size(),
+      index,
+      phi::errors::InvalidArgument(
+          "The index of dst should be less than the size of dst."));
 
   if (src[0] == dst[0]) {
     return;
@@ -1255,7 +1277,7 @@ void InsertSyncThread(
     const std::unordered_map<std::string, ir::Tensor>& tensor_map) {
   CHECK(shape_dict.count(node->inlinks_in_order()[0]->source()->id()));
   auto shape = shape_dict.at(node->inlinks_in_order()[0]->source()->id());
-  auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("dim"));
+  auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("axis"));
   if (axes.empty()) {
     for (int idx = 0; idx < shape.size(); idx++) {
       axes.push_back(idx);
@@ -1330,7 +1352,7 @@ void MergeReduceToReduce(
 
   CHECK(shape_dict.count(node->inlinks_in_order()[0]->source()->id()));
   auto shape = shape_dict.at(node->inlinks_in_order()[0]->source()->id());
-  auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("dim"));
+  auto axes = absl::get<std::vector<int>>(node->attrs.attr_store.at("axis"));
   if (axes.empty()) {
     for (int idx = 0; idx < shape.size(); idx++) {
       axes.push_back(idx);
@@ -1391,14 +1413,18 @@ void MergeReduceToReduce(
             auto n_loops = ir_sch.GetLoops(n_tensor->name + "__reduce_init");
             auto m_loops = ir_sch.GetLoops(m_tensor->name + "__reduce_init");
 
-            CHECK_EQ(n_loops.size(), m_loops.size());
+            PADDLE_ENFORCE_EQ(n_loops.size(),
+                              m_loops.size(),
+                              phi::errors::InvalidArgument(
+                                  "The size of loops should be equal."));
             MergeLoops(ir_sch.GetModule().GetExprs().at(0),
                        n_loops,
                        m_loops,
                        n_loops.size() - 1);
           }
         } else {
-          LOG(FATAL) << "not support this type fusion!";
+          PADDLE_THROW(
+              phi::errors::InvalidArgument("not support this type fusion!"));
         }
       }
     } else {
@@ -1469,7 +1495,10 @@ void MergeReduceToReduce(
 
         auto n_loops = ir_sch.GetLoops(n_tensor->name);
         auto m_loops = ir_sch.GetLoops(m_tensor->name);
-        CHECK_EQ(n_loops.size(), m_loops.size());
+        PADDLE_ENFORCE_EQ(
+            n_loops.size(),
+            m_loops.size(),
+            phi::errors::InvalidArgument("The size of loops should be equal."));
 
         std::vector<ir::Var> src_vars;
         std::vector<ir::Expr> dst_vars;
@@ -1502,7 +1531,8 @@ void MergeReduceToReduce(
         ir_sch.SimpleComputeAt(block, loops.back());
       }
     } else {
-      LOG(FATAL) << "Error! Unkown Reduce Type, Please Check!";
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Error! Unkown Reduce Type, Please Check!"));
     }
   }
 }

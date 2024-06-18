@@ -27,6 +27,9 @@
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/utils/string.h"
+#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace cinn {
 namespace hlir {
@@ -86,27 +89,31 @@ std::shared_ptr<OpStrategy> StrategyForMatMul(
     auto new_B = tensor_B->Reshape(new_shape_B_e, stages);
 
     std::vector<ir::Tensor> out;
-    if (target.arch == Target::Arch::X86) {
+    target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::X86Arch) {
 #ifdef CINN_WITH_MKL_CBLAS
-      out = pe::MatmulMKL(new_A,
-                          new_B,
-                          trans_a,
-                          trans_b,
-                          alpha,
-                          UniqName("MatmulMKL_output"),
-                          target);
+                        out = pe::MatmulMKL(new_A,
+                                            new_B,
+                                            trans_a,
+                                            trans_b,
+                                            alpha,
+                                            UniqName("MatmulMKL_output"),
+                                            target);
 #else
-      out = pe::MatmulV2(new_A,
-                         new_B,
-                         trans_a,
-                         trans_b,
-                         alpha,
-                         UniqName("MatmulV2_output"),
-                         target);
+                        out = pe::MatmulV2(new_A,
+                                           new_B,
+                                           trans_a,
+                                           trans_b,
+                                           alpha,
+                                           UniqName("MatmulV2_output"),
+                                           target);
 #endif
-    } else {
-      out = pe::Matmul(new_A, new_B, trans_a, trans_b, alpha, tensor_name);
-    }
+                      },
+                      [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+                      [&](common::NVGPUArch) {
+                        out = pe::Matmul(
+                            new_A, new_B, trans_a, trans_b, alpha, tensor_name);
+                      });
 
     std::vector<CINNValue> res;
     for (auto &t : out) {
@@ -126,7 +133,7 @@ std::shared_ptr<OpStrategy> StrategyForMatMul(
         << "The input argument of matmul schedule is empty! Please check.\n";
     CINNValuePack arg_pack = args[0];
     std::vector<CINNValue> results =
-        pe::IRCudaScheduleMatMul(arg_pack, output_shape, target);
+        pe::IRGpuScheduleMatMul(arg_pack, output_shape, target);
     *ret = CINNValuePack({results});
   });
 
@@ -219,7 +226,7 @@ std::shared_ptr<OpStrategy> StrategyForSplit(
       << "The Spilt Op's output shape list should not empty.";
   CHECK_LT(axis, static_cast<int>(output_shapes[0].size()));
   CHECK(!sections.empty())
-      << "The Split op doesn't find [num_or_sections] attrbute! It it a "
+      << "The Split op doesn't find [num_or_sections] attribute! It it a "
          "mandatory attribute ! Please check.";
 
   framework::CINNCompute split_compute(
@@ -286,8 +293,9 @@ std::vector<std::vector<int>> InferShapeForSplit(
   if (attrs.find("num_or_sections") != attrs.end()) {
     sections = absl::get<std::vector<int>>(attrs.at("num_or_sections"));
   } else {
-    LOG(FATAL) << "The Split op doesn't find [num_or_sections] attrbute! It it "
-                  "a mandatory attribute ! Please check.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The Split op doesn't find [num_or_sections] attribute! It it "
+        "a mandatory attribute ! Please check."));
   }
 
   if (inputs_shape.empty()) {
@@ -336,11 +344,13 @@ std::vector<std::vector<int>> InferShapeForSplit(
         neg_index = i;
       } else {
         if (sections[i] == 0) {
-          LOG(FATAL) << "The attribute 'num_or_sections' should not has 0 ! "
-                        "Please check.";
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The attribute 'num_or_sections' should not has 0 ! "
+              "Please check."));
         } else {
-          LOG(FATAL) << "The attribute 'num_or_sections' can only have at most "
-                        "one '-1' ! Please check.";
+          PADDLE_THROW(phi::errors::InvalidArgument(
+              "The attribute 'num_or_sections' can only have at most "
+              "one '-1' ! Please check."));
         }
       }
     }
@@ -372,8 +382,9 @@ std::vector<Type> InferDtypeForSplit(const std::vector<Type> &inputs_type,
   if (attrs.find("num_or_sections") != attrs.end()) {
     sections = absl::get<std::vector<int>>(attrs.at("num_or_sections"));
   } else {
-    LOG(FATAL) << "The Split op doesn't find [num_or_sections] attrbute! It it "
-                  "a mandatory attribute ! Please check.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The Split op doesn't find [num_or_sections] attribute! It it "
+        "a mandatory attribute ! Please check."));
   }
 
   int output_size = sections.size();
@@ -397,8 +408,9 @@ std::vector<std::vector<std::string>> InferLayoutForSplit(
     sections =
         absl::get<std::vector<int>>(attrs.attr_store.at("num_or_sections"));
   } else {
-    LOG(FATAL) << "The Split op doesn't find [num_or_sections] attrbute! It it "
-                  "a mandatory attribute ! Please check.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The Split op doesn't find [num_or_sections] attribute! It it "
+        "a mandatory attribute ! Please check."));
   }
 
   int output_size = sections.size();
@@ -454,6 +466,51 @@ std::shared_ptr<OpStrategy> StrategyForConcat(
                     GetInjectiveScheduleFunc(output_shapes, target, false),
                     "strategy.concat.x86",
                     1);
+  return strategy;
+}
+
+std::shared_ptr<OpStrategy> StrategyForConcatSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  framework::CINNCompute concat_compute([=](lang::Args args,
+                                            lang::RetValue *ret) {
+    CHECK(!args.empty())
+        << "The input arguments of Concat compute is empty! Please check.\n";
+    CHECK(!out_type.empty())
+        << "Output type of Concat is empty! Please check.\n";
+    CINNValuePack pack_args = args[0];
+    int input_size = pack_args.size() - 1;
+    CHECK_GE(input_size, 1UL)
+        << "at least 2 input tensors for Concat compute\n";
+    CHECK(!output_shapes.empty());
+    int axis = 0;
+    if (attrs.attr_store.count("axis")) {
+      axis = absl::get<int>(attrs.attr_store.at("axis"));
+    }
+
+    std::vector<ir::Tensor> input_tensors;
+    for (int i = 0; i < input_size; i++) {
+      Expr tensor = pack_args[i];
+      CHECK(tensor.as_tensor());
+      input_tensors.push_back(tensor.as_tensor_ref());
+    }
+
+    CHECK(pack_args[input_size].is_string());
+    std::string tensor_name = pack_args[input_size].operator std::string();
+
+    auto stages = CreateStages(input_tensors);
+    auto out = pe::Concat(input_tensors, axis, tensor_name);
+    stages->InsertLazily(out);
+
+    *ret = CINNValuePack({CINNValue(out), CINNValue(stages)});
+  });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(
+      concat_compute, lang::PackedFunc(), "strategy.concat.x86", 1);
   return strategy;
 }
 
@@ -566,17 +623,22 @@ std::shared_ptr<OpStrategy> StrategyForMul(
         CHECK(pack_args.back().is_string());
         std::string tensor_name = pack_args.back().operator std::string();
 
-        if (target.arch == Target::Arch::X86) {
+        target.arch.Match(
+            [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+            [&](common::X86Arch) {
 #ifdef CINN_WITH_MKL_CBLAS
-          out = pe::MatmulMKL(
-              new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
+              out = pe::MatmulMKL(
+                  new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
 #else
-          out = pe::MatmulV2(
-              new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
+              out = pe::MatmulV2(
+                  new_A, new_B, false, is_infer, 1.0f, tensor_name, target);
 #endif
-        } else {
-          out = pe::Matmul(new_A, new_B, false, is_infer, 1.0f, tensor_name);
-        }
+            },
+            [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+            [&](common::NVGPUArch) {
+              out =
+                  pe::Matmul(new_A, new_B, false, is_infer, 1.0f, tensor_name);
+            });
 
         std::vector<CINNValue> res;
         for (auto &t : out) {
@@ -596,7 +658,7 @@ std::shared_ptr<OpStrategy> StrategyForMul(
         << "The input argument of matmul schedule is empty! Please check.\n";
     CINNValuePack arg_pack = args[0];
     std::vector<CINNValue> results =
-        pe::IRCudaScheduleMatMul(arg_pack, output_shape, target);
+        pe::IRGpuScheduleMatMul(arg_pack, output_shape, target);
     *ret = CINNValuePack({results});
   });
 
@@ -801,7 +863,7 @@ std::shared_ptr<OpStrategy> StrategyForLayoutTransform(
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
 
-    if (target.arch == Target::Arch::X86) {
+    if (std::holds_alternative<common::X86Arch>(target.arch)) {
       pe::IRScheduleInjectiveCPU(ir_sch, output_shapes.front(), target);
     } else {
       CINN_NOT_IMPLEMENTED
@@ -875,7 +937,8 @@ std::shared_ptr<OpStrategy> StrategyForReverse(
     for (auto &e : axis) {
       if (e >= static_cast<int>(output_shapes[0].size()) ||
           e < -1 * static_cast<int>(output_shapes[0].size())) {
-        LOG(FATAL) << "axis is not in [0, n_dim), Please check.";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "axis is not in [0, n_dim), Please check."));
       }
       if (e < 0) {
         e += output_shapes[0].size();
@@ -911,6 +974,56 @@ std::shared_ptr<OpStrategy> StrategyForReverse(
   return strategy;
 }
 
+std::shared_ptr<OpStrategy> StrategyForReverseSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  // check output shape
+  CHECK(!output_shapes.empty() && !output_shapes[0].empty())
+      << "Output shape is empty! Please check.\n";
+  // get axis[0, n_dim)
+  std::vector<int> axis;
+  if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
+    axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
+    for (auto &e : axis) {
+      if (e >= static_cast<int>(output_shapes[0].size()) ||
+          e < -1 * static_cast<int>(output_shapes[0].size())) {
+        PADDLE_THROW(::common::errors::InvalidArgument(
+            "axis is not in [0, n_dim), Please check."));
+      }
+      if (e < 0) {
+        e += output_shapes[0].size();
+      }
+    }
+  }
+
+  framework::CINNCompute reverse_compute([=](lang::Args args,
+                                             lang::RetValue *ret) {
+    CHECK(!args.empty())
+        << "The input argument of reverse compute is empty! Please check.\n";
+    CINNValuePack input_args = args[0];
+    CHECK(!input_args.empty())
+        << "at least one input tensor for reverse compute\n";
+    Expr A = input_args[0];
+    CHECK(A.as_tensor());
+
+    CHECK_EQ(input_args.size(), 2);
+    CHECK(input_args[1].is_string());
+    std::string tensor_name = input_args[1].operator std::string();
+    auto out = pe::Reverse(A.as_tensor_ref(), axis, tensor_name);
+    auto stages = CreateStages({A.as_tensor_ref(), out});
+    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+  });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  CHECK(out_type.size()) << "Out_type of reverse op is empty! Please check.";
+  strategy->AddImpl(
+      reverse_compute, lang::PackedFunc(), "strategy.reverse.x86", 1);
+  return strategy;
+}
+
 std::vector<framework::shape_t> InferShapeForReverse(
     const std::vector<framework::shape_t> &inputs_shape,
     const framework::AttrMapType &attrs) {
@@ -922,7 +1035,8 @@ std::vector<framework::shape_t> InferShapeForReverse(
     for (auto &e : axis) {
       if (e >= static_cast<int>(inputs_shape[0].size()) ||
           e < -1 * static_cast<int>(inputs_shape[0].size())) {
-        LOG(FATAL) << "axis is not in [-n_dim, n_dim), Please check.";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "axis is not in [-n_dim, n_dim), Please check."));
       }
       if (e < 0) {
         e += inputs_shape[0].size();
@@ -942,7 +1056,8 @@ std::vector<std::vector<std::string>> InferLayoutForReverse(
     for (auto &e : axis) {
       if (e >= static_cast<int>(input_shapes[0].size()) ||
           e < -1 * static_cast<int>(input_shapes[0].size())) {
-        LOG(FATAL) << "axis is not in [-n_dim, n_dim), Please check.";
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "axis is not in [-n_dim, n_dim), Please check."));
       }
     }
   }
@@ -995,7 +1110,8 @@ std::shared_ptr<OpStrategy> StrategyForTranspose(
           << "output shape is not equal! Please check!\n";
     }
   } else {
-    LOG(FATAL) << "axis is not be set! Please check.";
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("axis is not be set! Please check."));
   }
 
   framework::CINNCompute transpose_compute([=](lang::Args args,
@@ -1024,6 +1140,84 @@ std::shared_ptr<OpStrategy> StrategyForTranspose(
   return strategy;
 }
 
+std::shared_ptr<OpStrategy> StrategyForTransposeSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  // check output shape
+  PADDLE_ENFORCE_EQ(output_shapes.empty(),
+                    false,
+                    ::common::errors::InvalidArgument(
+                        "Output shape is empty! Please check.\n"));
+  PADDLE_ENFORCE_EQ(output_shapes[0].empty(),
+                    false,
+                    ::common::errors::InvalidArgument(
+                        "Output shape is empty! Please check.\n"));
+
+  std::vector<int> axis;
+  auto input_shape = inputs[0]->shape;
+  if (attrs.attr_store.find("axis") != attrs.attr_store.end()) {
+    axis = absl::get<std::vector<int>>(attrs.attr_store.at("axis"));
+    PADDLE_ENFORCE_EQ(axis.size(),
+                      output_shapes[0].size(),
+                      ::common::errors::InvalidArgument(
+                          "axis size is not equal output_shapes size! Please "
+                          "check setting.\n"));
+    // check axis and shape
+    for (int idx = 0; idx < axis.size(); ++idx) {
+      PADDLE_ENFORCE(axis[idx] >= 0 && axis[idx] < axis.size(),
+                     ::common::errors::InvalidArgument(
+                         "axis is not in the tensor shape."));
+      for (int idy = idx + 1; idy < axis.size(); ++idy) {
+        PADDLE_ENFORCE_NE(axis[idx],
+                          axis[idy],
+                          ::common::errors::InvalidArgument(
+                              "The same axis parameter exists!"));
+      }
+    }
+  } else {
+    PADDLE_THROW(
+        ::common::errors::InvalidArgument("axis is not be set! Please check."));
+  }
+
+  framework::CINNCompute transpose_compute([=](lang::Args args,
+                                               lang::RetValue *ret) {
+    PADDLE_ENFORCE(
+        !args.empty(),
+        ::common::errors::InvalidArgument("The input argument of transpose "
+                                          "compute is empty! Please check.\n"));
+    CINNValuePack input_args = args[0];
+    PADDLE_ENFORCE(!input_args.empty(),
+                   ::common::errors::InvalidArgument(
+                       "at least one input tensor for transpose compute.\n"));
+    Expr A = input_args[0];
+    PADDLE_ENFORCE(
+        A.as_tensor(),
+        ::common::errors::InvalidArgument("The input argument is not Tensor."));
+    PADDLE_ENFORCE_EQ(input_args.size(),
+                      2,
+                      ::common::errors::InvalidArgument(
+                          "The input args size must be equal to 2."));
+    PADDLE_ENFORCE(
+        input_args[1].is_string(),
+        ::common::errors::InvalidArgument(
+            "The second argument must be of type string and is the name "
+            "of the output tensor."));
+    std::string tensor_name = input_args[1].operator std::string();
+
+    auto out = pe::Transpose(A.as_tensor_ref(), axis, tensor_name);
+    auto stages = CreateStages({out});
+    *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+  });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(
+      transpose_compute, lang::PackedFunc(), "strategy.transpose.x86", 1);
+  return strategy;
+}
+
 std::vector<framework::shape_t> InferShapeForTranspose(
     const std::vector<framework::shape_t> &inputs_shape,
     const framework::AttrMapType &attrs) {
@@ -1044,7 +1238,8 @@ std::vector<framework::shape_t> InferShapeForTranspose(
     }
     result.push_back(output_shape);
   } else {
-    LOG(FATAL) << "axis is not be set! Please check.";
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("axis is not be set! Please check."));
   }
   return result;
 }
@@ -1069,7 +1264,8 @@ std::vector<std::vector<std::string>> InferLayoutForTranspose(
       }
     }
   } else {
-    LOG(FATAL) << "axis is not be set! Please check.";
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("axis is not be set! Please check."));
   }
 
   std::vector<std::string> new_input_layouts = input_layouts;
@@ -1147,6 +1343,80 @@ std::shared_ptr<OpStrategy> StrategyForGather(
                     GetInjectiveScheduleFunc(output_shapes, target),
                     "strategy.gather.x86",
                     1);
+  return strategy;
+}
+std::shared_ptr<OpStrategy> StrategyForGatherSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  PADDLE_ENFORCE_NE(output_shapes.size(),
+                    0,
+                    ::common::errors::InvalidArgument(
+                        "The shape of output is empty! Please check again."));
+  PADDLE_ENFORCE_NE(output_shapes[0].size(),
+                    0,
+                    ::common::errors::InvalidArgument(
+                        "The shape of output is empty! Please check again."));
+
+  VLOG(4) << "The output passed in StrategyForGather: "
+          << utils::Join(output_shapes[0], ", ");
+  PADDLE_ENFORCE_NE(
+      out_type.size(),
+      0,
+      ::common::errors::InvalidArgument(
+          "The output type of Gather is empty! Please check again."));
+
+  int axis = 0;
+  if (attrs.attr_store.contains("axis")) {
+    axis = absl::get<int>(attrs.attr_store.at("axis"));
+  }
+  axis = axis < 0 ? axis + static_cast<int>(inputs[0]->shape.size()) : axis;
+
+  std::vector<Expr> output_shape = ToCinnExprs(output_shapes[0]);
+
+  framework::CINNCompute gather_compute{
+      [axis, output_shape = std::move(output_shape)](lang::Args args,
+                                                     lang::RetValue *ret) {
+        VLOG(4) << "The axis value used in gather_compute: " << axis;
+        PADDLE_ENFORCE_NE(args.size(),
+                          0,
+                          ::common::errors::InvalidArgument(
+                              "The input args are empty! Please check again."));
+        CINNValuePack input_args = args[0];
+        int input_size = input_args.size();
+        PADDLE_ENFORCE_GE(input_size,
+                          2,
+                          ::common::errors::InvalidArgument(
+                              "Require 2 input tensors for Gather compute."));
+        Expr x = input_args[0];
+        PADDLE_ENFORCE_NE(x.as_tensor(),
+                          nullptr,
+                          ::common::errors::InvalidArgument(
+                              "The first input args's type should be Tensor"));
+        Expr index = input_args[1];
+        PADDLE_ENFORCE_NE(index.as_tensor(),
+                          nullptr,
+                          ::common::errors::InvalidArgument(
+                              "The first input args's type should be Tensor"));
+
+        std::string tensor_name = input_args[2].operator std::string();
+
+        auto out = pe::Gather(x.as_tensor_ref(),
+                              index.as_tensor_ref(),
+                              axis,
+                              output_shape,
+                              tensor_name);
+        auto stages = CreateStages({x.as_tensor_ref(), index.as_tensor_ref()});
+        stages->InsertLazily(out);
+        std::vector<CINNValue> res{CINNValue(out), CINNValue(stages)};
+        *ret = CINNValuePack{res};
+      }};
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(
+      gather_compute, lang::PackedFunc(), "strategy.gather.x86", 1);
   return strategy;
 }
 
@@ -1459,9 +1729,9 @@ std::shared_ptr<OpStrategy> StrategyForSlice(
         absl::get<std::vector<int>>(attrs.attr_store.at("decrease_axis"));
   }
 
-  CHECK(!starts.empty()) << "The Slice op doesn't find [starts] attrbute! It "
+  CHECK(!starts.empty()) << "The Slice op doesn't find [starts] attribute! It "
                             "it a mandatory attribute, please check.";
-  CHECK(!ends.empty()) << "The Slice op doesn't find [ends] attrbute! It it a "
+  CHECK(!ends.empty()) << "The Slice op doesn't find [ends] attribute! It it a "
                           "mandatory attribute, please check.";
   CHECK_EQ(starts.size(), ends.size())
       << "The size of [starts] and [ends] must be identical! Please check.";
@@ -1518,6 +1788,144 @@ std::shared_ptr<OpStrategy> StrategyForSlice(
   return strategy;
 }
 
+template <typename T = int>
+std::vector<T> GetIntVectorFromAttr(const utils::Attribute &attr) {
+  if (absl::holds_alternative<std::vector<int64_t>>(attr)) {
+    const auto &attr_data = absl::get<std::vector<int64_t>>(attr);
+    return std::vector<T>(attr_data.begin(), attr_data.end());
+  } else if (absl::holds_alternative<std::vector<int>>(attr)) {
+    const auto &attr_data = absl::get<std::vector<int>>(attr);
+    return std::vector<T>(attr_data.begin(), attr_data.end());
+  } else if (absl::holds_alternative<bool>(attr)) {
+    return std::vector<T>{};
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("attribute's vector type is invalid!"));
+  }
+}
+std::shared_ptr<OpStrategy> StrategyForSliceSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  const std::vector<Expr> starts_expr = [&] {
+    if (inputs.size() == 3) {
+      const auto &value = inputs.at(1).self()->value();
+      CHECK(value.has_value());
+      return value.value();
+    }
+    if (attrs.attr_store.find("starts") != attrs.attr_store.end()) {
+      return ToCinnExprs(GetIntVectorFromAttr(attrs.attr_store.at("starts")));
+    } else {
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "The Slice op doesn't find [starts] attribute!"));
+    }
+  }();
+  const std::vector<Expr> ends_expr = [&] {
+    if (inputs.size() == 3) {
+      const auto &value = inputs.at(2).self()->value();
+      CHECK(value.has_value());
+      return value.value();
+    }
+    if (attrs.attr_store.find("ends") != attrs.attr_store.end()) {
+      return ToCinnExprs(GetIntVectorFromAttr(attrs.attr_store.at("ends")));
+    } else {
+      PADDLE_THROW(::common::errors::InvalidArgument(
+          "The Slice op doesn't find [ends] attribute!"));
+    }
+  }();
+  const std::vector<int> axes = [&] {
+    std::vector<int> axes;
+    if (attrs.attr_store.find("axes") != attrs.attr_store.end()) {
+      axes = GetIntVectorFromAttr(attrs.attr_store.at("axes"));
+    }
+    if (axes.empty()) {
+      for (int i = 0; i < starts_expr.size(); i++) {
+        axes.push_back(i);
+      }
+    }
+    return axes;
+  }();
+  const std::vector<Expr> strides_expr = [&] {
+    std::vector<int> strides;
+    if (attrs.attr_store.find("strides") != attrs.attr_store.end()) {
+      strides = GetIntVectorFromAttr(attrs.attr_store.at("strides"));
+    }
+    if (strides.empty()) {
+      for (int i = 0; i < starts_expr.size(); i++) {
+        strides.push_back(1);
+      }
+    }
+    return ToCinnExprs(strides);
+  }();
+  const std::vector<int> decrease_axis = [&] {
+    if (attrs.attr_store.find("decrease_axis") != attrs.attr_store.end()) {
+      return GetIntVectorFromAttr(attrs.attr_store.at("decrease_axis"));
+    }
+    return std::vector<int>{};
+  }();
+
+  CHECK(!starts_expr.empty())
+      << "The Slice op doesn't find [starts] attribute! It "
+         "it a mandatory attribute, please check.";
+  CHECK(!ends_expr.empty())
+      << "The Slice op doesn't find [ends] attribute! It it a "
+         "mandatory attribute, please check.";
+  CHECK_EQ(starts_expr.size(), ends_expr.size())
+      << "The size of [starts] and [ends] must be identical! Please check.";
+  CHECK_EQ(starts_expr.size(), axes.size())
+      << "The size of [starts] and [axes] must be identical! Please check.";
+  CHECK_EQ(starts_expr.size(), strides_expr.size())
+      << "The size of [starts] and [strides] must be identical! Please "
+         "check.";
+
+  std::vector<Expr> output_shape;
+  for (auto &i : output_shapes[0]) {
+    output_shape.push_back(i->dim_expr);
+    CHECK(output_shape.back().type().valid());
+  }
+
+  framework::CINNCompute slice_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty())
+            << "The input arguments of slice compute is empty! Please check.";
+        CINNValuePack arg_pack = args[0];
+        CHECK(!arg_pack.empty())
+            << "The input tensors of slice compute is empty! Please check.";
+        Expr A_expr = arg_pack[0];
+        CHECK(A_expr.as_tensor());
+        ir::Tensor A = A_expr.as_tensor_ref();
+
+        const std::string tensor_name = [&] {
+          if (arg_pack.size() == 2 || arg_pack.size() == 4) {
+            CHECK(arg_pack.back().is_string());
+            return arg_pack.back().operator std::string();
+          }
+          PADDLE_THROW(::common::errors::InvalidArgument(
+              "The slice op doesn't find output tensor name! The size of "
+              "arg_pack is %d.",
+              arg_pack.size()));
+        }();
+
+        auto out = pe::SliceSymbolic(A,
+                                     starts_expr,
+                                     axes,
+                                     strides_expr,
+                                     decrease_axis,
+                                     output_shape,
+                                     tensor_name);
+        VLOG(4) << "out: " << out;
+        auto stages = CreateStages({out});
+        *ret = CINNValuePack{{CINNValue(out), CINNValue(stages)}};
+      });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(slice_compute, lang::PackedFunc(), "strategy.slice.x86", 1);
+
+  return strategy;
+}
+
 std::vector<std::vector<int>> InferShapeForSlice(
     const std::vector<std::vector<int>> &inputs_shape,
     const framework::AttrMapType &attrs) {
@@ -1541,9 +1949,9 @@ std::vector<std::vector<int>> InferShapeForSlice(
       LOG(ERROR) << "Unsupported attr: " << iter.first << std::endl;
     }
   }
-  CHECK(!starts.empty()) << "The Slice op doesn't find [starts] attrbute! It "
+  CHECK(!starts.empty()) << "The Slice op doesn't find [starts] attribute! It "
                             "it a mandatory attribute, please check.";
-  CHECK(!ends.empty()) << "The Slice op doesn't find [ends] attrbute! It it a "
+  CHECK(!ends.empty()) << "The Slice op doesn't find [ends] attribute! It it a "
                           "mandatory attribute, please check.";
   CHECK_EQ(starts.size(), ends.size())
       << "The size of [starts] and [ends] must be identical! Please check.";
@@ -1696,11 +2104,12 @@ std::shared_ptr<OpStrategy> StrategyForSliceAssign(
     strides = absl::get<std::vector<int>>(attrs.attr_store.at("strides"));
   }
 
-  CHECK(!starts.empty())
-      << "The SliceAssign op doesn't find [starts] attrbute! It it a mandatory "
-         "attribute, please check.";
-  CHECK(!ends.empty()) << "The SliceAssign op doesn't find [ends] attrbute! It "
-                          "it a mandatory attribute, please check.";
+  CHECK(!starts.empty()) << "The SliceAssign op doesn't find [starts] "
+                            "attribute! It it a mandatory "
+                            "attribute, please check.";
+  CHECK(!ends.empty())
+      << "The SliceAssign op doesn't find [ends] attribute! It "
+         "it a mandatory attribute, please check.";
   CHECK_EQ(starts.size(), ends.size())
       << "The size of [starts] and [ends] must be identical! Please check.";
   if (!axes.empty()) {
@@ -1840,6 +2249,8 @@ CINN_REGISTER_HELPER(transform_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForConcat)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForConcatSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForConcat))
       .set_attr("inferdtype",
@@ -1858,6 +2269,8 @@ CINN_REGISTER_HELPER(transform_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForReverse)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForReverseSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForReverse))
       .set_attr("inferdtype",
@@ -1876,6 +2289,8 @@ CINN_REGISTER_HELPER(transform_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForTranspose)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForTransposeSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForTranspose))
       .set_attr("inferdtype",
@@ -1960,6 +2375,8 @@ CINN_REGISTER_HELPER(transform_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForSlice)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForSliceSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForSlice))
       .set_attr("inferdtype",
@@ -1999,6 +2416,8 @@ CINN_REGISTER_HELPER(transform_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForGather)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForGatherSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForGather))
       .set_attr("inferdtype",

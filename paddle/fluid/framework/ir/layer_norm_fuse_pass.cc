@@ -21,8 +21,8 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/string/pretty_log.h"
-#include "paddle/fluid/string/printf.h"
+#include "paddle/utils/string/pretty_log.h"
+#include "paddle/utils/string/printf.h"
 
 namespace paddle {
 namespace framework {

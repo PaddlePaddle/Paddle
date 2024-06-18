@@ -156,7 +156,7 @@ def XPUPlace(dev_id):
 def get_cudnn_version():
     """
 
-    This function return the version of cudnn. the retuen value is int which represents the
+    This function return the version of cudnn. the return value is int which represents the
     cudnn version. For example, if it return 7600, it represents the version of cudnn is 7.6.
 
     Returns:
@@ -220,29 +220,29 @@ def _convert_to_place(device):
             )
         place = core.IPUPlace()
     else:
-        avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
-        avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
-        if avaliable_gpu_device:
+        available_gpu_device = re.match(r'gpu:\d+', lower_device)
+        available_xpu_device = re.match(r'xpu:\d+', lower_device)
+        if available_gpu_device:
             if not core.is_compiled_with_cuda():
                 raise ValueError(
-                    "The device should not be {}, since PaddlePaddle is "
-                    "not compiled with CUDA".format(avaliable_gpu_device)
+                    f"The device should not be {available_gpu_device}, since PaddlePaddle is "
+                    "not compiled with CUDA"
                 )
             device_info_list = device.split(':', 1)
             device_id = device_info_list[1]
             device_id = int(device_id)
             place = core.CUDAPlace(device_id)
-        if avaliable_xpu_device:
+        if available_xpu_device:
             if not core.is_compiled_with_xpu():
                 raise ValueError(
-                    "The device should not be {}, since PaddlePaddle is "
-                    "not compiled with XPU".format(avaliable_xpu_device)
+                    f"The device should not be {available_xpu_device}, since PaddlePaddle is "
+                    "not compiled with XPU"
                 )
             device_info_list = device.split(':', 1)
             device_id = device_info_list[1]
             device_id = int(device_id)
             place = core.XPUPlace(device_id)
-        if not avaliable_gpu_device and not avaliable_xpu_device:
+        if not available_gpu_device and not available_xpu_device:
             device_info_list = device.split(':', 1)
             device_type = device_info_list[0]
             if device_type in core.get_all_custom_device_type():
@@ -299,8 +299,8 @@ def get_device():
 
     This function can get the current global device of the program is running.
     It's a string which is like 'cpu', 'gpu:x', 'xpu:x' and 'npu:x'. if the global device is not
-    set, it will return a string which is 'gpu:x' when cuda is avaliable or it
-    will return a string which is 'cpu' when cuda is not avaliable.
+    set, it will return a string which is 'gpu:x' when cuda is available or it
+    will return a string which is 'cpu' when cuda is not available.
 
     Examples:
 
@@ -348,16 +348,16 @@ def get_all_device_type():
             >>> import paddle
             >>> paddle.device.get_all_device_type()
 
-            >>> # Case 1: paddlepaddle-cpu package installed, and no custom device registerd.
+            >>> # Case 1: paddlepaddle-cpu package installed, and no custom device registered.
             >>> # Output: ['cpu']
 
-            >>> # Case 2: paddlepaddle-gpu package installed, and no custom device registerd.
+            >>> # Case 2: paddlepaddle-gpu package installed, and no custom device registered.
             >>> # Output: ['cpu', 'gpu']
 
-            >>> # Case 3: paddlepaddle-cpu package installed, and custom deivce 'CustomCPU' is registerd.
+            >>> # Case 3: paddlepaddle-cpu package installed, and custom device 'CustomCPU' is registered.
             >>> # Output: ['cpu', 'CustomCPU']
 
-            >>> # Case 4: paddlepaddle-gpu package installed, and custom deivce 'CustomCPU' and 'CustomGPU' is registerd.
+            >>> # Case 4: paddlepaddle-gpu package installed, and custom device 'CustomCPU' and 'CustomGPU' is registered.
             >>> # Output: ['cpu', 'gpu', 'CustomCPU', 'CustomGPU']
 
     """
@@ -378,10 +378,10 @@ def get_all_custom_device_type():
             >>> import paddle
             >>> paddle.device.get_all_custom_device_type()
 
-            >>> # Case 1: paddlepaddle-gpu package installed, and no custom device registerd.
+            >>> # Case 1: paddlepaddle-gpu package installed, and no custom device registered.
             >>> # Output: None
 
-            >>> # Case 2: paddlepaddle-gpu package installed, and custom deivce 'CustomCPU' and 'CustomGPU' is registerd.
+            >>> # Case 2: paddlepaddle-gpu package installed, and custom device 'CustomCPU' and 'CustomGPU' is registered.
             >>> # Output: ['CustomCPU', 'CustomGPU']
 
     """
@@ -402,16 +402,16 @@ def get_available_device():
             >>> import paddle
             >>> paddle.device.get_available_device()
 
-            >>> # Case 1: paddlepaddle-cpu package installed, and no custom device registerd.
+            >>> # Case 1: paddlepaddle-cpu package installed, and no custom device registered.
             >>> # Output: ['cpu']
 
-            >>> # Case 2: paddlepaddle-gpu package installed, and no custom device registerd.
+            >>> # Case 2: paddlepaddle-gpu package installed, and no custom device registered.
             >>> # Output: ['cpu', 'gpu:0', 'gpu:1']
 
-            >>> # Case 3: paddlepaddle-cpu package installed, and custom deivce 'CustomCPU' is registerd.
+            >>> # Case 3: paddlepaddle-cpu package installed, and custom device 'CustomCPU' is registered.
             >>> # Output: ['cpu', 'CustomCPU']
 
-            >>> # Case 4: paddlepaddle-gpu package installed, and custom deivce 'CustomCPU' and 'CustomGPU' is registerd.
+            >>> # Case 4: paddlepaddle-gpu package installed, and custom device 'CustomCPU' and 'CustomGPU' is registered.
             >>> # Output: ['cpu', 'gpu:0', 'gpu:1', 'CustomCPU', 'CustomGPU:0', 'CustomGPU:1']
 
     """
@@ -432,10 +432,10 @@ def get_available_custom_device():
             >>> import paddle
             >>> paddle.device.get_available_custom_device()
 
-            >>> # Case 1: paddlepaddle-gpu package installed, and no custom device registerd.
+            >>> # Case 1: paddlepaddle-gpu package installed, and no custom device registered.
             >>> # Output: None
 
-            >>> # Case 2: paddlepaddle-gpu package installed, and custom deivce 'CustomCPU' and 'CustomGPU' is registerd.
+            >>> # Case 2: paddlepaddle-gpu package installed, and custom device 'CustomCPU' and 'CustomGPU' is registered.
             >>> # Output: ['CustomCPU', 'CustomGPU:0', 'CustomGPU:1']
 
     """
@@ -448,8 +448,8 @@ class Event:
     A device event wrapper around StreamBase.
 
     Args:
-        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream runn on. If device is None, the device is the current device. Default: None.
-            It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
+        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream run on. If device is None, the device is the current device. Default: None.
+            It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
             where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
         enable_timing (bool, optional): indicates if the event should measure time, default is False
         blocking (bool, optional): if True, ``wait`` will be blocking, default is False
@@ -620,8 +620,8 @@ class Stream:
     A device stream wrapper around StreamBase.
 
     Args:
-        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream runn on. If device is None, the device is the current device. Default: None.
-            It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
+        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream run on. If device is None, the device is the current device. Default: None.
+            It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
             where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
         priority(int, optional): priority of the CUDA stream. Can be either
             1 (high priority) or 2 (low priority). By default, streams have
@@ -827,9 +827,7 @@ class Stream:
         return hash((self.stream_base, self.device))
 
     def __repr__(self):
-        return '<paddle.device.Stream device={} stream={:#x}>'.format(
-            self.device, self._as_parameter_.value
-        )
+        return f'<paddle.device.Stream device={self.device} stream={self._as_parameter_.value:#x}>'
 
 
 def current_stream(device=None):
@@ -839,8 +837,8 @@ def current_stream(device=None):
 
     Args:
         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): The device which want to get stream from.  If device is None, the device is the current device. Default: None.
-            It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
-            where ``x`` is the index of the GPUs, CustomDevicecs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
+            It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
+            where ``x`` is the index of the GPUs, CustomDevices. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
 
     Returns:
         Stream: The stream to the device.
@@ -995,7 +993,7 @@ def synchronize(device=None):
 
     Args:
         device(str|paddle.CUDAPlace(n)|paddle.XPUPlace(n)|paddle.CustomPlace(n)): The device which want to wait for.  If device is None, the device is the current device. Default: None.
-            It can be ``gpu``, ``gpu:x``, ``xpu``, ``xpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
+            It can be ``gpu``, ``gpu:x``, ``xpu``, ``xpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
             where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.XPUPlace(n) or paddle.CustomPlace(n).
 
     Examples:

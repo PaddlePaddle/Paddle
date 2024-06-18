@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
@@ -30,11 +30,12 @@ class HingeLossKernel : public framework::OpKernel<T> {
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
 
-    auto x = framework::EigenVector<T>::Flatten(*pred);
-    auto y = framework::EigenVector<T>::Flatten(*label);
+    auto x = phi::EigenVector<T>::Flatten(*pred);
+    auto y = phi::EigenVector<T>::Flatten(*label);
     loss->mutable_data<T>(context.GetPlace());
-    auto l = framework::EigenVector<T>::Flatten(*loss);
-    EigenHingeLoss<std::decay_t<decltype(place)>, T>::Eval(place, l, x, y);
+    auto l = phi::EigenVector<T>::Flatten(*loss);
+    phi::funcs::EigenHingeLoss<std::decay_t<decltype(place)>, T>::Eval(
+        place, l, x, y);
   }
 };
 
@@ -51,14 +52,14 @@ class HingeLossGradKernel : public framework::OpKernel<T> {
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
 
-    auto x = framework::EigenVector<T>::Flatten(*pred);
-    auto y = framework::EigenVector<T>::Flatten(*label);
-    auto dl = framework::EigenVector<T>::Flatten(*dloss);
+    auto x = phi::EigenVector<T>::Flatten(*pred);
+    auto y = phi::EigenVector<T>::Flatten(*label);
+    auto dl = phi::EigenVector<T>::Flatten(*dloss);
 
     if (dpred) {
       dpred->mutable_data<T>(context.GetPlace());
-      auto dx = framework::EigenVector<T>::Flatten(*dpred);
-      EigenHingeLossGrad<std::decay_t<decltype(place)>, T>::Eval(
+      auto dx = phi::EigenVector<T>::Flatten(*dpred);
+      phi::funcs::EigenHingeLossGrad<std::decay_t<decltype(place)>, T>::Eval(
           place, dx, dl, x, y);
     }
   }

@@ -17,16 +17,16 @@ limitations under the License. */
 #include <vector>
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/core/flags.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 namespace paddle {
@@ -47,19 +47,19 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
     PADDLE_ENFORCE_GE(rank,
                       0,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "greater than or equal to 0.",
                           rank));
     PADDLE_ENFORCE_GE(nranks,
                       2,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The value of nranks (%d) for c_concat must be "
                           "greater than or equal to 2.",
                           nranks));
     PADDLE_ENFORCE_LT(rank,
                       nranks,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The value of rank (%d) for c_concat must be "
                           "less than that of nranks (%d).",
                           rank,
@@ -67,7 +67,7 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     phi::DenseTensor temp_out;
-    framework::DDim temp_out_dims = x->dims();
+    phi::DDim temp_out_dims = x->dims();
     temp_out_dims[0] *= nranks;
     temp_out.mutable_data<T>(temp_out_dims, place);
 
@@ -95,7 +95,7 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
       if (FLAGS_dynamic_static_unified_comm) {
         PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
                           true,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "You choose to use new communication library by "
                               "setting environment "
                               "variable FLAGS_dynamic_static_unified_comm "
@@ -107,7 +107,7 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_NE(
             comm_ctx,
             nullptr,
-            platform::errors::Unavailable(
+            phi::errors::Unavailable(
                 "NCCLCommContext is nullptr, collective op should "
                 "has ring_id attr."));
         stream = comm_ctx->GetStream();
@@ -117,7 +117,7 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             nranks,
             comm->nranks(),
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "nranks: %s should equal to %s", nranks, comm->nranks()));
         stream = comm->stream();
         VLOG(3) << "old NCCLCommContext has rid " << rid;
@@ -130,12 +130,12 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
         comm_ctx->AllGather(&temp_out, *x, stream);
       } else {
         PADDLE_ENFORCE_GPU_SUCCESS(
-            platform::dynload::ncclAllGather(send_buff,
-                                             recv_buff,
-                                             send_numel,
-                                             static_cast<ncclDataType_t>(dtype),
-                                             comm->comm(),
-                                             stream));
+            phi::dynload::ncclAllGather(send_buff,
+                                        recv_buff,
+                                        send_numel,
+                                        static_cast<ncclDataType_t>(dtype),
+                                        comm->comm(),
+                                        stream));
       }
     }
 
@@ -151,12 +151,12 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
       offset += rows_per_tensor;
     }
 
-    math::ConcatFunctor<phi::GPUContext, T> functor;
+    phi::funcs::ConcatFunctor<phi::GPUContext, T> functor;
     out->mutable_data<T>(out_dims, place);
     auto& dev_ctx2 = ctx.template device_context<phi::GPUContext>();
     functor(dev_ctx2, inputs, axis, out);
 #else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
+    PADDLE_THROW(phi::errors::PreconditionNotMet(
         "PaddlePaddle should compile with GPU."));
 #endif
   }
@@ -165,7 +165,6 @@ class CConcatOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 PD_REGISTER_STRUCT_KERNEL(c_concat,
                           GPU,
@@ -176,7 +175,7 @@ PD_REGISTER_STRUCT_KERNEL(c_concat,
                           int,
                           int64_t,
 #if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
-                          plat::bfloat16,
+                          phi::dtype::bfloat16,
 #endif
-                          plat::float16) {
+                          phi::dtype::float16) {
 }

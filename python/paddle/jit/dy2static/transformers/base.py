@@ -14,17 +14,20 @@
 
 from paddle.base import unique_name
 from paddle.jit.dy2static.utils import (
+    ORIGIN_INFO,
+    ast_to_source_code,
+)
+from paddle.utils import gast
+
+from .utils import (
     FOR_ITER_INDEX_PREFIX,
     FOR_ITER_ITERATOR_PREFIX,
     FOR_ITER_TARGET_PREFIX,
     FOR_ITER_VAR_LEN_PREFIX,
     FOR_ITER_VAR_NAME_PREFIX,
     FOR_ITER_ZIP_TO_LIST_PREFIX,
-    ORIGI_INFO,
-    ast_to_source_code,
     create_assign_node,
 )
-from paddle.utils import gast
 
 __all__ = []
 
@@ -34,7 +37,7 @@ class BaseTransformer(gast.NodeTransformer):
         if not isinstance(node, gast.AST):
             msg = f'Expected "gast.AST", but got "{type(node)}".'
             raise ValueError(msg)
-        origin_info = getattr(node, ORIGI_INFO, None)
+        origin_info = getattr(node, ORIGIN_INFO, None)
 
         result = super().visit(node)
 
@@ -44,7 +47,7 @@ class BaseTransformer(gast.NodeTransformer):
                 iter_result = (iter_result,)
             if origin_info is not None:
                 for n in iter_result:
-                    setattr(n, ORIGI_INFO, origin_info)
+                    setattr(n, ORIGIN_INFO, origin_info)
 
         return result
 
@@ -222,7 +225,7 @@ class ForNodeVisitor:
         #   - for i, x enumerate(var|var.numpy())
         self.iter_node = self._get_iter_node()
 
-        # - enumeate i:
+        # - enumerate i:
         #   - for i, x enumerate(var|var.numpy())
         self.enum_idx_name = self._get_enum_idx_name()
 
@@ -381,8 +384,8 @@ class ForNodeVisitor:
         else:
             iter_var_name = ast_to_source_code(self.iter_node).strip()
 
-        convert_len_node_source_str = '{} = _jst.Len({})'.format(
-            self.iter_var_len_name, iter_var_name
+        convert_len_node_source_str = (
+            f'{self.iter_var_len_name} = _jst.Len({iter_var_name})'
         )
 
         convert_len_node = gast.parse(convert_len_node_source_str).body[0]
@@ -391,7 +394,7 @@ class ForNodeVisitor:
 
     def _build_iter_node(self):
         """
-        Process special cases for iter_node inclue:
+        Process special cases for iter_node include:
           - Case 1 (for zip):
 
             - for i, val in enumerate(zip(x, y))  # original code:
@@ -405,8 +408,8 @@ class ForNodeVisitor:
         ):
             if self.iter_node.func.id == 'zip':
                 iter_var_name = ast_to_source_code(self.iter_node).strip()
-                zip_to_list_str = "{target} = list({value})".format(
-                    target=self.iter_zip_to_list_name, value=iter_var_name
+                zip_to_list_str = (
+                    f"{self.iter_zip_to_list_name} = list({iter_var_name})"
                 )
                 zip_to_list_node = gast.parse(zip_to_list_str).body[0]
                 new_nodes.append(zip_to_list_node)
@@ -461,9 +464,7 @@ class ForNodeVisitor:
         if not isinstance(step_node, (gast.Constant, gast.UnaryOp)):
             raise NotImplementedError(
                 "Dynamic-to-Static only supports the step value is a constant or negative constant in 'for-range' statements, "
-                "such as '2', '-3'. But received: '{}'. Please fix code to be compatible with Dynamic-to-Static.".format(
-                    ast_to_source_code(step_node).strip()
-                )
+                f"such as '2', '-3'. But received: '{ast_to_source_code(step_node).strip()}'. Please fix code to be compatible with Dynamic-to-Static."
             )
 
         if isinstance(step_node, gast.UnaryOp) or step_node.value < 0:
@@ -516,9 +517,7 @@ class ForNodeVisitor:
         )
 
     def _build_assign_var_slice_node(self):
-        var_slice_str = "{}[{}]".format(
-            ast_to_source_code(self.iter_node).strip(), self.iter_idx_name
-        )
+        var_slice_str = f"{ast_to_source_code(self.iter_node).strip()}[{self.iter_idx_name}]"
         var_slice_node = gast.parse(var_slice_str).body[0].value
         new_iter_var_name = unique_name.generate(FOR_ITER_VAR_NAME_PREFIX)
         target_node, assign_node = create_assign_node(

@@ -76,8 +76,8 @@ class IgnoreReasons(enum.Enum):
     TRT_NOT_SUPPORT = 1
     # Accuracy is abnormal after enabling pass.
     PASS_ACCURACY_ERROR = 2
-    # Accuracy is abnormal after enabling mkldnn.
-    MKLDNN_ACCURACY_ERROR = 3
+    # Accuracy is abnormal after enabling onednn.
+    ONEDNN_ACCURACY_ERROR = 3
     # Accuracy is abnormal after enabling cutlass.
     CUTLASS_ACCURACY_ERROR = 3
 
@@ -293,10 +293,10 @@ class MkldnnAutoScanTest(AutoScanTest):
                         ignore_flag = True
                         if (
                             ignore_info[1]
-                            == IgnoreReasons.MKLDNN_ACCURACY_ERROR
+                            == IgnoreReasons.ONEDNN_ACCURACY_ERROR
                         ):
                             self.ignore_log(
-                                f"[MKLDNN_ACCURACY_ERROR] {ignore_info[2]} vs {self.inference_config_str(pred_config)}"
+                                f"[ONEDNN_ACCURACY_ERROR] {ignore_info[2]} vs {self.inference_config_str(pred_config)}"
                             )
                         else:
                             raise NotImplementedError
@@ -352,13 +352,13 @@ class PirMkldnnAutoScanTest(MkldnnAutoScanTest):
         """
         Test a single case.
         """
-        paddle.set_flags({'FLAGS_enable_pir_in_executor': True})
+        pred_config.enable_new_ir(True)
         pred_config.switch_ir_optim(False)
         pred_config.enable_new_executor()
         result = super().run_test_config(
             model, params, prog_config, pred_config, feed_data
         )
-        paddle.set_flags({'FLAGS_enable_pir_in_executor': False})
+        pred_config.enable_new_ir(False)
         return result
 
 
@@ -656,6 +656,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
         # Use a separate random generator for skipping tests
         self.skip_rng = np.random.default_rng(int(time.strftime("%W")))
+        self.optimization_level = None
 
     def create_inference_config(self, use_trt=True) -> paddle_infer.Config:
         config = paddle_infer.Config()
@@ -683,6 +684,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
                     self.dynamic_shape.opt_input_shape,
                     self.dynamic_shape.disable_trt_plugin_fp16,
                 )
+            if self.optimization_level is not None:
+                config.set_tensorrt_optimization_level(self.optimization_level)
         return config
 
     def assert_tensors_near(

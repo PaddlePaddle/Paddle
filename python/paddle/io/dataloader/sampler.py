@@ -151,7 +151,7 @@ class SequenceSampler(Sampler):
 class RandomSampler(Sampler):
     """
     Iterate samples randomly, yield shuffled indices, if :attr:`replacement=False`,
-    yield shuffled indices of the whole data souce, if :attr:`replacement=True`,
+    yield shuffled indices of the whole data source, if :attr:`replacement=True`,
     :attr:`num_samples` can set to specify the sample number to draw.
 
     Args:
@@ -160,8 +160,7 @@ class RandomSampler(Sampler):
                 object which implemented :code:`__len__` to get indices as the range of :code:`dataset` length. Default None.
         replacement(bool, optional): If False, sample the whole dataset, If True,
                 set :attr:`num_samples` for how many samples to draw. Default False.
-        num_samples(int, optional): set sample number to draw if :attr:`replacement`
-                is True, then it will take samples according to the number you set. Default None, disabled.
+        num_samples(int, optional): set sample number to draw. Default None, which is set to the length of `data_source`.
         generator(Generator, optional): specify a generator to sample the :code:`data_source`. Default None, disabled.
 
     Returns:
@@ -212,9 +211,10 @@ class RandomSampler(Sampler):
                 f"replacement={self.replacement}"
             )
 
-        if self._num_samples is not None and not replacement:
+        if not self.replacement and self.num_samples > len(self.data_source):
             raise ValueError(
-                "num_samples should not be specified while replacement is False"
+                "num_samples should be smaller than or equal to length of data_source when replacement is False, "
+                f"but got num_samples: {self.num_samples} > data_source: {len(self.data_source)}"
             )
 
         if not isinstance(self.num_samples, int) or self.num_samples <= 0:
@@ -246,7 +246,7 @@ class RandomSampler(Sampler):
                     yield index
             else:
                 for index in np.random.choice(
-                    np.arange(n), n, replace=False
+                    np.arange(n), self.num_samples, replace=False
                 ).tolist():
                     yield index
 
@@ -265,8 +265,8 @@ def _weighted_sample(weights, num_samples, replacement=True):
     assert len(weights.shape) <= 2, "weights should be a 1-D or 2-D array"
     weights = weights.reshape((-1, weights.shape[-1]))
     assert np.all(weights >= 0.0), "weights should be positive value"
-    assert not np.any(weights == np.inf), "weights shoule not be INF"
-    assert not np.any(weights == np.nan), "weights shoule not be NaN"
+    assert not np.any(weights == np.inf), "weights should not be INF"
+    assert not np.any(weights == np.nan), "weights should not be NaN"
 
     non_zeros = np.sum(weights > 0.0, axis=1)
     assert np.all(non_zeros > 0), "weights should have positive values"
@@ -288,7 +288,7 @@ def _weighted_sample(weights, num_samples, replacement=True):
 
 class WeightedRandomSampler(Sampler):
     """
-    Random sample with given weights (probabilities), sampe index will be in range
+    Random sample with given weights (probabilities), sample index will be in range
     [0, len(weights) - 1], if :attr:`replacement` is True, index can be sampled
     multiple times.
 

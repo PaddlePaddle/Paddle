@@ -80,32 +80,24 @@ def check_embedding_dim(accessor_proto, varname, program_id, context):
     if accessor_proto.accessor_class == "SparseAccessor":
         if fea_dim != embedding_dim + 2:
             raise ValueError(
-                "The fea_dim is wrong, it will be sparse_embedding_dim + 2: {}, but got {}".format(
-                    embedding_dim + 2, fea_dim
-                )
+                f"The fea_dim is wrong, it will be sparse_embedding_dim + 2: {embedding_dim + 2}, but got {fea_dim}"
             )
     else:
         if fea_dim != embedding_dim:
             raise ValueError(
-                "The fea_dim is wrong, it will be sparse_embedding_dim: {}, but got {}".format(
-                    embedding_dim, fea_dim
-                )
+                f"The fea_dim is wrong, it will be sparse_embedding_dim: {embedding_dim}, but got {fea_dim}"
             )
 
     embedx_dim = accessor_proto.embedx_dim
     if accessor_proto.accessor_class == "SparseAccessor":
         if embedx_dim != embedding_dim - 1:
             raise ValueError(
-                "The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {}, but got {}".format(
-                    embedding_dim - 1, embedx_dim
-                )
+                f"The embedx_dim is wrong, it will be sparse_embedding_dim - 1: {embedding_dim - 1}, but got {embedx_dim}"
             )
     else:
         if embedx_dim != embedding_dim - 3:
             raise ValueError(
-                "The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {}, but got {}".format(
-                    embedding_dim - 3, embedx_dim
-                )
+                f"The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {embedding_dim - 3}, but got {embedx_dim}"
             )
 
 
@@ -594,8 +586,8 @@ class CommonAccessor(Accessor):
 
 
 class Tensor:
-    def __init__(self, tesnor_dcit):
-        self.tensor_dict = tesnor_dcit
+    def __init__(self, tensor_dict):
+        self.tensor_dict = tensor_dict
 
     def _set(self, tensor_proto):
         tensor_proto.main_program_id = self.tensor_dict.get(
@@ -1268,7 +1260,7 @@ class TheOnePSRuntime(RuntimeBase):
                 )
             scopes = [paddle.static.global_scope()]
         if len(self.origin_main_programs) != len(scopes):
-            raise VauleError("len(programs) != len(scopes)")
+            raise ValueError("len(programs) != len(scopes)")
 
         self.scopes = scopes
         if not is_test:
@@ -1365,9 +1357,7 @@ class TheOnePSRuntime(RuntimeBase):
             for var_name in var_names:
                 if var_name not in distributed_varnames:
                     raise ValueError(
-                        "fleet.init server can only load sparse variables in {}".format(
-                            distributed_varnames
-                        )
+                        f"fleet.init server can only load sparse variables in {distributed_varnames}"
                     )
             load_varnames = var_names
 
@@ -1743,6 +1733,12 @@ class TheOnePSRuntime(RuntimeBase):
         fleet.util.barrier()
         if self.role_maker._is_first_worker():
             self._ps_inference_load_inference_model(path, mode)
+        fleet.util.barrier()
+
+    def _set_date(self, table_id, day_id):
+        fleet.util.barrier()
+        if self.role_maker._is_first_worker():
+            self._worker.set_date(table_id, day_id)
         fleet.util.barrier()
 
     def _shrink(self, threshold=None):

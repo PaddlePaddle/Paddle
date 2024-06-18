@@ -54,11 +54,11 @@ class DescTensor : public phi::ExtendedTensor,
   // TODO(jiabin): override more operators here.
 
  private:
-  // VarDesc's lifetime is holded by block and it's program, so we just conceal
+  // VarDesc's lifetime is held by block and it's program, so we just conceal
   // its funcs instead of its life.
   framework::VarDesc* desc_ptr_;
   // TODO(jiabin): This is really ugly, but we have to hold a dims here so that
-  // we can inherient from ExtendedTensor Rmove this when we make VarDesc's as
+  // we can inherit from ExtendedTensor Remove this when we make VarDesc's as
   // same as Tensor, or make Tensor's dims more lightly.
   mutable phi::DDim dims_;
   phi::Place place_;

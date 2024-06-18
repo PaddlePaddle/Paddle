@@ -23,13 +23,13 @@ limitations under the License. */
 #include <string>
 
 #include "gtest/gtest.h"
+#include "paddle/common/flags.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/phi/core/flags.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
-PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
-PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
+COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
+COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
+COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
 
 namespace paddle {
@@ -173,9 +173,9 @@ TEST(BuddyAllocator, FractionRefillPool) {
   // Max chunk size should be same during allocation
   EXPECT_EQ(max_chunk_size, buddy_allocator.GetMaxChunkSize());
 
-  size_t alloc =
-      platform::GpuAvailableMemToAlloc() * FLAGS_fraction_of_gpu_memory_to_use;
-  // Exceed pool trigger refilling size of fraction of avaiable gpu, and should
+  size_t alloc = platform::GpuAvailableMemToAlloc() *
+                 FLAGS_fraction_of_gpu_memory_to_use;  // NOLINT
+  // Exceed pool trigger refilling size of fraction of available gpu, and should
   // be able to alloc 60% of the remaining GPU
   int* p1 = TestBuddyAllocator(&buddy_allocator,
                                alloc,
@@ -184,9 +184,9 @@ TEST(BuddyAllocator, FractionRefillPool) {
   // Max chunk size should be same during allocation
   EXPECT_EQ(max_chunk_size, buddy_allocator.GetMaxChunkSize());
 
-  alloc =
-      platform::GpuAvailableMemToAlloc() * FLAGS_fraction_of_gpu_memory_to_use;
-  // Exceed pool trigger refilling size of fraction of avaiable gpu, and should
+  alloc = platform::GpuAvailableMemToAlloc() *
+          FLAGS_fraction_of_gpu_memory_to_use;  // NOLINT
+  // Exceed pool trigger refilling size of fraction of available gpu, and should
   // be able to alloc 60% of the remaining GPU
   TestBuddyAllocator(&buddy_allocator,
                      alloc,

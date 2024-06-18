@@ -18,8 +18,7 @@
 #include "paddle/phi/core/enforce.h"
 
 #include "paddle/fluid/jit/function_utils.h"
-namespace paddle {
-namespace jit {
+namespace paddle::jit {
 
 Argument::Argument(const std::string& name, bool is_out)
     : name_(name), is_output_(is_out) {}
@@ -28,6 +27,7 @@ const std::string& Argument::Name() const { return name_; }
 
 const std::vector<std::string> FunctionSchema::InputArgNames() const {
   std::vector<std::string> input_arg_names;
+  input_arg_names.reserve(input_args.size());
   for (auto& arg : input_args) {
     input_arg_names.emplace_back(arg.Name());
   }
@@ -36,6 +36,7 @@ const std::vector<std::string> FunctionSchema::InputArgNames() const {
 
 const std::vector<std::string> FunctionSchema::OutputArgNames() const {
   std::vector<std::string> output_arg_names;
+  output_arg_names.reserve(output_args.size());
   for (auto& arg : output_args) {
     output_arg_names.emplace_back(arg.Name());
   }
@@ -67,7 +68,7 @@ FunctionInfo::FunctionInfo(const std::string& func_name,
 const std::string& FunctionInfo::FunctionName() const { return func_name_; }
 
 const framework::ProgramDesc& FunctionInfo::ProgramDesc() const {
-  return *program_desc_.get();
+  return *program_desc_.get();  // NOLINT
 }
 
 const std::vector<std::string>& FunctionInfo::ParamNames() const {
@@ -94,5 +95,4 @@ void FunctionInfo::RemoveDescFeedFetch() {
   utils::RemoveFeedFetch(program_desc_.get());
 }
 
-}  // namespace jit
-}  // namespace paddle
+}  // namespace paddle::jit

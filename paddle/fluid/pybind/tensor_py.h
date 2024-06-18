@@ -31,11 +31,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/pybind/complex.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -548,7 +548,7 @@ void SetStringTensorFromPyArray(phi::StringTensor *self,
                     true,
                     platform::errors::InvalidArgument(
                         "Expect the dtype of numpy array is string or "
-                        "unicode, but recevie dtype %s",
+                        "unicode, but receive dtype %s",
                         array.dtype()));
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
@@ -696,7 +696,7 @@ void _sliceCompute(const phi::DenseTensor *in,
   auto out_t =
       framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
           *out);
-  operators::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+  phi::funcs::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
       eigen_place, out_t, in_t, offsets, extents);
 }
 
@@ -721,7 +721,7 @@ void _concatCompute(const std::vector<phi::DenseTensor> &ins,
       output_offset += in_stride[axis];
     }
   } else {
-    paddle::operators::math::ConcatFunctor<phi::CPUContext, T> concat_functor;
+    phi::funcs::ConcatFunctor<phi::CPUContext, T> concat_functor;
     concat_functor(ctx, ins, static_cast<int>(axis), out);
   }
 }
@@ -741,7 +741,7 @@ inline void _getSliceinfo(const phi::DenseTensor &self,
   PADDLE_ENFORCE(
       0 <= dim && dim < srcDDim.size(),
       platform::errors::OutOfRange("The dim %d of slice is out of bounds, it "
-                                   "shound be in the range of [0, %d).",
+                                   "should be in the range of [0, %d).",
                                    dim,
                                    srcDDim.size()));
 
@@ -763,7 +763,7 @@ inline void _getSliceinfo(const phi::DenseTensor &self,
     PADDLE_ENFORCE(
         std::abs(start) < srcDDim[dim],
         platform::errors::OutOfRange("The start %d of slice is out of bounds, "
-                                     "it shound be in the range of (%d, %d).",
+                                     "it should be in the range of (%d, %d).",
                                      start,
                                      -srcDDim[dim],
                                      srcDDim[dim]));
@@ -970,14 +970,12 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 
   std::vector<ssize_t> py_dims(rank);
   std::vector<ssize_t> py_strides(rank);
-  size_t numel = 1;
 
   auto tensor_stride = tensor.strides();
 
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {
     py_dims[i] = static_cast<size_t>(tensor_dims[i]);
     py_strides[i] = sizeof_dtype * tensor_stride[i];
-    numel *= py_dims[i];
   }
 
   const void *tensor_buf_ptr = tensor.data();
@@ -1080,7 +1078,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
 #endif
   } else if (is_custom_device_tensor) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    // TODO(qili93): temporary for ascned npu performance to be removed along
+    // TODO(qili93): temporary for ascend npu performance to be removed along
     // with npu_identity op
     paddle::Tensor tensor_out(std::make_shared<phi::DenseTensor>());
     if (tensor.storage_properties_initialized()) {

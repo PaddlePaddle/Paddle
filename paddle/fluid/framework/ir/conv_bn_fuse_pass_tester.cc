@@ -98,7 +98,7 @@ void TestMain(const std::string& conv_type) {
 
 TEST(ConvBNFusePass, conv2d) { TestMain("conv"); }
 
-TEST(ConvBNFusePass, conv2d_tranpose) { TestMain("conv_transpose"); }
+TEST(ConvBNFusePass, conv2d_transpose) { TestMain("conv_transpose"); }
 
 }  // namespace ir
 }  // namespace framework

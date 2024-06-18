@@ -24,7 +24,7 @@
 #include <unordered_set>
 
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
-#include "paddle/pir/core/builder.h"
+#include "paddle/pir/include/core/builder.h"
 
 namespace pir {
 
@@ -35,7 +35,7 @@ using GroupOpsVec = std::vector<pir::Operation*>;
 class SubgraphDetector {
  public:
   // Tell whether a node is inside a sub-graph.
-  using OpClassifier = std::function<bool(pir::Operation*)>;
+  using OpClassifier = std::function<bool(const pir::Operation&)>;
 
   SubgraphDetector(pir::Block* block, const OpClassifier& classifier);
 
@@ -51,7 +51,7 @@ class SubgraphDetector {
   void DoSubGraphFusion();
 
   bool FuseSubGraph(SubGraphPtr subgraph_ptr);
-  // check exist depency.
+  // check exist dependency.
   bool IsDependency(const SubGraphPtr& producer_g,
                     const SubGraphPtr& consumer,
                     const std::unordered_set<SubGraphPtr>& consumers);
@@ -70,6 +70,13 @@ class SubgraphDetector {
   std::unordered_map<pir::Operation*, SubGraphPtr> subgraph_map_;
 };
 
+std::vector<pir::Value> AnalysisOutputs(const GroupOpsVec& group_ops);
 void ReplaceWithGroupOp(pir::Block* block, const GroupOpsVec& group_ops);
+
+pir::Operation* FindInsertPoint(const GroupOpsVec& group_ops,
+                                const std::vector<pir::Value>& outputs);
+void MoveUpstreamOpBeforeGroup(const GroupOpsVec& group_ops,
+                               pir::Block* block,
+                               pir::Operation* insert_point_op);
 
 }  // namespace pir

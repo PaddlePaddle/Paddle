@@ -36,7 +36,7 @@
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 namespace cinn {
 namespace hlir {
@@ -125,6 +125,53 @@ std::shared_ptr<OpStrategy> StrategyForReciprocal(
   return strategy;
 }
 
+std::shared_ptr<OpStrategy> StrategyForReciprocalSymbolic(
+    const framework::NodeAttr &attrs,
+    const std::vector<ir::Tensor> &inputs,
+    const std::vector<Type> &out_type,
+    const std::vector<std::vector<ir::Dim>> &output_shapes,
+    const Target &target) {
+  std::string op_name("reciprocal");
+
+  framework::CINNCompute reciprocal_compute(
+      [=](lang::Args args, lang::RetValue *ret) {
+        CHECK(!args.empty()) << "The input argument of " << op_name
+                             << " compute is empty! Please check.\n";
+        CINNValuePack pack_args = args[0];
+        CHECK(!pack_args.empty())
+            << "at least one input tensor for " << op_name << " compute\n";
+
+        CHECK_EQ(pack_args.size(), 2);
+        CHECK(pack_args[1].is_string());
+        std::string tensor_name = pack_args[1].operator std::string();
+
+        Expr A = pack_args[0];
+        CHECK(A.as_tensor());
+        CHECK(!output_shapes.empty());
+        auto tensor_A = A.as_tensor_ref();
+        auto stages = CreateStages({tensor_A});
+        VLOG(3) << "A shape: " << utils::Join(tensor_A->shape, ", ")
+                << ", output_shapes: " << utils::Join(output_shapes[0], ", ");
+
+        CHECK_EQ(pack_args.size(), 2U);
+        tensor_name = pack_args[1].operator std::string();
+
+        ir::Tensor out = Reciprocal(tensor_A, tensor_name);
+        std::vector<CINNValue> res;
+        stages->InsertLazily(out);
+        res.push_back(CINNValue(out));
+        CHECK(!out_type.empty())
+            << "Output type of Reciprocal is empty! Please check.\n";
+        res.push_back(CINNValue(stages));
+        *ret = CINNValuePack{res};
+      });
+
+  auto strategy = std::make_shared<framework::OpStrategy>();
+  strategy->AddImpl(
+      reciprocal_compute, lang::PackedFunc(), "strategy.reciprocal.x86", 1);
+  return strategy;
+}
+
 std::vector<framework::shape_t> InferShapeForReciprocal(
     const std::vector<framework::shape_t> &inputs_shape,
     const framework::AttrMapType &attrs) {
@@ -153,6 +200,8 @@ CINN_REGISTER_HELPER(reciprocal_ops) {
       .set_num_outputs(1)
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForReciprocal)
+      .set_attr<cinn::hlir::framework::StrategyFunctionSymbolic>(
+          "CINNStrategySymbolic", cinn::hlir::op::StrategyForReciprocalSymbolic)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForReciprocal))
       .set_attr("inferdtype",

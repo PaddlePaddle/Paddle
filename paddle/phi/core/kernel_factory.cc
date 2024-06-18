@@ -15,8 +15,8 @@
 #include "paddle/phi/core/kernel_factory.h"
 
 #include "glog/logging.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/utils/flags.h"
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
 #include "paddle/phi/common/data_type.h"
@@ -26,15 +26,14 @@
 #include "paddle/phi/backends/custom/custom_device_op_list.h"
 #endif
 #include "paddle/phi/core/compat/op_utils.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/string_helper.h"
 
 PHI_DEFINE_EXPORTED_bool(use_stride_kernel,
                          true,
-                         "Whether to use strdie kernel if op support stride.");
+                         "Whether to use stride kernel if op support stride.");
 
-PD_DECLARE_int32(low_precision_op_list);
-PD_DECLARE_bool(enable_api_kernel_fallback);
+COMMON_DECLARE_int32(low_precision_op_list);
+COMMON_DECLARE_bool(enable_api_kernel_fallback);
 PD_DECLARE_bool(run_kp_kernel);
 namespace phi {
 
@@ -92,7 +91,6 @@ const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
   if (iter == kernels_.end()) {
     return empty_kernel;
   }
-
   auto kernel_iter = iter->second.find(kernel_key);
   if (kernel_iter == iter->second.end() &&
       kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
@@ -178,6 +176,22 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
       phi::errors::NotFound("The kernel `%s` is not registered.", kernel_name));
 
   auto kernel_iter = iter->second.find(kernel_key);
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.layout() != phi::DataLayout::ALL_LAYOUT) {
+    phi::KernelKey any_layout_kernel_key(
+        kernel_key.backend(), phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
+    kernel_iter = iter->second.find(any_layout_kernel_key);
+  }
+
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
+    kernel_iter = iter->second.find({phi::Backend::CUSTOM,
+                                     phi::DataLayout::ALL_LAYOUT,
+                                     kernel_key.dtype()});
+  }
+#endif
+
   if (kernel_iter == iter->second.end()) {
     return false;
   }
@@ -234,6 +248,17 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     if (stride_kernel_iter != iter->second.end()) {
       return {stride_kernel_iter->second, false, true};
     }
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+    if (stride_kernel_iter == iter->second.end() &&
+        const_kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
+      stride_kernel_iter = iter->second.find({phi::Backend::CUSTOM,
+                                              phi::DataLayout::STRIDED,
+                                              const_kernel_key.dtype()});
+      if (stride_kernel_iter != iter->second.end()) {
+        return {stride_kernel_iter->second, false, true};
+      }
+    }
+#endif
   }
 
   KernelKey kernel_key = KernelKey(const_kernel_key.backend(),

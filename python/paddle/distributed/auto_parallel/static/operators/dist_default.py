@@ -15,14 +15,14 @@
 
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
-from ..completion import get_phi_spmd_rule
+from ..completion import contains_spmd_rule, get_phi_spmd_rule
 from ..cost import (
     _g_op_cost_factory,
     build_comp_costs_from_descs,
     build_comp_desc_from_dist_op,
     build_dp_costs,
 )
-from ..dist_attribute import OperatorDistAttr
+from ..dist_attribute import DistTensorSpec, OperatorDistAttr
 from ..process_group import new_process_group
 from ..utils import (
     _get_comm_group,
@@ -49,6 +49,7 @@ __op_has_shape_attr__ = [
     "fill_constant_batch_size_like",
     "fill_constant",
     "expand_v2",
+    "expand_as_v2",
 ]
 
 
@@ -61,7 +62,7 @@ def prim_operator_data_parallel_functor(ctx, src_op):
     if var_name in ctx.grads_params:
         assert (
             var_name not in ctx.synced_gradient
-        ), f"in primtive mode, grad is already {var_name} synced"
+        ), f"in primitive mode, grad is already {var_name} synced"
         ctx.synced_gradient.add(var_name)
         sync_group = new_process_group(ctx.data_parallel_group)
 
@@ -121,9 +122,7 @@ class DistributedDefault(DistributedOperatorImplContainer):
         for i in range(num_inputs):
             assert not is_parameter_related(
                 input_arg_names[i], main_block
-            ), "input {} of op {} is parameter, op should not use default rule.".format(
-                input_arg_names[i], str(dist_op.serial_op)
-            )
+            ), f"input {input_arg_names[i]} of op {str(dist_op.serial_op)} is parameter, op should not use default rule."
             input_specs.append(
                 get_dist_tensor_spec(dist_op, input_arg_names[i])
             )
@@ -132,18 +131,28 @@ class DistributedDefault(DistributedOperatorImplContainer):
         for i in range(num_outputs):
             assert not is_parameter_related(
                 output_arg_names[i], main_block
-            ), "output {} of op {} is parameter, op should not use default rule.".format(
-                output_arg_names[i], str(dist_op.serial_op)
-            )
+            ), f"output {output_arg_names[i]} of op {str(dist_op.serial_op)} is parameter, op should not use default rule."
             output_specs.append(
                 get_dist_tensor_spec(dist_op, output_arg_names[i], False)
             )
 
         # step2: infer spmd
-        rule = get_phi_spmd_rule("default_")
-        # tensor order following order in PHI definition
-        fw_results = rule.infer_forward(input_specs, output_specs)
-        bw_results = rule.infer_backward(input_specs, output_specs)
+        if contains_spmd_rule(dist_op.serial_op.type):
+            # when some inputs are optional, the input_arg_names will be less than input_names
+            # and we can pass empty DistTensorSpec() as argument
+            if len(op_desc.input_names()) > len(op_desc.input_arg_names()):
+                for i in range(
+                    len(op_desc.input_names()) - len(op_desc.input_arg_names())
+                ):
+                    input_specs.append(DistTensorSpec())
+            rule = get_phi_spmd_rule(dist_op.serial_op.type)
+            fw_results = rule.infer_forward(*input_specs)
+            bw_results = rule.infer_backward(*input_specs, output_specs)
+        else:
+            rule = get_phi_spmd_rule('default_')
+            # tensor order following order in PHI definition
+            fw_results = rule.infer_forward(input_specs, output_specs)
+            bw_results = rule.infer_backward(input_specs, output_specs)
 
         # step3: update dist_attr
         # tensor order following order in PHI definition
@@ -534,12 +543,15 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         # replicate op in dist program
         dst_op = copy_op_without_infer_shape(src_op, main_block, ctx, kwargs)
 
-        if (
-            src_op.has_attr('shape')
-            and src_op.attr('shape')
-            and src_op.type in __op_has_shape_attr__
-        ):
-            shape_list = src_op.attr('shape')
+        def get_shape_attr_name():
+            for name in ["shape", "target_shape"]:
+                if src_op.has_attr(name) and src_op.attr(name):
+                    return name
+            return None
+
+        shape_attr_name = get_shape_attr_name()
+        if shape_attr_name and src_op.type in __op_has_shape_attr__:
+            shape_list = src_op.attr(shape_attr_name)
             Out_var = main_block._var_recursive(kwargs['Out'][0])
             op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
             dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
@@ -552,9 +564,9 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         shape_list[idx] = (
                             shape_list[idx] // process_mesh_shape[axis]
                         )
-            dst_op.desc._set_attr('shape', shape_list)
+            dst_op.desc._set_attr(shape_attr_name, shape_list)
 
-        # data parallel synchronization for primtive operators
+        # data parallel synchronization for primitive operators
         from paddle.incubate.autograd import prim_enabled
 
         if prim_enabled():

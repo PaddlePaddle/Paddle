@@ -17,6 +17,7 @@ import logging
 from collections import OrderedDict
 from typing import List, Tuple
 
+import paddle
 from paddle.base import Variable
 from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
@@ -51,18 +52,16 @@ _supported_optimizer_type = [
 logger = get_logger(logging.INFO, "MasterGradPass")
 
 
-def _is_master_grad_cast_op(block, op, amp_dtype="float16"):
+def _is_master_grad_cast_op(block, op):
     if op.type != "cast":
         return False
     assert len(op.input_arg_names) == 1
     assert len(op.output_arg_names) == 1
     input_var_name = op.input_arg_names[0]
-    if amp_dtype == "float16":
-        return "@master_grad_fp16" in input_var_name
-    elif amp_dtype == "bfloat16":
-        return "@master_grad_bf16" in input_var_name
-    else:
-        return False
+    return (
+        "@master_grad_fp16" in input_var_name
+        or "@master_grad_bf16" in input_var_name
+    )
 
 
 def get_output_in_varlist(op, var_names) -> List[str]:
@@ -118,10 +117,10 @@ class MasterGradPass(PassBase):
         for grad_name, idx in reversed(grad_first_ids.items()):
             grad_var = cur_block.var(grad_name)
             if (
-                grad_var.dtype == core.VarDesc.VarType.FP16
-                or grad_var.dtype == core.VarDesc.VarType.BF16
+                grad_var.dtype == paddle.float16
+                or grad_var.dtype == paddle.bfloat16
             ):
-                is_fp16 = grad_var.dtype == core.VarDesc.VarType.FP16
+                is_fp16 = grad_var.dtype == paddle.float16
                 producer_op = cur_block.ops[idx]
                 producer_op_dist_attr = (
                     dist_context.get_op_dist_attr_for_program(producer_op)
@@ -157,8 +156,19 @@ class MasterGradPass(PassBase):
                     ref_mesh,
                     chunk_id=ref_chunk_id,
                 )
+
+                producer_op_dist_attr = (
+                    dist_context.get_op_dist_attr_for_program(producer_op)
+                )
+                origin_out_dims_mapping = (
+                    producer_op_dist_attr.get_output_dims_mapping(grad_name)
+                )
                 producer_op._rename_output(grad_name, grad_half_precision.name)
+                producer_op_dist_attr.set_output_dims_mapping(
+                    grad_half_precision.name, origin_out_dims_mapping
+                )
                 grad_var.desc.set_dtype(core.VarDesc.VarType.FP32)
+
                 cast_op = cur_block._insert_op_without_sync(
                     idx + 1,
                     type="cast",

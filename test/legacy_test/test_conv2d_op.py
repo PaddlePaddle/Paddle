@@ -20,7 +20,8 @@ from testsuite import create_op
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def conv2d_forward_naive(
@@ -33,14 +34,14 @@ def conv2d_forward_naive(
 ):
     if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
         raise ValueError(
-            "Unknown Attr(padding_algorithm): '%s'. "
-            "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+            f"Unknown Attr(padding_algorithm): '{str(padding_algorithm)}'. "
+            "It can only be 'SAME' or 'VALID'."
         )
 
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
-            "Unknown Attr(data_format): '%s' ."
-            "It can only be 'NCHW' or 'NHWC'." % str(data_format)
+            f"Unknown Attr(data_format): '{str(data_format)}' ."
+            "It can only be 'NCHW' or 'NHWC'."
         )
 
     channel_last = data_format == "NHWC"
@@ -103,8 +104,8 @@ def conv2d_forward_naive(
     )
     out = np.zeros((out_n, out_c, out_h, out_w))
 
-    d_bolck_h = dilation[0] * (f_h - 1) + 1
-    d_bolck_w = dilation[1] * (f_w - 1) + 1
+    d_block_h = dilation[0] * (f_h - 1) + 1
+    d_block_w = dilation[1] * (f_w - 1) + 1
 
     input_pad = np.pad(
         input,
@@ -113,9 +114,9 @@ def conv2d_forward_naive(
         constant_values=0,
     )
 
-    filter_dilation = np.zeros((f_n, f_c, d_bolck_h, d_bolck_w))
+    filter_dilation = np.zeros((f_n, f_c, d_block_h, d_block_w))
     filter_dilation[
-        :, :, 0 : d_bolck_h : dilation[0], 0 : d_bolck_w : dilation[1]
+        :, :, 0 : d_block_h : dilation[0], 0 : d_block_w : dilation[1]
     ] = filter
 
     for i in range(out_h):
@@ -124,8 +125,8 @@ def conv2d_forward_naive(
                 input_pad_masked = input_pad[
                     :,
                     g * f_c : (g + 1) * f_c,
-                    i * stride[0] : i * stride[0] + d_bolck_h,
-                    j * stride[1] : j * stride[1] + d_bolck_w,
+                    i * stride[0] : i * stride[0] + d_block_h,
+                    j * stride[1] : j * stride[1] + d_block_w,
                 ]
 
                 f_sub = filter_dilation[
@@ -497,7 +498,7 @@ class TestConv2DOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_output_with_place(
             place,
             atol=1e-5,
@@ -511,7 +512,7 @@ class TestConv2DOp(OpTest):
         ):
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad_with_place(
             place,
             {'Input', 'Filter'},
@@ -527,7 +528,7 @@ class TestConv2DOp(OpTest):
         ):
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad_with_place(
             place,
             ['Input'],
@@ -544,7 +545,7 @@ class TestConv2DOp(OpTest):
         ):
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         self.check_grad_with_place(
             place,
             ['Filter'],
@@ -726,8 +727,11 @@ class TestCUDNNExhaustiveSearch(TestConv2DOp):
 
 
 class TestConv2DOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             def test_Variable():
                 # the input of conv2d must be Variable.
@@ -827,7 +831,7 @@ class TestConv2DOp_v2(OpTest):
         )
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
         self.check_output_with_place(
             place,
@@ -837,7 +841,7 @@ class TestConv2DOp_v2(OpTest):
         )
 
     def test_check_grad(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
@@ -851,7 +855,7 @@ class TestConv2DOp_v2(OpTest):
         )
 
     def test_check_grad_no_filter(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
@@ -866,7 +870,7 @@ class TestConv2DOp_v2(OpTest):
         )
 
     def test_check_grad_no_input(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        # TODO(wangzhongpu): support onednn op in dygraph mode
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()

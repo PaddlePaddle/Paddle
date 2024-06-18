@@ -19,11 +19,12 @@
 
 import os
 
+from paddle.framework import use_pir_api
+
 from .. import logging_utils
 from ..utils import ast_to_source_code
 from .assert_transformer import AssertTransformer
 from .base import BaseTransformer
-from .basic_api_transformer import BasicApiTransformer, NameloadJstTransformer
 from .break_continue_transformer import (
     BreakContinueTransformer,
     BreakTransformOptimizer,
@@ -36,6 +37,10 @@ from .early_return_transformer import EarlyReturnTransformer
 from .ifelse_transformer import IfElseTransformer
 from .logical_transformer import LogicalTransformer
 from .loop_transformer import LoopTransformer
+from .name_load_transformer import (
+    AttributeJstTransformer,
+    NameloadJstTransformer,
+)
 from .return_transformer import ReturnTransformer
 from .tensor_shape_transformer import TensorShapeTransformer
 from .tensorhook_transformer import RegisterHookTransformer
@@ -46,7 +51,7 @@ __all__ = []
 
 def apply_optimization(transformers):
     """
-    Judge wheter to apply optimized transformation, such as BreakTransformOptimizer.
+    Judge whether to apply optimized transformation, such as BreakTransformOptimizer.
     And not all optimized transformations are applied by default. It's controlled by
     'export FLAGS_optim_transformation=1'
     """
@@ -89,23 +94,27 @@ class DygraphToStaticAst(BaseTransformer):
         self.visit(node)
 
         transformers = [
+            TypeHintTransformer,  # remove all typehint
             RegisterHookTransformer,
             EarlyReturnTransformer,
-            BasicApiTransformer,  # Basic Api
+            AttributeJstTransformer,  # Tensor.size -> Tensor.size(), it's unnecessary in PIR mode
             TensorShapeTransformer,  # Tensor.shape -> paddle.shape(Tensor)
             BreakContinueTransformer,  # break/continue in loops
             ReturnTransformer,  # return in functions
             LogicalTransformer,  # logical and/or/not
             CreateVariableTransformer,  # create undefined var for if / while / for
             LoopTransformer,  # for/while -> while_op
-            IfElseTransformer,  # if/else -> cond_op
+            IfElseTransformer,  # if/else -> if_op
             AssertTransformer,  # assert statement
             CallTransformer,  # transform call recursively
             CastTransformer,  # type casting statement
             DecoratorTransformer,  # transform decorators to function call
             NameloadJstTransformer,
-            TypeHintTransformer,  # remove all typehint in gast.Name
         ]
+
+        if use_pir_api():
+            # It's unnecessary in PIR mode
+            transformers.remove(AttributeJstTransformer)
 
         apply_optimization(transformers)
 

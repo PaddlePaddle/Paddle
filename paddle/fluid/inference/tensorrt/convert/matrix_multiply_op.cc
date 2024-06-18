@@ -12,9 +12,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/phi/common/data_type.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 /*
  * After trt_map_ops_to_matrix_multiply_pass(mul, matmul, matmul_v2 ->
@@ -261,13 +259,11 @@ class MatrixMultiplyOpConverter : public OpConverter {
                                    nvinfer1::ElementWiseOperation::kPROD);
       SupportFP32MixPrecision(output_name, op_desc.Type(), layer);
     }
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         layer, "matrix_multiply_op", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(matrix_multiply, MatrixMultiplyOpConverter);

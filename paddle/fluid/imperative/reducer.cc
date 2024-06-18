@@ -19,13 +19,13 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/parallel_context.h"
-#include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #endif
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/string/string_helper.h"
 namespace paddle {
 namespace imperative {
 
@@ -74,7 +74,7 @@ static void ConcatTensorsForAllReduce(
     const DeviceContext &context,
     const std::vector<phi::DenseTensor> &dense_tensors_,
     framework::Variable *p_dense_contents) {
-  operators::math::ConcatFunctor<DeviceContext, T> concat_functor_;
+  phi::funcs::ConcatFunctor<DeviceContext, T> concat_functor_;
   concat_functor_(context,
                   dense_tensors_,
                   0,
@@ -102,7 +102,7 @@ static void SplitTensorsForAllReduce(
     phi::funcs::StridedMemcpyWithAxis0<T, DeviceContext>(
         context, *in, shape_refer, &outs);
   } else {
-    operators::math::SplitFunctor<DeviceContext, T> split_functor_;
+    phi::funcs::SplitFunctor<DeviceContext, T> split_functor_;
     split_functor_(context, *in, shape_refer, 0, &outs);
   }
 }
@@ -179,8 +179,7 @@ void SplitTensorsForAllReduce<platform::XPUDeviceContext, float>(
     outs.emplace_back(&tensor);
     shape_refer.emplace_back(&tensor);
   }
-  operators::math::SplitFunctor<platform::XPUDeviceContext, float>
-      split_functor_;
+  phi::funcs::SplitFunctor<platform::XPUDeviceContext, float> split_functor_;
   split_functor_(context, *in, shape_refer, 0, &outs);
 }
 
@@ -227,7 +226,7 @@ void SplitTensorsWithType<platform::XPUDeviceContext>(
 
 void Group::ConcatTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
-  if (platform::is_gpu_place(place)) {
+  if (platform::is_gpu_place(place)) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     ConcatTensorsWithType(static_cast<const phi::GPUContext &>(context),
                           dense_tensors_,
@@ -263,7 +262,7 @@ void Group::ConcatTensors(const platform::DeviceContext &context) {
 
 void Group::SplitTensors(const platform::DeviceContext &context) {
   auto place = context.GetPlace();
-  if (platform::is_gpu_place(place)) {
+  if (platform::is_gpu_place(place)) {  // NOLINT
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     SplitTensorsWithType(static_cast<const phi::GPUContext &>(context),
                          &dense_contents_,
@@ -323,10 +322,19 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
                  bool find_unused_vars)
     : vars_(vars),
       group_indices_(group_indices),
+      groups_(),
       is_sparse_gradient_(is_sparse_gradient),
       parallel_ctx_(parallel_ctx),
+      variable_locators_(),
+      rebuild_vars_(),
+      rebuild_var_indices_(),
       group_size_limits_(group_size_limits),
-      find_unused_vars_each_step_(find_unused_vars) {
+      node_deps_(),
+      var_index_map_(),
+      unused_vars_(),
+      find_unused_vars_each_step_(find_unused_vars),
+      vars_marked_ready_(),
+      local_used_vars_() {
   VLOG(3) << "Start construct the Reducer ...";
   nrings_ = parallel_ctx->GetNRings();
   nranks_ = parallel_ctx->GetNRanks();
@@ -493,8 +501,10 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
                 "using PyLayer in a DataParallel model, you can skip gradient "
                 "synchronization among multiple cards by 'no_sync', and "
                 "manually implement 'all_reduce' before model optimization. "
-                "There is an example showing specific implemetation processing "
-                "in offical docs: https://www.paddlepaddle.org.cn/documentation"
+                "There is an example showing specific implementation "
+                "processing "
+                "in official docs: "
+                "https://www.paddlepaddle.org.cn/documentation"
                 "/docs/api/paddle/DataParallel_cn.html"));
       }
       ++node_deps_[grad_pending_node.get()];
@@ -515,7 +525,7 @@ void Reducer::TraverseBackwardGraph(
 
   for (const auto &output : outputs) {
     const auto &grad_node = output->GradVarBase()->GradNode();
-    if (grad_node == nullptr || output->OverridedStopGradient()) {
+    if (grad_node == nullptr || output->OverriddenStopGradient()) {
       VLOG(3) << "Skip auto grad since there is no grad op or output is "
                  "stop_gradient=True: "
               << output->Name();
@@ -540,7 +550,7 @@ void Reducer::TraverseBackwardGraph(
           continue;
         }
         for (auto &var : pair.second) {
-          if (!var || var->OverridedStopGradient()) {
+          if (!var || var->OverriddenStopGradient()) {
             continue;
           } else {
             var_visited.insert(var.get());
@@ -572,7 +582,7 @@ void Reducer::TraverseBackwardGraph(
 }
 
 // After each batch is calculated, the counter of each group(group.pending_)
-// and allreudce sequence counter(next_group_) will be cleaned up again.
+// and allreduce sequence counter(next_group_) will be cleaned up again.
 void Reducer::PrepareForBackward(
     const std::vector<std::shared_ptr<imperative::VarBase>> &outputs) {
   VLOG(3) << "after forward, then reset count for backward.";
@@ -884,7 +894,7 @@ void Reducer::FusedAllReduceSchedule(const int run_order,
   }
 }
 
-std::vector<std::vector<size_t>> Reducer::RebuildGruops() {
+std::vector<std::vector<size_t>> Reducer::RebuildGroups() {
   VLOG(3) << "The order of parameter arrival: "
           << string::join_strings(rebuild_var_indices_, ',');
 
@@ -960,7 +970,7 @@ void Reducer::ProcessUnusedDenseVars() {
       auto grad_var_base_tmp = dest_var_base->MutableGradVarBase();
       // NOTE(haohongxiang): Calling SetIsEmpty here is to make sure that
       // gradient accumulation can continue normally after clear_gradients()
-      // especiall in cases including complex control flow.
+      // especially in cases including complex control flow.
       grad_var_base_tmp->SharedVar()->SetIsEmpty(false);
 
       // 4. set grad tensor
@@ -1013,13 +1023,13 @@ void Reducer::FinalizeBackward() {
 
   if (NeedRebuildGroup()) {
     VLOG(3) << "Start rebuilding the groups";
-    auto rebuild_group_indices = RebuildGruops();
+    auto rebuild_group_indices = RebuildGroups();
     group_indices_ = std::move(rebuild_group_indices);
     InitializeGroups(group_indices_);
   }
 
   if (find_unused_vars_each_step_) {
-// TODO(liuyuhui) support xpu about Tensorcopy/TensorFromVector/TensorToVector
+// TODO(liuyuhui) support xpu about TensorCopy/TensorFromVector/TensorToVector
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_GLOO)
     ProcessUnusedDenseVars();

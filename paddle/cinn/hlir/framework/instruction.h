@@ -26,7 +26,7 @@
 #endif
 #include "paddle/cinn/utils/string.h"
 #include "paddle/cinn/utils/timer.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -89,7 +89,10 @@ class Instruction {
 
   void PreRun(
       const std::map<std::string, cinn_pod_value_t>* name2podargs = nullptr) {
-    CHECK_EQ(fn_ptrs_.size(), 4);
+    PADDLE_ENFORCE_EQ(
+        fn_ptrs_.size(),
+        4,
+        phi::errors::InvalidArgument("The number of functions should be 4"));
     if (fn_ptrs_.size() > 1 && fn_ptrs_.size() != in_args_.size()) {
       out_args_.back()[0] = out_args_.front()[0];
       out_args_.erase(out_args_.begin());
@@ -97,28 +100,44 @@ class Instruction {
     }
     UpdateArgsCache(name2podargs);
 
-    CHECK_EQ(fn_ptrs_.size(), in_args_.size());
-    CHECK_EQ(fn_ptrs_.size(), out_args_.size());
+    PADDLE_ENFORCE_EQ(
+        fn_ptrs_.size(),
+        in_args_.size(),
+        phi::errors::InvalidArgument(
+            "The number of functions should be equal to the number of "
+            "in_args"));
+    PADDLE_ENFORCE_EQ(
+        fn_ptrs_.size(),
+        out_args_.size(),
+        phi::errors::InvalidArgument(
+            "The number of functions should be equal to the number of "
+            "out_args"));
 
     int flag = -1;
     void* stream = nullptr;
     for (int idx = 0; idx < 4; idx++) {
-      if (utils::Startswith(out_args_[idx][0], "kernel_pack")) {
+      if (utils::StartsWith(out_args_[idx][0], "kernel_pack")) {
         VLOG(3) << "PreRun " << idx << "-th function of fn_:" << fn_names_[idx];
         flag = idx;
         auto& pod_args = args_cached_[idx];
         CHECK(fn_ptrs_[idx]) << "The LoweredFunc address should be set first "
                                 "by calling SetLoweredFunc method";
-        if (target_ == cinn::common::DefaultNVGPUTarget()) {
-          ((lower_func_ptr_g)fn_ptrs_[idx])(
-              static_cast<void*>(pod_args.data()), pod_args.size(), stream);
-        } else {
-          ((lower_func_ptr_t)fn_ptrs_[idx])(static_cast<void*>(pod_args.data()),
-                                            pod_args.size());
-        }
+        target_.arch.Match(
+            [&](common::NVGPUArch) {
+              ((lower_func_ptr_g)fn_ptrs_[idx])(
+                  static_cast<void*>(pod_args.data()), pod_args.size(), stream);
 #ifdef CINN_WITH_CUDA
-        CUDA_CALL(cudaDeviceSynchronize());
+              CUDA_CALL(cudaDeviceSynchronize());
+#else
+              CINN_NOT_IMPLEMENTED;
 #endif
+            },
+            [&](std::variant<common::UnknownArch,
+                             common::X86Arch,
+                             common::ARMArch>) {
+              ((lower_func_ptr_t)fn_ptrs_[idx])(
+                  static_cast<void*>(pod_args.data()), pod_args.size());
+            });
       }
     }
     if (flag >= 0) {

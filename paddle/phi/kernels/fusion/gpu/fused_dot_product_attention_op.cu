@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpudnn/mha_cudnn_frontend.h"
 
@@ -161,7 +161,8 @@ void FusedDotProductAttentionGradKernel(const Context &dev_ctx,
                                         DenseTensor *q_grad,
                                         DenseTensor *k_grad,
                                         DenseTensor *v_grad) {
-  PADDLE_ENFORCE_GE(dev_ctx.GetComputeCapability(),
+  auto sm_arch = dev_ctx.GetComputeCapability();
+  PADDLE_ENFORCE_GE(sm_arch,
                     80,
                     phi::errors::PreconditionNotMet(
                         "This op only supports Ampere and later devices, "
@@ -225,6 +226,28 @@ void FusedDotProductAttentionGradKernel(const Context &dev_ctx,
   void *offset_dev_ptr = reinterpret_cast<void *>(
       const_cast<int64_t *>(rng_state.data<int64_t>()) + 1);
 
+  bool use_workspace_opt = false;
+  if (sm_arch >= 90) {
+    // quick estimate of dp workspace size
+    size_t max_seqlen_div_up_q = ((q_seq_len + 64 - 1) / 64) * 64;
+    size_t max_seqlen_div_up_kv = ((kv_seq_len + 64 - 1) / 64) * 64;
+    size_t required_dp_workspace =
+        (batch_size * num_heads * max_seqlen_div_up_q * max_seqlen_div_up_kv *
+             2 +
+         1048576 - 1) /
+        1048576;
+    // default upper limit for dp workspace 256MB
+    size_t max_allowed_dp_workspace = 256;
+    if (required_dp_workspace <= max_allowed_dp_workspace) {
+      use_workspace_opt = true;
+    }
+    auto use_workspace_opt_str =
+        std::getenv("CUDNN_FUSE_ATTN_USE_WORKSPACE_OPT");
+    if (use_workspace_opt_str != nullptr) {
+      use_workspace_opt = static_cast<bool>(std::stoi(use_workspace_opt_str));
+    }
+  }
+
   fused_attn_arbitrary_seqlen_bwd(batch_size,
                                   num_heads,
                                   q_seq_len,
@@ -249,7 +272,7 @@ void FusedDotProductAttentionGradKernel(const Context &dev_ctx,
                                   tensor_dtype,
                                   dev_ctx.stream(),
                                   handle,
-                                  false);
+                                  use_workspace_opt);
 }
 
 }  // namespace fusion

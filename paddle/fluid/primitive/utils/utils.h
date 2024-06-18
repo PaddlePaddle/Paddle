@@ -138,7 +138,7 @@ static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
     result.push_back(i);
   }
   for (int i = 0; i < in_dims.size(); ++i) {
-    if (in_dims[i] == 1 && dout_dims[i] != 1) {
+    if (in_dims[i] == 1 && dout_dims[i + bat] != 1) {
       result.push_back(i + bat);
     } else {
       PADDLE_ENFORCE_EQ(
@@ -178,6 +178,29 @@ static bool find_value(const std::vector<int64_t>& vec, int64_t value) {
   } else {
     return false;
   }
+}
+
+static bool has_dynamic_shape(const std::vector<int64_t>& shape) {
+  return std::find(shape.begin(), shape.end(), -1) != shape.end();
+}
+
+static bool has_dynamic_shape(const std::vector<int64_t>& shape,
+                              const std::vector<int64_t>& axis) {
+  bool flag = false;
+  const int64_t rank = shape.size();
+  for (int64_t idx : axis) {
+    if (idx < 0) idx += rank;
+    PADDLE_ENFORCE_LT(
+        idx,
+        rank,
+        ::common::errors::PreconditionNotMet(
+            "Required idx < shape.size(), but received %d.", idx));
+    if (shape[idx] == -1) {
+      flag = true;
+      break;
+    }
+  }
+  return flag;
 }
 
 }  // namespace primitive

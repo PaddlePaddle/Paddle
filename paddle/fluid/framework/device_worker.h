@@ -44,7 +44,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
-#include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/common/port.h"
 
 namespace paddle {
 namespace framework {
@@ -60,20 +60,21 @@ class Scope;
 namespace paddle {
 namespace framework {
 
-std::string PrintLodTensor(phi::DenseTensor* tensor,
-                           int64_t start,
-                           int64_t end,
-                           char separator = ',',
-                           bool need_leading_separator = false);
-void PrintLodTensor(phi::DenseTensor* tensor,
-                    int64_t start,
-                    int64_t end,
-                    std::string& output_str,  // NOLINT
-                    char separator = ',',
-                    bool need_leading_separator = false,
-                    int num_decimals = 9);
-std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor, int index);
-bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size);
+TEST_API std::string PrintLodTensor(phi::DenseTensor* tensor,
+                                    int64_t start,
+                                    int64_t end,
+                                    char separator = ',',
+                                    bool need_leading_separator = false);
+TEST_API void PrintLodTensor(phi::DenseTensor* tensor,
+                             int64_t start,
+                             int64_t end,
+                             std::string& output_str,  // NOLINT
+                             char separator = ',',
+                             bool need_leading_separator = false,
+                             int num_decimals = 9);
+TEST_API std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor,
+                                                    int index);
+TEST_API bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size);
 
 class FleetWrapper;
 
@@ -214,6 +215,8 @@ class DeviceWorker {
   virtual void SetDeviceContext(platform::DeviceContext* dev_ctx) {
     dev_ctx_ = dev_ctx;
   }
+
+  virtual platform::DeviceContext* GetDeviceContext() { return dev_ctx_; }
 
   virtual void SetThreadNum(int thread_num) { thread_num_ = thread_num; }
 

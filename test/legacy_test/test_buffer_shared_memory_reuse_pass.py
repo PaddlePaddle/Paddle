@@ -122,11 +122,7 @@ class InplaceTestBase(unittest.TestCase):
                         np.testing.assert_array_equal(
                             fetch_val1,
                             fetch_val2,
-                            err_msg='error var name: {}, fetch_val1: {}, fetch_val2: {}'.format(
-                                fetch_var,
-                                fetch_val1[~np.equal(fetch_val1, fetch_val2)],
-                                fetch_val2[~np.equal(fetch_val1, fetch_val2)],
-                            ),
+                            err_msg=f'error var name: {fetch_var}, fetch_val1: {fetch_val1[~np.equal(fetch_val1, fetch_val2)]}, fetch_val2: {fetch_val2[~np.equal(fetch_val1, fetch_val2)]}',
                         )
 
 

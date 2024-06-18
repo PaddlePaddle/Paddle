@@ -50,7 +50,8 @@ void InitializeVariable(paddle::framework::Variable *var,
     var->GetMutable<phi::SelectedRows>();
   } else if (var_type == paddle::framework::proto::VarType::FEED_MINIBATCH) {
     var->GetMutable<paddle::framework::FeedList>();
-  } else if (var_type == paddle::framework::proto::VarType::FETCH_LIST) {
+  } else if (var_type ==
+             paddle::framework::proto::VarType::FETCH_LIST) {  // NOLINT
     var->GetMutable<paddle::framework::FetchList>();
   } else if (var_type == paddle::framework::proto::VarType::STEP_SCOPES) {
     var->GetMutable<std::vector<paddle::framework::Scope *>>();

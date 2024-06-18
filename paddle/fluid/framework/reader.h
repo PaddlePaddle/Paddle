@@ -48,15 +48,15 @@ class ReaderBase {
             "and need_check_feed"));
   }
 
-  virtual void ReadNext(paddle::framework::LoDTensorArray* out);
+  TEST_API virtual void ReadNext(paddle::framework::LoDTensorArray* out);
 
-  virtual void Shutdown();
+  TEST_API virtual void Shutdown();
 
-  virtual void Start();
+  TEST_API virtual void Start();
 
   // Return the readers which are the end of decorating chain. Basically
   // they are readers just before read op.
-  std::unordered_set<ReaderBase*> GetEndPoints();
+  TEST_API std::unordered_set<ReaderBase*> GetEndPoints();
 
   // Returns the shapes of the fed variables
   const std::vector<DDim>& Shapes() const { return shapes_; }
@@ -70,7 +70,7 @@ class ReaderBase {
   // This function returns whether you have the check shape for this Reader.
   const std::vector<bool>& NeedCheckFeed() const { return need_check_feed_; }
 
-  virtual ~ReaderBase();
+  TEST_API virtual ~ReaderBase();
 
  protected:
   virtual void ReadNextImpl(paddle::framework::LoDTensorArray* out UNUSED) {}
@@ -98,7 +98,7 @@ class ReaderBase {
   friend class DecoratedReader;
   // These methods can be only invoked inside DecoratedReader to record the
   // decorating chain.
-  void InsertDecoratedReader(
+  TEST_API void InsertDecoratedReader(
       const std::shared_ptr<ReaderBase>& decorated_reader);
   // A set of which readers that decorated this reader.
   std::vector<std::weak_ptr<ReaderBase>> decorated_readers_;
@@ -121,7 +121,7 @@ class DecoratedReader : public ReaderBase,
     reader_->InsertDecoratedReader(shared_from_this());
   }
 
-  ~DecoratedReader();
+  TEST_API ~DecoratedReader();
 
   const std::shared_ptr<ReaderBase>& UnderlyingReader() const {
     return reader_;

@@ -74,7 +74,7 @@ class PrelnGroupnormActOpConverter : public OpConverter {
       std::vector<std::string> output_names;
       output_names.emplace_back(op_desc.Output("Out_0").front());
       output_names.emplace_back(op_desc.Output("Out_1").front());
-      RreplenishLayerAndOutput(
+      ReplenishLayerAndOutput(
           groupnorm_layer, "preln_groupnorm_act", output_names, test_mode);
     }
   }

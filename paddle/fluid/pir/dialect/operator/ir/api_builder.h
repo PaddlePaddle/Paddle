@@ -17,9 +17,9 @@
 #include <stack>
 
 #include "paddle/common/macros.h"
-#include "paddle/pir/core/builder.h"
-#include "paddle/pir/core/parameter.h"
-#include "paddle/pir/core/program.h"
+#include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/parameter.h"
+#include "paddle/pir/include/core/program.h"
 
 namespace paddle {
 namespace dialect {
@@ -58,6 +58,10 @@ class ApiBuilder {
   /// subsequent insertions to go right before it.
   void SetInsertionPoint(pir::Operation* op) {
     builder_->set_insertion_point(op);
+  }
+
+  void SetInsertionPointAfter(pir::Operation* op) {
+    builder_->SetInsertionPointAfter(op);
   }
   /// Set the insertion point to the end of specified block.
   void SetInsertionPointToBlockEnd(pir::Block* block) {

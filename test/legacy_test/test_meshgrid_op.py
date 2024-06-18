@@ -42,12 +42,28 @@ class TestMeshgridOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_output(check_pir=True)
+        else:
+            self.check_output(
+                check_prim=True, check_pir=True, check_prim_pir=True
+            )
 
     def test_check_grad(self):
-        self.check_grad(
-            ['x0'], ['out0', 'out1'], check_prim=True, check_pir=True
-        )
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            self.check_grad(
+                ['x0'],
+                ['out0', 'out1'],
+                check_pir=True,
+            )
+        else:
+            self.check_grad(
+                ['x0'],
+                ['out0', 'out1'],
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+            )
 
     def init_inputs_and_outputs(self):
         self.shape = self.get_x_shape()
@@ -85,6 +101,22 @@ class TestMeshgridOp2Fp16(TestMeshgridOp):
 
     def init_data_type(self):
         self.dtype = np.float16
+
+
+class TestMeshgridOp2Complex64(TestMeshgridOp):
+    def get_x_shape(self):
+        return [100, 300]
+
+    def init_data_type(self):
+        self.dtype = np.complex64
+
+
+class TestMeshgridOp2Complex128(TestMeshgridOp):
+    def get_x_shape(self):
+        return [100, 300]
+
+    def init_data_type(self):
+        self.dtype = np.complex128
 
 
 @unittest.skipIf(
@@ -125,7 +157,9 @@ class TestMeshgridOpBFP16OP(TestMeshgridOp):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(
+            place=paddle.CUDAPlace(0), check_pir=True, check_prim_pir=True
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -134,6 +168,7 @@ class TestMeshgridOpBFP16OP(TestMeshgridOp):
             ['out0', 'out1'],
             check_prim=True,
             check_pir=True,
+            check_prim_pir=True,
         )
 
 
@@ -269,8 +304,8 @@ class TestMeshgridOp6(unittest.TestCase):
         ).astype('int32')
 
         with base.dygraph.guard():
-            tensor_3 = base.dygraph.to_variable(input_3)
-            tensor_4 = base.dygraph.to_variable(input_4)
+            tensor_3 = paddle.to_tensor(input_3)
+            tensor_4 = paddle.to_tensor(input_4)
             res_3, res_4 = paddle.tensor.meshgrid(tensor_3, tensor_4)
 
             np.testing.assert_array_equal(res_3.shape, [100, 200])
@@ -295,8 +330,8 @@ class TestMeshgridOp7(unittest.TestCase):
         ).astype('int32')
 
         with base.dygraph.guard():
-            tensor_3 = base.dygraph.to_variable(input_3)
-            tensor_4 = base.dygraph.to_variable(input_4)
+            tensor_3 = paddle.to_tensor(input_3)
+            tensor_4 = paddle.to_tensor(input_4)
             res_3, res_4 = paddle.tensor.meshgrid([tensor_3, tensor_4])
 
             np.testing.assert_array_equal(res_3.shape, [100, 200])
@@ -321,8 +356,72 @@ class TestMeshgridOp8(unittest.TestCase):
         ).astype('int32')
 
         with base.dygraph.guard():
-            tensor_3 = base.dygraph.to_variable(input_3)
-            tensor_4 = base.dygraph.to_variable(input_4)
+            tensor_3 = paddle.to_tensor(input_3)
+            tensor_4 = paddle.to_tensor(input_4)
+            res_3, res_4 = paddle.tensor.meshgrid((tensor_3, tensor_4))
+
+            np.testing.assert_array_equal(res_3.shape, [100, 200])
+            np.testing.assert_array_equal(res_4.shape, [100, 200])
+
+
+class TestMeshgridOpComplexStatic(unittest.TestCase):
+    @test_with_pir_api
+    def test_tuple_input(self):
+        input_1 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('complex64')
+        input_2 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('complex64')
+
+        out_1 = np.reshape(input_1, [100, 1])
+        out_1 = np.broadcast_to(out_1, [100, 200])
+        out_2 = np.reshape(input_2, [1, 200])
+        out_2 = np.broadcast_to(out_2, [100, 200])
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[100], dtype='complex64', name='x')
+            y = paddle.static.data(shape=[200], dtype='complex64', name='y')
+
+            exe = base.Executor(place=base.CPUPlace())
+            grid_x, grid_y = paddle.tensor.meshgrid((x, y))
+            res_1, res_2 = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': input_1, 'y': input_2},
+                fetch_list=[grid_x, grid_y],
+            )
+        np.testing.assert_array_equal(res_1, out_1)
+        np.testing.assert_array_equal(res_2, out_2)
+
+
+class TestMeshgridOpComplexDygraph(unittest.TestCase):
+    def test_api_with_dygraph_tuple_input(self):
+        input_3 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('complex64')
+        input_4 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('complex64')
+
+        with base.dygraph.guard():
+            tensor_3 = paddle.to_tensor(input_3)
+            tensor_4 = paddle.to_tensor(input_4)
             res_3, res_4 = paddle.tensor.meshgrid((tensor_3, tensor_4))
 
             np.testing.assert_array_equal(res_3.shape, [100, 200])
@@ -372,15 +471,15 @@ class TestMeshgridEager(unittest.TestCase):
         ).astype('int32')
 
         with base.dygraph.guard():
-            tensor_1 = base.dygraph.to_variable(input_1)
-            tensor_2 = base.dygraph.to_variable(input_2)
+            tensor_1 = paddle.to_tensor(input_1)
+            tensor_2 = paddle.to_tensor(input_2)
             tensor_1.stop_gradient = False
             tensor_2.stop_gradient = False
             res_1, res_2 = paddle.tensor.meshgrid((tensor_1, tensor_2))
             sum = paddle.add_n([res_1, res_2])
             sum.backward()
-            tensor_eager_1 = base.dygraph.to_variable(input_1)
-            tensor_eager_2 = base.dygraph.to_variable(input_2)
+            tensor_eager_1 = paddle.to_tensor(input_1)
+            tensor_eager_2 = paddle.to_tensor(input_2)
             tensor_eager_1.stop_gradient = False
             tensor_eager_2.stop_gradient = False
             res_eager_1, res_eager_2 = paddle.tensor.meshgrid(

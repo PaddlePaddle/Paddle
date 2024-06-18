@@ -41,7 +41,7 @@ TEST(CodeGenCX86, basic) {
   const int bn = 32;
 
   Target target;
-  target.arch = Target::Arch ::X86;
+  target.arch = common::X86Arch{};
   target.bits = Target::Bit ::k32;
   target.os = Target::OS ::Linux;
 

@@ -17,9 +17,11 @@
 #include <string>
 #include <vector>
 
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/pir/include/dialect/shape/utils/dim_expr.h"
 
 namespace cinn {
 namespace hlir {
@@ -139,12 +141,37 @@ ir::Tensor Cast(const ir::Tensor& A,
                 const Type& dtype,
                 const std::string& name = UniqName("T_Elementwise_Cast_out"));
 
+ir::Tensor Store(const ir::Tensor& A,
+                 const std::string& name = UniqName("T_Elementwise_Store_out"));
+
 ir::Tensor Arange(
     const float start,
     const float stop,
     const float step,
     const Type& dtype,
     const std::string& name = UniqName("T_Elementwise_Arange_out"));
+
+ir::Tensor Tril(const ir::Tensor& A,
+                const int diagonal,
+                const std::vector<ir::Dim>& out_shape,
+                const std::string& name = UniqName("T_Elementwise_Tril_out"));
+
+ir::Tensor GenerateShape(
+    const std::vector<ir::Tensor>& inputs,
+    const cinn::dialect::SymbolBindings& symbol_bindings,
+    const std::vector<symbol::DimExpr>& output_dim_exprs,
+    const std::string& name = UniqName("T_Generate_Shape_out"));
+
+// This operator checks if all x and y satisfy the condition: |x - y| <= atol +
+// rtol * |y|
+ir::Tensor IsClose(
+    const ir::Tensor& x,
+    const ir::Tensor& y,
+    int axis = -1,
+    float rtol = 1e-05f,
+    float atol = 1e-08f,
+    bool equal_nan = false,
+    const std::string& out_name = cinn::common::UniqName("IsClose_output"));
 
 }  // namespace pe
 }  // namespace hlir

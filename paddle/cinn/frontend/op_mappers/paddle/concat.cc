@@ -16,16 +16,22 @@
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void ConcatOpMapper(const paddle::cpp::OpDesc& op_desc,
                     const OpMapperContext& ctx) {
-  CHECK_GE(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_GE(op_desc.Input("X").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The input of concat op must be at least 1."));
   auto x_names = op_desc.Input("X");
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of concat op must be 1."));
   auto out_name = op_desc.Output("Out").front();
 
   auto axis = utils::GetAttrOrDefault<int>(op_desc, "axis", 0);
@@ -38,11 +44,10 @@ void ConcatOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto err_x = std::find_if(xs.begin(), xs.end(), [&](Variable x) {
     return x->type != xs.front()->type;
   });
-  CHECK(err_x == xs.end())
-      << "All input's dtype of [concat] should be the same, be the input "
-      << (*err_x)->id << "'s dtype [" << (*err_x)->type
-      << "] not equal to the first input " << xs.front()->id << "'s dtype ["
-      << xs.front()->type << "]";
+  PADDLE_ENFORCE_EQ(err_x == xs.end(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "All input's dtype of [concat] should be the same."));
 
   auto out = ctx.Builder()->Concat(xs, axis);
 
@@ -52,19 +57,29 @@ void ConcatOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void StackOpMapper(const paddle::cpp::OpDesc& op_desc,
                    const OpMapperContext& ctx) {
-  CHECK_GE(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_GE(op_desc.Input("X").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The input of stack op must be at least 1."));
   auto x_names = op_desc.Input("X");
 
   std::string out_name;
   if (op_desc.HasOutput("Out")) {
-    CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Output("Out").size(),
+        1UL,
+        phi::errors::InvalidArgument("The output of stack op must be 1."));
     out_name = op_desc.Output("Out").front();
   } else if (op_desc.HasOutput("Y")) {
-    CHECK_EQ(op_desc.Output("Y").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Output("Y").size(),
+        1UL,
+        phi::errors::InvalidArgument("The output of stack op must be 1."));
     out_name = op_desc.Output("Y").front();
   } else {
-    LOG(FATAL) << "The output argument name of [stack] should be 'Out' or 'Y', "
-                  "but here cannot found! Please check.";
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The output argument name of [stack] should be 'Out' or 'Y', "
+        "but here cannot found! Please check."));
   }
 
   cinn::utils::ShapeType input_shape(ctx.GetVar(x_names.front())->shape);
@@ -76,12 +91,10 @@ void StackOpMapper(const paddle::cpp::OpDesc& op_desc,
   std::vector<Variable> xs;
   for (const auto& name : x_names) {
     auto x = ctx.GetVar(name);
-    CHECK(x->shape == input_shape)
-        << "All input shape of [stack] should be the same, be the input "
-        << x->id << "'s shape [" << cinn::utils::Join(x->shape, ", ")
-        << "] not equal to "
-        << "the first input " << ctx.GetVar(x_names.front())->id << "'s shape ["
-        << cinn::utils::Join(input_shape, ", ") << "]";
+    PADDLE_ENFORCE_EQ(x->shape == input_shape,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "All input shape of [stack] should be the same."));
 
     xs.emplace_back(ctx.Builder()->Reshape(x, output_shape));
   }
@@ -89,11 +102,10 @@ void StackOpMapper(const paddle::cpp::OpDesc& op_desc,
   auto err_x = std::find_if(xs.begin(), xs.end(), [&](Variable x) {
     return x->type != xs.front()->type;
   });
-  CHECK(err_x == xs.end())
-      << "All input's dtype of [concat] should be the same, be the input "
-      << (*err_x)->id << "'s dtype [" << (*err_x)->type
-      << "] not equal to the first input " << xs.front()->id << "'s dtype ["
-      << xs.front()->type << "]";
+  PADDLE_ENFORCE_EQ(err_x == xs.end(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "All input's dtype of [stack] should be the same."));
 
   auto concat_out = ctx.Builder()->Concat(xs, axis);
 
@@ -103,10 +115,16 @@ void StackOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void SplitOpMapper(const paddle::cpp::OpDesc& op_desc,
                    const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Input("X").size(),
+      1UL,
+      phi::errors::InvalidArgument("The input of split op must be 1."));
   auto x_name = op_desc.Input("X").front();
 
-  CHECK_GE(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_GE(op_desc.Output("Out").size(),
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "The output of split op must be at least 1."));
   auto out_names = op_desc.Output("Out");
 
   auto x = ctx.GetVar(x_name);
@@ -128,38 +146,50 @@ void SplitOpMapper(const paddle::cpp::OpDesc& op_desc,
   CHECK(num != 0 || !sections.empty())
       << "The [num_or_sections] in split op should not empty! Please check.";
   if (num != 0) {
-    CHECK(dim % num == 0) << "The num_or_sections:" << num
-                          << " cannot divided by the split axis:" << axis
-                          << " 's dimension:" << dim;
+    PADDLE_ENFORCE_EQ(
+        dim % num == 0,
+        true,
+        phi::errors::InvalidArgument(
+            "The num_or_sections cannot divided by the split axis"));
 
     sections.clear();
     sections.resize(num, dim / num);
   }
-  CHECK_EQ(sections.size(), out_names.size())
-      << "The output number of split op should be " << sections.size()
-      << ", but actual " << out_names.size();
+  PADDLE_ENFORCE_EQ(sections.size(),
+                    out_names.size(),
+                    phi::errors::InvalidArgument(
+                        "The output number of split op should be same"));
 
   int neg_idx = -1, sum = 0;
   for (int i = 0; i < sections.size(); ++i) {
     if (sections[i] < 0) {
-      CHECK_LT(neg_idx, 0)
-          << "The [num_or_sections] should only has one -1! But here "
-          << cinn::utils::Join(sections, ", ");
+      PADDLE_ENFORCE_LT(
+          neg_idx,
+          0,
+          phi::errors::InvalidArgument(
+              "The [num_or_sections] should only has one -1! But here "
+              "found more than one."));
       neg_idx = i;
     } else {
       sum += sections[i];
     }
   }
   if (neg_idx > 0) {
-    CHECK_LT(sum, dim) << "The sum of [num_or_sections] should less than to "
+    PADDLE_ENFORCE_LT(sum,
+                      dim,
+                      phi::errors::InvalidArgument(
+                          "The sum of [num_or_sections] should less than to "
                           "the dimension of split [axis] when -1 "
                           "found in [num_or_sections]! But here "
-                       << cinn::utils::Join(sections, ", ");
+                          "found more than one."));
     sections[neg_idx] = dim - sum;
   } else {
-    CHECK_EQ(sum, dim) << "The sum of [num_or_sections] should equal to the "
+    PADDLE_ENFORCE_EQ(sum,
+                      dim,
+                      phi::errors::InvalidArgument(
+                          "The sum of [num_or_sections] should equal to the "
                           "dimension of split [axis]! But here "
-                       << cinn::utils::Join(sections, ", ");
+                          "found more than one."));
   }
 
   auto outs = ctx.Builder()->Split(x, sections, axis);

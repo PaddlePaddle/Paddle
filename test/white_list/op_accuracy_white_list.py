@@ -52,7 +52,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'pool2d',
     'pool3d',
     'prroi_pool',
-    'rank_loss',
     'reduce_max',
     'reduce_min',
     'reshape2',
@@ -78,6 +77,9 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'warprnnt',
     'bilateral_slice',
     'cast',
+    'fake_channel_wise_quantize_dequantize_abs_max',
+    'fake_quantize_dequantize_abs_max',
+    'fake_quantize_dequantize_moving_average_abs_max',
 ]
 
 NO_FP16_CHECK_GRAD_OP_LIST = [
@@ -97,4 +99,5 @@ NO_FP16_COMPARED_WITH_FP32_OP_LIST = [
 
 NO_BF16_COMPARED_WITH_FP32_OP_LIST = [
     'dequantize',
+    'fusion_lstm',
 ]

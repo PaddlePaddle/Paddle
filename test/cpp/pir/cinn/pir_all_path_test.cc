@@ -20,24 +20,26 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/divide_group_op_to_fusion_op_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/lower_cinn_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_group_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/lower_cinn_fusion_op_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/merge_reshape_with_broadcast_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
-#include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/fluid/pir/transforms/general/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
-#include "paddle/pir/core/builtin_dialect.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/include/core/builtin_dialect.h"
+#include "paddle/pir/include/core/builtin_type.h"
+#include "paddle/pir/include/core/ir_context.h"
+#include "paddle/pir/include/core/program.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/pass/pass.h"
+#include "paddle/pir/include/pass/pass_manager.h"
 
 bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 
@@ -59,16 +61,24 @@ static void RunAndCheckResult(::pir::Program* program,
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-  pir::PassManager pm(ctx);
-  pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
-  pm.AddPass(
-      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pir::PassManager stage_1_pm(ctx);
+  stage_1_pm.AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
+  stage_1_pm.AddPass(
+      std::make_unique<cinn::dialect::ir::MergeReshapeWithBroadcastPass>());
 
-  pm.AddPass(pir::CreateDeadCodeEliminationPass());
-  pm.AddPass(pir::CreateBuildCinnPass());
-  pm.AddPass(cinn::dialect::ir::CreateDivideGroupOpToFusionOpPass());
-  pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
-  CHECK_EQ(pm.Run(program), true);
+  stage_1_pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  stage_1_pm.AddPass(pir::CreateBuildCinnPass());
+  stage_1_pm.AddPass(cinn::dialect::ir::CreateAddBroadcastToElementwisePass());
+
+  CHECK_EQ(stage_1_pm.Run(program), true);
+
+  pir::PassManager stage_2_pm(ctx);
+  stage_2_pm.AddPass(cinn::dialect::ir::CreateAddStoreInGroupOpPass());
+  stage_2_pm.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
+  stage_2_pm.AddPass(pir::CreateDeadCodeEliminationPass());
+  stage_2_pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());
+
+  CHECK_EQ(stage_2_pm.Run(program), true);
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
@@ -85,6 +95,7 @@ static void RunAndCheckResult(::pir::Program* program,
       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 
   if (check_result) {
+    std::cerr << "res  " << out_tensor.data<float>()[0] << std::endl;
     bool res0 = simple_cmp(out_tensor.data<float>()[0], gt_val);
     EXPECT_EQ(res0, true);
   }
@@ -593,7 +604,7 @@ std::shared_ptr<::pir::Program> BuildSplitProgram() {
                .result(0);
 
   auto out_arr =
-      builder.Build<paddle::dialect::SplitWithNumOp>(x, 4, -1).result(0);
+      builder.Build<paddle::dialect::SplitWithNumOp>(x, 4, 1).result(0);
   auto out = builder.Build<pir::SliceOp>(out_arr, 0).result(0);
   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
   return program;
@@ -679,4 +690,34 @@ TEST(GroupOp, TestBuildSplitSection) {
   std::shared_ptr<::pir::Program> program = BuildSplitSectionProgram();
 
   RunAndCheckResult(program.get(), 2.0);
+}
+
+std::shared_ptr<::pir::Program> BuildReshapeSumProgram() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  auto program = std::make_shared<::pir::Program>(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+
+  auto x = builder
+               .Build<paddle::dialect::FullOp>(
+                   std::vector<int64_t>({128 * 128, 768}),
+                   1.0,
+                   phi::DataType::FLOAT32,
+                   phi::GPUPlace())
+               .result(0);
+  auto sum = builder
+                 .Build<paddle::dialect::SumOp>(
+                     x, std::vector<int64_t>{0}, phi::DataType::FLOAT32, true)
+                 .result(0);
+
+  builder.Build<paddle::dialect::FetchOp>(sum, "out", 0);
+  return program;
+}
+
+TEST(GroupOp, TestBuildReshapeSum) {
+  // Step 1: Construct pir::Program
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  std::shared_ptr<::pir::Program> program = BuildReshapeSumProgram();
+
+  RunAndCheckResult(program.get(), true, 128 * 128);
 }

@@ -239,7 +239,7 @@ class ProcessMesh(core.ProcessMesh):
         assert dim_name in self._dim_names
         return self._shape[self._dim_names.index(dim_name)]
 
-    def get_mesh_with_dim(self, dim_name):
+    def get_mesh_with_dim(self, dim_name, index=None):
         assert (
             dim_name in self._dim_names
         ), f'{dim_name} is not a valid dim name.'
@@ -251,6 +251,9 @@ class ProcessMesh(core.ProcessMesh):
             dim for dim in self._dim_names if dim != dim_name
         ]
         new_mesh = self._mesh.transpose(new_order)
+
+        if index is not None:
+            return ProcessMesh(new_mesh[index], new_dim_names[1:])
         return ProcessMesh(new_mesh, new_dim_names)
 
     def __enter__(self):
@@ -319,10 +322,11 @@ class ProcessMesh(core.ProcessMesh):
         return not self.__eq__(other)
 
     def __str__(self):
-        str = "shape {}, process_ids {}, dim_nams {}".format(
-            self.shape, self.process_ids, self.dim_names
-        )
+        str = f"shape {self.shape}, process_ids {self.process_ids}, dim_nams {self.dim_names}"
         return str
+
+    def __hash__(self):
+        return super().__hash__()
 
 
 def compute_compatible_process_mesh(process_mesh_list):

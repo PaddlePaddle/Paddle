@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/common/ddim.h"
+#include "paddle/phi/core/kmap_cache.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
@@ -43,8 +45,8 @@ inline HOSTDEVICE bool Check(const IntT& x,
                              const int kdim,
                              const int xdim) {
   const IntT lower = x - dilation * kx + pad;
-  const IntT uper = x + (kdim - kx - 1) * dilation - pad;
-  return (lower >= 0 && lower % stride == 0 && uper < xdim);
+  const IntT upper = x + (kdim - kx - 1) * dilation - pad;
+  return (lower >= 0 && lower % stride == 0 && upper < xdim);
 }
 
 // Check whether the current position(x, y, z) is legal:

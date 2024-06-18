@@ -64,6 +64,7 @@ class TEST_API MetaTensor {
 
   virtual int64_t numel() const;
   virtual DDim dims() const;
+  size_t size() const;  // Returns the number of tensors in TensorArray.
   DDim dims(int64_t index) const;
   virtual DataType dtype() const;
   virtual DataLayout layout() const;

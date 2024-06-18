@@ -66,7 +66,7 @@ class TestSemiAutoParallelInFramework(test_base.CommunicationTestDistBase):
         )
         for envs in envs_list:
             self.run_test_case(
-                "semi_auto_parallel_simple_net_fill_zero_for_emtpy_grad.py",
+                "semi_auto_parallel_simple_net_fill_zero_for_empty_grad.py",
                 user_defined_envs=envs,
             )
 

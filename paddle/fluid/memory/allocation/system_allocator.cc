@@ -27,11 +27,11 @@ limitations under the License. */
 #include <sys/mman.h>  // for mlock and munlock
 #endif
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
-#include "paddle/phi/core/flags.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -40,14 +40,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 
-PHI_DECLARE_bool(use_pinned_memory);
-PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
-PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
-PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
+COMMON_DECLARE_bool(use_pinned_memory);
+COMMON_DECLARE_bool(custom_device_mem_record);
+COMMON_DECLARE_double(fraction_of_gpu_memory_to_use);
+COMMON_DECLARE_uint64(initial_gpu_memory_in_mb);
+COMMON_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 
-namespace paddle {
-namespace memory {
-namespace detail {
+namespace paddle::memory::detail {
 
 void* AlignedMalloc(size_t size) {
   void* p = nullptr;
@@ -208,7 +207,8 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
   if (size > usable) {
     LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0
                  << " MB pinned memory."
-                 << ", available " << usable / 1024.0 / 1024.0 << " MB";
+                 << ", available " << usable / 1024.0 / 1024.0
+                 << " MB";  // NOLINT
     return nullptr;
   }
 
@@ -297,6 +297,11 @@ void* CustomAllocator::Alloc(size_t* index, size_t size) {
     VLOG(4) << "CustomAllocator::Alloc " << p << " size " << size;
     *index = 0;
     plug_alloc_size += size;
+    if (FLAGS_custom_device_mem_record) {
+      DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
+      platform::RecordMemEvent(
+          p, place, size, platform::TracerMemEventType::ReservedAllocate);
+    }
   } else {
     size_t avail, total;
 
@@ -331,11 +336,14 @@ void CustomAllocator::Free(void* p, size_t size, size_t index) {
   auto place = platform::CustomPlace(dev_type_, dev_id_);
   auto device = phi::DeviceManager::GetDeviceWithPlace(place);
   device->MemoryDeallocate(p, size);
+  if (FLAGS_custom_device_mem_record) {
+    DEVICE_MEMORY_STAT_UPDATE(Reserved, dev_id_, size);
+    platform::RecordMemEvent(
+        p, place, size, platform::TracerMemEventType::ReservedFree);
+  }
 }
 
 bool CustomAllocator::UseGpu() const { return true; }
 #endif
 
-}  // namespace detail
-}  // namespace memory
-}  // namespace paddle
+}  // namespace paddle::memory::detail

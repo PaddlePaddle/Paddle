@@ -68,7 +68,7 @@ class BCEWithLogitsLoss(Layer):
             batch element. If given, it has to be a 1D Tensor whose size is `[N, ]`,
             The data type is float32, float64. Default is ``'None'``.
         reduction (str, optional): Indicate how to average the loss by batch_size,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
@@ -253,7 +253,7 @@ class CrossEntropyLoss(Layer):
             value needs to be ignored. Only valid when soft_label = False.
             Default is ``-100`` .
         reduction (str, optional): Indicate how to average the loss by batch_size,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
@@ -366,15 +366,15 @@ class CrossEntropyLoss(Layer):
             >>> reduction='mean'
             >>> weight = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            >>> interger_labels = paddle.randint(low=0, high=C, shape=[N], dtype='int64')
-            >>> one_hot_labels = paddle.nn.functional.one_hot(interger_labels, C).astype('float32')
+            >>> integer_labels = paddle.randint(low=0, high=C, shape=[N], dtype='int64')
+            >>> one_hot_labels = paddle.nn.functional.one_hot(integer_labels, C).astype('float32')
 
             >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
             ...     weight=weight, reduction=reduction, label_smoothing=label_smoothing)
 
             >>> # integer labels
-            >>> interger_label_dy_ret = cross_entropy_loss(logits, interger_labels)
-            >>> print(interger_label_dy_ret)
+            >>> integer_label_dy_ret = cross_entropy_loss(logits, integer_labels)
+            >>> print(integer_label_dy_ret)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
             1.10520368)
 
@@ -669,7 +669,7 @@ class L1Loss(Layer):
 
     Parameters:
         reduction (str, optional): Indicate the reduction to apply to the loss,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'none'``, the unreduced loss is returned;
             If `reduction` is ``'mean'``, the reduced mean loss is returned.
             If `reduction` is ``'sum'``, the reduced sum loss is returned.
@@ -765,7 +765,7 @@ class BCELoss(Layer):
             batch element. If given, has to be a Tensor of size nbatch and the data type
             is float32, float64. Default is ``'None'``.
         reduction (str, optional): Indicate how to average the loss by batch_size,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
@@ -864,10 +864,10 @@ class NLLLoss(Layer):
         ignore_index (int, optional): Specifies a target value that is ignored
             and does not contribute to the input gradient.
         reduction (str, optional): Indicate how to average the loss,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. Default is ``'mean'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``. Default is ``'mean'``.
             If `reduction` is ``'mean'``, the reduced mean loss is returned;
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
-            if `reduction` is ``'none'``, no reduction will be apllied.
+            if `reduction` is ``'none'``, no reduction will be applied.
             Default is ``'mean'``.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default is ``'None'``.
 
@@ -959,10 +959,10 @@ class PoissonNLLLoss(Layer):
             A small value to avoid evaluation of :math:`\log(0)` when ``log_input`` = ``False``. ``epsilon > 0``.
             Default: 1e-8.
          reduction (str, optional):
-            Indicate how to reduce the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            Indicate how to reduce the loss, the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'mean'``, the reduced mean loss is returned;
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
-            if `reduction` is ``'none'``, no reduction will be apllied.
+            if `reduction` is ``'none'``, no reduction will be applied.
             Default is ``'mean'``.
          name (str, optional):
             Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -997,7 +997,7 @@ class PoissonNLLLoss(Layer):
     ):
         if epsilon <= 0:
             raise ValueError(
-                "The value of `epsilon` in PoissonNLLLoss should be positve, but received %f, which is not allowed"
+                "The value of `epsilon` in PoissonNLLLoss should be positive, but received %f, which is not allowed"
                 % epsilon
             )
         if reduction not in ['sum', 'mean', 'none']:
@@ -1034,7 +1034,13 @@ class KLDivLoss(Layer):
 
     KL divergence loss is calculated as follows:
 
+    If `log_target` is False:
+
     $$l(x, y) = y * (\log(y) - x)$$
+
+    If `log_target` is True:
+
+    $$l(x, y) = \exp(y) * (y - x)$$
 
     Here :math:`x` is input and :math:`y` is label.
 
@@ -1048,12 +1054,13 @@ class KLDivLoss(Layer):
 
     Parameters:
         reduction (str, optional): Indicate how to average the loss,
-            the candicates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'batchmean'`` | ``'mean'`` | ``'sum'``.
             If `reduction` is ``'mean'``, the reduced mean loss is returned;
             If `reduction` is ``'batchmean'``, the sum loss divided by batch size is returned;
             if `reduction` is ``'sum'``, the reduced sum loss is returned;
-            if `reduction` is ``'none'``, no reduction will be apllied.
+            if `reduction` is ``'none'``, no reduction will be applied.
             Default is ``'mean'``.
+        log_target (bool, optional): Indicate whether `label` is passed in log space. Default is False.
 
     Shape:
 
@@ -1097,14 +1104,25 @@ class KLDivLoss(Layer):
             >>> print(pred_loss.shape)
             [5, 20]
 
+            >>> # if label is in the log space, set log_target = True
+            >>> target = paddle.uniform(shape, min=0, max=10).astype('float32')
+            >>> log_target = paddle.log(target)
+            >>> kldiv_criterion_1 = nn.KLDivLoss(reduction='none')
+            >>> kldiv_criterion_2 = nn.KLDivLoss(reduction='none', log_target=True)
+            >>> pred_loss_1 = kldiv_criterion_1(x, target)
+            >>> pred_loss_2 = kldiv_criterion_2(x, log_target)
+            >>> print(paddle.allclose(pred_loss_1, pred_loss_2))
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            True)
     """
 
-    def __init__(self, reduction='mean'):
+    def __init__(self, reduction='mean', log_target=False):
         super().__init__()
         self.reduction = reduction
+        self.log_target = log_target
 
     def forward(self, input, label):
-        out = F.kl_div(input, label, self.reduction)
+        out = F.kl_div(input, label, self.reduction, self.log_target)
         return out
 
 
@@ -1132,7 +1150,7 @@ class MarginRankingLoss(Layer):
 
     Parameters:
         margin (float, optional): The margin value to add, default value is 0;
-        reduction (str, optional): Indicate the reduction to apply to the loss, the candicates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
+        reduction (str, optional): Indicate the reduction to apply to the loss, the candidates are ``'none'``, ``'mean'``, ``'sum'``.If :attr:`reduction` is ``'none'``, the unreduced loss is returned; If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. Default is ``'mean'``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
@@ -1188,11 +1206,11 @@ class CTCLoss(Layer):
     An operator integrating the open source Warp-CTC library (https://github.com/baidu-research/warp-ctc)
     to compute Connectionist Temporal Classification (CTC) loss.
     It can be aliased as softmax with CTC, since a native softmax activation
-    is interated to the Warp-CTC library to normalize values for each row of the input tensor.
+    is integrated to the Warp-CTC library to normalize values for each row of the input tensor.
 
     Parameters:
         blank (int, optional): The blank label index of Connectionist Temporal Classification (CTC) loss, which is in the half-opened interval [0, num_classes + 1). The data type must be int32. Default is 0.
-        reduction (string, optional): Indicate how to average the loss, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
+        reduction (string, optional): Indicate how to average the loss, the candidates are ``'none'`` | ``'mean'`` | ``'sum'``. If :attr:`reduction` is ``'mean'``, the output loss will be divided by the label_lengths, and then return the mean of quotient; If :attr:`reduction` is ``'sum'``, return the sum of loss; If :attr:`reduction` is ``'none'``, no reduction will be applied. Default is ``'mean'``.
 
     Shape:
         - log_probs (Tensor): The unscaled probability sequence with padding, which is a 3-D Tensor. The tensor shape is [max_logit_length, batch_size, num_classes + 1], where max_logit_length is the longest length of input logit sequence. The data type should be float32 or float64.
@@ -1364,7 +1382,7 @@ class SmoothL1Loss(Layer):
 
     Parameters:
         reduction (str, optional): Indicate how to average the loss by batch_size,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
@@ -1437,7 +1455,7 @@ class MultiLabelSoftMarginLoss(Layer):
                     If given, has to be a Tensor of size C and the data type is float32, float64.
                     Default is ``'None'`` .
             reduction (str, optional): Indicate how to average the loss by batch_size,
-                    the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                    the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
                     If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
                     If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
                     If :attr:`reduction` is ``'sum'``, the summed loss is returned.
@@ -1531,7 +1549,7 @@ class HingeEmbeddingLoss(Layer):
             hinge_embedding_loss. When label is -1, Input smaller than margin are minimized with hinge_embedding_loss.
             Default = 1.0
         reduction (str, optional): Indicate how to average the loss by batch_size,
-            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
@@ -1733,7 +1751,7 @@ class TripletMarginWithDistanceLoss(Layer):
                 and negative samples) if swap distance smaller than negative distance. Default: ``False``.
 
         reduction (str, Optional):Indicate how to average the loss by batch_size.
-                the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
                 If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
                 If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
                 If :attr:`reduction` is ``'sum'``, the summed loss is returned.
@@ -1845,7 +1863,7 @@ class TripletMarginLoss(Layer):
             Default: ``False``.
 
         reduction (str, Optional):Indicate how to average the loss by batch_size.
-                the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+                the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
                 If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
                 If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
                 If :attr:`reduction` is ``'sum'``, the summed loss is returned.
@@ -2208,3 +2226,258 @@ class GaussianNLLLoss(Layer):
             self.name,
         )
         return out
+
+
+class AdaptiveLogSoftmaxWithLoss(Layer):
+    r"""Adaptive softmax is an approximate strategy for training models with large output spaces. It is most effective when
+    the label distribution is highly imbalanced, for example in natural language modelling, where the word frequency
+    distribution approximately follows the `Zipf's law <https://en.wikipedia.org/wiki/Zipf%27s_law>`_.
+
+    Adaptive softmax partitions the labels into several clusters, according to their frequency. These clusters may contain
+    different number of targets each. Additionally, clusters containing less frequent labels assign lower dimensional
+    embeddings to those labels, which speeds up the computation. For each minibatch, only clusters for which at least
+    one target is present are evaluated.
+
+    The idea is that the clusters which are accessed frequently (like the first one, containing most frequent labels),
+    should also be cheap to compute -- that is, contain a small number of assigned labels. We highly recommend taking
+    a look at the original paper for more details.
+
+    For :attr:`cutoffs` should be an ordered Sequence of integers sorted in the increasing order. It controls number of
+    clusters and the partitioning of targets into clusters. For example setting ``cutoffs = [10, 100, 1000]`` means that
+    first ``10`` targets will be assigned to the 'head' of the adaptive softmax, targets ``11, 12, ..., 100`` will be assigned
+    to the first cluster, and targets ``101, 102, ..., 1000`` will be assigned to the second cluster, while targets
+    ``1001, 1002, ..., n_classes - 1`` will be assigned to the last, third cluster.
+
+    For :attr:`div_value` is used to compute the size of each additional cluster, which is given as follow:
+
+    .. math::
+        \lfloor \frac{\text{in\_features}}{\text{div\_value}^{idx}} \rfloor
+
+    where :math:`idx` is the cluster index (with clusters for less frequent words having larger indices, and indices starting from :math:`1`).
+
+    For :attr:`head_bias` if set to True, adds a bias term to the 'head' of the adaptive softmax. See paper for details. Set to False in the official implementation.
+
+
+    Args:
+        in_features (int): Number of features in the input tensor.
+        n_classes (int): Number of classes in the dataset.
+        cutoffs (Sequence): Cutoffs used to assign targets to their buckets.
+        weight_attr (ParamAttr, optional): The attribute for the learnable
+            weight of this layer. The default value is None. If the Initializer of the
+            param_attr is not set, the parameter is initialized with Xavier.
+            For detailed information, please refer to :ref:`api_paddle_ParamAttr`.
+        bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
+            of this layer. If it is set to False, no bias will be added to the output.
+            If it is set to None or one kind of ParamAttr, a bias parameter will
+            be created according to ParamAttr. For detailed information, please refer
+            to :ref:`api_paddle_ParamAttr`. The default value is None and the bias will be
+            initialized to zero.
+        div_value (float, optional): value used as an exponent to compute sizes of the clusters. Default: 4.0.
+        head_bias (bool, optional): If ``True``, adds a bias term to the 'head' of the adaptive softmax. Default: ``False``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Shape:
+        - input (Tensor): The input tensor. The shapes is ``[N, in_features]``. N is batch size.
+        - label (Tensor): target. The shapes is ``[N]``
+        - output1 (Tensor): The shape is ``[N]``
+        - output2 (Scalar).
+
+    Returns:
+        A callable object of AdaptiveLogSoftmaxWithLoss.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> paddle.seed(2024)
+
+            >>> input = paddle.randn([3, 5], dtype="float32")
+            >>> target = paddle.full((3,), 1, dtype='int64')
+            >>> asfm = nn.AdaptiveLogSoftmaxWithLoss(in_features=5, n_classes=3, cutoffs=[
+                                  2], div_value=2.0, head_bias=False)
+            >>> out, loss = asfm(input, target)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [-1.04691017, -0.42341536, -1.16909981])
+            >>> print(loss)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+            0.87980843)
+            >>> out = asfm.log_prob(input)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[-1.13710010, -1.04691017, -1.11403584],
+            [-1.51841831, -0.42341536, -2.07040048],
+            [-4.25405550, -1.16909981, -0.39282480]])
+            >>> out = asfm.predict(input)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1., 1., 2.])
+
+    Note:
+        Labels passed as inputs to this module should be sorted according to their frequency. This means that the most
+        frequent label should be represented by the index ``0``, and the least frequent label should be represented by
+        the index ``n_classes - 1``. To compute log-probabilities for all classes, the ``log_prob`` method can be used.
+    """
+
+    def __init__(
+        self,
+        in_features,
+        n_classes,
+        cutoffs,
+        weight_attr=None,
+        bias_attr=None,
+        div_value=4.0,
+        head_bias=False,
+        name=None,
+    ):
+        super().__init__()
+        self._dtype = self._helper.get_default_dtype()
+        cutoffs = list(cutoffs)
+
+        if (
+            (cutoffs != sorted(cutoffs))
+            or (min(cutoffs) <= 0)
+            or (max(cutoffs) > (n_classes - 1))
+            or (len(set(cutoffs)) != len(cutoffs))
+            or any(int(c) != c for c in cutoffs)
+        ):
+            raise ValueError(
+                "cutoffs should be a sequence of unique, positive "
+                "integers sorted in an increasing order, where "
+                "each value is between 1 and n_classes-1"
+            )
+
+        self.in_features = in_features
+        self.n_classes = n_classes
+        self.cutoffs = cutoffs + [n_classes]
+        self.div_value = div_value
+        self._weight_attr = weight_attr
+        self._bias_attr = bias_attr
+        self.is_head_bias = head_bias
+
+        self.shortlist_size = self.cutoffs[0]
+        self.n_clusters = len(self.cutoffs) - 1
+        self.head_size = self.shortlist_size + self.n_clusters
+
+        self.head_weight = self.create_parameter(
+            shape=[self.in_features, self.head_size],
+            attr=self._weight_attr,
+            dtype=self._dtype,
+            is_bias=False,
+        )
+        if self.is_head_bias:
+            self.head_bias = self.create_parameter(
+                shape=[self.head_size],
+                attr=self._bias_attr,
+                dtype=self._dtype,
+                is_bias=True,
+            )
+        else:
+            self.head_bias = None
+
+        self.tail_weights = []
+
+        for i in range(self.n_clusters):
+            hsz = int(self.in_features // (self.div_value ** (i + 1)))
+            osz = self.cutoffs[i + 1] - self.cutoffs[i]
+            projection = []
+            projection.append(
+                self.create_parameter(
+                    shape=[self.in_features, hsz],
+                    attr=self._weight_attr,
+                    dtype=self._dtype,
+                    is_bias=False,
+                )
+            )
+            projection.append(
+                self.create_parameter(
+                    shape=[hsz, osz],
+                    attr=self._weight_attr,
+                    dtype=self._dtype,
+                    is_bias=False,
+                )
+            )
+            self.tail_weights.append(projection)
+
+    def forward(self, input, label):
+        return F.adaptive_log_softmax_with_loss(
+            input,
+            label,
+            self.head_weight,
+            self.tail_weights,
+            self.cutoffs,
+            self.head_bias,
+        )
+
+    def _get_full_log_prob(self, input, head_output):
+        out = paddle.empty((head_output.shape[0], self.n_classes))
+        head_logprob = F.log_softmax(head_output, axis=1)
+
+        if paddle.in_dynamic_mode():
+            out[:, : self.shortlist_size] = head_logprob[
+                :, : self.shortlist_size
+            ]
+        else:
+            paddle.static.setitem(
+                out,
+                (
+                    slice(None, None, None),
+                    slice(None, self.shortlist_size, None),
+                ),
+                head_logprob,
+            )
+
+        for i, (start_idx, stop_idx) in enumerate(
+            zip(self.cutoffs, self.cutoffs[1:])
+        ):
+            cluster_output = F.linear(x=input, weight=self.tail_weights[i][0])
+            cluster_output = F.linear(
+                x=cluster_output, weight=self.tail_weights[i][1]
+            )
+            cluster_logprob = F.log_softmax(cluster_output, axis=1)
+            output_logprob = cluster_logprob + head_logprob[
+                :, self.shortlist_size + i
+            ].unsqueeze(1)
+
+            if paddle.in_dynamic_mode():
+                out[:, start_idx:stop_idx] = output_logprob
+            else:
+                paddle.static.setitem(
+                    out,
+                    (slice(None, None, None), slice(start_idx, stop_idx, None)),
+                    output_logprob,
+                )
+
+        return out
+
+    def log_prob(self, input):
+        head_output = F.linear(
+            x=input, weight=self.head_weight, bias=self.head_bias
+        )
+        return self._get_full_log_prob(input, head_output)
+
+    def predict(self, input):
+        head_output = F.linear(
+            x=input, weight=self.head_weight, bias=self.head_bias
+        )
+        output = paddle.argmax(head_output, axis=1).cast('float32')
+        not_in_shortlist = output >= self.shortlist_size
+        all_in_shortlist = not (not_in_shortlist.any())
+
+        if all_in_shortlist:
+            return output
+        elif not_in_shortlist.all():
+            log_prob = self._get_full_log_prob(input, head_output)
+            return paddle.argmax(log_prob, axis=1)
+        else:
+            log_prob = self._get_full_log_prob(
+                input[not_in_shortlist], head_output[not_in_shortlist]
+            )
+            indices = paddle.masked_select(
+                paddle.arange(len(not_in_shortlist)), not_in_shortlist
+            )
+            result = paddle.scatter(
+                output, indices, paddle.argmax(log_prob, axis=1).cast('float32')
+            )
+            return result

@@ -31,7 +31,7 @@ def vjp(func, xs, v=None):
             returns a sequence of Tensors or a Tensor.
         xs(Tensor|Sequence[Tensor]): Used as positional arguments to evaluate
             ``func``. ``xs`` is accepted as one Tensor or a sequence of Tensors.
-        v(Tensor|Sequence[Tensor]|None, optional): The cotangent vector invovled
+        v(Tensor|Sequence[Tensor]|None, optional): The cotangent vector involved
             in the VJP computation. ``v`` matches the size and shape of
             ``func`` 's output. Defaults to None, which is equivalent to all
             ones the same size of ``func`` 's output.
@@ -67,8 +67,8 @@ def vjp(func, xs, v=None):
     """
     _check_inputs(func, xs, v)
 
-    # ``_seprate`` breaks the dependencies between ``xs`` and other
-    # variables. See more ``_seprate`` .
+    # ``_separate`` breaks the dependencies between ``xs`` and other
+    # variables. See more ``_separate`` .
     if framework.in_dygraph_mode() or not utils.prim_enabled():
         xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
@@ -91,7 +91,7 @@ def jvp(func, xs, v=None):
         xs(Tensor|Sequence[Tensor]): Used as positional arguments to
             evaluate ``func``.  The ``xs`` is accepted as one Tensor or a
             Sequence of Tensors.
-        v(Tensor|Sequence[Tensor]|None, Optional): The tangent vector invovled
+        v(Tensor|Sequence[Tensor]|None, Optional): The tangent vector involved
             in the JVP computation. The ``v`` matches the size and shape of
             ``xs`` . Default value is None and in this case is equivalent to
             all ones the same size of ``xs`` .
@@ -127,8 +127,8 @@ def jvp(func, xs, v=None):
 
     """
     _check_inputs(func, xs, v)
-    # ``_seprate`` breaks the dependencies between ``xs`` and other
-    # variables. See more ``_seprate`` .
+    # ``_separate`` breaks the dependencies between ``xs`` and other
+    # variables. See more ``_separate`` .
     if framework.in_dygraph_mode() or not utils.prim_enabled():
         xs, v = _separate(xs), _separate(v)
     ys = func(*xs) if isinstance(xs, typing.Sequence) else func(xs)
@@ -153,7 +153,7 @@ def _double_backward_trick(ys, xs, v):
 
 def _zeros_like_with_grad(xs):
     """Create a zero or zeros sequence Tensor like ``xs`` with a flag
-    ``stop_graident=False`` .
+    ``stop_gradient=False`` .
     """
     if not isinstance(xs, typing.Sequence):
         ys = paddle.zeros_like(xs)
@@ -194,7 +194,7 @@ class Jacobian:
 
     Notes:
 
-        Eclipsis index is not supported currently.
+        Ellipsis index is not supported currently.
 
     Warning:
         This API is in beta, the signatures could be changed in future version.
@@ -309,7 +309,7 @@ class Hessian:
                 not is_batched and jac.shape[0] != 1
             ):
                 raise RuntimeError(
-                    "The function given to Hessian shoud return as single element Tensor or batched single element Tensor."
+                    "The function given to Hessian should return as single element Tensor or batched single element Tensor."
                 )
             return jac[:, 0, :] if is_batched else jac[0, :]
 
@@ -327,7 +327,7 @@ class Hessian:
 class _Jacobian:
     """The base class for computing Jacobian matrix.
 
-    ``_Jacobian`` implementes the core logic of multidimensional index and lazy
+    ``_Jacobian`` implements the core logic of multidimensional index and lazy
     evaluation for Jacobian matrix, subclass only need to overwrite following
     methods:
 
@@ -485,7 +485,7 @@ def _multi_index(indexes, shape):
 
     Currently supporting following input format:
         * ([positive|negative|slice], ...), the right-most elements can be
-            omited.
+            omitted.
 
     The standard format after converted is slice tuple which contains N elements:
         * ([positive|slice], ..., [positive|slice])
@@ -517,7 +517,7 @@ def _multi_index(indexes, shape):
                     index.start + shape[i] if index.start < 0 else index.start,
                     index.stop + shape[i] if index.stop < 0 else index.stop,
                     # Negative step means index backward, no need to convert to
-                    # positive interger.
+                    # positive integer.
                     index.step,
                 )
             )
@@ -577,12 +577,12 @@ def _grad(ys, xs, v=None):
             inputs.
     """
     if framework.in_dygraph_mode():
-        # paddle.grad returns a list though the inputs is a signle Tensor. The
+        # paddle.grad returns a list though the inputs is a single Tensor. The
         # follow code snippet fixes the problem by return the first element of
-        # xs_grad when the xs is a signle Tensor.
+        # xs_grad when the xs is a single Tensor.
         xs_grad = paddle.grad(ys, xs, v, create_graph=True, allow_unused=True)
         if (
-            isinstance(xs, paddle.base.framework.Variable)
+            isinstance(xs, (paddle.base.framework.Variable, paddle.pir.Value))
             and isinstance(xs_grad, typing.Sequence)
             and len(xs_grad) > 0
         ):
@@ -595,12 +595,12 @@ def _grad(ys, xs, v=None):
 def _separate(xs):
     """
     ``_separate`` separates ``xs`` from the computation graph through ``clone``
-    or ``deteach`` .
+    or ``detach`` .
 
-    Interally, ``paddle.grad(xs, ys)`` is stateful API implemented based on
-    computional graph, which will reduce gradients along all path from ys to xs.
+    Internally, ``paddle.grad(xs, ys)`` is stateful API implemented based on
+    computational graph, which will reduce gradients along all path from ys to xs.
 
-    However, funcional autograd API such as ``vjp``, ``jvp`` is stateless, and
+    However, functional autograd API such as ``vjp``, ``jvp`` is stateless, and
     only compute gradients with a given ``func`` .
 
     For example, given a ``func`` :math:`y0=f(x0)`, supposing forward path is:
@@ -658,25 +658,29 @@ def _check_inputs(func, xs, v=None):
     if not callable(func):
         raise TypeError(f"Expected 'fun' is Callable, but got {type(func)}.")
 
-    if not isinstance(xs, (framework.Variable, typing.Sequence)):
+    if not isinstance(
+        xs, (framework.Variable, typing.Sequence, paddle.pir.Value)
+    ):
         raise TypeError(
             f"Expected 'xs' is a Tensor|Sequence[Tensor],"
             f"but got {type(xs)}."
         )
     if isinstance(xs, typing.Sequence) and not all(
-        isinstance(x, framework.Variable) for x in xs
+        isinstance(x, (framework.Variable, paddle.pir.Value)) for x in xs
     ):
-        raise TypeError("All elements of 'xs' shoule be Tensor.")
+        raise TypeError("All elements of 'xs' should be Tensor.")
 
-    if not isinstance(v, (framework.Variable, typing.Sequence, type(None))):
+    if not isinstance(
+        v, (framework.Variable, typing.Sequence, type(None), paddle.pir.Value)
+    ):
         raise TypeError(
             f"Expected 'v' is Tensor|Sequence[Tensor]|None, but got {type(v)}."
         )
 
     if isinstance(v, typing.Sequence) and not all(
-        isinstance(e, framework.Variable) for e in v
+        isinstance(e, (framework.Variable, paddle.pir.Value)) for e in v
     ):
-        raise TypeError("All elements of 'xs' shoule be Tensor.")
+        raise TypeError("All elements of 'xs' should be Tensor.")
 
 
 def _check_v_shape(v, refs):

@@ -197,13 +197,13 @@ def extract_cuda_device_id(device, op_name):
             device_id = int(device[4:])
         else:
             raise ValueError(
-                "The current string {} is not expected. Because {} only support string which is like 'gpu:x'. "
-                "Please input appropriate string again!".format(device, op_name)
+                f"The current string {device} is not expected. Because {op_name} only support string which is like 'gpu:x'. "
+                "Please input appropriate string again!"
             )
     else:
         raise ValueError(
-            "The device type {} is not expected. Because {} only support int, str or paddle.CUDAPlace. "
-            "Please input appropriate device again!".format(device, op_name)
+            f"The device type {device} is not expected. Because {op_name} only support int, str or paddle.CUDAPlace. "
+            "Please input appropriate device again!"
         )
 
     assert (
@@ -222,7 +222,7 @@ def max_memory_allocated(device=None):
 
     Note:
         The size of GPU memory allocated to tensor is 256-byte aligned in Paddle, which may larger than the memory size that tensor actually need.
-        For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
+        For instance, a float32 0-D Tensor with shape [] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
         device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or
@@ -290,7 +290,7 @@ def memory_allocated(device=None):
 
     Note:
         The size of GPU memory allocated to tensor is 256-byte aligned in Paddle, which may be larger than the memory size that tensor actually need.
-        For instance, a float32 tensor with shape [1] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
+        For instance, a float32 0-D Tensor with shape [] in GPU will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
 
     Args:
         device(paddle.CUDAPlace or int or str, optional): The device, the id of the device or

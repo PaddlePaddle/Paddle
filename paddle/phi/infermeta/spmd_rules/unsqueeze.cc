@@ -25,8 +25,7 @@
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -74,7 +73,7 @@ std::vector<std::shared_ptr<DimTrans>> MakeUnsqueezeDimTransReverse(
   ret.resize(x_ndim);
   fill(ret.begin(), ret.end(), std::make_shared<Singleton>());
 
-  for (int64_t i = 0, j = 0; i < out_ndim; i++) {
+  for (int64_t i = 0, j = 0; i < out_ndim; i++) {  // NOLINT
     auto it = find(axis.begin(), axis.end(), i);
 
     if (it == axis.end()) {
@@ -93,9 +92,9 @@ SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
                             const std::vector<int64_t>& axis) {
   // Step0: Verify input args based on unsqueeze logic
   auto x_shape = common::vectorize(x.dims());
-  int x_ndim = x_shape.size();
-  auto x_dist_attr_src = x.dist_attr();
-  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
+  int x_ndim = static_cast<int>(x_shape.size());
+  const auto& x_dist_attr_src = x.dist_attr();
+  const std::vector<int64_t>& x_dims_mapping = x_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
@@ -110,9 +109,9 @@ SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
   std::vector<int64_t> out_shape;
   std::vector<int64_t> axis_copy(axis);
 
-  for (int64_t i = 0; i < static_cast<int64_t>(axis_copy.size()); i++) {
-    if (axis_copy[i] < 0) {
-      axis_copy[i] += x_ndim + 1;
+  for (auto& i : axis_copy) {
+    if (i < 0) {
+      i += x_ndim + 1;
     }
   }
 
@@ -162,11 +161,12 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
                                    const std::vector<int64_t>& axis) {
   // Step0: Verify input args based on unsqueeze logic
   auto x_shape = common::vectorize(x.dims());
-  int x_ndim = x_shape.size();
+  int x_ndim = static_cast<int>(x_shape.size());
   auto out_shape = common::vectorize(out.dims());
-  int out_ndim = out_shape.size();
-  auto out_dist_attr_src = out.dist_attr();
-  std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
+  int out_ndim = static_cast<int>(out_shape.size());
+  const auto& out_dist_attr_src = out.dist_attr();
+  const std::vector<int64_t>& out_dims_mapping =
+      out_dist_attr_src.dims_mapping();
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping.size(),
@@ -183,9 +183,9 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
 
   std::vector<int64_t> axis_copy(axis);
 
-  for (int64_t i = 0; i < static_cast<int64_t>(axis_copy.size()); i++) {
-    if (axis_copy[i] < 0) {
-      axis_copy[i] += x_ndim + 1;
+  for (auto& i : axis_copy) {
+    if (i < 0) {
+      i += x_ndim + 1;
     }
   }
 
@@ -217,7 +217,7 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
   VLOG(4) << "UnsqueezeInferSpmdReverse: Out shape: [" << str_join(out_shape)
           << "] X shape: [" << str_join(x_shape) << "]";
   VLOG(4) << "Transformation from output to input:";
-  for (int64_t i = 0, n = trans.size(); i < n; i++) {
+  for (int64_t i = 0, n = static_cast<int64_t>(trans.size()); i < n; i++) {
     std::shared_ptr<DimTrans> t = trans[i];
     VLOG(4) << "\tX axis[" << i << "]: " << t->to_string();
   }
@@ -238,5 +238,4 @@ SpmdInfo UnsqueezeGradInferSpmd(const DistMetaTensor& xshape,
   return {{xshape.dist_attr(), spmd.first[0]}, {spmd.second[0]}};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

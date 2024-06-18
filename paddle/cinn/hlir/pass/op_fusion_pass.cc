@@ -361,7 +361,7 @@ class OpFusionPassHelper : public FusionHelperBase {
   struct FusionRelation {
     // producer -> consumer
     std::unordered_set<framework::OpPatternKind> op_kind = {};
-    // producer -> fusion sonsumer
+    // producer -> fusion consumer
     std::unordered_map<framework::OpPatternKind, ConditionFunction>
         fusion_op_kind = {};
   };

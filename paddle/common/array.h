@@ -55,7 +55,7 @@ class Array {
 
   HOSTDEVICE inline T &at(size_t i) {
 #if !defined(__CUDA_ARCH__) && !defined(__HIPCC__)
-    COMMON_ENFORCE_LT(
+    PADDLE_ENFORCE_LT(
         i, N, common::errors::OutOfRange("Array index out of bounds."));
 #endif
     return (*this)[i];
@@ -63,7 +63,7 @@ class Array {
 
   HOSTDEVICE inline const T &at(size_t i) const {
 #if !defined(__CUDA_ARCH__) && !defined(__HIPCC__)
-    COMMON_ENFORCE_LT(
+    PADDLE_ENFORCE_LT(
         i, N, common::errors::OutOfRange("Array index out of bounds."));
 #endif
     return (*this)[i];
@@ -109,7 +109,7 @@ class Array<T, 0> {
     static T obj{};
     return obj;
 #else
-    COMMON_THROW(common::errors::Unavailable("Array<T, 0> has no element."));
+    PADDLE_THROW(common::errors::Unavailable("Array<T, 0> has no element."));
 #endif
   }
 
@@ -120,7 +120,7 @@ class Array<T, 0> {
     static const T obj{};
     return obj;
 #else
-    COMMON_THROW(common::errors::Unavailable("Array<T, 0> has no element."));
+    PADDLE_THROW(common::errors::Unavailable("Array<T, 0> has no element."));
 #endif
   }
 

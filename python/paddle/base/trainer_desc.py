@@ -286,7 +286,7 @@ class TrainerDesc:
 
         dependency_map = config_dict.get("dependency_map", {})
         for key in dependency_map:
-            m = config.table_denpendency_map.add()
+            m = config.table_dependency_map.add()
             m.key = key
             values = dependency_map[key]
             if not isinstance(values, list):

@@ -17,11 +17,11 @@
 #include <vector>
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/transform.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/isfinite_kernel.h"
 #include "paddle/phi/kernels/reduce_all_kernel.h"
 #include "paddle/phi/kernels/reduce_any_kernel.h"
@@ -50,7 +50,7 @@ bool TensorIsfinite(const phi::DenseTensor& tensor);
     void apply() const {                                                     \
       auto place = in_.place();                                              \
       auto* ctx = static_cast<phi::device##Context*>(                        \
-          platform::DeviceContextPool::Instance().Get(place));               \
+          phi::DeviceContextPool::Instance().Get(place));                    \
       phi::DenseTensor tmp;                                                  \
       tmp.Resize(in_.dims());                                                \
       out_->Resize({1});                                                     \
@@ -77,53 +77,53 @@ FiniteVisitor(Isfinite, All, GPU);
 inline void TensorContainsNAN(const phi::DenseTensor& tensor,
                               phi::DenseTensor* out) {
   auto place = tensor.place();
-  if (platform::is_cpu_place(tensor.place())) {
+  if (tensor.place().GetType() == phi::AllocationType::CPU) {
     VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsnanVisitorCPU(tensor, out));
     return;
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(place)) {
+  if (place.GetType() == phi::AllocationType::GPU) {
     VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsnanVisitorGPU(tensor, out));
     return;
   }
 #endif
-  PADDLE_THROW(platform::errors::Unimplemented("Not supported on %s.", place));
+  PADDLE_THROW(phi::errors::Unimplemented("Not supported on %s.", place));
 }
 inline void TensorContainsInf(const phi::DenseTensor& tensor,
                               phi::DenseTensor* out) {
   auto place = tensor.place();
-  if (platform::is_cpu_place(tensor.place())) {
+  if (tensor.place().GetType() == phi::AllocationType::CPU) {
     VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsinfVisitorCPU(tensor, out));
     return;
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(place)) {
+  if (place.GetType() == phi::AllocationType::GPU) {
     VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsinfVisitorGPU(tensor, out));
     return;
   }
 #endif
-  PADDLE_THROW(platform::errors::Unimplemented("Not supported on %s.", place));
+  PADDLE_THROW(phi::errors::Unimplemented("Not supported on %s.", place));
 }
 inline void TensorIsfinite(const phi::DenseTensor& tensor,
                            phi::DenseTensor* out) {
   auto place = tensor.place();
-  if (platform::is_cpu_place(tensor.place())) {
+  if (tensor.place().GetType() == phi::AllocationType::CPU) {
     VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsfiniteVisitorCPU(tensor, out));
     return;
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (platform::is_gpu_place(place)) {
+  if (place.GetType() == phi::AllocationType::GPU) {
     VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsfiniteVisitorGPU(tensor, out));
     return;
   }
 #endif
-  PADDLE_THROW(platform::errors::Unimplemented("Not supported on %s.", place));
+  PADDLE_THROW(phi::errors::Unimplemented("Not supported on %s.", place));
 }
 
 // copy the result bool to cpu
@@ -173,7 +173,7 @@ class OverflowKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_ENFORCE_EQ(true,
                         false,
-                        platform::errors::InvalidArgument(
+                        phi::errors::InvalidArgument(
                             "The input type mismatch, the type of Input(X) "
                             "must be phi::DenseTensor or "
                             "SelectedRows, please check your input."));

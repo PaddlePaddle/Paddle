@@ -15,7 +15,6 @@
 import contextlib
 import random
 import unittest
-from functools import partial
 
 import numpy as np
 
@@ -23,41 +22,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
-
-
-def bow_net(
-    data,
-    label,
-    dict_dim,
-    is_sparse=False,
-    emb_dim=8,
-    hid_dim=8,
-    hid_dim2=6,
-    class_dim=2,
-):
-    """
-    BOW net
-    This model is from https://github.com/PaddlePaddle/models:
-    base/PaddleNLP/text_classification/nets.py
-    """
-    emb = paddle.static.nn.embedding(
-        input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
-    )
-    bow = paddle.static.nn.sequence_lod.sequence_pool(
-        input=emb, pool_type='sum'
-    )
-    bow_tanh = paddle.tanh(bow)
-    fc_1 = paddle.static.nn.fc(x=bow_tanh, size=hid_dim, activation="tanh")
-    fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim2, activation="tanh")
-    prediction = paddle.static.nn.fc(
-        x=[fc_2], size=class_dim, activation="softmax"
-    )
-    cost = paddle.nn.functional.cross_entropy(
-        input=prediction, label=label, reduction='none', use_softmax=False
-    )
-    avg_cost = paddle.mean(x=cost)
-
-    return avg_cost
 
 
 class TestRegularizer(unittest.TestCase):
@@ -155,27 +119,6 @@ class TestRegularizer(unittest.TestCase):
             param_sum = self.run_program(place, [data, label])
         return param_sum
 
-    def test_l2(self):
-        paddle.enable_static()
-        for place in self.get_places():
-            dense_sparse_p_sum = []
-            for sparse in [True, False]:
-                model = partial(bow_net, is_sparse=sparse)
-                framework_l2 = self.check_l2decay_regularizer(place, model)
-                l2 = self.check_l2decay(place, model)
-                assert len(l2) == len(framework_l2)
-                for i in range(len(l2)):
-                    assert np.isclose(a=framework_l2[i], b=l2[i], rtol=5e-5)
-                dense_sparse_p_sum.append(framework_l2)
-
-            assert len(dense_sparse_p_sum[0]) == len(dense_sparse_p_sum[1])
-            for i in range(len(dense_sparse_p_sum[0])):
-                assert np.isclose(
-                    a=dense_sparse_p_sum[0][i],
-                    b=dense_sparse_p_sum[1][i],
-                    rtol=5e-5,
-                )
-
     @test_with_pir_api
     def test_repeated_regularization(self):
         paddle.enable_static()
@@ -194,9 +137,7 @@ class TestRegularizer(unittest.TestCase):
             sgd = paddle.optimizer.SGD(learning_rate=0.1, weight_decay=l2)
             sgd.minimize(loss)
         with base.dygraph.guard():
-            input = base.dygraph.to_variable(
-                np.random.randn(3, 2).astype('float32')
-            )
+            input = paddle.to_tensor(np.random.randn(3, 2).astype('float32'))
             paddle.seed(1)
             paddle.framework.random._manual_program_seed(1)
 

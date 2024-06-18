@@ -197,73 +197,109 @@ void CheckFiniteAndUnscaleKernel(const Context& dev_ctx,
     cpu_scale_data = (*scale_data);
   }
   MPDType inverse_scale = 1.0 / cpu_scale_data;
-  for (size_t i = 0; i < xs.size(); ++i) {
-    const auto* x = xs[i];
-    auto* out = outs[i];
-    dev_ctx.template Alloc<T>(out);
-
+  auto version =
+      phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
+  if (version == phi::backends::xpu::XPUVersion::XPU3) {
+    int64_t num_grads = xs.size();
+    DenseTensor cpu_found_tensor;
+    cpu_found_tensor.Resize({num_grads});
+    dev_ctx.template HostAlloc<bool>(&cpu_found_tensor);
     DenseTensor inf_nan_check;
-    inf_nan_check.Resize({1});
+    inf_nan_check.Resize({num_grads});
     dev_ctx.template Alloc<bool>(&inf_nan_check);
+    bool* inf_nan_check_ptr = inf_nan_check.data<bool>();
+    for (int64_t i = 0; i < num_grads; ++i) {
+      const auto* x = xs[i];
+      auto* out = outs[i];
+      dev_ctx.template Alloc<T>(out);
 
-    if (!has_inf_nans) {
-      int r =
-          xpu::check_nan_or_inf(dev_ctx.x_context(),
-                                reinterpret_cast<const XPUType*>(x->data<T>()),
-                                inf_nan_check.data<bool>(),
-                                x->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "check_nan_or_inf");
-      memory_utils::Copy(phi::CPUPlace(),
-                         &has_inf_nans,
-                         dev_ctx.GetPlace(),
-                         inf_nan_check.data<bool>(),
-                         sizeof(bool));
+      int r = xpu::check_finite_unscale(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x->data<T>()),
+          reinterpret_cast<XPUType*>(out->data<T>()),
+          x->numel(),
+          inverse_scale,
+          inf_nan_check_ptr + i);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "check_finite_unscale");
     }
-
-    if (has_inf_nans) {
-      cpu_found_inf_data = true;
-      inverse_scale = 0.0;
+    memory_utils::Copy(phi::CPUPlace(),
+                       cpu_found_tensor.data<bool>(),
+                       dev_ctx.GetPlace(),
+                       inf_nan_check.data<bool>(),
+                       num_grads * sizeof(bool));
+    for (int64_t i = 0; i < num_grads; ++i) {
+      if (cpu_found_tensor.data<bool>()[i]) {
+        cpu_found_inf_data = true;
+        break;
+      }
     }
+  } else {
+    for (size_t i = 0; i < xs.size(); ++i) {
+      const auto* x = xs[i];
+      auto* out = outs[i];
+      dev_ctx.template Alloc<T>(out);
 
-    auto version =
-        phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
-    DenseTensor float_x;
-    DenseTensor float_out;
-    if (std::is_same<T, phi::dtype::float16>::value &&
-        (version == phi::backends::xpu::XPUVersion::XPU1)) {
-      dev_ctx.template Alloc<MPDType>(&float_x, x->numel() * sizeof(MPDType));
-      dev_ctx.template Alloc<MPDType>(&float_out,
-                                      out->numel() * sizeof(MPDType));
+      DenseTensor inf_nan_check;
+      inf_nan_check.Resize({1});
+      dev_ctx.template Alloc<bool>(&inf_nan_check);
 
-      int r = xpu::cast(dev_ctx.x_context(),
-                        reinterpret_cast<const XPUTypeFP16*>(x->data<T>()),
-                        float_x.data<MPDType>(),
-                        x->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      if (!has_inf_nans) {
+        int r = xpu::check_nan_or_inf(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(x->data<T>()),
+            inf_nan_check.data<bool>(),
+            x->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "check_nan_or_inf");
+        memory_utils::Copy(phi::CPUPlace(),
+                           &has_inf_nans,
+                           dev_ctx.GetPlace(),
+                           inf_nan_check.data<bool>(),
+                           sizeof(bool));
+      }
 
-      r = xpu::scale(dev_ctx.x_context(),
-                     float_x.data<MPDType>(),
-                     float_out.data<MPDType>(),
-                     x->numel(),
-                     false,
-                     inverse_scale,
-                     0.0);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+      if (has_inf_nans) {
+        cpu_found_inf_data = true;
+        break;
+      }
 
-      r = xpu::cast(dev_ctx.x_context(),
-                    float_out.data<MPDType>(),
-                    reinterpret_cast<XPUTypeFP16*>(out->data<T>()),
-                    out->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
-    } else {
-      int r = xpu::scale(dev_ctx.x_context(),
-                         reinterpret_cast<const XPUType*>(x->data<T>()),
-                         reinterpret_cast<XPUType*>(out->data<T>()),
-                         x->numel(),
-                         false,
-                         inverse_scale,
-                         0.0);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+      DenseTensor float_x;
+      DenseTensor float_out;
+      if (std::is_same<T, phi::dtype::float16>::value &&
+          (version == phi::backends::xpu::XPUVersion::XPU1)) {
+        dev_ctx.template Alloc<MPDType>(&float_x, x->numel() * sizeof(MPDType));
+        dev_ctx.template Alloc<MPDType>(&float_out,
+                                        out->numel() * sizeof(MPDType));
+
+        int r = xpu::cast(dev_ctx.x_context(),
+                          reinterpret_cast<const XPUTypeFP16*>(x->data<T>()),
+                          float_x.data<MPDType>(),
+                          x->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+
+        r = xpu::scale(dev_ctx.x_context(),
+                       float_x.data<MPDType>(),
+                       float_out.data<MPDType>(),
+                       x->numel(),
+                       false,
+                       inverse_scale,
+                       0.0);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+
+        r = xpu::cast(dev_ctx.x_context(),
+                      float_out.data<MPDType>(),
+                      reinterpret_cast<XPUTypeFP16*>(out->data<T>()),
+                      out->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      } else {
+        int r = xpu::scale(dev_ctx.x_context(),
+                           reinterpret_cast<const XPUType*>(x->data<T>()),
+                           reinterpret_cast<XPUType*>(out->data<T>()),
+                           x->numel(),
+                           false,
+                           inverse_scale,
+                           0.0);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+      }
     }
   }
   memory_utils::Copy(dev_ctx.GetPlace(),
@@ -293,6 +329,7 @@ PD_REGISTER_KERNEL(check_finite_and_unscale,
                    ALL_LAYOUT,
                    phi::CheckFiniteAndUnscaleKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::BOOL);
 }

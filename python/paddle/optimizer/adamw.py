@@ -11,10 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import warnings
 from collections import defaultdict
 from collections.abc import Callable
+from typing import TYPE_CHECKING, Sequence
 
 import paddle
 from paddle import pir
@@ -33,6 +35,11 @@ from ..base.framework import (
 from ..nn.clip import GradientClipBase
 from .lr import LRScheduler
 from .optimizer import Optimizer
+
+if TYPE_CHECKING:
+    from paddle import Tensor
+
+    from .adam import _AdamParameterConfig
 
 __all__ = []
 
@@ -60,30 +67,30 @@ class AdamW(Optimizer):
     Args:
         learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a LRScheduler. The default value is 0.001.
-        parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``.
+        beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
+            The default value is 0.9.
+        beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
+            The default value is 0.999.
+        epsilon (float, optional): A small float value for numerical stability.
+            The default value is 1e-08.
+        parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
             different parameter groups such as the learning rate, weight decay, etc,
             then the parameters are list of dict. Note that the learning_rate in parameter groups
             represents the scale of base learning_rate.
             The default value is None in static graph mode, at this time all parameters will be updated.
-        beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
-            It should be a float number or a Tensor with shape [1] and data type as float32.
-            The default value is 0.9.
-        beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
-            It should be a float number or a Tensor with shape [1] and data type as float32.
-            The default value is 0.999.
-        epsilon (float, optional): A small float value for numerical stability.
-            The default value is 1e-08.
         weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
-        lr_ratio (function|None, optional): If it is not None,
+        lr_ratio (Callable|None, optional): If it is not None,
             the learning rate will be updated with layer-wise learning rate ratio.
             Otherwise, the learning rate is the original.
             Default: None.
-        apply_decay_param_fun (function|None, optional): If it is not None,
+        apply_decay_param_fun (Callable|None, optional): If it is not None,
             only tensors that makes apply_decay_param_fun(Tensor.name)==True
             will be updated with weight decay. It only works when we want to specify tensors.
             Default: None.
-        grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
+        grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
             :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
@@ -95,7 +102,7 @@ class AdamW(Optimizer):
             different semantics with the original Adam algorithm and may lead to different result.
             The default value is False.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
-        name (str, optional): Normally there is no need for user to set this property.
+        name (str|None, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
     Notes:
@@ -134,7 +141,7 @@ class AdamW(Optimizer):
             >>> loss = paddle.mean(out)
             >>> opt = paddle.optimizer.AdamW(
             ...     learning_rate=0.1,
-            ...     parameters=[{
+            ...     parameters=[{  # type: ignore
             ...         'params': linear_1.parameters()
             ...     }, {
             ...         'params': linear_2.parameters(),
@@ -151,6 +158,8 @@ class AdamW(Optimizer):
 
     """
 
+    helper: None
+    type: str
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
     _beta1_pow_acc_str = "beta1_pow_acc"
@@ -158,29 +167,31 @@ class AdamW(Optimizer):
 
     def __init__(
         self,
-        learning_rate=0.001,
-        beta1=0.9,
-        beta2=0.999,
-        epsilon=1e-8,
-        parameters=None,
-        weight_decay=0.01,
-        lr_ratio=None,
-        apply_decay_param_fun=None,
-        grad_clip=None,
-        lazy_mode=False,
-        multi_precision=False,
-        name=None,
-    ):
+        learning_rate: float | LRScheduler = 0.001,
+        beta1: float | Tensor = 0.9,
+        beta2: float | Tensor = 0.999,
+        epsilon: float = 1e-8,
+        parameters: Sequence[Tensor]
+        | Sequence[_AdamParameterConfig]
+        | None = None,
+        weight_decay: float | Tensor = 0.01,
+        lr_ratio: Callable[[Tensor], float] | None = None,
+        apply_decay_param_fun: Callable[[str], bool] | None = None,
+        grad_clip: GradientClipBase | None = None,
+        lazy_mode: bool = False,
+        multi_precision: bool = False,
+        name: str | None = None,
+    ) -> None:
         assert learning_rate is not None
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
-        if not 0 <= beta1 < 1:
-            raise ValueError("Invaild value of beta1, expect beta1 in [0,1).")
-        if not 0 <= beta2 < 1:
-            raise ValueError("Invaild value of beta2, expect beta2 in [0,1).")
-        if not 0 <= epsilon:
-            raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
+        if not isinstance(beta1, Value) and not 0 <= beta1 < 1:
+            raise ValueError("Invalid value of beta1, expect beta1 in [0,1).")
+        if not isinstance(beta2, Value) and not 0 <= beta2 < 1:
+            raise ValueError("Invalid value of beta2, expect beta2 in [0,1).")
+        if not isinstance(epsilon, Value) and not 0 <= epsilon:
+            raise ValueError("Invalid value of epsilon, expect epsilon >= 0.")
         if not isinstance(weight_decay, float) and not isinstance(
             weight_decay, (framework.Variable, Value)
         ):
@@ -202,9 +213,7 @@ class AdamW(Optimizer):
             if isinstance(parameters, (paddle.Tensor, core.eager.Tensor)):
                 raise TypeError(
                     "`parameters` argument given to the optimizer should be "
-                    "an iterable of paddle Tensors, but got argument type is `{}`.".format(
-                        type(parameters)
-                    )
+                    f"an iterable of paddle Tensors, but got argument type is `{type(parameters)}`."
                 )
             if isinstance(parameters, dict):
                 raise TypeError(
@@ -252,7 +261,7 @@ class AdamW(Optimizer):
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra tensors associated with the parameters
         # to train. These tensors are called accumulators.
-        # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
+        # {accum_name : { parameter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: {})
         self.helper = None
         self._opti_name_list = []
@@ -293,7 +302,7 @@ class AdamW(Optimizer):
         self._use_multi_tensor = None
         self.regularization = None
         self._auxiliary_vars = {}
-        self._already_create_accumulater = set()
+        self._already_create_accumulator = set()
 
         self._create_master_grad_states()
 
@@ -311,7 +320,7 @@ class AdamW(Optimizer):
         Add a param group to parameter_list.
 
         Args:
-            param_group (dict): The group of Tensors to be optimzed with
+            param_group (dict): The group of Tensors to be optimized with
             different optimization options.
         """
         params = param_group['params']
@@ -400,12 +409,12 @@ class AdamW(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
-            if p.name in self._already_create_accumulater:
+            if p.name in self._already_create_accumulator:
                 continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
-                self._already_create_accumulater.add(p.name)
+                self._already_create_accumulator.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -416,7 +425,7 @@ class AdamW(Optimizer):
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
-            self._already_create_accumulater.add(p.name)
+            self._already_create_accumulator.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, (framework.Block, pir.Block))
@@ -473,6 +482,10 @@ class AdamW(Optimizer):
                 else self._beta2.item(0)
             )
 
+            found_inf = (
+                self._get_auxiliary_var('found_inf') if in_pir_mode() else None
+            )
+
             _, _, _, _, _, _ = _C_ops.adamw_(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -482,7 +495,7 @@ class AdamW(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                None,
+                found_inf,
                 _beta1,
                 _beta2,
                 self._epsilon,
@@ -562,7 +575,7 @@ class AdamW(Optimizer):
 
     @imperative_base.no_grad
     @framework.non_static_only
-    def step(self):
+    def step(self) -> None:
         """
         Execute the optimizer and update parameters once.
 

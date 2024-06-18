@@ -15,7 +15,7 @@
 #include "paddle/phi/kernels/selected_rows/adam_kernel.h"
 
 #include "glog/logging.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"

@@ -25,7 +25,7 @@
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
-#include "paddle/utils/flags.h"
+#include "paddle/common/flags.h"
 
 namespace cinn {
 
@@ -118,6 +118,8 @@ class CodeGenC : public ir::IrPrinter {
   Target target_;
   std::stringstream ss_;
   bool inline_builtin_codes_{true};
+  std::unordered_map<const ir::Store*, ir::Expr> store_to_offset_;
+  std::unordered_map<const ir::Load*, ir::Expr> load_to_offset_;
 };
 
 namespace detail {

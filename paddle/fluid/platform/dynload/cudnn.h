@@ -36,6 +36,7 @@ extern bool HasCUDNN();
  * different cudnn version has different interfaces
  **/
 #define CUDNN_DNN_ROUTINE_EACH(__macro)                    \
+  __macro(cudnnSetCallback);                               \
   __macro(cudnnSetTensor4dDescriptor);                     \
   __macro(cudnnSetTensor4dDescriptorEx);                   \
   __macro(cudnnSetTensorNdDescriptor);                     \
@@ -90,13 +91,6 @@ extern bool HasCUDNN();
   __macro(cudnnSetDropoutDescriptor);                      \
   __macro(cudnnRestoreDropoutDescriptor);                  \
   __macro(cudnnCreateRNNDescriptor);                       \
-  __macro(cudnnGetRNNParamsSize);                          \
-  __macro(cudnnGetRNNWorkspaceSize);                       \
-  __macro(cudnnGetRNNTrainingReserveSize);                 \
-  __macro(cudnnRNNForwardTraining);                        \
-  __macro(cudnnRNNBackwardData);                           \
-  __macro(cudnnRNNBackwardWeights);                        \
-  __macro(cudnnRNNForwardInference);                       \
   __macro(cudnnDestroyDropoutDescriptor);                  \
   __macro(cudnnDestroyRNNDescriptor);                      \
   __macro(cudnnSetTensorNdDescriptorEx);                   \
@@ -111,8 +105,7 @@ extern bool HasCUDNN();
   __macro(cudnnCreateActivationDescriptor);                \
   __macro(cudnnSetActivationDescriptor);                   \
   __macro(cudnnGetActivationDescriptor);                   \
-  __macro(cudnnDestroyActivationDescriptor);               \
-  __macro(cudnnSetRNNDescriptor_v6);
+  __macro(cudnnDestroyActivationDescriptor);
 CUDNN_DNN_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
 #if CUDNN_VERSION >= 7000 && CUDNN_VERSION < 8000
@@ -147,12 +140,7 @@ CUDNN_DNN_ROUTINE_EACH_R7(PLATFORM_DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #define CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7(__macro) \
   __macro(cudnnCreateRNNDataDescriptor);             \
   __macro(cudnnDestroyRNNDataDescriptor);            \
-  __macro(cudnnSetRNNDataDescriptor);                \
-  __macro(cudnnSetRNNPaddingMode);                   \
-  __macro(cudnnRNNForwardTrainingEx);                \
-  __macro(cudnnRNNBackwardDataEx);                   \
-  __macro(cudnnRNNBackwardWeightsEx);                \
-  __macro(cudnnRNNForwardInferenceEx);
+  __macro(cudnnSetRNNDataDescriptor);
 CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7(PLATFORM_DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
@@ -182,6 +170,39 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7(PLATFORM_DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 CUDNN_DNN_ROUTINE_EACH_R8(PLATFORM_DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
+#if CUDNN_VERSION < 90000
+#define CUDNN_DNN_ROUTINE_EACH_REMOVED_IN_E9(__macro) \
+  __macro(cudnnGetRNNParamsSize);                     \
+  __macro(cudnnGetRNNWorkspaceSize);                  \
+  __macro(cudnnGetRNNTrainingReserveSize);            \
+  __macro(cudnnSetRNNDescriptor_v6);                  \
+  __macro(cudnnRNNForwardInference);                  \
+  __macro(cudnnRNNForwardTraining);                   \
+  __macro(cudnnRNNBackwardData);                      \
+  __macro(cudnnRNNBackwardWeights);
+CUDNN_DNN_ROUTINE_EACH_REMOVED_IN_E9(PLATFORM_DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+#endif
+
+#if CUDNN_VERSION < 90000 && CUDNN_VERSION >= 7201
+#define CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7_REMOVED_IN_E9(__macro) \
+  __macro(cudnnSetRNNPaddingMode);                                 \
+  __macro(cudnnRNNForwardInferenceEx);                             \
+  __macro(cudnnRNNForwardTrainingEx);                              \
+  __macro(cudnnRNNBackwardDataEx);                                 \
+  __macro(cudnnRNNBackwardWeightsEx);
+CUDNN_DNN_ROUTINE_EACH_AFTER_TWO_R7_REMOVED_IN_E9(
+    PLATFORM_DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+#endif
+
+#if CUDNN_VERSION >= 90000
+#define CUDNN_DNN_ROUTINE_EACH_R9(__macro) \
+  __macro(cudnnGetRNNWeightSpaceSize);     \
+  __macro(cudnnGetRNNTempSpaceSizes);      \
+  __macro(cudnnRNNForward);                \
+  __macro(cudnnRNNBackwardData_v8);        \
+  __macro(cudnnRNNBackwardWeights_v8);
+CUDNN_DNN_ROUTINE_EACH_R9(PLATFORM_DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+#endif
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

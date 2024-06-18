@@ -43,6 +43,10 @@
 // clang-format on
 #endif
 
+#include "paddle/common/flags.h"
+
+COMMON_DECLARE_bool(manually_trans_conv_filter);
+
 namespace phi {
 
 template <typename T, typename Context>
@@ -373,7 +377,8 @@ void ConvCudnnKernel(const Context& ctx,
     transformed_input_channel.ShareDataWith(input);
     transformed_output.ShareDataWith(*output);
   }
-  if (compute_format == phi::backends::gpu::DataLayout::kNHWC) {
+  if (compute_format == phi::backends::gpu::DataLayout::kNHWC &&
+      !FLAGS_manually_trans_conv_filter) {
     VLOG(3) << "Transform filter tensor from NCHW to NHWC.";
     ResizeToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);
     TransToChannelLast<Context, T>(ctx, &filter, &transformed_filter_channel);

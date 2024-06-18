@@ -409,7 +409,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
 
         dirname(str, optional): The saving directory path.
                             When you need to save the parameter to the memory, set it to None.
-        main_program(Program, optional): The program whose persistbale variables will
+        main_program(Program, optional): The program whose persistable variables will
                                          be saved. You can refer to
                                          :ref:`api_guide_Program_en` for more details.
                                          If it is None, the default main program will

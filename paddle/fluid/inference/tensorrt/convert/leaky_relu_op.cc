@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 // LeakyRelu converter from fluid to tensorRT
 class LeakyReluOpConverter : public OpConverter {
@@ -116,13 +114,11 @@ class LeakyReluOpConverter : public OpConverter {
     engine_->SetWeights(alpha_name, std::move(alpha_tensor));
 #endif
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(
+    ReplenishLayerAndOutput(
         output_layer, "leaky_relu", {output_name}, test_mode);
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(leaky_relu, LeakyReluOpConverter);

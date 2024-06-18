@@ -31,10 +31,10 @@ limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #elif defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/phi/core/distributed/bkcl_comm_context.h"
-PHI_DECLARE_bool(dynamic_static_unified_comm);
+COMMON_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
@@ -42,14 +42,11 @@ PHI_DECLARE_bool(dynamic_static_unified_comm);
 #include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Scope;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 class CCommInitOp : public framework::OperatorBase {
  public:
@@ -60,12 +57,12 @@ class CCommInitOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
-    if (platform::is_custom_place(place)) {
+               const phi::Place& place) const override {
+    if (place.GetType() == phi::AllocationType::CUSTOM) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       auto var = scope.FindVar(Input("X"));
       PADDLE_ENFORCE_NOT_NULL(
-          var, platform::errors::InvalidArgument("Input con not be empty."));
+          var, phi::errors::InvalidArgument("Input con not be empty."));
 
       int nranks = Attr<int>("nranks");
       int rid = Attr<int>("ring_id");
@@ -87,7 +84,7 @@ class CCommInitOp : public framework::OperatorBase {
             "c_comm_init_op");
       }
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
           "PaddlePaddle should compile with custom device."));
 #endif
     } else {
@@ -99,26 +96,27 @@ class CCommInitOp : public framework::OperatorBase {
       using UniqueId = BKCLUniqueId;
       using CommContext = platform::BKCLCommContext;
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
           "PaddlePaddle should be compiled with GPU or XPU."));
 #endif
 
-      PADDLE_ENFORCE_EQ(
-          platform::is_gpu_place(place) || platform::is_xpu_place(place),
-          true,
-          platform::errors::PreconditionNotMet(
-              "CCommInitOp can run on gpu or xpu place only."));
+      PADDLE_ENFORCE_EQ(place.GetType() == phi::AllocationType::GPU ||
+                            place.GetType() == phi::AllocationType::XPU,
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "CCommInitOp can run on gpu or xpu place only."));
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_XPU_BKCL)
       auto var = scope.FindVar(Input("X"));
       PADDLE_ENFORCE_NOT_NULL(
-          var, platform::errors::InvalidArgument("Input con not be empty."));
+          var, phi::errors::InvalidArgument("Input con not be empty."));
 
       int nranks = Attr<int>("nranks");
       int rid = Attr<int>("ring_id");
 
-      int device_id = place.device;
+      int device_id =
+          static_cast<int>(static_cast<unsigned char>(place.device));
       if (Attr<int>("device_id") >= 0) {
         device_id = Attr<int>("device_id");
       }
@@ -182,8 +180,7 @@ Initialize collective communication context within this trainer
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 

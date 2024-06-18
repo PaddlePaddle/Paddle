@@ -100,8 +100,8 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       // bool is_optimizer = is_optimizer_op(op_namescope);
       bool is_regularization = is_regularization_op(op_namescope);
 
-      VLOG(10) << "found optimizer releated op: " << op_type;
-      // initial larning_rate will be set in ipu_backend
+      VLOG(10) << "found optimizer related op: " << op_type;
+      // initial learning_rate will be set in ipu_backend
       set_ops.insert(op_type);
       if (op_type == "sgd") {
         auto type = std::string{"sgd"};
@@ -267,10 +267,10 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
         auto value = PADDLE_GET_CONST(float, op->GetAttr("value"));
         new_op.SetAttr("clip_norm", value);
       } else if (ignored_ops.count(op_type)) {
-        VLOG(10) << "Ignore optimizer releated op: " << op_type;
+        VLOG(10) << "Ignore optimizer related op: " << op_type;
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Unknown optimizer releated op_type: %s", op_type));
+            "Unknown optimizer related op_type: %s", op_type));
       }
     } else if (op_role == OpRole::kLoss) {
       VLOG(10) << "found loss op type: " << op->Type();
@@ -312,7 +312,7 @@ void IpuOptimizerExtractPass::ApplyImpl(ir::Graph* graph) const {
       new_op.SetAttr("weight_decay_mode", std::string{"l2_regularization"});
     }
   } else {
-    VLOG(10) << "No weight deacy setting found";
+    VLOG(10) << "No weight decay setting found";
   }
 
   // setup grad clip

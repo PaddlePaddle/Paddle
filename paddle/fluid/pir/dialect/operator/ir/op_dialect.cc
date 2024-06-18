@@ -14,78 +14,54 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
+#include "paddle/fluid/pir/dialect/operator/interface/layout_transformation.h"
+#include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/type_storage.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/transforms/param_to_variable.h"
-#include "paddle/pir/core/builtin_type_interfaces.h"
-#include "paddle/pir/core/interface_value.h"
-#include "paddle/pir/core/ir_printer.h"
-#include "paddle/pir/core/utils.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
-#include "paddle/pir/dialect/shape/ir/shape_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/pir/include/core/builtin_type_interfaces.h"
+#include "paddle/pir/include/core/interface_value.h"
+#include "paddle/pir/include/core/ir_printer.h"
+#include "paddle/pir/include/core/utils.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
+#include "paddle/pir/include/dialect/shape/ir/shape_attribute.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.h"
+#endif
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
-static std::unordered_map<std::string, std::string> kCustomTypeMap = {
-    {"bool", "pir::BoolAttribute"},
-    {"int", "pir::Int32Attribute"},
-    {"float", "pir::FloatAttribute"},
-    {"int64_t", "pir::Int64Attribute"},
-    {"std::string", "pir::StrAttribute"},
-    {"std::vector<int>", "pir::ArrayAttribute<pir::Int32Attribute>"},
-    {"std::vector<float>", "pir::ArrayAttribute<pir::FloatAttribute>"},
-    {"std::vector<int64_t>", "pir::ArrayAttribute<pir::Int64Attribute>"},
-    {"std::vector<std::string>", "pir::ArrayAttribute<pir::StrAttribute>"}};
 struct CombineOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
-      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    std::vector<symbol::DimExpr> out_dims;
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
+    const auto shape_data_list = [&] {
+      symbol::TensorListShapeOrDataDimExprs shape_data_list;
+      for (size_t i = 0; i < op->num_operands(); ++i) {
+        PADDLE_ENFORCE_NOT_NULL(
+            op->operand(i).type().dyn_cast<DenseTensorType>(),
+            phi::errors::InvalidArgument(
+                "Currently InferSymbolicShape of CombineOp only support "
+                "DenseTensorType."));
 
-    // Currently for all operand : type.dims == 1u
-    for (size_t i = 0; i < op->num_operands(); ++i) {
-      auto type =
-          op->operand(i).type().dyn_cast<paddle::dialect::DenseTensorType>();
-      IR_ENFORCE(type, "Currently only support DenseTensorType.");
-      IR_ENFORCE(type.dims().size() == 0u,
-                 "Currently CombineOp only support 0-d DenseTensorType for "
-                 "InferSymbolicShape. But the dims of the %d-th "
-                 "DenseTensorType is %d.",
-                 i,
-                 type.dims().size());
-    }
-
-    auto operand_source_1st_data =
-        shape_analysis->GetShapeOrDataForValue(op->operand_source(0)).data();
-    if (operand_source_1st_data.has_value()) {
-      for (auto operand_source : op->operands_source()) {
-        auto source_data =
-            shape_analysis->GetShapeOrDataForValue(operand_source)
-                .data()
-                .value();
-        out_dims.push_back(source_data[0]);
+        shape_data_list.emplace_back(
+            infer_context->GetShapeOrDataForValue(op->operand_source(i))
+                .dyn_cast<symbol::TensorShapeOrDataDimExprs>());
       }
-    }
+      return shape_data_list;
+    }();
 
-    // TODO(zhangbopd): use op->result(0) to infer the shape
-    symbol::ShapeOrDataDimExprs shape_data{out_dims};
-    if (operand_source_1st_data.has_value()) {
-      std::vector<symbol::DimExpr> tmp_shape(std::int64_t(out_dims.size()));
-      symbol::ShapeOrDataDimExprs temp_shape_data(tmp_shape, out_dims);
-      shape_data = temp_shape_data;
-    }
-
-    op->set_attribute("symbolic_shape",
-                      pir::shape::SymbolAttribute::get(
-                          pir::IrContext::Instance(), shape_data));
-    auto res = op->result(0);
-    shape_analysis->SetShapeOrDataForValue(res, shape_data);
+    symbol::ShapeOrDataDimExprs shape_data{shape_data_list};
+    infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
     return true;
   }
 
@@ -93,11 +69,43 @@ struct CombineOpInferSymbolicShapeInterfaceModel
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
+struct ConstantOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
+    PADDLE_ENFORCE_NOT_NULL(
+        op->result(0).type().dyn_cast<DenseTensorType>(),
+        phi::errors::InvalidArgument(
+            "Currently InferSymbolicShape of ConstantOp only support "
+            "DenseTensorType result."));
+
+    const std::vector<symbol::DimExpr> out_dims = [op] {
+      std::vector<symbol::DimExpr> dims;
+      const std::vector<int64_t> result_dims = common::vectorize(
+          op->result(0).type().dyn_cast<pir::DenseTensorType>().dims());
+      for (size_t i = 0; i < result_dims.size(); i++) {
+        dims.emplace_back(result_dims[i]);
+      }
+      return dims;
+    }();
+
+    infer_context->SetShapeOrDataForValue(
+        op->result(0),
+        symbol::ShapeOrDataDimExprs{
+            symbol::TensorShapeOrDataDimExprs(out_dims)});
+
+    return true;
+  }
+
+  ConstantOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
 struct ParameterOpInferSymbolicShapeInterfaceModel
     : public InferSymbolicShapeInterface::Concept {
   static inline bool InferSymbolicShape(
-      pir::Operation* op, pir::ShapeConstraintIRAnalysis* shape_analysis) {
-    pir::OpResult res0 = op->result(0);
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
+    pir::Value res0 = op->result(0);
 
     std::vector<int64_t> dims =
         common::vectorize(res0.type().dyn_cast<pir::DenseTensorType>().dims());
@@ -107,7 +115,7 @@ struct ParameterOpInferSymbolicShapeInterfaceModel
     for (int64_t dim : dims) {
       symbol::DimExpr dim_expr;
       if (dim == -1) {
-        symbol::DimExpr res_dim_expr(shape_analysis->GetNextSymName());
+        symbol::DimExpr res_dim_expr(infer_context->GetNextSymName());
         dim_expr = res_dim_expr;
       } else {
         symbol::DimExpr res_dim_expr(dim);
@@ -116,12 +124,10 @@ struct ParameterOpInferSymbolicShapeInterfaceModel
       sym_shape.push_back(dim_expr);
     }
 
-    symbol::ShapeOrDataDimExprs shape_data{sym_shape};
-    op->set_attribute("symbolic_shape",
-                      pir::shape::SymbolAttribute::get(
-                          pir::IrContext::Instance(), shape_data));
+    symbol::ShapeOrDataDimExprs shape_data{
+        symbol::TensorShapeOrDataDimExprs(sym_shape)};
 
-    shape_analysis->SetShapeOrDataForValue(res0, shape_data);
+    infer_context->SetShapeOrDataForValue(res0, shape_data);
 
     return true;
   }
@@ -130,37 +136,147 @@ struct ParameterOpInferSymbolicShapeInterfaceModel
       : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
 };
 
+struct SetParameterOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
+    return true;
+  }
+
+  SetParameterOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
+struct ShadowOutputOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
+    pir::Value operand_source = op->operand_source(0);
+    auto input_shapeordata =
+        infer_context->GetShapeOrDataForValue(operand_source);
+
+    symbol::ShapeOrDataDimExprs shape_data = input_shapeordata;
+    pir::shape::SetShapeAttrForOp(op, shape_data);
+
+    return true;
+  }
+
+  ShadowOutputOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
+struct SliceOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
+    const auto index =
+        op->attributes().at("index").dyn_cast<pir::Int32Attribute>().data();
+    const auto& input_shape =
+        infer_context->GetShapeOrDataForValue(op->operand_source(0));
+    CHECK(input_shape.isa<symbol::TensorListShapeOrDataDimExprs>());
+    const symbol::TensorListShapeOrDataDimExprs& data_shape_list =
+        input_shape.dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+    const symbol::TensorShapeOrDataDimExprs& output_shape =
+        data_shape_list[index];
+    infer_context->SetShapeOrDataForValue(op->result(0), output_shape);
+
+    return true;
+  }
+
+  SliceOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
+struct SplitOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
+    const auto& shape_data_list =
+        infer_context->GetShapeOrDataForValue(op->operand_source(0))
+            .dyn_cast<symbol::TensorListShapeOrDataDimExprs>();
+
+    for (uint32_t rst_idx = 0; rst_idx < op->num_results(); rst_idx++) {
+      PADDLE_ENFORCE_EQ(
+          shape_data_list[rst_idx].data().has_value(),
+          false,
+          paddle::platform::errors::InvalidArgument(
+              "Currently InferSymbolicShape of SplitOp only support "
+              "input without value."));
+      infer_context->SetShapeOrDataForValue(
+          op->result(rst_idx),
+          symbol::ShapeOrDataDimExprs{shape_data_list[rst_idx]});
+    }
+    return true;
+  }
+
+  SplitOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
+struct YieldOpInferSymbolicShapeInterfaceModel
+    : public InferSymbolicShapeInterface::Concept {
+  static inline bool InferSymbolicShape(
+      pir::Operation* op, pir::InferSymbolicShapeContext* infer_context) {
+    // Since YieldOp has no output, just return true
+    return true;
+  }
+
+  YieldOpInferSymbolicShapeInterfaceModel()
+      : InferSymbolicShapeInterface::Concept(InferSymbolicShape) {}
+};
+
 OperatorDialect::OperatorDialect(pir::IrContext* ctx)
     : pir::Dialect(name(), ctx, pir::TypeId::get<OperatorDialect>()) {
   initialize();
   ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
+
   auto info = ctx->GetRegisteredOpInfo(pir::TuplePushOp::name());
-  info.AttachInterface(std::move(
-      pir::InterfaceValue::Get<VjpInterface, TuplePushOpVjpInterfaceModel>()));
+  info.AttachInterface(
+      pir::InterfaceValue::Get<VjpInterface, TuplePushOpVjpInterfaceModel>());
 
   info = ctx->GetRegisteredOpInfo(pir::CombineOp::name());
-  info.AttachInterface(std::move(
+  info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
-                               CombineOpInferSymbolicShapeInterfaceModel>()));
+                               CombineOpInferSymbolicShapeInterfaceModel>());
+  info.AttachInterface(pir::InterfaceValue::Get<
+                       LayoutTransformationInterface,
+                       LayoutTransformationInterface::Model<pir::CombineOp>>());
 
   info = ctx->GetRegisteredOpInfo(pir::ParameterOp::name());
-  info.AttachInterface(std::move(
+  info.AttachInterface(
       pir::InterfaceValue::Get<InferSymbolicShapeInterface,
-                               ParameterOpInferSymbolicShapeInterfaceModel>()));
+                               ParameterOpInferSymbolicShapeInterfaceModel>());
+
+  info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
+  info.AttachInterface(pir::InterfaceValue::Get<
+                       InferSymbolicShapeInterface,
+                       ShadowOutputOpInferSymbolicShapeInterfaceModel>());
+
+  info = ctx->GetRegisteredOpInfo(pir::SplitOp::name());
+  info.AttachInterface(
+      pir::InterfaceValue::Get<InferSymbolicShapeInterface,
+                               SplitOpInferSymbolicShapeInterfaceModel>());
+
+  info = ctx->GetRegisteredOpInfo(pir::YieldOp::name());
+  info.AttachInterface(
+      pir::InterfaceValue::Get<InferSymbolicShapeInterface,
+                               YieldOpInferSymbolicShapeInterfaceModel>());
+
+  info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+  info.AttachInterface(pir::InterfaceValue::Get<
+                       InferSymbolicShapeInterface,
+                       SetParameterOpInferSymbolicShapeInterfaceModel>());
+
+  info = ctx->GetRegisteredOpInfo(pir::SliceOp::name());
+  info.AttachInterface(
+      pir::InterfaceValue::Get<InferSymbolicShapeInterface,
+                               SliceOpInferSymbolicShapeInterfaceModel>());
 }
 
 void PrintTypeImpl(pir::Type type, std::ostream& os) {
   os << type.dialect().name();
   os << '.';
-  if (auto tensor_type = type.dyn_cast<DenseTensorType>()) {
-    os << "tensor<";
-    for (auto d : common::vectorize(tensor_type.dims())) {
-      os << d;
-      os << "x";
-    }
-    tensor_type.dtype().Print(os);
-    os << ">";
-  } else if (auto selected_rows_type = type.dyn_cast<SelectedRowsType>()) {
+  if (auto selected_rows_type = type.dyn_cast<SelectedRowsType>()) {
     os << "selectedrows<";
     for (auto d : common::vectorize(selected_rows_type.dims())) {
       os << d;
@@ -172,6 +288,15 @@ void PrintTypeImpl(pir::Type type, std::ostream& os) {
     os << "tensor_array<";
     tensor_array_type.dtype().Print(os);
     os << ">";
+  } else if (auto sparse_coo_tensor_type =
+                 type.dyn_cast<SparseCooTensorType>()) {
+    os << "sparsecootensor<";
+    for (auto d : common::vectorize(sparse_coo_tensor_type.dims())) {
+      os << d;
+      os << "x";
+    }
+    sparse_coo_tensor_type.dtype().Print(os);
+    os << ">";
   }
 }
 void PrintAttributeImpl(pir::Attribute attr, std::ostream& os) {
@@ -182,7 +307,7 @@ void PrintAttributeImpl(pir::Attribute attr, std::ostream& os) {
     os << "IntArray)"
        << "[";
     const auto& inner_data = data.GetData();
-    pir::PrintInterleave(
+    pir::detail::PrintInterleave(
         inner_data.begin(),
         inner_data.end(),
         [&os](int64_t i) { os << i; },
@@ -205,14 +330,17 @@ void PrintOperationImpl(pir::Operation* op,
     if_op.Print(printer);
   } else if (auto while_op = op->dyn_cast<WhileOp>()) {
     while_op.Print(printer);
+  } else if (auto pylayer_op = op->dyn_cast<PyLayerOp>()) {
+    pylayer_op.Print(printer);
   } else {
     printer.PrintGeneralOperation(op);
   }
 }
 
 void OperatorDialect::initialize() {
-  RegisterTypes<paddle::dialect::DenseTensorType,
-                paddle::dialect::SelectedRowsType,
+  RegisterTypes<paddle::dialect::SelectedRowsType,
+                paddle::dialect::SparseCooTensorType,
+                paddle::dialect::SparseCsrTensorType,
                 paddle::dialect::DenseTensorArrayType>();
 
   RegisterAttributes<paddle::dialect::IntArrayAttribute,
@@ -255,6 +383,17 @@ void OperatorDialect::initialize() {
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.cc"  // NOLINT
       >();
 
+  RegisterOps<
+#define GET_OP_LIST
+#include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.cc"  // NOLINT
+      >();
+
+#ifdef PADDLE_WITH_DNNL
+  RegisterOps<
+#define GET_OP_LIST
+#include "paddle/fluid/pir/dialect/operator/ir/manual_onednn_op.cc"  // NOLINT
+      >();
+#endif
   RegisterInterfaces<ParameterConvertInterface>();
 }
 
@@ -265,35 +404,6 @@ void OperatorDialect::PrintType(pir::Type type, std::ostream& os) const {
 void OperatorDialect::PrintAttribute(pir::Attribute attr,
                                      std::ostream& os) const {
   PrintAttributeImpl(attr, os);
-}
-
-pir::Type OperatorDialect::ParseType(pir::IrParser& parser) {  // NOLINT
-  parser.ConsumeAToken("pd_op.tensor");
-  parser.ConsumeAToken("<");
-  std::vector<int> dim{};
-  Token dim_token = parser.PeekToken();
-  while (dim_token.token_type_ == DIGIT) {
-    dim_token = parser.ConsumeToken();
-    dim.push_back(atoi(dim_token.val_.c_str()));
-    std::string peek_token_val = parser.PeekToken().val_;
-    if (peek_token_val[0] != 'x') {
-      break;
-    }
-    parser.ConsumeToken();
-    parser.lexer->Unget(static_cast<int>(peek_token_val.size() - 1));
-    if (parser.PeekToken().token_type_ != DIGIT) {
-      break;
-    }
-  }
-  phi::DDim ddim = common::make_ddim(dim);
-  pir::Type dtype = parser.ParseType();
-  std::vector<std::vector<size_t>> lod;
-  std::vector<size_t> lodv;
-  lodv.push_back(0);
-  lod.push_back(lodv);
-  parser.ConsumeAToken(">");
-  return DenseTensorType::get(
-      parser.ctx, dtype, ddim, phi::DataLayout::UNDEFINED, lod, 0);
 }
 
 pir::Attribute OperatorDialect::ParseAttribute(
@@ -316,9 +426,11 @@ pir::Attribute OperatorDialect::ParseAttribute(
   }
 }
 
-void OperatorDialect::PrintOperation(pir::Operation* op,
-                                     pir::IrPrinter& printer) const {
-  PrintOperationImpl(op, printer);
+pir::OpPrintFn OperatorDialect::PrintOperation(pir::Operation* op) const {
+  if (op->isa<IfOp>() || op->isa<WhileOp>() || op->isa<PyLayerOp>()) {
+    return PrintOperationImpl;
+  }
+  return nullptr;
 }
 
 class IdManager {
@@ -328,7 +440,9 @@ class IdManager {
     return instance;
   }
 
-  ~IdManager() {
+  IdManager() : ids_() {}
+
+  ~IdManager() {  // NOLINT
     for (auto id : ids_) {
       delete id;
     }
@@ -352,7 +466,9 @@ class AttributeManager {
     return instance;
   }
 
-  ~AttributeManager() {
+  AttributeManager() : char_pointers_(), pointers_size_() {}
+
+  ~AttributeManager() {  // NOLINT
     for (size_t i = 0; i < char_pointers_.size(); i++) {
       for (size_t j = 0; j < pointers_size_[i]; j++) {
         delete char_pointers_[i][j];
@@ -385,6 +501,8 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
   static OpInfoTuple GetPirOpInfo(const std::string& pir_op_name) {
     const auto& op_meta =
         paddle::framework::detail::GetOpInfoByPirName(pir_op_name);
+    const auto* grad_op_meta_ptr =
+        paddle::framework::detail::GetGradOpInfoByFwdPirName(pir_op_name);
     std::vector<paddle::dialect::OpInputInfo> inputs_info;
     std::vector<paddle::dialect::OpAttributeInfo> attributes_info;
     std::vector<paddle::dialect::OpOutputInfo> outputs_info;
@@ -394,6 +512,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
     for (const auto& input_name : op_input_names) {
       param_names.push_back(input_name);
       bool is_optional = false;
+      bool with_grad_semantic = false;
       std::string input_type = "paddle::dialect::DenseTensorType";
       if (paddle::framework::detail::IsOptionalVar(input_name)) {
         is_optional = true;
@@ -401,9 +520,32 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
       if (paddle::framework::detail::IsDuplicableVar(input_name)) {
         input_type = "pir::VectorType<paddle::dialect::DenseTensorType>";
       }
+      if (grad_op_meta_ptr) {
+        const auto& grad_op_name =
+            OpMetaInfoHelper::GetOpName(*grad_op_meta_ptr);
+        auto& grad_op_output_names =
+            OpMetaInfoHelper::GetOutputs(*grad_op_meta_ptr);
+        bool is_double_grad_op =
+            (grad_op_name.find(paddle::framework::kDoubleGradSuffix) !=
+             grad_op_name.npos)
+                ? true
+                : false;
+        for (auto& grad_op_output_name : grad_op_output_names) {
+          auto fwd_input_name = paddle::framework::detail::NoGrad(
+              grad_op_output_name, is_double_grad_op);
+          if (input_name == fwd_input_name) {
+            with_grad_semantic = true;
+            break;
+          }
+        }
+      }
       // Now, we only support dense tensor as input.
-      inputs_info.push_back(paddle::dialect::OpInputInfo{
-          input_name, input_type, is_optional, false, false, false});
+      inputs_info.push_back(paddle::dialect::OpInputInfo{input_name,
+                                                         input_type,
+                                                         is_optional,
+                                                         false,
+                                                         false,
+                                                         with_grad_semantic});
     }
 
     // translate attr info
@@ -413,7 +555,7 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
       auto attr_name = attr_name_and_type[0];
       auto attr_type_str = attr_name_and_type[1];
       param_names.push_back(attr_name);
-      if (kCustomTypeMap.find(attr_type_str) == kCustomTypeMap.end()) {
+      if (CppTypeToAttrTypeMap().count(attr_type_str) == 0) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported `%s` type value as custom attribute now. "
             "Supported data types include `bool`, `int`, `float`, "
@@ -423,9 +565,8 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
             "the attribute data type and data type string are matched.",
             attr_type_str));
       }
-      std::string attr_pir_type = kCustomTypeMap[attr_type_str];
-      attributes_info.push_back(
-          paddle::dialect::OpAttributeInfo{attr_name, attr_pir_type, ""});
+      std::string attr_pir_type = CppTypeToAttrTypeMap().at(attr_type_str);
+      attributes_info.emplace_back(attr_name, attr_pir_type, "");
     }
 
     // translate output info
@@ -450,8 +591,8 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
     }
 
     std::vector<std::pair<std::string, std::string>> vec_inplace;
-    for (auto inplace_map : inplace_maps) {
-      vec_inplace.push_back(inplace_map);
+    for (const auto& inplace_map : inplace_maps) {
+      vec_inplace.emplace_back(inplace_map);
     }
 
     // we only need kernel params name in run_time_info
@@ -466,6 +607,390 @@ struct CustomOpInfoInterfaceModel : public OpYamlInfoInterface::Concept {
   CustomOpInfoInterfaceModel() : OpYamlInfoInterface::Concept(GetPirOpInfo) {}
 };
 
+struct CustomOpVjpInterfaceModel : public VjpInterface::Concept {
+  static std::vector<std::vector<pir::Value>> CustomOpVjp(
+      pir::Operation* op,
+      const std::vector<std::vector<pir::Value>>& inputs,
+      const std::vector<std::vector<pir::Value>>& outputs,
+      const std::vector<std::vector<pir::Value>>& out_grads,
+      const std::vector<std::vector<bool>>& stop_gradients) {
+    std::string pir_op_name = op->name();
+    const auto& fwd_op_meta_info =
+        paddle::framework::detail::GetOpInfoByPirName(pir_op_name);
+    const auto& fwd_inputs_name =
+        paddle::OpMetaInfoHelper::GetInputs(fwd_op_meta_info);
+    const auto& fwd_attrs_name =
+        paddle::OpMetaInfoHelper::GetAttrs(fwd_op_meta_info);
+    const auto& fwd_outputs_name =
+        paddle::OpMetaInfoHelper::GetOutputs(fwd_op_meta_info);
+
+    const auto* bwd_op_meta_info_ptr =
+        paddle::framework::detail::GetGradOpInfoByFwdPirName(pir_op_name);
+    if (bwd_op_meta_info_ptr == nullptr) {
+      PADDLE_THROW("Custom op : " + pir_op_name + " doesn't support its grad.");
+    }
+    const auto& bwd_op_meta_info = *bwd_op_meta_info_ptr;
+    const auto& bwd_inputs_name =
+        paddle::OpMetaInfoHelper::GetInputs(bwd_op_meta_info);
+    const auto& bwd_outputs_name =
+        paddle::OpMetaInfoHelper::GetOutputs(bwd_op_meta_info);
+    const auto& bwd_inplace_map =
+        paddle::OpMetaInfoHelper::GetInplaceMap(bwd_op_meta_info);
+    const auto& bwd_op_name =
+        paddle::OpMetaInfoHelper::GetOpName(bwd_op_meta_info);
+    std::string bwd_pir_op_name =
+        paddle::framework::kCustomDialectPrefix + bwd_op_name;
+    if (!bwd_inplace_map.empty()) {
+      // inplace case
+      bwd_pir_op_name += "_";
+    }
+    auto infershape_func = OpMetaInfoHelper::GetInferShapeFn(bwd_op_meta_info);
+    auto inferdtype_func = OpMetaInfoHelper::GetInferDtypeFn(bwd_op_meta_info);
+    PADDLE_ENFORCE_EQ(
+        inputs.size(),
+        fwd_inputs_name.size(),
+        paddle::platform::errors::InvalidArgument(
+            "Custom op: %s inputs size should be %d, but now is %d.",
+            pir_op_name,
+            fwd_inputs_name.size(),
+            inputs.size()));
+    PADDLE_ENFORCE_EQ(
+        outputs.size(),
+        fwd_outputs_name.size(),
+        paddle::platform::errors::InvalidArgument(
+            "Custom op: %s outputs size should be %d, but now is %d.",
+            pir_op_name,
+            fwd_outputs_name.size(),
+            outputs.size()));
+
+    PADDLE_ENFORCE_EQ(
+        out_grads.size(),
+        fwd_outputs_name.size(),
+        paddle::platform::errors::InvalidArgument(
+            "Custom op: %s outputs grad size should be %d, but now is %d.",
+            pir_op_name,
+            fwd_outputs_name.size(),
+            out_grads.size()));
+    bool is_double_grad_op =
+        (bwd_pir_op_name.find(paddle::framework::kDoubleGradSuffix) !=
+         bwd_pir_op_name.npos)
+            ? true
+            : false;
+    pir::IrContext* ctx = pir::IrContext::Instance();
+    pir::OpInfo pir_info = ctx->GetRegisteredOpInfo(bwd_pir_op_name);
+    pir::OperationArgument argument(pir_info);
+    std::vector<pir::Value> argument_inputs;
+    std::vector<pir::Type> argument_outputs;
+
+    std::vector<std::vector<int64_t>> input_shapes;
+    std::vector<DataType> input_dtypes;
+    std::unordered_map<std::string, int> input_name2id_map;
+    std::vector<std::vector<std::vector<int64_t>>> vec_input_shapes;
+    std::vector<std::vector<DataType>> vec_input_dtypes;
+    std::unordered_map<std::string, int> vec_input_name2id_map;
+    std::vector<paddle::any> custom_attrs;
+    auto GetInputLocation =
+        [&](const std::string& grad_op_input_name) -> std::pair<int, int> {
+      auto fwd_inputs_name_iter = std::find(
+          fwd_inputs_name.begin(), fwd_inputs_name.end(), grad_op_input_name);
+      auto fwd_outputs_name_iter = std::find(
+          fwd_outputs_name.begin(), fwd_outputs_name.end(), grad_op_input_name);
+      bool is_grad_var = paddle::framework::detail::IsGradVar(
+          grad_op_input_name, is_double_grad_op);
+      if (fwd_inputs_name_iter != fwd_inputs_name.end()) {
+        int index =
+            std::distance(fwd_inputs_name.begin(), fwd_inputs_name_iter);
+        return std::make_pair(0, index);
+      } else if (fwd_outputs_name_iter != fwd_outputs_name.end()) {
+        int index =
+            std::distance(fwd_outputs_name.begin(), fwd_outputs_name_iter);
+        return std::make_pair(1, index);
+      } else if (is_grad_var) {
+        auto fwd_output_name = paddle::framework::detail::NoGrad(
+            grad_op_input_name, is_double_grad_op);
+        fwd_outputs_name_iter = std::find(
+            fwd_outputs_name.begin(), fwd_outputs_name.end(), fwd_output_name);
+        if (fwd_outputs_name_iter != fwd_outputs_name.end()) {
+          int index =
+              std::distance(fwd_outputs_name.begin(), fwd_outputs_name_iter);
+          return std::make_pair(2, index);
+        } else {
+          PADDLE_THROW(paddle::platform::errors::NotFound(
+              "Can't find the grad op input:%s, please check your register "
+              "grad op whether has correct input name",
+              grad_op_input_name));
+        }
+      } else {
+        PADDLE_THROW(paddle::platform::errors::NotFound(
+            "Can't find the grad op input:%s, please check your register grad "
+            "op whether has correct input name",
+            grad_op_input_name));
+      }
+    };
+    // Construct custom grad op inputs
+    int input_index = 0;
+    int vec_input_index = 0;
+    for (const auto& bwd_input_name : bwd_inputs_name) {
+      const auto input_location = GetInputLocation(bwd_input_name);
+      std::vector<pir::Value> input_values;
+      if (input_location.first == 0) {
+        // grad op input is in inputs
+        input_values = inputs[input_location.second];
+      } else if (input_location.first == 1) {
+        // grad op input is in outputs
+        input_values = outputs[input_location.second];
+      } else {
+        // grad op input is in out_grads
+        input_values = out_grads[input_location.second];
+      }
+      if (paddle::framework::detail::IsDuplicableVar(bwd_input_name)) {
+        std::vector<std::vector<int64_t>> tmp_input_shapes;
+        std::vector<phi::DataType> tmp_input_dtypes;
+        pir::Value input_value;
+        vec_input_name2id_map[bwd_input_name] = vec_input_index;
+        vec_input_index++;
+        bool is_optional =
+            (input_values.size() == 1 && input_values[0].impl() == nullptr);
+        if (!is_optional) {
+          for (auto& input_value : input_values) {
+            paddle::dialect::DenseTensorType input_tensor =
+                input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+            tmp_input_shapes.push_back(phi::vectorize(input_tensor.dims()));
+            tmp_input_dtypes.push_back(
+                paddle::dialect::TransToPhiDataType(input_tensor.dtype()));
+          }
+          input_value = paddle::dialect::builtin_combine(input_values);
+        }
+        vec_input_shapes.push_back(tmp_input_shapes);
+        vec_input_dtypes.push_back(tmp_input_dtypes);
+        argument_inputs.push_back(input_value);
+      } else {
+        std::vector<int64_t> tmp_input_shape;
+        phi::DataType tmp_input_dtype = DataType::UNDEFINED;
+        input_name2id_map[bwd_input_name] = input_index;
+        input_index++;
+        pir::Value input_value = input_values[0];  // NOLINT
+        if (input_value.impl() != nullptr) {
+          paddle::dialect::DenseTensorType input_tensor =
+              input_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
+          tmp_input_shape = phi::vectorize(input_tensor.dims());
+          tmp_input_dtype =
+              paddle::dialect::TransToPhiDataType(input_tensor.dtype());
+        }
+        input_shapes.push_back(tmp_input_shape);
+        input_dtypes.push_back(tmp_input_dtype);
+
+        argument_inputs.push_back(input_value);
+      }
+    }
+    argument.AddInputs(argument_inputs);
+    // Construct custom grad op attr
+    for (const auto& fwd_attr : fwd_attrs_name) {
+      std::vector<std::string> attr_name_and_type =
+          paddle::ParseAttrStr(fwd_attr);
+      auto fwd_attr_name = attr_name_and_type[0];
+      auto fwd_op_attr = op->attribute(fwd_attr_name);
+      custom_attrs.push_back(paddle::dialect::TransAttrToAny(fwd_op_attr));
+      argument.AddAttribute(fwd_attr_name, fwd_op_attr);
+    }
+    // Run Compile InferMeta
+    std::vector<std::vector<int64_t>> output_shapes =
+        paddle::framework::RunInferShape(infershape_func,
+                                         bwd_op_meta_info,
+                                         input_shapes,
+                                         input_name2id_map,
+                                         vec_input_shapes,
+                                         vec_input_name2id_map,
+                                         custom_attrs);
+    std::vector<phi::DataType> output_dtypes =
+        paddle::framework::RunInferDtype(inferdtype_func,
+                                         bwd_op_meta_info,
+                                         input_dtypes,
+                                         input_name2id_map,
+                                         vec_input_dtypes,
+                                         vec_input_name2id_map,
+                                         custom_attrs);
+    size_t all_values_num = 0;
+    // output name -> value num (that output should hold)
+    std::unordered_map<std::string, size_t> output_name2value_num;
+    for (const auto& bwd_output_name : bwd_outputs_name) {
+      const auto& bwd_input =
+          paddle::framework::detail::NoGrad(bwd_output_name, is_double_grad_op);
+
+      if (paddle::framework::detail::IsDuplicableVar(bwd_output_name)) {
+        auto index = vec_input_name2id_map[bwd_input];
+        auto& vec_input_shape = vec_input_shapes[index];
+        output_name2value_num[bwd_output_name] = vec_input_shape.size();
+      } else {
+        auto index = input_name2id_map[bwd_input];
+        // input_shapes[index] is dim of tensor, if the dim doesn't have
+        // element, it must be a optional tensor that is None in custom operator
+        output_name2value_num[bwd_output_name] =
+            input_shapes[index].size() == 0 ? 0 : 1;
+      }
+      all_values_num += output_name2value_num[bwd_output_name];
+    }
+
+    PADDLE_ENFORCE_EQ(
+        output_shapes.size(),
+        all_values_num,
+        phi::errors::InvalidArgument(
+            "The number of output shapes after running custom operator's "
+            "InferShapeFunc is wrong, "
+            "expected contains %d Tensors' shape, but actually contains %d "
+            "Tensors' shape",
+            all_values_num,
+            output_shapes.size()));
+
+    PADDLE_ENFORCE_EQ(
+        output_dtypes.size(),
+        all_values_num,
+        phi::errors::InvalidArgument(
+            "The number of output dtypes after running custom operator's "
+            "InferDtypeFunc is wrong, "
+            "expected contains %d Tensors' dtype, but actually contains %d "
+            "Tensors' dtype",
+            all_values_num,
+            output_dtypes.size()));
+    // Construct custom grad op outputs
+    size_t value_index = 0;
+    for (const auto& bwd_output_name : bwd_outputs_name) {
+      auto value_num = output_name2value_num[bwd_output_name];
+      if (value_num == 0) {
+        // Optional value condition
+        pir::Type out_type;
+        argument_outputs.push_back(out_type);
+        continue;
+      }
+      if (paddle::framework::detail::IsDuplicableVar(bwd_output_name)) {
+        std::vector<pir::Type> out_types;
+        for (size_t j = 0; j < value_num; ++j) {
+          auto ddims = phi::make_ddim(output_shapes[value_index]);
+          auto dtype = output_dtypes[value_index];
+          phi::DataLayout layout{DataLayout::NCHW};
+          phi::LoD lod;
+          out_types.push_back(paddle::dialect::DenseTensorType::get(
+              pir::IrContext::Instance(),
+              paddle::dialect::TransToIrDataType(dtype),
+              ddims,
+              layout,
+              lod,
+              0));
+          value_index++;
+        }
+        pir::Type out_vector_type =
+            pir::VectorType::get(pir::IrContext::Instance(), out_types);
+        argument_outputs.push_back(out_vector_type);
+      } else {
+        auto ddims = phi::make_ddim(output_shapes[value_index]);
+        auto dtype = output_dtypes[value_index];
+        phi::DataLayout layout{DataLayout::NCHW};
+        phi::LoD lod;
+        auto out_type = paddle::dialect::DenseTensorType::get(
+            pir::IrContext::Instance(),
+            paddle::dialect::TransToIrDataType(dtype),
+            ddims,
+            layout,
+            lod,
+            0);
+        argument_outputs.push_back(out_type);
+        value_index++;
+      }
+    }
+    argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+
+    // Build Operation
+    std::vector<pir::Value> op_results;
+    pir::Operation* bwd_op =
+        paddle::dialect::ApiBuilder::Instance().GetBuilder()->Build(
+            std::move(argument));
+
+    // Init result
+    std::vector<std::vector<pir::Value>> res;
+    res.resize(stop_gradients.size());
+    for (size_t i = 0; i < stop_gradients.size(); ++i) {
+      res[i].resize(stop_gradients[i].size());
+    }
+
+    auto GetInputGradientIndex = [&](const std::string& bwd_output_name,
+                                     bool is_double_grad_op) -> size_t {
+      /*
+        This function is used to get the index of input that need calculate
+        gradient in forward op. For example: forward inputs : TensorA, TensorB,
+        TensorC, TensorD backward outputs: TensorC@Grad, TensorA@Grad So, we
+        only need to calculate gradient of TensorA and TensorC and store them in
+        res; In this example, the res size is 2, and the first element of res
+        should store TensorA@Grad, and the second element of res should store
+        TensorC@Grad.
+
+        So, This function will return 1 if we pass TensorC@Grad and return 0 if
+        we pass TensorA@Grad.
+      */
+      size_t gradient_vec_index = 0;
+      const auto& fwd_input =
+          paddle::framework::detail::NoGrad(bwd_output_name, is_double_grad_op);
+      auto fwd_inputs_name_iter =
+          std::find(fwd_inputs_name.begin(), fwd_inputs_name.end(), fwd_input);
+      size_t input_index =
+          std::distance(fwd_inputs_name.begin(), fwd_inputs_name_iter);
+      for (size_t i = 0; i < input_index; ++i) {
+        for (const auto& bwd_output_name : bwd_outputs_name) {
+          const auto& fwd_input_name_tmp = paddle::framework::detail::NoGrad(
+              bwd_output_name, is_double_grad_op);
+          if (fwd_input_name_tmp == fwd_inputs_name[i]) {
+            // find forward input that need calculate gradient
+            gradient_vec_index++;
+            break;
+          }
+        }
+      }
+      return gradient_vec_index;
+    };
+
+    // Build result and apply stop gradients
+    for (size_t i = 0; i < bwd_outputs_name.size(); ++i) {
+      const auto& bwd_output_name = bwd_outputs_name.at(i);
+      const auto& fwd_input =
+          paddle::framework::detail::NoGrad(bwd_output_name, is_double_grad_op);
+      auto fwd_inputs_name_iter =
+          std::find(fwd_inputs_name.begin(), fwd_inputs_name.end(), fwd_input);
+      if (paddle::framework::detail::IsDuplicableVar(bwd_output_name)) {
+        PADDLE_ENFORCE_NE(
+            fwd_inputs_name_iter,
+            fwd_inputs_name.end(),
+            paddle::platform::errors::InvalidArgument(
+                "Custom op: %s output %s is a Vec output. It should have the "
+                "forward input that need calculate gradients.",
+                pir_op_name,
+                bwd_output_name));
+        int index = GetInputGradientIndex(bwd_output_name, is_double_grad_op);
+        if (bwd_op->result(i).type().dyn_cast<pir::VectorType>()) {
+          auto split_op =
+              ApiBuilder::Instance().GetBuilder()->Build<pir::SplitOp>(
+                  bwd_op->result(i));
+          res[index] = split_op.outputs();
+        } else {
+          // optional output condition
+          pir::Value empty_value;
+          res[index][0] = empty_value;
+        }
+      } else {
+        if (fwd_inputs_name_iter != fwd_inputs_name.end()) {
+          int index = GetInputGradientIndex(bwd_output_name, is_double_grad_op);
+          res[index][0] = bwd_op->result(i);
+        } else {
+          // Situation that has only one input and only one output. If not meet
+          // this condition, it will throw error when run infer shape.
+          res[0][0] = bwd_op->result(0);
+        }
+      }
+    }
+    return res;
+  }
+
+  CustomOpVjpInterfaceModel() : VjpInterface::Concept(CustomOpVjp) {}
+};
+
 CustomOpDialect::CustomOpDialect(pir::IrContext* context)
     : pir::Dialect(name(), context, pir::TypeId::get<CustomOpDialect>()) {}
 
@@ -478,9 +1003,8 @@ void CustomOpDialect::PrintAttribute(pir::Attribute attr,
   PrintAttributeImpl(attr, os);
 }
 
-void CustomOpDialect::PrintOperation(pir::Operation* op,
-                                     pir::IrPrinter& printer) const {
-  PrintOperationImpl(op, printer);
+pir::OpPrintFn CustomOpDialect::PrintOperation(pir::Operation* op) const {
+  return nullptr;
 }
 
 void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
@@ -494,7 +1018,10 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
     op_name += "_";
     traits.push_back(pir::TypeId::get<paddle::dialect::InplaceTrait>());
   }
-  op_names_.push_back(op_name);
+
+  char* op_name_c = new char[op_name.size() + 1];
+  snprintf(op_name_c, op_name.size() + 1, "%s", op_name.c_str());
+  op_names_.push_back(op_name_c);
 
   auto& op_attrs = OpMetaInfoHelper::GetAttrs(op_meta);
   std::vector<std::string> attr_names;
@@ -512,12 +1039,19 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
       pir::InterfaceValue::Get<OpYamlInfoInterface,
                                CustomOpInfoInterfaceModel>();
   interface_values.insert(std::move(op_info_interface));
+
+  if (paddle::framework::detail::HasGradOp(op_name)) {
+    pir::InterfaceValue vjp_interface =
+        pir::InterfaceValue::Get<VjpInterface, CustomOpVjpInterfaceModel>();
+    interface_values.insert(std::move(vjp_interface));
+  }
+
   // Currently we set empty verify function and will reset it if it is used in
   // future.
   pir::VerifyPtr verify_func = [](pir::Operation* op) {};
   ir_context()->RegisterOpInfo(this,
                                id,
-                               op_names_.back().c_str(),
+                               op_names_.back(),
                                std::move(interface_values),
                                traits,
                                attr_num,
@@ -525,8 +1059,7 @@ void CustomOpDialect::RegisterCustomOp(const paddle::OpMetaInfo& op_meta) {
                                verify_func,
                                verify_func);
 }
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OperatorDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CustomOpDialect)

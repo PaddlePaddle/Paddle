@@ -25,7 +25,8 @@ namespace paddle {
 namespace distributed {
 
 ComputeInterceptor::ComputeInterceptor(int64_t interceptor_id, TaskNode* node)
-    : Interceptor(interceptor_id, node) {
+    : Interceptor(interceptor_id, node),
+      gen_step_to_scope_id_to_finish_flag_() {
   PrepareDeps();
   RegisterMsgHandle([this](const InterceptorMessage& msg) { Compute(msg); });
 }
@@ -39,7 +40,7 @@ void ComputeInterceptor::PrepareDeps() {
     for (int64_t i = 0; i < node_->max_run_times(); ++i) {
       ready_size_map.emplace(i, 0);
     }
-    in_readys_.emplace(up.first, std::make_pair(up.second, ready_size_map));
+    in_readies_.emplace(up.first, std::make_pair(up.second, ready_size_map));
   }
   for (auto down : downstream) {
     out_buffs_.emplace(down.first, std::make_pair(down.second, 0));
@@ -106,11 +107,11 @@ InterceptorMessage ComputeInterceptor::PrepareVarsMsg() {
 }
 
 void ComputeInterceptor::IncreaseReady(int64_t up_id, int64_t scope_id) {
-  auto it = in_readys_.find(up_id);
+  auto it = in_readies_.find(up_id);
   PADDLE_ENFORCE_NE(it,
-                    in_readys_.end(),
+                    in_readies_.end(),
                     platform::errors::NotFound(
-                        "Cannot find upstream=%lld in in_readys.", up_id));
+                        "Cannot find upstream=%lld in in_readies.", up_id));
 
   auto max_ready_size = it->second.first;
   const auto& ready_scope_map = it->second.second;
@@ -171,12 +172,12 @@ bool ComputeInterceptor::IsInputReady() {
   for (int64_t i = start_micro_step; i < start_micro_step + num_micro_step;
        ++i) {
     bool flag = true;
-    for (auto& ins : in_readys_) {
+    for (auto& ins : in_readies_) {
       auto ready_size_map = ins.second.second;
       flag = flag && (ready_size_map.at(i) != 0);
     }
     if (flag) {
-      if (scope_id_to_finish_flag.empty()) {
+      if (scope_id_to_finish_flag.empty()) {  // NOLINT
         cur_scope_id_ = i;
         return true;
       } else if (scope_id_to_finish_flag.find(i) !=
@@ -268,7 +269,7 @@ void ComputeInterceptor::SendDataReadyToDownStream() {
 }
 
 void ComputeInterceptor::ReplyCompletedToUpStream() {
-  for (auto& ins : in_readys_) {
+  for (auto& ins : in_readies_) {
     auto up_id = ins.first;
     auto ready_size = ins.second.second.at(cur_scope_id_);
     ready_size -= 1;
@@ -303,7 +304,7 @@ void ComputeInterceptor::RunOps() {
                           cur_scope_id_));
   }
 
-  if (!cores_.empty()) {
+  if (!cores_.empty()) {  // NOLINT
     cores_[cur_scope_id_]->Run(/*feed_names=*/{}, /*need_fetch=*/false);
   } else {
     for (auto op : node_->ops()) {

@@ -24,17 +24,17 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-PHI_DECLARE_bool(sort_sum_gradient);
+COMMON_DECLARE_bool(sort_sum_gradient);
 
 namespace paddle {
 namespace imperative {
@@ -87,7 +87,7 @@ void BasicEngine::Init(
       var->GradVarBase()->SetGraphIsFreed(true);
     }
 
-    if (init_node == nullptr || var->OverridedStopGradient()) {
+    if (init_node == nullptr || var->OverriddenStopGradient()) {
       VLOG(3) << "Skip auto grad since there is no grad op for var or loss is "
                  "stop_gradient=True: "
               << var->Name();
@@ -106,7 +106,7 @@ void BasicEngine::Init(
         var->GradVarBase()->MutableVar()->GetMutable<phi::DenseTensor>();
     VLOG(6) << "init loss grad:" << var->GradVarBase()->Name()
             << " as stop_gradient false";
-    var->GradVarBase()->InnerSetOverridedStopGradient(false);
+    var->GradVarBase()->InnerSetOverriddenStopGradient(false);
     auto* dev_ctx =
         platform::DeviceContextPool::Instance().Get(fwd_var.place());
     if (grad_tensor == nullptr) {
@@ -508,7 +508,7 @@ void BasicEngine::Execute() {
             }
           }
 
-          if (var->OverridedStopGradient() || iter->second->RefCnt() > 1) {
+          if (var->OverriddenStopGradient() || iter->second->RefCnt() > 1) {
             auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
             tmp_var->SetType(var->Type());
             tmp_var->SetForwardDataType(var->ForwardDataType());

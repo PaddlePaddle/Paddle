@@ -418,18 +418,18 @@ void EmbSeqPool(const T* table,
         idx[i],
         attr->table_height,
         phi::errors::InvalidArgument(
-            "The idx shoud be lower than the attribute table_height of "
+            "The idx should be lower than the attribute table_height of "
             "EmbSeqPool. But %dth of idx is %d and table_height is %d.",
             i,
             idx[i],
             attr->table_height));
-    PADDLE_ENFORCE_GE(
-        idx[i],
-        0,
-        phi::errors::InvalidArgument("The idx shoud be equal to or larger than "
-                                     "the 0. But %dth of idx is %d.",
-                                     i,
-                                     idx[i]));
+    PADDLE_ENFORCE_GE(idx[i],
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The idx should be equal to or larger than "
+                          "the 0. But %dth of idx is %d.",
+                          i,
+                          idx[i]));
   };
 
   for (int64_t w = 0; w != attr->index_width; ++w) {

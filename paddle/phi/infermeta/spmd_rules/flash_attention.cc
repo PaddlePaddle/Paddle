@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
+const int kNumHeadsDimIndex = 2;
 
 #define LOG_SPMD_INPUT(name)                                                  \
   do {                                                                        \
@@ -109,10 +109,10 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
           k_batch_size));
 
   PADDLE_ENFORCE_EQ(
-      num_heads,
-      k_num_heads,
+      num_heads % k_num_heads == 0,
+      true,
       phi::errors::InvalidArgument(
-          "The Tensor q and k's num_heads [%d] vs [%d] are not matched.",
+          "The num_heads of q must be divisible by k's, but [%d] vs [%d].",
           num_heads,
           k_num_heads));
 
@@ -131,6 +131,14 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
                                    "dims_mapping size [%d] are not matched.",
                                    k_ndim,
                                    k_dims_mapping_size));
+
+  bool is_divisible = true;
+  int64_t num_head_mesh_dim = k_dist_attr.dims_mapping()[kNumHeadsDimIndex];
+  if (num_head_mesh_dim != -1) {
+    int64_t num_head_split_size =
+        k_dist_attr.process_mesh().dim_size(num_head_mesh_dim);
+    is_divisible = k_num_heads % num_head_split_size == 0;
+  }
 
   // v
   // [batch_size, seq_len_kv, num_heads, head_dim]
@@ -157,12 +165,14 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
           v_batch_size));
 
   PADDLE_ENFORCE_EQ(
-      num_heads,
-      v_num_heads,
+      num_heads % v_num_heads == 0,
+      true,
       phi::errors::InvalidArgument(
-          "The Tensor q and v's num_heads [%d] vs [%d] are not matched.",
+          "The num_heads of q must be divisible by v's, but [%d] vs [%d].",
           num_heads,
           v_num_heads));
+
+  bool is_same_num_heads = num_heads == v_num_heads;
 
   PADDLE_ENFORCE_EQ(
       k_seq_len,
@@ -229,6 +239,12 @@ SpmdInfo FlashAttInferSpmd(const DistMetaTensor& q,
   auto q_dist_attr_dst = UnShardTensorDims(q_dist_attr, {1, 3});
   auto k_dist_attr_dst = UnShardTensorDims(k_dist_attr, {1, 3});
   auto v_dist_attr_dst = UnShardTensorDims(k_dist_attr, {1, 3});
+
+  if (!is_same_num_heads && !is_divisible) {
+    q_dist_attr_dst = UnShardTensorDims(q_dist_attr, {2});
+    k_dist_attr_dst = UnShardTensorDims(k_dist_attr, {2});
+    v_dist_attr_dst = UnShardTensorDims(k_dist_attr, {2});
+  }
 
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
 
@@ -454,6 +470,21 @@ SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
   auto softmax_lse_dist_attr_dst =
       UnShardTensorDims(softmax_lse_dist_attr, {2});
 
+  bool is_same_num_heads = q_shape[2] == k_shape[2];
+  bool is_divisible = true;
+  int64_t num_head_mesh_dim = k_dist_attr.dims_mapping()[kNumHeadsDimIndex];
+  if (num_head_mesh_dim != -1) {
+    int64_t num_head_split_size =
+        k_dist_attr.process_mesh().dim_size(num_head_mesh_dim);
+    is_divisible = k_shape[2] % num_head_split_size == 0;
+  }
+
+  if (!is_same_num_heads && !is_divisible) {
+    out_dist_attr_dst = UnShardTensorDims(out_dist_attr_dst, {2});
+    softmax_lse_dist_attr_dst =
+        UnShardTensorDims(softmax_lse_dist_attr_dst, {1});
+  }
+
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
 
   axes_sharding_info.emplace_back(out_axes, out_dist_attr_dst.dims_mapping());
@@ -566,10 +597,10 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
           k_batch_size));
 
   PADDLE_ENFORCE_EQ(
-      num_heads,
-      k_num_heads,
+      num_heads % k_num_heads == 0,
+      true,
       phi::errors::InvalidArgument(
-          "The Tensor q and k's num_heads [%d] vs [%d] are not matched.",
+          "The num_heads of q must be divisible by k's, but [%d] vs [%d].",
           num_heads,
           k_num_heads));
 
@@ -614,10 +645,10 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
           v_batch_size));
 
   PADDLE_ENFORCE_EQ(
-      num_heads,
-      v_num_heads,
+      num_heads % v_num_heads == 0,
+      true,
       phi::errors::InvalidArgument(
-          "The Tensor q and v's k_num_heads [%d] vs [%d] are not matched.",
+          "The num_head of q must be divisible by v's, but [%d] vs [%d].",
           num_heads,
           v_num_heads));
 
@@ -700,6 +731,24 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
   auto softmax_lse_dist_attr_dst =
       UnShardTensorDims(softmax_lse_dist_attr, {2});
 
+  bool is_same_num_heads = num_heads == v_num_heads;
+  bool is_divisible = true;
+  int64_t num_head_mesh_dim = k_dist_attr.dims_mapping()[kNumHeadsDimIndex];
+  if (num_head_mesh_dim != -1) {
+    int64_t num_head_split_size =
+        k_dist_attr.process_mesh().dim_size(num_head_mesh_dim);
+    is_divisible = k_shape[2] % num_head_split_size == 0;
+  }
+  if (!is_same_num_heads && !is_divisible) {
+    q_dist_attr_dst = UnShardTensorDims(q_dist_attr_dst, {2});
+    k_dist_attr_dst = UnShardTensorDims(k_dist_attr_dst, {2});
+    v_dist_attr_dst = UnShardTensorDims(v_dist_attr_dst, {2});
+    out_dist_attr_dst = UnShardTensorDims(out_dist_attr_dst, {2});
+    out_grad_dist_attr_dst = UnShardTensorDims(out_grad_dist_attr_dst, {2});
+    softmax_lse_dist_attr_dst =
+        UnShardTensorDims(softmax_lse_dist_attr_dst, {1});
+  }
+
   std::vector<std::pair<std::string, std::vector<int64_t>>> axes_sharding_info;
   axes_sharding_info.emplace_back(q_axes, q_dist_attr_dst.dims_mapping());
   axes_sharding_info.emplace_back(k_axes, k_dist_attr_dst.dims_mapping());
@@ -756,5 +805,4 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
           {q_grad, k_grad, v_grad}};
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

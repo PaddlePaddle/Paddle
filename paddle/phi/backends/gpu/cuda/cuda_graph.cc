@@ -13,11 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
-
-#include <array>
-#include <queue>
-#include <unordered_map>
-#include <unordered_set>
+#include "paddle/common/flags.h"
 
 #if CUDA_VERSION < 11000
 cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
@@ -26,9 +22,10 @@ cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
 }
 #endif
 
-namespace phi {
-namespace backends {
-namespace gpu {
+COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
+COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
+
+namespace phi::backends::gpu {
 
 std::unique_ptr<CUDAGraph> CUDAGraph::capturing_graph_{nullptr};
 paddle::optional<std::thread::id> CUDAGraph::capturing_thread_id_{paddle::none};
@@ -111,10 +108,12 @@ void CUDAGraph::Reset() {
 #endif
   // callback should be called in reverse order because the latter added
   // callback may rely on the former added callback.
-  for (auto iter = callbacks_.rbegin(); iter != callbacks_.rend(); ++iter) {
+  for (auto iter = cudagraph_post_reset_callbacks_.rbegin();
+       iter != cudagraph_post_reset_callbacks_.rend();
+       ++iter) {
     (*iter)();
   }
-  callbacks_.clear();
+  cudagraph_post_reset_callbacks_.clear();
   is_reset_ = true;
 }
 
@@ -127,7 +126,7 @@ void CUDAGraph::Replay() {
   size_t n = exec_graphs_.size();
   for (size_t i = 0; i < n; ++i) {
     if (!is_first_run_) {
-      for (auto &hook : pre_hooks_[i]) {
+      for (auto &hook : cudagraph_pre_replay_callbacks_[i]) {
         hook(exec_graphs_[i]);
       }
     }
@@ -211,12 +210,33 @@ void CUDAGraph::EndSegmentCapture() {
     return;
   }
 
-  capturing_graph_->pre_hooks_.emplace_back(
+  for (auto &cudagraph_post_capture_callback :
+       capturing_graph_->cudagraph_post_capture_callbacks_) {
+    cudagraph_post_capture_callback();
+  }
+  capturing_graph_->cudagraph_post_capture_callbacks_.clear();
+
+  capturing_graph_->cudagraph_pre_replay_callbacks_.emplace_back(
       CUDAGraphNodeLauncher::Instance().GetParameterSettersForExecGraph(graph));
 
+  // if forward graph is registered, this graph is a backward graph
+  // we check whether there is remain blocks that is unreleased by this
   cudaGraphExec_t exec_graph;
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
+  if (FLAGS_use_cuda_malloc_async_allocator &&
+      FLAGS_auto_free_cudagraph_allocations_on_launch) {
+#if CUDA_VERSION >= 11040
+    VLOG(1) << "cudaGraphInstantiateFlagAutoFreeOnLaunch is enabled!";
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphInstantiateWithFlags(
+        &exec_graph, graph, cudaGraphInstantiateFlagAutoFreeOnLaunch));
+#else
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "The cudaGraphInstantiateFlagAutoFreeOnLaunch is only supported when "
+        "CUDA version >= 11.4.0"));
+#endif
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
+  }
   VLOG(10) << "End to capture CUDA Graph with ID " << capturing_graph_->id_
            << ", segment id " << capturing_graph_->graphs_.size()
            << ", memory pool id " << capturing_graph_->pool_id_;
@@ -279,15 +299,14 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
 
 #if CUDA_VERSION >= 11000
 void CUDAGraphNodeLauncher::KernelNodeLaunch(
-    cudaFunction_t cudaFunc,
-    parameterSetter_t parameterSetter,
-    cudaKernelCallback_t cudakernelCallback) {
-  if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
+    parameterSetter_t parameterSetter, gpuKernelCallback_t cudakernelCallback) {
+  if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {
     unsigned int id = GenerateIdentifier();
+    auto cudaFunc = cudakernelCallback(id);
 
     parameterSetters[cudaFunc][id] = parameterSetter;
-    cudakernelCallback(id);
-
+    VLOG(10) << "[KernelNodeLaunch] Launch kernel with cudaFunc = " << cudaFunc
+             << " id = " << id;
   } else {
     cudakernelCallback(0);
   }
@@ -308,22 +327,27 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cuGraphNodeGetType(cuNode, &pType));
     if (pType == CU_GRAPH_NODE_TYPE_KERNEL) {
       CUDA_KERNEL_NODE_PARAMS cuParams;
+
       PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cuGraphKernelNodeGetParams(cuNode, &cuParams));
-      CUDAKernelParams kernel_params(cuParams.kernelParams);
+      gpuKernelParams kernel_params(cuParams.kernelParams);
       auto kernel =
           parameterSetters.find(static_cast<cudaFunction_t>(cuParams.func));
-
+      VLOG(10) << "[GetParameterSettersForExecGraph] cuParams.func = "
+               << cuParams.func;
       // There exists a parameter setter
       if (kernel != parameterSetters.end()) {
         auto launchSequence = kernel->second;
         unsigned int id = kernel_params.As<int>(0);
+
+        VLOG(10) << "[GetParameterSettersForExecGraph] Find launch kernel id = "
+                 << id;
         auto parameterSetter = launchSequence.find(id);
         if (parameterSetter != launchSequence.end()) {
           auto setter = parameterSetter->second;
           hooks.emplace_back([setter, cuNode, cuParams](
                                  cudaGraphExec_t exec_graph) {
-            CUDAKernelParams kernel_params(cuParams.kernelParams);
+            gpuKernelParams kernel_params(cuParams.kernelParams);
             setter(kernel_params);
             PADDLE_ENFORCE_GPU_SUCCESS(dynload::cuGraphExecKernelNodeSetParams(
                 static_cast<CUgraphExec>(exec_graph), cuNode, &cuParams));
@@ -342,7 +366,7 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
 void CUDAGraphNodeLauncher::KernelNodeLaunch(
     cudaFunction_t cudaFunc,
     parameterSetter_t parameterSetter,
-    cudaKernelCallback_t cudakernelCallback) {
+    gpuKernelCallback_t cudakernelCallback) {
   cudakernelCallback(0);
 }
 
@@ -353,6 +377,4 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
 }
 #endif
 
-}  // namespace gpu
-}  // namespace backends
-}  // namespace phi
+}  // namespace phi::backends::gpu

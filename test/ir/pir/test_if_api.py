@@ -94,7 +94,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
             out_grad = paddle.full(shape=[6, 1], dtype='float32', fill_value=3)
             # check vjp interface for if_op
             if_input = [[input] for input in get_used_external_value(if_op)]
-            if_input_stop_gradients = [[True], [False], [False], [True]]
+            if_input_stop_gradients = [[False], [False], [True]]
             if_output = [if_op.results()]
             if_output_grad = [[out_grad]]
             self.assertEqual(has_vjp(if_op), True)
@@ -106,7 +106,7 @@ class TestBuildModuleWithIfOp(unittest.TestCase):
                 if_input_stop_gradients,
             )
 
-            self.assertEqual(grad_outs[0][0], None)
+            self.assertEqual(len(grad_outs), len(if_input) - 1)
 
             if_grad_op = grad_outs[1][0].get_defining_op()
             self.assertEqual(if_grad_op.name(), "pd_op.if")

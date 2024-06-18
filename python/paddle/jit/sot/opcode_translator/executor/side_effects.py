@@ -158,7 +158,7 @@ class ListSideEffectRestorer(SideEffectRestorer):
         codegen.gen_build_slice(2)
 
     def post_gen(self, codegen: PyCodeGen):
-        # Call STROE_SUBSCR to apply side effects.
+        # Call STORE_SUBSCR to apply side effects.
         codegen.gen_store_subscr()
 
 

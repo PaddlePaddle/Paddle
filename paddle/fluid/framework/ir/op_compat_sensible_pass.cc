@@ -167,7 +167,7 @@ AttrCompat& OpCompat::AddAttr(const std::string& attr_name) {
       attr_compats_.find(attr_name),
       attr_compats_.end(),
       platform::errors::InvalidArgument(
-          "The attrubute compat with the same name has been added"));
+          "The attribute compat with the same name has been added"));
   attr_compats_.emplace(attr_name, AttrCompat(attr_name, this));
   return attr_compats_.at(attr_name);
 }

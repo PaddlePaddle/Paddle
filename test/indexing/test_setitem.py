@@ -331,12 +331,12 @@ class TestSetitemInDygraph(unittest.TestCase):
         zero.stop_gradient = False
 
         zero1 = zero * 1
-        zero1[paddle.to_tensor([0, 1])] = vv
+        zero1[1, paddle.to_tensor([2, 0, 1])] = vv
 
         loss = zero1.sum()
         loss.backward()
 
-        expected_v_grad = np.ones((3, 1)) * 10.0
+        expected_v_grad = np.ones((3, 1)) * 5.0
         if self.dtype == 'bfloat16':
             np.testing.assert_allclose(
                 v.grad.cast('float32').numpy(), expected_v_grad
@@ -418,7 +418,7 @@ class TestINT64SetitemInDygraph(TestSetitemInDygraph):
 class TestBOOLSetitemInDygraph(TestSetitemInDygraph):
     def setUp(self):
         paddle.disable_static()
-        self.ndtype = np.bool8
+        self.ndtype = np.bool_
         self.dtype = 'bool'
 
 
@@ -700,7 +700,7 @@ class TestSetitemInStatic(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             x = paddle.ones((3, 3), dtype='int32')
-            v = paddle.to_tensor([-1, -1, -1])
+            v = paddle.to_tensor([-1, -1, -1], dtype='int32')
             y = _setitem_static(
                 x,
                 (slice(None), [0, 2]),

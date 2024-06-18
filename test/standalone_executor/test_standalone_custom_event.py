@@ -94,12 +94,12 @@ class TestMannulEvent(unittest.TestCase):
             ops[op_index].dist_attr.execution_stream = "s2"
             ops[op_index].dist_attr.stream_priority = -1
 
-    def split_program(self, prog, apply_mannual_event=False):
+    def split_program(self, prog, apply_manual_event=False):
         # split two subprograms
         waiter_recorder_events_map = {11: [8, 10]}
         prog_block = prog.global_block()
         ops = prog_block.ops
-        if apply_mannual_event:
+        if apply_manual_event:
             for waiter, recorders in waiter_recorder_events_map.items():
                 for recorder in recorders:
                     _add_event_dependency(ops[recorder], ops[waiter])
@@ -159,7 +159,7 @@ class TestMannulEvent(unittest.TestCase):
         self,
         apply_custom_stream=False,
         split_prog=False,
-        apply_mannual_event=False,
+        apply_manual_event=False,
     ):
         paddle.seed(2022)
         main_program, startup_program, fetch_list = build_program()
@@ -170,7 +170,7 @@ class TestMannulEvent(unittest.TestCase):
         main_progs = [main_program]
         startup_progs = [startup_program]
         if apply_custom_stream and split_prog:
-            main_progs = self.split_program(main_program, apply_mannual_event)
+            main_progs = self.split_program(main_program, apply_manual_event)
         outs = []
         exe = self.create_standalone_exe(main_progs, startup_progs, fetch_list)
         for i in range(self.steps):
@@ -184,11 +184,11 @@ class TestMannulEvent(unittest.TestCase):
         baselines = self.run_program()
         stream_outs = self.run_program(apply_custom_stream=True)
         split_outs = self.run_program(apply_custom_stream=True, split_prog=True)
-        mannual_outs = self.run_program(
-            apply_custom_stream=True, split_prog=True, apply_mannual_event=True
+        manual_outs = self.run_program(
+            apply_custom_stream=True, split_prog=True, apply_manual_event=True
         )
         for bl, out0, out1, out2 in zip(
-            baselines, stream_outs, split_outs, mannual_outs
+            baselines, stream_outs, split_outs, manual_outs
         ):
             self.assertEqual(bl[0], out0[0])
             self.assertEqual(bl[0], out2[0])

@@ -20,12 +20,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/type_defs.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -34,7 +34,7 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
  public:
   explicit KernelArgsNameMakerByOpProto(
       const framework::proto::OpProto* op_proto)
-      : op_proto_(op_proto) {
+      : op_proto_(op_proto), input_names_(), output_names_(), attr_names_() {
     PADDLE_ENFORCE_NOT_NULL(
         op_proto_,
         platform::errors::InvalidArgument("Op proto cannot be nullptr."));
@@ -243,7 +243,7 @@ void InitDefaultKernelSignatureMap() {
         paddle::framework::KernelArgsNameMakerByOpProto maker(op_proto);
         VLOG(10) << "Register `" << op_type << "` kernel signature:";
         phi::DefaultKernelSignatureMap::Instance().Insert(
-            op_type, std::move(maker.GetKernelSignature()));
+            op_type, maker.GetKernelSignature());
       }
     }
   });

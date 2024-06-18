@@ -21,8 +21,7 @@
 #include "paddle/phi/core/distributed/nccl_tools.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 NCCLCommTask::NCCLCommTask(const phi::Place& place,
                            const std::string& group_key,
@@ -48,13 +47,15 @@ NCCLCommTask::NCCLCommTask(const phi::Place& place,
                nccl_comm,
                stream,
                comm_type),
+      timeout_(std::chrono::milliseconds(timeout)),
       sync_op_(sync_op),
-      use_calc_stream_(use_calc_stream) {
+      use_calc_stream_(use_calc_stream),
+      nccl_start_event_(nullptr),
+      nccl_end_event_(nullptr) {
   start_trace_updated_ = false;
   start_event_created_ = false;
   end_event_created_ = false;
   start_time_ = std::chrono::steady_clock::now();
-  timeout_ = std::chrono::milliseconds(timeout);
 }
 
 void NCCLCommTask::StartRecord() {
@@ -249,9 +250,6 @@ void NCCLCommTask::AbortComm() {
 }
 
 std::string NCCLCommTask::GetTraceMsg() {
-  auto current_timepoint = std::chrono::steady_clock::now();
-  auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-      current_timepoint - start_time_);
   auto global_ranks =
       phi::distributed::CommContextManager::GetInstance().GetGroupRanks(
           group_key_);
@@ -267,5 +265,4 @@ std::string NCCLCommTask::GetTraceMsg() {
          ",nranks:" + std::to_string(size_);
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

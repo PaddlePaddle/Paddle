@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -66,6 +67,9 @@ class TestBatchNormOp(OpTest):
         self.python_out_sig = ["Y"]
         # (Todo: CZ) random error
         self.check_prim_pir = False
+        self.check_prim_pir_grad = False
+        self.check_cpu_prim_pir_grad = False
+
         self.initConfig()
         self.initTestCase()
 
@@ -96,7 +100,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
-                check_prim_pir=self.check_prim_pir,
+                check_prim_pir=self.check_cpu_prim_pir_grad,
             )
         if paddle.is_compiled_with_cuda():
             self.check_grad_with_place(
@@ -106,7 +110,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
-                check_prim_pir=self.check_prim_pir,
+                check_prim_pir=self.check_prim_pir_grad,
             )
 
     def test_check_grad_scale_bias(self):
@@ -130,7 +134,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
-                check_prim_pir=self.check_prim_pir,
+                check_prim_pir=self.check_cpu_prim_pir_grad,
             )
         if paddle.is_compiled_with_cuda():
             self.check_grad_with_place(
@@ -140,7 +144,7 @@ class TestBatchNormOp(OpTest):
                 user_defined_grad_outputs=self.out_grad,
                 check_prim=True,
                 only_check_prim=True,
-                check_prim_pir=self.check_prim_pir,
+                check_prim_pir=self.check_prim_pir_grad,
             )
 
     def initConfig(self):
@@ -279,6 +283,8 @@ class TestBatchNormOpNCHWFp64(TestBatchNormOp):
         self.data_format = "NCHW"
         self.use_global_stats = None
         self.check_prim_pir = True
+        self.check_cpu_prim_pir_grad = True
+        self.check_prim_pir_grad = True
 
 
 class TestBatchNormOpNCHWTestModeFp64(TestBatchNormOp):
@@ -337,6 +343,10 @@ class TestBatchNormOpNCHWbf16(TestBatchNormOp):
         self.fw_comp_rtol = 1e-3
         self.rev_comp_atol = 1e-3
         self.rev_comp_rtol = 1e-3
+        # prim bf16 has diff in windows
+        if sys.platform == "win32":
+            self.rev_comp_atol = 5e-3
+            self.rev_comp_rtol = 5e-3
         self.cinn_atol = 1e-3
         self.cinn_rtol = 1e-3
         self.dtype = "uint16"
@@ -348,6 +358,7 @@ class TestBatchNormOpNCHWbf16(TestBatchNormOp):
         self.use_global_stats = None
         # Todo(CZ): open this
         self.check_prim_pir = False
+        self.check_cpu_prim_pir_grad = False
 
 
 @unittest.skipIf(
@@ -361,6 +372,10 @@ class TestBatchNormOpNCHWTestModebf16(TestBatchNormOp):
         self.fw_comp_rtol = 1e-3
         self.rev_comp_atol = 1e-3
         self.rev_comp_rtol = 1e-3
+        # prim bf16 has diff in windows
+        if sys.platform == "win32":
+            self.rev_comp_atol = 5e-3
+            self.rev_comp_rtol = 5e-3
         self.cinn_atol = 1e-3
         self.cinn_rtol = 1e-3
         self.dtype = "uint16"
