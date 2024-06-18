@@ -124,10 +124,10 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
                 {"force_record_event", pat.Attr("force_record_event")},
                 {"event_to_record", pat.Attr("event_to_record")},
                 {"events_to_wait", pat.Attr("events_to_wait")}});
-    const auto &add = res.Op(paddle::dialect::AddOp::name());
+    const auto &add1 = res.Op(paddle::dialect::AddOp::name());
 
     c_reducescatter({&res.Tensor("a")}, {&res.Tensor("b")});
-    add({&res.Tensor("b"), &res.Tensor("c")}, {&res.Tensor("h")});
+    add1({&res.Tensor("b"), &res.Tensor("c")}, {&res.Tensor("h")});
   }
 };
 
