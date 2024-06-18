@@ -903,7 +903,11 @@ __global__ void topp_sampling(T* sorted_probs,
            thread_count,
            thread_offset);
 #endif
+#ifdef PADDLE_WITH_HIP
+    uint64_t activate_mask = __ballot(p_t <= thread_offset);
+#else
     uint32_t activate_mask = __ballot_sync(FINAL_MASK, p_t <= thread_offset);
+#endif
 
     i_activate = i;
     if (activate_mask != 0) {
