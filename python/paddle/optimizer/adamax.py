@@ -63,9 +63,11 @@ class Adamax(Optimizer):
     Args:
         learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a LRScheduler. The default value is 0.001.
-        beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
+        beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.9.
-        beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
+        beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
+            It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
@@ -150,8 +152,8 @@ class Adamax(Optimizer):
     def __init__(
         self,
         learning_rate: float | LRScheduler = 0.001,
-        beta1: float = 0.9,
-        beta2: float = 0.999,
+        beta1: float | Tensor = 0.9,
+        beta2: float | Tensor = 0.999,
         epsilon: float = 1e-8,
         parameters: Sequence[Tensor]
         | Sequence[_AdamParameterConfig]
