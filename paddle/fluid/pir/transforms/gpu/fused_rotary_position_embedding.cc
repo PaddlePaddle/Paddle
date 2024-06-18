@@ -209,25 +209,23 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
         return true;
       };
 
-      bool all_checkes_passed = true;
-
+      bool check_passes = true;
       auto axis = match_ctx.Attr<std::vector<int64_t>>("full_13_value");
       auto axis_2 = match_ctx.Attr<std::vector<int64_t>>("full_12_value");
-      all_checks_passed = all_checks_passed && check_axes(axis, {0, 2}) &&
-                          check_axes(axis_2, {0, 2});
+      check_passes = check_passes && check_axes(axis) && check_axes(axis_2);
 
       auto check_unsqueeze_axes = [&](const std::vector<int64_t> &axes) {
-        std::vector<int64_t> expected_axes = {0};
-        if (axes.size() != expected_axes.size()) {
+        std::vector<int64_t> expected_axes_1 = {-1};
+        std::vector<int64_t> expected_axes_2 = {2};
+        if (axes.size() != 1) {
           return false;
         }
-        for (size_t i = 0; i < axes.size(); ++i) {
-          if (axes[i] != expected_axes[i]) {
-            return false;
-          }
+        if (axes[0] == expected_axes_1[0] || axes[0] == expected_axes_2[0]) {
+          return true;
         }
-        return true;
+        return false;
       };
+
       auto unsqueeze_axis =
           match_ctx.Attr<std::vector<int64_t>>("full_11_value");
       auto unsqueeze_axis_1 =
@@ -237,29 +235,12 @@ class FusedRotaryPositionEmbeddingPattern : public paddle::drr::DrrPatternBase {
       auto unsqueeze_axis_3 =
           match_ctx.Attr<std::vector<int64_t>>("full_9_value");
 
-      all_checks_passed = all_checks_passed &&
-                          check_axes(unsqueeze_axis, {0}) &&
-                          check_axes(unsqueeze_axis_1, {0}) &&
-                          check_axes(unsqueeze_axis_2, {0}) &&
-                          check_axes(unsqueeze_axis_3, {0});
+      check_passes = check_passes && check_unsqueeze_axes(unsqueeze_axis) &&
+                     check_unsqueeze_axes(unsqueeze_axis_1) &&
+                     check_unsqueeze_axes(unsqueeze_axis_2) &&
+                     check_unsqueeze_axes(unsqueeze_axis_3);
 
-      auto check_concat_axes = [&](const std::vector<int64_t> &axes) {
-        std::vector<int64_t> expected_axes = {-1};
-        if (axes.size() != expected_axes.size()) {
-          return false;
-        }
-        for (size_t i = 0; i < axes.size(); ++i) {
-          if (axes[i] != expected_axes[i]) {
-            return false;
-          }
-        }
-        return true;
-      };
-      auto concat_axis = match_ctx.Attr<std::vector<int64_t>>("full_op_3");
-      auto concat_axis_1 = match_ctx.Attr<std::vector<int64_t>>("full_op_2");
-      all_checks_passed = all_checks_passed && check_axes(concat_axis, {-1}) &&
-                          check_axes(concat_axis_1, {-1});
-      return all_checks_passed;
+      return check_passes;
     });
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
