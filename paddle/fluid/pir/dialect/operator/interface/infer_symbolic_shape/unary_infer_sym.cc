@@ -112,9 +112,6 @@ bool AsRealOpInferSymbolicShape(pir::Operation *op,
   return true;
 }
 
-bool AsignOpInferSymbolicShape(pir::Operation *op,
-                               pir::InferSymbolicShapeContext *infer_context) {}
-
 bool CummaxOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   pir::Value operand_source = op->operand_source(0);
