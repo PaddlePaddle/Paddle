@@ -986,8 +986,7 @@ void ConcatCsrGPU3D1A(const Context& dev_ctx,
           d_out_values,
           d_out_cols);
 
-  // note: The order of GetGpuLaunchConfig3D is z, y , x
-
+  // The number of in_num is usually small, so we set it to z
   config = phi::backends::gpu::GetGpuLaunchConfig3D2(
       dev_ctx, max_rows, batch, in_num);
 
