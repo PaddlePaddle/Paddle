@@ -161,18 +161,16 @@ def build_view(in_labels: str, out_labels: str) -> list[int]:
     # First build the broadcast dimension mapping
     # Find the broadcast index range in out_labels
     r = re.search(r'\.+', out_labels)
-    assert r is not None, "Invalid equation: missing ellipsis in output labels."
-    start, end = r.start(), r.end()
-    s = re.search(r'\.+', in_labels)
-    # fill the broadcast dimension indices from right to left.
-    if s:
-        for ax, dim in zip(
-            range(start, end)[::-1], range(s.start(), s.end())[::-1]
-        ):
-            inv_map[ax] = dim
-
-    # Now work on non-broadcast dimensions
-    if r:
+    if r is not None:
+        start, end = r.start(), r.end()
+        s = re.search(r'\.+', in_labels)
+        # fill the broadcast dimension indices from right to left.
+        if s:
+            for ax, dim in zip(
+                range(start, end)[::-1], range(s.start(), s.end())[::-1]
+            ):
+                inv_map[ax] = dim
+        # Now work on non-broadcast dimensions
         it = itertools.chain(range(start), range(end, len(out_labels)))
     else:
         it = iter(range(len(out_labels)))
