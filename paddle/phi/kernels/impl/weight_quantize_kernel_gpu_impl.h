@@ -115,10 +115,10 @@ __global__ void weight_interval_kernel_wint4(int8_t* output_data_dev,
       int8_t new_interval_weight_0 = 0;
       int8_t new_interval_weight_1 = 0;
 
-      int8_t interval_weight_0_l = (((interval_weight_0 << 4) >> 4) + 8) & 0x0F;
-      int8_t interval_weight_0_r = ((interval_weight_0 >> 4) + 8) & 0x0F;
-      int8_t interval_weight_1_l = (((interval_weight_1 << 4) >> 4) + 8) & 0x0F;
-      int8_t interval_weight_1_r = ((interval_weight_1 >> 4) + 8) & 0x0F;
+      int8_t interval_weight_0_l = (int8_t(interval_weight_0 << 4) >> 4) + 8;
+      int8_t interval_weight_0_r = (interval_weight_0 >> 4) + 8;
+      int8_t interval_weight_1_l = (int8_t(interval_weight_1 << 4) >> 4) + 8;
+      int8_t interval_weight_1_r = (interval_weight_1 >> 4) + 8;
 
       new_interval_weight_0 |= interval_weight_0_l;
       new_interval_weight_0 |= (interval_weight_1_l << 4); 
@@ -377,7 +377,7 @@ __global__ void per_channel_quant_gpu_int4_col_pack(const T* weight_data,
       *reinterpret_cast<int4*>(&weight) = vec_weight_data_ptr[linear_index];
 #pragma unroll
       for (int i = 0; i < VectorSize; ++i) {
-        abs_max[i] = fmaxf((abs_max[i]), fabsf((weight[i])));
+        abs_max[i] = fmaxf((abs_max[i]), static_cast<float>(fabsf(weight[i])));
       }
     }
     phi::AlignedVector<ScaleT, VectorSize> scale;
@@ -403,8 +403,8 @@ __global__ void per_channel_quant_gpu_int4_col_pack(const T* weight_data,
           float scaled_weight =
               (static_cast<float>(weight[i]) / static_cast<float>(abs_max[i])) *
               static_cast<float>(7.0);
-          int8_t clipped_weight = static_cast<int8_t>(
-              lroundf(fmaxf(-7.0f, fminf(7.0f, scaled_weight))));
+          int int_weight = static_cast<int>(lroundf(scaled_weight));
+          int8_t clipped_weight = fmaxf(-7.0f, fminf(7.0f, int_weight));
           quanted_weight[i] |= ((clipped_weight & 0x0F) << (4 * packed_idx));
         }
       }
