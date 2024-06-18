@@ -546,8 +546,11 @@ class OpInfoParser:
         self.is_forward_only = (
             False
             if (
-                'backward' in self.op_yaml_item
-                and self.op_yaml_item['backward'] is not None
+                (
+                    'backward' in self.op_yaml_item
+                    and self.op_yaml_item['backward'] is not None
+                )
+                or 'forward' in self.op_yaml_item
             )
             else True
         )
