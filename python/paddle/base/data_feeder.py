@@ -35,6 +35,8 @@ __all__ = []
 
 _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.BOOL: 'bool',
+    core.VarDesc.VarType.FP8_E4M3FN: 'float8_e4m3fn',
+    core.VarDesc.VarType.FP8_E5M2: 'float8_e5m2',
     core.VarDesc.VarType.FP16: 'float16',
     core.VarDesc.VarType.BF16: 'uint16',
     core.VarDesc.VarType.FP32: 'float32',

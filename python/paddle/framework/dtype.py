@@ -23,6 +23,25 @@ from ..base.core import (
 )
 from ..base.data_feeder import _NUMPY_DTYPE_2_PADDLE_DTYPE
 
+dtype = VarDesc.VarType
+dtype.__qualname__ = "dtype"
+dtype.__module__ = "paddle"
+
+uint8 = VarDesc.VarType.UINT8
+int8 = VarDesc.VarType.INT8
+int16 = VarDesc.VarType.INT16
+int32 = VarDesc.VarType.INT32
+int64 = VarDesc.VarType.INT64
+
+float32 = VarDesc.VarType.FP32
+float64 = VarDesc.VarType.FP64
+float16 = VarDesc.VarType.FP16
+bfloat16 = VarDesc.VarType.BF16
+float8_e4m3fn = VarDesc.VarType.FP8_E4M3FN
+float8_e5m2 = VarDesc.VarType.FP8_E5M2
+
+complex64 = VarDesc.VarType.COMPLEX64
+complex128 = VarDesc.VarType.COMPLEX128
 
 def bind_vartype():
     global dtype

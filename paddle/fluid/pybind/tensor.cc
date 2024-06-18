@@ -67,6 +67,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/memory/memcpy.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_ipc_allocator.h"
 #endif
@@ -195,6 +196,28 @@ static void TensorCopyFrom(phi::DenseTensor *dst,
     auto sliced = src.Slice(0, batch_size);
     framework::TensorCopy(sliced, place, dst);
   }
+}
+
+template <typename PlaceType>
+static void TensorCopyFromPaddleTensor(phi::DenseTensor *dst,
+                                       const paddle::Tensor &src,
+                                       const PlaceType &place,
+                                       int64_t batch_size) {
+  // paddle::memory::Copy(dst->place(),
+  //                     dst->Holder()->ptr(),
+  //                     place,
+  //                     src.data(),
+  //                     src.numel());
+
+#if defined(PADDLE_WITH_CUDA)
+  if (dst->place() == phi::GPUPlace() && place == phi::GPUPlace()) {
+    cudaMemcpy(
+        dst->Holder()->ptr(), src.data(), src.size(), cudaMemcpyDeviceToDevice);
+  } else if (dst->place() == phi::CPUPlace() && place == phi::GPUPlace()) {
+    cudaMemcpy(
+        dst->Holder()->ptr(), src.data(), src.size(), cudaMemcpyDeviceToHost);
+  }
+#endif
 }
 
 void BindTensor(pybind11::module &m) {  // NOLINT
@@ -340,6 +363,16 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            py::arg("batch_size") = -1)
       .def("_copy_from",
            &TensorCopyFrom<paddle::platform::Place>,
+           py::arg("tensor"),
+           py::arg("place"),
+           py::arg("batch_size") = -1)
+      .def("_copy_from_paddle_tensor",
+           &TensorCopyFromPaddleTensor<paddle::platform::Place>,
+           py::arg("tensor"),
+           py::arg("place"),
+           py::arg("batch_size") = -1)
+      .def("_copy_from_paddle_tensor",
+           &TensorCopyFromPaddleTensor<paddle::platform::CUDAPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("batch_size") = -1)
