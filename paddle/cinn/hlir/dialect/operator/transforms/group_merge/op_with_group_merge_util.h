@@ -106,7 +106,7 @@ inline bool is_same_size(::pir::Operation* producer,
 inline bool without_last_dimension_in_reduce(
     ::pir::Operation* producer, const std::shared_ptr<Group>& consumer) {
   auto in_shape = ::common::vectorize<int64_t>(GetFirstInputShape(producer));
-  auto reduce_axes = GetVectorAttr(producer, "dim");
+  auto reduce_axes = GetVectorAttr(producer, "axis");
   return WithoutLastDimInReduce(in_shape, reduce_axes);
 }
 
@@ -133,17 +133,17 @@ inline bool reduce_fuse_reduce(
   auto reducer_output_shape =
       ::common::vectorize<int64_t>(GetValueShape(reducer->result(0)));
 
-  auto producer_reduce_dim = GetVectorAttr(producer, "dim");
-  auto reducer_reduce_dim = GetVectorAttr(reducer, "dim");
+  auto producer_reduce_axes = GetVectorAttr(producer, "axis");
+  auto reducer_reduce_axes = GetVectorAttr(reducer, "axis");
 
-  for (auto& dim : producer_reduce_dim) {
+  for (auto& dim : producer_reduce_axes) {
     // if dim = -1, set as shape.size() - 1
     if (dim < 0) {
       dim += producer_input_shape.size();
     }
   }
 
-  for (auto& dim : reducer_reduce_dim) {
+  for (auto& dim : reducer_reduce_axes) {
     // if dim = -1,  set as shape.size() - 1
     if (dim < 0) {
       dim += reducer_input_shape.size();
@@ -151,11 +151,11 @@ inline bool reduce_fuse_reduce(
   }
 
   if (producer_output_shape == reducer_output_shape &&
-      producer_reduce_dim == reducer_reduce_dim) {
+      producer_reduce_axes == reducer_reduce_axes) {
     bool input_shape_same = producer_input_shape == reducer_input_shape;
     bool without_last_dim =
-        WithoutLastDimInReduce(producer_input_shape, producer_reduce_dim) &&
-        WithoutLastDimInReduce(reducer_input_shape, reducer_reduce_dim);
+        WithoutLastDimInReduce(producer_input_shape, producer_reduce_axes) &&
+        WithoutLastDimInReduce(reducer_input_shape, reducer_reduce_axes);
     // check shape is same
     if (input_shape_same || without_last_dim) {
       auto shared_size = GetSharedSize(producer);
@@ -243,7 +243,7 @@ inline bool horizontal_or_vertical_reduce_relation(
 
   // check producer has same shape with reducer op.
   auto reduce_shape = ::common::vectorize(GetFirstInputShape(reducer));
-  auto reduce_axes = GetVectorAttr(reducer, "dim");
+  auto reduce_axes = GetVectorAttr(reducer, "axis");
   if (reduce_axes.empty()) {
     for (size_t i = 0; i < reduce_shape.size(); ++i) {
       reduce_axes.push_back(i);
@@ -379,11 +379,11 @@ inline bool reduce_fuse_broadcast(
   const auto& rinput_shape =
       shape_analysis->GetShapeOrDataForValue(producer->operand_source(0))
           .shape();
-  auto reduce_axes = GetVectorAttr(producer, "dim");
-  auto keep_dim = producer->attributes()
-                      .at("keep_dim")
-                      .dyn_cast<::pir::BoolAttribute>()
-                      .data();
+  auto reduce_axes = GetVectorAttr(producer, "axis");
+  auto keepdim = producer->attributes()
+                     .at("keepdim")
+                     .dyn_cast<::pir::BoolAttribute>()
+                     .data();
   for (auto& axis : reduce_axes) {
     if (axis < 0) {
       axis += rinput_shape.size();
@@ -440,7 +440,7 @@ inline bool reduce_fuse_broadcast(
       return false;
     }
     // if keep dim = true.
-    if (keep_dim) {
+    if (keepdim) {
       continue;
     } else {
       // if routput_shape = [1]
