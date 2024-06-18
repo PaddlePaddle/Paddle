@@ -17,12 +17,12 @@ import collections
 import itertools
 import re
 import string
-from typing import NamedTuple, Sequence
+from typing import TYPE_CHECKING, NamedTuple, Sequence
 
 import numpy as np
 import opt_einsum
 
-from paddle import Tensor, _C_ops
+from paddle import _C_ops
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..base.framework import in_dynamic_or_pir_mode
@@ -33,6 +33,9 @@ from .math import (
     multiply,
     sum as paddle_sum,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define functions to manipulate a tensor
+from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 
@@ -6913,9 +6913,11 @@ def block_diag(inputs, name=None):
 
     def to_col_block(arys, i, a):
         return [
-            a
-            if idx == i
-            else paddle.zeros([ary.shape[0], a.shape[1]], dtype=a.dtype)
+            (
+                a
+                if idx == i
+                else paddle.zeros([ary.shape[0], a.shape[1]], dtype=a.dtype)
+            )
             for idx, ary in enumerate(arys)
         ]
 
