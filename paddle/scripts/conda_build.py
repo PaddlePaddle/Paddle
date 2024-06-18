@@ -75,6 +75,7 @@ def template_full(name, version, packages_string, python_version):
 def gen_build_scripts(name, cuda_major_version, paddle_version):
     sysstr = platform.system()
     if sysstr == "Linux":
+        build_filename = "build.sh"
         PADDLE_CUDA_INSTALL_REQUIREMENTS = {
             "cuda11.8": (
                 "nvidia-cuda-runtime-cu11==11.8.89 | "
@@ -104,6 +105,7 @@ def gen_build_scripts(name, cuda_major_version, paddle_version):
             ),
         }
     elif platform.system() == 'Windows':
+        build_filename = "build.bat"
         PADDLE_CUDA_INSTALL_REQUIREMENTS = {
             "cuda11.8": (
                 "nvidia-cuda-runtime-cu11==11.8.89 | "
@@ -139,7 +141,6 @@ def gen_build_scripts(name, cuda_major_version, paddle_version):
     else:
         index_url = "https://www.paddlepaddle.org.cn/packages/stable/cpu/"
 
-    build_filename = "build.sh"
     with open(build_filename, 'w') as f:
         for item in paddle_cuda_requires:
             f.write(f"pip install {item} -i {index_url}\n")
