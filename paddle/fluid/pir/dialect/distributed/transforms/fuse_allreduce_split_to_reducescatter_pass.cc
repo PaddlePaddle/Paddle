@@ -113,8 +113,8 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
     pat.Tensor("f") = split_with_num(pat.Tensor("d"), pat.Tensor("e"));
     pat.Tensor("g") = builtin_slice(pat.Tensor("f"));
     pat.Tensor("h") = assign(pat.Tensor("g"));
-    add_grad({&pat.Tensor("b"), &pat.Tensor("c"), &pat.Tensor("grad")},
-             {&pat.Tensor("b_g"), &pat.Tensor("c_g")});
+    // add_grad({&pat.Tensor("b"), &pat.Tensor("c"), &pat.Tensor("grad")},
+    //          {&pat.Tensor("b_g"), &pat.Tensor("c_g")});
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
@@ -132,8 +132,8 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
 
     c_reducescatter({&res.Tensor("a")}, {&res.Tensor("b")});
     add1({&res.Tensor("b"), &res.Tensor("c")}, {&res.Tensor("h")});
-    add_grad1({&res.Tensor("b"), &res.Tensor("c"), &res.Tensor("grad")},
-              {&res.Tensor("b_g"), &res.Tensor("c_g")});
+    // add_grad1({&res.Tensor("b"), &res.Tensor("c"), &res.Tensor("grad")},
+    //           {&res.Tensor("b_g"), &res.Tensor("c_g")});
   }
 };
 
