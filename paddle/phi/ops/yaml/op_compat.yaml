@@ -935,6 +935,9 @@
     fix_seed : fix_seed
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
+  scalar :
+    p :
+      support_tensor : true
 
 - op : dropout_nd
   backward : dropout_nd_grad
