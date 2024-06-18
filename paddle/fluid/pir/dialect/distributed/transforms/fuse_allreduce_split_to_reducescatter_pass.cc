@@ -105,6 +105,7 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
     const auto &builtin_slice =
         pat.Op(pir::SliceOp::name(), {{"index", pat.Attr("index")}});
     const auto &assign = pat.Op(paddle::dialect::AssignOp::name());
+    const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name());
 
     pat.Tensor("b") = c_allreduce_sum_(pat.Tensor("a"));
     pat.Tensor("d") = add(pat.Tensor("b"), pat.Tensor("c"));
@@ -112,6 +113,11 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
     pat.Tensor("f") = split_with_num(pat.Tensor("d"), pat.Tensor("e"));
     pat.Tensor("g") = builtin_slice(pat.Tensor("f"));
     pat.Tensor("h") = assign(pat.Tensor("g"));
+    pat.Tensor("b_g"),
+        pat.Tensor("c_g") =
+            add_grad(pat.Tensor("b"), pat.Tensor("c"), pat.Tensor("grad"));
+    add_grad({&pat.Tensor("b"), &pat.Tensor("c"), &pat.Tensor("grad")},
+             {&pat.Tensor("b_g"), &pat.Tensor("c_g")});
 
     paddle::drr::ResultPattern res = pat.ResultPattern();
 
@@ -125,9 +131,12 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
                 {"event_to_record", pat.Attr("event_to_record")},
                 {"events_to_wait", pat.Attr("events_to_wait")}});
     const auto &add1 = res.Op(paddle::dialect::AddOp::name());
+    const auto &add_grad1 = pat.Op(paddle::dialect::AddGradOp::name());
 
     c_reducescatter({&res.Tensor("a")}, {&res.Tensor("b")});
     add1({&res.Tensor("b"), &res.Tensor("c")}, {&res.Tensor("h")});
+    add_grad1({&pat.Tensor("b"), &pat.Tensor("c"), &pat.Tensor("grad")},
+              {&pat.Tensor("b_g"), &pat.Tensor("c_g")});
   }
 };
 
