@@ -42,8 +42,8 @@ class TestHorizontalGraph(unittest.TestCase):
         self.x.stop_gradient = True
 
     def check_jit_kernel_info(self, static_fn):
-        utils.check_jit_kernel_number(static_fn, 1)
-        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
+        utils.check_jit_kernel_number(static_fn, 2)
+        utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 2})
 
     def eval(self, use_cinn):
         net = HorizontalSubGraph()
@@ -63,6 +63,4 @@ class TestHorizontalGraph(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # Fix YieldStore Segment fault.
-    # unittest.main()
-    pass
+    unittest.main()
