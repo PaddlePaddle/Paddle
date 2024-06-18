@@ -454,7 +454,6 @@ bool AnalysisPredictor::Init(
         optimized_model_path + "/" + "_optimized.pdiparams";
     if (FileExists(optimized_model) && FileExists(optimized_params)) {
       LOG(INFO) << "Load Optimized model from " << optimized_model;
-      LOG(INFO) << "Load Optimized pdiparams from " << optimized_params;
       config_.SetModel(optimized_model, optimized_params);
     } else {
       LOG(WARNING)
