@@ -15,25 +15,12 @@
 #pragma once
 
 #include <numeric>
-#include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
 
 namespace paddle {
 namespace primitive {
 namespace details {
-
-template <typename T>
-static Tensor get_slice(const Tensor& x, int64_t idx) {
-  return slice<T>(x, {0}, {idx}, {idx + 1}, {1}, {});
-}
-
-template <typename T>
-static Tensor get_slice_vec(const Tensor& x,
-                            int64_t start_idx,
-                            int64_t end_idx) {
-  return slice<T>(x, {0}, {start_idx}, {end_idx}, {1}, {});
-}
 
 template <typename T>
 Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
@@ -83,10 +70,9 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   }
   if (switch_dynamic) {
     auto x_shape = shape<T>(x);
-    value = slice<T>(x_shape, {0}, {axis_[0]}, {axis_[0] + 1}, {1}, {0});
+    value = get_slice<T>(x_shape, axis_[0]);
     for (size_t i = 1; i < axis_.size(); ++i) {
-      value =
-          value * slice<T>(x_shape, {0}, {axis_[i]}, {axis_[i] + 1}, {1}, {0});
+      value = value * get_slice<T>(x_shape, axis_[i]);
     }
 
     value = cast<T>(value, x_tmp.dtype());

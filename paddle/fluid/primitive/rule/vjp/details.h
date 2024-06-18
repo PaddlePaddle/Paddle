@@ -20,8 +20,6 @@
 
 #include <math.h>
 #include <vector>
-
-#include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
 
@@ -193,8 +191,7 @@ void sum_grad(const Tensor& x,
             result_shape.push_back(ones);
             j++;
           } else {
-            result_shape.push_back(slice<T>(
-                out_grad_shape, {0}, {int64_t(k)}, {int64_t(k) + 1}, {1}, {}));
+            result_shape.push_back(get_slice<T>(out_grad_shape, int64_t(k)));
             k++;
           }
         }
@@ -258,13 +255,9 @@ void mean_grad(const Tensor& x,
     }
     if (has_dynamic_shape(x_dim, axis_data)) {
       auto x_shape = shape<T>(x);
-      factor_tensor =
-          slice<T>(x_shape, {0}, {axis_data[0]}, {axis_data[0] + 1}, {1}, {0});
+      factor_tensor = get_slice<T>(x_shape, axis_data[0]);
       for (size_t i = 1; i < axis_data.size(); ++i) {
-        factor_tensor =
-            factor_tensor *
-            slice<T>(
-                x_shape, {0}, {axis_data[i]}, {axis_data[i] + 1}, {1}, {0});
+        factor_tensor = factor_tensor * get_slice<T>(x_shape, axis_data[i]);
       }
       factor_tensor = cast<T>(factor_tensor, x.dtype());
     } else {
@@ -513,15 +506,17 @@ void concat_grad(const std::vector<Tensor>& x,
 
   int x_num = x.size();
   std::vector<Tensor> x_grad_tmp;
-  if (has_dynamic_shape(x[0].shape())) {
+  bool has_dynamic = false;
+  for (size_t i = 0; i < x.size(); i++) {
+    if (has_dynamic_shape(x[i].shape())) {
+      has_dynamic = true;
+      break;
+    }
+  }
+  if (has_dynamic) {
     std::vector<Tensor> sections;
     for (int i = 0; i < x_num; i++) {
-      sections.push_back(slice<T>(shape<T>(x[i]),
-                                  {0},
-                                  {int64_t(axis_value)},
-                                  {int64_t(axis_value) + 1},
-                                  {1},
-                                  {}));
+      sections.push_back(get_slice<T>(shape<T>(x[i]), int64_t(axis_value)));
     }
     Tensor sections_tensor = concat<T>(sections);
     x_grad_tmp =
