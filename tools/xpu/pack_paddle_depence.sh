@@ -105,7 +105,7 @@ function local_prepare() {
 function local_assemble() {
     # xre assemble
     cp -r ${LOCAL_PATH}/$XRE_DIR_NAME/include/xpu/* xpu/include/xpu/
-    cp -r ${LOCAL_PATH}/$XRE_DIR_NAME/so/libxpurt* xpu/lib/
+    cp -r ${LOCAL_PATH}/$XRE_DIR_NAME/so/* xpu/lib/
 
     # xccl assemble
     cp -r ${LOCAL_PATH}/$XCCL_DIR_NAME/include/* xpu/include/xpu/
