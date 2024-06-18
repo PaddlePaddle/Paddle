@@ -70,9 +70,10 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   }
   if (switch_dynamic) {
     auto x_shape = shape<T>(x);
-    value = get_slice<T>(x_shape, axis_[0]);
+    value = slice<T>(x_shape, {0}, {axis_[0]}, {axis_[0] + 1}, {1}, {0});
     for (size_t i = 1; i < axis_.size(); ++i) {
-      value = value * get_slice<T>(x_shape, axis_[i]);
+      value =
+          value * slice<T>(x_shape, {0}, {axis_[i]}, {axis_[i] + 1}, {1}, {0});
     }
 
     value = cast<T>(value, x_tmp.dtype());
