@@ -161,39 +161,6 @@ void ConvertToDistTensor(Tensor* x, const phi::distributed::ProcessMesh* mesh) {
   }
 }
 
-bool PyObject_CheckLongOrConvertToLong(PyObject** obj) {
-  if (PyLong_Check(*obj) && !PyBool_Check(*obj)) {
-    return true;
-  }
-
-  if (std::string((reinterpret_cast<PyTypeObject*>((*obj)->ob_type))->tp_name)
-          .find("numpy") != std::string::npos) {
-    auto to = PyNumber_Long(*obj);
-    if (to) {
-      *obj = to;
-      return true;
-    }
-  }
-
-  return false;
-}
-
-bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj) {
-  // sometimes users provide PyLong or numpy.int64 but attr is float
-  if (PyFloat_Check(*obj) || PyLong_Check(*obj)) {
-    return true;
-  }
-  if (std::string((reinterpret_cast<PyTypeObject*>((*obj)->ob_type))->tp_name)
-          .find("numpy") != std::string::npos) {
-    auto to = PyNumber_Float(*obj);
-    if (to) {
-      *obj = to;
-      return true;
-    }
-  }
-  return false;
-}
-
 bool PyObject_CheckStr(PyObject* obj) { return PyUnicode_Check(obj); }
 
 bool PyObject_CheckIRValue(PyObject* obj) {
@@ -251,8 +218,8 @@ bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
 }
 
 int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos) {
-  if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return static_cast<int>(PyLong_AsLong(obj));
+  if (PyObject_CheckLong(obj)) {
+    return PyObject_ToInt32(obj);
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -263,8 +230,8 @@ int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos) {
 }
 
 int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos) {
-  if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return (int64_t)PyLong_AsLong(obj);  // NOLINT
+  if (PyObject_CheckLong(obj)) {
+    return PyObject_ToInt64(obj);
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -275,8 +242,8 @@ int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos) {
 }
 
 size_t CastPyArg2AttrSize_t(PyObject* obj, ssize_t arg_pos) {
-  if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return PyLong_AsSize_t(obj);
+  if (PyObject_CheckLong(obj)) {
+    return PyObject_ToSize_t(obj);
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -287,8 +254,8 @@ size_t CastPyArg2AttrSize_t(PyObject* obj, ssize_t arg_pos) {
 }
 
 float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos) {
-  if (PyObject_CheckFloatOrConvertToFloat(&obj)) {
-    return static_cast<float>(PyFloat_AsDouble(obj));
+  if (PyObject_CheckFloat(obj)) {
+    return static_cast<float>(PyObject_ToDouble(obj));
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -452,8 +419,8 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GET_ITEM(obj, i);
-      if (PyObject_CheckLongOrConvertToLong(&item)) {
-        result.emplace_back(static_cast<int>(PyLong_AsLong(item)));
+      if (PyObject_CheckLong(item)) {
+        result.emplace_back(PyObject_ToInt32(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidType(
             "argument (position %d) must be "
@@ -468,8 +435,8 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GET_ITEM(obj, i);
-      if (PyObject_CheckLongOrConvertToLong(&item)) {
-        result.emplace_back(static_cast<int>(PyLong_AsLong(item)));
+      if (PyObject_CheckLong(item)) {
+        result.emplace_back(PyObject_ToInt32(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidType(
             "argument (position %d) must be "
@@ -481,8 +448,8 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
     }
   } else if (obj == Py_None) {
     return {};
-  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return {static_cast<int>(PyLong_AsLong(obj))};
+  } else if (PyObject_CheckLong(obj)) {
+    return {PyObject_ToInt32(obj)};
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -500,8 +467,8 @@ std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos) {
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GET_ITEM(obj, i);
-      if (PyObject_CheckLongOrConvertToLong(&item)) {
-        result.emplace_back(static_cast<int64_t>(PyLong_AsLong(item)));
+      if (PyObject_CheckLong(item)) {
+        result.emplace_back(PyObject_ToInt64(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidType(
             "argument (position %d) must be "
@@ -516,8 +483,8 @@ std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos) {
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GET_ITEM(obj, i);
-      if (PyObject_CheckLongOrConvertToLong(&item)) {
-        result.emplace_back(static_cast<int64_t>(PyLong_AsLong(item)));
+      if (PyObject_CheckLong(item)) {
+        result.emplace_back(PyObject_ToInt64(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidType(
             "argument (position %d) must be "
@@ -529,8 +496,8 @@ std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos) {
     }
   } else if (obj == Py_None) {
     return {};
-  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return {static_cast<int64_t>(PyLong_AsLong(obj))};  // NOLINT
+  } else if (PyObject_CheckLong(obj)) {
+    return {PyObject_ToInt64(obj)};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -548,8 +515,8 @@ std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos) {
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
-      if (PyObject_CheckLongOrConvertToLong(&item)) {
-        result.emplace_back(PyLong_AsSize_t(item));
+      if (PyObject_CheckLong(item)) {
+        result.emplace_back(PyObject_ToSize_t(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidType(
             "argument (position %d) must be "
@@ -564,8 +531,8 @@ std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos) {
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GET_ITEM(obj, i);
-      if (PyObject_CheckLongOrConvertToLong(&item)) {
-        result.emplace_back(PyLong_AsSize_t(item));
+      if (PyObject_CheckLong(item)) {
+        result.emplace_back(PyObject_ToSize_t(item));
       } else {
         PADDLE_THROW(platform::errors::InvalidType(
             "argument (position %d) must be "
@@ -577,8 +544,8 @@ std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos) {
     }
   } else if (obj == Py_None) {
     return {};
-  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return {PyLong_AsSize_t(obj)};  // NOLINT
+  } else if (PyObject_CheckLong(obj)) {
+    return {PyObject_ToSize_t(obj)};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -596,8 +563,8 @@ std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos) {
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
-      if (PyObject_CheckFloatOrConvertToFloat(&item)) {
-        result.emplace_back(static_cast<float>(PyFloat_AsDouble(item)));
+      if (PyObject_CheckFloat(item)) {
+        result.emplace_back(static_cast<float>(PyObject_ToDouble(item)));
       } else {
         PADDLE_THROW(platform::errors::InvalidType(
             "argument (position %d) must be "
@@ -612,8 +579,8 @@ std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos) {
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GET_ITEM(obj, i);
-      if (PyObject_CheckFloatOrConvertToFloat(&item)) {
-        result.emplace_back(static_cast<float>(PyFloat_AsDouble(item)));
+      if (PyObject_CheckFloat(item)) {
+        result.emplace_back(static_cast<float>(PyObject_ToDouble(item)));
       } else {
         PADDLE_THROW(platform::errors::InvalidType(
             "argument (position %d) must be "
@@ -625,8 +592,8 @@ std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos) {
     }
   } else if (obj == Py_None) {
     return {};
-  } else if (PyObject_CheckFloatOrConvertToFloat(&obj)) {
-    return {static_cast<float>(PyFloat_AsDouble(obj))};  // NOLINT
+  } else if (PyObject_CheckFloat(obj)) {
+    return {static_cast<float>(PyObject_ToDouble(obj))};  // NOLINT
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "argument (position %d) must be "
@@ -2104,8 +2071,9 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   if (type_name == "numpy.ndarray" && PySequence_Check(obj)) {
     PyObject* item = nullptr;
     item = PySequence_GetItem(obj, 0);
-    if (PyObject_CheckFloatOrToFloat(&item)) {
-      float value = static_cast<float>(PyFloat_AsDouble(item));
+    if (PyObject_CheckFloat(item)) {
+      float value = static_cast<float>(PyObject_ToDouble(item));
+      Py_DECREF(item);
       return paddle::experimental::Scalar(value);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -2331,7 +2299,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   } else if (PyComplex_Check(obj)) {
     auto value = CastPyArg2Complex128(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
-  } else if (PyObject_CheckLongOrToLong(&obj)) {
+  } else if (PyObject_CheckLong(obj)) {
     int value = CastPyArg2Int(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (PyObject_CheckString(obj)) {
@@ -2369,19 +2337,18 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     item = PyList_GetItem(obj, 0);
-    if (PyObject_CheckFloatOrToFloat(&item)) {
+    if (PyObject_CheckFloat(item)) {
       std::vector<phi::Scalar> value;
       for (Py_ssize_t i = 0; i < len; i++) {
         item = PyList_GetItem(obj, i);
-        value.emplace_back(phi::Scalar{PyFloat_AsDouble(item)});
+        value.emplace_back(phi::Scalar{PyObject_ToDouble(item)});
       }
       return value;
-    } else if (PyObject_CheckLongOrToLong(&item)) {
+    } else if (PyObject_CheckLong(item)) {
       std::vector<phi::Scalar> value;
       for (Py_ssize_t i = 0; i < len; i++) {
         item = PyList_GetItem(obj, i);
-        value.emplace_back(
-            phi::Scalar{static_cast<int64_t>(PyLong_AsLong(item))});
+        value.emplace_back(phi::Scalar{PyObject_ToInt64(item)});
       }
       return value;
     } else if (PyObject_CheckComplexOrToComplex(&item)) {
@@ -2424,9 +2391,8 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
     paddle::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::IntArray(value);
-  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
-    return paddle::experimental::IntArray(
-        {static_cast<int64_t>(PyLong_AsLong(obj))});
+  } else if (PyObject_CheckLong(obj)) {
+    return paddle::experimental::IntArray({PyObject_ToInt64(obj)});
   } else {
     PADDLE_THROW(platform::errors::InvalidType(
         "%s(): argument (position %d) must be "

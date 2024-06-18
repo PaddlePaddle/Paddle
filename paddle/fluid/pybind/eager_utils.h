@@ -68,8 +68,6 @@ static T PyObjectCast(PyObject* obj) {
 
 int TensorDtype2NumpyDtype(phi::DataType dtype);
 
-bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
-bool PyObject_CheckFloatOrConvertToFloat(PyObject** obj);
 bool PyObject_CheckStr(PyObject* obj);
 bool PyObject_CheckIRValue(PyObject* obj);
 bool PyObject_CheckIRVectorOfValue(PyObject* obj);
