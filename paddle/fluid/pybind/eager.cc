@@ -95,24 +95,7 @@ void EmptyTensorInitializer(TensorObject* self,
   }
   if (process_mesh != nullptr) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-    VLOG(6) << "in EmptyTensorInitializer, create dist tensor";
-    // auto [local_ddims, dim_mapping] =
-    // phi::distributed::infer_local_ddim_and_dims_mapping(ddims, process_mesh,
-    // placements); phi::DenseTensorMeta tensor_meta =
-    // phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),
-    //                             local_ddims);
-    // DistTensorMeta dist_tensor_meta(process_mesh, placements, tensor_meta);
-    // auto dim_mapping = dist_tensor_meta.dim_mapping();
-    // VLOG(6) << "in EmptyTensorInitializer dim_mapping [" <<
-    // str_join(dim_mapping) << "]"; TensorDistAttr tensor_dist_attr =
-    // TensorDistAttr(); VLOG(6) << "in EmptyTensorInitializer before set
-    // tensor_dist_attr" << tensor_dist_attr.to_string();
-    // tensor_dist_attr.set_process_mesh(process_mesh);
-    // tensor_dist_attr.set_dims_mapping(dim_mapping);
-    // VLOG(6) << "in EmptyTensorInitializer after set tensor_dist_attr" <<
-    // tensor_dist_attr.to_string();
-    // self->tensor.set_impl(std::make_shared<DistTensor>(ddims,
-    // tensor_dist_attr));
+    VLOG(6) << "in EmptyTensorInitializer, create DistTensor";
     self->tensor.set_impl(std::make_shared<DistTensor>());
 #else
     PADDLE_THROW(platform::errors::Unavailable(
@@ -122,7 +105,7 @@ void EmptyTensorInitializer(TensorObject* self,
         "with the option of `WITH_DISTRIBUTE=ON`."));
 #endif
   } else {
-    VLOG(6) << "in EmptyTensorInitializer, create dense tensor";
+    VLOG(6) << "in EmptyTensorInitializer, create DenseTensor";
     if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
       // TODO(jiabin): Maybe support LOD later
       std::shared_ptr<phi::DenseTensor> dense_tensor = nullptr;
@@ -801,8 +784,8 @@ Tensor is the basic data structure in PaddlePaddle. There are some ways to creat
  * 1.
  * def __init__ ()
  * 2.
- * (should have at least five parameter, five parameters similar to case 1,
- * seven parameters similar to case 6/7)
+ * (should have at least five parameter, five parameters create DenseTensor,
+ * seven parameters create DistTensor)
  * def __init__ (
  * ** dtype: paddle::framework::proto::VarType::Type,
  * ** dims: vector<int>,

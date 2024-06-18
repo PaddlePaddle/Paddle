@@ -154,11 +154,11 @@ class TensorWrapper {
       auto tensor_unpacked = (*unpack_hook_)(packed_value_);
       phi::DenseTensor* src_dense_tensor = nullptr;
       if (tensor_unpacked.is_dense_tensor()) {
-        VLOG(6) << "tensor_unpacked is dense_tensor";
+        VLOG(6) << "tensor_unpacked is DenseTensor";
         src_dense_tensor =
             static_cast<phi::DenseTensor*>(tensor_unpacked.impl().get());
       } else if (tensor_unpacked.is_dist_tensor()) {
-        VLOG(6) << "tensor_unpacked is dist_tensor";
+        VLOG(6) << "tensor_unpacked is DistTensor";
         src_dense_tensor = static_cast<phi::distributed::DistTensor*>(
                                tensor_unpacked.impl().get())
                                ->unsafe_mutable_value();
@@ -169,11 +169,11 @@ class TensorWrapper {
       }
 
       if (intermidiate_tensor_.is_dense_tensor()) {
-        VLOG(6) << "intermidiate_tensor_ is dense_tensor";
+        VLOG(6) << "intermidiate_tensor_ is DenseTensor";
         static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get())
             ->ResetHolder(src_dense_tensor->MoveMemoryHolder());
       } else if (intermidiate_tensor_.is_dist_tensor()) {
-        VLOG(6) << "intermidiate_tensor_ is dist_tensor";
+        VLOG(6) << "intermidiate_tensor_ is DistTensor";
         static_cast<phi::distributed::DistTensor*>(
             intermidiate_tensor_.impl().get())
             ->unsafe_mutable_value()

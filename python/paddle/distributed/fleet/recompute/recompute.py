@@ -346,7 +346,8 @@ def _recompute_without_reentrant(
                     return
 
                 if inner_x.is_dist():
-                    # tmp_tensor = core.eager.Tensor(inner_x)
+                    # TODO(jeff41404): it seems better to use `tmp_tensor = core.eager.Tensor(inner_x)`,
+                    # but other errors will be triggered during the current period, and can be modified after resolution
                     tmp_tensor = core.eager.Tensor(
                         inner_x.dtype,
                         inner_x.shape,
@@ -356,7 +357,6 @@ def _recompute_without_reentrant(
                         inner_x.process_mesh,
                         inner_x.placements,
                     )
-                    inner_x._share_buffer_to(tmp_tensor)
                 else:
                     tmp_tensor = core.eager.Tensor(
                         inner_x.dtype,
@@ -365,7 +365,7 @@ def _recompute_without_reentrant(
                         core.VarDesc.VarType.LOD_TENSOR,
                         inner_x.persistable,
                     )
-                    inner_x._share_buffer_to(tmp_tensor)
+                inner_x._share_buffer_to(tmp_tensor)
                 storage[holder_list[unpack_counter - 1]()] = tmp_tensor
                 return
 
