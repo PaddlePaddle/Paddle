@@ -1277,6 +1277,34 @@ PD_BUILD_OP(${op_name})
 
 
 def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
+    '''
+    Examples:
+
+    import os
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+    import paddle
+
+    batch = 2
+    seq = 3600
+    num_heads = 1
+    head_dim = 64*30
+    dtype= "float16"
+    x = paddle.rand([batch, seq, num_heads, head_dim], dtype=dtype)
+    weight = paddle.rand([head_dim], dtype=dtype)
+    bias = paddle.rand([head_dim], dtype=dtype)
+
+    for i in range(100):
+        baseline = paddle.incubate.nn.functional.fused_rms_norm(x, weight, bias, 1e-5, begin_norm_axis=3)
+
+    for i in range(100):
+        mt_result = paddle.incubate.tt.rms_norm(x,weight,bias,1e-5)
+
+
+    baseline = baseline[0]
+    print(paddle.max(paddle.abs(baseline-mt_result)))
+
+    '''
+
     assert len(x.shape) == 4, "x should be 4-dim."
     if weight is not None:
         assert len(weight.shape) == 1, "weight should be 1-dim"
@@ -1292,7 +1320,8 @@ def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
     M = x.shape[0] * x.shape[1] * x.shape[2]
     N = x.shape[3]
     N_npo2 = triton.next_power_of_2(N)
-    BLOCK_SIZE_M = 4
+    BLOCK_SIZE_Ms = [1, 2, 4, 8]
+    num_warps_list = [1, 2, 4, 8]
 
     # if in_dynamic_or_pir_mode():
     #     y = paddle.empty_like(x)
@@ -1360,20 +1389,24 @@ def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
         # ahead of time compile command.
         aot_template = (
             f"""{python_path}   {compile_file} {py_script_file}   -n rms_norm_kernel -o {generated_dir}/{op_name}_kernel --out-name {op_name}_kernel  """
-            + """ -s "{address_hint} {value_hint} {BLOCK_SIZE_M}, {N_npo2}"   \
+            + """ -w {num_warps} -s "{address_hint} {value_hint} {BLOCK_SIZE_M}, {N_npo2}"   \
                              -g "(M+{BLOCK_SIZE_M}-1)/{BLOCK_SIZE_M}, 1, 1" \
                        """
         )
+        codegen_commands = []
+        for BLOCK_SIZE_M in BLOCK_SIZE_Ms:
+            for num_warps in num_warps_list:
+                codegen_command = aot_template.format(
+                    address_hint=address_hint,
+                    value_hint=value_hint,
+                    BLOCK_SIZE_M=BLOCK_SIZE_M,
+                    num_warps=num_warps,
+                    N_npo2=N_npo2,
+                )
+                print(codegen_command)
+                codegen_commands.append(codegen_command)
 
-        codegen_command = aot_template.format(
-            address_hint=address_hint,
-            value_hint=value_hint,
-            BLOCK_SIZE_M=BLOCK_SIZE_M,
-            N_npo2=N_npo2,
-        )
-        print(codegen_command)
-        re = os.system(codegen_command)
-        assert re == 0
+        multi_process_do(codegen_commands)
 
         link_command = f"{python_path}  {link_file}  {generated_dir}/*.h -o {generated_dir}/{op_name}_kernel"
         re = os.system(link_command)
