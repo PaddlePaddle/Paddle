@@ -408,8 +408,8 @@ void FlashAttnInferMeta(const MetaTensor& q,
                         MetaTensor* softmax_lse,
                         MetaTensor* seed_offset) {
   auto out_dims = q.dims();
-  PADDLE_ENFORCE_EQ(out_dims.size(),
-                    4,
+  PADDLE_ENFORCE_EQ(out_dims.size() == 3 || out_dims.size() == 4,
+                    true,
                     phi::errors::InvalidArgument(
                         "flash_attn receive input with dim "
                         "[batch_size, seq_len, num_heads, head_dim]"));
@@ -434,31 +434,6 @@ void FlashAttnInferMeta(const MetaTensor& q,
   if (seed_offset) {
     seed_offset->set_dtype(phi::DataType::INT64);
     seed_offset->set_dims({2});
-  }
-}
-void FlashAttnQKVPackedInferMeta(const MetaTensor& qkv,
-                                 MetaTensor* out,
-                                 MetaTensor* softmax,
-                                 MetaTensor* softmax_lse,
-                                 MetaTensor* seed_offset) {
-  const auto& qkvdims = qkv.dims();
-  PADDLE_ENFORCE(qkvdims.size() == 4 || qkvdims.size() == 5,
-                 phi::errors::InvalidArgument(
-                     "qkv dims must be 4(unpadded) or 5(padded batch)"));
-  // qkv [total_*,nheads/nheads_k+2,nheads_k,headdim]
-  auto out_dims = DDim({qkvdims[0], (qkvdims[1] - 2) * qkvdims[2], qkvdims[3]});
-  if (qkvdims.size() == 5) {
-    // qkv [batchsize,seqlen,nheads/nheads_k+2,nheads_k,headdim]
-    out_dims =
-        DDim{qkvdims[0], qkvdims[1], (qkvdims[2] - 2) * qkvdims[3], qkvdims[4]};
-  }
-  out->set_dims(out_dims);
-  out->set_dtype(qkv.dtype());
-  out->set_layout(qkv.layout());
-  softmax->set_dtype(qkv.dtype());
-  softmax_lse->set_dtype(qkv.dtype());
-  if (seed_offset) {
-    seed_offset->set_dtype(phi::DataType::INT64);
   }
 }
 void FlashAttnQKVPackedInferMeta(const MetaTensor& qkv,

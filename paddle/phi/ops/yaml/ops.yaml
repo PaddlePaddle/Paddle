@@ -1655,17 +1655,17 @@
   intermediate : softmax_lse, seed_offset
   backward : flash_attn_varlen_qkvpacked_grad
 
-- op : flash_attn_with_sparse_mask
-  args : (Tensor q, Tensor k, Tensor v, Tensor attn_mask_start_row_indices, Tensor attn_mask_end_row_indices, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, int attn_mask_start_row = 0, bool return_softmax = false, bool is_test = false, str rng_name = "")
+- op : flashmask_attention
+  args : (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices,  Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
-  optional : attn_mask_end_row_indices , fixed_seed_offset
+  optional : fixed_seed_offset
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
   kernel :
-    func : flash_attn_with_sparse_mask
+    func : flashmask_attention
     data_type : q
-  backward : flash_attn_with_sparse_mask_grad
+  backward : flashmask_attention_grad
 
 - op : flatten
   args : (Tensor x, int start_axis = 1, int stop_axis = 1)
