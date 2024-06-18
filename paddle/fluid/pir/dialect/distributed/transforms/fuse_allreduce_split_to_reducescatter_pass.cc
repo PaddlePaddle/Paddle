@@ -105,7 +105,7 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
     const auto &builtin_slice =
         pat.Op(pir::SliceOp::name(), {{"index", pat.Attr("index")}});
     const auto &assign = pat.Op(paddle::dialect::AssignOp::name());
-    const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name());
+    // const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name());
 
     pat.Tensor("b") = c_allreduce_sum_(pat.Tensor("a"));
     pat.Tensor("d") = add(pat.Tensor("b"), pat.Tensor("c"));
@@ -128,7 +128,7 @@ class FusedAllReduceSplitPattern2 : public paddle::drr::DrrPatternBase {
                 {"event_to_record", pat.Attr("event_to_record")},
                 {"events_to_wait", pat.Attr("events_to_wait")}});
     const auto &add1 = res.Op(paddle::dialect::AddOp::name());
-    const auto &add_grad1 = res.Op(paddle::dialect::AddGradOp::name());
+    // const auto &add_grad1 = res.Op(paddle::dialect::AddGradOp::name());
 
     c_reducescatter({&res.Tensor("a")}, {&res.Tensor("b")});
     add1({&res.Tensor("b"), &res.Tensor("c")}, {&res.Tensor("h")});
