@@ -134,9 +134,9 @@ def gen_build_scripts(name, cuda_major_version, paddle_version):
     else:
         paddle_cuda_requires = []
 
-    if cuda_major_version == 'V11':
+    if cuda_major_version == 'cuda11.8':
         index_url = "https://www.paddlepaddle.org.cn/packages/stable/cu118/"
-    elif cuda_major_version == 'V12':
+    elif cuda_major_version == 'cuda12.3':
         index_url = "https://www.paddlepaddle.org.cn/packages/stable/cu123/"
     else:
         index_url = "https://www.paddlepaddle.org.cn/packages/stable/cpu/"
