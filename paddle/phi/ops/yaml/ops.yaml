@@ -3301,7 +3301,7 @@
     data_type : input
 
 - op : prod
-  args : (Tensor x, IntArray dims, bool keep_dim, bool reduce_all)
+  args : (Tensor x, IntArray axis, bool keepdim, bool reduce_all)
   output : Tensor
   infer_meta :
     func : ReduceIntArrayAxisInferMetaBase
