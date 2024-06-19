@@ -13,9 +13,10 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Sequence
+from typing import TYPE_CHECKING, Literal, Sequence, overload
 
 import numpy as np
+from typing_extensions import TypeAlias
 
 import paddle
 from paddle import _C_ops
@@ -42,6 +43,8 @@ from .math import _get_reduce_axis
 
 if TYPE_CHECKING:
     from paddle import Tensor
+
+    _Porder: TypeAlias = Literal['fro', 'nuc']
 
 __all__ = []
 
@@ -980,7 +983,7 @@ def matrix_norm(
 
 def norm(
     x: paddle.Tensor,
-    p: float | Literal['fro', 'nuc'] | None = None,
+    p: float | _Porder | None = None,
     axis: int | list[int] | tuple[int, int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
@@ -1262,7 +1265,7 @@ def dist(x: Tensor, y: Tensor, p: float = 2, name: str | None = None) -> Tensor:
 
 def cond(
     x: Tensor,
-    p: float | Literal['fro', 'nuc'] | None = None,
+    p: float | _Porder | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -1442,7 +1445,9 @@ def cond(
                 )
             return out
 
-    def fro_norm(input: Tensor, porder: float = 2, axis=[-1]) -> Tensor:
+    def fro_norm(
+        input: Tensor, porder: float = 2, axis: list[int] = [-1]
+    ) -> Tensor:
         """
         NOTE:
             Calculate the frobenius norm of a square matrix or batches of square matrices.
@@ -3030,9 +3035,36 @@ def qr(
             return q, r
 
 
+@overload
 def lu(
-    x, pivot: bool = True, get_infos: bool = False, name: str | None = None
-) -> Tensor | tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]:
+    x: Tensor,
+    pivot: bool = ...,
+    get_infos: Literal[False] = ...,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def lu(
+    x: Tensor,
+    pivot: bool = ...,
+    get_infos: Literal[True] = ...,
+    name: str | None = None,
+) -> tuple[Tensor, Tensor, Tensor]:
+    ...
+
+
+@overload
+def lu(
+    x: Tensor, pivot: bool = ..., get_infos: bool = ..., name: str | None = None
+) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]:
+    ...
+
+
+def lu(
+    x, pivot=True, get_infos=False, name=None
+) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]:
     r"""
     Computes the LU factorization of an N-D(N>=2) matrix x.
 
@@ -3057,7 +3089,7 @@ def lu(
 
         get_infos (bool, optional): if set to True, returns an info IntTensor. Default: False.
 
-        name (str, optional): Name for the operation (optional, default is None).
+        name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
