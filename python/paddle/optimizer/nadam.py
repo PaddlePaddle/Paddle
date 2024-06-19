@@ -17,8 +17,6 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Sequence
 
-from typing_extensions import NotRequired
-
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 
