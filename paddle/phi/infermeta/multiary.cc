@@ -4459,10 +4459,15 @@ void RmsNormInferMeta(const MetaTensor& x,
   auto out_dims = common::make_ddim(x_dims_vec);
 
   out->set_dims(out_dims);
-  if (quant_scale <= 0.0f) {
-    out->set_dtype(x.dtype());
+
+  if (quant_scale > 0) {
+    if (fabs(quant_max_bound - 127.0f) < 0.000001) {
+      out->set_dtype(phi::DataType::INT8);
+    } else if (fabs(quant_max_bound - 448.0f) < 0.000001) {
+      out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+    }
   } else {
-    out->set_dtype(phi::DataType::INT8);
+    out->set_dtype(x.dtype());
   }
   out->set_layout(x.layout());
   out->share_lod(x);
@@ -5841,6 +5846,34 @@ void FullWithTensorInferMeta(const IntArray& shape,
                              MetaTensor* out) {
   out->set_dims(common::make_ddim(shape.GetData()));
   out->set_dtype(dtype);
+}
+
+void TopPSamplingInferMeta(const MetaTensor& x,
+                           const MetaTensor& ps,
+                           const MetaTensor& threshold,
+                           const MetaTensor& topp_seed,
+                           int random_seed,
+                           int k,
+                           const std::string& mode,
+                           MetaTensor* out,
+                           MetaTensor* ids,
+                           MetaTensor* topk_scores,
+                           MetaTensor* topk_ids) {
+  auto x_dims = x.dims();
+  int bsz = x_dims[0];
+
+  PADDLE_ENFORCE(
+      mode == "truncated" || mode == "non-truncated",
+      errors::InvalidArgument("mode must be 'truncated' or 'non-truncated'."));
+
+  ids->set_dims(phi::make_ddim({bsz, 1}));
+  ids->set_dtype(DataType::INT64);
+  out->set_dims(phi::make_ddim({bsz, 1}));
+  out->set_dtype(x.dtype());
+  topk_ids->set_dims(phi::make_ddim({bsz, k}));
+  topk_ids->set_dtype(DataType::INT64);
+  topk_scores->set_dims(phi::make_ddim({bsz, k}));
+  topk_scores->set_dtype(x.dtype());
 }
 
 }  // namespace phi
