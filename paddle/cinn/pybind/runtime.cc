@@ -105,8 +105,7 @@ cinn_buffer_t *CreateBufferFromNumpyImpl(common::NVGPUArch, py::array data) {
 
 cinn_buffer_t *CreateBufferFromNumpyImpl(common::HygonDCUArchHIP,
                                          py::array data) {
-  // old code
-  CINN_NOT_IMPLEMENTED;
+  PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
 }
 
 cinn_buffer_t *InterfaceCreateBufferFromNumpy(common::Arch arch,

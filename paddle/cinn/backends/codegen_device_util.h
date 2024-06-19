@@ -124,8 +124,8 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
 #endif
         },
         [&](common::HygonDCUArchHIP) {
-          // todo: new hardware
-          CINN_NOT_IMPLEMENTED
+          PADDLE_THROW(phi::errors::Unimplemented(
+              "CINN todo: new hardware HygonDCUArchHIP"));
         });
 
     VLOG(6) << "Add a call node for func->name " << func->name << "\n"
@@ -146,8 +146,8 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
           call_kernel = runtime::intrinsic::call_cuda_kernel;
         },
         [&](common::HygonDCUArchHIP) {
-          // todo: new hardware
-          CINN_NOT_IMPLEMENTED;
+          PADDLE_THROW(phi::errors::Unimplemented(
+              "CINN todo: new hardware HygonDCUArchHIP"));
         });
 
     auto call_extern_api =

@@ -122,8 +122,7 @@ bool MemcpyToHost(void* dst,
 #endif
       },
       [&](common::HygonDCUArchHIP) {
-        // old code
-        CINN_NOT_IMPLEMENTED
+        PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
       },
       [&](common::X86Arch) { memcpy(dst, src, bytes); },
       [&](std::variant<common::UnknownArch, common::ARMArch>) {
@@ -157,8 +156,7 @@ bool MemcpyToDevice(void* dst,
 #endif
       },
       [&](common::HygonDCUArchHIP) {
-        // old code
-        CINN_NOT_IMPLEMENTED
+        PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
       },
       [&](common::X86Arch) {
 #ifdef CINN_WITH_CUDA
@@ -267,8 +265,7 @@ void cinn_assert_true(void* v_args,
             output->memory, x->memory, numel * sizeof(bool), target, stream);
       },
       [&](common::HygonDCUArchHIP) {
-        // old code
-        CINN_NOT_IMPLEMENTED
+        PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
       },
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         utils::MemcpyToHost(

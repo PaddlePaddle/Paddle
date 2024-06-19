@@ -387,8 +387,8 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                               }
                             },
                             [&](common::HygonDCUArchHIP) {
-                              // old code
-                              CINN_NOT_IMPLEMENTED
+                              PADDLE_THROW(phi::errors::Unimplemented(
+                                  "CINN old obsolete code!"));
                             });
         } else if (data_format == "NHWC") {
           // A is input: [N, H, W, C], B is filter: [C_out, C_in/group,
@@ -480,8 +480,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
           }
         },
         [&](common::HygonDCUArchHIP) {
-          // old code
-          CINN_NOT_IMPLEMENTED
+          PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
         });
   });
 
@@ -978,34 +977,34 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     CHECK(pack_args[2].is_string());
     std::string tensor_name = pack_args[2].operator std::string();
     if (data_format == "NCHW") {
-      target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                        [&](common::X86Arch) {
-                          out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
-                                                   B.as_tensor_ref(),
-                                                   padding[0],
-                                                   padding[1],
-                                                   stride[0],
-                                                   stride[1],
-                                                   dilation[0],
-                                                   dilation[1],
-                                                   key,
-                                                   tensor_name,
-                                                   target);
-                        },
-                        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                        [&](common::NVGPUArch) {
-                          out = pe::Depthwise_Conv2d_NCHW(A.as_tensor_ref(),
-                                                          B.as_tensor_ref(),
-                                                          padding[0],
-                                                          padding[1],
-                                                          stride[0],
-                                                          stride[1],
-                                                          tensor_name);
-                        },
-                        [&](common::HygonDCUArchHIP) {
-                          // old code
-                          CINN_NOT_IMPLEMENTED
-                        });
+      target.arch.Match(
+          [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::X86Arch) {
+            out = pe::Conv2d_NCHW_5D(A.as_tensor_ref(),
+                                     B.as_tensor_ref(),
+                                     padding[0],
+                                     padding[1],
+                                     stride[0],
+                                     stride[1],
+                                     dilation[0],
+                                     dilation[1],
+                                     key,
+                                     tensor_name,
+                                     target);
+          },
+          [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+          [&](common::NVGPUArch) {
+            out = pe::Depthwise_Conv2d_NCHW(A.as_tensor_ref(),
+                                            B.as_tensor_ref(),
+                                            padding[0],
+                                            padding[1],
+                                            stride[0],
+                                            stride[1],
+                                            tensor_name);
+          },
+          [&](common::HygonDCUArchHIP) {
+            PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
+          });
     } else if (data_format == "NHWC") {
       out = pe::Depthwise_Conv2d_NHWC(A.as_tensor_ref(),
                                       B.as_tensor_ref(),
@@ -1032,40 +1031,40 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
     *ret = CINNValuePack{res};
   });
 
-  framework::CINNSchedule depthwise_conv2d_schedule(
-      [=](lang::Args args, lang::RetValue *ret) {
-        CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
-                                "empty! Please check.\n";
-        cinn::common::CINNValuePack arg_pack = args[0];
-        std::vector<Expr> vec_ast;
-        std::vector<Expr> vec_tensor;
-        for (int i = 0; i < arg_pack.size(); i++) {
-          if (arg_pack[i].is_expr()) {
-            Expr temp = arg_pack[i];
-            vec_ast.emplace_back(temp);
-          } else if (arg_pack[i].is_tensor()) {
-            Expr temp = arg_pack[i];
-            vec_tensor.emplace_back(temp);
-          }
-        }
-        CHECK(!vec_ast.empty());
-        ir::ModuleExpr mod_expr(vec_ast);
-        ir::IRSchedule ir_sch(mod_expr);
-        ir_sch.MergeExprs();
-        target.arch.Match([&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
-                          [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
-                          [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
-                          [&](common::NVGPUArch) {
-                            pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
-                          },
-                          [&](common::HygonDCUArchHIP) {
-                            // old code
-                            CINN_NOT_IMPLEMENTED
-                          });
-        std::vector<cinn::common::CINNValue> res{
-            cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
-        *ret = cinn::common::CINNValuePack{res};
-      });
+  framework::CINNSchedule depthwise_conv2d_schedule([=](lang::Args args,
+                                                        lang::RetValue *ret) {
+    CHECK(!args.empty()) << "The input argument of InjectiveSchedule is "
+                            "empty! Please check.\n";
+    cinn::common::CINNValuePack arg_pack = args[0];
+    std::vector<Expr> vec_ast;
+    std::vector<Expr> vec_tensor;
+    for (int i = 0; i < arg_pack.size(); i++) {
+      if (arg_pack[i].is_expr()) {
+        Expr temp = arg_pack[i];
+        vec_ast.emplace_back(temp);
+      } else if (arg_pack[i].is_tensor()) {
+        Expr temp = arg_pack[i];
+        vec_tensor.emplace_back(temp);
+      }
+    }
+    CHECK(!vec_ast.empty());
+    ir::ModuleExpr mod_expr(vec_ast);
+    ir::IRSchedule ir_sch(mod_expr);
+    ir_sch.MergeExprs();
+    target.arch.Match(
+        [&](common::UnknownArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::X86Arch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
+        [&](common::NVGPUArch) {
+          pe::IRCudaScheduleDepthwiseConv(ir_sch, vec_tensor);
+        },
+        [&](common::HygonDCUArchHIP) {
+          PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
+        });
+    std::vector<cinn::common::CINNValue> res{
+        cinn::common::CINNValue(ir_sch.GetModule().GetExprs().at(0))};
+    *ret = cinn::common::CINNValuePack{res};
+  });
 
   auto strategy = std::make_shared<framework::OpStrategy>();
   CHECK(out_type.size())
@@ -1720,8 +1719,8 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
                       }
                     },
                     [&](common::HygonDCUArchHIP) {
-                      // todo: new hardware
-                      CINN_NOT_IMPLEMENTED
+                      PADDLE_THROW(phi::errors::Unimplemented(
+                          "CINN todo: new hardware HygonDCUArchHIP"));
                     });
   strategy->AddImpl(pool2d_compute, pool2d_schedule, "strategy.pool2d.x86", 1);
   if (use_warp_reduce) {

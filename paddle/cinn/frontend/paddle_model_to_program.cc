@@ -656,8 +656,7 @@ Variable AddOpMapperDepthwiseConv2dImpl(common::HygonDCUArchHIP,
                                         const paddle::cpp::OpDesc& op_desc,
                                         const Variable& x,
                                         const Variable& y) {
-  // old code
-  CINN_NOT_IMPLEMENTED
+  PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
 }
 
 template <typename T>

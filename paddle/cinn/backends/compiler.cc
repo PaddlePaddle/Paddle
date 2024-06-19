@@ -268,8 +268,8 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 
       },
       [&](common::HygonDCUArchHIP) -> std::string {
-        // todo: new hardware
-        CINN_NOT_IMPLEMENTED
+        PADDLE_THROW(phi::errors::Unimplemented(
+            "CINN todo: new hardware HygonDCUArchHIP"));
       });
 }
 
@@ -362,8 +362,8 @@ void Compiler::CompileCudaModule(const Module& module,
 void Compiler::CompileHipModule(const Module& module,
                                 const std::string& code,
                                 bool add_module) {
-  // todo: new hardware
-  CINN_NOT_IMPLEMENTED
+  PADDLE_THROW(
+      phi::errors::Unimplemented("CINN todo: new hardware HygonDCUArchHIP"));
 }
 
 void Compiler::CompileX86Module(const Module& module, bool add_module) {

@@ -123,8 +123,7 @@ void TensorFromStream(std::istream &is,
 #endif
       },
       [&](common::HygonDCUArchHIP) {
-        // old code
-        CINN_NOT_IMPLEMENTED
+        PADDLE_THROW(phi::errors::Unimplemented("CINN old obsolete code!"));
       });
 }
 
