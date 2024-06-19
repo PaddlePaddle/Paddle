@@ -27,20 +27,23 @@ from ..base.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
-from .optimizer import Optimizer, _ParameterConfig
-
-
-class _NAdamParameterConfig(_ParameterConfig):
-    beta1: NotRequired[float | Tensor]
-    beta2: NotRequired[float | Tensor]
-
+from .optimizer import Optimizer
 
 if TYPE_CHECKING:
+    from typing_extensions import NotRequired
+
     from paddle import Tensor
     from paddle.nn.clip import GradientClipBase
 
     from .lr import LRScheduler
     from .optimizer import _ParameterConfig
+
+    class _NAdamParameterConfig(_ParameterConfig):
+        beta1: NotRequired[float | Tensor]
+        beta2: NotRequired[float | Tensor]
+        epsilon: NotRequired[float]
+        momentum_decay: NotRequired[float]
+
 
 __all__ = []
 
