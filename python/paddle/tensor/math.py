@@ -139,7 +139,7 @@ def _get_reduce_axis(axis, x):
 
 def _get_reduce_axis_with_tensor(axis, x):
     if isinstance(axis, (Variable, paddle.pir.Value)):
-        if axis.shape[0] == len(x.shape):
+        if axis.shape != [] and axis.shape[0] == len(x.shape):
             reduce_all = True
         else:
             reduce_all = False
@@ -1558,52 +1558,54 @@ def sum(
         dtype_flag = True
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.sum(x, axis, dtype, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-
-        attrs = {'dim': axis, 'keep_dim': keepdim}
-
-        if dtype_flag:
-            attrs.update({'in_dtype': x.dtype, 'out_dtype': dtype})
-
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'bool',
-                'uint16',
-                'int8',
-                'uint8',
-                'float16',
-                'float32',
-                'float64',
-                'int16',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'sum',
-        )
-
-        check_type(
-            axis, 'axis', (int, list, tuple, type(None), Variable), 'sum'
-        )
-
-        helper = LayerHelper('sum', **locals())
-        if dtype_flag:
-            out = helper.create_variable_for_type_inference(dtype=dtype)
+        if in_pir_mode():
+            return _C_ops.sum(x, axis, dtype, keepdim)
         else:
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='reduce_sum',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs=attrs,
-        )
-        return out
+            attrs = {'dim': axis, 'keep_dim': keepdim}
+
+            if dtype_flag:
+                attrs.update({'in_dtype': x.dtype, 'out_dtype': dtype})
+
+            check_variable_and_dtype(
+                x,
+                'x',
+                [
+                    'bool',
+                    'uint16',
+                    'int8',
+                    'uint8',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int16',
+                    'int32',
+                    'int64',
+                    'complex64',
+                    'complex128',
+                ],
+                'sum',
+            )
+
+            check_type(
+                axis, 'axis', (int, list, tuple, type(None), Variable), 'sum'
+            )
+
+            helper = LayerHelper('sum', **locals())
+            if dtype_flag:
+                out = helper.create_variable_for_type_inference(dtype=dtype)
+            else:
+                out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type='reduce_sum',
+                inputs={'X': x},
+                outputs={'Out': out},
+                attrs=attrs,
+            )
+            return out
 
 
 def reduce_as(x: Tensor, target: Tensor, name: str | None = None) -> Tensor:
@@ -2969,8 +2971,7 @@ def max(
              [[0., 0.],
               [1., 1.]]])
     """
-
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.max(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
@@ -2998,14 +2999,18 @@ def max(
             ):
                 axis = paddle.utils._convert_to_tensor_list(axis)
 
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='reduce_max',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
-        )
-        return out
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type='reduce_max',
+                inputs={'X': x},
+                outputs={'Out': out},
+                attrs={
+                    'dim': axis,
+                    'keep_dim': keepdim,
+                    'reduce_all': reduce_all,
+                },
+            )
+            return out
 
 
 def min(
@@ -3124,27 +3129,33 @@ def min(
              [[0., 0.],
               [0., 0.]]])
     """
-
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.min(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-        helper = LayerHelper('min', **locals())
-        check_variable_and_dtype(
-            x,
-            'x',
-            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
-            'min',
-        )
+        if in_pir_mode():
+            return _C_ops.min(x, axis, keepdim)
+        else:
+            helper = LayerHelper('min', **locals())
+            check_variable_and_dtype(
+                x,
+                'x',
+                ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+                'min',
+            )
 
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='reduce_min',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
-        )
-        return out
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type='reduce_min',
+                inputs={'X': x},
+                outputs={'Out': out},
+                attrs={
+                    'dim': axis,
+                    'keep_dim': keepdim,
+                    'reduce_all': reduce_all,
+                },
+            )
+            return out
 
 
 def amax(

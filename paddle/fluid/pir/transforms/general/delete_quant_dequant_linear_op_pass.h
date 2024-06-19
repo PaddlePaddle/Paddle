@@ -1,4 +1,4 @@
-// Copyright (c) 2023 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,26 +14,13 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/pass/general_fusion_merge_pass/lightware_fuse_pass.h"
+#include <memory>
+#include "paddle/pir/include/core/dll_decl.h"
 
-namespace cinn {
-namespace hlir {
-namespace pass {
+namespace pir {
 
-class VerticalFusePass : public LightwareFusePass {
- public:
-  virtual ~VerticalFusePass() = default;
+class Pass;
 
-  virtual void operator()(LightwareFusePassCtx* ctx) const = 0;
+IR_API std::unique_ptr<Pass> CreateDeleteQuantDequantLinearOpPass();
 
-  const std::string FuseMode() const final { return "VerticalFuse"; }
-
-  virtual int Benefit() const = 0;
-
- protected:
-  VerticalFusePass() = default;
-};
-
-}  // namespace pass
-}  // namespace hlir
-}  // namespace cinn
+}  // namespace pir

@@ -989,7 +989,7 @@ def monkey_patch_tensor():
     def __getitem__(
         self,
         item: TensorIndex,
-    ):
+    ) -> Tensor:
         item = pre_deal_index(self, item)
         return self._getitem_dygraph(item)
 
