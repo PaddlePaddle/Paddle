@@ -102,6 +102,10 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
       return pybind11::detail::NPY_COMPLEX128;
     case phi::DataType::PSTRING:
       return pybind11::detail::npy_api::NPY_UNICODE_;
+    case phi::DataType::FLOAT8_E4M3FN:
+      return pybind11::detail::npy_api::NPY_BYTE_;
+    case phi::DataType::FLOAT8_E5M2:
+      return pybind11::detail::npy_api::NPY_BYTE_;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Unknow phi::DataType, the int value = %d.",
@@ -2865,6 +2869,39 @@ void BindEagerUtils(PyObject* module) {
         "Init Paddle error in BindEagerUtils(PyModule_AddFunctions)."));
     return;
   }
+}
+
+std::tuple<std::vector<int64_t>,
+           paddle::flat_hash_map<int64_t, phi::ReduceType>>
+CvtPlacements(Placements placements, int ndim) {
+  std::vector<int64_t> dim_map(ndim, -1);
+  for (size_t i = 0; i < placements.size(); i++) {
+    auto& placement = placements[i];
+    if (placement->is_shard()) {
+      auto shard_dim =
+          dynamic_cast<const phi::distributed::Shard&>(*placement).get_dim();
+      PADDLE_ENFORCE_EQ(
+          dim_map[shard_dim],
+          -1,
+          common::errors::InvalidArgument(
+              "Tensor dim %lld is already sharded on mesh dim %lld,"
+              " DistTensor operator implementation does not support things "
+              "like hybrid"
+              " sharding strategies yet (i.e. [Shard(0), Shard(0)])",
+              shard_dim,
+              dim_map[shard_dim]));
+      dim_map[shard_dim] = i;
+    }
+  }
+  paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
+  for (size_t i = 0; i < placements.size(); ++i) {
+    auto& p = placements[i];
+    if (p->is_partial()) {
+      partial_status.insert(
+          {i, dynamic_cast<phi::distributed::Partial&>(*p).get_reduce_type()});
+    }
+  }
+  return {dim_map, partial_status};
 }
 
 }  // namespace paddle::pybind

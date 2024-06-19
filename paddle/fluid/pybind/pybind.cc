@@ -371,14 +371,6 @@ bool IsCompiledWithHETERPS() {
 #endif
 }
 
-bool IsCompiledWithGPUGRAPH() {
-#ifndef PADDLE_WITH_GPU_GRAPH
-  return false;
-#else
-  return true;
-#endif
-}
-
 bool SupportsBfloat16() {
 #ifndef PADDLE_WITH_DNNL
   return false;
@@ -857,6 +849,13 @@ void BindVjp(pybind11::module *m) {
          const std::vector<std::vector<pir::Value>> &outputs,
          const std::vector<std::vector<pir::Value>> &out_grads,
          const std::vector<std::vector<bool>> &stop_gradients) {
+        // NOTE(dev): Prim decomposed rules will call paddle::dialect::xx
+        // api, which has amp strategy. But Prim already process cast operation
+        // and we need to disable amp strategy here.
+        paddle::imperative::AutoCastGuard guard(
+            egr::Controller::Instance().GetCurrentAmpAttrs(),
+            paddle::imperative::AmpLevel::O0);
+
         py::list res;
         std::vector<std::vector<pir::Value>> vjp_res;
 
@@ -2364,7 +2363,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
   m.def("is_compiled_with_distribute", IsCompiledWithDISTRIBUTE);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
-  m.def("_is_compiled_with_gpu_graph", IsCompiledWithGPUGRAPH);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("supports_int8", SupportsInt8);
@@ -3193,6 +3191,8 @@ All parameter, weight, gradient are variables in Paddle.
       .value("COMPLEX128", phi::DataType::COMPLEX128)
       .value("FLOAT16", phi::DataType::FLOAT16)
       .value("BFLOAT16", phi::DataType::BFLOAT16)
+      .value("FLOAT8_E4M3FN", phi::DataType::FLOAT8_E4M3FN)
+      .value("FLOAT8_E5M2", phi::DataType::FLOAT8_E5M2)
       .export_values();
 
 #if defined(PADDLE_WITH_PSLIB) && !defined(PADDLE_WITH_HETERPS)

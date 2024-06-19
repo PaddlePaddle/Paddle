@@ -407,13 +407,6 @@ void FlashAttnInferMeta(const MetaTensor& q,
                         MetaTensor* softmax,
                         MetaTensor* softmax_lse,
                         MetaTensor* seed_offset) {
-#ifdef PADDLE_WITH_HIP
-  auto out_dims = q.dims();
-  out_dims[3] = v.dims()[3];
-  out->set_dims(out_dims);
-  out->set_dtype(q.dtype());
-  out->set_layout(q.layout());
-#else
   auto out_dims = q.dims();
   PADDLE_ENFORCE_EQ(out_dims.size(),
                     4,
@@ -442,7 +435,6 @@ void FlashAttnInferMeta(const MetaTensor& q,
     seed_offset->set_dtype(phi::DataType::INT64);
     seed_offset->set_dims({2});
   }
-#endif
 }
 void FlashAttnQKVPackedInferMeta(const MetaTensor& qkv,
                                  MetaTensor* out,

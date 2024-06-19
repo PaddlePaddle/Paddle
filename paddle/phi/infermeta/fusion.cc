@@ -290,9 +290,15 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       MetaTensor* value_cache_out) {
   auto input_dims = qkv.dims();
   auto key_cache_dims = key_cache.dims();
-  const int num_head = key_cache_dims[1];
+  const int kv_num_head = key_cache_dims[1];
   const int dim_head = key_cache_dims[3];
+  const int total_num_head = qkv.dims()[qkv.dims().size() - 1] / dim_head;
+  const int q_num_head = total_num_head - 2 * kv_num_head;
 
+  PADDLE_ENFORCE_EQ(q_num_head % kv_num_head,
+                    0,
+                    errors::InvalidArgument(
+                        "The q num_head must be divisible by kv_num_head"));
   PADDLE_ENFORCE_EQ(
       input_dims.size(),
       2UL,
@@ -302,12 +308,12 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
       4UL,
       errors::InvalidArgument("The input(key_cache) must be a 4D Tensor."));
   PADDLE_ENFORCE_EQ(
-      3 * num_head * dim_head,
+      (2 * kv_num_head + q_num_head) * dim_head,
       input_dims[1],
-      errors::InvalidArgument(
-          "The input_dims[1] must be equal to 3 * num_head * dim_head"));
+      errors::InvalidArgument("The input_dims[1] must be equal to (2 * "
+                              "kv_num_head + q_num_head) * dim_head"));
 
-  fmha_out->set_dims({input_dims[0], num_head * dim_head});
+  fmha_out->set_dims({input_dims[0], q_num_head * dim_head});
   qkv_out->set_dims(qkv.dims());
   key_cache_out->set_dims(key_cache_dims);
   key_cache_out->set_dtype(key_cache.dtype());
@@ -371,7 +377,11 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
       FBADtypeCheck(qkv, "qkv", compute_dtype);
     }
     if (out_scale > 0) {
-      fmha_out->set_dtype(phi::DataType::INT8);
+      if (fabs(quant_max_bound - 127.0f) < 0.000001) {
+        fmha_out->set_dtype(phi::DataType::INT8);
+      } else if (fabs(quant_max_bound - 448.0f) < 0.000001) {
+        fmha_out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+      }
     } else {
       fmha_out->set_dtype(qkv.dtype());
     }

@@ -2719,7 +2719,6 @@ class ShardDataloader:
         return len(self._dataloader)
 
     def __iter__(self):
-        self.iter = self._dataloader.__iter__()
         return self
 
     def _get_mesh_and_placement(self, index):
@@ -2840,7 +2839,8 @@ class ShardDataloader:
         return self._get_batch(batch_data)
 
     def __call__(self):
-        return self.__iter__()
+        self.iter = self._dataloader.__iter__()
+        return self
 
 
 def shard_dataloader(

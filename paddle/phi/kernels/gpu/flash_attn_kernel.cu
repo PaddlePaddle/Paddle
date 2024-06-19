@@ -55,7 +55,7 @@ void FlashAttnUnpaddedBaseKernel(
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset,
     bool varlen_padded) {
-#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_FLASHATTN
   if (!out->IsInitialized()) ctx.template Alloc<T>(out);
   if (varlen_padded) {
     std::vector<const DenseTensor*> inputs{};
@@ -63,11 +63,7 @@ void FlashAttnUnpaddedBaseKernel(
 
     phi::funcs::ElementwiseKernel<T>(ctx, inputs, &outputs, ZeroFunctor<T>());
   }
-#ifdef PADDLE_WITH_HIP
-  hipStream_t stream = ctx.stream();
-#else
   cudaStream_t stream = ctx.stream();
-#endif
 
   // q, k, v [total_q/k/v, num_heads, head_dim]
   auto dims = q.dims();
@@ -124,38 +120,7 @@ void FlashAttnUnpaddedBaseKernel(
 
   VLOG(10) << "FlashAttn fwd seed: " << params.seed
            << ", offset: " << params.offset;
-#ifdef PADDLE_WITH_HIP
-  bool succ = phi::dynload::flash_attn_varlen_fwd(
-      q.data(),
-      k.data(),
-      v.data(),
-      cu_seqlens_q.data<int32_t>(),
-      cu_seqlens_k.data<int32_t>(),
-      params.rng_state.data(),
-      out->data(),
-      params.return_softmax ? softmax->data() : nullptr,
-      softmax_lse->data(),
-      params.batch_size,
-      params.max_seqlen_q,
-      params.max_seqlen_k,
-      params.seqlen_q_rounded,
-      params.seqlen_k_rounded,
-      params.num_heads,
-      params.num_heads_k,
-      params.head_size,
-      params.head_size_rounded,
-      params.dropout,
-      params.softmax_scale,
-      1.0f / params.softmax_scale,
-      params.causal,
-      params.return_softmax,
-      params.is_bf16,
-      stream,
-      params.seed,
-      params.offset,
-      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.attn_mask_tensor ? params.mask_dims.data() : nullptr);
-#else
+
   bool succ = phi::dynload::flash_attn_varlen_fwd(
       q.data(),
       k.data(),
@@ -199,7 +164,6 @@ void FlashAttnUnpaddedBaseKernel(
       max_seqlen_k * v.strides()[0],
       max_seqlen_q * out->strides()[0],
       varlen_padded);
-#endif
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();
@@ -228,7 +192,7 @@ void FlashAttnUnpaddedKernel(
     DenseTensor* softmax,
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
-#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_FLASHATTN
   FlashAttnUnpaddedBaseKernel<T>(ctx,
                                  q,
                                  k,
@@ -306,7 +270,7 @@ void FlashAttnVarlenQKVPackedKernel(
     DenseTensor* softmax,
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
-#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_FLASHATTN
   const auto head_groupnum = qkv.dims()[1];  // nheads/nheads_k + 1 + 1
   DenseTensor q, k, v;
   sliceFlattenView(qkv, &q, 1, 0, head_groupnum - 2);
@@ -357,7 +321,7 @@ void FlashAttnBaseKernel(
     DenseTensor* softmax,
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
-#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_FLASHATTN
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
   PADDLE_ENFORCE_EQ(dims.size(),
@@ -427,43 +391,8 @@ void FlashAttnBaseKernel(
   }
   if (!out->IsInitialized()) ctx.template Alloc<T>(out);
 
-#ifdef PADDLE_WITH_HIP
-  hipStream_t stream = ctx.stream();
-#else
   cudaStream_t stream = ctx.stream();
-#endif
 
-#ifdef PADDLE_WITH_HIP
-  bool succ = phi::dynload::flash_attn_fwd(
-      q.data(),
-      k.data(),
-      v.data(),
-      params.rng_state.data(),
-      out->data(),
-      params.return_softmax ? params.softmax->data() : nullptr,
-      params.softmax_lse->data(),
-      params.batch_size,
-      params.max_seqlen_q,
-      params.max_seqlen_k,
-      params.seqlen_q_rounded,
-      params.seqlen_k_rounded,
-      params.num_heads,
-      params.num_heads_k,
-      params.head_size,
-      params.head_size_rounded,
-      params.dropout,
-      params.softmax_scale,
-      softmax_unscale,  // for unscale
-      params.causal,
-      params.return_softmax,
-      params.is_bf16,
-      stream,
-      params.seed,
-      params.offset,
-      params.attn_mask_tensor ? params.attn_mask_tensor->data() : nullptr,
-      params.mask_dims.data(),
-      is_test);
-#else
   bool succ = phi::dynload::flash_attn_fwd(
       q.data(),
       k.data(),
@@ -511,7 +440,6 @@ void FlashAttnBaseKernel(
       k.strides()[0],
       v.strides()[0],
       out->strides()[0]);
-#endif
   CheckFlashAttnStatus(succ);
 #else
   RaiseNotSupportedError();
@@ -568,7 +496,7 @@ void FlashAttnQKVPackedKernel(
     DenseTensor* softmax,
     DenseTensor* softmax_lse,
     DenseTensor* seed_offset) {
-#if defined(PADDLE_WITH_FLASHATTN) || defined(PADDLE_WITH_HIP)
+#ifdef PADDLE_WITH_FLASHATTN
   const auto head_groupnum = qkv.dims()[2];  // nheads/nheads_k + 1 + 1
   DenseTensor q, k, v;
   sliceFlattenView(qkv, &q, 2, 0, head_groupnum - 2);

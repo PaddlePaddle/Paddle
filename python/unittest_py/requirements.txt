@@ -11,7 +11,7 @@ paddle2onnx>=0.9.6
 scipy>=1.6, !=1.7.2, !=1.7.3
 prettytable
 distro
-numpy>=1.20
+numpy>=1.20, <2.0
 autograd==1.4
 librosa==0.8.1 ; python_version<"3.12"
 parameterized
