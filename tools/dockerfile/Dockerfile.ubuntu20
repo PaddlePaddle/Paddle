@@ -96,7 +96,7 @@ RUN rm setuptools-50.3.2.zip setuptools-68.2.2.tar.gz pip-23.3.1.tar.gz && \
 
 # remove them when apt-get support 2.27 and higher version
 RUN wget -q https://ftp.gnu.org/gnu/binutils/binutils-2.33.1.tar.gz && \ 
-    tar -xzf binutils-2.33.1.tar.gz && \ 
+    tar -xzf binutils-2.33.1.tar.gz && \
     cd binutils-2.33.1 && \
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.33.1 binutils-2.33.1.tar.gz
 

@@ -177,7 +177,7 @@ FUNCTION_SET_DEVICE_TEMPLATE = """{}
 FUNCTION_NAME_TEMPLATE = "{}{}{}"
 
 
-PYTHON_C_FUNCTION_REG_TEMPLATE = "  {{\"{}{}\", (PyCFunction)(void(*)(void)) {}eager_api_{}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {} in dygraph.\"}},\n"
+PYTHON_C_FUNCTION_REG_TEMPLATE = "  {{\"{}{}\", (PyCFunction)(void(*)()) {}eager_api_{}, METH_VARARGS | METH_KEYWORDS, \"C++ interface function for {} in dygraph.\"}},\n"
 
 
 PYTHON_C_WRAPPER_TEMPLATE = """
@@ -264,9 +264,9 @@ static PyObject * eager_get_core_ops_returns_info(PyObject *self) {
 
 
 CORE_OPS_INFO_REGISTRY = """
-  {\"get_core_ops_args_info\", (PyCFunction)(void(*)(void))eager_get_core_ops_args_info, METH_NOARGS, \"C++ interface function for eager_get_core_ops_args_info.\"},
-  {\"get_core_ops_args_type_info\", (PyCFunction)(void(*)(void))eager_get_core_ops_args_type_info, METH_NOARGS, \"C++ interface function for eager_get_core_ops_args_type_info.\"},
-  {\"get_core_ops_returns_info\", (PyCFunction)(void(*)(void))eager_get_core_ops_returns_info, METH_NOARGS, \"C++ interface function for eager_get_core_ops_returns_info.\"},
+  {\"get_core_ops_args_info\", (PyCFunction)(void(*)())eager_get_core_ops_args_info, METH_NOARGS, \"C++ interface function for eager_get_core_ops_args_info.\"},
+  {\"get_core_ops_args_type_info\", (PyCFunction)(void(*)())eager_get_core_ops_args_type_info, METH_NOARGS, \"C++ interface function for eager_get_core_ops_args_type_info.\"},
+  {\"get_core_ops_returns_info\", (PyCFunction)(void(*)())eager_get_core_ops_returns_info, METH_NOARGS, \"C++ interface function for eager_get_core_ops_returns_info.\"},
 """
 
 NAMESPACE_WRAPPER_TEMPLATE = """namespace {} {{
