@@ -36,6 +36,7 @@
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
+#include "paddle/cinn/optim/check_tensor_buffer_map.h"
 #include "paddle/cinn/optim/eliminate_common_global_memory_read.h"
 #include "paddle/cinn/optim/if_fusion.h"
 #include "paddle/cinn/optim/rearrange_load_instruction.h"
@@ -52,6 +53,7 @@ PD_DECLARE_bool(cinn_enable_map_expr);
 PD_DECLARE_bool(cinn_enable_map_expr_schedule);
 PD_DECLARE_bool(cinn_bucket_compile);
 PD_DECLARE_bool(cinn_new_group_scheduler);
+PD_DECLARE_bool(cinn_check_tensor_buffer_map);
 
 namespace cinn {
 namespace hlir {
@@ -209,11 +211,21 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
                &tensor_map,
                &tmp_tensor_info);
 
+  if (FLAGS_cinn_check_tensor_buffer_map) {
+    optim::CheckTensorBufferMap(func_bodies, "BucketLower LowerOps");
+    LOG(INFO) << "LowerOps tensor-buffer map check succeed";
+  }
+
   // =========== OpFusion ============
 
   // VLOG(4) << "Bucket Lower output values is : " << group->output_values();
   func_bodies = OperationFusion(ops, func_bodies, group->output_values());
   const auto& fusion_group_info = GetFusionGroupInfo(func_bodies);
+
+  if (FLAGS_cinn_check_tensor_buffer_map) {
+    optim::CheckTensorBufferMap(func_bodies, "BucketLower OpFusion");
+    LOG(INFO) << "OpFusion tensor-buffer map check succeed";
+  }
 
   // =========== CodeGen And Optimizer ================
 
@@ -224,6 +236,12 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   ir_sch.MergeExprs();
   std::vector<std::pair<ir::SymbolicPredicate, ir::Expr>> cond2func_bodies;
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
+
+  if (FLAGS_cinn_check_tensor_buffer_map) {
+    optim::CheckTensorBufferMap(ir_sch.GetModule().GetExprs(),
+                                "BucketLower MergeExprs");
+    LOG(INFO) << "MergeExprs tensor-buffer map check succeed";
+  }
 
   std::unordered_set<::pir::Value> inner_genevalue;
   std::unordered_set<::pir::Operation*> ops_set(ops.begin(), ops.end());
@@ -262,6 +280,14 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   // The last func is stored as a kernel on x86
   cond2func_bodies.emplace_back(ir::Expr(true), X86Expr);
 
+  if (FLAGS_cinn_check_tensor_buffer_map) {
+    for (std::pair<ir::SymbolicPredicate, ir::Expr>& cond2body :
+         cond2func_bodies) {
+      optim::CheckTensorBufferMap(cond2body.second, "BucketLower schedule");
+    }
+    LOG(INFO) << "Schedule tensor-buffer map check succeed";
+  }
+
   // 3.Do post-processing,
   // including preparing function args and temporary variables,
   // applying low-level optimization passes, etc.
@@ -280,6 +306,12 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
                                                    &group_func_arg_tensors_copy,
                                                    &group_func_args,
                                                    &infer_shape_tensor_args);
+  if (FLAGS_cinn_check_tensor_buffer_map) {
+    for (ir::LoweredFunc& func : funcs) {
+      optim::CheckTensorBufferMap(Expr(func), "BucketLower PostProcess");
+    }
+    LOG(INFO) << "PostProcess tensor-buffer map check succeed";
+  }
   PADDLE_ENFORCE_EQ(funcs.size(),
                     cond2func_bodies.size(),
                     phi::errors::InvalidArgument(

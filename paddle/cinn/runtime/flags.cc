@@ -283,6 +283,9 @@ PD_DEFINE_string(cinn_convert_dynamic_dim_to_static_dim,
                                ""),
                  "A test flag whether to convert dynamic to static dim, e.g.: "
                  "FLAGS_cinn_convert_dynamic_dim_to_static_dim=s0:128,s1:299");
+PD_DEFINE_bool(cinn_check_tensor_buffer_map,
+               BoolFromEnv("FLAGS_cinn_check_tensor_buffer_map", false),
+               "Whether to check tensor buffer mapping");
 
 namespace cinn {
 namespace runtime {
