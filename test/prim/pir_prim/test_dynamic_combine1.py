@@ -83,9 +83,6 @@ class TestPrimMode1(unittest.TestCase):
     def test_prim_all_dynamic(self):
         res_ref = self.base_net()
         res = self.base_net("prim")
-        print(res_ref)
-        print(res)
-        # breakpoint()
         for ref, actual in zip(res_ref, res):
             np.testing.assert_allclose(ref.numpy(), actual.numpy(), rtol=1e-6)
 

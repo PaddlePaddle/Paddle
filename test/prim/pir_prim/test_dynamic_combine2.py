@@ -65,7 +65,7 @@ class TestPrimMode1(unittest.TestCase):
                 use_cinn=self.enable_cinn,
                 input_spec=[
                     InputSpec(shape=[None], dtype='float32'),
-                    InputSpec(shape=[4], dtype='float32'),
+                    InputSpec(shape=[None], dtype='float32'),
                     InputSpec(shape=[4, 4], dtype='float32'),
                 ],
             )
@@ -88,8 +88,6 @@ class TestPrimMode1(unittest.TestCase):
     def test_prim_all_dynamic(self):
         res_ref = self.base_net()
         res = self.base_net("prim")
-        print(res_ref)
-        print(res)
         np.testing.assert_allclose(res_ref.numpy(), res.numpy(), rtol=1e-6)
 
 

@@ -3380,7 +3380,8 @@ std::vector<pir::Type> ExpandOp::InferMeta(
       VLOG(0) << "inputs.size() ====== " << inputs.size()
               << ". compare ==== " << shape_dim;
 
-      if (shape_dim.size() == 1 && shape_dim[0] == inputs.size()) {
+      if (shape_dim.size() == 1 &&
+          shape_dim[0] == static_cast<int64_t>(inputs.size())) {
         for (auto item : inputs) {
           if (item.defining_op()->isa<paddle::dialect::ShapeOp>()) {
             pir::Value shape_input = item.defining_op()->operand_source(0);

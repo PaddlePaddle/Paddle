@@ -495,6 +495,9 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
     pir::Value inputs = shape.defining_op()->operand_source(0);
     vec_shape = common::vectorize(
         inputs.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
+    VLOG(0)
+        << " vector shape ========== "
+        << inputs.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
     *is_from_tensor = true;
   } else if (shape.isa<pir::OpResult>() &&
              shape.defining_op()->isa<paddle::dialect::ConcatOp>()) {

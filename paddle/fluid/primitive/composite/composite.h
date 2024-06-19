@@ -494,8 +494,40 @@ Tensor log_softmax_decomp(const Tensor& x, const int& axis) {
 template <typename T>
 Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
   std::vector<Tensor> concat_x;
-  if (has_dynamic_shape(x[0].shape())) {
-    Tensor out_shape = shape<T>(unsqueeze<T>(x[0], {axis}));
+  bool is_dynamic = false;
+  std::vector<int64_t> combined_shape(x[0].shape().size(), -1);
+  for (auto& item : x) {
+    auto item_shape = item.shape();
+    for (size_t i = 0; i < item_shape.size(); i++) {
+      if (item_shape[i] == -1) {
+        is_dynamic = true;
+      } else {
+        combined_shape[i] = std::max(combined_shape[i], item_shape[i]);
+      }
+    }
+  }
+
+  // tar_shape = get_slice<T>(x_dim_t, 0) * groups;
+  // Tensor dim_1 = full<T>({1}, -1, x_dim_t.type());
+  // tar_shape = concat<T>({tar_shape, dim_1});
+
+  if (is_dynamic && has_dynamic_shape(combined_shape)) {
+    std::vector<Tensor> shapes;
+    Tensor temp_shape = shape<T>(x[0]);
+    for (size_t j = 0; j < x[0].shape().size(); j++) {
+      if (j == axis) {
+        shapes.push_back(full<T>({1}, 1, temp_shape.type()));
+      }
+      if (combined_shape[j] == -1) {
+        shapes.push_back(get_slice<T>(temp_shape, j));
+      } else {
+        int64_t value = combined_shape[j];
+        shapes.push_back(full<T>({value}, 1, temp_shape.type()));
+      }
+    }
+    // shapes.insert(shapes.begin()+ axis, full<T>({1}, 1, temp_shape.type()));
+
+    Tensor out_shape = concat<T>(shapes);
     for (size_t i = 0; i < x.size(); ++i) {
       concat_x.push_back(backend::reshape<T>(x[i], out_shape));
     }
