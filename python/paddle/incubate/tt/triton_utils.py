@@ -91,6 +91,7 @@ def extract_triton_kernel(kernel, file_name):
     import re
     import textwrap
 
+    fn = kernel
     if type(kernel) == triton.runtime.jit.JITFunction:
         fn = kernel.fn
     elif type(kernel) == triton.runtime.autotuner.Autotuner:
@@ -100,10 +101,16 @@ def extract_triton_kernel(kernel, file_name):
     py_script = textwrap.dedent(inspect.getsource(fn))
 
     # @triton.jit must only appear once
-    assert len(re.findall("@triton.jit", py_script)) == 1
+    # assert len(re.findall("@triton.jit", py_script)) == 1
+    assert len(re.findall("def ", py_script)) == 1
+    # assert len(re.findall("@haha()", py_script)) == 1
+    # py_script = py_script.replace("@haha()", "@triton.jit")
 
-    py_script = py_script[py_script.find("@triton.jit") :]
-    py_script = "import triton\nimport triton.language as tl\n\n\n" + py_script
+    py_script = py_script[py_script.find("def ") :]
+    py_script = (
+        "import triton\nimport triton.language as tl\n\n\n@triton.jit\n"
+        + py_script
+    )
 
     py_script = py_script.replace("if bias_ptr is not None", "if bias_ptr")
 
