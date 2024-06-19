@@ -1254,6 +1254,11 @@ class TestTanhshrink(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(10, 20, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(10, 20, self.shape)
+                + 1j * np.random.uniform(10, 20, self.shape)
+            ).astype(self.dtype)
         out = ref_tanhshrink(x)
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
@@ -1276,6 +1281,29 @@ class TestTanhshrink(TestActivation):
 class TestTanhshrink_ZeroDim(TestTanhshrink):
     def init_shape(self):
         self.shape = []
+
+
+class TestTanhshrinkComplex64(TestActivation):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_api_complex(self):
+        paddle.disable_static()
+        for device in devices:
+            if device == 'cpu' or (
+                device == 'gpu' and paddle.is_compiled_with_cuda()
+            ):
+                np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
+                x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
+                y = paddle.tanhshrink(x)
+                x_expect = np.tanhshrink(np_x)
+                np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+        paddle.enable_static()
+
+
+class TestTanhshrinkComplex128(TestTanhshrinkComplex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestTanhshrinkAPI(unittest.TestCase):
