@@ -49,7 +49,6 @@ ExternalProject_Add(
              -DYAML_BUILD_SHARED_LIBS=OFF
              -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
              -DCMAKE_INSTALL_PREFIX=${YAML_INSTALL_DIR}
-             #  -DCMAKE_INSTALL_LIBDIR=${YAML_INSTALL_DIR}/lib
              -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
   CMAKE_CACHE_ARGS
     -DCMAKE_INSTALL_PREFIX:PATH=${YAML_INSTALL_DIR}
@@ -59,36 +58,6 @@ ExternalProject_Add(
 
 add_library(yaml STATIC IMPORTED GLOBAL)
 set_property(TARGET yaml PROPERTY IMPORTED_LOCATION ${YAML_LIBRARIES})
-# add_library(yaml INTERFACE)
 add_dependencies(yaml extern_yaml)
 link_directories(${YAML_INSTALL_DIR}/lib/)
 target_link_libraries(yaml INTERFACE ${YAML_LIBRARIES})
-
-# include(ExternalProject)
-
-# set(YAML_PREFIX_DIR ${THIRD_PARTY_PATH}/mini-yaml)
-# set(YAML_INCLUDE_DIR ${YAML_PREFIX_DIR}/yaml)
-
-# set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/mini-yaml)
-# set(SOURCE_INCLUDE_DIR ${SOURCE_DIR}/yaml)
-
-# include_directories(${YAML_INCLUDE_DIR})
-
-# set(JSON_BuildTests
-#     OFF
-#     CACHE INTERNAL "")
-
-# ExternalProject_Add(
-#   extern_yaml
-#   ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-#   SOURCE_DIR ${SOURCE_DIR}
-#   PREFIX ${YAML_PREFIX_DIR}
-#   UPDATE_COMMAND ""
-#   CONFIGURE_COMMAND ""
-#   BUILD_IN_SOURCE 1
-#   BUILD_COMMAND ""
-#   INSTALL_COMMAND ""
-#   TEST_COMMAND "")
-
-# add_library(yaml INTERFACE)
-# add_dependencies(yaml extern_yaml)
