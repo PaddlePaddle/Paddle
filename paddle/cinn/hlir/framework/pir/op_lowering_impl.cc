@@ -213,7 +213,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
 
   if (FLAGS_cinn_check_tensor_buffer_map) {
     optim::CheckTensorBufferMap(func_bodies, "BucketLower LowerOps");
-    LOG(INFO) << "LowerOps tensor-buffer map check succeed";
+    VLOG(3) << "LowerOps tensor-buffer map check succeed";
   }
 
   // =========== OpFusion ============
@@ -224,7 +224,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
 
   if (FLAGS_cinn_check_tensor_buffer_map) {
     optim::CheckTensorBufferMap(func_bodies, "BucketLower OpFusion");
-    LOG(INFO) << "OpFusion tensor-buffer map check succeed";
+    VLOG(3) << "OpFusion tensor-buffer map check succeed";
   }
 
   // =========== CodeGen And Optimizer ================
@@ -240,7 +240,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
   if (FLAGS_cinn_check_tensor_buffer_map) {
     optim::CheckTensorBufferMap(ir_sch.GetModule().GetExprs(),
                                 "BucketLower MergeExprs");
-    LOG(INFO) << "MergeExprs tensor-buffer map check succeed";
+    VLOG(3) << "MergeExprs tensor-buffer map check succeed";
   }
 
   std::unordered_set<::pir::Value> inner_genevalue;
@@ -285,7 +285,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
          cond2func_bodies) {
       optim::CheckTensorBufferMap(cond2body.second, "BucketLower schedule");
     }
-    LOG(INFO) << "Schedule tensor-buffer map check succeed";
+    VLOG(3) << "Schedule tensor-buffer map check succeed";
   }
 
   // 3.Do post-processing,
@@ -310,7 +310,7 @@ BucketLoweredFuncsWrapper OpLowererImpl::BucketLower(
     for (ir::LoweredFunc& func : funcs) {
       optim::CheckTensorBufferMap(Expr(func), "BucketLower PostProcess");
     }
-    LOG(INFO) << "PostProcess tensor-buffer map check succeed";
+    VLOG(3) << "PostProcess tensor-buffer map check succeed";
   }
   PADDLE_ENFORCE_EQ(funcs.size(),
                     cond2func_bodies.size(),

@@ -18,17 +18,16 @@ namespace cinn {
 namespace optim {
 
 struct TensorBufferMapChecker : public ir::IRVisitorRequireReImpl<void> {
-  TensorBufferMapChecker() : error_flag_(false) { tensor2buffer.clear(); }
+  TensorBufferMapChecker() : error_flag_(true) { tensor2buffer_.clear(); }
   void Visit(const ir::Expr x) { IRVisitorRequireReImpl::Visit(&x); }
   void Visit(const ir::Expr *x) { IRVisitorRequireReImpl::Visit(x); }
 
   void Visit(const ir::_Tensor_ *x) override;
 
   bool get_debug_status() {
-    // VLOG(4) << "get debug status " << error_flag_;
     bool error_flag = error_flag_;
-    error_flag_ = false;
-    tensor2buffer.clear();
+    error_flag_ = true;
+    tensor2buffer_.clear();
     return error_flag;
   }
   bool operator()(const Expr *expr) {
@@ -91,27 +90,27 @@ struct TensorBufferMapChecker : public ir::IRVisitorRequireReImpl<void> {
 
  private:
   bool error_flag_;
-  std::map<std::string, const ir::IrNode *> tensor2buffer;
+  std::map<std::string, const ir::IrNode *> tensor2buffer_;
 };
 
 void TensorBufferMapChecker::Visit(const ir::_Tensor_ *x) {
-  LOG(INFO) << "step into tensor buffer map check";
+  VLOG(3) << "step into tensor buffer map check";
   std::string tensor_name = x->name;
   const ir::IrNode *buffer_ptr = x->buffer.ptr();
-  if (this->tensor2buffer.find(tensor_name) != this->tensor2buffer.end()) {
-    if (tensor2buffer[tensor_name] != buffer_ptr) {
-      this->error_flag_ = true;
-      LOG(INFO) << "tensor name [" << tensor_name
-                << "] maps multiple buffer_ptrs [" << buffer_ptr << "] and ["
-                << tensor2buffer[tensor_name] << "]";
+  if (this->tensor2buffer_.find(tensor_name) != this->tensor2buffer_.end()) {
+    if (tensor2buffer_[tensor_name] != buffer_ptr) {
+      this->error_flag_ = false;
+      VLOG(3) << "tensor name [" << tensor_name
+              << "] maps multiple buffer_ptrs [" << buffer_ptr << "] and ["
+              << tensor2buffer_[tensor_name] << "]";
     } else {
-      LOG(INFO) << "tensor name [" << tensor_name << "] maps with buffer ptr["
-                << buffer_ptr << "]";
+      VLOG(3) << "tensor name [" << tensor_name << "] maps with buffer ptr["
+              << buffer_ptr << "]";
     }
   } else {
-    this->tensor2buffer[tensor_name] = buffer_ptr;
-    LOG(INFO) << "add tensor: [" << tensor_name
-              << "] with buffer_ptr:" << buffer_ptr;
+    this->tensor2buffer_[tensor_name] = buffer_ptr;
+    VLOG(3) << "add tensor: [" << tensor_name
+            << "] with buffer_ptr:" << buffer_ptr;
   }
 }
 
@@ -391,17 +390,17 @@ void TensorBufferMapChecker::Visit(const ir::ScheduleBlockRealize *x) {
 
 void TensorBufferMapChecker::Visit(const ir::_Dim_ *x) {}
 
-bool CheckTensorBufferMapImpl(const Expr *expr) {
+bool CheckTensorBufferMap(const Expr *expr) {
   return TensorBufferMapChecker()(expr);
 }
-bool CheckTensorBufferMapImpl(const Expr &expr) {
+bool CheckTensorBufferMap(const Expr &expr) {
   return TensorBufferMapChecker()(&expr);
 }
 
 void CheckTensorBufferMap(const std::vector<ir::Expr> &expr,
                           const std::string &process) {
   for (auto e : expr) {
-    if (CheckTensorBufferMapImpl(e)) {
+    if (!CheckTensorBufferMap(e)) {
       LOG(FATAL) << "process [" << process << "]"
                  << " has wrong tensor-buffer map in " << e;
     }
@@ -411,7 +410,7 @@ void CheckTensorBufferMap(const std::vector<ir::Expr> &expr,
 void CheckTensorBufferMap(const std::vector<ir::Expr *> &expr,
                           const std::string &process) {
   for (auto e : expr) {
-    if (CheckTensorBufferMapImpl(e)) {
+    if (!CheckTensorBufferMap(e)) {
       LOG(FATAL) << "process [" << process << "]"
                  << " has wrong tensor-buffer map in " << e;
     }
@@ -419,14 +418,14 @@ void CheckTensorBufferMap(const std::vector<ir::Expr *> &expr,
 }
 
 void CheckTensorBufferMap(const Expr *expr, const std::string &process) {
-  if (CheckTensorBufferMapImpl(expr)) {
+  if (!CheckTensorBufferMap(expr)) {
     LOG(FATAL) << "process [" << process << "]"
                << " has wrong tensor-buffer map in " << expr;
   }
 }
 
 void CheckTensorBufferMap(const Expr &expr, const std::string &process) {
-  if (CheckTensorBufferMapImpl(expr)) {
+  if (!CheckTensorBufferMap(expr)) {
     LOG(FATAL) << "process [" << process << "]"
                << " has wrong tensor-buffer map in " << expr;
   }

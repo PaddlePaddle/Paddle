@@ -30,34 +30,13 @@ TEST(CheckTensorBufferMap, not_equal) {
   T1->buffer = B1;
   T2->buffer = B2;
 
-  // static Tensor Make(const std::string& name,
-  //                    Type dtype,
-  //                    const std::vector<Expr>& shape,
-  //                    const std::vector<Expr>& domain,
-  //                    const std::vector<Var>& reduce_axis = {});
-
   auto S1 = Add::Make(Expr(T1), Expr(T2));
 
-  //   Expr Store::Make(Expr tensor, Expr value, const std::vector<Expr>
-  //   &indices) { CHECK(tensor.As<_Tensor_>()) << "tensor should be _Tensor_
-  //   type"; auto node = make_shared<Store>(); node->tensor = tensor;
-  //   node->value = value;
-  //   node->indices =
-  //       utils::GetCompitableStoreLoadIndices(tensor.as_tensor_ref(),
-  //       indices);
-  //   if (tensor->type() != Void()) {
-  //     node->set_type(
-  //         tensor->type().ElementOf().with_lanes(node->index().type().lanes()));
-  //   }
-  //   return Expr(node);
-  // }
-
-  bool flag = CheckTensorBufferMapImpl(S1);
-
-  LOG(INFO) << "debug tensor buffer test result: \n" << flag;
-
-  bool target = true;
-  ASSERT_EQ(flag, target);
+  PADDLE_ENFORCE_EQ(
+      CheckTensorBufferMap(S1),
+      false,
+      phi::errors::InvalidArgument("CheckTensorBufferMap failed to detect "
+                                   "tensor-buffer map with error."));
 }
 
 TEST(CheckTensorBufferMap, equal) {
@@ -69,15 +48,12 @@ TEST(CheckTensorBufferMap, equal) {
   T2->buffer = T1->buffer;
 
   auto S1 = Add::Make(Expr(T1), Expr(T2));
-  LOG(INFO) << "T1 buffer address: " << &(T1->buffer) << "\n";
-  LOG(INFO) << "T2 buffer address: " << &(T2->buffer) << "\n";
 
-  bool flag = CheckTensorBufferMapImpl(S1);
-
-  LOG(INFO) << "debug tensor buffer test result: \n" << flag;
-
-  bool target = false;
-  ASSERT_EQ(flag, target);
+  PADDLE_ENFORCE_EQ(CheckTensorBufferMap(S1),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "CheckTensorBufferMap detected tensor-buffer map error "
+                        "in an correct Expr."));
 }
 
 }  // namespace optim

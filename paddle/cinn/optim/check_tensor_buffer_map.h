@@ -40,9 +40,9 @@ void CheckTensorBufferMap(const Expr *expr, const std::string &process);
 
 void CheckTensorBufferMap(const Expr &expr, const std::string &process);
 
-bool CheckTensorBufferMapImpl(const Expr *expr);
+bool CheckTensorBufferMap(const Expr *expr);
 
-bool CheckTensorBufferMapImpl(const Expr &expr);
+bool CheckTensorBufferMap(const Expr &expr);
 
 }  // namespace optim
 }  // namespace cinn
