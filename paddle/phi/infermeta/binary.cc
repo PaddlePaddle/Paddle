@@ -3573,6 +3573,45 @@ void TakeAlongAxisInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void TdmChildInferMeta(const MetaTensor& x,
+                       const MetaTensor& tree_info,
+                       int child_nums,
+                       DataType dtype,
+                       MetaTensor* child,
+                       MetaTensor* leaf_mask) {
+  PADDLE_ENFORCE_GT(
+      child_nums,
+      0,
+      phi::errors::InvalidArgument(
+          "ValueError: The value of the 'child_nums' must greater than 0. "
+          "But received child_nums value = %d, ",
+          child_nums));
+
+  const auto& info_dims = tree_info.dims();
+  const auto& input_dims = x.dims();
+
+  PADDLE_ENFORCE_EQ(
+      info_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "ShapeError: The dimensions of the 'tree info' must be 2. "
+          "But received tree info's dimensions = %d, "
+          "tree info's shape = [%s].",
+          info_dims.size(),
+          info_dims));
+
+  auto output_dims = common::vectorize(input_dims);
+  output_dims.push_back(child_nums);
+  if (child != nullptr) {
+    child->set_dims(common::make_ddim(output_dims));
+    leaf_mask->set_dims(common::make_ddim(output_dims));
+    child->share_lod(x);
+    leaf_mask->share_lod(x);
+    child->set_dtype(x.dtype());
+    leaf_mask->set_dtype(x.dtype());
+  }
+}
+
 void TriangularSolveInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               bool upper,
@@ -4085,6 +4124,16 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
       phi::errors::InvalidArgument("group_size must be -1, 64 or 128."));
 
   auto dim_scale = scale.dims();
+  int64_t real_channel_shape = -1;
+  if (algo == "weight_only_int8") {
+    real_channel_shape = x.dims()[0];
+  } else if (algo == "weight_only_int4") {
+    real_channel_shape = x.dims()[0] * 2;
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we only support weight_only_int8"
+        " and weight_only_int4 algo."));
+  }
 
   // per-channel dequantization
   if (group_size == -1) {
@@ -4095,7 +4144,7 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                      "be 1D in per-channel mode, but got[%d]",
                                      scale.dims().size()));
     PADDLE_ENFORCE_EQ(dim_scale[0],
-                      x.dims()[0],
+                      real_channel_shape,
                       phi::errors::InvalidArgument(
                           "The scale tensor's shape must be equal to the x "
                           "tensor's shape, but got [%d] not equal to [%d]",
@@ -4117,9 +4166,16 @@ void WeightDequantizeInferMeta(const MetaTensor& x,
                                 "But receive %d and %d",
                                 dim_scale[0],
                                 (x.dims()[1] + (group_size - 1)) / group_size));
+    PADDLE_ENFORCE_EQ(dim_scale[1],
+                      real_channel_shape,
+                      phi::errors::InvalidArgument(
+                          "The scale tensor's shape must be equal to the real "
+                          "channel size, but got [%d] not equal to [%d]",
+                          scale.dims()[0],
+                          real_channel_shape));
   }
   int n = static_cast<int>(x.dims()[1]);
-  int k = static_cast<int>(x.dims()[0]);
+  int k = static_cast<int>(real_channel_shape);
   out->set_dims(common::make_ddim({n, k}));
   out->set_dtype(out_dtype);
 }

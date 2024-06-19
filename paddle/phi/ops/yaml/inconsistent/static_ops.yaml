@@ -49,27 +49,6 @@
   inplace : (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
-- op : assign_out_
-  args : (Tensor x, Tensor output)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : assign
-    param : [x]
-  inplace : (output -> out)
-  backward : assign_out__grad
-  traits : pir::SideEffectTrait
-
-- op : assign_pos
-  args : (Tensor x, Tensor cum_count, Tensor eff_num_len)
-  output : Tensor(out)
-  infer_meta :
-    func : AssignPosInferMeta
-  kernel :
-    func : assign_pos
-
 - op : assign_value
   args : (int[] shape, DataType dtype, Scalar[] values, Place place = {})
   output : Tensor(out)
@@ -81,20 +60,6 @@
     param : [shape, dtype, values]
     backend: place>
     data_type : dtype
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : assign_value_
-  args : (Tensor output, int[] shape, DataType dtype, Scalar[] values, Place place = {})
-  output : Tensor(out)
-  inplace: (output -> out)
-  infer_meta :
-    func : AssignValueInferMeta
-    param : [shape, dtype]
-  kernel :
-    func : assign_value
-    param : [shape, dtype, values]
-    data_type : dtype
-    backend : place > output
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : barrier
@@ -213,20 +178,6 @@
   kernel :
     func : c_split
 
-- op : cast
-  args : (Tensor x, DataType dtype)
-  output : Tensor(out)
-  infer_meta :
-    func : CastInferMeta
-    spmd_rule : CastInferSpmd
-  kernel :
-    func : cast
-    param : [x, dtype]
-    data_type : x
-  inplace: (x -> out)
-  backward : cast_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : coalesce_tensor_
   args : (Tensor[] input, DataType dtype, bool copy_data = false, bool set_constant = false, bool persist_output = false, float constant = 0.0, bool use_align = true, int align_size = -1, int size_of_dtype = -1, int64_t[] concated_shapes = {}, int64_t[] concated_ranks = {})
   output : Tensor[](output){input.size()}, Tensor(fused_output)
@@ -236,15 +187,6 @@
     func : coalesce_tensor
     data_type : dtype
   inplace: (input -> output)
-
-- op : decayed_adagrad
-  args : (Tensor param, Tensor grad, Tensor moment, Tensor learning_rate, float decay = 0.95f, float epsilon = 1.0e-6f)
-  output : Tensor(param_out), Tensor(moment_out)
-  infer_meta :
-    func : DecayedAdagradInferMeta
-  kernel :
-    func : decayed_adagrad
-    data_type : param
 
 - op : dequantize_linear
   args : (Tensor x, Tensor scale, Tensor zero_point, Tensor in_accum, Tensor in_state, int quant_axis = 0, int bit_length = 8, int round_type = 0, bool is_test = true, bool only_observer = false)
@@ -352,19 +294,6 @@
   backward : embedding_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : empty
-  args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
-  output: Tensor(out)
-  infer_meta :
-    func : CreateInferMeta
-    param : [shape, dtype]
-  kernel :
-    func : empty
-    param : [shape, dtype]
-    data_type : dtype
-    backend : place
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : equal
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -376,18 +305,6 @@
   data_transform :
     support_trans_dtype : x, y
   inplace: (x -> out)
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : exponential_
-  args : (Tensor x, float lam)
-  output : Tensor(out)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : exponential
-  inplace : (x -> out)
-  backward : exponential__grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : feed
@@ -419,17 +336,6 @@
     support_trans_dtype : x, y
   inplace: (x -> out)
 
-- op : full_with_tensor
-  args : (Tensor value, IntArray shape, DataType dtype=DataType::FLOAT32)
-  output: Tensor(out)
-  infer_meta :
-    func : FullWithTensorInferMeta
-    param : [shape, dtype]
-  kernel :
-    func : full_with_tensor
-    data_type : dtype
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : fused_adam_
   args : (Tensor[] params, Tensor[] grads, Tensor learning_rate, Tensor[] moments1, Tensor[] moments2, Tensor[] beta1_pows, Tensor[] beta2_pows, Tensor[] master_params, Tensor skip_update, Scalar beta1, Scalar beta2, Scalar epsilon, int chunk_size, float weight_decay, bool use_adamw, bool multi_precision, bool use_global_beta_pow)
   output : Tensor[](params_out){params.size()}, Tensor[](moments1_out){params.size()}, Tensor[](moments2_out){params.size()}, Tensor[](beta1_pows_out){params.size()}, Tensor[](beta2_pows_out){params.size()}, Tensor[](master_params_out){params.size()}
@@ -440,20 +346,6 @@
     data_type : params
   optional : skip_update, master_params, master_params_out
   inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
-
-- op : gaussian
-  args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
-  output: Tensor(out)
-  infer_meta :
-    func : GaussianInferMeta
-    param : [shape, mean, std, seed, dtype]
-  kernel :
-    func : gaussian
-    param : [shape, mean, std, seed, dtype]
-    data_type : dtype
-    backend : place
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-  traits : pir::SideEffectTrait
 
 - op : get_tensor_from_selected_rows
   args : (Tensor x)
@@ -517,16 +409,6 @@
     func : hardswish
   backward : hardswish_grad
 
-- op : increment
-  args : (Tensor x, float value = 1.0)
-  output : Tensor(out)
-  infer_meta :
-    func : IncrementInferMeta
-  kernel :
-    func : increment
-  inplace : (x -> out)
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : less_equal
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -551,19 +433,6 @@
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : linspace
-  args : (Tensor start, Tensor stop, Tensor number, DataType dtype, Place place)
-  output : Tensor(out)
-  infer_meta :
-    func : LinspaceInferMeta
-    param: [start, stop, number, dtype]
-  kernel :
-    func : linspace
-    param: [start, stop, number, dtype]
-    data_type : dtype
-    backend : place
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : load_combine
   args : (str file_path, bool load_as_fp16, bool model_from_memory)
   output : Tensor[](Out)
@@ -575,29 +444,6 @@
 - op : lod_array_length
   args : (Tensor[] x)
   output : Tensor(out)
-
-- op : logspace
-  args : (Tensor start, Tensor stop, Tensor num, Tensor base, DataType dtype, Place place={})
-  output : Tensor(out)
-  infer_meta:
-    func : LogspaceInferMeta
-    param : [start, stop, num, base, dtype]
-  kernel :
-    func : logspace
-    param : [start, stop, num, base, dtype]
-    data_type : dtype
-    backend : place
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : logsumexp
-  args : (Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all)
-  output : Tensor(out)
-  infer_meta :
-    func : LogsumexpInferMeta
-  kernel :
-    func : logsumexp
-  backward : logsumexp_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : lrn
   args : (Tensor x, int n=5, float k=2.0, float alpha=0.0001, float beta=0.75, str data_format="NCHW")
@@ -631,17 +477,6 @@
     func : matmul_with_flatten
     data_type : x
   backward : matmul_with_flatten_grad
-
-- op : max
-  args : (Tensor x, IntArray axis={}, bool keepdim=false)
-  output : Tensor(out)
-  infer_meta :
-    func : ReduceIntArrayAxisInferMeta
-    spmd_rule: ReductionMaxInferSpmdDynamic
-  kernel :
-    func : max
-  backward : max_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : maximum
   args : (Tensor x, Tensor y)
@@ -726,16 +561,6 @@
   inplace: (x -> out)
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : pad
-  args : (Tensor x, int[] paddings, Scalar pad_value)
-  output : Tensor
-  infer_meta :
-    func : PadInferMeta
-  kernel :
-    func : pad
-  backward : pad_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : partial_allgather
   args : (Tensor x, int nranks, int rank, int ring_id = 0, bool use_calc_stream = false)
   output : Tensor(out)
@@ -765,25 +590,6 @@
     param: [in, first_n, message, summarize, print_tensor_name, print_tensor_type, print_tensor_shape, print_tensor_layout, print_tensor_lod, print_phase, is_forward]
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : pir::SideEffectTrait
-
-- op : prod
-  args : (Tensor x, IntArray dims, bool keep_dim, bool reduce_all)
-  output : Tensor
-  infer_meta :
-    func : ReduceIntArrayAxisInferMetaBase
-  kernel :
-    func : prod
-  backward : prod_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : prune_gate_by_capacity
-  args : (Tensor gate_idx, Tensor expert_count, int64_t n_expert, int64_t n_worker)
-  output : Tensor(new_gate_idx)
-  infer_meta :
-    func : PruneGateByCapacityInferMeta
-  kernel :
-    func : prune_gate_by_capacity
-    data_type : gate_idx
 
 - op : pull_box_sparse
   args : (Tensor w, Tensor[] ids, bool is_sparse = false, bool is_distributed = false, int size = 1)
@@ -852,33 +658,6 @@
   optional : scale, in_accum, in_state, out_state, out_accum, out_scale
   inplace : (scale -> out_scale, in_accum -> out_accum, in_state -> out_state)
 
-- op : randint
-  args : (int low, int high, IntArray shape, DataType dtype=DataType::INT64, Place place={})
-  output : Tensor(out)
-  infer_meta :
-    func : RandintInferMeta
-    param : [low, high, shape, dtype]
-  kernel :
-    func : randint
-    param : [low, high, shape, dtype]
-    data_type : dtype
-    backend : place
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-  traits : pir::SideEffectTrait
-
-- op : randperm
-  args : (int n, DataType dtype, Place place={})
-  output : Tensor(out)
-  infer_meta :
-    func : RandpermInferMeta
-    param : [n, dtype]
-  kernel :
-    func : randperm
-    param : [n, dtype]
-    data_type : dtype
-    backend : place
-  traits : pir::SideEffectTrait
-
 - op : recv_v2
   args : (int[] out_shape = {}, DataType dtype = DataType::FLOAT32, int peer = 0, int ring_id = 0, bool use_calc_stream = false, bool dynamic_shape = false)
   output : Tensor(out)
@@ -900,17 +679,6 @@
   data_transform :
     support_trans_dtype : x, y
   inplace : (x -> out)
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : repeat_interleave
-  args : (Tensor x, int repeats, int axis)
-  output : Tensor(out)
-  infer_meta :
-    func : RepeatInterleaveInferMeta
-  kernel :
-    func : repeat_interleave
-    data_type : x
-  backward: repeat_interleave_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : reshape
@@ -1018,28 +786,6 @@
     param: [x]
   inplace : (x -> out)
 
-- op : shuffle_batch
-  args : (Tensor x, Tensor seed, int startup_seed=0)
-  output : Tensor(out), Tensor(shuffle_idx), Tensor(seed_out)
-  infer_meta:
-     func: ShuffleBatchInferMeta
-  kernel:
-     func: shuffle_batch
-     data_type: x
-  backward : shuffle_batch_grad
-  traits : pir::SideEffectTrait
-
-- op : slice
-  args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
-  output : Tensor
-  infer_meta :
-    func : SliceRawInferMeta
-    spmd_rule : SliceInferSpmdDynamic
-  kernel :
-    func : slice
-  backward : slice_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : soft_relu
   args : (Tensor x, float threshold = 20.0f)
   output : Tensor(out)
@@ -1062,27 +808,6 @@
   backward : softmax_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : split
-  args : (Tensor x, IntArray sections, Scalar(int) axis)
-  output : Tensor[]{sections.size()}
-  infer_meta :
-    func : SplitInferMeta
-  kernel :
-    func : split
-  backward : split_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : split_with_num
-  args : (Tensor x, int num, Scalar(int) axis)
-  output : Tensor[]{num}
-  infer_meta :
-    func : SplitWithNumInferMeta
-    spmd_rule : SplitWithNumInferSpmdDynamic
-  kernel :
-    func : split_with_num
-  backward : split_with_num_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
 - op : subtract
   args : (Tensor x, Tensor y)
   output : Tensor(out)
@@ -1097,28 +822,6 @@
   backward : subtract_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
-- op : sum
-  args : (Tensor x, IntArray axis={}, DataType dtype=DataType::UNDEFINED, bool keepdim=false)
-  output : Tensor(out)
-  infer_meta :
-    func : SumInferMeta
-    spmd_rule : ReductionSumInferSpmdDynamic
-  kernel :
-    func : sum
-    data_type : x
-  backward : sum_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : tdm_sampler
-  args: (Tensor x, Tensor travel, Tensor layer, bool output_positive=true, int[] neg_samples_num_list={}, int[] layer_offset_lod={}, int seed = 0, int dtype=2)
-  output: Tensor(out), Tensor(labels), Tensor(mask)
-  infer_meta:
-    func : TdmSamplerInferMeta
-  kernel:
-    func : tdm_sampler
-    data_type : x
-  optional : labels
-
 - op : tile
   args : (Tensor x, IntArray repeat_times = {})
   output : Tensor(out)
@@ -1129,95 +832,6 @@
     func : tile
   backward : tile_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : transpose
-  args : (Tensor x, int[] perm)
-  output : Tensor(out)
-  infer_meta :
-    func : TransposeInferMeta
-    spmd_rule: TransposeInferSpmd
-  kernel :
-    func : transpose
-  inplace : (x -> out)
-  backward : transpose_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : tril
-  args : (Tensor x, int diagonal)
-  output : Tensor(out)
-  infer_meta :
-    func : TrilInferMeta
-  kernel :
-    func : tril
-  inplace: (x -> out)
-  backward : tril_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : tril_indices
-  args : (int rows, int cols, int offset, DataType dtype, Place place={})
-  output : Tensor(out)
-  infer_meta :
-    func : TrilIndicesInferMeta
-    param : [rows, cols, offset, dtype]
-  kernel :
-    func : tril_indices
-    param : [rows, cols, offset, dtype]
-    data_type : dtype
-    backend : place
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : triu
-  args : (Tensor x, int diagonal)
-  output : Tensor(out)
-  infer_meta :
-    func : TriuInferMeta
-    spmd_rule : TriuInferSpmd
-  kernel :
-    func : triu
-  inplace: (x -> out)
-  backward : triu_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-- op : triu_indices
-  args : (int row, int col, int offset, DataType dtype, Place place={})
-  output : Tensor(out)
-  infer_meta :
-    func : TriuIndicesInferMeta
-    param : [row, col, offset, dtype]
-  kernel :
-    func : triu_indices
-    param : [row, col, offset, dtype]
-    data_type : dtype
-    backend : place
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-
-# python API: paddle.nn.initializer.TruncatedNormal
-- op : truncated_gaussian_random
-  args : (int[] shape, float mean, float std, int seed, float a, float b, DataType dtype=DataType::FLOAT32, Place place={})
-  output : Tensor(out)
-  infer_meta :
-    func : TruncatedGaussianRandomInferMeta
-    param : [shape, mean, std, seed, a, b, dtype]
-  kernel :
-    func : truncated_gaussian_random
-    param : [shape, mean, std, seed, a, b, dtype]
-    backend : place
-    data_type : dtype
-  traits : pir::SideEffectTrait
-
-- op : uniform
-  args : (IntArray shape,  DataType dtype,  Scalar min,  Scalar max,  int seed, Place place={})
-  output : Tensor(out)
-  infer_meta :
-    func : UniformRandomInferMeta
-    param: [shape, dtype]
-  kernel :
-    func : uniform
-    param: [shape, dtype, min, max, seed]
-    data_type : dtype
-    backend : place
-  interfaces : paddle::dialect::InferSymbolicShapeInterface
-  traits : pir::SideEffectTrait
 
 - op : unique
   args : (Tensor x, bool return_index=false, bool return_inverse=false, bool return_counts=false, int[] axis={}, DataType dtype=DataType::INT64, bool is_sorted=false)
@@ -1274,16 +888,6 @@
   optional: cache_kv, ln_scale, ln_bias, qkv_bias, src_mask, out_linear_bias, ln_scale_2, ln_bias_2, ln_mean_2, ln_var_2, bias_dropout_residual_out, cache_kv_out
   backward: fused_attention_grad
 
-- op: fused_elemwise_add_activation
-  args: (Tensor x, Tensor y, str[] functor_list, float scale=0.0, int axis=-1, bool save_intermediate_out=false)
-  output: Tensor(out), Tensor(intermediate_out)
-  kernel:
-    func: fused_elemwise_add_activation
-  infer_meta:
-    func : FusedElemwiseAddActivationInferMeta
-  backward: fused_elemwise_add_activation_grad
-  intermediate: intermediate_out
-
 - op: fused_feedforward
   args: (Tensor x, Tensor dropout1_seed, Tensor dropout2_seed, Tensor linear1_weight, Tensor linear1_bias, Tensor linear2_weight, Tensor linear2_bias, Tensor ln1_scale, Tensor ln1_bias, Tensor ln2_scale, Tensor ln2_bias, bool pre_layer_norm, float ln1_epsilon, float ln2_epsilon, str act_method, float dropout1_prob, float dropout2_prob, str dropout1_implementation, str dropout2_implementation, bool is_test, bool dropout1_fix_seed, bool dropout2_fix_seed, int dropout1_seed_val, int dropout2_seed_val, bool add_residual, int ring_id)
   output: Tensor(out), Tensor(dropout1_mask), Tensor(dropout2_mask), Tensor(ln1_mean), Tensor(ln1_variance), Tensor(ln2_mean), Tensor(ln2_variance), Tensor(linear1_out), Tensor(ln1_out), Tensor(dropout1_out), Tensor(dropout2_out)
@@ -1339,15 +943,6 @@
     data_type: input
   optional: bias, sample_weight, custom_dist_probs, custom_dist_alias, custom_dist_alias_probs
   backward: nce_grad
-
-- op: number_count
-  args: (Tensor numbers, int upper_range)
-  output: Tensor(out)
-  infer_meta:
-     func: NumberCountInferMeta
-  kernel:
-     func: number_count
-     data_type: numbers
 
 - op: onednn_to_paddle_layout
   args: (Tensor x, int dst_layout)

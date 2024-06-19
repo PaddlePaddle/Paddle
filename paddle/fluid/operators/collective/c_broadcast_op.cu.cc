@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
@@ -38,6 +39,17 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
     ctx.device_context().Alloc<T>(out);
 
     int root = ctx.Attr<int>("root");
+
+    auto map = distributed::ProcessGroupMapFromGid::getInstance();
+    if (map->has(rid)) {
+      distributed::ProcessGroup* pg = map->get(rid);
+      auto b_opts = distributed::BroadcastOptions();
+      b_opts.source_rank = rid;
+      b_opts.source_root = root;
+      auto task = pg->Broadcast(out, *x, b_opts, false);
+      task->Wait();
+      return;
+    }
 
     gpuStream_t stream = ctx.cuda_device_context().stream();
     const auto& comm_context_manager =

@@ -19,8 +19,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 const char* PhiKernelOp::attributes_name[attributes_num] = {  // NOLINT
     "op_name",
@@ -260,8 +259,7 @@ phi::KernelKey OneDNNLegacyKernelOp::kernel_key() {
 }
 #endif
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::PhiKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::LegacyKernelOp)

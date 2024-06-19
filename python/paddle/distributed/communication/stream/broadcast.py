@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import framework
+from paddle import _C_ops, framework
 from paddle.base import data_feeder
 from paddle.distributed.communication.group import (
     _get_global_group,
     _get_or_throw_group_rank,
     _warn_cur_rank_not_in_group,
 )
+from paddle.distributed.communication.reduce import _to_inplace_op
+from paddle.framework import in_pir_mode
 
 
 def _broadcast_in_dygraph(
@@ -58,6 +60,11 @@ def _broadcast_in_static_mode(
     op_type = 'c_broadcast'
     helper = framework.LayerHelper(op_type, **locals())
     ring_id = 0 if group is None else group.id
+
+    if in_pir_mode():
+        op_type = _to_inplace_op(op_type)
+        getattr(_C_ops, op_type)(tensor, ring_id, src_rank_in_group, sync_op)
+        return
 
     helper.append_op(
         type=op_type,

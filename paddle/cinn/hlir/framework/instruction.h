@@ -26,7 +26,7 @@
 #endif
 #include "paddle/cinn/utils/string.h"
 #include "paddle/cinn/utils/timer.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -89,7 +89,10 @@ class Instruction {
 
   void PreRun(
       const std::map<std::string, cinn_pod_value_t>* name2podargs = nullptr) {
-    CHECK_EQ(fn_ptrs_.size(), 4);
+    PADDLE_ENFORCE_EQ(
+        fn_ptrs_.size(),
+        4,
+        phi::errors::InvalidArgument("The number of functions should be 4"));
     if (fn_ptrs_.size() > 1 && fn_ptrs_.size() != in_args_.size()) {
       out_args_.back()[0] = out_args_.front()[0];
       out_args_.erase(out_args_.begin());
@@ -97,8 +100,18 @@ class Instruction {
     }
     UpdateArgsCache(name2podargs);
 
-    CHECK_EQ(fn_ptrs_.size(), in_args_.size());
-    CHECK_EQ(fn_ptrs_.size(), out_args_.size());
+    PADDLE_ENFORCE_EQ(
+        fn_ptrs_.size(),
+        in_args_.size(),
+        phi::errors::InvalidArgument(
+            "The number of functions should be equal to the number of "
+            "in_args"));
+    PADDLE_ENFORCE_EQ(
+        fn_ptrs_.size(),
+        out_args_.size(),
+        phi::errors::InvalidArgument(
+            "The number of functions should be equal to the number of "
+            "out_args"));
 
     int flag = -1;
     void* stream = nullptr;

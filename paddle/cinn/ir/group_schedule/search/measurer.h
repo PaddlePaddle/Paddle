@@ -30,19 +30,6 @@ namespace cinn {
 namespace ir {
 namespace search {
 
-struct IterSpace {
-  struct Dimension {
-    int lower_bound;
-    int upper_bound;
-    std::string iter_type;
-    bool is_dynamic;
-    std::vector<double> weights;
-  };
-  std::vector<Dimension> space;
-
-  std::string ToString() const;
-};
-
 struct MeasureResult {
   ::common::TimeDuration compile_time;
   ::common::TimeDuration avg_kernel_execute_time;

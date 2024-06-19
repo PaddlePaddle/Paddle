@@ -17,8 +17,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 thread_local TaskLoop* TaskLoop::thread_local_loop_ = nullptr;
 
@@ -81,5 +80,4 @@ void TaskLoop::AbortNotInLoopThread() {
       std::this_thread::get_id()));
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

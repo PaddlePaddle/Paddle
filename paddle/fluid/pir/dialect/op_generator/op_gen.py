@@ -14,6 +14,7 @@
 
 import argparse
 import logging
+import math
 import os
 import pathlib
 import sys
@@ -1130,6 +1131,21 @@ def get_mutable_attribute_grad_semantic(op_info, op_info_items):
     return mutable_attribute_grad_semantics
 
 
+def split_ops(op_info_items: dict, cc_file, split_nums):
+    op_list = list(op_info_items.keys())
+    ops_max_size = math.ceil(len(op_list) / split_nums)
+    split_op_info_items = []
+    for i in range(split_nums):
+        split_op_info_items.append({})
+    for i, op_name in enumerate(op_list):
+        list_idx = math.ceil((i + 1) / ops_max_size) - 1
+        split_op_info_items[list_idx][op_name] = op_info_items[op_name]
+    split_cc_files = []
+    for i in range(split_nums):
+        split_cc_files.append(cc_file.replace(".cc", f"{i + 1}.cc"))
+    return split_op_info_items, split_cc_files
+
+
 def GenOneDnnExtraAttrsDefaultValue(onednn_extra_args):
     INTARRAY_STR_TEMPLATE = """  pir::Attribute attr_{attr_name} = {op_attribute_type}::get(pir::IrContext::Instance(), phi::IntArray({attr}));
 """
@@ -2080,6 +2096,8 @@ def OpGenerator(
     op_info_file,
     op_def_cc_file,
     op_vjp_cc_file,
+    op_cc_split_num,
+    bwd_op_cc_split_num,
     onednn_yaml_file,
     ops_onednn_extra_yaml_file,
 ):
@@ -2126,9 +2144,11 @@ def OpGenerator(
 
     op_infos = []
     all_op_info_items = {}
+    new_op_def_cc_file = []
     first_file = True
     onednn_only_op_list = []
-    for yaml_file in op_yaml_files:
+    for idx in range(len(op_yaml_files)):
+        yaml_file = op_yaml_files[idx]
         op_yaml_items = []
         with open(yaml_file, "r") as f:
             ops = yaml.safe_load(f)
@@ -2194,13 +2214,37 @@ def OpGenerator(
             key_suffix = '_sp' if item.is_sparse_op else ''
             op_info_items[op['name'] + key_suffix] = item
             all_op_info_items[op['name'] + key_suffix] = item
-        op_infos.append(op_info_items)
+
+        if dialect_name != "onednn_op":
+            cc_file = op_def_cc_file[idx]
+            if (
+                yaml_file.split('/')[-1] == "ops.parsed.yaml"
+                and op_cc_split_num is not None
+            ):
+                split_op_info_items, split_cc_files = split_ops(
+                    op_info_items, cc_file, op_cc_split_num
+                )
+                op_infos.extend(split_op_info_items)
+                new_op_def_cc_file.extend(split_cc_files)
+            elif (
+                yaml_file.split('/')[-1] == "backward.parsed.yaml"
+                and bwd_op_cc_split_num is not None
+            ):
+                split_op_info_items, split_cc_files = split_ops(
+                    op_info_items, cc_file, bwd_op_cc_split_num
+                )
+                op_infos.extend(split_op_info_items)
+                new_op_def_cc_file.extend(split_cc_files)
+            else:
+                op_infos.append(op_info_items)
+                new_op_def_cc_file.append(cc_file)
 
         if first_file:
             first_file = False
 
     if dialect_name == "onednn_op":
         op_infos = [all_op_info_items]
+        new_op_def_cc_file = op_def_cc_file
     # (3) auto code gen
     op_list_strs = []
     declare_type_id_strs = []
@@ -2329,7 +2373,7 @@ def OpGenerator(
             f.write(op_info_str)
 
     # (6) write to files for xx_op.cc.tmp
-    for id in range(len(op_def_cc_file)):
+    for id in range(len(new_op_def_cc_file)):
         source_file_str = source_file_strs[id]
         for name in reversed(namespaces):
             source_file_str = NAMESPACE_GARD_TEMPLATE.format(
@@ -2349,7 +2393,7 @@ def OpGenerator(
             input=source_file_str,
             define_type_id=define_type_id_strs[id],
         )
-        with open(op_def_cc_file[id], 'w') as f:
+        with open(new_op_def_cc_file[id], 'w') as f:
             f.write(source_file_str)
 
     # (6) write to files for xx_vjp_op.cc.tmp
@@ -2381,6 +2425,8 @@ def ParseArguments():
     parser.add_argument('--op_info_file', type=str)
     parser.add_argument('--op_def_cc_file', type=str)
     parser.add_argument('--op_vjp_cc_file', type=str)
+    parser.add_argument('--op_cc_split_num', type=int)
+    parser.add_argument('--bwd_op_cc_split_num', type=int)
     parser.add_argument('--onednn_yaml_file', type=str)
     parser.add_argument('--ops_onednn_extra_yaml_file', type=str)
     parser.add_argument('--with_distributed', type=strtobool)
@@ -2403,6 +2449,8 @@ if __name__ == "__main__":
     op_info_file = args.op_info_file
     op_def_cc_files = args.op_def_cc_file.split(",")
     op_vjp_cc_file = args.op_vjp_cc_file
+    op_cc_split_num = args.op_cc_split_num
+    bwd_op_cc_split_num = args.bwd_op_cc_split_num
     onednn_yaml_file = args.onednn_yaml_file
     ops_onednn_extra_yaml_file = args.ops_onednn_extra_yaml_file
 
@@ -2417,6 +2465,8 @@ if __name__ == "__main__":
         op_info_file,
         op_def_cc_files,
         op_vjp_cc_file,
+        op_cc_split_num,
+        bwd_op_cc_split_num,
         onednn_yaml_file,
         ops_onednn_extra_yaml_file,
     )

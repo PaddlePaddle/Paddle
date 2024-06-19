@@ -21,7 +21,6 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-using phi::distributed::auto_parallel::str_join;
 
 SpmdInfo NumelInferSpmd(const DistMetaTensor& x) {
   std::string alphabet = "abcdefghijklmnopqrstuvwxyz";

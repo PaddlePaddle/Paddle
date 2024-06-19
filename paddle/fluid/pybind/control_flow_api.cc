@@ -52,7 +52,6 @@ using pir::Builder;
 using pir::CombineOp;
 using pir::Operation;
 using pir::Program;
-using pir::Region;
 using pir::StackCreateOp;
 using pir::TuplePopOp;
 using pir::TuplePushOp;
@@ -271,8 +270,7 @@ void BuildPipeForBlock(Block* block) {
 
 }  // namespace
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 PyIfOp::PyIfOp(IfOp if_op) : IfOp(if_op) {
   PADDLE_ENFORCE_NOT_NULL(
       if_op,
@@ -413,5 +411,4 @@ void BindControlFlowApi(py::module* m) {
   BindTuplePopOp(m);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

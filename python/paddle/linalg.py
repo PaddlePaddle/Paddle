@@ -15,6 +15,7 @@
 from .tensor import inverse as inv
 from .tensor.linalg import (
     cholesky,
+    cholesky_inverse,
     cholesky_solve,
     cond,
     corrcoef,
@@ -48,6 +49,7 @@ from .tensor.linalg import (
 
 __all__ = [
     'cholesky',
+    'cholesky_inverse',
     'norm',
     'matrix_norm',
     'vector_norm',

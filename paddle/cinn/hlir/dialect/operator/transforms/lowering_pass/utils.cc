@@ -110,23 +110,26 @@ OpLoweringGroupPtr BuildOpLoweringGroup(pir::Operation* fusion_op_ptr) {
                           : group_op_kind;
     }
   }
+  PADDLE_ENFORCE_GT(fusion_op.attributes().count("group_info"),
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "fusion_op should have group_info attribute."));
 
-  auto group = std::make_shared<OpLoweringGroup>(ops);
+  const auto attr = fusion_op.attribute("group_info")
+                        .dyn_cast<cinn::dialect::GroupInfoAttribute>()
+                        .data();
 
-  if (fusion_op.attributes().count("group_info")) {
-    auto attr = fusion_op.attribute("group_info")
-                    .dyn_cast<cinn::dialect::GroupInfoAttribute>()
-                    .data();
+  const auto& fn_name = attr.fn_name;
+  auto group = std::make_shared<OpLoweringGroup>(ops, fn_name);
 
-    group_op_kind =
-        static_cast<int>(attr.op_pattern_kind) > static_cast<int>(group_op_kind)
-            ? attr.op_pattern_kind
-            : group_op_kind;
-    group->set_loop_ranges(attr.loop_ranges);
-    group->set_loop_ranges_expr(attr.loop_ranges_expr);
-    group->set_reduce_axis(attr.reduce_axis);
-    group->set_alignment_schedule_info(attr.alignment_schedule_info);
-  }
+  group_op_kind =
+      static_cast<int>(attr.op_pattern_kind) > static_cast<int>(group_op_kind)
+          ? attr.op_pattern_kind
+          : group_op_kind;
+  group->set_loop_ranges(attr.loop_ranges);
+  group->set_loop_ranges_expr(attr.loop_ranges_expr);
+  group->set_reduce_axis(attr.reduce_axis);
+  group->set_alignment_schedule_info(attr.alignment_schedule_info);
   group->set_op_pattern_kind(group_op_kind);
 
   // Rebuild output_ops and input_ops of the group

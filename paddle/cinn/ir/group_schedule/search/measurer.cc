@@ -35,17 +35,6 @@ namespace cinn {
 namespace ir {
 namespace search {
 
-std::string IterSpace::ToString() const {
-  std::stringstream ss;
-  ss << "IterSpace: [";
-  for (const auto& dim : space) {
-    ss << dim.iter_type << "(" << dim.lower_bound << " - " << dim.upper_bound
-       << "), ";
-  }
-  ss << "]";
-  return ss.str();
-}
-
 std::shared_ptr<pir::PassManager> CreatePassManager() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -127,15 +116,17 @@ MeasureResult Measurer::Result() const {
       ::common::PerformanceReporter::ExtractDuration(ps.Record(compile_label_));
   auto total_execute_durations = ::common::PerformanceReporter::ExtractDuration(
       ps.RecordWithSubLabel(execute_label_));
+  auto kernel_record = ps.Record(FLAGS_cinn_kernel_execution_label);
   auto kernel_execute_durations =
-      ::common::PerformanceReporter::ExtractDuration(
-          ps.Record(FLAGS_cinn_kernel_execution_label));
+      ::common::PerformanceReporter::ExtractDuration(kernel_record);
 
   auto compile_time = ::common::PerformanceReporter::Mean(compile_durations);
   auto avg_total_execute_time =
       ::common::PerformanceReporter::Mean(total_execute_durations);
+  VLOG(6) << " report: "
+          << ::common::PerformanceReporter::Report(kernel_record);
   auto avg_kernel_execute_time =
-      ::common::PerformanceReporter::Mean(kernel_execute_durations);
+      ::common::PerformanceReporter::TrimMean(kernel_execute_durations);
 
   result.compile_time = compile_time;
   result.avg_total_execute_time = avg_total_execute_time;

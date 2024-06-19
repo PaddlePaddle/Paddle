@@ -71,11 +71,11 @@ void set_parameter(const pir::Value& parameter, const std::string& name) {
   }
 }
 
-void updata_parameter(const pir::Value& parameter, const std::string& name) {
+void update_parameter(const pir::Value& parameter, const std::string& name) {
   pir::Parameter* param = ApiBuilder::Instance().GetParameter(name);
   PADDLE_ENFORCE_NOT_NULL(param,
                           phi::errors::InvalidArgument(
-                              "Parameter %s not exist, can not updata.", name));
+                              "Parameter %s not exist, can not update.", name));
   std::unique_ptr<pir::Parameter> param_new(
       new pir::Parameter(nullptr, 0, parameter.type()));
   ApiBuilder::Instance().SetParameter(name, std::move(param_new));

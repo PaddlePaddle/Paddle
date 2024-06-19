@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
@@ -605,5 +604,4 @@ TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
   return grad_out;
 }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

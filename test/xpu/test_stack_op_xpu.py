@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -113,6 +114,13 @@ class XPUTestStackOp(XPUOpTestWrapper):
             self.input_dim = (5, 6, 7)
             self.axis = 0
             self.dtype = np.int32
+
+    @check_run_big_shape_test()
+    class TestStackOpLargeShape1(TestStackOp):
+        def initParameters(self):
+            self.num_inputs = 5
+            self.input_dim = (1, 8192, 64)
+            self.axis = 2
 
 
 support_types = get_xpu_op_support_types('stack')

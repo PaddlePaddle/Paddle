@@ -17,10 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
 #include "paddle/fluid/framework/ir/fusion_group/cuda_resources.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
-namespace fusion_group {
+namespace paddle::framework::ir::fusion_group {
 
 std::string ExtractDataType(const std::vector<Node*>& nodes) {
   std::string dtype_str = "";
@@ -373,7 +370,4 @@ std::unordered_map<Node*, int> CodeGenerator::EncodeVarNodes(
   return var_ids;
 }
 
-}  // namespace fusion_group
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir::fusion_group

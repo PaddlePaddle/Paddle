@@ -422,6 +422,12 @@
   get_expected_kernel_type :
     bincount : GetBincountExpectedKernelType
 
+- op : bipartite_match
+  inputs:
+    dist_mat : DistMat
+  outputs:
+    {col_to_row_match_indices : ColToRowMatchIndices, col_to_row_match_dist : ColToRowMatchDist}
+
 - op : bitwise_and
   inputs :
     {x : X, y : Y}
@@ -929,6 +935,9 @@
     fix_seed : fix_seed
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
+  scalar :
+    p :
+      support_tensor : true
 
 - op : dropout_nd
   backward : dropout_nd_grad
@@ -3575,6 +3584,17 @@
       data_type : int
       tensor_name : K
 
+- op : topk_v1 (top_k)
+  backward : topk_v1_grad (top_k_grad)
+  inputs :
+    x : X
+  outputs :
+    {out : Out, indices : Indices}
+  scalar :
+    k :
+      data_type : int
+      tensor_name : K
+
 - op : trace
   inputs :
     x : Input
@@ -4028,11 +4048,25 @@
   outputs:
     {out: Out}
 
+- op: fused_elemwise_activation
+  backward: fused_elemwise_activation_grad
+  inputs:
+    {x : X, y : Y}
+  outputs:
+    {out : Out, intermediate_out : IntermediateOut}
+
 - op: fused_elemwise_add_activation
   backward: fused_elemwise_add_activation_grad
   inputs :
     {x: X, y: Y}
   outputs :
+    {out : Out, intermediate_out : IntermediateOut}
+
+- op: fused_elemwise_add_activation
+  backward: fused_elemwise_add_activation_grad
+  inputs:
+    {x : X, y : Y}
+  outputs:
     {out : Out, intermediate_out : IntermediateOut}
 
 - op: fused_matmul
@@ -4061,6 +4095,12 @@
     {attn: Attn, x: X, mask: Mask, new_mask: NewMask}
   outputs :
     {slimmed_x : SlimmedX, cls_inds : CLSInds}
+
+- op: fusion_group
+  inputs:
+    inputs : Inputs
+  outputs:
+    outs : Outs
 
 - op: fusion_seqpool_cvm_concat
   inputs:
@@ -4129,6 +4169,15 @@
   outputs:
     {out: Out}
 
+- op: lstm
+  backward: lstm_grad
+  inputs:
+    {input : Input, h0 : H0, c0 : C0, weight : Weight, bias : Bias}
+  outputs:
+    {hidden : Hidden, cell : Cell, batch_gate : BatchGate, batch_cell_pre_act : BatchCellPreAct}
+  extra:
+    outputs: [batch_gate, batch_cell_pre_act]
+
 - op: lu
   backward: lu_grad
   inputs:
@@ -4195,7 +4244,14 @@
   inputs:
     {gate_idx: GateIdx, expert_count: ExpertCount}
   outputs:
-    new_gate_idx: NewGateIdx
+    out_gate_idx: NewGateIdx
+
+- op: pyramid_hash
+  backward: pyramid_hash_grad
+  inputs:
+    {x : X, w : W, white_list : WhiteList, black_list : BlackList}
+  outputs:
+    {out : Out, drop_pos : DropPos, x_temp_out : X_Temp_Out}
 
 - op: random_routing
   inputs:
@@ -4243,6 +4299,8 @@
     {x: X}
   outputs:
     {out: Out, noise: Noise}
+  extra:
+    outputs: [noise]
 
 - op: send_v2
   inputs :
@@ -4256,6 +4314,15 @@
     {padding_trainable : paddingTrainable, context_length : contextLength, context_start : contextStart, context_stride : contextStride}
   outputs:
     out : Out
+
+- op: sequence_pool
+  backward: sequence_pool_grad
+  inputs:
+    x : X
+  outputs:
+    {out : Out, max_index : MaxIndex}
+  extra:
+    attrs: [bool is_test = false]
 
 - op: set_value
   backward: set_value_grad
@@ -4346,6 +4413,12 @@
   inputs :
     x : X
   outputs :
+    out : Out
+
+- op: transfer_layout
+  inputs:
+    x : X
+  outputs:
     out : Out
 
 - op: uniform_random_batch_size_like
