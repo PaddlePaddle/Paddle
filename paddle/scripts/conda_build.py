@@ -141,10 +141,18 @@ def gen_build_scripts(name, cuda_major_version, paddle_version):
     else:
         index_url = "https://www.paddlepaddle.org.cn/packages/stable/cpu/"
 
+    original_directory = os.getcwd()
+    os.chdir(package_path)
     with open(build_filename, 'w') as f:
         for item in paddle_cuda_requires:
-            f.write(f"pip install {item} -i {index_url}\n")
-        f.write(f"pip install {name}=={paddle_version} --no-deps -i {index_url} \n")
+            os.system(f'pip download --no-deps {item} -i {index_url}')
+        os.system(f'pip install {name}=={paddle_version} --no-deps -i {index_url}')
+    os.chdir(original_directory)
+
+    with open(build_filename, 'w') as f:
+        for item in paddle_cuda_requires:
+            f.write(f"pip install {item} -f {package_path}\n")
+        f.write(f"pip install {name}=={paddle_version} -f {package_path}\n")
 
 
 
