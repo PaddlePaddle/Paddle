@@ -14,7 +14,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import (
+    TYPE_CHECKING,
+    TypedDict,
+)
+
+from typing_extensions import (
+    NotRequired,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -242,7 +249,14 @@ class GoogLeNet(nn.Layer):
         return out, out1, out2
 
 
-def googlenet(pretrained: bool = False, **kwargs) -> GoogLeNet:
+class GoogLeNetOptions(TypedDict):
+    num_classes: NotRequired[int]
+    with_pool: NotRequired[bool]
+
+
+def googlenet(
+    pretrained: bool = False, **kwargs: GoogLeNetOptions
+) -> GoogLeNet:
     """GoogLeNet (Inception v1) model architecture from
     `"Going Deeper with Convolutions" <https://arxiv.org/pdf/1409.4842.pdf>`_.
 
