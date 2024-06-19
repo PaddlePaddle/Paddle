@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeGuard
 
 import paddle
 from paddle import _C_ops
@@ -1073,7 +1073,7 @@ def not_equal_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.not_equal_(x, y)
 
 
-def is_tensor(x: Any) -> bool:
+def is_tensor(x: Any) -> TypeGuard[Tensor]:
     """
 
     Tests whether input object is a paddle.Tensor.
