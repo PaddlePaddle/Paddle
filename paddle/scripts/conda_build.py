@@ -38,6 +38,7 @@ def parse_args():
 class ConstantVar:
     def __init__(self):
         self.py_str = ["py38", "py39", "py310", "py311", "py312"]
+        self.pip_ver = ["3.8", "3.9", "3.10", "3.11", "3.12"]
         self.cuda_info = ["cuda11.8", "cuda12.3"]
         self.py_ver = {
             "py38":"python>=3.8, <3.9",
@@ -72,7 +73,7 @@ def template_full(name, version, packages_string, python_version):
         yaml.safe_dump(filled_yaml, new_file, default_flow_style=False, sort_keys=False)
 
 
-def gen_build_scripts(name, cuda_major_version, paddle_version):
+def gen_build_scripts(name, cuda_major_version, paddle_version, pip_ver):
     sysstr = platform.system()
     if sysstr == "Linux":
         build_filename = "build.sh"
@@ -145,7 +146,7 @@ def gen_build_scripts(name, cuda_major_version, paddle_version):
     os.chdir(package_path)
     with open(build_filename, 'w') as f:
         for item in paddle_cuda_requires:
-            os.system(f'pip download --no-deps {item} -i {index_url}')
+            os.system(f'pip download --no-deps {item} -i {index_url} --python-version {pip_ver}')
         os.system(f'pip install {name}=={paddle_version} --no-deps -i {index_url}')
     os.chdir(original_directory)
 
@@ -166,7 +167,7 @@ def conda_build(paddle_version, var):
             packages_string = var.py_str[i] + "_cpu_many_linux"
             python_version = var.py_ver[var.py_str[i]]
             template_full(name, paddle_version, packages_string, python_version)
-            gen_build_scripts(name, 'cpu', paddle_version)
+            gen_build_scripts(name, 'cpu', paddle_version, var.pip_ver[i])
             os.system("conda build .")
 
         # gpu安装包编译
@@ -176,7 +177,7 @@ def conda_build(paddle_version, var):
                 packages_string = var.py_str[i] + "_gpu_" + cuda_str + "_many_linux"
                 python_version = var.py_ver[var.py_str[i]]
                 template_full(name, paddle_version, packages_string, python_version)
-                gen_build_scripts(name, cuda_str, paddle_version)
+                gen_build_scripts(name, cuda_str, paddle_version, var.pip_ver[i])
                 os.system("conda build .")
 
     elif sysstr == "Windows":
