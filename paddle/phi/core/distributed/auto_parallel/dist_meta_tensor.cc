@@ -46,4 +46,8 @@ const distributed::TensorDistAttr& DistMetaTensor::dist_attr() const {
   }
 }
 
-}  // namespace phi::distributed
+bool DistMetaTensor::initialized() const {
+  return tensor_ != nullptr || dist_attr_ != TensorDistAttr();
+}
+
+}  // namespace distributed::phi

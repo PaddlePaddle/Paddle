@@ -217,8 +217,6 @@ class TestSemiAutoParallelLlamaDataLoader(test_base.CommunicationTestDistBase):
         }
 
     def test_simple_net_hybrid_strategy(self):
-        # Temporally disable because of random failure
-        return
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )

@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from get_test_cover_info import (
     XPUOpTestWrapper,
+    check_run_big_shape_test,
     create_test_class,
     get_xpu_op_support_types,
 )
@@ -80,6 +81,96 @@ class XPUTestSquaredL2NormOp(XPUOpTestWrapper):
     class TestSquaredL2NormOp_2(TestSquaredL2NormOp):
         def set_inputs(self):
             self.x = np.random.uniform(-0.1, 0.1, (2, 128, 256))
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
+
+    @check_run_big_shape_test()
+    class TestSquaredL2NormOpLargeShape1(TestSquaredL2NormOp):
+        def set_inputs(self):
+            self.x = np.random.uniform(-0.1, 0.1, (5120, 32))
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
+
+    @check_run_big_shape_test()
+    class TestSquaredL2NormOpLargeShape2(TestSquaredL2NormOp):
+        def set_inputs(self):
+            self.x = np.random.uniform(-0.1, 0.1, (32, 1920))
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
+
+    @check_run_big_shape_test()
+    class TestSquaredL2NormOpLargeShape3(TestSquaredL2NormOp):
+        def set_inputs(self):
+            self.x = np.random.uniform(-0.1, 0.1, (640, 32))
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
+
+    @check_run_big_shape_test()
+    class TestSquaredL2NormOpLargeShape4(TestSquaredL2NormOp):
+        def set_inputs(self):
+            self.x = np.random.uniform(-0.1, 0.1, (32, 5120))
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
+
+    @check_run_big_shape_test()
+    class TestSquaredL2NormOpLargeShape5(TestSquaredL2NormOp):
+        def set_inputs(self):
+            self.x = np.random.uniform(-0.1, 0.1, (32, 3456))
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
+
+    @check_run_big_shape_test()
+    class TestSquaredL2NormOpLargeShape6(TestSquaredL2NormOp):
+        def set_inputs(self):
+            self.x = np.random.uniform(-0.1, 0.1, (1728, 32))
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
+
+    @check_run_big_shape_test()
+    class TestSquaredL2NormOpLargeShape7(TestSquaredL2NormOp):
+        def set_inputs(self):
+            self.x = np.random.uniform(-0.1, 0.1, (31776, 5120))
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
+
+    @check_run_big_shape_test()
+    class TestSquaredL2NormOpLargeShape8(TestSquaredL2NormOp):
+        def set_inputs(self):
+            self.x = np.random.uniform(-0.1, 0.1, (5120, 1920))
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
+
+    @check_run_big_shape_test()
+    class TestSquaredL2NormOpLargeShape9(TestSquaredL2NormOp):
+        def set_inputs(self):
+            self.x = np.random.uniform(-0.1, 0.1, (1920,))
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
+
+    @check_run_big_shape_test()
+    class TestSquaredL2NormOpLargeShape10(TestSquaredL2NormOp):
+        def set_inputs(self):
+            self.x = np.random.uniform(-0.1, 0.1, (640, 5120))
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
+
+    @check_run_big_shape_test()
+    class TestSquaredL2NormOpLargeShape11(TestSquaredL2NormOp):
+        def set_inputs(self):
+            self.x = np.random.uniform(-0.1, 0.1, (5120, 3456))
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
+
+    @check_run_big_shape_test()
+    class TestSquaredL2NormOpLargeShape12(TestSquaredL2NormOp):
+        def set_inputs(self):
+            self.x = np.random.uniform(-0.1, 0.1, (3456,))
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
+
+    @check_run_big_shape_test()
+    class TestSquaredL2NormOpLargeShape13(TestSquaredL2NormOp):
+        def set_inputs(self):
+            self.x = np.random.uniform(-0.1, 0.1, (1728, 5120))
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
+
+    @check_run_big_shape_test()
+    class TestSquaredL2NormOpLargeShape14(TestSquaredL2NormOp):
+        def set_inputs(self):
+            self.x = np.random.uniform(-0.1, 0.1, (5120, 31776))
+            self.x[np.abs(self.x) < self.max_relative_error] = 0.01
+
+    @check_run_big_shape_test()
+    class TestSquaredL2NormOpLargeShape15(TestSquaredL2NormOp):
+        def set_inputs(self):
+            self.x = np.random.uniform(-0.1, 0.1, (31776,))
             self.x[np.abs(self.x) < self.max_relative_error] = 0.01
 
 

@@ -17,6 +17,7 @@ import struct
 import numpy as np
 
 from paddle import pir
+from paddle._typing.dtype_like import DTypeLike
 
 from ..pir import Value
 from ..pir.core import _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE, ParameterMeta
@@ -89,7 +90,7 @@ def convert_uint16_to_float(data):
     return np.reshape(new_data, data.shape)
 
 
-def convert_dtype(dtype):
+def convert_dtype(dtype: DTypeLike) -> str:
     if isinstance(dtype, core.VarDesc.VarType):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
@@ -154,7 +155,7 @@ def check_variable_and_dtype(
             input, input_name, (Value, ParameterMeta), op_name, extra_message
         )
     else:
-        check_type(input, input_name, Variable, op_name, extra_message)
+        check_type(input, input_name, (Variable, Value), op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
 
 
@@ -421,7 +422,7 @@ class DataFeeder:
             for each_var in feed_list:
                 if isinstance(each_var, str):
                     each_var = program.block(0).var(each_var)
-                if not isinstance(each_var, Variable):
+                if not isinstance(each_var, (Variable, Value)):
                     raise TypeError(
                         "Feed list should contain a list of variable"
                     )

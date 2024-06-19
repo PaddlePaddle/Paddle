@@ -26,7 +26,7 @@ class Chi2(Gamma):
     This is exactly equivalent to Gamma(concentration=0.5*df, rate=0.5), :ref:`api_paddle_distribution_Gamma`.
 
     Args:
-        df (float or Tensor): shape parameter of the distribution
+        df (float or Tensor): The degree of freedom of the distribution, which should be non-negative. If the input data type is Tensor, it indicates the batch creation of distributions with multiple different parameters, and the `batch_shape` (refer to the :ref:`api_paddle_distribution_Distribution` base class) is the parameter.
 
     Example:
         .. code-block:: python
@@ -44,7 +44,7 @@ class Chi2(Gamma):
             check_type(
                 df,
                 'df',
-                (float, Variable),
+                (float, Variable, paddle.pir.Value),
                 'Chi2',
             )
 
@@ -58,7 +58,8 @@ class Chi2(Gamma):
 
         self.rate = paddle.full_like(self.df, 0.5)
 
-        if not paddle.all(self.df > 0):
-            raise ValueError("The arg of `df` must be positive.")
+        if in_dynamic_mode():
+            if not paddle.all(self.df > 0):
+                raise ValueError("The arg of `df` must be positive.")
 
         super().__init__(self.df * 0.5, self.rate)
