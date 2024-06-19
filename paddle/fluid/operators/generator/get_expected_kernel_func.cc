@@ -442,5 +442,10 @@ phi::KernelKey GetBincountExpectedKernelType(
   return phi::KernelKey(data_type, ctx.device_context().GetPlace());
 }
 
+phi::KernelKey GetSeedExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  return phi::KernelKey(framework::proto::VarType::INT32, ctx.GetPlace());
+}
 }  // namespace operators
 }  // namespace paddle
