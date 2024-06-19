@@ -84,7 +84,6 @@ class TestDropoutWithRandomSeedGenerator(unittest.TestCase):
                 (out1,) = exe.run(
                     static.default_main_program(), fetch_list=res_list
                 )
-                # out1 = api_wrapper(123, True, "seed0", True, paddle.int32, place).numpy()
                 self.assertEqual(
                     out1,
                     np.asarray(self.rng1.random()).astype(np.int32),

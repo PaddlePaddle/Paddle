@@ -3067,8 +3067,8 @@
 - op : seed
   outputs :
     out : Out
-  extra :
-    attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
+  get_expected_kernel_type :
+    seed : GetSeedExpectedKernelType
 
 - op : segment_pool
   backward : segment_pool_grad
