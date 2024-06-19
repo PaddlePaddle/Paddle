@@ -4287,14 +4287,14 @@
   backward : thresholded_relu_grad
 
 - op : top_p_sampling
-  args : (Tensor x, Tensor ps, Tensor threshold, int seed=-1)
-  output : Tensor (out), Tensor(ids)
+  args : (Tensor x, Tensor ps, Tensor threshold, Tensor topp_seed, int random_seed=-1, int k=1, str mode="truncate")
+  output : Tensor (out), Tensor(ids), Tensor(topk_scores), Tensor(topk_ids)
   infer_meta :
     func : TopPSamplingInferMeta
   kernel :
     func : top_p_sampling
     data_type : x
-  optional : threshold
+  optional : threshold, topp_seed
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : topk
