@@ -75,13 +75,13 @@ class RAdam(Optimizer):
             then the parameters are list of dict. Note that the learning_rate in parameter groups
             represents the scale of base learning_rate.
             The default value is None in static graph mode, at this time all parameters will be updated.
-        beta1 (float|Tensor|None, optional): The exponential decay rate for the 1st moment estimates.
+        beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
             It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.9.
-        beta2 (float|Tensor|None, optional): The exponential decay rate for the 2nd moment estimates.
+        beta2 (float|Tensor, optional): The exponential decay rate for the 2nd moment estimates.
             It should be a float number or a 0-D Tensor with shape [] and data type as float32.
             The default value is 0.999.
-        epsilon (float|None, optional): A small float value for numerical stability.
+        epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
         weight_decay (float|Tensor|WeightDecayRegularizer|None, optional): The weight decay coefficient, it can be float or Tensor.
             Default None, meaning there is no regularization.
