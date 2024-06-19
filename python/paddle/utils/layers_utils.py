@@ -140,10 +140,19 @@ def _hash_with_id(*args):
     return hash(info)
 
 
+def _sorted(dict_):
+    """
+    Returns a sorted list of the dict keys, with error if keys not sortable.
+    """
+    try:
+        return sorted(dict_.keys())
+    except TypeError:
+        raise TypeError("nest only supports dicts with sortable keys.")
+
+
 def _yield_value(iterable):
     if isinstance(iterable, dict):
-        # NOTE: Keep order unchanged as python dict is ordered since python3.6
-        for key in iterable:
+        for key in _sorted(iterable):
             yield iterable[key]
     else:
         yield from iterable
@@ -183,7 +192,7 @@ def _sequence_like(instance, args):
     Convert the sequence `args` to the same type as `instance`.
     """
     if isinstance(instance, dict):
-        result = dict(zip(instance, args))
+        result = dict(zip(_sorted(instance), args))
         return type(instance)((key, result[key]) for key in instance.keys())
     elif (
         isinstance(instance, tuple)
