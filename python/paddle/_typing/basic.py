@@ -13,7 +13,16 @@
 # limitations under the License.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Sequence, Tuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 import numpy.typing as npt
@@ -40,6 +49,9 @@ TensorIndex: TypeAlias = Union[
 _T = TypeVar("_T")
 
 NestedSequence = Union[_T, Sequence["NestedSequence[_T]"]]
+NestedStructure = Union[
+    _T, Dict[str, "NestedStructure[_T]"], Sequence["NestedStructure[_T]"]
+]
 IntSequence = Sequence[int]
 NumbericSequence = Sequence[Numberic]
 NestedNumbericSequence: TypeAlias = NestedSequence[Numberic]

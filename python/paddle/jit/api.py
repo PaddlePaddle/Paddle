@@ -26,7 +26,14 @@ from collections import OrderedDict
 from collections.abc import Sequence
 from contextlib import contextmanager
 from types import ModuleType
-from typing import Any, Callable, Protocol, TypedDict, TypeVar, overload
+from typing import (
+    Any,
+    Callable,
+    Protocol,
+    TypedDict,
+    TypeVar,
+    overload,
+)
 
 from typing_extensions import (
     Literal,
@@ -37,7 +44,7 @@ from typing_extensions import (
 )
 
 import paddle
-from paddle._typing import NestedSequence
+from paddle._typing import NestedStructure
 from paddle.base import core, dygraph
 from paddle.base.compiler import (
     BuildStrategy,
@@ -84,7 +91,6 @@ from .translated_layer import (
 ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 
 
-_F = TypeVar('_F', bound=Callable[..., Any])
 _LayerT = TypeVar("_LayerT", bound=Layer)
 _RetT = TypeVar("_RetT")
 _InputT = ParamSpec("_InputT")
@@ -152,12 +158,12 @@ def _check_and_set_backend(backend, build_strategy):
         build_strategy.build_cinn_pass = True
 
 
-class ToStaticOptions(TypedDict):
+class _ToStaticOptions(TypedDict):
     property: NotRequired[bool]
     full_graph: NotRequired[bool]
 
 
-class ToStaticDecorator(Protocol):
+class _ToStaticDecorator(Protocol):
     @overload
     def __call__(self, function: _LayerT) -> _LayerT:
         ...
@@ -172,10 +178,10 @@ class ToStaticDecorator(Protocol):
 @overload
 def to_static(
     function: _LayerT,
-    input_spec: NestedSequence[InputSpec] | None = ...,
+    input_spec: NestedStructure[InputSpec] | None = ...,
     build_strategy: BuildStrategy | None = ...,
     backend: Backends | None = ...,
-    **kwargs: Unpack[ToStaticOptions],
+    **kwargs: Unpack[_ToStaticOptions],
 ) -> _LayerT:
     ...
 
@@ -183,33 +189,22 @@ def to_static(
 @overload
 def to_static(
     function: Callable[_InputT, _RetT],
-    input_spec: NestedSequence[InputSpec] | None = ...,
+    input_spec: NestedStructure[InputSpec] | None = ...,
     build_strategy: BuildStrategy | None = ...,
     backend: Backends | None = ...,
-    **kwargs: Unpack[ToStaticOptions],
+    **kwargs: Unpack[_ToStaticOptions],
 ) -> StaticFunction[_InputT, _RetT]:
     ...
 
 
 @overload
 def to_static(
-    function: Any,
-    input_spec: NestedSequence[InputSpec] | None = ...,
-    build_strategy: BuildStrategy | None = ...,
-    backend: Backends | None = ...,
-    **kwargs: Unpack[ToStaticOptions],
-) -> Any:
-    ...
-
-
-@overload
-def to_static(
     function: None = ...,
-    input_spec: NestedSequence[InputSpec] | None = ...,
+    input_spec: NestedStructure[InputSpec] | None = ...,
     build_strategy: BuildStrategy | None = ...,
     backend: Backends | None = ...,
-    **kwargs: Unpack[ToStaticOptions],
-) -> ToStaticDecorator:
+    **kwargs: Unpack[_ToStaticOptions],
+) -> _ToStaticDecorator:
     ...
 
 
@@ -334,7 +329,7 @@ def to_static(
     return decorated
 
 
-class NotToStaticDecorator(Protocol):
+class _NotToStaticDecorator(Protocol):
     @overload
     def __call__(
         self, func: Callable[_InputT, _RetT]
@@ -342,7 +337,7 @@ class NotToStaticDecorator(Protocol):
         ...
 
     @overload
-    def __call__(self, func: None = ...) -> NotToStaticDecorator:
+    def __call__(self, func: None = ...) -> _NotToStaticDecorator:
         ...
 
 
@@ -352,7 +347,7 @@ def not_to_static(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
 
 
 @overload
-def not_to_static(func: None = ...) -> NotToStaticDecorator:
+def not_to_static(func: None = ...) -> _NotToStaticDecorator:
     ...
 
 
@@ -861,8 +856,19 @@ def _remove_save_pre_hook(hook):
     _save_pre_hooks_lock.release()
 
 
+class _SaveFunction(Protocol):
+    def __call__(
+        self,
+        layer: Layer | Callable[..., Any],
+        path: str,
+        input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = ...,
+        **configs: Unpack[_SaveLoadOptions],
+    ) -> None:
+        ...
+
+
 @wrap_decorator
-def _run_save_pre_hooks(func: _F) -> _F:
+def _run_save_pre_hooks(func: _SaveFunction) -> _SaveFunction:
     def wrapper(
         layer: Layer | Callable[..., Any],
         path: str,
@@ -874,7 +880,7 @@ def _run_save_pre_hooks(func: _F) -> _F:
             hook(layer, input_spec, configs)
         func(layer, path, input_spec, **configs)
 
-    return wrapper  # type: ignore
+    return wrapper
 
 
 def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
