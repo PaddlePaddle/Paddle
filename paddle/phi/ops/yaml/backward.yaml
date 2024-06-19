@@ -2306,15 +2306,15 @@
     data_type : x
 
 - backward_op : prod_grad
-  forward : prod (Tensor x, IntArray dims, bool keep_dim, bool reduce_all) -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, IntArray dims,  bool keep_dim, bool reduce_all)
+  forward : prod (Tensor x, IntArray axis, bool keepdim, bool reduce_all) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray axis, bool keepdim, bool reduce_all)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : prod_grad
-  composite: prod_grad(x, out, out_grad, dims, keep_dim, reduce_all, x_grad)
+  composite: prod_grad(x, out, out_grad, axis, keepdim, reduce_all, x_grad)
 
 - backward_op : psroi_pool_grad
   forward : psroi_pool (Tensor x, Tensor boxes, Tensor boxes_num, int pooled_height=1, int pooled_width=1, int output_channels=1, float spatial_scale=1.0) -> Tensor(out)
