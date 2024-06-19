@@ -873,7 +873,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
 
     // Insert output tensors into function arg
     target_.arch.Match(
-        [&](std::variant<common::NVGPUArch, common::HygonDCUArchHIP>) {
+        [&](common::NVGPUArch) {
           if (!expr.as_tensor_ref()->buffer.defined()) {
             op_func_arg_tensors->push_back(expr.as_tensor_ref());
             expr.as_tensor_ref()->WithBuffer();
@@ -886,6 +886,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
                          common::ARMArch>) {
           op_func_arg_tensors->push_back(expr.as_tensor_ref());
           expr.as_tensor_ref()->WithBuffer();
+        },
+        [&](common::HygonDCUArchHIP) {
+          if (!expr.as_tensor_ref()->buffer.defined()) {
+            op_func_arg_tensors->push_back(expr.as_tensor_ref());
+            expr.as_tensor_ref()->WithBuffer();
+          } else {
+            op_func_arg_tensors->push_back(expr.as_tensor_ref());
+          }
         });
   }
 

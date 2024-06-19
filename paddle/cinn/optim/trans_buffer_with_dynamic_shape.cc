@@ -106,7 +106,7 @@ struct Mutator : public ir::IRMutator<> {
 void CudaTransBufferWithDynamicShape(ir::Expr* e) {
   Mutator mutator;
   mutator.Visit(e, e);
-  auto TransBufferGpuDcu = [&] {
+  auto TransBufferNvHygon = [&] {
 #ifdef CINN_WITH_CUDA || defined(CINN_WITH_HIP)
     auto cur_dev_info = common::DevInfoMgr<arch.value()>::GetDevInfo(0);
     if (cur_dev_info->IsValid()) {
@@ -120,7 +120,7 @@ void CudaTransBufferWithDynamicShape(ir::Expr* e) {
   cinn::common::DefaultDeviceTarget().arch.Match(
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
       },
-      [&](common::NVGPUArch) { TransBufferGpuDcu(); },
-      [&](common::HygonDCUArchHIP) { TransBufferGpuDcu(); });
+      [&](common::NVGPUArch) { TransBufferNvHygon(); },
+      [&](common::HygonDCUArchHIP) { TransBufferNvHygon(); });
 }
 }  // namespace cinn::optim

@@ -73,29 +73,29 @@ void IRElementwiseSchedule(ir::IRSchedule &ir_sch,  // NOLINT
                            const cinn::common::Target &target) {
   VLOG(3) << "Before IRElementwiseSchedule, new ir is : "
           << ir_sch.GetModule().GetExprs().at(0);
-  target.arch.Match(
-      [&](std::variant<common::NVGPUArch, common::HygonDCUArchHIP>) {
-        auto blocks = ir_sch.GetAllBlocks();
-        std::vector<ir::Expr> loops = ir_sch.GetLoops(blocks[0]);
-        ir::Expr loop = ir_sch.Fuse(loops);
+  auto schedule_nv_hygon = [&] {
+    auto blocks = ir_sch.GetAllBlocks();
+    std::vector<ir::Expr> loops = ir_sch.GetLoops(blocks[0]);
+    ir::Expr loop = ir_sch.Fuse(loops);
 
-        auto size = std::accumulate(output_shape.begin(),
-                                    output_shape.end(),
-                                    1,
-                                    std::multiplies<int>());
-        if (size <= target.max_num_threads()) {
-          ir_sch.Bind(loop, "threadIdx.x");
-        } else {
-          auto splited = ir_sch.Split(loop, {-1, target.max_num_threads()});
-          ir_sch.Bind(splited[0], "blockIdx.x");
-          ir_sch.Bind(splited[1], "threadIdx.x");
-        }
-      },
+    auto size = std::accumulate(
+        output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
+    if (size <= target.max_num_threads()) {
+      ir_sch.Bind(loop, "threadIdx.x");
+    } else {
+      auto splited = ir_sch.Split(loop, {-1, target.max_num_threads()});
+      ir_sch.Bind(splited[0], "blockIdx.x");
+      ir_sch.Bind(splited[1], "threadIdx.x");
+    }
+  };
+  target.arch.Match(
+      [&](common::NVGPUArch) { schedule_nv_hygon(); },
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         // IRScheduleInjectiveCPU(ir_sch, output_shape, target, false);
         auto blocks = ir_sch.GetAllBlocks();
         ir_sch.FlattenLoops(ir_sch.GetLoops(blocks[0]), true);
-      });
+      },
+      [&](common::HygonDCUArchHIP) { schedule_nv_hygon(); });
   VLOG(3) << "After IRElementwiseSchedule, new ir is : "
           << ir_sch.GetModule().GetExprs().at(0);
 }
@@ -105,31 +105,31 @@ void IRInjectiveSchedule(ir::IRSchedule &ir_sch,  // NOLINT
                          const cinn::common::Target &target) {
   VLOG(3) << "Before IRInjectiveSchedule, new ir is : "
           << ir_sch.GetModule().GetExprs().at(0);
-  target.arch.Match(
-      [&](std::variant<common::NVGPUArch, common::HygonDCUArchHIP>) {
-        auto blocks = ir_sch.GetAllBlocks();
-        std::vector<ir::Expr> loops = ir_sch.GetLoops(blocks[0]);
-        ir::Expr loop = ir_sch.Fuse(loops);
+  auto schedule_nv_hygon = [&] {
+    auto blocks = ir_sch.GetAllBlocks();
+    std::vector<ir::Expr> loops = ir_sch.GetLoops(blocks[0]);
+    ir::Expr loop = ir_sch.Fuse(loops);
 
-        auto size = std::accumulate(output_shape.begin(),
-                                    output_shape.end(),
-                                    1,
-                                    std::multiplies<int>());
-        if (size <= target.max_num_threads()) {
-          ir_sch.Bind(loop, "threadIdx.x");
-        } else {
-          auto splited = ir_sch.Split(loop, {-1, target.max_num_threads()});
-          ir_sch.Bind(splited[0], "blockIdx.x");
-          ir_sch.Bind(splited[1], "threadIdx.x");
-        }
-      },
+    auto size = std::accumulate(
+        output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
+    if (size <= target.max_num_threads()) {
+      ir_sch.Bind(loop, "threadIdx.x");
+    } else {
+      auto splited = ir_sch.Split(loop, {-1, target.max_num_threads()});
+      ir_sch.Bind(splited[0], "blockIdx.x");
+      ir_sch.Bind(splited[1], "threadIdx.x");
+    }
+  };
+  target.arch.Match(
+      [&](common::NVGPUArch) { schedule_nv_hygon(); },
       [&](std::variant<common::UnknownArch,
                        common::X86Arch,
                        common::ARMArch>) {  // IRScheduleInjectiveCPU(ir_sch,
                                             // output_shape, target, false);
         auto blocks = ir_sch.GetAllBlocks();
         ir_sch.FlattenLoops(ir_sch.GetLoops(blocks[0]), false);
-      });
+      },
+      [&](common::HygonDCUArchHIP) { schedule_nv_hygon(); });
 
   VLOG(3) << "After IRInjectiveSchedule, new ir is : "
           << ir_sch.GetModule().GetExprs().at(0);
@@ -206,10 +206,11 @@ std::vector<cinn::common::CINNValue> IRGpuScheduleMatMul(
     const std::vector<int> &output_shape,
     const cinn::common::Target &target) {
   target.arch.Match(
-      [&](std::variant<common::NVGPUArch, common::HygonDCUArchHIP>) {},
+      [&](common::NVGPUArch) {},
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         CINN_NOT_IMPLEMENTED;
-      });
+      },
+      [&](common::HygonDCUArchHIP) {});
   std::vector<Expr> vec_ast;
   for (int i = 0; i < arg_pack.size(); i++) {
     if (arg_pack[i].is_expr()) {
@@ -372,16 +373,15 @@ void IRCudaSplitSchedule(ir::IRSchedule &ir_sch,  // NOLINT
   };
 
   target.arch.Match(
-      [&](std::variant<common::NVGPUArch, common::HygonDCUArchHIP>) {
-        SplitScheduleGpuDcu();
-      },
+      [&](common::NVGPUArch) { SplitScheduleGpuDcu(); },
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         {
           for (auto &block_name : block_names) {
             ir_sch.FlattenLoops(ir_sch.GetLoops(block_name), false);
           }
         }
-      });
+      },
+      [&](common::HygonDCUArchHIP) { SplitScheduleGpuDcu(); });
   VLOG(3) << "In IRCudaSplitSchedule, After schedule expr is : "
           << ir_sch.GetModule().GetExprs().at(0);
 }

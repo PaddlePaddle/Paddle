@@ -107,7 +107,7 @@ void DyScheduleImpl::Unroll(const Expr& loop) {
 }
 
 void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
-  auto bindGpuDcu = [&] {
+  auto bindNvHygon = [&] {
 #ifdef CINN_WITH_CUDA || defined(CINN_WITH_HIP)
     CINN_IR_SCHEDULE_BEGIN();
     std::string primitive = "Bind";
@@ -154,8 +154,8 @@ void DyScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         // nothing
       },
-      [&](common::NVGPUArch arch) { bindGpuDcu(); },
-      [&](common::HygonDCUArchHIP arch) { bindGpuDcu(); });
+      [&](common::NVGPUArch arch) { bindNvHygon(); },
+      [&](common::HygonDCUArchHIP arch) { bindNvHygon(); });
 }
 }  // namespace ir
 }  // namespace cinn
@@ -202,7 +202,7 @@ void StScheduleImpl::Unroll(const Expr& loop) {
 }
 
 void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
-  auto bindGpuDcu = [&] {
+  auto bindNvHygon = [&] {
 #ifdef CINN_WITH_CUDA || defined(CINN_WITH_HIP)
     CINN_IR_SCHEDULE_BEGIN();
     static std::set<std::string> thread_axes = {"blockIdx.x",
@@ -239,8 +239,8 @@ void StScheduleImpl::Bind(const Expr& loop, const std::string& thread_axis) {
   cinn::common::DefaultDeviceTarget().arch.Match(
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
       },
-      [&](common::NVGPUArch arch) { bindGpuDcu(); },
-      [&](common::HygonDCUArchHIP arch) { bindGpuDcu(); });
+      [&](common::NVGPUArch arch) { bindNvHygon(); },
+      [&](common::HygonDCUArchHIP arch) { bindNvHygon(); });
 }
 
 }  // namespace ir

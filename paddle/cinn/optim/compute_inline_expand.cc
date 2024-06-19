@@ -130,7 +130,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
       } else if (utils::EndsWith(tensor->buffer->name, "_write_cache") ||
                  utils::EndsWith(tensor->buffer->name, "_read_cache") ||
                  utils::EndsWith(tensor->buffer->name, "_temp_buffer")) {
-        auto setGpuDcu = [&] {
+        auto setNvHygon = [&] {
 #ifdef CINN_WITH_CUDA || defined(CINN_WITH_HIP)
           auto axis_names = stages_[tensor]->axis_names();
           auto compute_ats = stages_[tensor]->GetComputeAts();
@@ -154,8 +154,8 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
             [&](std::variant<common::UnknownArch,
                              common::X86Arch,
                              common::ARMArch>) {},
-            [&](common::NVGPUArch) { setGpuDcu(); },
-            [&](common::HygonDCUArchHIP) { setGpuDcu(); });
+            [&](common::NVGPUArch) { setNvHygon(); },
+            [&](common::HygonDCUArchHIP) { setNvHygon(); });
         bool keep_buffer = temp_buffer;
         temp_buffer = true;
         bool keep_memory_local = memory_local;

@@ -829,7 +829,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       VLOG(2) << "Vectorizing " << new_forloop->loop_var << " extent "
               << extent;
       VLOG(2) << "before vectorize body:\n" << node->body;
-      auto setGpuDcu = [&] {
+      auto setNvHygon = [&] {
         CudaVectorizer cuda_vectorizer(
             new_forloop->loop_var, factor, &var_intervals);
         cuda_vectorizer.Visit(&new_forloop->body);
@@ -852,8 +852,8 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
         body_stmts.insert(
             body_stmts.end(), store_exprs.begin(), store_exprs.end());
       };
-      target.arch.Match([&](common::NVGPUArch) { setGpuDcu(); },
-                        [&](common::HygonDCUArchHIP) { setGpuDcu(); },
+      target.arch.Match([&](common::NVGPUArch) { setNvHygon(); },
+                        [&](common::HygonDCUArchHIP) { setNvHygon(); },
                         [&](std::variant<common::UnknownArch,
                                          common::X86Arch,
                                          common::ARMArch>) {

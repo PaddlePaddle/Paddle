@@ -597,7 +597,7 @@ std::ostream& operator<<(std::ostream& os, const Range& x) {
 // and MultiDimIntegerSet, re implement this function to simplify these ugly
 // codes.
 void StaticShapeGroupScheduler::AllocateStorage() {
-  auto AllocateStorageGpuDcu = [&] {
+  auto AllocateStorageNvHygon = [&] {
     VLOG(5) << "[Start AllocateStorage] func body: "
             << ir_sch_->GetModule().GetExprs().front();
 
@@ -1072,9 +1072,8 @@ void StaticShapeGroupScheduler::AllocateStorage() {
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         // do nothing
       },
-      [&](std::variant<common::NVGPUArch, common::HygonDCUArchHIP>) {
-        AllocateStorageGpuDcu();
-      });
+      [&](common::NVGPUArch) { AllocateStorageNvHygon(); },
+      [&](common::HygonDCUArchHIP) { AllocateStorageNvHygon(); });
 }
 
 void StaticShapeGroupScheduler::OptimizeReduction() {

@@ -62,8 +62,20 @@ Expr Optimize(Expr e,
   cinn::common::DefaultDeviceTarget().arch.Match(
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
       },
-      [&](std::variant<common::NVGPUArch, common::HygonDCUArchHIP>) {
-#ifdef CINN_WITH_CUDA || defined(CINN_WITH_HIP)
+      [&](common::NVGPUArch) {
+#ifdef CINN_WITH_CUDA
+        if (copied.as_lowered_func()) {
+          ir::SetCudaAxisInfo(&copied);
+        }
+        if (remove_gpu_for_loops) {
+          RemoveGpuForloopsAxis(&copied);
+        }
+        CudaSyncThreadsDropIfThenElse(&copied);
+    // CudaTransBufferWithDynamicShape(&copied);
+#endif
+      },
+      [&](common::HygonDCUArchHIP) {
+#ifdef CINN_WITH_HIP
         if (copied.as_lowered_func()) {
           ir::SetCudaAxisInfo(&copied);
         }

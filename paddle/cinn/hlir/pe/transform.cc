@@ -1547,7 +1547,7 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
       [&](common::NVGPUArch) { extern_fun_name.assign("cinn_cuda_find_int"); },
       [&](common::HygonDCUArchHIP) {
         extern_fun_name.assign("cinn_hip_find_int");
-      }});
+      });
 
   auto pos_axis = axis;
   if (pos_axis < 0) pos_axis += input->shape.size();
@@ -1578,7 +1578,7 @@ ir::Tensor ScatterAdd(const ir::Tensor& input,
                       const cinn::common::Target& target,
                       const int axis,
                       const std::string& output_name) {
-  auto ScatterAddGpuDcu = [&] {
+  auto ScatterAddNvHygon = [&] {
     PADDLE_ENFORCE_EQ(
         index->type(),
         cinn::common::Int(32),
@@ -1652,9 +1652,8 @@ ir::Tensor ScatterAdd(const ir::Tensor& input,
             phi::errors::InvalidArgument("Op IndexAdd only support NVGPU and "
                                          "HygonDCU now ! Please Check.\n"));
       },
-      [&](std::variant<common::NVGPUArch, common::HygonDCUArchHIP>) {
-        return ScatterAddGpuDcu();
-      });
+      [&](common::NVGPUArch) { return ScatterAddNvHygon(); },
+      [&](common::HygonDCUArchHIP) { return ScatterAddNvHygon(); });
 }
 
 }  // namespace pe
