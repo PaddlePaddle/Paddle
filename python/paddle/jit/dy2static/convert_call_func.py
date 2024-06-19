@@ -110,21 +110,43 @@ def add_ignore_module(modules: List[Any]):
             BUILTIN_LIKELY_MODULES.append(module)
 
 
+@functools.lru_cache
+def get_module_function(module):
+    visited = set()
+
+    def _get_module_functions(module):
+        if module in visited:
+            return []
+        visited.add(module)
+        results = []
+        for _member_name, member in inspect.getmembers(module):
+            if callable(member):
+                results.append(member)
+            if inspect.ismodule(member):
+                results.extend(_get_module_functions(member))
+        return results
+
+    return _get_module_functions(module)
+
+
 def is_unsupported(func):
     """
     Checks whether the func is supported by dygraph to static graph.
     """
 
-    for m in BUILTIN_LIKELY_MODULES:
-        for v in m.__dict__.values():
-            if not callable(v):
-                continue
-            if func is v:
-                translator_logger.log(
-                    2,
-                    f"Whitelist: {func} is part of built-in module and does not have to be transformed.",
-                )
-                return True
+    builtin_functions = [
+        func
+        for module in BUILTIN_LIKELY_MODULES
+        for func in get_module_function(module)
+    ]
+
+    for builtin_fn in builtin_functions:
+        if func is builtin_fn:
+            translator_logger.log(
+                2,
+                f"Whitelist: {func} is part of built-in module and does not have to be transformed.",
+            )
+            return True
 
     # NOTE: should be placed before `is_paddle_func`
     # The api(s) should be considered as plain function and convert
@@ -142,6 +164,8 @@ def is_unsupported(func):
             func,
         )
         return True
+
+    return False
 
 
 def convert_call(func):
