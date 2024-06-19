@@ -931,6 +931,7 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
     auto shape_2 =
         cast<T>(get_slice<T>(x_shape_tensor, 1), x_shape_tensor.dtype());
     auto shape_3 = full<T>({dim_size - 2}, 1, x_shape_tensor.dtype());
+
     slice_shape_concat.push_back(shape_1);
     slice_shape_concat.push_back(shape_2);
     slice_shape_concat.push_back(shape_3);
