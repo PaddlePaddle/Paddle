@@ -22,6 +22,7 @@ requirements:
     - typing_extensions
     - networkx
     - {python_version}
+    {paddlepaddle_cuda}
 test:
   import:
     paddle

@@ -55,17 +55,25 @@ class ConstantVar:
         }
 
 
-def template_full(name, version, packages_string, python_version):
+def template_full(name, version, packages_string, python_version, cuda_str):
     # 读取模板文件
     with open('conda_build_template.yaml', 'r') as template_file:
         template_content = template_file.read()
+
+    paddlepaddle_cuda=''
+    if cuda_str == "cuda11.8":
+        paddlepaddle_cuda = '- paddlepaddle_cuda>=11.8,<12.0'
+    elif cuda_str == "cuda12.3":
+        paddlepaddle_cuda = '- paddlepaddle_cuda>=12.3,<12.4'
+
 
     # 使用字典填充模板
     data = {
         'name': name,
         'version': version,
         'packages_string': packages_string,
-        'python_version':python_version
+        'python_version':python_version,
+        'paddlepaddle_cuda':paddlepaddle_cuda
     }
 
     # 使用 str.format 进行占位符替换
@@ -153,15 +161,15 @@ def gen_build_scripts(name, cuda_major_version, paddle_version, only_download=No
         cur_package_path = os.path.join(package_path, cuda_major_version)
         os.makedirs(cur_package_path, exist_ok=True)
         os.chdir(cur_package_path)
-        for item in paddle_cuda_requires:
-            os.system(f'pip download --no-deps {item} -i {index_url}')
+        # for item in paddle_cuda_requires:
+        #     os.system(f'pip download --no-deps {item} -i {index_url}')
         os.system(f'pip download {name}=={paddle_version} --no-deps -i {index_url}')
         os.chdir(original_directory)
     else:
         cur_package_path = os.path.join(package_path, cuda_major_version)
         with open(build_filename, 'w') as f:
-            for item in paddle_cuda_requires:
-                f.write(f"pip install {item} -f {cur_package_path}\n")
+            # for item in paddle_cuda_requires:
+            #     f.write(f"pip install {item} -f {cur_package_path}\n")
             f.write(f"pip install {name}=={paddle_version} -f {cur_package_path}\n")
 
 
@@ -181,7 +189,7 @@ def conda_build(paddle_version, var):
         for i in range(len(var.py_str)):
             packages_string = var.py_str[i] + "_cpu_many_linux"
             python_version = var.py_ver[var.py_str[i]]
-            template_full(name, paddle_version, packages_string, python_version)
+            template_full(name, paddle_version, packages_string, python_version, 'cpu')
             gen_build_scripts(name, 'cpu', paddle_version)
             os.system("conda build .")
 
@@ -191,7 +199,7 @@ def conda_build(paddle_version, var):
             for cuda_str in var.cuda_info:
                 packages_string = var.py_str[i] + "_gpu_" + cuda_str + "_many_linux"
                 python_version = var.py_ver[var.py_str[i]]
-                template_full(name, paddle_version, packages_string, python_version)
+                template_full(name, paddle_version, packages_string, python_version, cuda_str)
                 gen_build_scripts(name, cuda_str, paddle_version)
                 os.system("conda build .")
 
