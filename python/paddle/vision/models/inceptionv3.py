@@ -47,7 +47,7 @@ model_urls = {
 }
 
 
-class InceptionV3Options(TypedDict):
+class _InceptionV3Options(TypedDict):
     num_classes: NotRequired[int]
     with_pool: NotRequired[bool]
 
@@ -605,7 +605,7 @@ class InceptionV3(nn.Layer):
 
 
 def inception_v3(
-    pretrained: bool = False, **kwargs: Unpack[InceptionV3Options]
+    pretrained: bool = False, **kwargs: Unpack[_InceptionV3Options]
 ) -> InceptionV3:
     """Inception v3 model from
     `"Rethinking the Inception Architecture for Computer Vision" <https://arxiv.org/pdf/1512.00567.pdf>`_.
