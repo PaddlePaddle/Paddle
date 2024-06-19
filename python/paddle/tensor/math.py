@@ -2974,24 +2974,29 @@ def max(
         return _C_ops.max(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-        helper = LayerHelper('max', **locals())
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'float8_e4m3fn',
-                'float8_e5m2',
-            ],
-            'max',
-        )
-        if not isinstance(axis, Variable) and paddle.utils._contain_var(axis):
-            axis = paddle.utils._convert_to_tensor_list(axis)
+        if in_pir_mode():
+            return _C_ops.max(x, axis, keepdim)
+        else:
+            helper = LayerHelper('max', **locals())
+            check_variable_and_dtype(
+                x,
+                'x',
+                [
+                    'float16',
+                    'uint16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'float8_e4m3fn',
+                    'float8_e5m2',
+                ],
+                'max',
+            )
+            if not isinstance(axis, Variable) and paddle.utils._contain_var(
+                axis
+            ):
+                axis = paddle.utils._convert_to_tensor_list(axis)
 
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(

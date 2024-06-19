@@ -1472,14 +1472,35 @@ DispatchMatmulFP8Kernel(const Context& ctx,
   }
 
   PADDLE_ENFORCE_EQ(
-      x_dims.size(), 2, "mat x for matmul fp8 just support 2-dim tensor");
+      x_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Mat x for matmul fp8 just support 2-dim tensor, but got %d",
+          x_dims.size()));
   PADDLE_ENFORCE_EQ(
-      y_dims.size(), 2, "mat y for matmul fp8 just support 2-dim tensor");
+      y_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Mat y for matmul fp8 just support 2-dim tensor, but got %d",
+          y_dims.size()));
   PADDLE_ENFORCE_EQ(
-      x_dims[1], y_dims[0], "x_dims[1] needs to equal to y_dims[0]");
+      x_dims[1],
+      y_dims[0],
+      phi::errors::InvalidArgument("x_dims[1] needs to equal to y_dims[0], but "
+                                   "got x_dims[1] = %d, y_dims[0] = %d",
+                                   x_dims[1],
+                                   y_dims[0]));
 
-  PADDLE_ENFORCE_EQ(x_dims[1] % 16, 0, "fp8 matmul need x_dims[1] % 16 = 0.");
-  PADDLE_ENFORCE_EQ(y_dims[0] % 16, 0, "fp8 matmul need y_dims[0] % 16 = 0.");
+  PADDLE_ENFORCE_EQ(
+      x_dims[1] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "fp8 matmul need x_dims[1] % 16 = 0, got x_dims[1] = %d", x_dims[1]));
+  PADDLE_ENFORCE_EQ(
+      y_dims[0] % 16,
+      0,
+      phi::errors::InvalidArgument(
+          "fp8 matmul need y_dims[0] % 16 = 0, got y_dims[0] = %d", y_dims[0]));
 
   phi::DenseTensor workspace;
   workspace.Resize({30 * 1024 * 1024});
