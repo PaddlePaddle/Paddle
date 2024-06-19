@@ -155,7 +155,7 @@ def check_variable_and_dtype(
             input, input_name, (Value, ParameterMeta), op_name, extra_message
         )
     else:
-        check_type(input, input_name, Variable, op_name, extra_message)
+        check_type(input, input_name, (Variable, Value), op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
 
 
@@ -422,7 +422,7 @@ class DataFeeder:
             for each_var in feed_list:
                 if isinstance(each_var, str):
                     each_var = program.block(0).var(each_var)
-                if not isinstance(each_var, Variable):
+                if not isinstance(each_var, (Variable, Value)):
                     raise TypeError(
                         "Feed list should contain a list of variable"
                     )
