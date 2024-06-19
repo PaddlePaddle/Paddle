@@ -1870,6 +1870,11 @@ class TestRsqrt(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
         out = 1.0 / np.sqrt(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -1908,6 +1913,54 @@ class TestRsqrt_ZeroDim(TestRsqrt):
 
     def if_enable_cinn(self):
         self.enable_cinn = False
+
+
+class TestRsqrt_Complex64(TestRsqrt):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_pir=True,
+            max_relative_error=0.007,
+            check_pir_onednn=self.check_pir_onednn,
+        )
+
+    def test_api_complex(self):
+        with dynamic_guard():
+            for device in devices:
+                if device == 'cpu' or (
+                    device == 'gpu' and paddle.is_compiled_with_cuda()
+                ):
+                    np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
+                    x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
+                    y = paddle.rsqrt(x)
+                    x_expect = 1.0 / np.sqrt(np_x)
+                    np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
+
+    def test_grad_grad(self):
+        with dynamic_guard():
+            x_numpy = (
+                np.random.uniform(0.1, 1, self.shape)
+                + 1j * np.random.uniform(0.1, 1, self.shape)
+            ).astype(self.dtype)
+
+            expected_ddx = 3.0 / 4 * np.conj(np.power(x_numpy, -2.5))
+
+            x = paddle.to_tensor(x_numpy, stop_gradient=False)
+            y = paddle.rsqrt(x)
+            dx = paddle.grad(
+                outputs=[y], inputs=[x], create_graph=True, retain_graph=True
+            )[0]
+            ddx = paddle.grad(outputs=[dx], inputs=[x], retain_graph=True)[0]
+            np.testing.assert_allclose(ddx.numpy(), expected_ddx, rtol=1e-3)
+
+
+class TestRsqrt_Complex128(TestRsqrt_Complex64):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestAbs(TestActivation):

@@ -769,6 +769,15 @@ struct RsqrtFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct RsqrtFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.rsqrt();
+  }
+};
+
+template <typename T>
 struct RsqrtGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device,
             typename X,
@@ -777,6 +786,24 @@ struct RsqrtGradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x UNUSED, Out out, dOut dout, dX dx) const {
     dx.device(d) = static_cast<T>(-0.5) * dout * out * out * out;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct RsqrtGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x UNUSED, Out out, dOut dout, dX dx) const {
+    dx.device(d) = static_cast<ComplexType<T>>(-0.5) * dout *
+                   (out * out * out).unaryExpr(Conj<T>());
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
@@ -3058,6 +3085,45 @@ struct RsqrtGradGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct RsqrtGradGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  template <typename Device>
+  void operator()(const Device& dev,
+                  const DenseTensor* Out,
+                  const DenseTensor* dX,
+                  const DenseTensor* ddX,
+                  DenseTensor* dOut,
+                  DenseTensor* ddOut) const {
+    auto* d = dev.eigen_device();
+    auto ddx = EigenVector<ComplexType<T>>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "RsqrtGradGrad"));
+    auto out = EigenVector<ComplexType<T>>::Flatten(
+        GET_DATA_SAFELY(Out, "Output", "Out", "RsqrtGradGrad"));
+
+    // rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = (3/y) * dx * ddx
+    if (dOut) {
+      auto dx = EigenVector<ComplexType<T>>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "RsqrtGradGrad"));
+      auto dout = EigenVector<ComplexType<T>>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "RsqrtGradGrad"));
+      dout.device(*d) =
+          (static_cast<ComplexType<T>>(3.0) / out.unaryExpr(Conj<T>())) * dx *
+          ddx;
+    }
+    if (ddOut) {
+      auto ddout = EigenVector<ComplexType<T>>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "RsqrtGradGrad"));
+      ddout.device(*d) = ddx * static_cast<ComplexType<T>>(-0.5) *
+                         (out * out * out).unaryExpr(Conj<T>());
+    }
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
 struct CELUFunctor : public BaseActivationFunctor<T> {
   float alpha;
   typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
@@ -4048,6 +4114,16 @@ struct CudaRsqrtFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct CudaRsqrtFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  // rsqrt(x) = rsqrt(x)
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> arg_x) const {
+    return static_cast<ComplexType<T>>(1.) / sqrt(arg_x);
+  }
+};
+
+template <typename T>
 struct CudaRsqrtGradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType minus_one_half = static_cast<MPType>(-0.5f);
@@ -4058,6 +4134,21 @@ struct CudaRsqrtGradFunctor : public BaseActivationFunctor<T> {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType out = static_cast<MPType>(arg_out);
     return static_cast<T>(minus_one_half * dout * out * out * out);
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
+template <typename T>
+struct CudaRsqrtGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  // dx = -0.5 * dout * out^3
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> arg_dout, const ComplexType<T> arg_out) const {
+    return static_cast<ComplexType<T>>(-0.5) * arg_dout *
+           conj(arg_out * arg_out * arg_out);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
