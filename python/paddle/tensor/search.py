@@ -1265,7 +1265,7 @@ def top_p_sampling(
     threshold=None,
     topp_seed=None,
     seed=-1,
-    k=1,
+    k=0,
     mode="truncated",
     return_top=False,
     name=None,
