@@ -377,7 +377,11 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
       FBADtypeCheck(qkv, "qkv", compute_dtype);
     }
     if (out_scale > 0) {
-      fmha_out->set_dtype(phi::DataType::INT8);
+      if (fabs(quant_max_bound - 127.0f) < 0.000001) {
+        fmha_out->set_dtype(phi::DataType::INT8);
+      } else if (fabs(quant_max_bound - 448.0f) < 0.000001) {
+        fmha_out->set_dtype(phi::DataType::FLOAT8_E4M3FN);
+      }
     } else {
       fmha_out->set_dtype(qkv.dtype());
     }

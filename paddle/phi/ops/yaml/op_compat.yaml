@@ -2730,9 +2730,9 @@
   outputs:
     out : Out
   attrs:
-    { dims : dim,  keep_dim : keep_dim}
+    { axis : dim,  keepdim : keep_dim}
   int_array:
-    dims :
+    axis :
       data_type : int
       support_tensor : true
   extra :

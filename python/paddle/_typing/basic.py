@@ -18,6 +18,7 @@ from typing import (
     Any,
     Dict,
     List,
+    Literal,
     Sequence,
     Tuple,
     TypeVar,
@@ -56,3 +57,5 @@ IntSequence = Sequence[int]
 NumbericSequence = Sequence[Numberic]
 NestedNumbericSequence: TypeAlias = NestedSequence[Numberic]
 TensorOrTensors: TypeAlias = Union["Tensor", Sequence["Tensor"]]
+
+PaddingMode: TypeAlias = Literal['valid', 'same', 'VALID', 'SAME']

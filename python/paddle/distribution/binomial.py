@@ -235,10 +235,6 @@ class Binomial(distribution.Distribution):
             Tensor: kl-divergence between two binomial distributions. The data type is the same as `probs`.
 
         """
-        if not (paddle.equal(self.total_count, other.total_count)).all():
-            raise ValueError(
-                "KL divergence of two binomial distributions should share the same `total_count` and `batch_shape`."
-            )
         support = self._enumerate_support()
         log_prob_1 = self.log_prob(support)
         log_prob_2 = other.log_prob(support)
