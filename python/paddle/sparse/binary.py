@@ -268,7 +268,10 @@ def add(x, y, name=None):
 
     """
     if y.dtype != x.dtype:
-        y = cast(y, None, x.dtype)
+        if not y.is_sparse():
+            y = y.cast(x.dtype)
+        else:
+            y = cast(y, None, x.dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.sparse_add(x, y)
