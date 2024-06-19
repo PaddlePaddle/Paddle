@@ -246,27 +246,59 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
         reinterpret_cast<XPUType*>(loss->data<T>()),
         N * 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "sub");
-    phi::DenseTensor predicted_logits_bool, zeros_constant;
-    predicted_logits_bool =
-        ctx.AllocateTmpTensor<bool, phi::XPUContext>({N, 1}, dev_ctx);
-    zeros_constant = ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
+    phi::DenseTensor zeros_constant =
+        ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
     ret = xpu::constant<XPUType>(
         dev_ctx.x_context(),
         reinterpret_cast<XPUType*>(zeros_constant.data<T>()),
         N,
         0.0);
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
-    ret = xpu::cast<XPUType, bool>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(predicted_logits.data<T>()),
-        reinterpret_cast<bool*>(predicted_logits_bool.data<bool>()),
-        N * 1);
-    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "cast");
+
+    phi::DenseTensor bool_tensor_for_mask_label =
+        ctx.AllocateTmpTensor<bool, phi::XPUContext>({N, 1}, dev_ctx);
+    phi::DenseTensor ignore_label_as_tensor;
+    if (label_type == framework::proto::VarType::INT32) {
+      ignore_label_as_tensor =
+          ctx.AllocateTmpTensor<int, phi::XPUContext>({N, 1}, dev_ctx);
+      ret = xpu::constant<int>(dev_ctx.x_context(),
+                               ignore_label_as_tensor.data<int>(),
+                               N,
+                               ignore_index);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
+      // call xdnn equal
+      // int equal(Context* ctx, const T* x, const T* y, bool* z, int64_t len);
+      ret = xpu::equal<int>(dev_ctx.x_context(),
+                            ignore_label_as_tensor.data<int>(),
+                            labels->data<int>(),
+                            bool_tensor_for_mask_label.data<bool>(),
+                            N);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "equal");
+    } else if (label_type == framework::proto::VarType::INT64) {
+      ignore_label_as_tensor =
+          ctx.AllocateTmpTensor<int64_t, phi::XPUContext>({N, 1}, dev_ctx);
+      ret = xpu::constant<int64_t>(dev_ctx.x_context(),
+                                   ignore_label_as_tensor.data<int64_t>(),
+                                   N,
+                                   ignore_index);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
+      // call xdnn equal
+      // int equal(Context* ctx, const T* x, const T* y, bool* z, int64_t len);
+      ret = xpu::equal<int64_t>(dev_ctx.x_context(),
+                                ignore_label_as_tensor.data<int64_t>(),
+                                labels->data<int64_t>(),
+                                bool_tensor_for_mask_label.data<bool>(),
+                                N);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "equal");
+    }
+    // In bool_tensor_for_mask_label, 'true' means the label is ignored and the
+    // corresponding value in loss will be set to zero, otherwise it will be
+    // used as normal label.
     ret = xpu::select(
         dev_ctx.x_context(),
-        reinterpret_cast<const bool*>(predicted_logits_bool.data<bool>()),
-        reinterpret_cast<const XPUType*>(loss->data<T>()),
+        reinterpret_cast<const bool*>(bool_tensor_for_mask_label.data<bool>()),
         reinterpret_cast<const XPUType*>(zeros_constant.data<T>()),
+        reinterpret_cast<const XPUType*>(loss->data<T>()),
         reinterpret_cast<XPUType*>(loss->data<T>()),
         common::vectorize(predicted_logits.dims()),
         common::vectorize(predicted_logits.dims()));
