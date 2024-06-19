@@ -13,6 +13,7 @@
 # limitations under the License.
 from typing import cast
 
+import paddle
 from paddle.base.core import Partial, Replicate, Shard
 
 
@@ -28,7 +29,11 @@ def to_placements(dim_map, mesh, partial_idx=[]):
     Returns:
         List[Placement]: a list contains some `paddle.distributed.Placement`.
     """
-    placements = [Replicate() for _ in range(len(mesh.mesh.shape))]
+    if isinstance(mesh, paddle.base.libpaddle.ProcessMesh):
+        shape = mesh.shape
+    else:
+        shape = mesh.mesh.shape
+    placements = [Replicate() for _ in range(len(shape))]
 
     for s in partial_idx:
         placements[s] = Partial()

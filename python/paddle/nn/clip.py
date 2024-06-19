@@ -816,6 +816,27 @@ class ClipGradByGlobalNorm(ClipGradBase):
         sum_square_list = []
         sum_square_list_fp16 = []
         sum_square_list_fp32 = []
+
+        auto_parallel_pp = False
+        pp_meshes = set()
+        pp_stage0_mesh = None
+        for p, g in params_grads:
+            if p.is_dist_dense_tensor_type():
+                pp_meshes.add(p.dist_attr().process_mesh)
+                if 0 in p.dist_attr().process_mesh.process_ids:
+                    if pp_stage0_mesh is None:
+                        pp_stage0_mesh = p.dist_attr().process_mesh
+                    else:
+                        assert p.dist_attr().process_mesh == pp_stage0_mesh
+
+        if len(pp_meshes) > 1:
+            from paddle.distributed.auto_parallel.placement_type import (
+                to_placements,
+            )
+
+            auto_parallel_pp = True
+            assert pp_stage0_mesh is not None
+
         for p, g in params_grads:
             if g is None:
                 continue
@@ -828,6 +849,27 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 merge_grad = get_tensor_from_selected_rows(merge_grad)
 
             sum_square = _squared_l2_norm(merge_grad)
+            if (
+                auto_parallel_pp
+                and sum_square.dist_attr().process_mesh != pp_stage0_mesh
+            ):
+                print(
+                    "reshard: sum_square",
+                    sum_square,
+                    pp_stage0_mesh,
+                    sum_square.dist_attr().dims_mapping,
+                    sum_square.dist_attr().process_mesh,
+                    sum_square.dist_attr().partial_dims,
+                )
+                sum_square = paddle.distributed.reshard(
+                    sum_square,
+                    pp_stage0_mesh,
+                    to_placements(
+                        sum_square.dist_attr().dims_mapping,
+                        sum_square.dist_attr().process_mesh,
+                        sum_square.dist_attr().partial_dims,
+                    ),
+                )
             if (
                 sum_square.dtype == DataType.FLOAT16
                 or sum_square.dtype == DataType.BFLOAT16
@@ -881,6 +923,9 @@ class ClipGradByGlobalNorm(ClipGradBase):
             # only when global_norm_var > max_global_norm, grad need clip
             need_clip = True
             clip_var = paddle.divide(x=max_global_norm, y=global_norm_var)
+        print("clip_var: ", clip_var)
+        print("max_global_norm: ", max_global_norm)
+        print("global_norm_var: ", global_norm_var)
 
         for p, g in params_grads:
             if g is None:
@@ -895,6 +940,29 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     if clip_var.dtype != g.dtype
                     else clip_var
                 )
+            if (
+                auto_parallel_pp
+                and clip_input.dist_attr().process_mesh
+                != g.dist_attr().process_mesh
+            ):
+                print(
+                    "reshard: clip_input",
+                    clip_input,
+                    g.dist_attr().process_mesh,
+                    clip_input.dist_attr().dims_mapping,
+                    clip_input.dist_attr().process_mesh,
+                    clip_input.dist_attr().partial_dims,
+                )
+                clip_input = paddle.distributed.reshard(
+                    clip_input,
+                    g.dist_attr().process_mesh,
+                    to_placements(
+                        clip_input.dist_attr().dims_mapping,
+                        clip_input.dist_attr().process_mesh,
+                        clip_input.dist_attr().partial_dims,
+                    ),
+                )
+
                 new_grad = paddle.multiply(g, clip_input)
                 params_and_grads.append((p, new_grad))
             else:
