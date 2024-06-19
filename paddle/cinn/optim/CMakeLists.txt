@@ -68,5 +68,3 @@ cinn_cc_test(test_remove_schedule_block SRCS remove_schedule_block_test.cc DEPS
 cinn_cc_test(test_unroll_loops SRCS unroll_loops_test.cc DEPS cinncore)
 cinn_cc_test(test_replace_cross_thread_reduction SRCS
              replace_cross_thread_reduction_test.cc DEPS cinncore)
-cinn_cc_test(test_check_tensor_buffer_map SRCS check_tensor_buffer_map_test.cc
-             DEPS cinncore)

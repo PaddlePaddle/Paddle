@@ -400,35 +400,47 @@ bool CheckTensorBufferMap(const Expr &expr) {
 void CheckTensorBufferMap(const std::vector<ir::Expr> &expr,
                           const std::string &process) {
   for (auto e : expr) {
-    if (!CheckTensorBufferMap(e)) {
-      LOG(FATAL) << "process [" << process << "]"
-                 << " has wrong tensor-buffer map in " << e;
+    bool flag = CheckTensorBufferMap(e);
+    if (!flag) {
+      VLOG(3) << "process [" << process << "]"
+              << " has wrong tensor-buffer map in " << e;
     }
+    PADDLE_ENFORCE_EQ(
+        flag, true, phi::errors::InvalidArgument("CheckTensorBufferMap fail"));
   }
 }
 
 void CheckTensorBufferMap(const std::vector<ir::Expr *> &expr,
                           const std::string &process) {
   for (auto e : expr) {
-    if (!CheckTensorBufferMap(e)) {
-      LOG(FATAL) << "process [" << process << "]"
-                 << " has wrong tensor-buffer map in " << e;
+    bool flag = CheckTensorBufferMap(e);
+    if (!flag) {
+      VLOG(3) << "process [" << process << "]"
+              << " has wrong tensor-buffer map in " << e;
     }
+    PADDLE_ENFORCE_EQ(
+        flag, true, phi::errors::InvalidArgument("CheckTensorBufferMap fail"));
   }
 }
 
 void CheckTensorBufferMap(const Expr *expr, const std::string &process) {
-  if (!CheckTensorBufferMap(expr)) {
-    LOG(FATAL) << "process [" << process << "]"
-               << " has wrong tensor-buffer map in " << expr;
+  bool flag = CheckTensorBufferMap(expr);
+  if (!flag) {
+    VLOG(3) << "process [" << process << "]"
+            << " has wrong tensor-buffer map in " << expr;
   }
+  PADDLE_ENFORCE_EQ(
+      flag, true, phi::errors::InvalidArgument("CheckTensorBufferMap fail"));
 }
 
 void CheckTensorBufferMap(const Expr &expr, const std::string &process) {
-  if (!CheckTensorBufferMap(expr)) {
-    LOG(FATAL) << "process [" << process << "]"
-               << " has wrong tensor-buffer map in " << expr;
+  bool flag = CheckTensorBufferMap(expr);
+  if (!flag) {
+    VLOG(3) << "process [" << process << "]"
+            << " has wrong tensor-buffer map in " << expr;
   }
+  PADDLE_ENFORCE_EQ(
+      flag, true, phi::errors::InvalidArgument("CheckTensorBufferMap fail"));
 }
 
 }  // namespace optim
