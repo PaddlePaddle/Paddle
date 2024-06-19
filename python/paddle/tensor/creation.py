@@ -946,7 +946,7 @@ def full_like(
 def fill_constant(
     shape: ShapeLike,
     dtype: DTypeLike,
-    value: float | paddle.Tensor,
+    value: bool | float | paddle.Tensor,
     force_cpu: bool = False,
     out: paddle.Tensor | None = None,
     name: str | None = None,
