@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
+from paddle._typing import Size2
 from paddle.base.param_attr import ParamAttr
 from paddle.nn import (
     AdaptiveAvgPool2D,
@@ -37,7 +40,7 @@ model_urls = {
 }
 
 
-def xavier(channels, filter_size):
+def xavier(channels: int, filter_size: int) -> ParamAttr:
     stdv = (3.0 / (filter_size**2 * channels)) ** 0.5
     param_attr = ParamAttr(initializer=Uniform(-stdv, stdv))
     return param_attr
@@ -45,7 +48,12 @@ def xavier(channels, filter_size):
 
 class ConvLayer(nn.Layer):
     def __init__(
-        self, num_channels, num_filters, filter_size, stride=1, groups=1
+        self,
+        num_channels: int,
+        num_filters: int,
+        filter_size: int,
+        stride: Size2 = 1,
+        groups: int = 1,
     ):
         super().__init__()
 
@@ -59,7 +67,7 @@ class ConvLayer(nn.Layer):
             bias_attr=False,
         )
 
-    def forward(self, inputs):
+    def forward(self, inputs: paddle.Tensor) -> paddle.Tensor:
         y = self._conv(inputs)
         return y
 
@@ -67,14 +75,14 @@ class ConvLayer(nn.Layer):
 class Inception(nn.Layer):
     def __init__(
         self,
-        input_channels,
-        output_channels,
-        filter1,
-        filter3R,
-        filter3,
-        filter5R,
-        filter5,
-        proj,
+        input_channels: int,
+        output_channels: int,
+        filter1: int,
+        filter3R: int,
+        filter3: int,
+        filter5R: int,
+        filter5: int,
+        proj: int,
     ):
         super().__init__()
 
@@ -87,7 +95,7 @@ class Inception(nn.Layer):
 
         self._convprj = ConvLayer(input_channels, proj, 1)
 
-    def forward(self, inputs):
+    def forward(self, inputs: paddle.Tensor) -> paddle.Tensor:
         conv1 = self._conv1(inputs)
 
         conv3r = self._conv3r(inputs)
@@ -132,7 +140,7 @@ class GoogLeNet(nn.Layer):
             [1, 1000] [1, 1000] [1, 1000]
     """
 
-    def __init__(self, num_classes=1000, with_pool=True):
+    def __init__(self, num_classes: int = 1000, with_pool: bool = True) -> None:
         super().__init__()
         self.num_classes = num_classes
         self.with_pool = with_pool
@@ -181,7 +189,7 @@ class GoogLeNet(nn.Layer):
             self._drop_o2 = Dropout(p=0.7, mode="downscale_in_infer")
             self._out2 = Linear(1024, num_classes, weight_attr=xavier(1024, 1))
 
-    def forward(self, inputs):
+    def forward(self, inputs: paddle.Tensor) -> list[paddle.Tensor]:
         x = self._conv(inputs)
         x = self._pool(x)
         x = self._conv_1(x)
@@ -230,7 +238,7 @@ class GoogLeNet(nn.Layer):
         return [out, out1, out2]
 
 
-def googlenet(pretrained=False, **kwargs):
+def googlenet(pretrained: bool = False, **kwargs) -> GoogLeNet:
     """GoogLeNet (Inception v1) model architecture from
     `"Going Deeper with Convolutions" <https://arxiv.org/pdf/1409.4842.pdf>`_.
 
