@@ -81,6 +81,8 @@ def template_full(name, version, packages_string, python_version, cuda_str):
     # 将填充后的内容解析为YAML
     filled_yaml = yaml.safe_load(filled_content)
 
+    if os.path.exists('meta.yaml'):
+        os.remove('meta.yaml')
     # 将填充后的内容写入新的YAML文件
     with open('meta.yaml', 'w') as new_file:
         yaml.safe_dump(filled_yaml, new_file, default_flow_style=False, sort_keys=False)
@@ -109,6 +111,8 @@ def gen_build_scripts(name, cuda_major_version, paddle_version, only_download=No
         os.chdir(original_directory)
     else:
         cur_package_path = os.path.join(package_path, cuda_major_version)
+        if os.path.exists(build_filename):
+            os.remove(build_filename)
         with open(build_filename, 'w') as f:
             f.write(f"pip install {name}=={paddle_version} -f {cur_package_path}\n")
 
