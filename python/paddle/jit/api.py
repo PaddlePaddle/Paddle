@@ -632,7 +632,7 @@ def _get_input_var_and_names(inputs, input_spec, input_names_after_prune):
 def _contains_dict(output):
     if isinstance(output, dict):
         return True
-    if isinstance(output, Sequence):
+    if isinstance(output, Sequence) and not isinstance(output, str):
         return any(_contains_dict(i) for i in output)
     return False
 
