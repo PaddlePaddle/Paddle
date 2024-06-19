@@ -402,8 +402,6 @@ void CheckTensorBufferMap(const std::vector<ir::Expr> &expr,
                           const std::string &process) {
   for (auto e : expr) {
     if (CheckTensorBufferMapImpl(e)) {
-      // VLOG(3) << "find wrong tensor-buffer map in Tensor [" << e << "] in
-      // process "<<process; LOG(FATAL) << "tensor-buffer map check failed";
       LOG(FATAL) << "process [" << process << "]"
                  << " has wrong tensor-buffer map in " << e;
     }
@@ -416,8 +414,6 @@ void CheckTensorBufferMap(const std::vector<ir::Expr *> &expr,
     if (CheckTensorBufferMapImpl(e)) {
       LOG(FATAL) << "process [" << process << "]"
                  << " has wrong tensor-buffer map in " << e;
-      // VLOG(3) << "find wrong tensor-buffer map in Tensor [" << e << "] in
-      // process "<<process; LOG(FATAL) << "tensor-buffer map check failed";
     }
   }
 }
@@ -426,8 +422,6 @@ void CheckTensorBufferMap(const Expr *expr, const std::string &process) {
   if (CheckTensorBufferMapImpl(expr)) {
     LOG(FATAL) << "process [" << process << "]"
                << " has wrong tensor-buffer map in " << expr;
-    // VLOG(3) << "find wrong tensor-buffer map in Tensor [" << expr << "] in
-    // process "<<process; LOG(FATAL) << "tensor-buffer map check failed";
   }
 }
 
@@ -435,8 +429,6 @@ void CheckTensorBufferMap(const Expr &expr, const std::string &process) {
   if (CheckTensorBufferMapImpl(expr)) {
     LOG(FATAL) << "process [" << process << "]"
                << " has wrong tensor-buffer map in " << expr;
-    // VLOG(3) << "find wrong tensor-buffer map in Tensor [" << expr << "] in
-    // process "<<process; LOG(FATAL) << "tensor-buffer map check failed";
   }
 }
 
