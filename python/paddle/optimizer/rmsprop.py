@@ -15,7 +15,9 @@
 from __future__ import annotations
 
 import warnings
-from typing import NotRequired, Sequence
+from typing import Sequence
+
+from typing_extensions import NotRequired
 
 import paddle
 from paddle import _C_ops
