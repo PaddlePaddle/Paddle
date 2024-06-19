@@ -30,6 +30,12 @@ def parse_args():
         required=True,
         help="paddle version for conda build.",
     )
+    parser.add_argument(
+        "--only_download",
+        type=str,
+        default=None,
+        help="requirement download",
+    )
     args = parser.parse_args()
 
     return args
@@ -73,7 +79,7 @@ def template_full(name, version, packages_string, python_version):
         yaml.safe_dump(filled_yaml, new_file, default_flow_style=False, sort_keys=False)
 
 
-def gen_build_scripts(name, cuda_major_version, paddle_version, pip_ver):
+def gen_build_scripts(name, cuda_major_version, paddle_version, only_download=None):
     sysstr = platform.system()
     if sysstr == "Linux":
         build_filename = "build.sh"
@@ -142,18 +148,26 @@ def gen_build_scripts(name, cuda_major_version, paddle_version, pip_ver):
     else:
         index_url = "https://www.paddlepaddle.org.cn/packages/stable/cpu/"
 
-    original_directory = os.getcwd()
-    os.chdir(package_path)
-    with open(build_filename, 'w') as f:
+    if only_download:
+        original_directory = os.getcwd()
+        cur_package_path = os.path.join(package_path, cuda_major_version)
+        os.makedirs(cur_package_path, exist_ok=True)
+        os.chdir(cur_package_path)
         for item in paddle_cuda_requires:
-            os.system(f'pip download --no-deps {item} -i {index_url} --python-version {pip_ver}')
-        os.system(f'pip install {name}=={paddle_version} --no-deps -i {index_url}')
-    os.chdir(original_directory)
+            os.system(f'pip download --no-deps {item} -i {index_url}')
+        os.system(f'pip download {name}=={paddle_version} --no-deps -i {index_url}')
+        os.chdir(original_directory)
+    else:
+        with open(build_filename, 'w') as f:
+            for item in paddle_cuda_requires:
+                f.write(f"pip install {item} -f {package_path}\n")
+            f.write(f"pip install {name}=={paddle_version} -f {package_path}\n")
 
-    with open(build_filename, 'w') as f:
-        for item in paddle_cuda_requires:
-            f.write(f"pip install {item} -f {package_path}\n")
-        f.write(f"pip install {name}=={paddle_version} -f {package_path}\n")
+
+def requirement_download(paddle_version, var):
+    gen_build_scripts('paddlepaddle', 'cpu', paddle_version, only_download=True)
+    for cuda_str in var.cuda_info:
+        gen_build_scripts('paddlepaddle-gpu', cuda_str, paddle_version, only_download=True)
 
 
 
@@ -214,4 +228,7 @@ if __name__ == "__main__":
     args = parse_args()
     paddle_version = args.paddle_version
     var = ConstantVar()
-    conda_build(paddle_version, var)
+    if args.only_download is not None:
+        requirement_download(paddle_version,var)
+    else:
+        conda_build(paddle_version, var)
