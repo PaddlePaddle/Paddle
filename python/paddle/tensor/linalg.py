@@ -3122,11 +3122,11 @@ def lu(
     Returns:
         factorization (Tensor), LU matrix, the factorization of input X.
 
-        pivots (IntTensor), the pivots of size(∗(N-2), min(m,n)). `pivots` stores all the
+        pivots (IntTensor), the pivots of size(*(N-2), min(m,n)). `pivots` stores all the
         intermediate transpositions of rows. The final permutation `perm` could be
         reconstructed by this, details refer to upper example.
 
-        infos (IntTensor, optional), if `get_infos` is `True`, this is a tensor of size (∗(N-2))
+        infos (IntTensor, optional), if `get_infos` is `True`, this is a tensor of size (*(N-2))
         where non-zero values indicate whether factorization for the matrix or each minibatch
         has succeeded or failed.
 
@@ -4062,7 +4062,7 @@ def eigvalsh(
     Args:
         x (Tensor): A tensor with shape :math:`[*, M, M]` , where * is zero or greater batch dimension. The data type of the input Tensor x
             should be one of float32, float64, complex64, complex128.
-        UPLO(str, optional): Lower triangular part of a (‘L’, default) or the upper triangular part (‘U’).
+        UPLO(str, optional): Lower triangular part of a ('L', default) or the upper triangular part ('U').
         name(str|None, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -4149,8 +4149,8 @@ def lstsq(
             the effective rank of ``x``. If ``rcond`` is None, it will be set to max(M, N) times the
             machine precision of x_dtype.
         driver(str, optional): The default value is None. The name of LAPACK method to be used. For
-            CPU inputs the valid values are ‘gels’, ‘gelsy’, ‘gelsd, ‘gelss’. For CUDA input, the only
-            valid driver is ‘gels’. If ``driver`` is None, ‘gelsy’ is used for CPU inputs and ‘gels’
+            CPU inputs the valid values are 'gels', 'gelsy', 'gelsd, 'gelss'. For CUDA input, the only
+            valid driver is 'gels'. If ``driver`` is None, 'gelsy' is used for CPU inputs and 'gels'
             for CUDA inputs.
         name(str, optional): The default value is None. Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -4161,9 +4161,9 @@ def lstsq(
         is a tensor with shape ``(*, K)``, meaning the squared residuals of the solutions, which is computed
         when M > N and every matrix in ``x`` is full-rank, otherwise return an empty tensor. ``rank`` is a tensor
         with shape ``(*)``, meaning the ranks of the matrices in ``x``, which is computed when ``driver`` in
-        (‘gelsy’, ‘gelsd’, ‘gelss’), otherwise return an empty tensor. ``singular_values`` is a tensor with
+        ('gelsy', 'gelsd', 'gelss'), otherwise return an empty tensor. ``singular_values`` is a tensor with
         shape ``(*, min(M, N))``, meaning singular values of the matrices in ``x``, which is computed when
-        ``driver`` in (‘gelsd’, ‘gelss’), otherwise return an empty tensor.
+        ``driver`` in ('gelsd', 'gelss'), otherwise return an empty tensor.
 
     Examples:
         .. code-block:: python
@@ -5044,7 +5044,7 @@ def histogramdd(
         bins (list[Tensor], list[int], or int): If list[Tensor], defines the sequences of bin edges. If list[int], defines the number of equal-width bins in each dimension. If int, defines the number of equal-width bins for all dimensions.
         ranges (sequence[float]|None, optional): Defines the leftmost and rightmost bin edges in each dimension. If is None, set the minimum and maximum as leftmost and rightmost edges for each dimension.
         density (bool, optional): If False (default), the result will contain the count (or total weight) in each bin. If True, each count (weight) is divided by the total count (total weight), then divided by the volume of its associated bin.
-        weights (Tensor, optional): By default, each value in the input has weight 1. If a weight tensor is passed, each N-dimensional coordinate in input contributes its associated weight towards its bin’s result. The weight tensor should have the same shape as the input tensor excluding its innermost dimension N.
+        weights (Tensor, optional): By default, each value in the input has weight 1. If a weight tensor is passed, each N-dimensional coordinate in input contributes its associated weight towards its bin's result. The weight tensor should have the same shape as the input tensor excluding its innermost dimension N.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
