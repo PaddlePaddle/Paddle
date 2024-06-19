@@ -935,6 +935,9 @@
     fix_seed : fix_seed
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
+  scalar :
+    p :
+      support_tensor : true
 
 - op : dropout_nd
   backward : dropout_nd_grad
@@ -2727,9 +2730,9 @@
   outputs:
     out : Out
   attrs:
-    { dims : dim,  keep_dim : keep_dim}
+    { axis : dim,  keepdim : keep_dim}
   int_array:
-    dims :
+    axis :
       data_type : int
       support_tensor : true
   extra :

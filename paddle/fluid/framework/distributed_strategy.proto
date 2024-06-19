@@ -217,6 +217,7 @@ message AsyncConfig {
   optional string heter_worker_device_guard = 10 [ default = 'cpu' ];
   optional int32 lr_decay_steps = 11 [ default = 10 ];
   optional int32 use_ps_gpu = 12 [ default = 0 ];
+  optional int32 use_gpu_graph = 13 [ default = 0 ];
 }
 
 message TrainerDescConfig {
@@ -271,6 +272,7 @@ message TableParameter {
   // for patch model
   optional bool enable_revert = 13 [ default = false ];
   optional float shard_merge_rate = 14 [ default = 1.0 ];
+  optional bool use_gpu_graph = 15 [ default = false ];
 }
 
 message TableAccessorParameter {

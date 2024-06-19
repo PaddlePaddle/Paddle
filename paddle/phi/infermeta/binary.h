@@ -649,13 +649,6 @@ void TriangularSolveInferMeta(const MetaTensor& x,
                               bool unitriangular,
                               MetaTensor* out);
 
-void TopPSamplingInferMeta(const MetaTensor& x,
-                           const MetaTensor& ps,
-                           const MetaTensor& threshold,
-                           int random_seed,
-                           MetaTensor* out,
-                           MetaTensor* ids);
-
 void LstsqInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
                     const Scalar& rcond,

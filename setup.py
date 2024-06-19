@@ -459,7 +459,7 @@ with_pip_cuda_libraries       = '%(with_pip_cuda_libraries)s'
 
 __all__ = ['cuda', 'cudnn', 'nccl', 'show', 'xpu', 'xpu_xre', 'xpu_xccl', 'xpu_xhpc']
 
-def show():
+def show() -> None:
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
 
     Returns:
@@ -537,10 +537,10 @@ def show():
     print('xpu_xhpc:', xpu_xhpc_version)
     print('cinn:', cinn_version)
 
-def mkl():
+def mkl() -> str:
     return with_mkl
 
-def nccl():
+def nccl() -> str:
     """Get nccl version of paddle package.
 
     Returns:
@@ -558,7 +558,7 @@ def nccl():
     """
     return nccl_version
 
-def cuda():
+def cuda() -> str:
     """Get cuda version of paddle package.
 
     Returns:
@@ -576,7 +576,7 @@ def cuda():
     """
     return cuda_version
 
-def cudnn():
+def cudnn() -> str:
     """Get cudnn version of paddle package.
 
     Returns:
@@ -594,7 +594,7 @@ def cudnn():
     """
     return cudnn_version
 
-def xpu():
+def xpu() -> str:
     """Get xpu version of paddle package. The API is deprecated now, please use xpu_xhpc() instead.
 
     Returns:
@@ -608,7 +608,7 @@ def xpu():
     """
     return xpu_xhpc_version
 
-def xpu_xre():
+def xpu_xre() -> str:
     """Get xpu xre version of paddle package.
 
     Returns:
@@ -626,7 +626,7 @@ def xpu_xre():
     """
     return xpu_xre_version
 
-def xpu_xccl():
+def xpu_xccl() -> str:
     """Get xpu xccl version of paddle package.
 
     Returns:
@@ -644,7 +644,7 @@ def xpu_xccl():
     """
     return xpu_xccl_version
 
-def xpu_xhpc():
+def xpu_xhpc() -> str:
     """Get xpu xhpc version of paddle package.
 
     Returns:
@@ -662,7 +662,7 @@ def xpu_xhpc():
     """
     return xpu_xhpc_version
 
-def cinn():
+def cinn() -> str:
     """Get CINN version of paddle package.
 
     Returns:
