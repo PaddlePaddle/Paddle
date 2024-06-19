@@ -25,10 +25,10 @@ from parameterize import (
 )
 
 sys.path.append("../../distribution")
-from test_distribution_cauchy import CauchyNumpy, _kstest
+from test_distribution_bernoulli import BernoulliNumpy, _kstest, _sigmoid
 
 import paddle
-from paddle.distribution import Cauchy
+from paddle.distribution import Bernoulli
 from paddle.distribution.kl import kl_divergence
 
 np.random.seed(2023)
@@ -39,52 +39,42 @@ default_dtype = paddle.get_default_dtype()
 
 @place(DEVICES)
 @parameterize_cls(
-    (TEST_CASE_NAME, 'params'),
-    # params: name, loc, scale, loc_other, scale_other, value
+    (TEST_CASE_NAME, 'params'),  # params: name, probs, probs_other, value
     [
         (
             'params',
             (
-                # 1-D params
+                # 1-D probs
                 (
-                    'params_not_iterable',
+                    'probs_not_iterable',
                     0.3,
-                    1.2,
-                    -1.2,
-                    2.3,
-                    3.4,
+                    0.7,
+                    1.0,
                 ),
                 (
-                    'params_not_iterable_and_broadcast_for_value',
+                    'probs_not_iterable_and_broadcast_for_value',
                     0.3,
-                    1.2,
-                    -1.2,
-                    2.3,
-                    np.array([[0.1, 1.2], [1.2, 3.4]], dtype=default_dtype),
+                    0.7,
+                    np.array([[0.0, 1.0], [1.0, 0.0]], dtype=default_dtype),
                 ),
-                # N-D params
+                # N-D probs
                 (
-                    'params_tuple_0305',
+                    'probs_tuple_0305',
                     (0.3, 0.5),
                     0.7,
-                    -1.2,
-                    2.3,
-                    3.4,
+                    1.0,
                 ),
                 (
-                    'params_tuple_03050104',
+                    'probs_tuple_03050104',
                     ((0.3, 0.5), (0.1, 0.4)),
                     0.7,
-                    -1.2,
-                    2.3,
-                    3.4,
+                    1.0,
                 ),
             ),
         )
     ],
-    test_pir=True,
 )
-class CauchyTestFeature(unittest.TestCase):
+class BernoulliTestFeature(unittest.TestCase):
     def setUp(self):
         self.program = paddle.static.Program()
         self.executor = paddle.static.Executor(self.place)
@@ -96,53 +86,40 @@ class CauchyTestFeature(unittest.TestCase):
             self.init_static_data(self.params)
 
     def init_numpy_data(self, params):
+        self.mean_np = []
+        self.variance_np = []
         self.log_prob_np = []
         self.prob_np = []
         self.cdf_np = []
         self.entropy_np = []
         self.kl_np = []
-        self.shapes = []
 
-        for _, loc, scale, loc_other, scale_other, value in params:
-            rv_np = CauchyNumpy(loc=loc, scale=scale)
-            rv_np_other = CauchyNumpy(loc=loc_other, scale=scale_other)
+        for _, probs, probs_other, value in params:
+            rv_np = BernoulliNumpy(probs)
+            rv_np_other = BernoulliNumpy(probs_other)
 
+            self.mean_np.append(rv_np.mean)
+            self.variance_np.append(rv_np.variance)
             self.log_prob_np.append(rv_np.log_prob(value))
             self.prob_np.append(rv_np.prob(value))
             self.cdf_np.append(rv_np.cdf(value))
             self.entropy_np.append(rv_np.entropy())
             self.kl_np.append(rv_np.kl_divergence(rv_np_other))
-            # paddle return data ndim>0
-            self.shapes.append(
-                (np.array(loc) + np.array(scale) + np.array(value)).shape
-                or (1,)
-            )
 
     def init_static_data(self, params):
         with paddle.static.program_guard(self.program):
             rv_paddles = []
             rv_paddles_other = []
             values = []
-            for name, loc, scale, loc_other, scale_other, value in params:
+            for _, probs, probs_other, value in params:
                 if not isinstance(value, np.ndarray):
                     value = paddle.full([1], value, dtype=default_dtype)
                 else:
                     value = paddle.to_tensor(value, place=self.place)
 
-                # We should set name in static mode, or the executor confuse rv_paddles[i].
-                rv_paddles.append(
-                    Cauchy(
-                        loc=paddle.to_tensor(loc),
-                        scale=paddle.to_tensor(scale),
-                        name=name,
-                    )
-                )
+                rv_paddles.append(Bernoulli(probs=paddle.to_tensor(probs)))
                 rv_paddles_other.append(
-                    Cauchy(
-                        loc=paddle.to_tensor(loc_other),
-                        scale=paddle.to_tensor(scale_other),
-                        name=name,
-                    )
+                    Bernoulli(probs=paddle.to_tensor(probs_other))
                 )
                 values.append(value)
 
@@ -151,6 +128,8 @@ class CauchyTestFeature(unittest.TestCase):
                 feed={},
                 fetch_list=[
                     [
+                        rv_paddles[i].mean,
+                        rv_paddles[i].variance,
                         rv_paddles[i].log_prob(values[i]),
                         rv_paddles[i].prob(values[i]),
                         rv_paddles[i].cdf(values[i]),
@@ -162,6 +141,8 @@ class CauchyTestFeature(unittest.TestCase):
                 ],
             )
 
+            self.mean_paddle = []
+            self.variance_paddle = []
             self.log_prob_paddle = []
             self.prob_paddle = []
             self.cdf_paddle = []
@@ -170,13 +151,17 @@ class CauchyTestFeature(unittest.TestCase):
             self.kl_func_paddle = []
             for i in range(self.params_len):
                 (
+                    _mean,
+                    _variance,
                     _log_prob,
                     _prob,
                     _cdf,
                     _entropy,
                     _kl,
                     _kl_func,
-                ) = results[i * 6 : (i + 1) * 6]
+                ) = results[i * 8 : (i + 1) * 8]
+                self.mean_paddle.append(_mean)
+                self.variance_paddle.append(_variance)
                 self.log_prob_paddle.append(_log_prob)
                 self.prob_paddle.append(_prob)
                 self.cdf_paddle.append(_cdf)
@@ -186,11 +171,29 @@ class CauchyTestFeature(unittest.TestCase):
 
     def test_all(self):
         for i in range(self.params_len):
+            self._test_mean(i)
+            self._test_variance(i)
             self._test_log_prob(i)
             self._test_prob(i)
             self._test_cdf(i)
             self._test_entropy(i)
             self._test_kl_divergence(i)
+
+    def _test_mean(self, i):
+        np.testing.assert_allclose(
+            self.mean_np[i],
+            self.mean_paddle[i],
+            rtol=RTOL.get(default_dtype),
+            atol=ATOL.get(default_dtype),
+        )
+
+    def _test_variance(self, i):
+        np.testing.assert_allclose(
+            self.variance_np[i],
+            self.variance_paddle[i],
+            rtol=RTOL.get(default_dtype),
+            atol=ATOL.get(default_dtype),
+        )
 
     def _test_log_prob(self, i):
         np.testing.assert_allclose(
@@ -200,9 +203,6 @@ class CauchyTestFeature(unittest.TestCase):
             atol=ATOL.get(default_dtype),
         )
 
-        # check shape
-        self.assertTrue(self.log_prob_paddle[i].shape == self.shapes[i])
-
     def _test_prob(self, i):
         np.testing.assert_allclose(
             self.prob_np[i],
@@ -211,9 +211,6 @@ class CauchyTestFeature(unittest.TestCase):
             atol=ATOL.get(default_dtype),
         )
 
-        # check shape
-        self.assertTrue(self.prob_paddle[i].shape == self.shapes[i])
-
     def _test_cdf(self, i):
         np.testing.assert_allclose(
             self.cdf_np[i],
@@ -221,9 +218,6 @@ class CauchyTestFeature(unittest.TestCase):
             rtol=RTOL.get(default_dtype),
             atol=ATOL.get(default_dtype),
         )
-
-        # check shape
-        self.assertTrue(self.cdf_paddle[i].shape == self.shapes[i])
 
     def _test_entropy(self, i):
         np.testing.assert_allclose(
@@ -251,59 +245,53 @@ class CauchyTestFeature(unittest.TestCase):
 
 @place(DEVICES)
 @parameterize_cls(
-    (
-        TEST_CASE_NAME,
-        'loc',
-        'scale',
-        'shape',
-        'expected_shape',
-    ),
+    (TEST_CASE_NAME, 'probs', 'shape', 'temperature', 'expected_shape'),
     [
-        # 1-D params
+        # 1-D probs
         (
-            'params_1d',
-            [0.1],
-            [1.2],
-            [100],
+            'probs_03',
+            (0.3,),
+            [
+                100,
+            ],
+            0.1,
             [100, 1],
         ),
-        # N-D params
+        # N-D probs
         (
-            'params_2d',
-            [0.3],
-            [1.2, 2.3],
-            [100],
+            'probs_0305',
+            (0.3, 0.5),
+            [
+                100,
+            ],
+            0.1,
             [100, 2],
         ),
     ],
-    test_pir=True,
 )
-class CauchyTestSample(unittest.TestCase):
+class BernoulliTestSample(unittest.TestCase):
     def setUp(self):
         self.program = paddle.static.Program()
         self.executor = paddle.static.Executor(self.place)
 
         with paddle.static.program_guard(self.program):
-            self.init_numpy_data(self.loc, self.scale, self.shape)
-            self.init_static_data(self.loc, self.scale, self.shape)
+            self.init_numpy_data(self.probs, self.shape)
+            self.init_static_data(self.probs, self.shape, self.temperature)
 
-    def init_numpy_data(self, loc, scale, shape):
-        self.rv_np = CauchyNumpy(loc=loc, scale=scale)
+    def init_numpy_data(self, probs, shape):
+        self.rv_np = BernoulliNumpy(probs)
         self.sample_np = self.rv_np.sample(shape)
 
-    def init_static_data(self, loc, scale, shape):
+    def init_static_data(self, probs, shape, temperature):
         with paddle.static.program_guard(self.program):
-            self.rv_paddle = Cauchy(
-                loc=paddle.to_tensor(loc),
-                scale=paddle.to_tensor(scale),
-            )
+            self.rv_paddle = Bernoulli(probs=paddle.to_tensor(probs))
 
             [self.sample_paddle, self.rsample_paddle] = self.executor.run(
                 self.program,
                 feed={},
                 fetch_list=[
                     self.rv_paddle.sample(shape),
-                    self.rv_paddle.rsample(shape),
+                    self.rv_paddle.rsample(shape, temperature),
                 ],
             )
 
@@ -313,7 +301,7 @@ class CauchyTestSample(unittest.TestCase):
                 list(self.sample_paddle.shape), self.expected_shape
             )
 
-            for i in range(self.expected_shape[-1]):
+            for i in range(len(self.probs)):
                 self.assertTrue(
                     _kstest(
                         self.sample_np[..., i].reshape(-1),
@@ -328,59 +316,51 @@ class CauchyTestSample(unittest.TestCase):
                 list(self.rsample_paddle.shape), self.expected_shape
             )
 
-            for i in range(self.expected_shape[-1]):
+            for i in range(len(self.probs)):
                 self.assertTrue(
                     _kstest(
                         self.sample_np[..., i].reshape(-1),
-                        self.rsample_paddle[..., i].reshape(-1),
+                        (_sigmoid(self.rsample_paddle[..., i]) > 0.5).reshape(
+                            -1
+                        ),
+                        self.temperature,
                     )
                 )
 
 
 @place(DEVICES)
-@parameterize_cls([TEST_CASE_NAME], ['CauchyTestError'], test_pir=True)
-class CauchyTestError(unittest.TestCase):
+@parameterize_cls([TEST_CASE_NAME], ['BernoulliTestError'])
+class BernoulliTestError(unittest.TestCase):
     def setUp(self):
         self.program = paddle.static.Program()
         self.executor = paddle.static.Executor(self.place)
 
     @parameterize_func(
         [
+            (0,),  # int
             ((0.3,),),  # tuple
-            ([0.3],),  # list
-            (np.array([0.3]),),  # ndarray
+            (
+                [
+                    0.3,
+                ],
+            ),  # list
+            (
+                np.array(
+                    [
+                        0.3,
+                    ]
+                ),
+            ),  # ndarray
             (-1j + 1,),  # complex
             ('0',),  # str
         ]
     )
-    def test_bad_init_type(self, param):
-        """Test bad init for loc/scale"""
+    def test_bad_init_type(self, probs):
         with paddle.static.program_guard(self.program):
             with self.assertRaises(TypeError):
                 [_] = self.executor.run(
-                    self.program,
-                    feed={},
-                    fetch_list=[Cauchy(loc=0.0, scale=param).scale],
+                    self.program, feed={}, fetch_list=[Bernoulli(probs=probs)]
                 )
-            with self.assertRaises(TypeError):
-                [_] = self.executor.run(
-                    self.program,
-                    feed={},
-                    fetch_list=[Cauchy(loc=param, scale=1.0).loc],
-                )
-
-    def test_bad_property(self):
-        """For property like mean/variance/stddev which is undefined in math,
-        we should raise `ValueError` instead of `NotImplementedError`.
-        """
-        with paddle.static.program_guard(self.program):
-            rv = Cauchy(loc=0.0, scale=1.0)
-            with self.assertRaises(ValueError):
-                _ = rv.mean
-            with self.assertRaises(ValueError):
-                _ = rv.variance
-            with self.assertRaises(ValueError):
-                _ = rv.stddev
 
     @parameterize_func(
         [
@@ -390,7 +370,7 @@ class CauchyTestError(unittest.TestCase):
     )
     def test_bad_sample_shape_type(self, shape):
         with paddle.static.program_guard(self.program):
-            rv = Cauchy(loc=0.0, scale=1.0)
+            rv = Bernoulli(0.3)
 
             with self.assertRaises(TypeError):
                 [_] = self.executor.run(
@@ -405,6 +385,22 @@ class CauchyTestError(unittest.TestCase):
     @parameterize_func(
         [
             (1,),  # int
+        ]
+    )
+    def test_bad_rsample_temperature_type(self, temperature):
+        with paddle.static.program_guard(self.program):
+            rv = Bernoulli(0.3)
+
+            with self.assertRaises(TypeError):
+                [_] = self.executor.run(
+                    self.program,
+                    feed={},
+                    fetch_list=[rv.rsample([100], temperature)],
+                )
+
+    @parameterize_func(
+        [
+            (1,),  # int
             (1.0,),  # float
             ([1.0],),  # list
             ((1.0),),  # tuple
@@ -413,7 +409,7 @@ class CauchyTestError(unittest.TestCase):
     )
     def test_bad_value_type(self, value):
         with paddle.static.program_guard(self.program):
-            rv = Cauchy(loc=0.0, scale=1.0)
+            rv = Bernoulli(0.3)
 
             with self.assertRaises(TypeError):
                 [_] = self.executor.run(
@@ -437,7 +433,7 @@ class CauchyTestError(unittest.TestCase):
     )
     def test_bad_kl_other_type(self, other):
         with paddle.static.program_guard(self.program):
-            rv = Cauchy(loc=0.0, scale=1.0)
+            rv = Bernoulli(0.3)
 
             with self.assertRaises(TypeError):
                 [_] = self.executor.run(
@@ -451,23 +447,21 @@ class CauchyTestError(unittest.TestCase):
     )
     def test_bad_broadcast(self, value):
         with paddle.static.program_guard(self.program):
-            rv = Cauchy(
-                loc=paddle.to_tensor(0.0), scale=paddle.to_tensor((1.0, 2.0))
-            )
+            rv = Bernoulli(paddle.to_tensor([0.3, 0.5]))
 
             # `logits, value = paddle.broadcast_tensors([self.logits, value])`
             # raise ValueError in dygraph, raise TypeError in static.
-            with self.assertRaises(TypeError):
+            with self.assertRaises((TypeError, ValueError)):
                 [_] = self.executor.run(
                     self.program, feed={}, fetch_list=[rv.cdf(value)]
                 )
 
-            with self.assertRaises(TypeError):
+            with self.assertRaises((TypeError, ValueError)):
                 [_] = self.executor.run(
                     self.program, feed={}, fetch_list=[rv.log_prob(value)]
                 )
 
-            with self.assertRaises(TypeError):
+            with self.assertRaises((TypeError, ValueError)):
                 [_] = self.executor.run(
                     self.program, feed={}, fetch_list=[rv.prob(value)]
                 )
