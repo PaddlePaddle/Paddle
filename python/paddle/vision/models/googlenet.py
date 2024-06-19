@@ -19,9 +19,7 @@ from typing import (
     TypedDict,
 )
 
-from typing_extensions import (
-    NotRequired,
-)
+from typing_extensions import NotRequired, Unpack
 
 import paddle
 import paddle.nn.functional as F
@@ -255,7 +253,7 @@ class GoogLeNetOptions(TypedDict):
 
 
 def googlenet(
-    pretrained: bool = False, **kwargs: GoogLeNetOptions
+    pretrained: bool = False, **kwargs: Unpack[GoogLeNetOptions]
 ) -> GoogLeNet:
     """GoogLeNet (Inception v1) model architecture from
     `"Going Deeper with Convolutions" <https://arxiv.org/pdf/1409.4842.pdf>`_.
