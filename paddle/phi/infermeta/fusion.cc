@@ -295,10 +295,13 @@ void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
   const int total_num_head = qkv.dims()[qkv.dims().size() - 1] / dim_head;
   const int q_num_head = total_num_head - 2 * kv_num_head;
 
-  PADDLE_ENFORCE_EQ(q_num_head % kv_num_head,
-                    0,
-                    errors::InvalidArgument(
-                        "The q num_head must be divisible by kv_num_head"));
+  PADDLE_ENFORCE_EQ(
+      q_num_head % kv_num_head,
+      0,
+      errors::InvalidArgument(
+          "The q num_head (%d) must be divisible by kv num_head (%d)",
+          q_num_head,
+          kv_num_head));
   PADDLE_ENFORCE_EQ(
       input_dims.size(),
       2UL,
