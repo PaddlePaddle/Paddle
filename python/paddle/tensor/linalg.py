@@ -44,7 +44,7 @@ from .math import _get_reduce_axis
 if TYPE_CHECKING:
     from paddle import Tensor
 
-    _Porder: TypeAlias = Literal['fro', 'nuc']
+    _POrder: TypeAlias = Literal['fro', 'nuc']
 
 __all__ = []
 
@@ -560,7 +560,7 @@ def vector_norm(
 
 def matrix_norm(
     x: Tensor,
-    p: float | str = 'fro',
+    p: float | _POrder = 'fro',
     axis: int | list[int] | tuple[int, int] = [-2, -1],
     keepdim: bool = False,
     name: str | None = None,
@@ -780,7 +780,7 @@ def matrix_norm(
 
     def p_matrix_norm(
         input: Tensor,
-        porder: float | str = 1.0,
+        porder: float | _POrder = 1.0,
         axis: int | list[int] | tuple[int, int] = axis,
         keepdim: bool = False,
         name: str | None = None,
@@ -982,12 +982,12 @@ def matrix_norm(
 
 
 def norm(
-    x: paddle.Tensor,
-    p: float | _Porder | None = None,
+    x: Tensor,
+    p: float | _POrder | None = None,
     axis: int | list[int] | tuple[int, int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
-) -> paddle.Tensor:
+) -> Tensor:
     """
 
     Returns the matrix norm (the Frobenius norm, the nuclear norm and p-norm) or vector norm (the 1-norm, the Euclidean
@@ -1265,7 +1265,7 @@ def dist(x: Tensor, y: Tensor, p: float = 2, name: str | None = None) -> Tensor:
 
 def cond(
     x: Tensor,
-    p: float | _Porder | None = None,
+    p: float | _POrder | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -2966,10 +2966,37 @@ def matrix_power(
         return out
 
 
+@overload
 def qr(
     x: Tensor,
-    mode: Literal['reduced', 'complete', 'r'] = "reduced",
+    mode: Literal['r'] = ...,
+    name: str | None = ...,
+) -> Tensor:
+    ...
+
+
+@overload
+def qr(
+    x: Tensor,
+    mode: Literal['reduced', 'complete'] = ...,
+    name: str | None = ...,
+) -> tuple[Tensor, Tensor]:
+    ...
+
+
+@overload
+def qr(
+    x: Tensor,
+    mode: Literal['reduced', 'complete', 'r'] = ...,
     name: str | None = None,
+) -> tuple[Tensor, Tensor] | Tensor:
+    ...
+
+
+def qr(
+    x,
+    mode="reduced",
+    name=None,
 ) -> tuple[Tensor, Tensor] | Tensor:
     r"""
     Computes the QR decomposition of one matrix or batches of matrices (backward is unsupported now).
@@ -3040,7 +3067,7 @@ def lu(
     x: Tensor,
     pivot: bool = ...,
     get_infos: Literal[False] = ...,
-    name: str | None = None,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor]:
     ...
 
@@ -3050,14 +3077,14 @@ def lu(
     x: Tensor,
     pivot: bool = ...,
     get_infos: Literal[True] = ...,
-    name: str | None = None,
+    name: str | None = ...,
 ) -> tuple[Tensor, Tensor, Tensor]:
     ...
 
 
 @overload
 def lu(
-    x: Tensor, pivot: bool = ..., get_infos: bool = ..., name: str | None = None
+    x: Tensor, pivot: bool = ..., get_infos: bool = ..., name: str | None = ...
 ) -> tuple[Tensor, Tensor] | tuple[Tensor, Tensor, Tensor]:
     ...
 
@@ -3571,7 +3598,7 @@ def eigh(
 
 def pinv(
     x: Tensor,
-    rcond: Tensor = 1e-15,
+    rcond: float | Tensor = 1e-15,
     hermitian: bool = False,
     name: str | None = None,
 ) -> Tensor:
@@ -3597,7 +3624,7 @@ def pinv(
             float32 or float64 or complex64 or complex128. When data
             type is complex64 or complex128, hermitian should be set
             True.
-        rcond (Tensor, optional): the tolerance value to determine
+        rcond (Tensor|float, optional): the tolerance value to determine
             when is a singular value zero. Default:1e-15.
         hermitian (bool, optional): indicates whether x is Hermitian
             if complex or symmetric if real. Default: False.
