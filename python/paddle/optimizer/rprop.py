@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import warnings
+from typing import Sequence
 
 import paddle
 from paddle import _C_ops
@@ -23,7 +24,7 @@ from paddle.tensor.creation import to_tensor
 from ..base import framework
 from ..base.dygraph import no_grad
 from ..base.framework import in_dynamic_or_pir_mode
-from .optimizer import Optimizer
+from .optimizer import Optimizer, _ParameterConfig
 
 __all__ = []
 
@@ -103,13 +104,13 @@ class Rprop(Optimizer):
     def __init__(
         self,
         learning_rate: float | paddle.Tensor | LRScheduler = 0.001,
-        learning_rate_range: tuple = (1e-5, 50),
-        parameters: list | tuple | None = None,
-        etas: tuple = (0.5, 1.2),
+        learning_rate_range: tuple[float, float] = (1e-5, 50),
+        parameters: Sequence[paddle.Tensor | _ParameterConfig] | None = None,
+        etas: tuple[float, float] = (0.5, 1.2),
         grad_clip: GradientClipBase | None = None,
         multi_precision: bool = False,
         name: str | None = None,
-    ) -> Optimizer:
+    ) -> None:
         if learning_rate is None:
             raise ValueError("learning_rate is not set")
         if (

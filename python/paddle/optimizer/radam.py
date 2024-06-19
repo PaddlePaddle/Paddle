@@ -15,21 +15,29 @@
 from __future__ import annotations
 
 import warnings
+from typing import NotRequired, Sequence
 
 import paddle
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.nn.clip import GradientClipBase
 from paddle.optimizer.lr import LRScheduler
+from paddle.regularizer import WeightDecayRegularizer
 
 from ..base import core, framework
 from ..base.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
-from .optimizer import Optimizer
+from .optimizer import Optimizer, _ParameterConfig
 
 __all__ = []
+
+
+class _RAdamParameterConfig(_ParameterConfig):
+    beta1: NotRequired[float | paddle.Tensor]
+    beta2: NotRequired[float | paddle.Tensor]
+    epsilon: NotRequired[float]
 
 
 class RAdam(Optimizer):
@@ -59,7 +67,7 @@ class RAdam(Optimizer):
         \end{aligned}
 
     Args:
-        learning_rate (float|LRScheduler|None, optional): The learning rate used to update ``Parameter``.
+        learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a LRScheduler. The default value is 0.001.
         parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``.
             This parameter is required in dygraph mode. And you can specify different options for
@@ -75,7 +83,7 @@ class RAdam(Optimizer):
             The default value is 0.999.
         epsilon (float|None, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        weight_decay (float|Tensor|None, optional): The weight decay coefficient, it can be float or Tensor.
+        weight_decay (float|Tensor|WeightDecayRegularizer|None, optional): The weight decay coefficient, it can be float or Tensor.
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase|None, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
@@ -142,11 +150,15 @@ class RAdam(Optimizer):
         beta1: float | paddle.Tensor = 0.9,
         beta2: float | paddle.Tensor = 0.999,
         epsilon: float = 1.0e-8,
-        parameters: list | tuple | None = None,
-        weight_decay: float | paddle.Tensor | None = None,
+        parameters: Sequence[paddle.Tensor | _RAdamParameterConfig]
+        | None = None,
+        weight_decay: float
+        | paddle.Tensor
+        | WeightDecayRegularizer
+        | None = None,
         grad_clip: GradientClipBase | None = None,
         name: str | None = None,
-    ) -> Optimizer:
+    ) -> None:
         if isinstance(learning_rate, (float, int)) and not 0.0 <= learning_rate:
             raise ValueError(
                 f"Invalid learning rate: {learning_rate}, expect learning_rate >= 0."

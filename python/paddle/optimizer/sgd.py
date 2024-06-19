@@ -18,8 +18,6 @@ import warnings
 from typing import TYPE_CHECKING, Sequence
 
 from paddle import _C_ops, pir
-from paddle.nn.clip import GradientClipBase
-from paddle.regularizer import WeightDecayRegularizer
 
 from ..base import framework
 from ..base.dygraph import no_grad
