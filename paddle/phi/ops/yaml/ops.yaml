@@ -580,16 +580,6 @@
     data_type : input
   backward: broadcast_tensors_grad
 
-- op : calc_reduced_attn_scores
-  args : (Tensor q, Tensor k, Tensor softmax_lse, bool return_softmax = false)
-  output : Tensor(reduced_scores), Tensor(softmax)
-  infer_meta :
-    func : CalcReducedAttnScoresInferMeta
-    param : [q, k]
-  kernel :
-    func : calc_reduced_attn_scores
-    data_type : q
-
 - op : c_allgather
   args : (Tensor x, int ring_id, int nranks, bool use_calc_stream)
   output : Tensor(out)
@@ -696,6 +686,16 @@
   kernel :
     func : c_sync_comm_stream
   inplace : (x -> out)
+
+- op : calc_reduced_attn_scores
+  args : (Tensor q, Tensor k, Tensor softmax_lse, bool return_softmax = false)
+  output : Tensor(reduced_scores), Tensor(softmax)
+  infer_meta :
+    func : CalcReducedAttnScoresInferMeta
+    param : [q, k]
+  kernel :
+    func : calc_reduced_attn_scores
+    data_type : q
 
 - op : cast
   args : (Tensor x, DataType dtype)
