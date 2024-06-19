@@ -12,27 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define logic functions of a tensor
+
+from typing import TYPE_CHECKING, Any
 
 import paddle
-
-from ..base.data_feeder import check_type, check_variable_and_dtype
-from ..common_ops_import import Variable
-
-Tensor = paddle.base.framework.core.eager.Tensor
-from typing import Any
-
 from paddle import _C_ops
 from paddle.tensor.creation import full
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
+from ..base.data_feeder import check_type, check_variable_and_dtype
+from ..common_ops_import import Variable
 from ..framework import (
     LayerHelper,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+
+if TYPE_CHECKING:
+    from paddle import Tensor
 
 __all__ = []
 
@@ -1102,9 +1101,7 @@ def is_tensor(x: Any) -> bool:
 
     """
     if in_dynamic_or_pir_mode():
-        return isinstance(
-            x, (Tensor, paddle.base.core.eager.Tensor, paddle.pir.Value)
-        )
+        return isinstance(x, (paddle.Tensor, paddle.pir.Value))
     else:
         return isinstance(x, Variable)
 
@@ -1116,7 +1113,7 @@ def _bitwise_op(
     out: Tensor | None = None,
     name: str | None = None,
     binary_op: bool = True,
-):
+) -> Tensor:
     if in_dynamic_mode():
         op = getattr(_C_ops, op_name)
         if binary_op:
