@@ -356,9 +356,6 @@ def _recompute_without_reentrant(
                     inner_x._share_buffer_to(tmp_tensor)
                     storage[holder_list[unpack_counter - 1]()] = tmp_tensor
                 else:
-                    raise ValueError(
-                        f"inner_x is not contiguous., inner_x.shape = {inner_x.shape}, inner_x.strides = {inner_x.strides}, inner_x.offset = {inner_x.offset}, inner_x.dtype =  {inner_x.dtype}, "
-                    )
                     storage[
                         holder_list[unpack_counter - 1]()
                     ] = inner_x.contiguous()
