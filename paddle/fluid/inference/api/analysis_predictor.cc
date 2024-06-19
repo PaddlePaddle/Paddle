@@ -1054,9 +1054,7 @@ bool AnalysisPredictor::SaveOrLoadPirParameters(bool for_save) {
     pir::LoadCombineFunction(
         config_.params_file(), param_names, &tensor_out, false, place_);
     for (auto name : param_names) {
-      // float* data = tensor->data<float>();
       VLOG(0) << "predictor param " << name;
-      // VLOG(0) << " = " << data[0];
     }
   }
   return true;
