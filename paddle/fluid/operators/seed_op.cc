@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/seed_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -37,6 +38,12 @@ class SeedOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddOutput("Out", "The output of seed op.");
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
+    AddAttr<bool>("deterministic", "(bool), attribute 1 for seed op.")
+        .SetDefault(false);
+    AddAttr<std::string>("rng_name", "(std::string), attribute 2 for seed op.")
+        .SetDefault("");
+    AddAttr<bool>("force_cpu", "(bool), attribute 3 for seed op.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Seed Operator.
 )DOC");
@@ -53,7 +60,6 @@ REGISTER_OPERATOR(
     ops::SeedOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-PD_REGISTER_STRUCT_KERNEL(seed, CPU, ALL_LAYOUT, ops::CPUSeedKernel, int) {}
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(seed).AddCheckpoint(

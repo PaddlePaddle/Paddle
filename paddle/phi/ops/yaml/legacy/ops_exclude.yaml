@@ -93,3 +93,4 @@
 - unpool
 - zeros
 - zeros_like
+- seed
