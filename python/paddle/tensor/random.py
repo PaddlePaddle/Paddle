@@ -113,7 +113,7 @@ def bernoulli(x: Tensor, name: str | None = None) -> Tensor:
 
 
 @dygraph_only
-def bernoulli_(x: Tensor, p: float | Tensor = 0.5, name: str | None = None):
+def bernoulli_(x: Tensor, p: float | Tensor = 0.5, name: str | None = None) -> Tensor:
     """
     This is the inplace version of api ``bernoulli``, which returns a Tensor filled
     with random values sampled from a bernoulli distribution. The output Tensor will
