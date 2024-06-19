@@ -3719,7 +3719,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : seed
-  args : (int seed=0, bool deterministic=false, str rng_name="", bool force_cpu=false, DataType dtype=DataType::INT32, Place place=CPUPlace())
+  args : (int seed=0, bool deterministic=false, str rng_name="", bool force_cpu=false, DataType dtype=DataType::INT32, Place place={})
   output : Tensor(out)
   infer_meta:
     func: SeedInferMeta
