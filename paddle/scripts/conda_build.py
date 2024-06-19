@@ -158,10 +158,11 @@ def gen_build_scripts(name, cuda_major_version, paddle_version, only_download=No
         os.system(f'pip download {name}=={paddle_version} --no-deps -i {index_url}')
         os.chdir(original_directory)
     else:
+        cur_package_path = os.path.join(package_path, cuda_major_version)
         with open(build_filename, 'w') as f:
             for item in paddle_cuda_requires:
-                f.write(f"pip install {item} -f {package_path}\n")
-            f.write(f"pip install {name}=={paddle_version} -f {package_path}\n")
+                f.write(f"pip install {item} -f {cur_package_path}\n")
+            f.write(f"pip install {name}=={paddle_version} -f {cur_package_path}\n")
 
 
 def requirement_download(paddle_version, var):
