@@ -56,8 +56,7 @@ paddle::dialect::AddNOp, paddle::dialect::AddN_Op, paddle::dialect::AddNArrayOp,
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
 
-namespace paddle {
-namespace dialect {
+namespace paddle::dialect {
 
 OpInfoTuple AddNOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
@@ -3867,6 +3866,7 @@ void AssignOut_Op::Build(pir::Builder &builder,
   std::vector<pir::Type> argument_outputs =
       AssignOut_Op::InferMeta(argument_inputs, &argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+  argument.AddAttributes(argument_attributes);
   constexpr char kStopGradientAttrName[] = "stop_gradient";
   auto stop_gradient0 =
       argument.inputs[0].attribute<pir::BoolAttribute>(kStopGradientAttrName);
@@ -3971,6 +3971,22 @@ std::vector<pir::Type> AssignOut_Op::InferMeta(
       dense_out.layout(),
       dense_out.lod(),
       dense_out.offset());
+#ifdef PADDLE_WITH_DISTRIBUTE
+  // Auto Parallel condition
+  if (auto dist_type = input_values[1].type().dyn_cast<DistTypeInterface>()) {
+    ProcessMeshAttribute op_mesh = dist_type.process_mesh_attr();
+    auto ctx = pir::IrContext::Instance();
+    std::vector<pir::Attribute> dist_operand_attrs{
+        dist_type.tensor_dist_attr(),
+        dist_type.tensor_dist_attr(),
+    },
+        dist_result_attrs{dist_type.tensor_dist_attr()};
+    argument_outputs.push_back(dist_type);
+    (*p_attributes)[kAttrOpDistAttr] = OperationDistAttribute::get(
+        ctx, op_mesh, dist_operand_attrs, dist_result_attrs);
+    return argument_outputs;
+  }
+#endif
   argument_outputs.push_back(out_dense_tensor_type);
 
   return argument_outputs;
@@ -4513,8 +4529,7 @@ phi::DataType ArrayPopOp::GetKernelTypeForVar(
   return expected_kernel_dtype;
 }
 
-}  // namespace dialect
-}  // namespace paddle
+}  // namespace paddle::dialect
 
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::SplitGradOp)

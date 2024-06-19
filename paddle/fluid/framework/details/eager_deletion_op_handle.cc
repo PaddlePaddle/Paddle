@@ -21,15 +21,11 @@
 #endif
 #include <algorithm>
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class Variable;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 EagerDeletionOpHandle::EagerDeletionOpHandle(
     ir::Node *node,
@@ -213,6 +209,4 @@ std::vector<std::string> EagerDeletionOpHandle::VarsToDelete() const {
   return var_names;
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

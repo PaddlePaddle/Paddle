@@ -333,8 +333,7 @@ bool ReplaceShapeOpsToGenerateShape(
     pir::PatternRewriter* rewriter,
     pir::ShapeConstraintIRAnalysis* shape_analysis) {
   auto* shape_def_op = shape_operand.source().defining_op();
-  if (!shape_def_op || shape_def_op->num_operands() == 0) return false;
-  if (shape_def_op->isa<cinn::dialect::GenerateShapeOp>()) {
+  if (!shape_def_op || shape_def_op->isa<cinn::dialect::GenerateShapeOp>()) {
     return false;
   }
   auto ShapeOrDataDimExprs4Value =

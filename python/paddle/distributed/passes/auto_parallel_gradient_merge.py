@@ -523,6 +523,8 @@ def parse_program(
         dist_context,
     )
 
+    return grad_to_gradient_merge
+
 
 @register_pass("auto_parallel_gradient_merge_pass")
 class GradientMergePass(PassBase):
@@ -550,8 +552,9 @@ class GradientMergePass(PassBase):
         gradient_sync_after_accumulate = self.get_attr(
             "gradient_sync_after_accumulate", False
         )
+        grad_to_global_grad = self.get_attr("grad_to_global_grad", {})
         with paddle.static.program_guard(main_program, startup_program):
-            parse_program(
+            grad_to_merge_grad = parse_program(
                 main_program,
                 startup_program,
                 params_grads,
@@ -562,3 +565,5 @@ class GradientMergePass(PassBase):
             )
 
         main_program._sync_with_cpp()
+        for k, v in grad_to_merge_grad.items():
+            grad_to_global_grad[k] = v

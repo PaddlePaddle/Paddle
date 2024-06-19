@@ -100,33 +100,27 @@ void ConstraintsManager::AddEqCstr(const DimExpr& lhs, const DimExpr& rhs) {
     equals_.Union(lhs, rhs);
     VLOG(4) << "add equal constraint: " << lhs << " == " << rhs;
   }
-  DimExpr origin, subsutituted;
+  DimExpr origin, substituted;
   auto comp_result = CompareDimExprPriority(lhs, rhs);
   if (comp_result == PriorityComparisonStatus::LOWER) {
     origin = lhs;
-    subsutituted = rhs;
+    substituted = rhs;
   } else if (comp_result == PriorityComparisonStatus::HIGHER) {
     origin = rhs;
-    subsutituted = lhs;
+    substituted = lhs;
   } else {
     return;
   }
-  if (CanSubstituteInConstraint(origin, subsutituted)) {
-    SubstituteInConstraint(origin, subsutituted);
+  if (CanSubstituteInConstraint(origin, substituted)) {
+    SubstituteInConstraint(origin, substituted);
   }
   if (equal_callback_func_) {
-    equal_callback_func_(origin, subsutituted);
+    equal_callback_func_(origin, substituted);
   }
 }
 
 bool ConstraintsManager::IsEqual(const DimExpr& lhs, const DimExpr& rhs) const {
   return lhs == rhs || equals_.HasSameRoot(lhs, rhs);
-}
-
-template <typename DoEachClusterT>
-void ConstraintsManager::VisitEqualClusters(
-    const DoEachClusterT& DoEachCluster) const {
-  equals_.VisitCluster(DoEachCluster);
 }
 
 void ConstraintsManager::AddGTOneCstr(const DimExpr& dim_expr) {
@@ -262,39 +256,45 @@ void ConstraintsManager::SubstituteInConstraint(const DimExpr& origin,
   broadcastables_ = substituted_broadcastables;
 }
 
-template <typename DoEachT>
-void ConstraintsManager::EqualConstraintsVisitor(const DoEachT& DoEach) {
+void ConstraintsManager::VisitEqualClusters(
+    const std::function<void(const std::vector<DimExpr>&)>& DoEachCluster)
+    const {
+  equals_.VisitCluster(DoEachCluster);
+}
+
+void ConstraintsManager::EqualConstraintsVisitor(
+    const std::function<void(std::unordered_map<DimExpr, DimExpr>::iterator)>&
+        DoEach) {
   auto equals_parents = equals_.MutMap();
   for (auto it = equals_parents->begin(); it != equals_parents->end(); it++) {
     DoEach(it);
   }
 }
 
-template <typename DoEachT>
-void ConstraintsManager::GTOneConstraintsVisitor(const DoEachT& DoEach) {
+void ConstraintsManager::GTOneConstraintsVisitor(
+    const std::function<void(GTOneConstraints::iterator)>& DoEach) {
   for (auto it = gtones_.begin(); it != gtones_.end(); it++) {
     DoEach(it);
   }
 }
 
-template <typename DoEachT>
-void ConstraintsManager::GTOneConstraintsVisitor(const DoEachT& DoEach) const {
+void ConstraintsManager::GTOneConstraintsVisitor(
+    const std::function<void(GTOneConstraints::const_iterator)>& DoEach) const {
   for (auto it = gtones_.begin(); it != gtones_.end(); it++) {
     DoEach(it);
   }
 }
 
-template <typename DoEachT>
 void ConstraintsManager::BroadcastableConstraintsVisitor(
-    const DoEachT& DoEach) {
+    const std::function<void(BroadcastableConstraints::iterator)>& DoEach) {
   for (auto it = broadcastables_.begin(); it != broadcastables_.end(); it++) {
     DoEach(it);
   }
 }
 
-template <typename DoEachT>
 void ConstraintsManager::BroadcastableConstraintsVisitor(
-    const DoEachT& DoEach) const {
+    const std::function<void(BroadcastableConstraints::const_iterator)>& DoEach)
+    const {
   for (auto it = broadcastables_.begin(); it != broadcastables_.end(); it++) {
     DoEach(it);
   }

@@ -16,8 +16,7 @@
 
 #include "paddle/fluid/platform/enforce.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 int FLAGS_pslib_table_save_max_retry_dense = 3;
 
@@ -416,5 +415,4 @@ int32_t MemoryDenseTable::Save(const std::string &path,
   return feasign_size;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

@@ -635,19 +635,19 @@ void TakeAlongAxisInferMeta(const MetaTensor& x,
                             int axis,
                             MetaTensor* out);
 
+void TdmChildInferMeta(const MetaTensor& x,
+                       const MetaTensor& tree_info,
+                       int child_nums,
+                       DataType dtype,
+                       MetaTensor* child,
+                       MetaTensor* leaf_mask);
+
 void TriangularSolveInferMeta(const MetaTensor& x,
                               const MetaTensor& y,
                               bool upper,
                               bool transpose,
                               bool unitriangular,
                               MetaTensor* out);
-
-void TopPSamplingInferMeta(const MetaTensor& x,
-                           const MetaTensor& ps,
-                           const MetaTensor& threshold,
-                           int random_seed,
-                           MetaTensor* out,
-                           MetaTensor* ids);
 
 void LstsqInferMeta(const MetaTensor& x,
                     const MetaTensor& y,

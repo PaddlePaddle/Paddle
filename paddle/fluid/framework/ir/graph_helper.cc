@@ -40,9 +40,7 @@ PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir,
                               "FLAGS_print_sub_graph_dir is used "
                               "to print the nodes of sub_graphs.");
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 namespace {
 
 template <class NodeComparator = ir::NodeComp>
@@ -964,6 +962,4 @@ std::vector<std::vector<std::vector<ir::Node::Dep>>> GetOpDependencies(
   return deps;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir

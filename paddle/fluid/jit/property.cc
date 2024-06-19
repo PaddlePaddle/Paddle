@@ -23,8 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/jit/property.h"
 #include "paddle/phi/core/enforce.h"
 
-namespace paddle {
-namespace jit {
+namespace paddle::jit {
 
 using Variable = paddle::framework::Variable;
 
@@ -378,5 +377,4 @@ std::vector<std::string> Property::GetStrings(const std::string &name) {
   return {};
 }
 
-}  // namespace jit
-}  // namespace paddle
+}  // namespace paddle::jit

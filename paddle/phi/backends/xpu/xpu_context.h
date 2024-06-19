@@ -53,6 +53,10 @@ class XPUContext : public DeviceContext,
   xpu::BKCLContext_t bkcl_context() const;
   void SetBkclContext(xpu::BKCLContext_t context);
   void CreateStream(int i = 0);
+  void RecordEvent(XPUEvent event, int s) const;
+  void StreamWaitEvent(XPUEvent event, int s) const;
+  void StreamWaitStream(int wait_stream, int record_stream) const;
+  int64_t GetStreamNum() const;
 
   // For share external stream.
   void SetStream(void* stream, int i = 0);
@@ -89,6 +93,8 @@ class XPUContext : public DeviceContext,
  private:
   struct Impl;
   std::vector<std::unique_ptr<Impl>> impls_;
+
+  void CheckValidStreamId(int i) const;
 };
 
 // KPS (Kernel PrimitiveS API) needs to exist as a kind of backend,

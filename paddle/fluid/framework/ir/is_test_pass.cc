@@ -16,9 +16,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 class Graph;
 
@@ -52,8 +50,6 @@ void IsTestPass::ApplyImpl(ir::Graph* graph) const {
   }
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 REGISTER_PASS(is_test_pass, paddle::framework::ir::IsTestPass);

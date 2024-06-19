@@ -17,7 +17,11 @@
 #include <optional>
 #include <unordered_map>
 
+#include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
 #include "paddle/pir/include/dialect/shape/utils/dim_expr_util.h"
+
+COMMON_DECLARE_int64(pir_broadcast_tree_limit);
 
 namespace cinn::common {
 
@@ -91,6 +95,9 @@ template <typename DoEachT>
 bool SearchBroadcastImpl(const symbol::Broadcast<symbol::DimExpr>& variadic,
                          const DoEachT& DoEach) {
   const auto& operands = *(variadic.operands);
+  if (operands.size() > 3) {
+    PADDLE_THROW(phi::errors::Fatal("Too many broadcast leaves to compile!"));
+  }
   for (const auto& operand : operands) {
     CHECK(!operand.isa<int64_t>());
     if (SearchBroadcast(operand, DoEach)) return true;
@@ -213,21 +220,22 @@ BroadcastLeaf GetCstrRhsEqOneLeaves(
 
 BroadcastBranch<BroadcastTree> ConstructBroadcastBranch(
     const symbol::Broadcastable<symbol::DimExpr>& broadcastable_condition,
-    const BroadcastLeaf& leaves) {
+    const BroadcastLeaf& leaves,
+    int* num_of_leaves) {
   BroadcastLeaf cstr_lhs_eq_rhs_leaves =
       GetCstrLhsEqRhsLeaves(broadcastable_condition, leaves);
   BroadcastLeaf cstr_lhs_eq_one_leaves =
       GetCstrLhsEqOneLeaves(broadcastable_condition, leaves);
   BroadcastLeaf cstr_rhs_eq_one_leaves =
       GetCstrRhsEqOneLeaves(broadcastable_condition, leaves);
-  // clang-format off
   return BroadcastBranch<BroadcastTree>{
       /*broadcastable_condition*/ broadcastable_condition,
-      /*cstr_lhs_eq_rhs_branch*/ ConstructBroadcastTree(cstr_lhs_eq_rhs_leaves),
-      /*cstr_lhs_eq_one_branch*/ ConstructBroadcastTree(cstr_lhs_eq_one_leaves),
-      /*cstr_rhs_eq_one_branch*/ ConstructBroadcastTree(cstr_rhs_eq_one_leaves)
-    };
-  // clang-format on
+      /*cstr_lhs_eq_rhs_branch*/
+      ConstructBroadcastTree(cstr_lhs_eq_rhs_leaves, num_of_leaves),
+      /*cstr_lhs_eq_one_branch*/
+      ConstructBroadcastTree(cstr_lhs_eq_one_leaves, num_of_leaves),
+      /*cstr_rhs_eq_one_branch*/
+      ConstructBroadcastTree(cstr_rhs_eq_one_leaves, num_of_leaves)};
 }
 
 }  // namespace
@@ -288,7 +296,10 @@ std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
   if (ret.has_value()) return ret.value();
   ForEachBroadcastDimExpr(leaves, [&](const auto& broadcast) -> bool {
     const auto& operands = broadcast.operands;
-    CHECK_GE(operands->size(), 2);
+    PADDLE_ENFORCE_GE(operands->size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "The operands size should be greater than 2."));
     CHECK(operands->at(0) != operands->at(1));
     ret = symbol::Broadcastable<symbol::DimExpr>{operands->at(0),
                                                  operands->at(1)};
@@ -297,11 +308,19 @@ std::optional<symbol::Broadcastable<symbol::DimExpr>> GetFirstCstrBroadcastable(
   return ret;
 }
 
-BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves) {
+BroadcastTree ConstructBroadcastTree(const BroadcastLeaf& leaves,
+                                     int* num_of_leaves) {
   std::optional<symbol::Broadcastable<symbol::DimExpr>>
       broadcastable_condition = GetFirstCstrBroadcastable(leaves);
-  if (!broadcastable_condition.has_value()) return leaves;
-  return ConstructBroadcastBranch(broadcastable_condition.value(), leaves);
+  if (!broadcastable_condition.has_value()) {
+    (*num_of_leaves)++;
+    if (*num_of_leaves > FLAGS_pir_broadcast_tree_limit) {
+      PADDLE_THROW(phi::errors::Fatal("Too many broadcast leaves to compile!"));
+    }
+    return leaves;
+  }
+  return ConstructBroadcastBranch(
+      broadcastable_condition.value(), leaves, num_of_leaves);
 }
 
 namespace {

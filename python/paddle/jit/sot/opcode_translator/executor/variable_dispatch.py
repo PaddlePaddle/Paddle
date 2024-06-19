@@ -27,6 +27,7 @@ from ...utils.magic_methods import (
     UNARY_OPS,
     magic_method_builtin_dispatch,
 )
+from ...utils.paddle_api_config import get_tensor_methods
 from .dispatch_functions import (
     operator_in,
     operator_is_none,
@@ -973,6 +974,8 @@ for binary_fn in BINARY_OPS:
 # Symbolic
 for binary_fn in BINARY_OPS:
     for magic_method in magic_method_builtin_dispatch(binary_fn):
+        if magic_method.name not in get_tensor_methods():
+            continue
         # skip all inplace magic method name, we will dispatch it to non-inplace
         # magic methods
         if magic_method.is_inplace:
@@ -997,8 +1000,8 @@ for binary_fn in BINARY_OPS:
                 binary_fn,
                 ("ConstantVariable", "SymbolicVariable"),
                 partial(
-                    lambda magic_name, var, other: var.graph.call_symbolic_method(
-                        magic_name, var, other
+                    lambda reverse_magic_name, var, other: var.graph.call_symbolic_method(
+                        reverse_magic_name, other, var
                     ),
                     magic_method.name,
                 ),

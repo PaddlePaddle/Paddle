@@ -53,9 +53,7 @@ COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_string(static_runtime_data_save_path);
 COMMON_DECLARE_bool(save_static_runtime_data);
 
-namespace paddle {
-namespace framework {
-namespace interpreter {
+namespace paddle::framework::interpreter {
 
 using VariableIdMap = std::map<std::string, std::vector<int>>;
 
@@ -1464,6 +1462,4 @@ const std::vector<std::string> GetInstructionCallStack(
   }
   return vec_str;
 }
-}  // namespace interpreter
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::interpreter

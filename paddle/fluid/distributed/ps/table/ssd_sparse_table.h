@@ -90,7 +90,7 @@ class SSDSparseTable : public MemorySparseTable {
   }
 
   int32_t Save(const std::string& path, const std::string& param) override;
-#ifdef PADDLE_WITH_GPU_GRAPH
+#if defined(PADDLE_WITH_HETERPS) && defined(PADDLE_WITH_PSCORE)
   int32_t Save_v2(const std::string& path, const std::string& param) override;
 #endif
   int32_t SaveWithString(const std::string& path, const std::string& param);

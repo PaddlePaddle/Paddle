@@ -751,7 +751,7 @@ struct FoldOperandTrait<Broadcast> {
       PADDLE_ENFORCE_EQ(
           *value,
           expr_value,
-          phi::errors::InvalidArgument("The value (%d) should be equel to expr "
+          phi::errors::InvalidArgument("The value (%d) should be equal to expr "
                                        "(%d) when they are both not 1.",
                                        *value,
                                        expr_value));
@@ -887,7 +887,7 @@ struct FoldRedundantSymbolicBroadcast {
                 ret.value().value,
                 int64_value,
                 phi::errors::InvalidArgument(
-                    "The value of return (%d) should be equel to expr (%d) of "
+                    "The value of return (%d) should be equal to expr (%d) of "
                     "operands at index (%d) when they are both > 1.",
                     ret.value().value,
                     int64_value,

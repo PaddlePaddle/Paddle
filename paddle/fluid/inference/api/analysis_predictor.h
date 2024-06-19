@@ -44,6 +44,7 @@
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/pir/include/core/operation.h"
 #include "paddle/pir/include/core/program.h"
 
 namespace paddle_infer {
@@ -254,7 +255,11 @@ class AnalysisPredictor : public PaddlePredictor {
   /// to get the optimized model program
   ///
   void OptimizeInferenceProgram();
-
+  ///
+  /// \brief According to argument information, execute the relevant pass
+  /// to get the optimized model program
+  ///
+  void OptimizeInferencePirProgram();
   ///
   /// \brief Clear the intermediate tensors of the predictor
   ///
@@ -348,6 +353,13 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   bool PrepareProgram(const std::shared_ptr<framework::ProgramDesc> &program);
   ///
+  /// \brief Prepare predictor's required programs, including loading model
+  /// information, graph optimization, and executor creation variables, etc.
+  ///
+  /// \return Whether the function executed successfully
+  ///
+  bool PreparePirProgram();
+  ///
   /// \brief Prepare scope environment, each predictor has its own scope
   ///
   /// \param[in] parent_scope The scope of the predictor to be cloned, or null
@@ -379,6 +391,13 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return Whether the function executed successfully
   ///
   bool LoadParameters();
+
+  ///
+  /// \brief Save or Load pir model parameters.
+  ///
+  /// \return Whether the function executed successfully
+  ///
+  bool SaveOrLoadPirParameters(bool for_save);
 
   ///
   /// \brief Prepare input data, only used in Run()
@@ -560,11 +579,14 @@ class AnalysisPredictor : public PaddlePredictor {
   framework::Scope *sub_scope_{nullptr};
   std::shared_ptr<framework::ProgramDesc> inference_program_;
   std::shared_ptr<pir::Program> pir_program_;
+  bool load_pir_model_{false};
   std::vector<framework::OpDesc *> feeds_;
+  std::vector<pir::Operation *> pir_feeds_;
   std::map<std::string, size_t> feed_names_;
   // Sorted according to the idx.
   std::map<size_t, std::string> idx2feeds_;
   std::vector<framework::OpDesc *> fetches_;
+  std::vector<pir::Operation *> pir_fetches_;
   std::map<size_t, std::string> idx2fetches_;
 
   phi::DataType model_precision_{phi::DataType::FLOAT32};

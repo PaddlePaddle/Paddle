@@ -14,18 +14,14 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 class InferShapeContext;
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework
 
 // This file almostly contains all the infershape functions that are used in
 // operators.
 
-namespace paddle {
-namespace operators {
-namespace details {
+namespace paddle::operators::details {
 
 inline void GetBroadcastDimsArrays(const phi::DDim &x_dims,
                                    const phi::DDim &y_dims,
@@ -105,7 +101,8 @@ phi::DDim BroadcastTwoDims(const phi::DDim &x_dims,
   return common::make_ddim(out_dims_array);
 }
 
-}  // namespace details
+}  // namespace paddle::operators::details
+namespace paddle::operators {
 
 // shape input(0) -> output(0) without change.
 void UnaryOpUnchangedInferShape(framework::InferShapeContext *ctx) {
@@ -196,5 +193,4 @@ void BinaryOpBroadcastInferShape(framework::InferShapeContext *ctx) {
   }
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators

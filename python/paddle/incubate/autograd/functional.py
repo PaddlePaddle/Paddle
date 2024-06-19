@@ -582,7 +582,7 @@ def _grad(ys, xs, v=None):
         # xs_grad when the xs is a single Tensor.
         xs_grad = paddle.grad(ys, xs, v, create_graph=True, allow_unused=True)
         if (
-            isinstance(xs, paddle.base.framework.Variable)
+            isinstance(xs, (paddle.base.framework.Variable, paddle.pir.Value))
             and isinstance(xs_grad, typing.Sequence)
             and len(xs_grad) > 0
         ):
@@ -658,23 +658,27 @@ def _check_inputs(func, xs, v=None):
     if not callable(func):
         raise TypeError(f"Expected 'fun' is Callable, but got {type(func)}.")
 
-    if not isinstance(xs, (framework.Variable, typing.Sequence)):
+    if not isinstance(
+        xs, (framework.Variable, typing.Sequence, paddle.pir.Value)
+    ):
         raise TypeError(
             f"Expected 'xs' is a Tensor|Sequence[Tensor],"
             f"but got {type(xs)}."
         )
     if isinstance(xs, typing.Sequence) and not all(
-        isinstance(x, framework.Variable) for x in xs
+        isinstance(x, (framework.Variable, paddle.pir.Value)) for x in xs
     ):
         raise TypeError("All elements of 'xs' should be Tensor.")
 
-    if not isinstance(v, (framework.Variable, typing.Sequence, type(None))):
+    if not isinstance(
+        v, (framework.Variable, typing.Sequence, type(None), paddle.pir.Value)
+    ):
         raise TypeError(
             f"Expected 'v' is Tensor|Sequence[Tensor]|None, but got {type(v)}."
         )
 
     if isinstance(v, typing.Sequence) and not all(
-        isinstance(e, framework.Variable) for e in v
+        isinstance(e, (framework.Variable, paddle.pir.Value)) for e in v
     ):
         raise TypeError("All elements of 'xs' should be Tensor.")
 

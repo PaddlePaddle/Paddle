@@ -21,8 +21,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/phi/core/distributed/auto_parallel/proto_helper.h"
 
-namespace phi {
-namespace distributed {
+namespace phi::distributed {
 using phi::distributed::auto_parallel::str_join;
 using phi::distributed::auto_parallel::TensorDistAttrProto;
 
@@ -450,5 +449,4 @@ bool TensorDistAttr::is_partial(int64_t mesh_axis) const {
 
 void TensorDistAttr::set_skip_check_mesh(bool skip) { skip_check_mesh_ = skip; }
 
-}  // namespace distributed
-}  // namespace phi
+}  // namespace phi::distributed

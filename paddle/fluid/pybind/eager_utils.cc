@@ -50,8 +50,7 @@ limitations under the License. */
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_int32(check_nan_inf_level);
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 extern PyTypeObject* p_tensor_type;
 extern PyTypeObject* p_string_tensor_type;
@@ -103,6 +102,10 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
       return pybind11::detail::NPY_COMPLEX128;
     case phi::DataType::PSTRING:
       return pybind11::detail::npy_api::NPY_UNICODE_;
+    case phi::DataType::FLOAT8_E4M3FN:
+      return pybind11::detail::npy_api::NPY_BYTE_;
+    case phi::DataType::FLOAT8_E5M2:
+      return pybind11::detail::npy_api::NPY_BYTE_;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Unknow phi::DataType, the int value = %d.",
@@ -2166,7 +2169,18 @@ PyObject* CastPyArg2ValuePreHook(PyObject* obj) {
 
 pir::Value CastPyArg2Value(PyObject* obj,
                            const std::string& op_type,
-                           size_t arg_pos) {
+                           size_t arg_pos,
+                           bool dispensable) {
+  if (obj == nullptr || obj == Py_None) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument (position %d) must be "
+          "Value, but got None",
+          op_type,
+          arg_pos + 1));
+    }
+    return pir::Value();
+  }
   obj = CastPyArg2ValuePreHook(obj);
   if (PyObject_TypeCheck(obj, g_ir_value_pytype)) {
     return ::pybind11::handle(obj).cast<pir::Value>();
@@ -2182,20 +2196,36 @@ pir::Value CastPyArg2Value(PyObject* obj,
 
 paddle::optional<pir::Value> CastPyArg2OptionalValue(PyObject* obj,
                                                      const std::string& op_type,
-                                                     size_t arg_pos) {
+                                                     size_t arg_pos,
+                                                     bool dispensable) {
   if (obj == nullptr || obj == Py_None) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument (position %d) must be "
+          "Value, but got None",
+          op_type,
+          arg_pos + 1));
+    }
     return paddle::none;
   }
   return paddle::make_optional<pir::Value>(
-      CastPyArg2Value(obj, op_type, arg_pos));
+      CastPyArg2Value(obj, op_type, arg_pos, dispensable));
 }
 
 std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
                                                 const std::string& op_type,
-                                                size_t arg_pos) {
+                                                size_t arg_pos,
+                                                bool dispensable) {
   std::vector<pir::Value> value_list;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
+    if (len == 0 && !dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument (position %d) must be "
+          "list of Value, but got empty list",
+          op_type,
+          arg_pos + 1));
+    }
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
@@ -2216,6 +2246,13 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
     }
   } else if (PyTuple_Check(obj)) {
     Py_ssize_t len = PyTuple_Size(obj);
+    if (len == 0 && !dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument (position %d) must be "
+          "list of Value, but got empty list",
+          op_type,
+          arg_pos + 1));
+    }
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
@@ -2246,12 +2283,22 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
 }
 
 paddle::optional<std::vector<pir::Value>> CastPyArg2OptionalVectorOfValue(
-    PyObject* obj, const std::string& op_type, size_t arg_pos) {
+    PyObject* obj,
+    const std::string& op_type,
+    size_t arg_pos,
+    bool dispensable) {
   if (obj == nullptr || obj == Py_None) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument (position %d) must be "
+          "list of Value, but got None",
+          op_type,
+          arg_pos + 1));
+    }
     return paddle::none;
   }
   return paddle::make_optional<std::vector<pir::Value>>(
-      CastPyArg2VectorOfValue(obj, op_type, arg_pos));
+      CastPyArg2VectorOfValue(obj, op_type, arg_pos, dispensable));
 }
 
 paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
@@ -2824,5 +2871,37 @@ void BindEagerUtils(PyObject* module) {
   }
 }
 
-}  // namespace pybind
-}  // namespace paddle
+std::tuple<std::vector<int64_t>,
+           paddle::flat_hash_map<int64_t, phi::ReduceType>>
+CvtPlacements(Placements placements, int ndim) {
+  std::vector<int64_t> dim_map(ndim, -1);
+  for (size_t i = 0; i < placements.size(); i++) {
+    auto& placement = placements[i];
+    if (placement->is_shard()) {
+      auto shard_dim =
+          dynamic_cast<const phi::distributed::Shard&>(*placement).get_dim();
+      PADDLE_ENFORCE_EQ(
+          dim_map[shard_dim],
+          -1,
+          common::errors::InvalidArgument(
+              "Tensor dim %lld is already sharded on mesh dim %lld,"
+              " DistTensor operator implementation does not support things "
+              "like hybrid"
+              " sharding strategies yet (i.e. [Shard(0), Shard(0)])",
+              shard_dim,
+              dim_map[shard_dim]));
+      dim_map[shard_dim] = i;
+    }
+  }
+  paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
+  for (size_t i = 0; i < placements.size(); ++i) {
+    auto& p = placements[i];
+    if (p->is_partial()) {
+      partial_status.insert(
+          {i, dynamic_cast<phi::distributed::Partial&>(*p).get_reduce_type()});
+    }
+  }
+  return {dim_map, partial_status};
+}
+
+}  // namespace paddle::pybind

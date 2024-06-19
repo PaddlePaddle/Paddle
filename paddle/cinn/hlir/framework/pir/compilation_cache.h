@@ -41,6 +41,7 @@ class BackendResource final {
 
   void* GetHostFuncPtr() const;
   void* GetInferFuncPtr() const;
+  void* GetCX86HostFuncPtr() const;
   const std::map<int, CINNKernelInfo::ArgDimIdx>& GetIntArgsMap() const {
     return int_args_map_;
   }

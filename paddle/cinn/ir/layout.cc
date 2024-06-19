@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ir/layout.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace ir {
 
@@ -23,7 +23,10 @@ void Layout::Verify() {
     CHECK(!axes_.empty());
     axis_names_ = "";
     for (auto& axis : axes_) {
-      CHECK_EQ(axis->name.size(), 1U);
+      PADDLE_ENFORCE_EQ(
+          axis->name.size(),
+          1U,
+          phi::errors::InvalidArgument("axis name size must be 1"));
       auto axis_name = axis->name[0];
       CHECK((axis_name >= 'A' && axis_name <= 'Z') ||
             (axis_name >= 'a' && axis_name <= 'z'));
@@ -33,7 +36,10 @@ void Layout::Verify() {
     }
     int offset = 'A' - 'a';
     for (auto& axis : axes_) {
-      CHECK_EQ(axis->name.size(), 1U);
+      PADDLE_ENFORCE_EQ(
+          axis->name.size(),
+          1U,
+          phi::errors::InvalidArgument("axis name size must be 1"));
       auto axis_name = axis->name[0];
       if (axis_name >= 'a' && axis_name <= 'z') {
         CHECK(axis_names_.find(axis_name + offset) != axis_names_.npos)
@@ -48,14 +54,18 @@ Layout::Layout(const std::string& name) {
   std::vector<Var> axes;
   for (char c : name) {
     if (c >= 'A' && c <= 'Z') {
-      CHECK_EQ(factor, 0) << "Invalid factor " << factor
-                          << " before primal axis " << c;
+      PADDLE_ENFORCE_EQ(
+          factor,
+          0,
+          phi::errors::InvalidArgument("The factor should be equal to 0."));
       axes.push_back(ir::Var(std::string(1, c)));
     } else if (c >= '0' && c <= '9') {
       factor = 10 * factor + c - '0';
     } else if (c >= 'a' && c <= 'z') {
-      CHECK_GT(factor, 0) << "Invalid factor " << factor << " for sub-axis "
-                          << c;
+      PADDLE_ENFORCE_GT(
+          factor,
+          0,
+          phi::errors::InvalidArgument("The factor should be greater than 0."));
       axes.push_back(ir::Var(factor, std::string(1, c)));
       factor = 0;
     } else {

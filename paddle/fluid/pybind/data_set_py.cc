@@ -39,8 +39,7 @@ limitations under the License. */
 
 namespace py = pybind11;
 
-namespace paddle {
-namespace pybind {
+namespace paddle::pybind {
 
 class IterableDatasetWrapper {
  public:
@@ -400,5 +399,4 @@ void BindDataset(py::module *m) {
       .def("_next", &IterableDatasetWrapper::Next);
 }
 
-}  // namespace pybind
-}  // namespace paddle
+}  // namespace paddle::pybind

@@ -41,9 +41,7 @@
 #include "paddle/fluid/framework/details/sparse_all_reduce_op_handle.h"
 #endif
 
-namespace paddle {
-namespace framework {
-namespace ir {
+namespace paddle::framework::ir {
 
 namespace {
 // TODO(panyx0718): Clean this up as well.
@@ -1377,9 +1375,7 @@ static int MultiDevSSAGraphBuilderRegister(const std::string &builder_mode) {
   return 0;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::ir
 
 #define REGISTER_MULTI_DEVICES_PASS(pass_name, pass_class)                \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \

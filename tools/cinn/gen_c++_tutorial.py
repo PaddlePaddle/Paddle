@@ -59,13 +59,13 @@ class Markdown:
                 break
             else:
                 tail_valid_offset += 1
-        logging.warning("block0: %s" % block)
+        logging.warning(f"block0: {block}")
         block = (
             block[pre_valid_offset:-tail_valid_offset]
             if tail_valid_offset > 0
             else block[pre_valid_offset:]
         )
-        logging.warning("block1: %s" % block)
+        logging.warning(f"block1: {block}")
         if not block:
             return
 
@@ -189,7 +189,7 @@ class Parser:
             code_block.append(line)
             line: str = content.get_line()
 
-        logging.warning("DOC content: %s" % code_block)
+        logging.warning(f"DOC content: {code_block}")
 
         self.doc.code_block(lang, code_block)
 

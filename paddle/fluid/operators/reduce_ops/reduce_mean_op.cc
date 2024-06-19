@@ -12,19 +12,215 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
-
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 
+namespace ops = paddle::operators;
 namespace paddle {
 namespace operators {
+class ReduceBaseOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ReduceBaseOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ReduceBaseOp");
+    auto x_dims = ctx->GetInputDim("X");
+    auto x_rank = x_dims.size();
+    auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
+    PADDLE_ENFORCE_GT(dims.size(),
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The input dim dimensions of ReduceBaseOp "
+                          "should be greater than 0. But received the dim "
+                          "dimensions of Reduce = %d.",
+                          dims.size()));
+
+    for (size_t i = 0; i < dims.size(); ++i) {
+      PADDLE_ENFORCE_LT(
+          dims[i],
+          x_rank,
+          phi::errors::InvalidArgument(
+              "The reduce dim index %d should be in the "
+              "range [-dimension(X), dimension(X)] "
+              "which dimension = %d. But received dim index = %d.",
+              i,
+              x_rank,
+              dims[i]));
+      PADDLE_ENFORCE_GE(
+          dims[i],
+          -x_rank,
+          phi::errors::InvalidArgument(
+              "The reduce dim index %d should be in the "
+              "range [-dimension(X), dimension(X)] "
+              "which dimension = %d. But received dim index = %d.",
+              i,
+              x_rank,
+              dims[i]));
+      if (dims[i] < 0) dims[i] = x_rank + dims[i];
+    }
+    sort(dims.begin(), dims.end());
+    bool reduce_all = ctx->Attrs().Get<bool>("reduce_all");
+    bool keep_dim = ctx->Attrs().Get<bool>("keep_dim");
+    if (reduce_all) {
+      if (keep_dim)
+        ctx->SetOutputDim("Out",
+                          common::make_ddim(std::vector<int64_t>(x_rank, 1)));
+      else
+        ctx->SetOutputDim("Out", {1});
+    } else {
+      auto dims_vector = common::vectorize(x_dims);
+      if (keep_dim) {
+        for (size_t i = 0; i < dims.size(); ++i) {
+          dims_vector[dims[i]] = 1;
+        }
+      } else {
+        const int kDelFlag = -2;
+        for (size_t i = 0; i < dims.size(); ++i) {
+          dims_vector[dims[i]] = kDelFlag;
+        }
+        dims_vector.erase(
+            remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
+            dims_vector.end());
+      }
+      if (!keep_dim && dims_vector.size() == 0) {
+        dims_vector.push_back(1);
+      }
+      auto out_dims = common::make_ddim(dims_vector);
+      ctx->SetOutputDim("Out", out_dims);
+      if (dims.size() > 0 && dims[0] != 0) {
+        // Only pass LoD when not reducing on the first dim.
+        ctx->ShareLoD("X", /*->*/ "Out");
+      }
+    }
+  }
+
+  // oneDNN's reduction kernel is optimized only for reducing throughout the
+  // most outer dims, so in case of another type of reduction, it would be
+  // better to fallback to native implementation
+  static bool HasOptimizedOneDNNKernel(const framework::ExecutionContext& ctx) {
+    // native reduce kernels don't support bf16
+    // so oneDNN kernel is enforced in that case
+    if (ctx.Input<phi::DenseTensor>("X")->dtype() == phi::DataType::BFLOAT16)
+      return true;
+
+    if (!ctx.HasAttr("dim") || !ctx.HasAttr("reduce_all")) {
+      return false;
+    }
+
+    auto reduce_dims = ctx.Attr<std::vector<int>>("dim");
+    const bool reduce_all = ctx.Attr<bool>("reduce_all");
+    int ndims = ctx.Input<phi::DenseTensor>("X")->dims().size();
+
+    if (reduce_all) {
+      return true;
+    }
+
+    for (size_t i = 0; i < reduce_dims.size(); ++i) {
+      if (reduce_dims[i] < 0) reduce_dims[i] = ndims + reduce_dims[i];
+    }
+    sort(reduce_dims.begin(), reduce_dims.end());
+    for (size_t i = 0; i < reduce_dims.size(); ++i) {
+      if (reduce_dims[reduce_dims.size() - i - 1] !=
+          static_cast<int>(ndims - i - 1)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    // choose cudnn kernel if the runtime supported.
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
+    if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5 ||
+        !HasOptimizedOneDNNKernel(ctx)) {
+      this->SetDnnFallback(true);
+    }
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
+
+    if (input_data_type == framework::proto::VarType::FP16) {
+      PADDLE_ENFORCE_EQ(
+          ctx.GetPlace().GetType() == phi::AllocationType::GPU ||
+              ctx.GetPlace().GetType() == phi::AllocationType::XPU ||
+              ctx.GetPlace().GetType() == phi::AllocationType::CUSTOM,
+          true,
+          phi::errors::InvalidArgument(
+              "float16 can only be used on GPU or XPU place"));
+    }
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
+  }
+};
+
+class ReduceGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ReduceBaseOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "ReduceBaseOp");
+    auto x_dims = ctx->GetInputDim("X");
+    auto x_rank = x_dims.size();
+    // TODO(dev): We should delete Infershape and migrate it into
+    // UnchangeInferMeta.In case of 'dim' is Variable, it will
+    // not exist in Attrs but in Inputs.
+    if (ctx->HasAttr("dim")) {
+      auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
+      for (size_t i = 0; i < dims.size(); ++i) {
+        PADDLE_ENFORCE_LT(
+            dims[i],
+            x_rank,
+            phi::errors::InvalidArgument(
+                "The reduce dim index %d should be in the "
+                "range [-dimension(X), dimension(X)], "
+                "which dimension = %d. But received dim index = %d.",
+                i,
+                x_rank,
+                dims[i]));
+        if (dims[i] < 0) dims[i] = x_rank + dims[i];
+      }
+    }
+
+    auto x_grad_name = framework::GradVarName("X");
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
+      ctx->ShareLoD("X", /*->*/ x_grad_name);
+    }
+  }
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    int out_dtype = ctx.Attr<int>("out_dtype");
+    auto input_data_type =
+        (out_dtype >= 0)
+            ? static_cast<framework::proto::VarType::Type>(out_dtype)
+            : OperatorWithKernel::IndicateVarDataType(
+                  ctx, framework::GradVarName("Out"));
+
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_DNNL
+    // max 5D tensor is supported
+    if (ctx.Input<phi::DenseTensor>("X")->dims().size() > 5) {
+      dnn_fallback_ = true;
+    }
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_DNNL
+
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
+  }
+};
 
 // NOTE(dengkaipeng): Input(Out) is unnecessary in reduce_mean_grad
 // calcualtion, but will incur a reduce_mean_grad op after
@@ -65,6 +261,7 @@ class ReduceMeanDoubleGradDescMaker : public framework::GradOpDescMakerBase {
     return ops;
   }
 };
+
 class ReduceMeanDoubleGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
  public:
   using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
@@ -89,6 +286,56 @@ class ReduceMeanDoubleGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
   }
 };
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceMeanGradNoNeedBufferVarInferer, "X");
+
+class ReduceBaseOpMaker : public paddle::framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() final {
+    AddInput("X",
+             "(Tensor) The input tensor. Tensors with rank at most 6 are "
+             "supported.");
+    AddOutput("Out", "(Tensor) The result tensor.");
+    AddAttr<std::vector<int>>(
+        "dim",
+        "(list<int>, default {0}) The dimensions to reduce. "
+        "Must be in the range [-rank(input), rank(input)). "
+        "If `dim[i] < 0`, the dims[i] to reduce is `rank + dims[i]`. "
+        "Note that reducing on the first dim will make the LoD info lost.")
+        .SetDefault({0})
+        .SupportTensor();
+    AddAttr<bool>("keep_dim",
+                  "(bool, default false) "
+                  "If true, retain the reduced dimension with length 1.")
+        .SetDefault(false);
+    AddAttr<bool>("reduce_all",
+                  "(bool, default false) "
+                  "If true, output a scalar reduced along all dimensions.")
+        .SetDefault(false);
+    AddAttr<int>("in_dtype",
+                 "(int, default -1)"
+                 "The dtype of input, default value is -1, the user could not "
+                 "set this value.")
+        .SetDefault(-1);
+    AddAttr<int>(
+        "out_dtype",
+        "(int, default -1)"
+        "The dtype of output, default value is -1, the dtype is same as intput")
+        .SetDefault(-1);
+    AddComment(string::Sprintf(R"DOC(
+%s Operator.
+
+This operator computes the %s of input tensor along the given dimension.
+The result tensor has 1 fewer dimension than the input unless keep_dim is true.
+If reduce_all is true, just reduce along all dimensions and output a scalar.
+
+)DOC",
+                               GetOpType(),
+                               GetName()));
+  }
+
+ protected:
+  virtual std::string GetName() const = 0;
+  virtual std::string GetOpType() const = 0;
+};
 }  // namespace operators
 }  // namespace paddle
 
