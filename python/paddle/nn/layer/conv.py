@@ -1033,7 +1033,7 @@ class Conv3D(_ConvNd):
         padding_mode: PaddingMode = 'zeros',
         weight_attr: ParamAttr | None = None,
         bias_attr: ParamAttr | bool | None = None,
-        data_format:  DataLayout3D = "NCDHW",
+        data_format: DataLayout3D = "NCDHW",
     ) -> None:
         super().__init__(
             in_channels,
