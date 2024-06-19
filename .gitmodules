@@ -122,3 +122,11 @@
 	path = third_party/nlohmann_json
 	url = https://github.com/nlohmann/json.git
 	ignore = dirty
+[submodule "third_party/yaml-cpp"]
+	path = third_party/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp.git
+	ignore = dirty
+# [submodule "third_party/mini-yaml"]
+# 	path = third_party/mini-yaml
+# 	url = https://github.com/jimmiebergmann/mini-yaml.git
+# 	ignore = dirty
