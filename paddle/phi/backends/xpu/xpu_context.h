@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 
 namespace Eigen {
@@ -57,6 +58,7 @@ class XPUContext : public DeviceContext,
   void StreamWaitEvent(XPUEvent event, int s) const;
   void StreamWaitStream(int wait_stream, int record_stream) const;
   int64_t GetStreamNum() const;
+  void AddStashedMemory(int stream, const phi::DenseTensor& tensor);
 
   // For share external stream.
   void SetStream(void* stream, int i = 0);
