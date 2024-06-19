@@ -2657,6 +2657,9 @@ void MatmulInferMeta(const MetaTensor& x,
   out->set_dims(ddim_out);
   if (x.dtype() == phi::DataType::INT8) {
     out->set_dtype(phi::DataType::INT32);
+  } else if (x.dtype() == phi::DataType::FLOAT8_E4M3FN ||
+             x.dtype() == phi::DataType::FLOAT8_E5M2) {
+    out->set_dtype(phi::DataType::FLOAT16);
   } else {
     out->set_dtype(x.dtype());
   }
