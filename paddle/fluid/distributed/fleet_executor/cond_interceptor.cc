@@ -22,11 +22,18 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 CondInterceptor::CondInterceptor(int64_t interceptor_id, TaskNode* node)
-    : Interceptor(interceptor_id, node) {
+    : Interceptor(interceptor_id, node),
+      cur_scope_id_(0),
+      normal_in_id_(),
+      normal_out_id_(),
+      stop_loop_id_(0),
+      loop_id_(0),
+      scope_id_to_gen_step_(),
+      start_micro_step_(0),
+      num_micro_step_(0) {
   PrepareDeps();
   RegisterMsgHandle([this](const InterceptorMessage& msg) { Run(msg); });
 }
@@ -215,5 +222,4 @@ void CondInterceptor::Run(const InterceptorMessage& msg) {
 
 REGISTER_INTERCEPTOR(Cond, CondInterceptor);
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

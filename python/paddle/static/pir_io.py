@@ -67,19 +67,22 @@ def get_pir_parameters(program):
     params = []
     opts = []
     for var in program.list_vars():
-        if var.is_parameter and var.persistable:
+        if var.is_parameter:
             params.append(var)
         elif var.persistable and var.get_defining_op().name() == "pd_op.data":
             opts.append(var)
     return params, opts
 
 
-def get_pir_feed_names(program):
+def get_pir_feed_and_fetch(program):
     feed_name_list = []
+    fetch_targets = []
     for op in program.global_block().ops:
         if op.name() == "pd_op.data" or op.name() == "pd_op.feed":
             feed_name_list.append(op.attrs()["name"])
-    return feed_name_list
+        if op.name() == "pd_op.fetch":
+            fetch_targets.extend(op.operands_source())
+    return feed_name_list, fetch_targets
 
 
 def set_var(name, ndarray):
@@ -87,24 +90,51 @@ def set_var(name, ndarray):
     p = t._place()
     if p.is_cpu_place():
         place = paddle.base.CPUPlace()
-    # elif p.is_cuda_pinned_place():
-    #     place = paddle.base.CUDAPinnedPlace()
-    # elif p.is_xpu_place():
-    #     p = paddle.base.core.Place()
-    #     p.set_place(t._place())
-    #     place = paddle.base.XPUPlace(p.xpu_device_id())
-    # elif p.is_custom_place():
-    #     p = paddle.base.core.Place()
-    #     p.set_place(t._place())
-    #     place = paddle.base.CustomPlace(
-    #         paddle.device.get_device().split(':')[0], p.custom_device_id()
-    #     )
+    elif p.is_cuda_pinned_place():
+        place = paddle.base.CUDAPinnedPlace()
+    elif p.is_xpu_place():
+        p = paddle.base.core.Place()
+        p.set_place(t._place())
+        place = paddle.base.XPUPlace(p.xpu_device_id())
+    elif p.is_custom_place():
+        p = paddle.base.core.Place()
+        p.set_place(t._place())
+        place = paddle.base.CustomPlace(
+            paddle.device.get_device().split(':')[0], p.custom_device_id()
+        )
     else:
         p = paddle.base.core.Place()
         p.set_place(t._place())
         place = paddle.base.CUDAPlace(p.gpu_device_id())
 
     t.set(ndarray, place)
+
+
+def append_pir_feed_ops(program, feed_vars):
+    """
+    Append feed ops to the program.
+    Args:
+        program(Program): Specify a program you want to append fetch op.
+        feed_vars(Value | list[Value]): Values should be feed.
+    Returns:
+        modify program
+    """
+    for i, var in enumerate(feed_vars):
+        orig_op = var.get_defining_op()
+        if orig_op.name() != 'pd_op.feed' and orig_op.name() != 'pd_op.data':
+            value = paddle._pir_ops.data(
+                "feed_name_" + str(i),
+                var.shape,
+                var.dtype,
+                paddle.base.core.Place(),
+            )
+            var.replace_all_uses_with(value)
+            value.get_defining_op().move_before(orig_op)
+
+    for i, var in enumerate(feed_vars):
+        orig_op = var.get_defining_op()
+        if orig_op.name() != 'pd_op.feed' and orig_op.name() != 'pd_op.data':
+            orig_op.get_parent_block().remove_op(orig_op)
 
 
 def append_pir_fetch_ops(program, fetch_name_var_maps):
@@ -248,7 +278,13 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
     if not all(isinstance(v, pir.Value) for v in fetch_vars):
         raise TypeError("fetch_vars type must be a Value or a list of Value.")
 
-    # TODO(Ruting) remind users to set auc_states to 0 if auc op were found.
+    # remind users to set auc_states to 0 if auc op were found.
+    for op in program.global_block().ops:
+        if op.name() == 'pd_op.auc':
+            warnings.warn(
+                "Be sure that you have set auc states to 0 before saving inference model."
+            )
+            break
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
@@ -289,6 +325,7 @@ def normalize_pir_program(program, feed_vars, fetch_vars, **kwargs):
         else:
             fetch_vars_tuple.append((var, "fetch_name_" + str(i)))
     with paddle.static.program_guard(copy_program):
+        append_pir_feed_ops(copy_program, clone_feed_vars)
         append_pir_fetch_ops(copy_program, fetch_vars_tuple)
 
     return copy_program
@@ -299,7 +336,6 @@ def save_vars_pir(
     dirname,
     main_program=None,
     vars=None,
-    predicate=None,
     filename=None,
 ):
     """
@@ -323,9 +359,6 @@ def save_vars_pir(
                                     Default: None
         vars(list[Variable], optional): The list contains all variables to be saved.
                                         Default: None
-        predicate(function, optional): The function selects the variables that make
-                                       `predicate(variable) == True`.
-                                       Default: None
         filename(str, optional): If you prefer to save all variables in a single file,
                                  use `filename` to specify it. Otherwise, let `filename` be None.
                                  Default: None
@@ -347,7 +380,7 @@ def save_vars_pir(
         return save_vars_pir(
             main_program=main_program,
             dirname=dirname,
-            vars=vars_list,  # list(filter(predicate, vars_list)),
+            vars=[var for var in vars_list if var.persistable],
             filename=filename,
         )
     else:
@@ -400,7 +433,6 @@ def load_vars_pir(
     dirname,
     main_program=None,
     vars=None,
-    predicate=None,
     filename=None,
 ):
     """
@@ -427,9 +459,6 @@ def load_vars_pir(
                                     Default: None
         vars(list[Variable], optional): The list that contains all variables to be loaded.
                                    Default: None
-        predicate(function, optional): The function selects variables that make
-                                        `predicate(variable) == True`.
-                                        Default: None
         filename(str, optional): The file which saved all required variables. If variables
                                 were saved in separate files, set it to be None.
                                 Default: None
@@ -457,23 +486,30 @@ def load_vars_pir(
                 % type(main_program)
             )
         param, opt = get_pir_parameters(main_program)
-        vars_list = param + opt
+        vars = param + opt
+        paddle.base.libpaddle.pir.create_loaded_parameter(
+            vars, global_scope(), executor._default_executor
+        )
         load_vars_pir(
             executor,
             dirname=dirname,
             main_program=main_program,
-            vars=vars_list,  # list(filter(predicate, vars_list)),
+            vars=[var for var in vars if var.persistable],
             filename=filename,
         )
     else:
         if main_program is None:
             main_program = default_main_program()
 
+        if not isinstance(main_program, paddle.static.Program):
+            raise TypeError(
+                "The type of input main_program is invalid, expected type is paddle.static.Program, but received %s"
+                % type(main_program)
+            )
+
         # TODO(chenzhiyang):save origin param shape, check vars
         load_var_map = {}
-        paddle.base.libpaddle.pir.create_loaded_parameter(
-            vars, global_scope(), executor._default_executor
-        )
+
         for v in vars:
             var = global_scope().find_var(v.name)
             assert isinstance(var, paddle.base.libpaddle.Variable)
@@ -565,8 +601,14 @@ def save_pir(program, model_path, protocol=4, **configs):
 
     # get parameters and optimizer variables
     parameter_list, optimizer_param_list = get_pir_parameters(program)
-    param_dict = {var.name: get_tensor(var) for var in parameter_list}
-    opt_dict = {var.name: get_tensor(var) for var in optimizer_param_list}
+    param_dict = {
+        var.name: get_tensor(var) for var in parameter_list if var.persistable
+    }
+    opt_dict = {
+        var.name: get_tensor(var)
+        for var in optimizer_param_list
+        if var.persistable
+    }
 
     # save parameters
     param_dict = _unpack_saved_dict(param_dict, protocol)
@@ -624,8 +666,8 @@ def load_pir(program, model_path, executor=None, var_list=None):
         model_prefix = model_prefix[:-9]
     elif model_prefix.endswith(".pdopt"):
         model_prefix = model_prefix[:-6]
-    elif model_prefix.endswith(".pdmodel"):
-        model_prefix = model_prefix[:-8]
+    elif model_prefix.endswith(".json"):
+        model_prefix = model_prefix[:-5]
 
     parameter_file_name = model_prefix + ".pdparams"
 
@@ -641,10 +683,11 @@ def load_pir(program, model_path, executor=None, var_list=None):
             load_dict = _safe_load_pickle(f, encoding='latin1')
         load_dict = _pack_loaded_dict(load_dict)
     for var in parameter_list:
-        assert (
-            var.name in load_dict
-        ), f"Can not find [{var.name}] in model file [{parameter_file_name}]"
-        set_var(var.name, load_dict[var.name])
+        if var.persistable:
+            assert (
+                var.name in load_dict
+            ), f"Can not find [{var.name}] in model file [{parameter_file_name}]"
+            set_var(var.name, load_dict[var.name])
 
     if len(optimizer_param_list) > 0:
         opt_file_name = model_prefix + ".pdopt"
@@ -660,14 +703,15 @@ def load_pir(program, model_path, executor=None, var_list=None):
         with open(opt_file_name, 'rb') as f:
             load_dict = _safe_load_pickle(f, encoding='latin1')
         for var in optimizer_param_list:
-            assert (
-                var.name in load_dict
-            ), f"Can not find [{var.name}] in model file [{opt_file_name}]"
-            set_var(var.name, load_dict[var.name])
+            if var.persistable:
+                assert (
+                    var.name in load_dict
+                ), f"Can not find [{var.name}] in model file [{opt_file_name}]"
+                set_var(var.name, load_dict[var.name])
 
 
 @static_only
-def save_pir_inference_model(
+def save_inference_model_pir(
     path_prefix, feed_vars, fetch_vars, executor, **kwargs
 ):
     """
@@ -737,13 +781,12 @@ def save_pir_inference_model(
     save_vars_pir(
         dirname=save_dirname,
         main_program=program,
-        # predicate=persistable, TODO(chenzhiyang): Is this filter needed here?
         filename=params_filename,
     )
 
 
 @static_only
-def load_pir_inference_model(path_prefix, executor, **kwargs):
+def load_inference_model_pir(path_prefix, executor, **kwargs):
     """
 
     Load inference model from a given path. By this API, you can get the model
@@ -831,13 +874,14 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
         paddle.base.core.deserialize_pir_program(model_filename, program, 1)
 
         params, opts = get_pir_parameters(program)
-        if len(params + opts) > 0:
+        vars = params + opts
+        vars = [var for var in vars if var.persistable]
+        if len(vars) > 0:
             load_vars_pir(
                 # load from memory, dirname is None
                 executor,
                 dirname=None,
                 main_program=program,
-                # predicate=persistable,
                 filename=params_filename,
             )
     # load from file
@@ -884,7 +928,9 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
         paddle.base.core.deserialize_pir_program(model_path, program, 1)
         # load parameters
         params, opts = get_pir_parameters(program)
-        if len(params + opts) > 0:
+        vars = params + opts
+        vars = [var for var in vars if var.persistable]
+        if len(vars) > 0:
             load_dirname = os.path.dirname(params_path)
             params_filename = os.path.basename(params_path)
 
@@ -892,10 +938,8 @@ def load_pir_inference_model(path_prefix, executor, **kwargs):
                 executor,
                 dirname=load_dirname,
                 main_program=program,
-                # predicate=persistable,
                 filename=params_filename,
             )
 
-    feed_names = get_pir_feed_names(program)
-    # pir load program has fetch op, so if use exe.run to execute load program, don't need to set fetch_list
-    return [program, feed_names, []]
+    feed_names, fetch_targets = get_pir_feed_and_fetch(program)
+    return [program, feed_names, fetch_targets]

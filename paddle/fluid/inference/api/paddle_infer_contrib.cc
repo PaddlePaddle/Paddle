@@ -20,8 +20,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 
-namespace paddle_infer {
-namespace contrib {
+namespace paddle_infer::contrib {
 
 using paddle::PaddleDType;
 
@@ -290,5 +289,4 @@ bool Status::operator!=(const Status& x) const noexcept {
   return !(*this == x);
 }
 
-}  // namespace contrib
-}  // namespace paddle_infer
+}  // namespace paddle_infer::contrib

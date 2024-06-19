@@ -52,7 +52,7 @@ class CWaitCommOp : public framework::OperatorBase {
 
     gpuStream_t compute_stream =
         static_cast<phi::GPUContext*>(
-            platform::DeviceContextPool::Instance().Get(place))
+            phi::DeviceContextPool::Instance().Get(place))
             ->stream();
     gpuStream_t comm_stream = nullptr;
     gpuEvent_t event = nullptr;

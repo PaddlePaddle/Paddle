@@ -107,7 +107,10 @@ class Compiler final {
   /**
    * Compile and link to a CINN module.
    */
-  void Build(const ir::Module& module, const std::string& code = "");
+  void Build(const ir::Module& module,
+             const std::string& code = "",
+             const bool end = true);
+  void AppendCX86(const ir::Module& module);
 
   void ExportObject(const std::string& path);
 
@@ -125,9 +128,10 @@ class Compiler final {
 
  private:
   void CompileCudaModule(const ir::Module& module,
-                         const std::string& code = "");
+                         const std::string& code = "",
+                         bool add_module = true);
 
-  void CompileX86Module(const ir::Module& module);
+  void CompileX86Module(const ir::Module& module, bool add_module = true);
 
   explicit Compiler(const Target& target)
       : target_(target), engine_(ExecutionEngine::Create(ExecutionOptions())) {}

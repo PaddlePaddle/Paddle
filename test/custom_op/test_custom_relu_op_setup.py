@@ -22,6 +22,7 @@ from utils import check_output, check_output_allclose
 
 import paddle
 from paddle import static
+from paddle.pir_utils import test_with_pir_api
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from paddle.vision.transforms import Compose, Normalize
 
@@ -230,6 +231,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     check_output(out, pd_out, "out")
                     check_output(x_grad, pd_x_grad, "x_grad")
 
+    @test_with_pir_api
     def _test_static_save_and_load_inference_model(self):
         paddle.enable_static()
         np_data = np.random.random((1, 1, 28, 28)).astype("float32")

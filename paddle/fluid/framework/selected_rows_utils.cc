@@ -14,8 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/selected_rows_utils.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 void SerializeToStream(std::ostream& os,
                        const phi::SelectedRows& selected_rows,
@@ -95,5 +94,4 @@ void DeserializeFromStream(std::istream& is,
       is, selected_rows->mutable_value(), dev_ctx);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

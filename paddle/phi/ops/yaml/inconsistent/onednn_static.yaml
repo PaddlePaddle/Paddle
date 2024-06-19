@@ -91,17 +91,6 @@
   kernel :
     func : fused_transpose
 
-- op : fusion_lstm
-  args : (Tensor x, Tensor weight_x, Tensor weight_h, Tensor bias, Tensor h0, Tensor c0, bool use_peepholes=true, bool is_reverse=false, bool use_seq=true, str gate_activation="sigmoid", str cell_activation="tanh", str candidate_activation="tanh", float scale_data=1.0, float shift_data=0.0, float[] scale_weights={1.0}, bool force_fp32_output=false)
-  output : Tensor(hidden), Tensor(cell), Tensor(xx), Tensor(batched_input), Tensor(batched_hidden), Tensor(batched_cell), Tensor(reordered_h0), Tensor(reordered_c0), Tensor(checked_cell)
-  infer_meta :
-    func : FusionLstmInferMeta
-  kernel :
-    func : fusion_lstm
-    data_type : x
-  optional : h0, c0
-  intermediate : xx, batched_input, batched_hidden, batched_cell, reordered_h0, reordered_c0, checked_cell
-
 - op: multi_gru
   args: (Tensor x, Tensor[] weight_x, Tensor[] weight_h, Tensor[] bias, Tensor[] scale_weights, str activation="tanh", str gate_activation="sigmoid", int layers=1, bool origin_mode=false, str mkldnn_data_type="float32", float scale_data=1.0, float shift_data=1.0, bool force_fp32_output=false)
   output: Tensor(hidden)

@@ -49,7 +49,15 @@ IfInstruction::IfInstruction(size_t id,
                              pir::Operation* op,
                              ValueExecutionInfo* value_exec_info,
                              interpreter::ExecutionConfig execution_config)
-    : InstructionBase(id, place) {
+    : InstructionBase(id, place),
+      op_(op),
+      cond_name_("if_instruction"),
+      cond_var_(nullptr),
+      output_vars_(),
+      true_branch_inter_(nullptr),
+      false_branch_inter_(nullptr),
+      true_skip_gc_names_(),
+      false_skip_gc_names_() {
   PADDLE_ENFORCE(
       op->isa<paddle::dialect::IfOp>(),
       phi::errors::PreconditionNotMet("Cond instruction only support if op"));
@@ -179,12 +187,8 @@ IfInstruction::IfInstruction(size_t id,
 }
 
 IfInstruction::~IfInstruction() {
-  if (true_branch_inter_ != nullptr) {
-    delete true_branch_inter_;
-  }
-  if (false_branch_inter_ != nullptr) {
-    delete false_branch_inter_;
-  }
+  delete true_branch_inter_;
+  delete false_branch_inter_;
 }
 
 void IfInstruction::SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs) {

@@ -26,8 +26,8 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/common/enforce.h"
 #include "paddle/common/errors.h"
-
 namespace cinn {
 namespace backends {
 
@@ -122,7 +122,8 @@ std::vector<Expr> FilterDeallocTempBuffers(const std::vector<Expr> &frees) {
   std::vector<Expr> filtered;
   for (const Expr &free : frees) {
     const ir::Free *op = free.As<ir::Free>();
-    CHECK_NOTNULL(op);
+    PADDLE_ENFORCE_NOT_NULL(
+        op, phi::errors::InvalidArgument("Free is not a free node"));
     bool has_symbolic_constant = false;
     const ir::_Buffer_ *buffer = op->destination.As<ir::_Buffer_>();
     for (Expr shape : buffer->shape) {
@@ -305,7 +306,10 @@ std::string CodeGenCUDA_Dev::Compile(const ir::Module &module,
 void CodeGenCUDA_Dev::PrintIncludes() { str_ += GetSourceHeader(); }
 
 void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
-  CHECK_NE(buffer->type(), Void());
+  PADDLE_ENFORCE_NE(
+      buffer->type(),
+      Void(),
+      phi::errors::InvalidArgument("buffer type should not be void"));
   // Calculate buffer size and determine if it contains a symbolic constant
   Expr buffer_size(1);
   for (int i = 0; i < buffer->shape.size(); i++) {

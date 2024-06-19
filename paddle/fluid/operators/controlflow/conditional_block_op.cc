@@ -25,8 +25,7 @@ limitations under the License. */
 
 COMMON_DECLARE_bool(use_mkldnn);
 
-namespace paddle {
-namespace operators {
+namespace paddle::operators {
 
 const char ConditionalOp::kInputs[] = "Input";        // NOLINT
 const char ConditionalOp::kOutputs[] = "Out";         // NOLINT
@@ -334,8 +333,7 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace paddle::operators
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conditional_block,

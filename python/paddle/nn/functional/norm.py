@@ -82,7 +82,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
     """
 
     if in_dygraph_mode():
-        eps = paddle.to_tensor([epsilon], dtype=x.dtype)
+        eps = paddle.full(shape=[1], fill_value=epsilon, dtype=x.dtype)
         out = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
         return x / _C_ops.maximum(out, eps)
 

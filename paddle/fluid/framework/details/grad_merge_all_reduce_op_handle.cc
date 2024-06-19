@@ -20,9 +20,7 @@
 COMMON_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 GradMergeAllReduceOpHandle::GradMergeAllReduceOpHandle(
@@ -136,6 +134,4 @@ std::string FusedGradMergeAllReduceOpHandle::Name() const {
   return "fused_grad_merge_all_reduce";
 }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

@@ -23,16 +23,21 @@
 #include "paddle/cinn/frontend/op_mapper_registry.h"
 #include "paddle/cinn/frontend/op_mappers/common_utils.h"
 #include "paddle/cinn/frontend/var_type_utils.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace frontend {
 namespace paddle_mappers {
 
 void AssignOpMapper(const paddle::cpp::OpDesc& op_desc,
                     const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                    1UL,
+                    phi::errors::InvalidArgument("The input of op must be 1."));
   auto x_name = op_desc.Input("X").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of op must be 1."));
   auto out_name = op_desc.Output("Out").front();
 
   auto x = ctx.GetVar(x_name);
@@ -44,9 +49,14 @@ void AssignOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void ShapeOpMapper(const paddle::cpp::OpDesc& op_desc,
                    const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("Input").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(),
+                    1UL,
+                    phi::errors::InvalidArgument("The input of op must be 1."));
   auto x_name = op_desc.Input("Input").front();
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of op must be 1."));
   auto out_name = op_desc.Output("Out").front();
 
   auto x = ctx.GetVar(x_name);
@@ -59,7 +69,10 @@ void ShapeOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void FillConstantOpMapper(const paddle::cpp::OpDesc& op_desc,
                           const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of op must be 1."));
   auto y_name = op_desc.Output("Out").front();
 
   const auto& cinn_name = cinn::utils::TransValidVarName(y_name);
@@ -80,7 +93,10 @@ void FillConstantOpMapper(const paddle::cpp::OpDesc& op_desc,
   absl::optional<Variable> out;
   if (op_desc.HasInput("ValueTensor") &&
       !op_desc.Input("ValueTensor").empty()) {
-    CHECK_EQ(op_desc.Input("ValueTensor").size(), 1UL);
+    PADDLE_ENFORCE_EQ(
+        op_desc.Input("ValueTensor").size(),
+        1UL,
+        phi::errors::InvalidArgument("The input of ValueTensor should be 1."));
     auto value_name = op_desc.Input("ValueTensor").front();
     auto value_tensor = ctx.GetVar(value_name);
 
@@ -88,9 +104,10 @@ void FillConstantOpMapper(const paddle::cpp::OpDesc& op_desc,
             << " with shape (" << cinn::utils::Join(shape, ",")
             << ") and dtype [" << dtype << "]";
 
-    CHECK(value_tensor->shape == cinn::utils::ShapeType{1})
-        << "The shape of [ValueTensor] should be [1], but here ["
-        << cinn::utils::Join(value_tensor->shape, ", ") << "]";
+    PADDLE_ENFORCE_EQ(
+        value_tensor->shape == cinn::utils::ShapeType{1},
+        true,
+        phi::errors::InvalidArgument("The shape of ValueTensor should be 1."));
     if (cinn::common::Type2Str(value_tensor->type) != dtype) {
       value_tensor = ctx.Builder()->Cast(value_tensor, dtype);
     }
@@ -118,11 +135,16 @@ void FillConstantOpMapper(const paddle::cpp::OpDesc& op_desc,
 
 void FillAnyLikeOpMapper(const paddle::cpp::OpDesc& op_desc,
                          const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Input("X").size(), 1UL);
+  PADDLE_ENFORCE_EQ(op_desc.Input("X").size(),
+                    1UL,
+                    phi::errors::InvalidArgument("The input of op must be 1."));
   auto x_name = op_desc.Input("X").front();
   auto x = ctx.GetVar(x_name);
 
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of op must be 1."));
   auto y_name = op_desc.Output("Out").front();
 
   auto shape = utils::ToShapeType(x->shape);
@@ -163,7 +185,10 @@ std::pair<bool, T> IsArithmeticSequence(const std::vector<T>& vec) {
 
 void AssignValueOpMapper(const paddle::cpp::OpDesc& op_desc,
                          const OpMapperContext& ctx) {
-  CHECK_EQ(op_desc.Output("Out").size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      op_desc.Output("Out").size(),
+      1UL,
+      phi::errors::InvalidArgument("The output of op must be 1."));
   auto out_name = op_desc.Output("Out").front();
   const auto& cinn_out_name = cinn::utils::TransValidVarName(out_name);
 

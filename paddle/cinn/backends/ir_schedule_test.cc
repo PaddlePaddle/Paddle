@@ -31,7 +31,7 @@
 #include "paddle/cinn/optim/remove_schedule_block.h"
 #include "paddle/cinn/optim/unroll_loops.h"
 #include "paddle/cinn/optim/vectorize_loops.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace backends {
 
@@ -563,7 +563,10 @@ TEST(IrSchedule, vectorize) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 2U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      2U,
+      phi::errors::InvalidArgument("The size of loops should be 2."));
   ir_sch.Vectorize(loops[1], 16);
   std::string origin = utils::GetStreamCnt(func[0]);
   EXPECT_EQ(origin, utils::Trim(R"ROC(
@@ -637,7 +640,10 @@ TEST(IrSchedule, unroll) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 2U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      2U,
+      phi::errors::InvalidArgument("The size of loops should be 2."));
   ir_sch.Unroll(loops[1]);
   std::string origin = utils::GetStreamCnt(func[0]);
   EXPECT_EQ(origin, utils::Trim(R"ROC(
@@ -711,7 +717,10 @@ TEST(IrSchedule, bind) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 2U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      2U,
+      phi::errors::InvalidArgument("The size of loops should be 2."));
   ir_sch.Bind(loops[0], "blockIdx.x");
   std::string origin = utils::GetStreamCnt(func[0]);
   EXPECT_EQ(origin, utils::Trim(R"ROC(
@@ -753,7 +762,10 @@ TEST(IrSchedule, simple_compute_at) {
 
   auto func = cinn::lang::LowerVec(
       "test_simple_compute_at", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -826,7 +838,10 @@ TEST(IrSchedule, compute_at0) {
 
   auto func = cinn::lang::LowerVec(
       "test_compute_at0", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -900,7 +915,10 @@ TEST(IrSchedule, compute_at1) {
 
   auto func = cinn::lang::LowerVec(
       "test_compute_at1", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -972,7 +990,10 @@ TEST(IrSchedule, compute_at2) {
 
   auto func = cinn::lang::LowerVec(
       "test_compute_at2", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1044,7 +1065,10 @@ TEST(IrSchedule, compute_at3) {
 
   auto func = cinn::lang::LowerVec(
       "test_compute_at3", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1125,7 +1149,10 @@ TEST(IrSchedule, compute_at4) {
 
   auto func = cinn::lang::LowerVec(
       "test_compute_at4", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1187,7 +1214,10 @@ TEST(IrSchedule, compute_at5) {
 
   auto func = cinn::lang::LowerVec(
       "test_compute_at5", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1250,7 +1280,10 @@ TEST(IrSchedule, compute_at6) {
 
   auto func = cinn::lang::LowerVec(
       "test_compute_at6", stages, {A, C}, {}, {}, nullptr, target, true);
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1316,7 +1349,10 @@ TEST(IrSchedule, cache_read1) {
   auto func = cinn::lang::LowerVec(
       "test_cache_read1", stages, {A, C}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1362,7 +1398,7 @@ void test_cache_read1(void* _args, int32_t num_args)
   };
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      B[((32 * i) + j)] = (2.00000000f * A_local_temp_buffer[((64 * i) + j)]);
+      B[((32 * i) + j)] = (A_local_temp_buffer[((64 * i) + j)] * 2.00000000f);
     };
   };
   for (int32_t cache_ax0_0 = 0; cache_ax0_0 < 16; cache_ax0_0 += 1) {
@@ -1372,7 +1408,7 @@ void test_cache_read1(void* _args, int32_t num_args)
   };
   for (int32_t i = 0; i < 16; i += 1) {
     for (int32_t j = 0; j < 16; j += 1) {
-      C[((16 * i) + j)] = (1.00000000f + B_local_temp_buffer[((32 * i) + j)]);
+      C[((16 * i) + j)] = (B_local_temp_buffer[((32 * i) + j)] + 1.00000000f);
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -1399,7 +1435,10 @@ TEST(IrSchedule, cache_read2) {
   auto func = cinn::lang::LowerVec(
       "test_cache_read2", stages, {A, B}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1441,7 +1480,7 @@ void test_cache_read2(void* _args, int32_t num_args)
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       A_local_temp_buffer[((32 * i) + j)] = A[((32 * i) + j)];
-      B[((32 * i) + j)] = (2.00000000f * A_local_temp_buffer[((32 * i) + j)]);
+      B[((32 * i) + j)] = (A_local_temp_buffer[((32 * i) + j)] * 2.00000000f);
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -1469,7 +1508,10 @@ TEST(IrSchedule, cache_write1) {
   auto func = cinn::lang::LowerVec(
       "test_cache_write1", stages, {A, C}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1511,7 +1553,7 @@ void test_cache_write1(void* _args, int32_t num_args)
   float* C = ((float*)(_C->memory));
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      B_local_temp_buffer[((32 * i) + j)] = (2.00000000f * A[((32 * i) + j)]);
+      B_local_temp_buffer[((32 * i) + j)] = (A[((32 * i) + j)] * 2.00000000f);
     };
   };
   for (int32_t cache_ax0 = 0; cache_ax0 < 64; cache_ax0 += 1) {
@@ -1521,7 +1563,7 @@ void test_cache_write1(void* _args, int32_t num_args)
   };
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      C_local_temp_buffer[((32 * i) + j)] = (1.00000000f + B[((32 * i) + j)]);
+      C_local_temp_buffer[((32 * i) + j)] = (B[((32 * i) + j)] + 1.00000000f);
     };
   };
   for (int32_t cache_ax0_0 = 0; cache_ax0_0 < 64; cache_ax0_0 += 1) {
@@ -1553,7 +1595,10 @@ TEST(IrSchedule, cache_write2) {
   auto func = cinn::lang::LowerVec(
       "test_cache_write2", stages, {A, B}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1592,7 +1637,7 @@ void test_cache_write2(void* _args, int32_t num_args)
   float* B = ((float*)(_B->memory));
   for (int32_t cache_ax0 = 0; cache_ax0 < 64; cache_ax0 += 1) {
     for (int32_t cache_ax1 = 0; cache_ax1 < 32; cache_ax1 += 1) {
-      B_local_temp_buffer[((32 * cache_ax0) + cache_ax1)] = (2.00000000f * A[((32 * cache_ax0) + cache_ax1)]);
+      B_local_temp_buffer[((32 * cache_ax0) + cache_ax1)] = (A[((32 * cache_ax0) + cache_ax1)] * 2.00000000f);
       B[((32 * cache_ax0) + cache_ax1)] = B_local_temp_buffer[((32 * cache_ax0) + cache_ax1)];
     };
   };
@@ -1624,7 +1669,10 @@ TEST(IrSchedule, cache_read3) {
   auto func = cinn::lang::LowerVec(
       "test_cache_read3", stages, {A, C}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1665,7 +1713,7 @@ void test_cache_read3(const float* __restrict__ A, float* __restrict__ C)
   };
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      B[((32 * i) + j)] = (2.00000000f * A_local_temp_buffer[((64 * i) + j)]);
+      B[((32 * i) + j)] = (A_local_temp_buffer[((64 * i) + j)] * 2.00000000f);
     };
     __syncthreads();
   };
@@ -1677,7 +1725,7 @@ void test_cache_read3(const float* __restrict__ A, float* __restrict__ C)
   for (int32_t i = 0; i < 16; i += 1) {
     __syncthreads();
     for (int32_t j = 0; j < 16; j += 1) {
-      C[((16 * i) + j)] = (1.00000000f + B_local_temp_buffer[((32 * i) + j)]);
+      C[((16 * i) + j)] = (B_local_temp_buffer[((32 * i) + j)] + 1.00000000f);
     };
   };
 }
@@ -1705,7 +1753,10 @@ TEST(IrSchedule, cache_write3) {
   auto func = cinn::lang::LowerVec(
       "test_cache_write3", stages, {A, C}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1743,7 +1794,7 @@ void test_cache_write3(const float* __restrict__ A, float* __restrict__ C)
   float* B = _B_temp_buffer;
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      B_local_temp_buffer[((32 * i) + j)] = (2.00000000f * A[((32 * i) + j)]);
+      B_local_temp_buffer[((32 * i) + j)] = (A[((32 * i) + j)] * 2.00000000f);
     };
   };
   for (int32_t cache_ax0 = 0; cache_ax0 < 64; cache_ax0 += 1) {
@@ -1754,7 +1805,7 @@ void test_cache_write3(const float* __restrict__ A, float* __restrict__ C)
   __syncthreads();
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      C_local_temp_buffer[((32 * i) + j)] = (1.00000000f + B[((32 * i) + j)]);
+      C_local_temp_buffer[((32 * i) + j)] = (B[((32 * i) + j)] + 1.00000000f);
     };
   };
   __syncthreads();
@@ -1788,7 +1839,10 @@ TEST(IrSchedule, sync_threads) {
   auto func = cinn::lang::LowerVec(
       "test_sync_threads", stages, {A, C}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1824,7 +1878,7 @@ void test_sync_threads(const float* __restrict__ A, float* __restrict__ C)
   float* B = _B_temp_buffer;
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      B_local_temp_buffer[((32 * i) + j)] = (2.00000000f * A[((32 * i) + j)]);
+      B_local_temp_buffer[((32 * i) + j)] = (A[((32 * i) + j)] * 2.00000000f);
     };
   };
   for (int32_t cache_ax0 = 0; cache_ax0 < 64; cache_ax0 += 1) {
@@ -1835,7 +1889,7 @@ void test_sync_threads(const float* __restrict__ A, float* __restrict__ C)
   };
   for (int32_t i = 0; i < 64; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
-      C_local_temp_buffer[((32 * i) + j)] = (1.00000000f + B[((32 * i) + j)]);
+      C_local_temp_buffer[((32 * i) + j)] = (B[((32 * i) + j)] + 1.00000000f);
     };
   };
   for (int32_t cache_ax0_0 = 0; cache_ax0_0 < 64; cache_ax0_0 += 1) {
@@ -1870,7 +1924,10 @@ TEST(IrSchedule, cache_write4) {
   auto func = cinn::lang::LowerVec(
       "test_cache_write4", stages, {A, B}, {}, {}, nullptr, target, true);
 
-  CHECK_EQ(func.size(), 1U);
+  PADDLE_ENFORCE_EQ(
+      func.size(),
+      1U,
+      phi::errors::InvalidArgument("The size of func should be 1."));
 
   auto ast_expr = func[0]->body;
   std::vector<Expr> vec_ast{ast_expr};
@@ -1953,7 +2010,10 @@ TEST(IrSchedule, rfactor) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 3U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      3U,
+      phi::errors::InvalidArgument("The size of loops should be 3."));
   auto new_rf_tensor = ir_sch.Rfactor(loops[2], 0);
   auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
   CHECK(new_rf_tensor_ref);
@@ -2080,7 +2140,10 @@ TEST(IrSchedule, rfactor1) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 3U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      3U,
+      phi::errors::InvalidArgument("The size of loops should be 3."));
   auto new_rf_tensor = ir_sch.Rfactor(loops[1], 1);
   auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
   CHECK(new_rf_tensor_ref);
@@ -2206,7 +2269,10 @@ TEST(IrSchedule, rfactor2) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("C");
-  CHECK_EQ(loops.size(), 3U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      3U,
+      phi::errors::InvalidArgument("The size of loops should be 3."));
   auto new_rf_tensor = ir_sch.Rfactor(loops[2], 0);
   auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
   CHECK(new_rf_tensor_ref);
@@ -2347,7 +2413,10 @@ TEST(IrSchedule, factorize_reduction) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 3U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      3U,
+      phi::errors::InvalidArgument("The size of loops should be 3."));
   auto new_rf_tensor = ir_sch.FactorizeReduction(loops[1], 0);
   auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
   CHECK(new_rf_tensor_ref);
@@ -2436,7 +2505,10 @@ TEST(IrSchedule, factorize_reduction1) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 3U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      3U,
+      phi::errors::InvalidArgument("The size of loops should be 3."));
   auto new_rf_tensor = ir_sch.FactorizeReduction(loops[1], 1);
   auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
   CHECK(new_rf_tensor_ref);
@@ -2520,9 +2592,15 @@ TEST(IrSchedule, factorize_reduction2) {
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(mod_expr);
   auto loops = ir_sch.GetLoops("B");
-  CHECK_EQ(loops.size(), 2U);
+  PADDLE_ENFORCE_EQ(
+      loops.size(),
+      2U,
+      phi::errors::InvalidArgument("The size of loops should be 2."));
   auto splited_loops = ir_sch.Split(loops[1], {4, 5});
-  CHECK_EQ(splited_loops.size(), 2U);
+  PADDLE_ENFORCE_EQ(
+      splited_loops.size(),
+      2U,
+      phi::errors::InvalidArgument("The size of splited_loops should be 2."));
   auto new_rf_tensor = ir_sch.FactorizeReduction(splited_loops[0], 1);
   auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
   CHECK(new_rf_tensor_ref);
@@ -2638,7 +2716,7 @@ void test_compute_inline1(void* _args, int32_t num_args)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t k = 0; k < 32; k += 1) {
-        C[((1024 * i) + ((32 * j) + k))] = fma(2.00000000f, A[((32 * i) + ((1024 * j) + k))], 2.00000000f);
+        C[((1024 * i) + ((32 * j) + k))] = ((A[((32 * i) + ((1024 * j) + k))] + 1.00000000f) * 2.00000000f);
       };
     };
   };
@@ -2712,7 +2790,7 @@ void test_compute_inline2(void* _args, int32_t num_args)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t k = 0; k < 32; k += 1) {
-        C[((1024 * i) + ((32 * j) + k))] = fma(2.00000000f, A[((1024 * i) + ((32 * j) + k))], 2.00000000f);
+        C[((1024 * i) + ((32 * j) + k))] = ((A[((1024 * i) + ((32 * j) + k))] + 1.00000000f) * 2.00000000f);
       };
     };
   };
@@ -2777,7 +2855,7 @@ void test_compute_inline3(const float* __restrict__ A, float* __restrict__ C)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t k = 0; k < 32; k += 1) {
-        C[((1024 * i) + ((32 * j) + k))] = (2.00000000f + (2.00000000f * A[((32 * i) + ((1024 * j) + k))]));
+        C[((1024 * i) + ((32 * j) + k))] = ((A[((32 * i) + ((1024 * j) + k))] + 1.00000000f) * 2.00000000f);
       };
     };
   };
@@ -2839,7 +2917,7 @@ void test_compute_inline4(const float* __restrict__ A, float* __restrict__ C)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t k = 0; k < 32; k += 1) {
-        C[((1024 * i) + ((32 * j) + k))] = (2.00000000f + (2.00000000f * A[((1024 * i) + ((32 * j) + k))]));
+        C[((1024 * i) + ((32 * j) + k))] = ((A[((1024 * i) + ((32 * j) + k))] + 1.00000000f) * 2.00000000f);
       };
     };
   };
@@ -2901,7 +2979,7 @@ void test_compute_inline1(void* _args, int32_t num_args)
   float* C = ((float*)(_C->memory));
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 64; j += 1) {
-      C[((32 * j) + i)] = fma(2.00000000f, A[((64 * i) + j)], 2.00000000f);
+      C[((32 * j) + i)] = (2.00000000f * (1.00000000f + A[((64 * i) + j)]));
     };
   };
   cinn_buffer_free((void*)(0), _B);
@@ -2969,7 +3047,7 @@ void test_compute_inline1(void* _args, int32_t num_args)
   for (int32_t i = 0; i < 32; i += 1) {
     for (int32_t j = 0; j < 32; j += 1) {
       for (int32_t k = 0; k < 32; k += 1) {
-        C[((32 * i) + ((1024 * j) + k))] = fma(2.00000000f, A[((1024 * i) + ((32 * j) + k))], 2.00000000f);
+        C[((32 * i) + ((1024 * j) + k))] = (2.00000000f * (1.00000000f + A[((1024 * i) + ((32 * j) + k))]));
       };
     };
   };
@@ -3047,7 +3125,7 @@ void test_copytransform1(void* _args, int32_t num_args)
       for (int32_t j = 0; j < 8; j += 1) {
         for (int32_t j_0 = 0; j_0 < 4; j_0 += 1) {
           for (int32_t k = 0; k < 32; k += 1) {
-            B[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))] = (1.00000000f + A[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))]);
+            B[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))] = (A[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))] + 1.00000000f);
           };
         };
       };
@@ -3058,7 +3136,7 @@ void test_copytransform1(void* _args, int32_t num_args)
       for (int32_t j = 0; j < 8; j += 1) {
         for (int32_t j_0 = 0; j_0 < 4; j_0 += 1) {
           for (int32_t k = 0; k < 32; k += 1) {
-            C[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))] = (2.00000000f * B[((256 * i) + ((32 * i_0) + ((4096 * j) + ((1024 * j_0) + k))))]);
+            C[((8192 * i) + ((1024 * i_0) + ((128 * j) + ((32 * j_0) + k))))] = (B[((256 * i) + ((32 * i_0) + ((4096 * j) + ((1024 * j_0) + k))))] * 2.00000000f);
           };
         };
       };
@@ -3136,7 +3214,7 @@ void test_copytransform2(void* _args, int32_t num_args)
     for (int32_t i_0 = 0; i_0 < 8; i_0 += 1) {
       for (int32_t j = 0; j < 64; j += 1) {
         for (int32_t k = 0; k < 128; k += 1) {
-          B[((65536 * i) + ((8192 * i_0) + ((128 * j) + k)))] = (1.00000000f + A[((65536 * i) + ((8192 * i_0) + ((128 * j) + k)))]);
+          B[((65536 * i) + ((8192 * i_0) + ((128 * j) + k)))] = (A[((65536 * i) + ((8192 * i_0) + ((128 * j) + k)))] + 1.00000000f);
         };
       };
     };
@@ -3146,7 +3224,7 @@ void test_copytransform2(void* _args, int32_t num_args)
       for (int32_t j = 0; j < 8; j += 1) {
         for (int32_t j_0 = 0; j_0 < 4; j_0 += 1) {
           for (int32_t k = 0; k < 128; k += 1) {
-            C[((32768 * i) + ((4096 * i_0) + ((512 * j) + ((128 * j_0) + k))))] = (2.00000000f * B[((65536 * i) + ((8192 * i_0) + ((512 * j) + ((128 * j_0) + k))))]);
+            C[((32768 * i) + ((4096 * i_0) + ((512 * j) + ((128 * j_0) + k))))] = (B[((65536 * i) + ((8192 * i_0) + ((512 * j) + ((128 * j_0) + k))))] * 2.00000000f);
           };
         };
       };
@@ -3278,13 +3356,19 @@ TEST(IrSchedule, ComplexIndices) {
   VLOG(3) << "Lowered Expr:" << ir_sch.GetModule().GetExprs().front();
 
   auto loops_b = ir_sch.GetLoops("B");
-  CHECK_EQ(loops_b.size(), 2);
+  PADDLE_ENFORCE_EQ(
+      loops_b.size(),
+      2,
+      phi::errors::InvalidArgument("The loops size of B should be 2."));
   ir_sch.Split("B", 0, {8, -1});
   ir_sch.Split(
       "B", 2, {32, -1});  // after first splited, loops size has added to 3
   VLOG(3) << "Splited Expr:" << ir_sch.GetModule().GetExprs().front();
 
-  CHECK_EQ(ir_sch.GetLoops("B").size(), 4);
+  PADDLE_ENFORCE_EQ(ir_sch.GetLoops("B").size(),
+                    4,
+                    phi::errors::InvalidArgument(
+                        "The loops size of B should be 4 after split."));
   ir_sch.Reorder("B", {2, 0, 3, 1});
   VLOG(3) << "Reordered Expr:\n" << ir_sch.GetModule().GetExprs().front();
 

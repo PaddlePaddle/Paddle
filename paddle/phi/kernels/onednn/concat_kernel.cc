@@ -106,13 +106,16 @@ static const std::vector<const DenseTensor*> ReduceMultiInput(
 template <typename T, typename Context>
 void ConcatKernel(const Context& dev_ctx,
                   const std::vector<const DenseTensor*>& x,
-                  const Scalar& axis,
+                  const Scalar& axis_,
                   DenseTensor* out) {
   const auto& onednn_engine = dev_ctx.GetEngine();
   // If any of the multiple inputs of concat has an input size of 0, the
   // actual size of the multi_input will change
   auto multi_input = ReduceMultiInput(x);
   EnforceLayouts(multi_input);
+
+  int64_t axis = axis_.to<int64_t>();
+  axis = phi::funcs::ComputeAxis(axis, x[0]->dims().size());
 
   auto out_dims_vec = common::vectorize(out->dims());
   if (std::any_of(out_dims_vec.begin(), out_dims_vec.end(), [](int64_t i) {
@@ -125,12 +128,12 @@ void ConcatKernel(const Context& dev_ctx,
     }
 
     DDim out_dims =
-        funcs::ComputeAndCheckShape(true, x_dims, axis.to<size_t>());
+        funcs::ComputeAndCheckShape(true, x_dims, static_cast<size_t>(axis));
     out->Resize(out_dims);
   }
 
   funcs::ConcatOneDNNHandler<T> handler(
-      dev_ctx.GetPlace(), axis.to<int>(), onednn_engine, multi_input, out);
+      dev_ctx.GetPlace(), axis, onednn_engine, multi_input, out);
 
   std::vector<std::shared_ptr<memory>> srcs;
   srcs.reserve(multi_input.size());

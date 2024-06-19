@@ -35,7 +35,14 @@ class TestEmptyOp(OpTest):
 
     def verify_output(self, outs):
         data_type = outs[0].dtype
-        if data_type in ['float16', 'float32', 'float64', 'int32', 'int64']:
+        if data_type in [
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'uint16',
+        ]:
             max_value = np.nanmax(outs[0])
             min_value = np.nanmin(outs[0])
 

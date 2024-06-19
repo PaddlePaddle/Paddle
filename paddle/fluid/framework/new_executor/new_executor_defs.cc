@@ -23,8 +23,7 @@
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 VariableScope::VariableScope(Scope* scope)
     : var_list_(), name2id_(), vec_meta_info_(), data_transfer_added_vars_() {
@@ -155,8 +154,13 @@ Instruction::Instruction(size_t id,
                          const platform::DeviceContext& dev_ctx)
     : is_artificial_(false),
       id_(id),
+      next_instrs_in_different_thread(),
+      next_instrs_in_same_thread(),
+      events_to_wait_(),
       op_func_node_(op_func_node),
-      dev_ctx_(dev_ctx) {
+      dev_ctx_(dev_ctx),
+      gc_check_vars_(),
+      vec_inplace_in_to_out_() {
   if (op_func_node.operator_base_ != nullptr &&
       op_func_node.operator_base_->Type() == "depend") {
     is_artificial_ = true;
@@ -348,5 +352,4 @@ void Instruction::UpdateRecordStreamForGcInfo() {
 }
 #endif
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

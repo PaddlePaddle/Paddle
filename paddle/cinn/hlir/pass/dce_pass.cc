@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/hlir/pass/op_fusion_pass_util.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace pass {
@@ -118,7 +118,10 @@ class DceHelper : public FusionHelperBase {
 };
 
 void DCEPassInternal(Graph* graph) {
-  CHECK_GT(graph->outputs.size(), 0);
+  PADDLE_ENFORCE_GT(graph->outputs.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The graph should have at least one output node."));
   DceHelper dce_helper(graph);
   dce_helper();
 }

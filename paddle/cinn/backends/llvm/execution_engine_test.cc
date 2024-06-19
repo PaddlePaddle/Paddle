@@ -26,7 +26,6 @@
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/raw_ostream.h>
-
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
@@ -35,6 +34,7 @@
 #include <tuple>
 #include <utility>
 #include <vector>
+#include "paddle/common/enforce.h"
 
 #include "paddle/cinn/backends/llvm/cinn_runtime_llvm_ir.h"
 #include "paddle/cinn/backends/llvm/codegen_llvm.h"
@@ -91,7 +91,11 @@ auto CreateTestBuffer() {
   }
 
   float *Cd = reinterpret_cast<float *>(C->memory);
-  CHECK_EQ(C->num_elements(), A->num_elements());
+  PADDLE_ENFORCE_EQ(
+      C->num_elements(),
+      A->num_elements(),
+      phi::errors::InvalidArgument(
+          "The number of elements of C and A should be the same."));
 
   return std::make_tuple(A, B, C);
 }

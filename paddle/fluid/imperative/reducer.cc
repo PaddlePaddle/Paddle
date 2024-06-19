@@ -322,10 +322,19 @@ Reducer::Reducer(const std::vector<std::shared_ptr<imperative::VarBase>> &vars,
                  bool find_unused_vars)
     : vars_(vars),
       group_indices_(group_indices),
+      groups_(),
       is_sparse_gradient_(is_sparse_gradient),
       parallel_ctx_(parallel_ctx),
+      variable_locators_(),
+      rebuild_vars_(),
+      rebuild_var_indices_(),
       group_size_limits_(group_size_limits),
-      find_unused_vars_each_step_(find_unused_vars) {
+      node_deps_(),
+      var_index_map_(),
+      unused_vars_(),
+      find_unused_vars_each_step_(find_unused_vars),
+      vars_marked_ready_(),
+      local_used_vars_() {
   VLOG(3) << "Start construct the Reducer ...";
   nrings_ = parallel_ctx->GetNRings();
   nranks_ = parallel_ctx->GetNRanks();

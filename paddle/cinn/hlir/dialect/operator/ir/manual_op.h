@@ -15,6 +15,7 @@
 #pragma once
 #include <variant>
 #include "paddle/cinn/hlir/dialect/operator/ir/attribute_storage.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infer_symbolic_shape/infer_symbolic_shape.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -61,7 +62,8 @@ class IR_API GroupOp
 
 // FusionOp represents a subgraphs that can be fused to one kernel.
 // Every GroupOp can be lowered to at least one FusionOp
-class IR_API FusionOp : public pir::Op<FusionOp> {
+class IR_API FusionOp
+    : public pir::Op<FusionOp, paddle::dialect::InferSymbolicShapeInterface> {
  public:
   using Op::Op;
   static const char *name() { return "cinn_op.fusion"; }
@@ -80,6 +82,8 @@ class IR_API FusionOp : public pir::Op<FusionOp> {
   pir::Block *block() const;
 
   std::vector<pir::Operation *> GetOperators() const;
+
+  bool InferSymbolicShape(pir::InferSymbolicShapeContext *infer_context);
 
   void VerifySig();
   void Print(pir::IrPrinter &printer);  // NOLINT
@@ -154,24 +158,18 @@ class IR_API GenerateShapeOp
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];
 
-  struct SymbolBindingBase {
-    std::string symbol_name;
-    int64_t input_tensor_idx;
-    int64_t input_tensor_dim_idx;
-  };
-
-  struct DataSymbolBinding : public SymbolBindingBase {};
-  struct ShapeSymbolBinding : public SymbolBindingBase {};
-
-  using SymbolBinding = std::variant<DataSymbolBinding, ShapeSymbolBinding>;
-
-  using SymbolBindings = std::vector<SymbolBinding>;
+  using SymbolBindingBase = cinn::dialect::SymbolBindingBase;
+  using SymbolBinding = cinn::dialect::SymbolBinding;
+  using ShapeSymbolBinding = cinn::dialect::ShapeSymbolBinding;
+  using DataSymbolBinding = cinn::dialect::DataSymbolBinding;
+  using SymbolBindings = cinn::dialect::SymbolBindings;
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     const std::vector<pir::Value> &inputs,
                     const std::vector<pir::Attribute> &output_dim_exprs,
-                    const SymbolBindings &symbol_bindings);
+                    const SymbolBindings &symbol_bindings,
+                    const pir::Type &output_type);
 
   void VerifySig() {}
 

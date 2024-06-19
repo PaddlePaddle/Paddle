@@ -119,7 +119,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
     VLOG(4) << "save output file_path: " << filename;
 
     // get device context from pool
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto& dev_ctx = *pool.Get(place);
 
     if (input_var->IsType<phi::DenseTensor>()) {

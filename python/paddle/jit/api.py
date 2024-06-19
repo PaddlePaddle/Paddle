@@ -23,10 +23,21 @@ import threading
 import types
 import warnings
 from collections import OrderedDict
+from collections.abc import Sequence
 from contextlib import contextmanager
-from typing import Any
+from types import ModuleType
+from typing import Any, Callable, Protocol, TypedDict, TypeVar, overload
+
+from typing_extensions import (
+    Literal,
+    NotRequired,
+    ParamSpec,
+    TypeAlias,
+    Unpack,
+)
 
 import paddle
+from paddle._typing import NestedSequence
 from paddle.base import core, dygraph
 from paddle.base.compiler import (
     BuildStrategy,
@@ -45,6 +56,7 @@ from paddle.base.framework import (
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import use_pir_api
 from paddle.nn import Layer
+from paddle.static import InputSpec
 from paddle.static.io import save_inference_model
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
@@ -70,6 +82,13 @@ from .translated_layer import (
 )
 
 ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
+
+
+_F = TypeVar('_F', bound=Callable[..., Any])
+_LayerT = TypeVar("_LayerT", bound=Layer)
+_RetT = TypeVar("_RetT")
+_InputT = ParamSpec("_InputT")
+Backends: TypeAlias = Literal["CINN"]
 
 
 @contextmanager
@@ -98,13 +117,13 @@ def copy_decorator_attrs(original_func, decorated_obj):
     return decorated_obj
 
 
-def ignore_module(modules: list[Any]):
+def ignore_module(modules: list[ModuleType]) -> None:
     """
     Adds modules that ignore transcription.
     Builtin modules that have been ignored are collections, pdb, copy, inspect, re, numpy, logging, six
 
     Args:
-        modules (List[Any]): Ignored modules that you want to add
+        modules (list[ModuleType]): Ignored modules that you want to add
 
     Examples:
         .. code-block:: python
@@ -125,12 +144,414 @@ def ignore_module(modules: list[Any]):
 
 
 def _check_and_set_backend(backend, build_strategy):
-    if backend not in ['CINN', None]:
+    if backend not in ['CINN', 'paddle_inference', None]:
         raise ValueError(
-            f"The backend of to_static should be 'CINN' or None, but received {backend}."
+            f"The backend of to_static should be 'CINN' or 'paddle_inference' or None, but received {backend}."
         )
     if backend == 'CINN':
         build_strategy.build_cinn_pass = True
+
+
+class ToStaticOptions(TypedDict):
+    property: NotRequired[bool]
+    full_graph: NotRequired[bool]
+
+
+class ToStaticDecorator(Protocol):
+    @overload
+    def __call__(self, function: _LayerT) -> _LayerT:
+        ...
+
+    @overload
+    def __call__(
+        self, function: Callable[_InputT, _RetT]
+    ) -> StaticFunction[_InputT, _RetT]:
+        ...
+
+
+@overload
+def to_static(
+    function: _LayerT,
+    input_spec: NestedSequence[InputSpec] | None = ...,
+    build_strategy: BuildStrategy | None = ...,
+    backend: Backends | None = ...,
+    **kwargs: Unpack[ToStaticOptions],
+) -> _LayerT:
+    ...
+
+
+@overload
+def to_static(
+    function: Callable[_InputT, _RetT],
+    input_spec: NestedSequence[InputSpec] | None = ...,
+    build_strategy: BuildStrategy | None = ...,
+    backend: Backends | None = ...,
+    **kwargs: Unpack[ToStaticOptions],
+) -> StaticFunction[_InputT, _RetT]:
+    ...
+
+
+@overload
+def to_static(
+    function: Any,
+    input_spec: NestedSequence[InputSpec] | None = ...,
+    build_strategy: BuildStrategy | None = ...,
+    backend: Backends | None = ...,
+    **kwargs: Unpack[ToStaticOptions],
+) -> Any:
+    ...
+
+
+@overload
+def to_static(
+    function: None = ...,
+    input_spec: NestedSequence[InputSpec] | None = ...,
+    build_strategy: BuildStrategy | None = ...,
+    backend: Backends | None = ...,
+    **kwargs: Unpack[ToStaticOptions],
+) -> ToStaticDecorator:
+    ...
+
+
+def paddle_inference_decorator(**kwargs):
+    def decorator(func=None):
+        import inspect
+        import os
+        import sys
+
+        predictors = [None]
+        signature = inspect.signature(func)
+        arg_names = [v.name for v in signature.parameters.values()]
+        arg_defaults = [v.default for v in signature.parameters.values()]
+
+        import textwrap
+
+        cache_static_model = kwargs.get("cache_static_model", False)
+        with_trt = kwargs.get("with_trt", False)
+        save_model_dir = kwargs.get("save_model_dir", "/root/.cache/")
+        precision_mode = kwargs.get("precision_mode", "float32")
+        switch_ir_optim = kwargs.get("switch_ir_optim", True)
+        switch_ir_debug = kwargs.get("switch_ir_debug", False)
+        collect_shape = kwargs.get("collect_shape", False)
+        default_delete_pass_lists = [
+            "trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass",
+            "add_support_int8_pass",
+        ]
+        delete_pass_lists = kwargs.get(
+            "delete_pass_lists", default_delete_pass_lists
+        )
+        enable_new_ir = kwargs.get("enable_new_ir", False)
+        exp_enable_use_cutlass = kwargs.get("exp_enable_use_cutlass", False)
+
+        py_script = textwrap.dedent(inspect.getsource(func))
+        py_script = py_script[py_script.find("def") :]
+        py_script = py_script.replace(func.__name__, func.__name__)
+        print(py_script)
+
+        assert arg_names[0] == "self"
+        save_path = save_model_dir + "/" + func.__name__ + "/infer"
+        d2s_input_info_path = save_path + "_d2s_input_info.txt"
+        d2s_input_shapes = []
+        d2s_input_names = []
+
+        # get old d2s shapes!
+        if os.path.exists(d2s_input_info_path) and cache_static_model:
+            with open(d2s_input_info_path, "r") as f:
+                for line in f.readlines():
+                    name = line.split(":")[0]
+                    shape = line.split(":")[1]
+                    if len(shape) > 0:
+                        # this is for None input
+                        shape = [int(s) for s in shape.split(",")]
+                    d2s_input_shapes.append(shape)
+                    d2s_input_names.append(name)
+
+        class WrappedLayer(paddle.nn.Layer):
+            def __init__(self, layer):
+                super().__init__()
+                self.fn = func
+                self.layer = layer
+
+            def forward(self, args):
+                return (
+                    paddle.jit.dy2static.program_translator.convert_to_static(
+                        self.fn
+                    )(self.layer, *args)
+                )
+
+        def internel_decorator(*args, **kwargs):
+            import paddle
+
+            def get_tensor(run_time_args, arg_name):
+                if isinstance(run_time_args, paddle.Tensor):
+                    return [run_time_args]
+                elif isinstance(run_time_args, list):
+                    this_input_tensor_lists = []
+                    for ele in run_time_args:
+                        assert isinstance(
+                            ele, paddle.Tensor
+                        ), "the elements in list must be paddle.Tensor"
+                        this_input_tensor_lists.append(ele)
+                    return this_input_tensor_lists
+                elif run_time_args is None:
+                    return [None]
+                else:
+                    raise AssertionError(
+                        f'''we only support adding @paddle.incubate.layers.inference in functions whose arguments are paddle.Tensor or list[paddle.Tensor],
+                        but here we get {arg_name} in your function is {type(run_time_args)}, please modify your function to meet our requirement.'''
+                    )
+
+            input_tensor_lists = []
+            collected_names = []
+            for i in range(len(args)):
+                collected_names.append(arg_names[i])
+                if i > 0:
+                    input_tensor_lists += get_tensor(args[i], arg_names[i])
+
+            # some are invoked from keyword arguments.
+            for i in range(len(arg_names)):
+                if arg_names[i] in kwargs.keys():
+                    this_input = kwargs[arg_names[i]]
+                    input_tensor_lists += get_tensor(this_input, arg_names[i])
+                    collected_names.append(arg_names[i])
+
+            if collected_names != arg_names:
+                print(
+                    "below arguments are not specified:",
+                    set(arg_names) - set(collected_names),
+                )
+                assert (
+                    collected_names == arg_names
+                ), "some arguments are not specified when you invoke your function."
+
+            # initiate the d2s_input_shapes.
+            if len(d2s_input_shapes) == 0:
+                for tensor in input_tensor_lists:
+                    if tensor is None:
+                        d2s_input_shapes.append([])
+                    else:
+                        d2s_input_shapes.append(tensor.shape)
+
+            re_do_d2s = False
+            # check whether the shape is changed
+            for i in range(len(d2s_input_shapes)):
+                if input_tensor_lists[i] is None:
+                    continue
+                # The rank of this tensor has changed
+                if len(d2s_input_shapes[i]) != len(input_tensor_lists[i].shape):
+                    re_do_d2s = True
+                    d2s_input_shapes[i] = input_tensor_lists[i]
+                    print("rank is changed, we need re do d2s.")
+                    continue
+                for j in range(len(d2s_input_shapes[i])):
+                    if (
+                        d2s_input_shapes[i][j] != -1
+                        and d2s_input_shapes[i][j]
+                        != input_tensor_lists[i].shape[j]
+                    ):
+                        re_do_d2s = True
+                        d2s_input_shapes[i][j] = -1
+                        print("shape is changed, we need re do d2s.")
+                sys.stdout.flush()
+
+            remove_non_input_tensor_lists = [
+                ele for ele in input_tensor_lists if ele is not None
+            ]
+
+            if predictors[0] is not None and not re_do_d2s:
+                results = predictors[0].run(remove_non_input_tensor_lists)
+                return results if len(results) > 1 else results[0]
+
+            if (
+                not os.path.exists(save_path + ".pdmodel")
+                or not cache_static_model
+                or re_do_d2s
+            ):
+                from paddle.static import InputSpec
+
+                def get_d2s_spec(run_time_args, name):
+                    if isinstance(run_time_args, paddle.Tensor):
+                        return InputSpec.from_tensor(run_time_args, name=name)
+                    elif isinstance(run_time_args, list):
+                        this_input_spec = []
+                        suffix = 0
+                        for ele in run_time_args:
+                            assert isinstance(ele, paddle.Tensor)
+                            this_input_spec.append(
+                                InputSpec.from_tensor(
+                                    ele, name=name + "_" + str(suffix)
+                                )
+                            )
+                            suffix += 1
+                        return this_input_spec
+                    elif run_time_args is None:
+                        # we need to add a None input_spec!
+                        return None
+
+                # we need do ds2.
+                input_specs = []
+                # first we handle Positional Arguments
+                for i in range(len(args)):
+                    if i == 0:
+                        assert isinstance(args[i], paddle.nn.Layer)
+                    else:
+                        input_specs.append(
+                            get_d2s_spec(args[i], name=arg_names[i])
+                        )
+                # second we handle Keyword Arguments
+                for i in range(len(arg_names)):
+                    if arg_names[i] in kwargs.keys():
+                        this_input = kwargs[arg_names[i]]
+                        input_specs.append(
+                            get_d2s_spec(this_input, name=arg_names[i])
+                        )
+
+                # update the input_spec's shape for doing d2s
+                d2s_shapes_id = 0
+                # initial the d2s_input_names!
+                if len(d2s_input_names) == 0:
+                    d2s_input_names.extend([None] * len(input_tensor_lists))
+                for i in range(len(input_specs)):
+                    if type(input_specs[i]) == list:
+                        for j in range(len(input_specs[i])):
+                            input_specs[i][j].shape = d2s_input_shapes[
+                                d2s_shapes_id
+                            ]
+                            d2s_input_names[d2s_shapes_id] = input_specs[i][
+                                j
+                            ].name
+                            d2s_shapes_id += 1
+                    elif type(input_specs[i]) == paddle.static.InputSpec:
+                        input_specs[i].shape = d2s_input_shapes[d2s_shapes_id]
+                        d2s_input_names[d2s_shapes_id] = input_specs[i].name
+                        d2s_shapes_id += 1
+                    elif input_specs[i] is None:
+                        d2s_input_names[d2s_shapes_id] = arg_names[i + 1]
+                        d2s_shapes_id += 1
+
+                os.environ["TRITON_KERNEL_CACHE_DIR"] = save_model_dir
+
+                print("we are doing d2s!!")
+                print("input_specs: ", input_specs)
+                sys.stdout.flush()
+                input_specs = [input_specs]
+                mylayer = WrappedLayer(args[0])
+
+                to_jit_func = mylayer
+                new_func_name = func.__name__ + "_copy"
+                if hasattr(args[0], new_func_name):
+                    to_jit_func = getattr(args[0], new_func_name)
+                    input_specs = input_specs[0]
+
+                model = paddle.jit.to_static(
+                    to_jit_func,
+                    input_spec=input_specs,
+                    full_graph=True,
+                )
+                paddle.jit.save(model, save_path, skip_prune_program=True)
+
+                # save d2s_shapes
+                assert len(d2s_input_names) == len(d2s_input_shapes)
+                with open(d2s_input_info_path, "w") as f:
+                    for i in range(len(d2s_input_names)):
+                        line = d2s_input_names[i] + ":"
+                        line += (
+                            ",".join([str(s) for s in d2s_input_shapes[i]])
+                            + "\n"
+                        )
+                        f.write(line)
+                print("d2s are done!!")
+                sys.stdout.flush()
+            else:
+                # we need register some triton ops.
+                for root, dirs, files in os.walk(save_model_dir):
+                    for file in files:
+                        if file.endswith("_package.so"):
+                            so_full_path = os.path.join(root, file)
+                            paddle.utils.cpp_extension.load_op_meta_info_and_register_op(
+                                so_full_path
+                            )
+
+            # create predictor
+            model_dir = save_model_dir + "/" + func.__name__ + "/"
+            model_file = model_dir + "infer.pdmodel"
+            params_file = model_dir + "infer.pdiparams"
+            from paddle.inference import Config, PrecisionType, create_predictor
+
+            config = Config(model_file, params_file)
+            config.enable_memory_optim()
+            config.switch_ir_debug(switch_ir_debug)
+            config.switch_ir_optim(switch_ir_optim)
+            if exp_enable_use_cutlass:
+                config.exp_enable_use_cutlass()
+            config.enable_new_ir(enable_new_ir)
+
+            def get_infer_precision():
+                if precision_mode == "float32":
+                    return PrecisionType.Float32
+                elif precision_mode == "float16":
+                    return PrecisionType.Half
+                elif precision_mode == "bfloat16":
+                    return PrecisionType.Bfloat16
+                else:
+                    raise AssertionError("unsupported precision_mode")
+
+            gpu_precision = get_infer_precision()
+            device_num = paddle.device.get_device()
+            gpu_id = (int)(device_num.split(':')[1])
+            config.enable_use_gpu(1000, gpu_id, gpu_precision)
+
+            if with_trt:
+                dynamic_names = []
+                min_input_shape = {}
+                max_input_shape = {}
+                opt_input_shape = {}
+                shape_range_file = model_dir + "/trt_shape.txt"
+                if collect_shape:
+                    config.collect_shape_range_info(shape_range_file)
+                elif os.path.exists(shape_range_file):
+                    config.enable_tuned_tensorrt_dynamic_shape(
+                        shape_range_file, True
+                    )
+                else:
+                    for i in range(len(input_tensor_lists)):
+                        if input_tensor_lists[i] is not None:
+                            min_input_shape[
+                                d2s_input_names[i]
+                            ] = input_tensor_lists[i].shape
+                            max_input_shape[
+                                d2s_input_names[i]
+                            ] = input_tensor_lists[i].shape
+                            opt_input_shape[
+                                d2s_input_names[i]
+                            ] = input_tensor_lists[i].shape
+
+                    config.set_trt_dynamic_shape_info(
+                        min_input_shape, max_input_shape, opt_input_shape
+                    )
+
+                config.enable_tensorrt_engine(
+                    workspace_size=1 << 30,
+                    max_batch_size=1,
+                    min_subgraph_size=3,
+                    precision_mode=get_infer_precision(),
+                    use_static=True,
+                    use_calib_mode=False,
+                )
+            if predictors[0] is not None:
+                predictors[0] = None
+
+            for pass_name in delete_pass_lists:
+                config.delete_pass(pass_name)
+
+            predictors[0] = create_predictor(config)
+
+            results = predictors[0].run(remove_non_input_tensor_lists)
+            return results if len(results) > 1 else results[0]
+
+        return internel_decorator
+
+    return decorator
 
 
 def to_static(
@@ -250,8 +671,34 @@ def to_static(
         else:
             return decorated(function)
 
+    # This is for paddle_inference use.
+    if backend == "paddle_inference":
+        return paddle_inference_decorator(**kwargs)
+
     # for usage: `@to_static`
     return decorated
+
+
+class NotToStaticDecorator(Protocol):
+    @overload
+    def __call__(
+        self, func: Callable[_InputT, _RetT]
+    ) -> Callable[_InputT, _RetT]:
+        ...
+
+    @overload
+    def __call__(self, func: None = ...) -> NotToStaticDecorator:
+        ...
+
+
+@overload
+def not_to_static(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+    ...
+
+
+@overload
+def not_to_static(func: None = ...) -> NotToStaticDecorator:
+    ...
 
 
 def not_to_static(func=None):
@@ -337,14 +784,12 @@ class _SaveLoadConfig:
             return
         if not isinstance(spec, list):
             raise TypeError(
-                "The config `output_spec` should be 'list', but received input type is %s."
-                % type(input)
+                f"The config `output_spec` should be 'list', but received input type is {type(input)}."
             )
             for var in spec:
                 if not isinstance(var, core.eager.Tensor):
                     raise TypeError(
-                        "The element in config `output_spec` list should be 'Variable', but received element's type is %s."
-                        % type(var)
+                        f"The element in config `output_spec` list should be 'Variable', but received element's type is {type(var)}."
                     )
         self._output_spec = spec
 
@@ -358,8 +803,7 @@ class _SaveLoadConfig:
             return
         if not isinstance(filename, str):
             raise TypeError(
-                "The config `model_filename` should be str, but received input's type is %s."
-                % type(filename)
+                f"The config `model_filename` should be str, but received input's type is {type(filename)}."
             )
         if len(filename) == 0:
             raise ValueError("The config `model_filename` is empty string.")
@@ -375,8 +819,7 @@ class _SaveLoadConfig:
             return
         if not isinstance(filename, str):
             raise TypeError(
-                "The config `params_filename` should be str, but received input's type is %s."
-                % type(filename)
+                f"The config `params_filename` should be str, but received input's type is {type(filename)}."
             )
         if len(filename) == 0:
             raise ValueError("The config `params_filename` is empty string.")
@@ -392,13 +835,22 @@ class _SaveLoadConfig:
             return
         if not isinstance(value, bool):
             raise TypeError(
-                "The config `keep_name_table` should be bool value, but received input's type is %s."
-                % type(value)
+                f"The config `keep_name_table` should be bool value, but received input's type is {type(value)}."
             )
         self._keep_name_table = value
 
 
-def _parse_save_configs(configs):
+class _SaveLoadOptions(TypedDict):
+    output_spec: NotRequired[Sequence[InputSpec]]
+    with_hook: NotRequired[bool]
+    combine_params: NotRequired[bool]
+    clip_extra: NotRequired[bool]
+    skip_forward: NotRequired[bool]
+    input_names_after_prune: NotRequired[list[str]]
+    skip_prune_program: NotRequired[bool]
+
+
+def _parse_save_configs(configs: _SaveLoadOptions):
     supported_configs = [
         "output_spec",
         "with_hook",
@@ -413,8 +865,7 @@ def _parse_save_configs(configs):
     for key in configs:
         if key not in supported_configs:
             raise ValueError(
-                "The additional config (%s) of `paddle.jit.save` is not supported."
-                % (key)
+                f"The additional config ({key}) of `paddle.jit.save` is not supported."
             )
 
     # construct inner config
@@ -439,8 +890,7 @@ def _parse_load_config(configs):
     for key in configs:
         if key not in supported_configs:
             raise ValueError(
-                "The additional config (%s) of `paddle.jit.load` is not supported."
-                % (key)
+                f"The additional config ({key}) of `paddle.jit.load` is not supported."
             )
 
     # construct inner config
@@ -554,7 +1004,7 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
             output_size = len(result_list)
             if len(output_spec) == output_size:
                 for var in output_spec:
-                    if not isinstance(var, paddle.pir.Value, int):
+                    if not isinstance(var, (paddle.pir.Value, int)):
                         warnings.warn(output_spec_is_not_value_error % var.name)
                     else:
                         if var not in ValueSet(result_list):
@@ -636,9 +1086,9 @@ def _build_load_path_and_config(path, config):
         )
     elif not prefix_format_exist and not directory_format_exist:
         raise ValueError(
-            "The ``path`` (%s) to load model not exists. "
+            f"The ``path`` ({path}) to load model not exists. "
             "Please make sure that *.pdmodel exists or "
-            "don't using ``skip_forward=True`` to jit.save." % path
+            "don't using ``skip_forward=True`` to jit.save."
         )
     else:
         if prefix_format_exist:
@@ -757,14 +1207,19 @@ def _remove_save_pre_hook(hook):
 
 
 @wrap_decorator
-def _run_save_pre_hooks(func):
-    def wrapper(layer, path, input_spec=None, **configs):
+def _run_save_pre_hooks(func: _F) -> _F:
+    def wrapper(
+        layer: Layer | Callable[..., Any],
+        path: str,
+        input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
+        **configs: Unpack[_SaveLoadOptions],
+    ) -> None:
         global _save_pre_hooks
         for hook in _save_pre_hooks:
             hook(layer, input_spec, configs)
         func(layer, path, input_spec, **configs)
 
-    return wrapper
+    return wrapper  # type: ignore
 
 
 def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
@@ -802,7 +1257,12 @@ def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
 
 @_run_save_pre_hooks
 @switch_to_static_graph
-def save(layer, path, input_spec=None, **configs):
+def save(
+    layer: Layer | Callable[..., Any],
+    path: str,
+    input_spec: Sequence[InputSpec | paddle.Tensor | object] | None = None,
+    **configs: Unpack[_SaveLoadOptions],
+) -> None:
     """
     Saves input Layer or function as ``paddle.jit.TranslatedLayer``
     format model, which can be used for inference or fine-tuning after loading.
@@ -954,8 +1414,7 @@ def save(layer, path, input_spec=None, **configs):
         isinstance(layer, (Layer, StaticFunction)) or inspect.isfunction(layer)
     ):
         raise TypeError(
-            "The input of paddle.jit.save should be 'Layer' or 'Function', but received input type is %s."
-            % type(layer)
+            f"The input of paddle.jit.save should be 'Layer' or 'Function', but received input type is {type(layer)}."
         )
     elif inspect.isfunction(layer) or isinstance(layer, StaticFunction):
         warnings.warn(
@@ -996,14 +1455,12 @@ def save(layer, path, input_spec=None, **configs):
                     and 'forward' != attr_func
                 ):
                     raise ValueError(
-                        "If there are static functions other than 'forward' that need to be saved, the input 'input_spec' should be None, but received the type of 'input_spec' is %s."
-                        % type(input_spec)
+                        f"If there are static functions other than 'forward' that need to be saved, the input 'input_spec' should be None, but received the type of 'input_spec' is {type(input_spec)}."
                     )
 
         if not isinstance(input_spec, (list, tuple)):
             raise TypeError(
-                "The input input_spec should be 'list', but received input_spec's type is %s."
-                % type(input_spec)
+                f"The input input_spec should be 'list', but received input_spec's type is {type(input_spec)}."
             )
         inner_input_spec = []
         for var in paddle.utils.flatten(input_spec):
@@ -1157,11 +1614,14 @@ def save(layer, path, input_spec=None, **configs):
         with dygraph.guard():
             if use_pir_api():
                 for tensor, value in zip(*concrete_program.parameters):
+                    if not value.persistable:
+                        continue
                     param_or_buffer_tensor = scope.var(value.name).get_tensor()
                     src_tensor = (
                         state_var_dict[tensor.name].value().get_tensor()
                     )
                     param_or_buffer_tensor._share_data_with(src_tensor)
+
             else:
                 for param_or_buffer in concrete_program.parameters:
                     # share to scope
@@ -1369,7 +1829,9 @@ def save(layer, path, input_spec=None, **configs):
 
 
 @dygraph_only
-def load(path, **configs):
+def load(
+    path: str, **configs: Unpack[_SaveLoadOptions]
+) -> TranslatedLayer | PirTranslatedLayer:
     """
     :api_attr: imperative
 

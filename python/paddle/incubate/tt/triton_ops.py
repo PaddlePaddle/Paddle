@@ -59,7 +59,7 @@ def get_wint8_kernel_config():
                                     "BLOCK_SIZE_M": block_m,
                                     "BLOCK_SIZE_N": block_n,
                                     "BLOCK_SIZE_K": block_k,
-                                    "GROUP_SIZE_M": 1,
+                                    "GROUP_SIZE_M": 8,
                                 },
                                 num_stages=num_stages,
                                 num_warps=num_warps,
@@ -263,6 +263,107 @@ PD_BUILD_OP(${op_name})
 
 
 def weight_only_int8(x, qweight, scales, bias=None, bool_trans_w=True):
+    '''
+    Examples:
+
+    import os
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+
+    import paddle
+    from paddle.nn.quant import weight_quantize, weight_only_linear
+
+    M = 16
+    N = 4096
+    K = 4096*4
+
+    activation = paddle.randn((M, K), dtype=paddle.float16)
+    original_weight = paddle.randn((K, N), dtype=paddle.float16)
+    bias = paddle.rand((N,), dtype=paddle.float16) * 10
+    triton_scale = paddle.max(paddle.abs(original_weight), axis=0) / 127
+
+    perm_qweight, scale = weight_quantize(original_weight, algo="weight_only_int8")
+
+    assert paddle.max(triton_scale - scale) == 0
+
+    # 下面是paddle的cutlass代码
+    import datetime
+    for i in range(100):
+        paddle_cutlass_output = weight_only_linear(activation, perm_qweight, bias, scale)
+
+    paddle.device.synchronize()
+    starttime = datetime.datetime.now()
+    for i in range(100):
+        paddle_cutlass_output = weight_only_linear(activation, perm_qweight, bias, scale)
+    paddle.device.synchronize()
+    endtime = datetime.datetime.now()
+    duringtime = endtime - starttime
+    time_ms = duringtime.seconds * 1000 + duringtime.microseconds / 1000.0
+    print("paddle cutlass The whoel end to end time : ", time_ms, "ms")
+
+    # 下面是triton的计算代码
+    bool_trans_w_triton = False
+
+    triton_qweight = original_weight / triton_scale.reshape([1, N])
+    triton_qweight = paddle.round(triton_qweight)
+    triton_qweight = paddle.clip(triton_qweight, min=-127, max=127)
+    triton_qweight = triton_qweight.astype("int8")
+
+    if bool_trans_w_triton:
+        triton_qweight = triton_qweight.transpose([1,0]).contiguous()
+
+    assert activation.is_contiguous()
+    assert triton_qweight.is_contiguous()
+    assert scale.is_contiguous()
+    triton_uint_qweight = (triton_qweight.astype("int32") + 128).astype("uint8")
+
+    for i in range(100):
+        triton_output = paddle.incubate.tt.weight_only_int8(
+            activation,
+            triton_uint_qweight,
+            triton_scale,
+            bias, bool_trans_w=bool_trans_w_triton)
+
+    paddle.device.synchronize()
+
+    starttime = datetime.datetime.now()
+    for i in range(100):
+        triton_output = paddle.incubate.tt.weight_only_int8(
+            activation,
+            triton_uint_qweight,
+            triton_scale,
+            bias,
+            bool_trans_w = bool_trans_w_triton)
+    paddle.device.synchronize()
+    endtime = datetime.datetime.now()
+    duringtime = endtime - starttime
+    time_ms = duringtime.seconds * 1000 + duringtime.microseconds / 1000.0
+    print("triton The whoel end to end time : ", time_ms, "ms")
+
+    if bool_trans_w_triton:
+        triton_qweight = triton_qweight.transpose([1,0]).contiguous()
+
+    for i in range(100):
+        dequantized_weight = triton_qweight.astype("float16") * scale.reshape([1, N])
+        baseline = paddle.matmul(activation, dequantized_weight)
+        baseline += bias
+
+    paddle.device.synchronize()
+    starttime = datetime.datetime.now()
+
+    for i in range(100):
+        dequantized_weight = triton_qweight.astype("float16") * scale.reshape([1, N])
+        baseline = paddle.matmul(activation, dequantized_weight)
+        baseline += bias
+    paddle.device.synchronize()
+    endtime = datetime.datetime.now()
+    duringtime = endtime - starttime
+    time_ms = duringtime.seconds * 1000 + duringtime.microseconds / 1000.0
+    print("baseline The whoel end to end time : ", time_ms, "ms")
+
+    print("triton and baseline max diff", paddle.max(paddle.abs(triton_output - baseline)))
+    print("triton and cutlass max diff", paddle.max(paddle.abs(triton_output - paddle_cutlass_output)))
+    '''
+
     M, K = x.shape
     if bool_trans_w:
         N = qweight.shape[0]
@@ -877,6 +978,37 @@ PD_BUILD_OP(${op_name})
 
 
 def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
+    '''
+    Examples:
+
+    import os
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+    import paddle
+
+    def modulate(x, shift, scale):
+        return x * (1 + scale.unsqueeze(axis=1)) + shift.unsqueeze(axis=1)
+
+    batch = 2
+    seq = 3600
+    hidd = 4096
+    dtype= "float16"
+    x = paddle.rand([batch, seq, hidd], dtype=dtype)
+    weight = paddle.rand([hidd], dtype=dtype)
+    bias = paddle.rand([hidd], dtype=dtype)
+
+    shift_msa_x = paddle.rand([batch, hidd], dtype=dtype)
+    scale_msa_x = paddle.rand([batch, hidd], dtype=dtype)
+
+    for i in range(100):
+        mt_result = paddle.incubate.tt.adaptive_layer_norm(x, scale_msa_x, shift_msa_x, weight, bias)
+
+    for i in range(100):
+        baseline = modulate(paddle.nn.functional.layer_norm(x, [hidd], weight, bias, 1e-5), shift_msa_x, scale_msa_x)
+
+    print(paddle.max(paddle.abs(baseline-mt_result)))
+
+    '''
+
     assert (
         len(x.shape) == 3
     ), "x should be 3-dim [batch_size, seq_size, feature_dim]"
@@ -1138,6 +1270,34 @@ PD_BUILD_OP(${op_name})
 
 
 def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
+    '''
+    Examples:
+
+    import os
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+    import paddle
+
+    batch = 2
+    seq = 3600
+    num_heads = 1
+    head_dim = 64*30
+    dtype= "float16"
+    x = paddle.rand([batch, seq, num_heads, head_dim], dtype=dtype)
+    weight = paddle.rand([head_dim], dtype=dtype)
+    bias = paddle.rand([head_dim], dtype=dtype)
+
+    for i in range(100):
+        baseline = paddle.incubate.nn.functional.fused_rms_norm(x, weight, bias, 1e-5, begin_norm_axis=3)
+
+    for i in range(100):
+        mt_result = paddle.incubate.tt.rms_norm(x,weight,bias,1e-5)
+
+
+    baseline = baseline[0]
+    print(paddle.max(paddle.abs(baseline-mt_result)))
+
+    '''
+
     assert len(x.shape) == 4, "x should be 4-dim."
     if weight is not None:
         assert len(weight.shape) == 1, "weight should be 1-dim"
@@ -1153,7 +1313,8 @@ def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
     M = x.shape[0] * x.shape[1] * x.shape[2]
     N = x.shape[3]
     N_npo2 = triton.next_power_of_2(N)
-    BLOCK_SIZE_M = 4
+    BLOCK_SIZE_Ms = [1, 2, 4, 8]
+    num_warps_list = [1, 2, 4, 8]
 
     # if in_dynamic_or_pir_mode():
     #     y = paddle.empty_like(x)
@@ -1221,20 +1382,24 @@ def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
         # ahead of time compile command.
         aot_template = (
             f"""{python_path}   {compile_file} {py_script_file}   -n rms_norm_kernel -o {generated_dir}/{op_name}_kernel --out-name {op_name}_kernel  """
-            + """ -s "{address_hint} {value_hint} {BLOCK_SIZE_M}, {N_npo2}"   \
+            + """ -w {num_warps} -s "{address_hint} {value_hint} {BLOCK_SIZE_M}, {N_npo2}"   \
                              -g "(M+{BLOCK_SIZE_M}-1)/{BLOCK_SIZE_M}, 1, 1" \
                        """
         )
+        codegen_commands = []
+        for BLOCK_SIZE_M in BLOCK_SIZE_Ms:
+            for num_warps in num_warps_list:
+                codegen_command = aot_template.format(
+                    address_hint=address_hint,
+                    value_hint=value_hint,
+                    BLOCK_SIZE_M=BLOCK_SIZE_M,
+                    num_warps=num_warps,
+                    N_npo2=N_npo2,
+                )
+                print(codegen_command)
+                codegen_commands.append(codegen_command)
 
-        codegen_command = aot_template.format(
-            address_hint=address_hint,
-            value_hint=value_hint,
-            BLOCK_SIZE_M=BLOCK_SIZE_M,
-            N_npo2=N_npo2,
-        )
-        print(codegen_command)
-        re = os.system(codegen_command)
-        assert re == 0
+        multi_process_do(codegen_commands)
 
         link_command = f"{python_path}  {link_file}  {generated_dir}/*.h -o {generated_dir}/{op_name}_kernel"
         re = os.system(link_command)

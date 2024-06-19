@@ -185,7 +185,18 @@ static double GetDenseTensorEleSum(const Scope& scope,
   return std::numeric_limits<double>::quiet_NaN();
 }
 
-InstructionBase::InstructionBase(size_t id, const platform::Place& place) {
+InstructionBase::InstructionBase(size_t id, const platform::Place& place)
+    : next_instrs_in_different_thread_(),
+      next_instrs_in_same_thread_(),
+      events_to_wait_info_(),
+      events_to_wait_(),
+      gc_check_vars_(),
+      eager_gc_vars_(),
+      vec_inplace_in_to_out_(),
+      inplace_back_map_(),
+      input_index_(),
+      output_index_(),
+      no_need_buffer_values_() {
   id_ = id;
 
   is_artificial_ = false;

@@ -20,9 +20,7 @@
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
-namespace paddle {
-namespace framework {
-namespace details {
+namespace paddle::framework::details {
 
 FetchAsyncOpHandle::FetchAsyncOpHandle(ir::Node *node,
                                        FetchResultType *data,
@@ -306,6 +304,4 @@ bool FetchAsyncOpHandle::IsMultiDeviceTransfer() { return true; }
 
 std::string FetchAsyncOpHandle::Name() const { return "FetchAsync"; }
 
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::details

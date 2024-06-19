@@ -31,7 +31,6 @@ from .nn import (  # noqa: F401
     shuffle_batch,
     tdm_child,
     tdm_sampler,
-    inference,
 )
 
 __all__ = []

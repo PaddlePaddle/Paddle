@@ -51,6 +51,8 @@ OP_SAME_OPERANDS_AND_RESULT(Cast)
 OP_SAME_OPERANDS_AND_RESULT(Cast_)
 OP_SAME_OPERANDS_AND_RESULT(Ceil)
 OP_SAME_OPERANDS_AND_RESULT(Ceil_)
+OP_SAME_OPERANDS_AND_RESULT(Clip)
+OP_SAME_OPERANDS_AND_RESULT(Clip_)
 OP_SAME_OPERANDS_AND_RESULT(Conj)
 OP_SAME_OPERANDS_AND_RESULT(Cos)
 OP_SAME_OPERANDS_AND_RESULT(Cos_)
@@ -176,10 +178,6 @@ bool ScaleOpInferSymbolicShape(pir::Operation *op,
 
 }  // namespace paddle::dialect
 
-namespace cinn::dialect {
-using paddle::dialect::ReverseOpInferSymbolicShape;
-using paddle::dialect::ScaleOpInferSymbolicShape;
-using paddle::dialect::SelectOpInferSymbolicShape;
-}  // namespace cinn::dialect
+namespace cinn::dialect {}  // namespace cinn::dialect
 
 #undef OP_SAME_OPERANDS_AND_RESULT

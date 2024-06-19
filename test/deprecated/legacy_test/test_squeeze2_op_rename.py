@@ -15,7 +15,7 @@
 import os
 import unittest
 
-from test_attribute_var import UnittestBase
+from test_attribute_var_deprecated import UnittestBase
 
 import paddle
 from paddle.base.framework import Program, program_guard

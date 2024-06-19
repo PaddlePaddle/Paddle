@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/cinn/frontend/paddle_model_convertor.h"
-
 #include <glog/logging.h>
 
 #include <algorithm>
@@ -25,6 +24,7 @@
 #include "paddle/cinn/frontend/paddle/cpp/program_desc.h"
 #include "paddle/cinn/frontend/paddle/model_parser.h"
 #include "paddle/cinn/frontend/var_type_utils.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/symbol_bindings.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/common/enforce.h"
 
@@ -202,6 +202,8 @@ void SetOpDescAttr(const std::string& attr_name,
     VISITOR_EXPAND(std::vector<int64_t>)
     VISITOR_EXPAND(std::vector<double>)
 #undef VISITOR_EXPAND
+    void operator()(const std::vector<symbol::DimExpr>& v) {}
+    void operator()(const cinn::dialect::SymbolBindings& v) {}
 
    private:
     paddle::cpp::OpDesc* op_desc_;

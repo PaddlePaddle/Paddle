@@ -16,9 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/qkv_to_context_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/transformer_input_output_convert_plugin.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 class MultiheadMatMulOpConverter : public OpConverter {
  public:
@@ -199,7 +197,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           float dp_probs = 1.0 / 127.0;
           nvinfer1::DimsHW nv_ksize(1, 1);
           fc_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Convolution, *input, n, nv_ksize, weight, bias);
+              engine_, ConvolutionNd, *input, n, nv_ksize, weight, bias);
           fc_layer->setName(
               ("Multihead: Convolution/FullyConnected: (Output: " +
                output_name + ")")
@@ -567,10 +565,46 @@ class MultiheadMatMulOpConverter : public OpConverter {
               bias_data_tmp.data(), bias_data, bias_t->numel() * sizeof(float));
           transpose_bias_v2(
               bias_data_tmp.data(), bias_data, head_number, head_size);
-
+          nvinfer1::ITensor* input_shape_tensor = Shape(input);
+#if IS_TRT_VERSION_GE(8600)
+          // add matmul and elementwise layer
+          auto* fc_weight_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Constant, nvinfer1::Dims3(1, n, hidden_in), weight);
+          auto* fc_matmul_layer =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   MatrixMultiply,
+                                   *input,
+                                   nvinfer1::MatrixOperation::kNONE,
+                                   *fc_weight_layer->getOutput(0),
+                                   nvinfer1::MatrixOperation::kTRANSPOSE);
+          fc_matmul_layer->setName(
+              ("multihead_matmul_fc_matmul(Output: " + output_name + ")")
+                  .c_str());
+          auto* fc_bias_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Constant, nvinfer1::Dims3(1, 1, n), bias);
+          auto* fc_add_layer =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   ElementWise,
+                                   *fc_matmul_layer->getOutput(0),
+                                   *fc_bias_layer->getOutput(0),
+                                   nvinfer1::ElementWiseOperation::kSUM);
+          fc_add_layer->setName(
+              ("multihead_matmul_fc_add(Output: " + output_name + ")").c_str());
+          if (op_desc.HasAttr("Input_scale")) {
+            PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
+                              true,
+                              platform::errors::InvalidArgument(
+                                  "must have out threshold in multihead layers "
+                                  "in int8 mode"));
+            float out_scale =
+                PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
+            engine_->SetTensorDynamicRange(fc_add_layer->getOutput(0),
+                                           out_scale);
+          }
+          auto* fc_layer = fc_add_layer;
+#else
           // add shuffle for FullyConnected layer
           std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
-          nvinfer1::ITensor* input_shape_tensor = Shape(input);
           for (int i = 0; i < 5; i++) {
             reshape_before_fc_shape_tensor.push_back(Add1DConstantLayer(1));
           }
@@ -595,7 +629,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
             nvinfer1::DimsHW nv_ksize(1, 1);
             fc_layer =
                 TRT_ENGINE_ADD_LAYER(engine_,
-                                     Convolution,
+                                     ConvolutionNd,
                                      *reshape_before_fc_layer->getOutput(0),
                                      n,
                                      nv_ksize,
@@ -620,6 +654,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           }
           fc_layer->setName(
               ("multihead_matmul_fc(Output: " + output_name + ")").c_str());
+#endif
 
           // add shuffle for CustomQKVToContextPluginDynamic layer
           auto* reshape_after_fc_layer =
@@ -769,6 +804,56 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                       static_cast<void*>(bias_data),
                                       static_cast<size_t>(bias_t->numel())};
 
+#if IS_TRT_VERSION_GE(10000)
+          auto* fc_weight_layer =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   Constant,
+                                   nvinfer1::Dims3(1, n, hidden_in),
+                                   weight.get());
+          auto* fc_matmul_layer =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   MatrixMultiply,
+                                   *input,
+                                   nvinfer1::MatrixOperation::kNONE,
+                                   *fc_weight_layer->getOutput(0),
+                                   nvinfer1::MatrixOperation::kTRANSPOSE);
+          fc_matmul_layer->setName(
+              ("multihead_matmul_fc_matmul(Output: " + output_name + ")")
+                  .c_str());
+          auto* fc_bias_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Constant, nvinfer1::Dims3(1, 1, n), bias.get());
+          auto* fc_add_layer =
+              TRT_ENGINE_ADD_LAYER(engine_,
+                                   ElementWise,
+                                   *fc_matmul_layer->getOutput(0),
+                                   *fc_bias_layer->getOutput(0),
+                                   nvinfer1::ElementWiseOperation::kSUM);
+          fc_add_layer->setName(
+              ("multihead_matmul_fc_add(Output: " + output_name + ")").c_str());
+          if (op_desc.HasAttr("Input_scale")) {
+            PADDLE_ENFORCE_EQ(op_desc.HasAttr("fc_out_threshold"),
+                              true,
+                              platform::errors::InvalidArgument(
+                                  "must have out threshold in multihead layers "
+                                  "in int8 mode"));
+            float out_scale =
+                PADDLE_GET_CONST(float, op_desc.GetAttr("fc_out_threshold"));
+            engine_->SetTensorDynamicRange(fc_add_layer->getOutput(0),
+                                           out_scale);
+          }
+          auto* reshape_after_fc_layer = TRT_ENGINE_ADD_LAYER(
+              engine_, Shuffle, *fc_add_layer->getOutput(0));
+          nvinfer1::Dims reshape_after_fc_layer_dim{};
+          reshape_after_fc_layer_dim.nbDims = 5;
+          reshape_after_fc_layer_dim.d[3] = 1;
+          reshape_after_fc_layer_dim.d[4] = 1;
+          reshape_after_fc_layer->setReshapeDimensions(
+              reshape_after_fc_layer_dim);
+          reshape_after_fc_layer->setName(
+              ("shuffle_after_multihead_matmul(Output: " + output_name + ")")
+                  .c_str());
+          auto* fc_layer = reshape_after_fc_layer;
+#else
           // add shuffle before fc
           std::vector<nvinfer1::ITensor*> reshape_before_fc_shape_tensor;
           nvinfer1::ITensor* input_shape_tensor = Shape(input);
@@ -798,7 +883,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
             nvinfer1::DimsHW nv_ksize(1, 1);
             fc_layer =
                 TRT_ENGINE_ADD_LAYER(engine_,
-                                     Convolution,
+                                     ConvolutionNd,
                                      *reshape_before_fc_layer->getOutput(0),
                                      n,
                                      nv_ksize,
@@ -828,6 +913,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
               ("multihead_matmul_fc(Output: " + output_name + ")").c_str());
 
           // no need to add shuffle after fc, just change it in
+#endif
           // QkvToContextPluginDynamic
 
           // add qkv to context
@@ -872,8 +958,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(multihead_matmul, MultiheadMatMulOpConverter);

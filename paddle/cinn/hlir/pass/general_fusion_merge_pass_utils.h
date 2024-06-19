@@ -16,7 +16,7 @@
 
 #include "paddle/cinn/api/op_group.h"
 #include "paddle/cinn/hlir/pass/fusion_merge_pass_util.h"
-
+#include "paddle/common/enforce.h"
 namespace cinn {
 namespace hlir {
 namespace pass {
@@ -135,7 +135,10 @@ inline bool WithoutLastDimInReduce(const api::Shape& inshape,
 
 static int GetSharedSize(const api::OpNode& op_node) {
   const auto& producers = op_node.inputs();
-  CHECK_GT(producers.size(), 0);
+  PADDLE_ENFORCE_GT(producers.size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The producer size should be greater than 0."));
   const auto& inshape = producers[0].shape();
   const auto& axes = op_node.GetAttr<std::vector<int>>("dim");
   if (WithoutLastDimInReduce(inshape, axes)) {

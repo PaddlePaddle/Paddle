@@ -14,11 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
-constexpr char kLRDecayBlockId[] = "lr_decay_block_id";
-constexpr char kCheckpointBlockId[] = "checkpint_block_id";
-constexpr char kPrefetchVarNameToBlockId[] = "prefetch_var_name_to_block_id";
-constexpr char kOptimizeBlocks[] = "optimize_blocks";
-constexpr char kSparseGradToParam[] = "sparse_grad_to_param";
+constexpr char kLRDecayBlockId[] = "lr_decay_block_id";      // NOLINT
+constexpr char kCheckpointBlockId[] = "checkpint_block_id";  // NOLINT
+constexpr char kPrefetchVarNameToBlockId[] =
+    "prefetch_var_name_to_block_id";                           // NOLINT
+constexpr char kOptimizeBlocks[] = "optimize_blocks";          // NOLINT
+constexpr char kSparseGradToParam[] = "sparse_grad_to_param";  // NOLINT
 
 namespace paddle {
 namespace framework {

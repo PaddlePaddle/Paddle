@@ -17,8 +17,7 @@ limitations under the License. */
 #include <google/protobuf/text_format.h>
 #include "paddle/fluid/framework/block_desc.h"
 
-namespace paddle {
-namespace framework {
+namespace paddle::framework {
 
 template <typename Container, typename Visitor>
 inline void VisitAllElements(Container &&container,
@@ -153,9 +152,9 @@ void ProgramProcessor::AddDepToBlockOp(const BlockDesc &block) {
       auto *op_inputs = op->MutableInputs();
       std::vector<std::string> *op_input_var_vec = nullptr;
       VLOG(3) << "op_type:>>>>>>" << op_type;
-      if (op_type.compare("while") == 0) {
+      if (op_type == "while") {
         op_input_var_vec = &((*op_inputs)["kX"]);
-      } else if (op_type.compare("conditional_block") == 0) {
+      } else if (op_type == "conditional_block") {
         op_input_var_vec = &((*op_inputs)["kInputs"]);
       } else {
         // Only support while_op and conditional_block_op now
@@ -210,10 +209,8 @@ void DumpProgramDescFile(const std::string &name, const ProgramDesc &program) {
       reinterpret_cast<const ::google::protobuf::Message *>(new_prog->Proto());
   printer.PrintToString(*message, &print_str);
 
-  char filename[512] = {0};
-  snprintf(filename, sizeof(filename), "./%s_%lu.proto", name.c_str(), time(0));
-  WriteToFile(filename, print_str);
+  std::string filename = "./" + name + "_" + std::to_string(time(0)) + ".proto";
+  WriteToFile(filename.c_str(), print_str);
 }
 
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework

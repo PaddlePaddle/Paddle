@@ -14,9 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 template <typename RegistFunc, typename SetDilationFunc>
 void ConvertConv3d(TensorRTEngine* engine,
@@ -192,9 +190,7 @@ class Deconv3dOpConverter : public OpConverter {
   }
 };
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt
 
 REGISTER_TRT_OP_CONVERTER(conv3d, Conv3dOpConverter);
 REGISTER_TRT_OP_CONVERTER(conv3d_transpose, Deconv3dOpConverter);

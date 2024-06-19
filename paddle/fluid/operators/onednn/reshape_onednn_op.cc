@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/flatten_op.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/kernels/funcs/flatten2_utils.h"
 
 namespace {
 enum class ReshapeKernelOpName {
@@ -217,8 +217,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<phi::DenseTensor>("X");
     x_dims = x->dims();
     auto axes = ctx.Attr<int>("axis");
-    out_dims = common::make_ddim(
-        Flatten2Kernel<phi::CPUContext, float>::GetOutputShape(axes, x_dims));
+    out_dims = common::make_ddim(phi::funcs::GetOutputShape(axes, x_dims));
   }
 
  protected:

@@ -22,8 +22,10 @@ os.environ['FLAGS_prim_forward_blacklist'] = 'pd_op.embedding'
 import numpy as np
 
 import paddle
+from paddle.decomposition import decomp
 
 sys.path.append(dirname(dirname(__file__)))
+sys.path.append("../")
 
 import llama_test_model
 import utils
@@ -74,7 +76,7 @@ class TestLlamaModel(unittest.TestCase):
         utils.check_jit_kernel_number(static_fn, 1)
         utils.check_jit_kernel_structure(static_fn, {utils.JIT_KERNEL_NAME: 1})
 
-    def test_static(self):
+    def run_static(self, mode=None):
         paddle.seed(2024)
         net = llama_test_model.LlamaModel(self.config)
 
@@ -95,16 +97,38 @@ class TestLlamaModel(unittest.TestCase):
 
         place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
+        main_program = paddle.pir.core.default_main_program()
+        if mode == "prim":
+            with decomp.prim_guard():
+                decomp.decompose_dist_program(main_program)
+
         exe.run(paddle.static.default_startup_program())
 
-        out = exe.run(
+        res = exe.run(
             feed={
                 "input_id": self.input_ids,
                 "pos_id": self.position_ids,
                 "att_mask": self.attention_mask,
             },
-            fetch_list=[out],
+            fetch_list=[loss, out],
         )
+        ops = {op.name() for op in main_program.global_block().ops}
+        ops = list(ops)
+        assert "pd_op.sum" in ops
+        assert "pd_op.sum_grad" not in ops
+        return res[0], np.abs(res[1]).mean()
+
+    def test_static(self):
+        ref = [90.609924, 0.16003144]
+        prim_res = self.run_static(mode="prim")
+        for i in range(len(ref)):
+            np.testing.assert_allclose(
+                ref[i],
+                prim_res[i],
+                rtol=1e-05,
+                atol=1e-05,
+                err_msg=f"***** {i}th value check failed ******",
+            )
 
 
 if __name__ == '__main__':

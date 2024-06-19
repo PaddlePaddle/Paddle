@@ -26,6 +26,7 @@ namespace analysis {
 struct Record {
   std::vector<float> data;
   std::vector<int32_t> shape;
+  Record() : data(), shape() {}
 };
 
 Record ProcessALine(const std::string &line) {

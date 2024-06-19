@@ -45,9 +45,7 @@ PADDLE_DEFINE_EXPORTED_bool(enable_dependency_builder_debug_info,
                             false,
                             "Enable dependency builder debug info");
 
-namespace paddle {
-namespace framework {
-namespace interpreter {
+namespace paddle::framework::interpreter {
 
 size_t CountDownstreamMap(
     const std::map<size_t, std::set<size_t>>& downstream_map) {
@@ -74,7 +72,13 @@ const std::string StringizeDownstreamMap(
 }
 
 DependencyBuilder::DependencyBuilder()
-    : is_build_(false), instructions_(nullptr) {
+    : is_build_(false),
+      op_num_(0),
+      ops_before_(),
+      ops_behind_(),
+      op_downstream_map_(nullptr),
+      op_happens_before_(nullptr),
+      instructions_(nullptr) {
   op_downstream_map_ = std::make_shared<std::map<size_t, std::set<size_t>>>();
   op_happens_before_ = std::make_shared<std::vector<std::vector<bool>>>();
 }
@@ -136,6 +140,10 @@ DependencyBuilder::GetDependency() const {
 void DependencyBuilder::ShareDependencyFrom(const DependencyBuilder& src) {
   std::tie(op_downstream_map_, op_happens_before_) = src.GetDependency();
   is_build_ = true;
+}
+
+const std::string& DependencyBuilder::GetInstructionName(size_t op_idx) const {
+  return (*instructions_)[op_idx].OpBase()->Type();
 }
 
 const std::map<size_t, std::set<size_t>>& DependencyBuilder::OpDownstreamMap()
@@ -334,6 +342,13 @@ void DependencyBuilder::AddDependencyForReadOp() {
 void DependencyBuilder::AddDependencyForSequentialRun() {
   size_t dependence_op_idx = ULLONG_MAX;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+    if (this->GetInstructionName(op_idx) == "pd_op.full_int_array") {
+      VLOG(8) << "Skip adding dependency for sequential run: "
+              << dependence_op_idx << "->" << op_idx << " "
+              << this->GetInstructionName(dependence_op_idx) << "->"
+              << this->GetInstructionName(op_idx);
+      continue;
+    }
     if (dependence_op_idx != ULLONG_MAX) {
       AddDownstreamOp(dependence_op_idx, op_idx);
     }
@@ -559,10 +574,15 @@ void DependencyBuilder::UpdateVarMinRwOp(
 /// ======================== ///
 ///        For new ir        ///
 /// ======================== ///
-PirDependencyBuilder::PirDependencyBuilder() {
+PirDependencyBuilder::PirDependencyBuilder() : instructions_() {
   is_build_ = false;
   op_downstream_map_ = std::make_shared<std::map<size_t, std::set<size_t>>>();
   op_happens_before_ = std::make_shared<std::vector<std::vector<bool>>>();
+}
+
+const std::string& PirDependencyBuilder::GetInstructionName(
+    size_t op_idx) const {
+  return (instructions_)[op_idx]->Name();
 }
 
 void PirDependencyBuilder::AddDependencyForCommunicationOp() {
@@ -1460,6 +1480,4 @@ void DependencyBuilderSimplify::AddDownstreamOp(size_t prior_op_idx,
   }
 }
 
-}  // namespace interpreter
-}  // namespace framework
-}  // namespace paddle
+}  // namespace paddle::framework::interpreter
