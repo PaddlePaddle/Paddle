@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
@@ -30,6 +32,8 @@ from paddle.nn import (
 from paddle.nn.initializer import Uniform
 from paddle.utils.download import get_weights_path_from_url
 
+if TYPE_CHECKING:
+    from paddle import Tensor
 __all__ = []
 
 model_urls = {
@@ -67,7 +71,7 @@ class ConvLayer(nn.Layer):
             bias_attr=False,
         )
 
-    def forward(self, inputs: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, inputs: Tensor) -> Tensor:
         y = self._conv(inputs)
         return y
 
@@ -95,7 +99,7 @@ class Inception(nn.Layer):
 
         self._convprj = ConvLayer(input_channels, proj, 1)
 
-    def forward(self, inputs: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, inputs: Tensor) -> Tensor:
         conv1 = self._conv1(inputs)
 
         conv3r = self._conv3r(inputs)
@@ -189,7 +193,7 @@ class GoogLeNet(nn.Layer):
             self._drop_o2 = Dropout(p=0.7, mode="downscale_in_infer")
             self._out2 = Linear(1024, num_classes, weight_attr=xavier(1024, 1))
 
-    def forward(self, inputs: paddle.Tensor) -> list[paddle.Tensor]:
+    def forward(self, inputs: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         x = self._conv(inputs)
         x = self._pool(x)
         x = self._conv_1(x)
@@ -235,7 +239,7 @@ class GoogLeNet(nn.Layer):
             out2 = self._drop_o2(out2)
             out2 = self._out2(out2)
 
-        return [out, out1, out2]
+        return out, out1, out2
 
 
 def googlenet(pretrained: bool = False, **kwargs) -> GoogLeNet:
