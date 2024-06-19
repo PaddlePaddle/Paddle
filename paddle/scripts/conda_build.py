@@ -90,63 +90,8 @@ def gen_build_scripts(name, cuda_major_version, paddle_version, only_download=No
     sysstr = platform.system()
     if sysstr == "Linux":
         build_filename = "build.sh"
-        PADDLE_CUDA_INSTALL_REQUIREMENTS = {
-            "cuda11.8": (
-                "nvidia-cuda-runtime-cu11==11.8.89 | "
-                "nvidia-cuda-cupti-cu11==11.8.87 | "
-                "nvidia-cudnn-cu11==8.7.0.84 | "
-                "nvidia-cublas-cu11==11.11.3.6 | "
-                "nvidia-cufft-cu11==10.9.0.58 | "
-                "nvidia-curand-cu11==10.3.0.86 | "
-                "nvidia-cusolver-cu11==11.4.1.48 | "
-                "nvidia-cusparse-cu11==11.7.5.86 | "
-                "nvidia-nccl-cu11==2.19.3 | "
-                "nvidia-nvtx-cu11==11.8.86 | "
-                "nvidia-cuda-nvrtc-cu11==11.8.89"
-            ),
-            "cuda12.3": (
-                "nvidia-cuda-runtime-cu12==12.3.101 | "
-                "nvidia-cuda-cupti-cu12==12.3.101 | "
-                "nvidia-cudnn-cu12==9.0.0.312 | "
-                "nvidia-cublas-cu12==12.3.4.1 | "
-                "nvidia-cufft-cu12==11.2.1.3 | "
-                "nvidia-curand-cu12==10.3.5.147 | "
-                "nvidia-cusolver-cu12==11.6.1.9 | "
-                "nvidia-cusparse-cu12==12.3.1.170 | "
-                "nvidia-nccl-cu12==2.19.3 | "
-                "nvidia-nvtx-cu12==12.4.127 | "
-                "nvidia-cuda-nvrtc-cu12==12.3.107"
-            ),
-        }
     elif platform.system() == 'Windows':
         build_filename = "bld.bat"
-        PADDLE_CUDA_INSTALL_REQUIREMENTS = {
-            "cuda11.8": (
-                "nvidia-cuda-runtime-cu11==11.8.89 | "
-                "nvidia-cudnn-cu11==8.9.4.19 | "
-                "nvidia-cublas-cu11==11.11.3.6 | "
-                "nvidia-cufft-cu11==10.9.0.58 | "
-                "nvidia-curand-cu11==10.3.0.86 | "
-                "nvidia-cusolver-cu11==11.4.1.48 | "
-                "nvidia-cusparse-cu11==11.7.5.86 "
-            ),
-            "cuda12.3": (
-                "nvidia-cuda-runtime-cu12==12.3.101 | "
-                "nvidia-cudnn-cu12==9.0.0.312 | "
-                "nvidia-cublas-cu12==12.3.4.1 | "
-                "nvidia-cufft-cu12==11.2.1.3 | "
-                "nvidia-curand-cu12==10.3.5.147 | "
-                "nvidia-cusolver-cu12==11.6.1.9 | "
-                "nvidia-cusparse-cu12==12.3.1.170 "
-            ),
-        }
-    
-    if cuda_major_version in PADDLE_CUDA_INSTALL_REQUIREMENTS:
-        paddle_cuda_requires = PADDLE_CUDA_INSTALL_REQUIREMENTS[
-                cuda_major_version
-            ].split("|")
-    else:
-        paddle_cuda_requires = []
 
     if cuda_major_version == 'cuda11.8':
         index_url = "https://www.paddlepaddle.org.cn/packages/stable/cu118/"
@@ -160,15 +105,11 @@ def gen_build_scripts(name, cuda_major_version, paddle_version, only_download=No
         cur_package_path = os.path.join(package_path, cuda_major_version)
         os.makedirs(cur_package_path, exist_ok=True)
         os.chdir(cur_package_path)
-        # for item in paddle_cuda_requires:
-        #     os.system(f'pip download --no-deps {item} -i {index_url}')
         os.system(f'pip download {name}=={paddle_version} --no-deps -i {index_url}')
         os.chdir(original_directory)
     else:
         cur_package_path = os.path.join(package_path, cuda_major_version)
         with open(build_filename, 'w') as f:
-            # for item in paddle_cuda_requires:
-            #     f.write(f"pip install {item} -f {cur_package_path}\n")
             f.write(f"pip install {name}=={paddle_version} -f {cur_package_path}\n")
 
 
@@ -208,7 +149,7 @@ def conda_build(paddle_version, var):
         for i in range(len(var.py_str)):
             packages_string = var.py_str[i] + "_cpu_windows"
             python_version = var.py_ver[var.py_str[i]]
-            template_full(name, paddle_version, packages_string, python_version)
+            template_full(name, paddle_version, packages_string, python_version, cuda_str)
             gen_build_scripts(name, 'cpu', paddle_version)
             os.system("conda build .")
 
@@ -218,7 +159,7 @@ def conda_build(paddle_version, var):
             for cuda_str in var.cuda_info:
                 packages_string = var.py_str[i] + "_gpu_" + cuda_str + "_windows"
                 python_version = var.py_ver[var.py_str[i]]
-                template_full(name, paddle_version, packages_string, python_version)
+                template_full(name, paddle_version, packages_string, python_version, cuda_str)
                 gen_build_scripts(name, cuda_str, paddle_version)
                 os.system("conda build .")   
     elif sysstr == "Darwin":
@@ -227,7 +168,7 @@ def conda_build(paddle_version, var):
         for i in range(len(var.py_str)):
             packages_string = var.py_str[i] + "_mac"
             python_version = var.py_ver[var.py_str[i]]
-            template_full(name, paddle_version, packages_string, python_version)
+            template_full(name, paddle_version, packages_string, python_version, cuda_str)
             gen_build_scripts(name, 'cpu', paddle_version)
             os.system("conda build .")
 
