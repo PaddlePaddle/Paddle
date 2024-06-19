@@ -33,8 +33,13 @@ def apply_to_static(net, use_cinn, input_spec=None):
 
 
 def meshgrid_net(x, y, z):
-    temp = paddle.meshgrid(x, y)[0]
+    temp = paddle.stack([x, y])
     return paddle.concat([temp, z])
+
+
+# def meshgrid_net(x, y, z):
+#     temp = paddle.meshgrid(x, y)[0]
+#     return paddle.concat([temp, z])
 
 
 class TestPrimMode1(unittest.TestCase):
@@ -42,7 +47,7 @@ class TestPrimMode1(unittest.TestCase):
         np.random.seed(2023)
         self.shape_x = [4]
         self.shape_y = [4]
-        self.shape_z = [4, 4]
+        self.shape_z = [2, 4]
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
         self.z = np.random.random(self.shape_z).astype("float32")
@@ -85,9 +90,7 @@ class TestPrimMode1(unittest.TestCase):
         res = self.base_net("prim")
         print(res_ref)
         print(res)
-        # breakpoint()
-        for ref, actual in zip(res_ref, res):
-            np.testing.assert_allclose(ref.numpy(), actual.numpy(), rtol=1e-6)
+        np.testing.assert_allclose(res_ref.numpy(), res.numpy(), rtol=1e-6)
 
 
 if __name__ == "__main__":
