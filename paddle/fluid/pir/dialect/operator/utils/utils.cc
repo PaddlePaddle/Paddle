@@ -450,25 +450,14 @@ void CheckDataTypeOrValue(const phi::DataType& dtype,
 std::vector<int64_t> ParseValueShape(const pir::Value& shape,
                                      bool* is_from_tensor) {
   std::vector<int64_t> vec_shape;
-  if (shape.isa<pir::OpResult>()) {
-    VLOG(0) << "shape's defining op *********** "
-            << shape.defining_op()->name();
-  }
-  VLOG(0) << "ParseValueShape in op ******************  0 is_from_tensor "
-          << *is_from_tensor;
   if (shape.isa<pir::OpResult>() &&
       shape.defining_op()->isa<paddle::dialect::FullIntArrayOp>()) {
-    VLOG(0) << "ParseValueShape in op ****************** 1 is_from_tensor "
-            << *is_from_tensor;
     vec_shape = paddle::dialect::GetInt64Vector(
         shape.defining_op()
             ->dyn_cast<paddle::dialect::FullIntArrayOp>()
             .attribute("value"));
   } else if (shape.isa<pir::OpResult>() &&
              shape.defining_op()->isa<paddle::dialect::FullOp>()) {
-    VLOG(0) << "ParseValueShape in op ****************** 2 is_from_tensor "
-            << *is_from_tensor;
-
     auto shape_item = shape.defining_op()
                           ->dyn_cast<paddle::dialect::FullOp>()
                           .attribute("value")
@@ -477,9 +466,6 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
     vec_shape = {static_cast<int64_t>(shape_item)};
   } else if (shape.isa<pir::OpResult>() &&
              shape.defining_op()->isa<paddle::dialect::StackOp>()) {
-    VLOG(0) << "ParseValueShape in op ****************** 3 is_from_tensor "
-            << *is_from_tensor;
-
     std::vector<pir::Value> inputs =
         shape.defining_op()->operand_source(0).defining_op()->operands_source();
     for (auto item : inputs) {
@@ -489,21 +475,12 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
   } else if (shape.isa<pir::OpResult>() &&
              shape.defining_op()->isa<paddle::dialect::ShapeOp>() &&
              shape.type().isa<paddle::dialect::DenseTensorType>()) {
-    VLOG(0) << "ParseValueShape in op ****************** 4 is_from_tensor "
-            << *is_from_tensor;
-
     pir::Value inputs = shape.defining_op()->operand_source(0);
     vec_shape = common::vectorize(
         inputs.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
-    VLOG(0)
-        << " vector shape ========== "
-        << inputs.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
     *is_from_tensor = true;
   } else if (shape.isa<pir::OpResult>() &&
              shape.defining_op()->isa<paddle::dialect::ConcatOp>()) {
-    VLOG(0) << "ParseValueShape in op ****************** 5 is_from_tensor "
-            << *is_from_tensor;
-
     std::vector<pir::Value> inputs =
         shape.defining_op()->operand_source(0).defining_op()->operands_source();
     for (auto item : inputs) {
@@ -511,16 +488,10 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
       vec_shape.insert(vec_shape.end(), tmp.begin(), tmp.end());
     }
   } else if (shape.type().isa<pir::VectorType>()) {
-    VLOG(0) << "ParseValueShape in op ****************** 6 is_from_tensor "
-            << *is_from_tensor;
-
     size_t shape_size = shape.type().dyn_cast<pir::VectorType>().size();
     vec_shape = std::vector<int64_t>(shape_size, -1);
     *is_from_tensor = true;
   } else if (shape.type().isa<paddle::dialect::DenseTensorType>()) {
-    VLOG(0) << "ParseValueShape in op ****************** 7 is_from_tensor "
-            << *is_from_tensor;
-
     common::DDim shape_dim =
         shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
     size_t shape_size = common::product(shape_dim);

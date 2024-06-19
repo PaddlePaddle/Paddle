@@ -45,9 +45,9 @@ def meshgrid_net(x, y, z):
 class TestPrimMode1(unittest.TestCase):
     def setUp(self):
         np.random.seed(2023)
-        self.shape_x = [4]
-        self.shape_y = [4]
-        self.shape_z = [2, 4]
+        self.shape_x = [4098]
+        self.shape_y = [4098]
+        self.shape_z = [2, 4098]
         self.x = np.random.random(self.shape_x).astype("float32")
         self.y = np.random.random(self.shape_y).astype("float32")
         self.z = np.random.random(self.shape_z).astype("float32")
@@ -66,7 +66,7 @@ class TestPrimMode1(unittest.TestCase):
                 input_spec=[
                     InputSpec(shape=[None], dtype='float32'),
                     InputSpec(shape=[None], dtype='float32'),
-                    InputSpec(shape=[4, 4], dtype='float32'),
+                    InputSpec(shape=[4098, 4098], dtype='float32'),
                 ],
             )
             fn.eval()
