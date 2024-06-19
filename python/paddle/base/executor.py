@@ -1173,9 +1173,6 @@ class _ExecutorCache:
         if core._enable_dist_prim_all():
             with decomp.prim_guard():
                 decomp.decompose_dist_program(program)
-        from paddle.base.libpaddle.pir import dump_pir_py_code_if_need
-
-        dump_pir_py_code_if_need(program, "pir_original_programs.py")
         return program, new_exe, data_op_infos
 
 

@@ -571,8 +571,8 @@ inline const void UpdatePaddingAndDilation(
     }
 
   } else if (padding_algorithm == "VALID") {
-    for (auto it = paddings_wrap->begin(); it != paddings_wrap->end(); it++) {
-      *it = ExprWrapper(0, &expr_builder);
+    for (auto& val : *paddings_wrap) {
+      val = ExprWrapper(0, &expr_builder);
     }
   }
 }
@@ -608,8 +608,8 @@ nvinfer1::DimsExprs FusedConv2dAddActInferMeta(
     padding_algorithm =
         PADDLE_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
   if (padding_algorithm == "VALID") {
-    for (size_t i = 0; i < paddings.size(); i++) {
-      paddings[i] = 0;
+    for (auto& padding : paddings) {
+      padding = 0;
     }
   }
 
@@ -645,8 +645,8 @@ nvinfer1::DimsExprs FusedConv2dAddActInferMeta(
   }
 
   std::vector<ExprWrapper> paddings_wrap;
-  for (size_t i = 0; i < paddings.size(); ++i) {
-    paddings_wrap.emplace_back(paddings[i], &expr_builder);
+  for (const auto& padding : paddings) {
+    paddings_wrap.emplace_back(padding, &expr_builder);
   }
 
   UpdatePaddingAndDilation(&paddings_wrap,

@@ -13,8 +13,8 @@ endif()
 
 if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
-    test_fleet_fp16_allreduce_meta_optimizer MODULES
-    test_fleet_fp16_allreduce_meta_optimizer ENVS
+    test_fleet_fp16_allreduce_meta_optimizer_deprecated MODULES
+    test_fleet_fp16_allreduce_meta_optimizer_deprecated ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()
 
@@ -38,6 +38,7 @@ endif()
 
 if(LOCAL_ALL_ARCH AND (LINUX OR WIN32))
   py_test_modules(
-    test_fleet_meta_optimizer_base MODULES test_fleet_meta_optimizer_base ENVS
+    test_fleet_meta_optimizer_base_deprecated MODULES
+    test_fleet_meta_optimizer_base_deprecated ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
 endif()

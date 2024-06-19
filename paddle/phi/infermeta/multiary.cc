@@ -19,7 +19,7 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/common/layout.h"
-#include "paddle/phi/backends/device_memory_aligment.h"
+#include "paddle/phi/backends/device_memory_alignment.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -5841,6 +5841,34 @@ void FullWithTensorInferMeta(const IntArray& shape,
                              MetaTensor* out) {
   out->set_dims(common::make_ddim(shape.GetData()));
   out->set_dtype(dtype);
+}
+
+void TopPSamplingInferMeta(const MetaTensor& x,
+                           const MetaTensor& ps,
+                           const MetaTensor& threshold,
+                           const MetaTensor& topp_seed,
+                           int random_seed,
+                           int k,
+                           const std::string& mode,
+                           MetaTensor* out,
+                           MetaTensor* ids,
+                           MetaTensor* topk_scores,
+                           MetaTensor* topk_ids) {
+  auto x_dims = x.dims();
+  int bsz = x_dims[0];
+
+  PADDLE_ENFORCE(
+      mode == "truncated" || mode == "non-truncated",
+      errors::InvalidArgument("mode must be 'truncated' or 'non-truncated'."));
+
+  ids->set_dims(phi::make_ddim({bsz, 1}));
+  ids->set_dtype(DataType::INT64);
+  out->set_dims(phi::make_ddim({bsz, 1}));
+  out->set_dtype(x.dtype());
+  topk_ids->set_dims(phi::make_ddim({bsz, k}));
+  topk_ids->set_dtype(DataType::INT64);
+  topk_scores->set_dims(phi::make_ddim({bsz, k}));
+  topk_scores->set_dtype(x.dtype());
 }
 
 }  // namespace phi

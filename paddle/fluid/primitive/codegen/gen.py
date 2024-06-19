@@ -50,6 +50,7 @@ VJPS_BLACK_LIST = [
 ]
 
 BACKENDS_BLACK_LIST = [
+    'accuracy_check',
     'copy_to',
     'add_n_grad',
     "allclose",

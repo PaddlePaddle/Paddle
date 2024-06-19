@@ -405,6 +405,16 @@
     func : matmul
   backward : matmul_grad
 
+- op : matmul_with_flatten
+  args : (Tensor x, Tensor y, int x_num_col_dims = 1, int y_num_col_dims = 1)
+  output : Tensor
+  infer_meta :
+    func : MatmulWithFlattenInferMeta
+  kernel :
+    func : matmul_with_flatten
+    data_type : x
+  backward : matmul_with_flatten_grad
+
 - op : matrix_rank
   args : (Tensor x, Tensor tol_tensor, float tol=0.0f, bool hermitian=false, bool use_default_tol=true)
   output : Tensor(out)
@@ -698,6 +708,17 @@
   kernel :
     func : swish
   backward : swish_grad
+
+- op : topk_v1
+  args : (Tensor x, Scalar(int) k = 1)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : TopkV1InferMeta
+  kernel :
+    func : topk_v1
+    data_type : x
+  backward : topk_v1_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : transfer_layout
   args: (Tensor x, int src_layout = -1, int dst_layout=-1)

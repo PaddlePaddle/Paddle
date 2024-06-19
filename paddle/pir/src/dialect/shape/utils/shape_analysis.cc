@@ -33,11 +33,44 @@ static std::string GetValueId(Value val) {
 
 void InferSymbolicShapeContext::Init() {
   value_id_to_shape_or_data_.clear();
-  next_sym_idx_ = 0;
+  next_sym_idx_ = sym_idx_begin_;
   constraints_manager_.SetEqualCallbackFunc(
       [&](const symbol::DimExpr& lhs, const symbol::DimExpr& rhs) {
         return SubstituteDimExpr(lhs, rhs);
       });
+}
+
+void InferSymbolicShapeContext::RegisterSymbolConstraintFromContext(
+    const InferSymbolicShapeContext& other) {
+  PADDLE_ENFORCE_EQ(
+      next_sym_idx_,
+      0,
+      common::errors::PreconditionNotMet("next_sym_idx_ should be 0 when init "
+                                         "symbol constraint, but now get %d",
+                                         next_sym_idx_));
+  PADDLE_ENFORCE_EQ(value_id_to_shape_or_data_.size(),
+                    0,
+                    common::errors::PreconditionNotMet(
+                        "value_id_to_shape_or_data_ should be empty when init "
+                        "symbol constraint, but now get %d",
+                        value_id_to_shape_or_data_.size()));
+  sym_idx_begin_ = other.next_sym_idx_;
+  next_sym_idx_ = sym_idx_begin_;
+  // init equal constraints
+  for (const auto& kv : other.constraints_manager_.equals().GetMap()) {
+    constraints_manager_.AddEqCstr(kv.first, kv.second);
+  }
+  // init broadcastable constraints
+  for (const auto& bc_item : other.constraints_manager_.broadcastables()) {
+    constraints_manager_.AddBroadcastableCstr(bc_item.data->lhs,
+                                              bc_item.data->rhs);
+  }
+  // init gtone constraints
+  for (const auto& gt_one : other.constraints_manager_.gtones()) {
+    constraints_manager_.AddGTOneCstr(gt_one);
+  }
+
+  substitution_pattern_ = other.substitution_pattern_;
 }
 
 const std::string InferSymbolicShapeContext::GetNextSymName() {
@@ -100,13 +133,12 @@ void InferSymbolicShapeContext::SetSymbolForValueByStaticShape(Value val) {
     const std::vector<Type>& vec_data =
         value_type.dyn_cast<VectorType>().data();
     symbol::TensorListShapeOrDataDimExprs shape_data_list;
-    for (unsigned i = 0; i < vec_data.size(); ++i) {
-      if (!vec_data[i].isa<DenseTensorType>()) {
+    for (const auto& vec : vec_data) {
+      if (!vec.isa<DenseTensorType>()) {
         PADDLE_THROW(phi::errors::Fatal(
             "Set static shape ONLY SUPPORT inner type DenseTensorType!"));
       } else {
-        const DenseTensorType& type_info =
-            vec_data[i].dyn_cast<DenseTensorType>();
+        const DenseTensorType& type_info = vec.dyn_cast<DenseTensorType>();
         shape_data_list.emplace_back(
             GetStaticShapeForDenseTensorType(type_info));
       }
@@ -259,18 +291,16 @@ void InferSymbolicShapeContext::SubstituteDimExpr(
   if (!CanSubstituteInShapeAnalysis(origin, substituted)) return;
 
   substitution_pattern_[origin] = substituted;
-  for (auto it = substitution_pattern_.begin();
-       it != substitution_pattern_.end();
-       it++) {
-    if (it->second == origin) it->second = substituted;
+  for (auto& val : substitution_pattern_) {
+    if (val.second == origin) {
+      val.second = substituted;
+    }
   }
 
-  for (auto it = value_id_to_shape_or_data_.begin();
-       it != value_id_to_shape_or_data_.end();
-       it++) {
+  for (auto& val : value_id_to_shape_or_data_) {
     const symbol::ShapeOrDataDimExprs& substituted_shape_or_data =
-        symbol::SubstituteShapeOrData(it->second, substitution_pattern_);
-    it->second = substituted_shape_or_data;
+        symbol::SubstituteShapeOrData(val.second, substitution_pattern_);
+    val.second = substituted_shape_or_data;
   }
 }
 
@@ -285,6 +315,11 @@ void InferSymbolicShapeContext::PrintShapeOrDatas() const {
 }
 
 void ShapeConstraintIRAnalysis::Init() { context_.Init(); }
+
+void ShapeConstraintIRAnalysis::RegisterSymbolConstraintFromShapeAnalysis(
+    const ShapeConstraintIRAnalysis& other) {
+  context_.RegisterSymbolConstraintFromContext(other.context_);
+}
 
 const std::string ShapeConstraintIRAnalysis::GetNextSymName() {
   return context_.GetNextSymName();
@@ -646,13 +681,13 @@ bool IsStaticShape(const Value& value) {
   if (value_type.isa<VectorType>()) {
     bool is_static = true;
     auto vec_data = value_type.dyn_cast<VectorType>().data();
-    for (unsigned i = 0; i < vec_data.size(); ++i) {
-      if (!vec_data[i].isa<DenseTensorType>()) {
+    for (const auto& vec : vec_data) {
+      if (!vec.isa<DenseTensorType>()) {
         is_static = false;
         break;
       } else {
         is_static = !::common::contain_unknown_dim(
-            vec_data[i].dyn_cast<DenseTensorType>().dims());
+            vec.dyn_cast<DenseTensorType>().dims());
         if (!is_static) {
           break;
         }

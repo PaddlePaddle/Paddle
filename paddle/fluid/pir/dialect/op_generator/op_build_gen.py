@@ -819,12 +819,12 @@ def gen_build_func_str(
         op_non_mutable_attribute_name_list,
         op_non_mutable_attribute_type_list,
     )
-
+    str_is_forward_only = "true" if op_info.is_forward_only else "false"
     build_outputs_str = f"""
   std::vector<pir::Type> argument_outputs = {op_info.class_name}::InferMeta(argument_inputs, &argument_attributes);
   argument.AddAttributes(argument_attributes);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
-  ::pir::PassStopGradientsDefaultly(argument);"""
+  ::pir::PassStopGradientsDefaultly(argument, {str_is_forward_only});"""
 
     GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
   PADDLE_ENFORCE_NE(

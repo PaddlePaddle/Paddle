@@ -298,7 +298,6 @@ try:
         _get_phi_kernel_name,
         _get_registered_phi_kernels,
         _get_use_default_grad_op_desc_maker_ops,
-        _is_compiled_with_gpu_graph,
         _is_compiled_with_heterps,
         _is_dygraph_debug_enabled,
         _is_program_version_supported,
@@ -308,7 +307,6 @@ try:
         _RecordEvent,
         _Scope,
         _set_amp_op_list,
-        _set_cached_executor_build_strategy,
         _set_current_stream,
         _set_eager_deletion_mode,
         _set_fuse_parameter_group_size,
@@ -362,9 +360,6 @@ try:
             _set_process_signal_handler,
             _throw_error_if_process_failed,
         )
-
-    # CINN
-    from .libpaddle import is_run_with_cinn  # noqa: F401
 
 except Exception as e:
     if has_paddle_dy_lib:

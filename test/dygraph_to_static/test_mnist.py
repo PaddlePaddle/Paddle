@@ -283,16 +283,16 @@ class TestMNISTWithToStatic(TestMNIST):
             np.testing.assert_allclose(
                 gt_out.numpy(), dygraph_infer_out, rtol=1e-05
             )
-            if not use_pir_api():
-                # load in Paddle-Inference
-                predictor_infer_out = (
-                    self.predictor_load_and_run_inference_analysis(
-                        model_save_dir, model_filename, params_filename, inputs
-                    )
+
+            # load in Paddle-Inference
+            predictor_infer_out = (
+                self.predictor_load_and_run_inference_analysis(
+                    model_save_dir, model_filename, params_filename, inputs
                 )
-                np.testing.assert_allclose(
-                    gt_out.numpy(), predictor_infer_out, rtol=1e-05
-                )
+            )
+            np.testing.assert_allclose(
+                gt_out.numpy(), predictor_infer_out, rtol=1e-05
+            )
 
     def jit_load_and_run_inference_static(
         self, model_path, model_filename, params_filename, inputs

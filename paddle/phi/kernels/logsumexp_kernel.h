@@ -22,7 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void LogsumexpKernel(const Context& ctx,
                      const DenseTensor& x,
-                     const std::vector<int64_t>& axis,
+                     const std::vector<int>& axis,
                      bool keepdim,
                      bool reduce_all,
                      DenseTensor* out);

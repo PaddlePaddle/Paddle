@@ -257,8 +257,8 @@ SpmdInfo SliceGradInferBase(const DistMetaTensor& input,
         [output_axis_to_input_axis_mapping[i]] = i;
   }
   std::vector<int64_t> mapped_axes;
-  for (size_t i = 0; i < axes.size(); ++i) {
-    int axis = axes[i] < 0 ? axes[i] + input_ndim : axes[i];
+  for (const auto& axe : axes) {
+    int axis = axe < 0 ? axe + input_ndim : axe;
     if (reverse_output_axis_to_input_axis_mapping.count(axis) > 0) {
       mapped_axes.push_back(reverse_output_axis_to_input_axis_mapping[axis]);
     }
