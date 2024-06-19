@@ -20,7 +20,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Callable, Sequence
 
 import numpy as np
-from typing_extensions import NotRequired, TypedDict
 
 import paddle
 import paddle.autograd as imperative_base
@@ -50,18 +49,18 @@ from ..base.framework import Parameter
 from ..base.layer_helper import LayerHelper, LayerHelperBase
 from .lr import LRScheduler
 
-
-class _ParameterConfig(TypedDict):
-    params: Sequence[Tensor]
-    weight_decay: NotRequired[float | WeightDecayRegularizer | None]
-    learning_rate: NotRequired[float | Tensor | LRScheduler | None]
-
-
 if TYPE_CHECKING:
+    from typing_extensions import NotRequired, TypedDict
+
     from paddle import Tensor
     from paddle.nn.clip import GradientClipBase
 
     from ..base.framework import Operator, Program
+
+    class _ParameterConfig(TypedDict):
+        params: Sequence[Tensor]
+        weight_decay: NotRequired[float | WeightDecayRegularizer | None]
+        learning_rate: NotRequired[float | Tensor | LRScheduler | None]
 
 
 __all__ = []
