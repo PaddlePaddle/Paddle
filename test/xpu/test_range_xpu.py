@@ -10,7 +10,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-# limitations under the License.
+# limitations under the License.z
 
 import unittest
 
@@ -82,6 +82,10 @@ class XPUTestRangeOp(XPUOpTestWrapper):
     class TestRangeOpCase4(TestRangeOp):
         def init_config(self):
             self.case = (10, -10, -11)
+
+    class TestRangeOpCase5(TestRangeOp):
+        def init_config(self):
+            self.case = (0, 1, 1)
 
 
 support_types = get_xpu_op_support_types("range")
