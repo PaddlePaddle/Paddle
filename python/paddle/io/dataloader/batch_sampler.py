@@ -271,50 +271,63 @@ class DistributedBatchSampler(BatchSampler):
 
     def __iter__(self):
         num_samples = len(self.dataset)
-        indices = np.arange(num_samples).tolist()
-        # add extra samples to make it evenly divisible
-        padding_size = self.total_size - len(indices)
-        if padding_size <= len(indices):
-            indices += indices[:padding_size]
-        else:
-            indices += (indices * math.ceil(padding_size / len(indices)))[
-                :padding_size
-            ]
+        # Note: python garbage collection of long list is inefficiency, so we implement indices by numpy array
+        indices = np.zeros([self.total_size], dtype='int64')
+        indices[:num_samples] = np.arange(num_samples)
+        padding_size = self.total_size - num_samples
+        if padding_size > 0:
+            if padding_size <= num_samples:
+                indices[num_samples : self.total_size] = np.arange(padding_size)
+            else:
+                indices[num_samples : self.total_size] = np.tile(
+                    indices[:num_samples], math.ceil(padding_size / num_samples)
+                )[:padding_size]
 
-        assert len(indices) == self.total_size
+        assert indices.shape[0] == self.total_size
         if self.shuffle:
             np.random.RandomState(self.epoch).shuffle(indices)
             self.epoch += 1
 
         # subsample
         def _get_indices_by_batch_size(indices):
-            subsampled_indices = []
             last_batch_size = self.total_size % (self.batch_size * self.nranks)
             assert last_batch_size % self.nranks == 0
             last_local_batch_size = last_batch_size // self.nranks
-
-            for i in range(
-                self.local_rank * self.batch_size,
-                len(indices) - last_batch_size,
-                self.batch_size * self.nranks,
-            ):
-                subsampled_indices.extend(indices[i : i + self.batch_size])
-
-            indices = indices[len(indices) - last_batch_size :]
-            subsampled_indices.extend(
-                indices[
-                    self.local_rank
-                    * last_local_batch_size : (self.local_rank + 1)
-                    * last_local_batch_size
-                ]
+            num_subsamples = (
+                self.total_size
+                // (self.batch_size * self.nranks)
+                * self.batch_size
+                + last_local_batch_size
             )
+            subsampled_indices = np.zeros([num_subsamples], dtype='int64')
+
+            for idx, i in enumerate(
+                range(
+                    self.local_rank * self.batch_size,
+                    indices.shape[0] - last_batch_size,
+                    self.batch_size * self.nranks,
+                )
+            ):
+                subsampled_indices[
+                    idx * self.batch_size : (idx + 1) * self.batch_size
+                ] = indices[i : i + self.batch_size]
+
+            if last_local_batch_size > 0:
+                subsampled_indices[-last_local_batch_size:] = indices[
+                    indices.shape[0]
+                    - last_batch_size
+                    + self.local_rank * last_local_batch_size : indices.shape[0]
+                    - last_batch_size
+                    + (self.local_rank + 1) * last_local_batch_size
+                ]
+
             return subsampled_indices
 
         if self.nranks > 1:
             indices = _get_indices_by_batch_size(indices)
 
-        assert len(indices) == self.num_samples
-        _sample_iter = iter(indices)
+        assert indices.shape[0] == self.num_samples
+        _sample_iter = indices
 
         batch_indices = []
         for idx in _sample_iter:
