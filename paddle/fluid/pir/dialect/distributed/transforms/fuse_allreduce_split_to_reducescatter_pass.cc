@@ -22,7 +22,8 @@
 #include "paddle/pir/include/pass/pass_registry.h"
 
 namespace {
-// c_allreduce_sum_+assign+full+split_with_num+builtin_slice -> c_reducescatter
+// matmul+c_allreduce_sum_+assign+full+split_with_num+builtin_slice ->
+// c_reducescatter
 class FusedAllReduceSplitPattern1 : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "FusedAllReduceSplitPattern1"; }
@@ -30,6 +31,9 @@ class FusedAllReduceSplitPattern1 : public paddle::drr::DrrPatternBase {
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
 
+    const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
+                                {{"transpose_x", pat.Attr("trans_x")},
+                                 {"transpose_y", pat.Attr("trans_y")}});
     const auto &c_allreduce_sum_ =
         pat.Op(paddle::dialect::CAllreduceSum_Op::name(),
                {{"ring_id", pat.Attr("ring_id")},
@@ -45,6 +49,8 @@ class FusedAllReduceSplitPattern1 : public paddle::drr::DrrPatternBase {
     const auto &builtin_slice =
         pat.Op(pir::SliceOp::name(), {{"index", pat.Attr("index")}});
 
+    pat.Tensor("input_grad_partial") =
+        matmul(pat.Tensor("out_grad"), pat.Tensor("weight"));
     pat.Tensor("input_grad") =
         c_allreduce_sum_(pat.Tensor("input_grad_partial"));
     pat.Tensor("input_grad_tmp") = assign(pat.Tensor("input_grad"));
@@ -54,6 +60,8 @@ class FusedAllReduceSplitPattern1 : public paddle::drr::DrrPatternBase {
     pat.Tensor("out") = builtin_slice(pat.Tensor("input_grad_group"));
 
     pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
+      const auto &x_trans = match_ctx.Attr<bool>("trans_x");
+      const auto &y_trans = match_ctx.Attr<bool>("trans_y");
       auto input_grad_partial_count =
           match_ctx.Tensor("input_grad_partial").use_count();
       auto input_grad_count = match_ctx.Tensor("input_grad").use_count();
@@ -61,7 +69,8 @@ class FusedAllReduceSplitPattern1 : public paddle::drr::DrrPatternBase {
           match_ctx.Tensor("input_grad_tmp").use_count();
       auto input_grad_group_count =
           match_ctx.Tensor("input_grad_group").use_count();
-      return (input_grad_partial_count == 1 && input_grad_count == 1 &&
+      return (x_trans == false && y_trans == true &&
+              input_grad_partial_count == 1 && input_grad_count == 1 &&
               input_grad_tmp_count == 1 && input_grad_group_count == 1);
     });
 
