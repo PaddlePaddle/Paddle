@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <glog/logging.h>
-#include <gtest/gtest.h>
+#pragma once
 
-#include "paddle/cinn/runtime/cinn_runtime.h"
-#include "paddle/cinn/utils/timer.h"
-#include "test/cpp/cinn/test03_convolution.h"
+#include <memory>
+#include "paddle/pir/include/core/dll_decl.h"
 
-TEST(test03, basic) {}
+namespace pir {
 
-// include the generated C source code:
-// @{
-#include "test/cpp/cinn/test03_convolution.cc"
-// @}
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateDeleteWeightDequantLinearOpPass();
+
+}  // namespace pir

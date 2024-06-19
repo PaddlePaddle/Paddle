@@ -313,10 +313,6 @@ if(PUBLISH_LIBS)
     COMMAND cmake -E copy ${CMAKE_BINARY_DIR}/libcinncore_static.a
             ${CMAKE_BINARY_DIR}/dist/cinn/lib/libcinncore_static.a
     COMMAND
-      cmake -E copy
-      ${CMAKE_BINARY_DIR}/paddle/cinn/frontend/paddle/libcinn_framework_proto.a
-      ${CMAKE_BINARY_DIR}/dist/cinn/lib/libcinn_framework_proto.a
-    COMMAND
       cmake -E copy ${CMAKE_BINARY_DIR}/paddle/cinn/hlir/pe/libparam_proto.a
       ${CMAKE_BINARY_DIR}/dist/cinn/lib/libparam_proto.a
     COMMAND
