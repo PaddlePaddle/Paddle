@@ -102,14 +102,14 @@ def shape(input: Tensor) -> Tensor:
             >>> exe = paddle.static.Executor(paddle.CPUPlace())
             >>> exe.run(paddle.static.default_startup_program())
 
-            >>> img = np.ones((3, 100, 100)).astype(np.float32)
+            >>> img = np.ones((3, 100, 100)).astype(np.float32) # type: ignore
 
             >>> res = exe.run(paddle.static.default_main_program(), feed={'x':img}, fetch_list=[output])
             >>> print(res)
             [array([  3, 100, 100], dtype=int32)]
     """
     if in_dynamic_or_pir_mode():
-        out = _C_ops.shape(input)
+        out = _C_ops.shape(input)  # type: ignore
         out.stop_gradient = True
         return out
     else:
