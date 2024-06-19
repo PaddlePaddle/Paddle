@@ -124,5 +124,4 @@
 	ignore = dirty
 [submodule "third_party/yaml-cpp"]
 	path = third_party/yaml-cpp
-	url = https://github.com/jbeder/yaml-cpp.git
-	ignore = dirty
+	url = https://github.com/jbeder/yaml-cpp
