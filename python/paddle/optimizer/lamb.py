@@ -126,9 +126,9 @@ class Lamb(Optimizer):
         self,
         learning_rate: float | Tensor = 0.001,
         lamb_weight_decay: float = 0.01,
-        beta1: float = 0.9,
-        beta2: float = 0.999,
-        epsilon: float = 1e-6,
+        beta1: float | Tensor = 0.9,
+        beta2: float | Tensor = 0.999,
+        epsilon: float | Tensor = 1e-6,
         parameters: Sequence[Tensor]
         | Sequence[_LambParameterConfig]
         | None = None,
