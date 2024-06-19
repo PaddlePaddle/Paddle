@@ -247,13 +247,13 @@ class GoogLeNet(nn.Layer):
         return out, out1, out2
 
 
-class GoogLeNetOptions(TypedDict):
+class _GoogLeNetOptions(TypedDict):
     num_classes: NotRequired[int]
     with_pool: NotRequired[bool]
 
 
 def googlenet(
-    pretrained: bool = False, **kwargs: Unpack[GoogLeNetOptions]
+    pretrained: bool = False, **kwargs: Unpack[_GoogLeNetOptions]
 ) -> GoogLeNet:
     """GoogLeNet (Inception v1) model architecture from
     `"Going Deeper with Convolutions" <https://arxiv.org/pdf/1409.4842.pdf>`_.
