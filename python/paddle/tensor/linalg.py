@@ -51,7 +51,7 @@ K_DEFAULT_DIM = 9
 
 
 def transpose(
-    x: Tensor, perm: list[int] | tuple[int, ...], name: str | None = None
+    x: Tensor, perm: Sequence[int], name: str | None = None
 ) -> Tensor:
     """
     Permute the data dimensions of `input` according to `perm`.
@@ -322,7 +322,7 @@ def matmul(
 def vector_norm(
     x: Tensor,
     p: float = 2.0,
-    axis: int | list[int] | tuple[int, ...] | None = None,
+    axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
 ) -> Tensor:
@@ -1961,7 +1961,7 @@ def t_(input, name=None):
 def cross(
     x: Tensor,
     y: Tensor,
-    axis: int | list[int] | tuple[int, ...] = 9,
+    axis: int = 9,
     name: str | None = None,
 ) -> Tensor:
     """
