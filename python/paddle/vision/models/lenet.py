@@ -46,7 +46,7 @@ class LeNet(nn.Layer):
             [1, 10]
     """
 
-    def __init__(self, num_classes: float = 10) -> None:
+    def __init__(self, num_classes: int = 10) -> None:
         super().__init__()
         self.num_classes = num_classes
         self.features = nn.Sequential(

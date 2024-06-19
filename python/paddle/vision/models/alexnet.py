@@ -95,7 +95,7 @@ class AlexNet(nn.Layer):
             [1, 1000]
     """
 
-    def __init__(self, num_classes: float = 1000) -> None:
+    def __init__(self, num_classes: int = 1000) -> None:
         super().__init__()
         self.num_classes = num_classes
         stdv = 1.0 / math.sqrt(3 * 11 * 11)
