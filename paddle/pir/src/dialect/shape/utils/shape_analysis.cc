@@ -87,7 +87,9 @@ bool InferSymbolicShapeContext::HasShapeOrDataForValue(Value val) const {
 const symbol::ShapeOrDataDimExprs&
 InferSymbolicShapeContext::GetShapeOrDataForValue(Value val) const {
   if (!val || !val.type()) {
-    return symbol::ShapeOrDataDimExprs::GetNullShapeOrData();
+    static auto null_shape_or_data =
+        symbol::ShapeOrDataDimExprs(symbol::NullShapeOrDataDimExpr());
+    return null_shape_or_data;
   }
   if (!HasShapeOrDataForValue(val)) {
     PADDLE_THROW(phi::errors::Fatal(
@@ -265,7 +267,7 @@ InferSymbolicShapeContext::SimplifyBroadcastForShapeOrData(
         }
         return symbol::ShapeOrDataDimExprs(simplified_tensor_list);
       },
-      [&](const symbol::NullShapeOrDataDimExprs& null_shape_or_data) {
+      [&](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
         return symbol::ShapeOrDataDimExprs(null_shape_or_data);
       });
 }
@@ -325,12 +327,13 @@ void InferSymbolicShapeContext::PrintShapeOrDatas() const {
   }
 }
 
-void InferSymbolicShapeContext::SetShareCacheForOp(
+void InferSymbolicShapeContext::SetOpInferSymbolicShapeCache(
     const OperationShapeInfo& op_shape_info, ShareCacheResultT result_shape) {
   op_shape_share_cache_[op_shape_info] = result_shape;
 }
 
-std::optional<ShareCacheResultT> InferSymbolicShapeContext::GetShareCacheForOp(
+std::optional<ShareCacheResultT>
+InferSymbolicShapeContext::GetOpInferSymbolicShapeCache(
     const OperationShapeInfo& op_shape_info) const {
   if (op_shape_share_cache_.count(op_shape_info) != 0) {
     return op_shape_share_cache_.at(op_shape_info);
@@ -465,7 +468,9 @@ void ShapeConstraintIRAnalysis::InferShapeOrDataForValue(Value val) {
 const symbol::ShapeOrDataDimExprs&
 ShapeConstraintIRAnalysis::GetShapeOrDataForValue(Value val) {
   if (!val || !val.type()) {
-    return symbol::ShapeOrDataDimExprs::GetNullShapeOrData();
+    static auto null_shape_or_data =
+        symbol::ShapeOrDataDimExprs(symbol::NullShapeOrDataDimExpr());
+    return null_shape_or_data;
   }
   if (!context_.HasShapeOrDataForValue(val)) {
     // backtrack to infer shape from defining op

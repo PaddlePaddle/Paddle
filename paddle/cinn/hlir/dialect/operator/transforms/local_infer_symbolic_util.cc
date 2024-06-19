@@ -76,7 +76,7 @@ void InitLocalShapeAnalysis(const pir::Operation& op,
         return symbol::ShapeOrDataDimExprs(ret);
       };
   auto NewSymbolReplacedNull =
-      [&](const symbol::NullShapeOrDataDimExprs& null_shape_or_data) {
+      [&](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
         return symbol::ShapeOrDataDimExprs(null_shape_or_data);
       };
   auto GetNewSymbolReplaced = [&](const auto& value_dim_exprs) {

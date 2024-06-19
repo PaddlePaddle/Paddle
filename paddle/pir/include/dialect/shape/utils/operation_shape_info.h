@@ -15,14 +15,33 @@
 #pragma once
 #include <ostream>
 #include "paddle/pir/include/core/attribute.h"
+#include "paddle/pir/include/core/operation_utils.h"
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace pir {
+/**
+ * @class OperationShapeInfo
+ * @brief This class represents information needed to determine the output shape
+ * of an operator.
+ *
+ * The OperationShapeInfo class encapsulates the necessary details to identify
+ * and manage the output shape of an operator in computational graphs or similar
+ * structures. It includes the operator's name, input shapes, and attributes.
+ *
+ * Usage:
+ * This class can be used in scenarios where the output shape of computational
+ * operators needs to be determined. It is particularly useful when
+ * InferSymbolicShapeInterface of an operator is not defined.
+ */
 class OperationShapeInfo {
  public:
   OperationShapeInfo(
       const Operation &op,
       const std::vector<symbol::ShapeOrDataDimExprs> &input_shape_or_datas);
+  OperationShapeInfo(
+      const std::string &op_name,
+      const std::vector<symbol::ShapeOrDataDimExprs> &input_shape_or_datas,
+      const AttributeMap &attributes);
   bool operator==(const OperationShapeInfo &other) const;
   std::size_t hash() const;
 

@@ -217,7 +217,7 @@ struct ShapeSignatureGenerator {
       symbol::ShapeOrDataDimExprs shape_or_data,
       const std::unordered_map<symbol::DimExpr, symbol::DimExpr>&
           substitute_pattern) {
-    if (shape_or_data.isa<symbol::TensorListShapeOrDataDimExprs>())
+    if (!shape_or_data.isa<symbol::TensorShapeOrDataDimExprs>())
       return std::make_pair(std::nullopt, std::nullopt);
     Shape shape;
     Data data;
@@ -608,12 +608,11 @@ void CheckInferSymbolicIfNeed(pir::Program* program,
   if (!FLAGS_prim_all || !FLAGS_check_infer_symbolic) return;
   const auto& GraphDimExprs4Value =
       MakeDimExprs4Value(program, CreatePassManager);
-  // CheckProgramDimExprConstraints(program, GraphDimExprs4Value);
+  CheckProgramDimExprConstraints(program, GraphDimExprs4Value);
   std::shared_ptr<pir::PassManager> pass_manager = CreatePassManager();
   pass_manager->AddPass(CreateCheckInferSymbolicPass(GraphDimExprs4Value));
   pass_manager->AddPass(CreateSplitGenerateShapeIntoShapeOpsPass());
   pass_manager->Run(program);
-  VLOG(3) << "debug from shine: after run";
 }
 
 }  // namespace ir

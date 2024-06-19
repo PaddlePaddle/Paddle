@@ -71,10 +71,10 @@ class IR_API InferSymbolicShapeContext {
 
   void PrintShapeOrDatas() const;
 
-  void SetShareCacheForOp(const OperationShapeInfo& op_shape_info,
-                          ShareCacheResultT result_shape);
+  void SetOpInferSymbolicShapeCache(const OperationShapeInfo& op_shape_info,
+                                    ShareCacheResultT result_shape);
 
-  std::optional<ShareCacheResultT> GetShareCacheForOp(
+  std::optional<ShareCacheResultT> GetOpInferSymbolicShapeCache(
       const OperationShapeInfo& op_shape_info) const;
 
   const symbol::ConstraintsManager& constraints_manager() const {

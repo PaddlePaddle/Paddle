@@ -15,10 +15,6 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_or_data_expr.h"
 
 namespace symbol {
-
-ShapeOrDataDimExprs ShapeOrDataDimExprs::null_shape_or_data_(
-    NullShapeOrDataDimExprs{-1});
-
 TensorShapeOrDataDimExprs SubstituteTensorShapeOrData(
     const TensorShapeOrDataDimExprs& shape_or_data,
     const std::unordered_map<DimExpr, DimExpr>& substitution_pattern) {
@@ -63,7 +59,7 @@ ShapeOrDataDimExprs SubstituteShapeOrData(
         }
         return ShapeOrDataDimExprs(substituted_tensor_list);
       },
-      [&](const NullShapeOrDataDimExprs& null_shape_or_data) {
+      [&](const NullShapeOrDataDimExpr& null_shape_or_data) {
         return ShapeOrDataDimExprs(null_shape_or_data);
       }};
   return std::visit(lambdas, shape_or_data.variant());
@@ -93,7 +89,7 @@ std::ostream& operator<<(std::ostream& stream,
           }
         }
       },
-      [&](const NullShapeOrDataDimExprs& null_shape_data) {
+      [&](const NullShapeOrDataDimExpr& null_shape_data) {
         stream << "shape[NULL], data[NULL]";
       }};
 

@@ -73,7 +73,7 @@ void VisitEachDimExpr(const symbol::ShapeOrDataDimExprs& shape_or_data,
           VisitEachDimExprFromTensorShapeOrData(tensor_shape_or_data, DoEach);
         }
       },
-      [&](const symbol::NullShapeOrDataDimExprs& null_shape_or_data) {
+      [&](const symbol::NullShapeOrDataDimExpr& null_shape_or_data) {
         return;
       }};
   return std::visit(lambdas, shape_or_data.variant());

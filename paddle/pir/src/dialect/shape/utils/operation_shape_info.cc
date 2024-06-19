@@ -23,9 +23,14 @@ static const char *kResultName = "name";
 OperationShapeInfo::OperationShapeInfo(
     const Operation &op,
     const std::vector<symbol::ShapeOrDataDimExprs> &input_shape_or_datas)
-    : op_name_(op.name()), input_shape_or_datas_(input_shape_or_datas) {
+    : OperationShapeInfo(op.name(), input_shape_or_datas, op.attributes()) {}
+
+OperationShapeInfo::OperationShapeInfo(
+    const std::string &op_name,
+    const std::vector<symbol::ShapeOrDataDimExprs> &input_shape_or_datas,
+    const AttributeMap &attributes)
+    : op_name_(op_name), input_shape_or_datas_(input_shape_or_datas) {
   // Keep attribute always in order.
-  const auto &attributes = op.attributes();
   std::map<std::string, ::pir::Attribute, std::less<>> order_attributes(
       attributes.begin(), attributes.end());
   attributes_.reserve(attributes.size());

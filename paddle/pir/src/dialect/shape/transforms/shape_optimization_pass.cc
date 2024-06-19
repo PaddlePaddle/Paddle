@@ -289,9 +289,11 @@ void InferSymExprForBlock(const Block& block,
           infer_context->SetSymbolForValueByStaticShape(op.result(i));
         }
       } else {
-        if (infer_context->GetShareCacheForOp(op_shape_info).has_value()) {
+        if (infer_context->GetOpInferSymbolicShapeCache(op_shape_info)
+                .has_value()) {
           std::vector<symbol::ShapeOrDataDimExprs> cached_result_shape_or_data =
-              infer_context->GetShareCacheForOp(op_shape_info).value();
+              infer_context->GetOpInferSymbolicShapeCache(op_shape_info)
+                  .value();
           CHECK(cached_result_shape_or_data.size() == op.num_results());
           for (uint32_t i = 0; i < op.num_results(); ++i) {
             infer_context->SetShapeOrDataForValue(
@@ -307,16 +309,19 @@ void InferSymExprForBlock(const Block& block,
     }
 
     // set infer_context share cache
-    const auto& SetShareCacheForOp = [&]() {
+    const auto& SetOpInferSymbolicShapeCache = [&]() {
       std::vector<symbol::ShapeOrDataDimExprs> result_shape_or_data;
       for (auto& result : op.results()) {
         result_shape_or_data.emplace_back(
             infer_context->GetShapeOrDataForValue(result));
       }
-      if (infer_context->GetShareCacheForOp(op_shape_info).has_value()) {
+      if (infer_context->GetOpInferSymbolicShapeCache(op_shape_info)
+              .has_value()) {
         std::vector<symbol::ShapeOrDataDimExprs> cached_result_shape_or_data =
-            infer_context->GetShareCacheForOp(op_shape_info).value();
+            infer_context->GetOpInferSymbolicShapeCache(op_shape_info).value();
         // check whether the result_shape_or_data is consistent with the cached
+        // TODO(Hongqing-work): delete check and only set cache for op without
+        // InferSymbolicShapeInterface after fixing all warnings.
         if (cached_result_shape_or_data.size() != result_shape_or_data.size()) {
           LOG(WARNING) << "cached shape is not consistent with real shape";
         } else {
@@ -330,10 +335,11 @@ void InferSymExprForBlock(const Block& block,
           }
         }
       } else {
-        infer_context->SetShareCacheForOp(op_shape_info, result_shape_or_data);
+        infer_context->SetOpInferSymbolicShapeCache(op_shape_info,
+                                                    result_shape_or_data);
       }
     };
-    SetShareCacheForOp();
+    SetOpInferSymbolicShapeCache();
     DebugPrintOpInfo(&op, infer_context);
     CheckInferSymWithInferMeta(&op, infer_context);
   }
