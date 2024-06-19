@@ -112,81 +112,6 @@ class FusedLinearGradPattern : public paddle::drr::DrrPatternBase {
   }
 };
 
-class FusedLinearGradSplitPattern : public paddle::drr::DrrPatternBase {
- public:
-  std::string name() const override { return "FusedLinearGradSplitPattern"; }
-
-  void operator()(paddle::drr::DrrPatternContext *ctx) const override {
-    paddle::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
-                                {{"transpose_x", pat.Attr("trans_x")},
-                                 {"transpose_y", pat.Attr("trans_y")}});
-    const auto &add = pat.Op(paddle::dialect::AddOp::name());
-    pat.Tensor("tmp") = matmul(pat.Tensor("x"), pat.Tensor("w"));
-    pat.Tensor("out") = add(pat.Tensor("tmp"), pat.Tensor("bias"));
-
-    const auto &add_grad = pat.Op(paddle::dialect::AddGradOp::name());
-    const auto &matmul_x_grad = pat.Op(paddle::dialect::MatmulOp::name());
-    const auto &full_int_array1 =
-        pat.Op(paddle::dialect::FullIntArrayOp::name());
-    const auto &reshape_x = pat.Op(paddle::dialect::ReshapeOp::name());
-    const auto &full_int_array2 =
-        pat.Op(paddle::dialect::FullIntArrayOp::name());
-    const auto &reshape_tmp_grad = pat.Op(paddle::dialect::ReshapeOp::name());
-    const auto &matmul_w_grad_reshaped =
-        pat.Op(paddle::dialect::MatmulOp::name());
-    const auto &full_int_array3 =
-        pat.Op(paddle::dialect::FullIntArrayOp::name());
-    const auto &matmul_w_grad = pat.Op(paddle::dialect::ReshapeOp::name());
-
-    add_grad({&pat.Tensor("tmp"), &pat.Tensor("bias"), &pat.Tensor("out_grad")},
-             {&pat.Tensor("tmp_grad"), &pat.Tensor("bias_grad")});
-    matmul_x_grad({&pat.Tensor("tmp_grad"), &pat.Tensor("w")},
-                  {&pat.Tensor("x_grad")});
-    reshape_x({&pat.Tensor("x"), &full_int_array1()},
-              {&pat.Tensor("x_reshape"), &pat.Tensor("x_reshape_xshape")});
-    reshape_tmp_grad({&pat.Tensor("tmp_grad"), &full_int_array2()},
-                     {&pat.Tensor("tmp_grad_reshaped"),
-                      &pat.Tensor("tmp_grad_reshaped_xshape")});
-    matmul_w_grad_reshaped(
-        {&pat.Tensor("x_reshape"), &pat.Tensor("tmp_grad_reshaped")},
-        {&pat.Tensor("w_grad_reshaped")});
-    matmul_w_grad({&pat.Tensor("w_grad_reshaped"), &full_int_array3()},
-                  {&pat.Tensor("w_grad"), &pat.Tensor("w_grad_xshape")});
-
-    pat.AddConstraint([&](const paddle::drr::MatchContext &match_ctx) {
-      auto w_dims = pir::GetShapeFromValue(match_ctx.Tensor("w"));
-      auto x_dims = pir::GetShapeFromValue(match_ctx.Tensor("x"));
-      auto bias_dims = pir::GetShapeFromValue(match_ctx.Tensor("bias"));
-      return (w_dims.size() == 2 && x_dims.size() >= 2 &&
-              bias_dims.size() == 1);
-    });
-
-    paddle::drr::ResultPattern res = pat.ResultPattern();
-
-    const auto &fused_gemm_epilogue =
-        res.Op(paddle::dialect::FusedGemmEpilogueOp::name(),
-               {{{"trans_x", pat.Attr("trans_x")},
-                 {"trans_y", pat.Attr("trans_y")},
-                 {"activation", res.StrAttr("none")}}});
-    const auto &fused_gemm_epilogue_grad =
-        res.Op(paddle::dialect::FusedGemmEpilogueGradOp::name(),
-               {{{"trans_x", pat.Attr("trans_x")},
-                 {"trans_y", pat.Attr("trans_y")},
-                 {"activation_grad", res.StrAttr("none")}}});
-    fused_gemm_epilogue(
-        {&res.Tensor("x"), &res.Tensor("w"), &res.Tensor("bias")},
-        {&res.Tensor("out")});
-    fused_gemm_epilogue_grad({&res.Tensor("x"),
-                              &res.Tensor("w"),
-                              &res.InputNoneTensor(),
-                              &res.Tensor("out_grad")},
-                             {&res.Tensor("x_grad"),
-                              &res.Tensor("w_grad"),
-                              &res.Tensor("bias_grad")});
-  }
-};
-
 class FusedLinearGeluPattern : public paddle::drr::DrrPatternBase {
  public:
   std::string name() const override { return "FusedLinearGeluPattern"; }
@@ -394,7 +319,6 @@ class FusedGemmEpiloguePass : public pir::PatternRewritePass {
     pir::RewritePatternSet ps(context);
     ps.Add(paddle::drr::Create<FusedLinearPattern>(context));
     ps.Add(paddle::drr::Create<FusedLinearGradPattern>(context));
-    ps.Add(paddle::drr::Create<FusedLinearGradSplitPattern>(context));
     ps.Add(paddle::drr::Create<FusedLinearGeluPattern>(context));
     ps.Add(paddle::drr::Create<FusedLinearReluPattern>(context));
     ps.Add(paddle::drr::Create<FusedLinearGeluGradPattern>(context));

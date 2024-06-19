@@ -70,6 +70,8 @@ class IfInstruction : public InstructionBase {
   std::vector<std::string> true_skip_gc_names_;
 
   std::vector<std::string> false_skip_gc_names_;
+
+  bool has_fake_false_branch_{false};
 };
 
 }  // namespace framework
