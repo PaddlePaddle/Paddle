@@ -19,18 +19,6 @@ namespace cinn {
 namespace hlir {
 namespace framework {
 
-void CompilationContext::ApplyTuningResult(
-    const auto_schedule::TuningResult& tuning_result) {
-  // assign options with TuningResult directly
-  groups.assign(tuning_result.subgraphs.begin(), tuning_result.subgraphs.end());
-  lowered_funcs.assign(tuning_result.function_groups.begin(),
-                       tuning_result.function_groups.end());
-}
-
-void CompilationContext::ApplySourceCode(const std::string& code) {
-  attached_source_code = code;
-}
-
 void CompilationResult::InitCompilationResult(int group_size) {
   size_ = group_size;
   status_.resize(group_size, CompilationStatus::SUCCESS);
