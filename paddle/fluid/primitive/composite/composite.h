@@ -496,22 +496,21 @@ Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
   std::vector<Tensor> concat_x;
   bool is_dynamic = false;
 
-  std::vector<int64_t> merge_shape =
-      [&](std::vector<Tensor>& vec_tensor) {
-        std::vector<int64_t> combined_shape(vec_tensor[0].shape().size(), -1);
-        for (auto& item : vec_tensor) {
-          auto item_shape = item.shape();
-          for (size_t i = 0; i < item_shape.size(); i++) {
-            if (item_shape[i] == -1) {
-              is_dynamic = true;
-            } else {
-              combined_shape[i] = std::max(combined_shape[i], item_shape[i]);
-            }
-          }
+  std::vector<int64_t> merge_shape = [&](std::vector<Tensor>& vec_tensor) {
+    std::vector<int64_t> combined_shape(vec_tensor[0].shape().size(), -1);
+    for (auto& item : vec_tensor) {
+      auto item_shape = item.shape();
+      for (size_t i = 0; i < item_shape.size(); i++) {
+        if (item_shape[i] == -1) {
+          is_dynamic = true;
+        } else {
+          combined_shape[i] = std::max(combined_shape[i], item_shape[i]);
         }
-        return combined_shape;
-      } std::vector<int64_t>
-          combined_shape = merge_shape(x);
+      }
+    }
+    return combined_shape;
+  };
+  std::vector<int64_t> combined_shape = merge_shape(x);
 
   if (is_dynamic && has_dynamic_shape(combined_shape)) {
     std::vector<Tensor> shapes;
