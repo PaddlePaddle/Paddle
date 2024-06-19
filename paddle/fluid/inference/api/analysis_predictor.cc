@@ -894,7 +894,7 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
       pass->Set("use_cutlass", new bool(config_.use_cutlass_));
     }
   }
-  pass_pm.Run(pir_program_.get());
+  // pass_pm.Run(pir_program_.get());
 
   // Apply some basic passes required by the framework
   ::pir::PassManager basic_pass_pm(::pir::IrContext::Instance(),
@@ -1024,6 +1024,12 @@ bool AnalysisPredictor::LoadPirParameters() {
   CreateFeedFetchVar(sub_scope_);
   pir::LoadCombineFunction(
       config_.params_file(), param_names, &tensor_out, false, place_);
+
+  for (auto name : param_names) {
+    // float* data = tensor->data<float>();
+    VLOG(0) << "predictor param " << name;
+    // VLOG(0) << " = " << data[0];
+  }
   return true;
 }
 
@@ -1186,7 +1192,7 @@ bool AnalysisPredictor::PrepareExecutor() {
 
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
-
+    VLOG(0) << "predictor program " << *pir_program_;
     if (config_.new_ir_enabled()) {
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);

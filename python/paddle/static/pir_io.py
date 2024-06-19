@@ -548,6 +548,7 @@ def load_vars_pir(
                 executor._default_executor.get_place(),
             )
             for name, var in zip(load_var_names, load_var_list):
+                print("static param ", name)
                 set_var(name, np.array(var))
 
 

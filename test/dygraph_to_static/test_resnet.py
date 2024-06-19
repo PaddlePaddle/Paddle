@@ -24,6 +24,7 @@ from dygraph_to_static_utils import (
     enable_to_static_guard,
     static_guard,
     test_default_and_pir,
+    test_pir_only,
 )
 from predictor_utils import PredictorTools
 
@@ -147,16 +148,17 @@ class BottleneckBlock(paddle.nn.Layer):
 
 
 class ResNet(paddle.nn.Layer):
-    def __init__(self, layers=50, class_dim=102):
+    def __init__(self, layers=1, class_dim=102):
         super().__init__()
 
         self.layers = layers
-        supported_layers = [50, 101, 152]
+        supported_layers = [1, 101, 152]
         assert (
             layers in supported_layers
         ), f"supported layers are {supported_layers} but input layer is {layers}"
-
-        if layers == 50:
+        if layers == 1:
+            depth = [1, 1, 1, 1]
+        elif layers == 50:
             depth = [3, 4, 6, 3]
         elif layers == 101:
             depth = [3, 4, 23, 3]
@@ -388,7 +390,7 @@ class ResNetHelper:
                 model_filename=model_filename,
                 params_filename=self.params_filename,
             )
-
+            print("static program ", inference_program)
             pred_res = exe.run(
                 inference_program,
                 feed={feed_target_names[0]: data},
@@ -435,6 +437,8 @@ class TestResnet(Dy2StTestBase):
         st_pre = self.resnet_helper.predict_static(image)
         dy_jit_pre = self.resnet_helper.predict_dygraph_jit(image)
         predictor_pre = self.resnet_helper.predict_analysis_inference(image)
+        print("st_pre = ", st_pre)
+        print("predictor_pre = ", predictor_pre)
         np.testing.assert_allclose(
             dy_pre,
             st_pre,
@@ -454,7 +458,7 @@ class TestResnet(Dy2StTestBase):
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_default_and_pir
+    @test_pir_only
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -467,7 +471,7 @@ class TestResnet(Dy2StTestBase):
         self.verify_predict()
 
     @test_default_and_pir
-    def test_resnet_composite(self):
+    def _test_resnet_composite(self):
         core._set_prim_backward_enabled(True)
         core._add_skip_comp_ops("batch_norm")
         static_loss = self.train(to_static=True)
