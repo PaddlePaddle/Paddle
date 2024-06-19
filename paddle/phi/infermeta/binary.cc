@@ -169,7 +169,9 @@ void ArrayReadInferMeta(const MetaTensor& array,
                         MetaTensor* out,
                         MetaConfig config) {
   if (!config.is_runtime) {
-    out->set_dims({-1});
+    out->set_dims(array.dims());  // if dims is -1, rnn will crash, return last
+                                  // ArrayWrite DenseTensor's dims. return
+                                  // array[0].dims in old static graph.
   } else {
     double index = i.to<int64_t>();
     out->set_dims(array.dims(index));  // NOLINT
