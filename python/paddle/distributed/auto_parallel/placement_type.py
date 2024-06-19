@@ -16,22 +16,22 @@ from typing import cast
 from paddle.base.core import Partial, Replicate, Shard
 
 
-def to_placements(dim_map, mesh, partial_idx=[]):
+def to_placements(dim_map, mesh, partial_status={}):
     """
     convert dim_map to placements.
 
     Args:
         dim_map(List[int]): a list of integer that represents sharding on each tensor dimension.
         mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
-        partial_idx(List[int], Optional): a list of integer that represents the DTensor have pending sum on which device mesh dimension
+        partial_status(Dict[int, Partial], Optional): a dict that represents the DTensor partial status
 
     Returns:
         List[Placement]: a list contains some `paddle.distributed.Placement`.
     """
-    placements = [Replicate() for _ in range(len(mesh.mesh.shape))]
+    placements = [Replicate() for _ in range(len(mesh.shape))]
 
-    for s in partial_idx:
-        placements[s] = Partial()
+    for idx, partial in partial_status.items():
+        placements[idx] = partial
 
     for i, m in enumerate(dim_map):
         if m >= 0:

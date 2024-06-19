@@ -40,6 +40,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_pylayer_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
@@ -96,9 +97,9 @@ using paddle::dialect::SparseCsrTensorType;
 using paddle::dialect::WhileOp;
 using pir::TuplePopOp;
 
+using paddle::dialect::IntArrayAttribute;
 using paddle::dialect::OperationDistAttribute;
 using paddle::dialect::TensorDistAttribute;
-
 using pir::ArrayAttribute;
 using pir::Attribute;
 using pir::Block;
@@ -775,6 +776,14 @@ void BindOperation(py::module *m) {
                  attr_name,
                  pir::BoolAttribute::get(pir::IrContext::Instance(), flag));
            })
+      .def("set_int_array_attr",
+           [](Operation &self,
+              std::string &attr_name,
+              const std::vector<int64_t> &val) {
+             auto attr = IntArrayAttribute::get(pir::IrContext::Instance(),
+                                                phi::IntArray(val));
+             self.set_attribute(attr_name, attr);
+           })
       .def("attrs",
            [](Operation &self) -> py::dict {
              py::dict attrs_dict;
@@ -1309,8 +1318,18 @@ void BindValue(py::module *m) {
            })
       // The function will calculate the new local shape based on the global
       // shape and the dist_attr argument.
-      .def("update_dist_attr", [](Value &self, TensorDistAttribute dist_attr) {
-        self.set_type(dialect::CvtToPirDistType(self.type(), dist_attr));
+      .def("update_dist_attr",
+           [](Value &self, TensorDistAttribute dist_attr) {
+             self.set_type(dialect::CvtToPirDistType(self.type(), dist_attr));
+           })
+      .def_property_readonly("process_mesh", [](Value &self) -> py::object {
+        auto type = self.type();
+        if (auto dist_type = type.dyn_cast<DistTypeInterface>()) {
+          return py::cast(
+              dist_type.tensor_dist_attr().process_mesh_attr().process_mesh());
+        } else {
+          return py::cast<py::none>(Py_None);
+        }
       });
 }
 

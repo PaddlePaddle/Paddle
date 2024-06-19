@@ -29,6 +29,7 @@ from paddle.base.framework import (
     Variable,
     default_main_program,
     in_pir_mode,
+    use_pir_api,
 )
 from paddle.distributed.auto_parallel import Engine, strategy as auto_strategy
 from paddle.distributed.auto_parallel.interface import (
@@ -826,9 +827,23 @@ def shard_layer(
         )
 
 
+def get_value_placement(value):
+    dist_attr = value.dist_attr()
+    assert dist_attr is not None, "Can't get placement for a dense value."
+    mesh = dist_attr.process_mesh
+    dims_mapping = dist_attr.dims_mapping
+    partial_status = dist_attr.partial_status
+    palcements = to_placements(dims_mapping, mesh, partial_status)
+    return palcements
+
+
 def get_placement_with_sharding(param, sharding_mesh_axis):
     shard_axis = -1
-    for placement in param.placements:
+    if isinstance(param, pir.Value):
+        placements = get_value_placement(param)
+    else:
+        placements = param.placements
+    for placement in placements:
         if isinstance(placement, dist.Shard):
             # the parameter can't be shard twice with sharding on different mesh now
             # for example, [Shard(0), Shard(1)], assert here in case
@@ -843,7 +858,7 @@ def get_placement_with_sharding(param, sharding_mesh_axis):
             placement_with_sharding = dist.Shard(dim)
             break
 
-    new_placements = param.placements
+    new_placements = placements
     if placement_with_sharding is not None:
         new_placements[sharding_mesh_axis] = placement_with_sharding
 
@@ -967,21 +982,24 @@ class _ShardOptimizer(Optimizer):
                         mesh=param.process_mesh,
                         placements=placements,
                     )
-
-            self._inner_opt._accumulators[key][target_name].name = (
-                target_name + "_" + key
-            )
+            if not isinstance(
+                self._inner_opt._accumulators[key][target_name], pir.Value
+            ):
+                self._inner_opt._accumulators[key][target_name].name = (
+                    target_name + "_" + key
+                )
 
     def _reset_placements(self, param):
         if param.is_dist() and isinstance(
             self._shard_fn, (ShardingStage1, ShardingStage2)
         ):
-            new_placement = param.placements
-            new_placement[self._sharding_mesh_axis] = dist.Replicate()
-            out_param = dist.reshard(param, param.process_mesh, new_placement)
-            if in_pir_mode():
-                paddle.assign(out_param, param)
-            else:
+            # in pir mode, reshard pass will automatically handle inplace case, so no extra work is required here.
+            if not isinstance(param, pir.Value):
+                new_placement = param.placements
+                new_placement[self._sharding_mesh_axis] = dist.Replicate()
+                out_param = dist.reshard(
+                    param, param.process_mesh, new_placement
+                )
                 param.get_tensor()._share_data_with(out_param.get_tensor())
 
     def _create_accumulators(self, block, parameters):
@@ -2453,7 +2471,7 @@ def to_static(
             >>> # export CUDA_VISIBLE_DEVICES=0,1
             >>> # python -m paddle.distributed.launch {test_case}.py
     """
-    if isinstance(optimizer, _ShardOptimizer):
+    if isinstance(optimizer, _ShardOptimizer) and not use_pir_api():
         shard_fn = optimizer._shard_fn
         sharding_degree = optimizer._sharding_degree
         optimizer = optimizer._inner_opt
