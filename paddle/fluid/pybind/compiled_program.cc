@@ -159,10 +159,6 @@
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
-#ifdef PADDLE_WITH_CINN
-#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
-#endif
-
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
@@ -995,12 +991,6 @@ void BindCompiledProgram(pybind11::module &m) {  // NOLINT
           R"DOC(Allow user to customized passes. Normally model-specific
                 optimization passes should be defined in this way. BuildStrategy
                 cannot be updated after being finalized.)DOC");
-
-  m.def("_set_cached_executor_build_strategy",
-        [](int64_t program_id, const BuildStrategy &build_strategy) {
-          auto &cached_exe_info = framework::ExecutorInfoCache::Instance();
-          cached_exe_info.SetBuildStrategy(program_id, build_strategy);
-        });
 
   cp.def(py::init<const std::vector<platform::Place> &,
                   const std::vector<std::string> &,

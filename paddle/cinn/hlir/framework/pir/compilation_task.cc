@@ -81,8 +81,11 @@ std::shared_ptr<pir::CompilationResult> CompilationTask::CodegenAndJit() {
 
   ir::Module::Builder builder_CX86(cinn::common::UniqName("module"),
                                    common::DefaultHostTarget());
-  CHECK_EQ(context_->CX86_predicates_.size(),
-           context_->CX86_lowered_funcs_.size());
+  PADDLE_ENFORCE_EQ(context_->CX86_predicates_.size(),
+                    context_->CX86_lowered_funcs_.size(),
+                    phi::errors::InvalidArgument(
+                        "The size of predicates and lowered_funcs should be "
+                        "the same."));
   for (const ir::Expr& predicate : context_->CX86_predicates_) {
     builder_CX86.AddPredicate(predicate);
   }

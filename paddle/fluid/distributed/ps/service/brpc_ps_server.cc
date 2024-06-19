@@ -23,12 +23,10 @@
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/platform/profiler.h"
 
-namespace google {
-namespace protobuf {
+namespace google::protobuf {
 class Closure;
 class RpcController;
-}  // namespace protobuf
-}  // namespace google
+}  // namespace google::protobuf
 
 PD_DEFINE_int32(pserver_timeout_ms_s2s,
                 10000,
@@ -40,8 +38,7 @@ PD_DEFINE_string(pserver_connection_type_s2s,
                  "pooled",
                  "pserver connection_type[pooled:single]");
 
-namespace paddle {
-namespace distributed {
+namespace paddle::distributed {
 
 int32_t BrpcPsServer::Initialize() {
   auto &service_config = _config.downpour_server_param().service_param();
@@ -898,5 +895,4 @@ int32_t BrpcPsService::PushGlobalStep(Table *table,
   return 0;
 }
 
-}  // namespace distributed
-}  // namespace paddle
+}  // namespace paddle::distributed

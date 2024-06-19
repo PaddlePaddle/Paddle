@@ -24,9 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
-namespace paddle {
-namespace inference {
-namespace tensorrt {
+namespace paddle::inference::tensorrt {
 
 thread_local int TensorRTEngine::predictor_id_per_thread = 0;
 
@@ -955,6 +953,4 @@ void TensorRTEngine::GetEngineInfo(const std::string &engine_info_path) {
 #endif
 }
 
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
+}  // namespace paddle::inference::tensorrt

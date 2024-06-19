@@ -113,7 +113,7 @@ class ListVariable(ContainerVariable):
 
     def __init__(
         self,
-        val_list: list[VariableBase],
+        val_list: list[Any],
         graph: FunctionGraph,
         tracker: Tracker,
     ):
