@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import math
 
 import paddle
@@ -35,15 +37,15 @@ __all__ = []
 class ConvPoolLayer(nn.Layer):
     def __init__(
         self,
-        input_channels,
-        output_channels,
-        filter_size,
-        stride,
-        padding,
-        stdv,
-        groups=1,
-        act=None,
-    ):
+        input_channels: int,
+        output_channels: int,
+        filter_size: int | list[int] | tuple[int],
+        stride: int | str | tuple[int] | list[int],
+        padding: int | list[int] | tuple[int],
+        stdv: float,
+        groups: int = 1,
+        act: str | None = None,
+    ) -> None:
         super().__init__()
 
         self.relu = ReLU() if act == "relu" else None
@@ -60,7 +62,7 @@ class ConvPoolLayer(nn.Layer):
         )
         self._pool = MaxPool2D(kernel_size=3, stride=2, padding=0)
 
-    def forward(self, inputs):
+    def forward(self, inputs: paddle.Tensor) -> paddle.Tensor:
         x = self._conv(inputs)
         if self.relu is not None:
             x = self.relu(x)
@@ -93,7 +95,7 @@ class AlexNet(nn.Layer):
             [1, 1000]
     """
 
-    def __init__(self, num_classes=1000):
+    def __init__(self, num_classes: float = 1000) -> None:
         super().__init__()
         self.num_classes = num_classes
         stdv = 1.0 / math.sqrt(3 * 11 * 11)
@@ -147,7 +149,7 @@ class AlexNet(nn.Layer):
                 bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
             )
 
-    def forward(self, inputs):
+    def forward(self, inputs: paddle.Tensor) -> paddle.Tensor:
         x = self._conv1(inputs)
         x = self._conv2(x)
         x = self._conv3(x)
@@ -169,7 +171,7 @@ class AlexNet(nn.Layer):
         return x
 
 
-def _alexnet(arch, pretrained, **kwargs):
+def _alexnet(arch: str, pretrained: bool, **kwargs) -> AlexNet:
     model = AlexNet(**kwargs)
 
     if pretrained:
@@ -186,7 +188,7 @@ def _alexnet(arch, pretrained, **kwargs):
     return model
 
 
-def alexnet(pretrained=False, **kwargs):
+def alexnet(pretrained: bool = False, **kwargs) -> AlexNet:
     """AlexNet model from
     `"ImageNet Classification with Deep Convolutional Neural Networks"
     <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_.
