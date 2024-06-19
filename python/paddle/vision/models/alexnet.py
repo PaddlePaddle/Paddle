@@ -19,6 +19,7 @@ import math
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
+from paddle._typing import Size2
 from paddle.base.param_attr import ParamAttr
 from paddle.nn import Conv2D, Dropout, Linear, MaxPool2D, ReLU
 from paddle.nn.initializer import Uniform
@@ -39,9 +40,9 @@ class ConvPoolLayer(nn.Layer):
         self,
         input_channels: int,
         output_channels: int,
-        filter_size: int | list[int] | tuple[int],
-        stride: int | str | tuple[int] | list[int],
-        padding: int | list[int] | tuple[int],
+        filter_size: Size2,
+        stride: Size2,
+        padding: Size2,
         stdv: float,
         groups: int = 1,
         act: str | None = None,
