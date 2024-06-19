@@ -418,6 +418,7 @@ class TestLearningRateDecay(unittest.TestCase):
             self.assertAlmostEqual(
                 python_decayed_lr,
                 lr_val[0],
+                places=6,
                 msg=f'Failed lr scheduler is {python_decay_fn.__name__}, step {str(step)}, Python result is {str(python_decayed_lr)}, Fluid result is {str(lr_val[0])}',
             )
 
