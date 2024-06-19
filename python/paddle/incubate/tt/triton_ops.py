@@ -776,40 +776,33 @@ def adaptive_layer_norm_kernel(
     N,
     seq_size,
     epsilon,
-    BLOCK_SIZE: tl.constexpr,
+    N_npo2: tl.constexpr,
 ):
     row = tl.program_id(axis=0)
     x_ptr += row * N
     y_ptr += row * N
-    # Compute mean
-    _sum = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
-    _sum_square = tl.zeros([BLOCK_SIZE], dtype=tl.float32)
-    for col_off in range(0, N, BLOCK_SIZE):
-        cols = col_off + tl.arange(0, BLOCK_SIZE)
-        eles = tl.load(x_ptr + cols, mask=cols < N, other=0.0).to(tl.float32)
-        _sum += eles
-        _sum_square += eles * eles
-    mean = tl.sum(_sum, axis=0) / N
-    var = tl.sum(_sum_square, axis=0) / N - mean * mean
-    rstd = 1 / tl.sqrt(var + epsilon)
-    # Compute output
     scale_ptr += (row // seq_size) * N
     shift_ptr += (row // seq_size) * N
-    for col_off in range(0, N, BLOCK_SIZE):
-        cols = col_off + tl.arange(0, BLOCK_SIZE)
-        mask = cols < N
-        eles = tl.load(x_ptr + cols, mask=mask, other=0.0).to(tl.float32)
-        x_hat = (eles - mean) * rstd
-        if weight_ptr is not None:
-            weights = tl.load(weight_ptr + cols, mask=mask, other=0.0)
-            x_hat = x_hat * weights
-        if bias_ptr is not None:
-            bias = tl.load(bias_ptr + cols, mask=mask, other=0.0)
-            x_hat = x_hat + bias
-        scales = tl.load(scale_ptr + cols, mask=mask, other=0.0)
-        shifts = tl.load(shift_ptr + cols, mask=mask, other=0.0)
-        y = x_hat * (1 + scales) + shifts
-        tl.store(y_ptr + cols, y, mask=mask)
+    all_offs = tl.arange(0, N_npo2)
+    all_mask = all_offs < N
+
+    x_eles = tl.load(x_ptr + all_offs, mask=all_mask, other=0.0).to(tl.float32)
+    # compute mean var
+    mean = tl.sum(x_eles, axis=0) / N
+    var = tl.sum(x_eles * x_eles, axis=0) / N - mean * mean
+    rstd = 1 / tl.sqrt(var + epsilon)
+    # compute adaLN
+    resi_hat = (x_eles - mean) * rstd
+    if weight_ptr is not None:
+        weights = tl.load(weight_ptr + all_offs, mask=all_mask, other=0.0)
+        resi_hat = resi_hat * weights
+    if bias_ptr is not None:
+        bias = tl.load(bias_ptr + all_offs, mask=all_mask, other=0.0)
+        resi_hat = resi_hat + bias
+    scales = tl.load(scale_ptr + all_offs, mask=all_mask, other=0.0)
+    shifts = tl.load(shift_ptr + all_offs, mask=all_mask, other=0.0)
+    y = resi_hat * (1 + scales) + shifts
+    tl.store(y_ptr + all_offs, y, mask=all_mask)
 
 
 triton_adaptive_layer_norm_template = (
@@ -910,7 +903,7 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
     M = x.shape[0] * x.shape[1]
     N = x.shape[2]
     seq_size = x.shape[1]
-    BLOCK_SIZE = min(1024, triton.next_power_of_2(N))
+    N_npo2 = triton.next_power_of_2(N)
 
     # if in_dynamic_or_pir_mode():
     #     y = paddle.empty_like(x)
@@ -925,7 +918,7 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
     #         N,
     #         seq_size,
     #         epsilon,
-    #         BLOCK_SIZE=BLOCK_SIZE,
+    #         N_npo2=N_npo2,
     #     )
     #     return y
 
@@ -940,7 +933,7 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
         raise NotImplementedError(
             "triton_adaptive_layer_norm now supports only fp16 and fp32 dtype."
         )
-    op_name += f"_{BLOCK_SIZE}"
+    op_name += f"_{N_npo2}"
 
     # if in_dynamic_or_pir_mode && op is already registered, call it directly.
     if (
@@ -984,7 +977,7 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
         # ahead of time compile command.
         aot_template = (
             f"""{python_path}   {compile_file} {py_script_file}   -n adaptive_layer_norm_kernel -o {generated_dir}/{op_name}_kernel --out-name {op_name}_kernel  """
-            + """ -s "{address_hint} {value_hint}  {BLOCK_SIZE}"   \
+            + """ -s "{address_hint} {value_hint}  {N_npo2}"   \
                              -g "M, 1, 1" \
                        """
         )
@@ -992,7 +985,7 @@ def adaptive_layer_norm(x, scale, shift, weight=None, bias=None, epsilon=1e-05):
         codegen_command = aot_template.format(
             address_hint=address_hint,
             value_hint=value_hint,
-            BLOCK_SIZE=BLOCK_SIZE,
+            N_npo2=N_npo2,
         )
         print(codegen_command)
         re = os.system(codegen_command)
@@ -1164,7 +1157,7 @@ def rms_norm(x, weight=None, bias=None, epsilon=1e-05):
 
     # if in_dynamic_or_pir_mode():
     #     y = paddle.empty_like(x)
-    #     rms_norm_kernel[(M,)](
+    #     rms_norm_kernel[(M+BLOCK_SIZE_M-1)/BLOCK_SIZE_M,)](
     #         x,
     #         y,
     #         weight,
