@@ -517,7 +517,7 @@ Tensor stack_decomp(const std::vector<Tensor>& x, const int& axis) {
     std::vector<Tensor> shapes;
     Tensor temp_shape = shape<T>(x[0]);
     for (size_t j = 0; j < x[0].shape().size(); j++) {
-      if (j == axis) {
+      if (static_cast<int>(j) == axis) {
         shapes.push_back(full<T>({1}, 1, temp_shape.type()));
       }
       if (combined_shape[j] == -1) {
