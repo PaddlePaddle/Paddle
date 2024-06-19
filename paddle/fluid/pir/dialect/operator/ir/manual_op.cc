@@ -3361,44 +3361,44 @@ std::vector<pir::Type> ExpandOp::InferMeta(
       pir::Value inputs = shape.defining_op()->operand_source(0);
       vec_shape = common::vectorize(
           inputs.type().dyn_cast<paddle::dialect::DenseTensorType>().dims());
-      *is_from_tensor = true;
-    } else if (shape.isa<pir::OpResult>() &&
-               shape.defining_op()->isa<paddle::dialect::ConcatOp>() &&
-               shape.type().isa<paddle::dialect::DenseTensorType>()) {
-      std::vector<pir::Value> inputs = shape.defining_op()
-                                           ->operand_source(0)
-                                           .defining_op()
-                                           ->operands_source();
-      auto shape_dim =
-          shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
-
-      if (shape_dim.size() == 1 &&
-          shape_dim[0] == static_cast<int64_t>(inputs.size())) {
-        for (auto item : inputs) {
-          if (item.defining_op()->isa<paddle::dialect::ShapeOp>()) {
-            pir::Value shape_input = item.defining_op()->operand_source(0);
-            vec_shape.push_back(
-                shape_input.type()
-                    .dyn_cast<paddle::dialect::DenseTensorType>()
-                    .dims()[0]);
-          } else if (shape.defining_op()->isa<paddle::dialect::FullOp>()) {
-            auto shape_item = shape.defining_op()
-                                  ->dyn_cast<paddle::dialect::FullOp>()
-                                  .attribute("value")
-                                  .dyn_cast<pir::FloatAttribute>()
-                                  .data();
-            vec_shape.push_back(static_cast<int64_t>(shape_item));
-          } else {
-            vec_shape.push_back(-1);
-          }
-        }
-      }
-      *is_from_tensor = true;
     } else if (shape.type().isa<pir::VectorType>()) {
       size_t shape_size = shape.type().dyn_cast<pir::VectorType>().size();
       vec_shape = std::vector<int64_t>(shape_size, -2);
       *is_from_tensor = true;
     } else if (shape.type().isa<paddle::dialect::DenseTensorType>()) {
+      if (shape.isa<pir::OpResult>() &&
+          shape.defining_op()->isa<paddle::dialect::ConcatOp>()) {
+        std::vector<pir::Value> inputs = shape.defining_op()
+                                             ->operand_source(0)
+                                             .defining_op()
+                                             ->operands_source();
+        auto shape_dim =
+            shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
+
+        if (shape_dim.size() == 1 &&
+            shape_dim[0] == static_cast<int64_t>(inputs.size())) {
+          for (auto item : inputs) {
+            if (item.defining_op()->isa<paddle::dialect::ShapeOp>()) {
+              pir::Value shape_input = item.defining_op()->operand_source(0);
+              vec_shape.push_back(
+                  shape_input.type()
+                      .dyn_cast<paddle::dialect::DenseTensorType>()
+                      .dims()[0]);
+            } else if (shape.defining_op()->isa<paddle::dialect::FullOp>()) {
+              auto shape_item = shape.defining_op()
+                                    ->dyn_cast<paddle::dialect::FullOp>()
+                                    .attribute("value")
+                                    .dyn_cast<pir::FloatAttribute>()
+                                    .data();
+              vec_shape.push_back(static_cast<int64_t>(shape_item));
+            } else {
+              vec_shape.push_back(-1);
+            }
+          }
+          return vec_shape;
+        }
+      }
+
       common::DDim shape_dim =
           shape.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
       size_t shape_size = common::product(shape_dim);
