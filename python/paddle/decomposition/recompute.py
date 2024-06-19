@@ -25,6 +25,8 @@ _PADDLE_DTYPE_2_NBYTES = {
     core.DataType.BFLOAT16: 2,
     core.DataType.FLOAT32: 4,
     core.DataType.FLOAT64: 8,
+    core.DataType.FLOAT8_E4M3FN: 1,
+    core.DataType.FLOAT8_E5M2: 1,
     core.DataType.INT8: 1,
     core.DataType.INT16: 2,
     core.DataType.INT32: 4,
