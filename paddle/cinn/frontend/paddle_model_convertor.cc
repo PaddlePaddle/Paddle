@@ -19,7 +19,6 @@
 #include <unordered_set>
 #include <utility>
 
-#include "paddle/cinn/frontend/op_mappers/use_op_mappers.h"
 #include "paddle/cinn/frontend/paddle/cpp/op_desc.h"
 #include "paddle/cinn/frontend/paddle/cpp/program_desc.h"
 #include "paddle/cinn/frontend/paddle/model_parser.h"

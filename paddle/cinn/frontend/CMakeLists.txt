@@ -18,6 +18,3 @@ gather_srcs(
 #  SRCS computation_test.cc DEPS cinncore)
 
 add_subdirectory(paddle)
-add_subdirectory(op_mappers)
-# add_subdirectory(pass)
-#add_subdirectory(group_cluster)
