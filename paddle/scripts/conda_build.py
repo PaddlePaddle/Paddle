@@ -62,10 +62,9 @@ def template_full(name, version, packages_string, python_version, cuda_str):
 
     paddlepaddle_cuda=''
     if cuda_str == "cuda11.8":
-        paddlepaddle_cuda = '- paddlepaddle_cuda>=11.8,<12.0'
+        paddlepaddle_cuda = '- paddlepaddle-cuda>=11.8,<12.0'
     elif cuda_str == "cuda12.3":
-        paddlepaddle_cuda = '- paddlepaddle_cuda>=12.3,<12.4'
-
+        paddlepaddle_cuda = '- paddlepaddle-cuda>=12.3,<12.4'
 
     # 使用字典填充模板
     data = {
