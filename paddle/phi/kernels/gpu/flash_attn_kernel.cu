@@ -566,7 +566,7 @@ void CalcReducedAttnScoresKernel(const Context& ctx,
                                  const DenseTensor& q,
                                  const DenseTensor& k,
                                  const DenseTensor& softmax_lse,
-                                 bool return_softmax,
+                                 const bool return_softmax,
                                  DenseTensor* reduced_scores,
                                  DenseTensor* softmax) {
 #ifdef PADDLE_WITH_FLASHATTN

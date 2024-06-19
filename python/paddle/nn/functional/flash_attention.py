@@ -990,6 +990,12 @@ def calc_reduced_attention_scores(
     query: paddle.Tensor, key: paddle.Tensor, softmax_lse: paddle.Tensor
 ) -> paddle.Tensor:
     r"""
+    The equation is:
+
+    .. math::
+
+        result=reduce_sum(softmax(\frac{ Q * K^T }{\sqrt{d}}), dim=-2)
+
     Warning:
         This API only supports inputs with dtype float16 and bfloat16.
 

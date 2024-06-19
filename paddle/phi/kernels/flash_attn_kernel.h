@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 
@@ -84,7 +83,7 @@ void CalcReducedAttnScoresKernel(const Context& ctx,
                                  const DenseTensor& q,
                                  const DenseTensor& k,
                                  const DenseTensor& softmax_lse,
-                                 bool return_softmax,
+                                 const bool return_softmax,
                                  DenseTensor* reduced_scores,
                                  DenseTensor* softmax);
 }  // namespace phi
