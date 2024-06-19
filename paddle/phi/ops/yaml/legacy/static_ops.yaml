@@ -649,6 +649,19 @@
   optional : sequence_length, dropout_state_out
   intermediate : reserve
 
+- op : seed
+  args : (int seed=0, bool deterministic=false, str rng_name="", bool force_cpu=false, DataType dtype=DataType::INT32)
+  output : Tensor(out)
+  infer_meta:
+    func: SeedInferMeta
+    param: [seed]
+  kernel:
+    func: seed
+    param: [seed, deterministic, rng_name, force_cpu]
+    data_type: dtype
+    backend: place
+  traits : pir::SideEffectTrait
+
 - op : shadow_output
   args : (Tensor x, str name)
   output : Tensor(out)
