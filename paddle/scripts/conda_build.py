@@ -182,7 +182,7 @@ def conda_build(paddle_version, var):
             packages_string = var.py_str[i] + "_cpu_many_linux"
             python_version = var.py_ver[var.py_str[i]]
             template_full(name, paddle_version, packages_string, python_version)
-            gen_build_scripts(name, 'cpu', paddle_version, var.pip_ver[i])
+            gen_build_scripts(name, 'cpu', paddle_version)
             os.system("conda build .")
 
         # gpu安装包编译
@@ -192,7 +192,7 @@ def conda_build(paddle_version, var):
                 packages_string = var.py_str[i] + "_gpu_" + cuda_str + "_many_linux"
                 python_version = var.py_ver[var.py_str[i]]
                 template_full(name, paddle_version, packages_string, python_version)
-                gen_build_scripts(name, cuda_str, paddle_version, var.pip_ver[i])
+                gen_build_scripts(name, cuda_str, paddle_version)
                 os.system("conda build .")
 
     elif sysstr == "Windows":
