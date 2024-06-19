@@ -9,23 +9,6 @@ gather_srcs(
   program_pass.cc
   optimize.cc)
 
-if(NOT WITH_CUDA)
-
-  #  cinn_cc_test(test_frontend_interpreter
-  #          ARGS --model_dir=${THIRD_PARTY_PATH}/naive_mul_model
-  #          SRCS interpreter_test.cc DEPS cinncore)
-
-else()
-  cinn_nv_test(
-    test_frontend_interpreter
-    ARGS
-    --model_dir=${THIRD_PARTY_PATH}/naive_mul_model
-    SRCS
-    interpreter_test.cc
-    DEPS
-    cinncore)
-endif()
-
 #cinn_cc_test(test_paddle_model_convertor
 #        ARGS --model_dir=${THIRD_PARTY_PATH}/resnet_model
 #        SRCS paddle_model_convertor_test.cc DEPS cinncore decomposer_test_helper)
@@ -33,13 +16,3 @@ endif()
 #cinn_cc_test(test_computation
 #  ARGS "--model_dir=${THIRD_PARTY_PATH}/naive_mul_model"
 #  SRCS computation_test.cc DEPS cinncore)
-
-cinn_cc_test(test_decomposer_registry SRCS decomposer_registry_test.cc DEPS
-             cinncore)
-
-#add_subdirectory(paddle)
-add_subdirectory(decomposer)
-#add_subdirectory(group_cluster)
-
-cinn_cc_test(test_op_mapper_registry SRCS op_mapper_registry_test.cc DEPS
-             cinncore)

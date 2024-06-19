@@ -455,6 +455,23 @@ void BatchSizeLikeInferMeta(const MetaTensor& x,
   out->set_dims(output_dim);
 }
 
+void BipartiteMatchInferMeta(const MetaTensor& dist_mat,
+                             const std::string& match_type,
+                             float dist_threshold,
+                             MetaTensor* col_to_row_match_indices,
+                             MetaTensor* col_to_row_match_dist) {
+  const auto& dims = dist_mat.dims();
+  PADDLE_ENFORCE_EQ(
+      dims.size(),
+      2,
+      phi::errors::InvalidArgument("The rank of Input(DistMat) must be 2."));
+
+  col_to_row_match_indices->set_dims(dims);
+  col_to_row_match_indices->set_dtype(DataType::INT32);
+  col_to_row_match_dist->set_dims(dims);
+  col_to_row_match_dist->set_dtype(dist_mat.dtype());
+}
+
 void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_layout(x.layout());

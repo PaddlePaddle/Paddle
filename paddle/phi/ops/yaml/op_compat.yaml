@@ -422,6 +422,12 @@
   get_expected_kernel_type :
     bincount : GetBincountExpectedKernelType
 
+- op : bipartite_match
+  inputs:
+    dist_mat : DistMat
+  outputs:
+    {col_to_row_match_indices : ColToRowMatchIndices, col_to_row_match_dist : ColToRowMatchDist}
+
 - op : bitwise_and
   inputs :
     {x : X, y : Y}
@@ -929,6 +935,9 @@
     fix_seed : fix_seed
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
+  scalar :
+    p :
+      support_tensor : true
 
 - op : dropout_nd
   backward : dropout_nd_grad

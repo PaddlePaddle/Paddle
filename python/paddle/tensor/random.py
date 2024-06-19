@@ -1171,11 +1171,16 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
         check_type(max, 'max', (float, int, paddle.pir.Value), 'uniform/rand')
         if paddle.utils._contain_var(shape):
             shape = paddle.utils.get_int_tensor_list(shape)
+        if isinstance(min, int):
+            min = float(min)
+        if isinstance(max, int):
+            max = float(max)
+
         return _C_ops.uniform(
             shape,
             dtype,
-            float(min),
-            float(max),
+            min,
+            max,
             seed,
             _current_expected_place(),
         )

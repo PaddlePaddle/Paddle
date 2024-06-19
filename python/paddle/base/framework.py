@@ -710,9 +710,11 @@ def _fake_interface_only_(
 # introducing compatibility issues, add this decorator
 # NOTE(chenweihang): not using `wrap_decorator` here is because `wrap_decorator` will
 # move kwargs to args, which doesn't work in this decorate case
-def deprecate_stat_dict(func):
+def deprecate_stat_dict(
+    func: Callable[_InputT, _RetT]
+) -> Callable[_InputT, _RetT]:
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         if "stat_dict" in kwargs:
             warnings.warn(
                 "The argument `stat_dict` has deprecated, please change it to `state_dict`.",

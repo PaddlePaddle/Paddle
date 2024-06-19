@@ -22,8 +22,8 @@
 namespace cinn {
 namespace auto_schedule {
 
-// alias a Graph::Group array as SubGraph
-using SubGraphPtr = std::shared_ptr<hlir::framework::Graph::Group>;
+// alias a LoweredFunc array as FunctionGroup
+using FunctionGroup = std::vector<ir::LoweredFunc>;
 
 // Options for tuning process
 struct TuningOptions {

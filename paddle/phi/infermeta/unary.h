@@ -68,6 +68,12 @@ void ArrayToTensorInferMeta(const MetaTensor& x,
                             MetaTensor* out_index,
                             MetaConfig config = MetaConfig());
 
+void BipartiteMatchInferMeta(const MetaTensor& dist_mat,
+                             const std::string& match_type,
+                             float dist_threshold,
+                             MetaTensor* col_to_row_match_indices,
+                             MetaTensor* col_to_row_match_dist);
+
 void TensorToArrayInferMeta(const MetaTensor& x,
                             const MetaTensor& out_grad,
                             int axis,
