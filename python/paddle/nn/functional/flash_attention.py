@@ -1007,7 +1007,7 @@ def calc_reduced_attention_scores(
                         [batch_size, num_heads, seqlen_q].
                         The dtype is float32.
     Returns:
-        reduced_scores(Tensor), The reduce sum of attention scores across seqlen_q.
+        reduced_attention_scores(Tensor), The reduce sum of attention scores across seqlen_q.
                     4-D tensor with shape: [batch_size, num_heads, 1, seqlen_k].
                     The dtype is float32.
     Examples:
@@ -1051,7 +1051,10 @@ def calc_reduced_attention_scores(
             >>> )
             >>> # doctest: -SKIP
     """
-    # TODO(umiswing): add assert to disable bwd.
+    assert (
+        query.stop_gradient and key.stop_gradient
+    ), 'calc_reduced_attention_scores() is for inference only.'
+
     if in_dynamic_mode():
         (reduced_scores, _) = _C_ops.calc_reduced_attn_scores(
             query, key, softmax_lse, False
