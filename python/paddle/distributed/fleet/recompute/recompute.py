@@ -295,6 +295,8 @@ def _recompute_without_reentrant(
         cur_device = paddle.get_device()
         if 'gpu:' in cur_device:
             fw_cuda_rng_state = paddle.get_cuda_rng_state()
+        elif 'cpu' in cur_device:
+            fw_cuda_rng_state = paddle.get_rng_state()
         elif 'xpu:' in cur_device:
             fw_cuda_rng_state = paddle.get_rng_state()
         elif (
