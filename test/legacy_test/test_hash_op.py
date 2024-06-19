@@ -20,8 +20,8 @@ from op_test import OpTest
 import paddle
 
 
-def api_wrapper(x, num_hash=1, mod_by=100000):
-    return paddle._C_ops.hash(x, num_hash, mod_by)
+def api_wrapper(x, num_hash=1, mod_by=100000, runtime_shape=True):
+    return paddle._C_ops.hash(x, num_hash, mod_by, runtime_shape)
 
 
 class TestHashOp(OpTest):
