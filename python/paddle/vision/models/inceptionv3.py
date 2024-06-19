@@ -15,6 +15,15 @@
 from __future__ import annotations
 
 import math
+from typing import (
+    TYPE_CHECKING,
+    TypedDict,
+)
+
+from typing_extensions import (
+    NotRequired,
+    Unpack,
+)
 
 import paddle
 from paddle import nn
@@ -25,6 +34,9 @@ from paddle.utils.download import get_weights_path_from_url
 
 from ..ops import ConvNormActivation
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+
 __all__ = []
 
 model_urls = {
@@ -33,6 +45,11 @@ model_urls = {
         "649a4547c3243e8b59c656f41fe330b8",
     )
 }
+
+
+class InceptionV3Options(TypedDict):
+    num_classes: NotRequired[int]
+    with_pool: NotRequired[bool]
 
 
 class InceptionStem(nn.Layer):
@@ -78,7 +95,7 @@ class InceptionStem(nn.Layer):
             activation_layer=nn.ReLU,
         )
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         x = self.conv_1a_3x3(x)
         x = self.conv_2a_3x3(x)
         x = self.conv_2b_3x3(x)
@@ -148,7 +165,7 @@ class InceptionA(nn.Layer):
             activation_layer=nn.ReLU,
         )
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         branch1x1 = self.branch1x1(x)
         branch5x5 = self.branch5x5_1(x)
         branch5x5 = self.branch5x5_2(branch5x5)
@@ -202,7 +219,7 @@ class InceptionB(nn.Layer):
 
         self.branch_pool = MaxPool2D(kernel_size=3, stride=2)
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         branch3x3 = self.branch3x3(x)
 
         branch3x3dbl = self.branch3x3dbl_1(x)
@@ -299,7 +316,7 @@ class InceptionC(nn.Layer):
             activation_layer=nn.ReLU,
         )
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         branch1x1 = self.branch1x1(x)
 
         branch7x7 = self.branch7x7_1(x)
@@ -373,7 +390,7 @@ class InceptionD(nn.Layer):
 
         self.branch_pool = MaxPool2D(kernel_size=3, stride=2)
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         branch3x3 = self.branch3x3_1(x)
         branch3x3 = self.branch3x3_2(branch3x3)
 
@@ -460,7 +477,7 @@ class InceptionE(nn.Layer):
             activation_layer=nn.ReLU,
         )
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         branch1x1 = self.branch1x1(x)
 
         branch3x3 = self.branch3x3_1(x)
@@ -572,7 +589,7 @@ class InceptionV3(nn.Layer):
                 bias_attr=ParamAttr(),
             )
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         x = self.inception_stem(x)
         for inception_block in self.inception_block_list:
             x = inception_block(x)
@@ -587,7 +604,9 @@ class InceptionV3(nn.Layer):
         return x
 
 
-def inception_v3(pretrained: bool = False, **kwargs) -> InceptionV3:
+def inception_v3(
+    pretrained: bool = False, **kwargs: Unpack[InceptionV3Options]
+) -> InceptionV3:
     """Inception v3 model from
     `"Rethinking the Inception Architecture for Computer Vision" <https://arxiv.org/pdf/1512.00567.pdf>`_.
 
