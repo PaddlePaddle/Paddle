@@ -2211,7 +2211,7 @@ class OpTest(unittest.TestCase):
                         expect[0]
                         if isinstance(expect, (tuple, list))
                         else expect
-                    ).reshape(-1)
+                    )
                 actual_np, expect_np = self.convert_uint16_to_float_ifneed(
                     actual_np, expect_np
                 )
@@ -2272,7 +2272,7 @@ class OpTest(unittest.TestCase):
             def find_actual_value(self, name):
                 idx = find_actual(name, self.fetch_list)
                 actual = self.outputs[idx]
-                actual_t = np.array(actual).reshape(-1)
+                actual_t = np.array(actual)
                 return actual, actual_t
 
             def find_expect_value(self, name):
