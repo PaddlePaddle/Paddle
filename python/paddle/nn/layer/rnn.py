@@ -28,7 +28,7 @@ from paddle.base.framework import (
     program_guard,
 )
 from paddle.common_ops_import import Variable
-from paddle.framework import core
+from paddle.framework import core, in_pir_mode
 from paddle.nn import (
     functional as F,
     initializer as I,
@@ -1625,19 +1625,34 @@ class RNNBase(LayerList):
                 default_startup_program(), default_startup_program()
             ):
                 with paddle.no_grad():
-                    self._helper.append_op(
-                        type="coalesce_tensor",
-                        inputs={"Input": self._all_weights},
-                        outputs={
-                            "Output": self._all_weights,
-                            "FusedOutput": self._flat_weight,
-                        },
-                        attrs={
-                            "copy_data": True,
-                            "use_align": False,
-                            "dtype": params[0].dtype,
-                        },
-                    )
+                    if in_pir_mode():
+                        _C_ops.coalesce_tensor(
+                            self._all_weights,
+                            params[0].dtype,
+                            True,
+                            False,
+                            False,
+                            0.0,
+                            False,
+                            -1,
+                            -1,
+                            [],
+                            [],
+                        )
+                    else:
+                        self._helper.append_op(
+                            type="coalesce_tensor",
+                            inputs={"Input": self._all_weights},
+                            outputs={
+                                "Output": self._all_weights,
+                                "FusedOutput": self._flat_weight,
+                            },
+                            attrs={
+                                "copy_data": True,
+                                "use_align": False,
+                                "dtype": params[0].dtype,
+                            },
+                        )
 
     def _cudnn_impl(self, inputs, initial_states, sequence_length):
         if not self.time_major:
