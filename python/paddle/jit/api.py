@@ -629,6 +629,14 @@ def _get_input_var_and_names(inputs, input_spec, input_names_after_prune):
     return result_var_list, result_name_list
 
 
+def _contains_dict(output):
+    if isinstance(output, dict):
+        return True
+    if isinstance(output, Sequence):
+        return any(_contains_dict(i) for i in output)
+    return False
+
+
 def _get_output_vars(outputs, output_spec, with_hook=False):
     name_no_exists_error = (
         "The tensor `%s` does not exists. "
@@ -648,6 +656,10 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
             "Currently not support specify output_spec while founding pre/post hooks in your outermost layer."
         )
     result_list = []
+    if _contains_dict(outputs):
+        warnings.warn(
+            "Outputs of save model contains dict, we will flatten it to list, and sort it by alphabet order."
+        )
     if use_pir_api():
         from paddle.autograd.backward_utils import ValueSet
 
