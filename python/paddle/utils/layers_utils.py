@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import copy
 import typing
 from collections import defaultdict
@@ -24,6 +26,7 @@ import numpy as np
 from typing_extensions import TypeGuard
 
 import paddle
+from paddle._typing import ShapeLike
 from paddle.pir.core import convert_np_dtype_to_dtype_
 
 from ..base.data_feeder import check_dtype, convert_dtype
@@ -451,6 +454,11 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
     """
     from paddle.tensor import fill_constant
 
+    if _contain_var(old_list):
+        for ele in old_list:
+            if isinstance(ele, paddle.pir.Value):
+                dtype = ele.dtype
+
     new_list_tensor = []
     for ele in old_list:
         if isinstance(ele, (Variable, paddle.pir.Value)):
@@ -581,3 +589,28 @@ def get_inputs_outputs_in_block(block):
                     inner_outputs.add(out_var_name)
 
     return inner_inputs, inner_outputs
+
+
+def is_same_shape(shape1: ShapeLike, shape2: ShapeLike) -> bool:
+    """
+    Check whether two shapes are the same. Deal with the dynamic shape.
+    """
+    if paddle.in_dynamic_mode():
+        return shape1 == shape2
+
+    def is_tensor(x):
+        return isinstance(x, (paddle.static.Variable, paddle.pir.Value))
+
+    def is_dynamic_axis(axis):
+        return is_tensor(axis) or axis == -1
+
+    if is_tensor(shape1) or is_tensor(shape2):
+        return True
+    if len(shape1) != len(shape2):
+        return False
+    for s1, s2 in zip(shape1, shape2):
+        if is_dynamic_axis(s1) or is_dynamic_axis(s2):
+            continue
+        if s1 != s2:
+            return False
+    return True

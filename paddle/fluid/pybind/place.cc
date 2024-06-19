@@ -158,10 +158,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
-#ifdef PADDLE_WITH_CINN
-#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
-#endif
-
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"

@@ -27,14 +27,15 @@
     data_type : x
 
 - op : accuracy_check
-  args : (Tensor x, Tensor y, str fn_name, int64_t res_idx)
+  args : (Tensor x, Tensor y, str fn_name, double rtol=1e-5, double atol=1e-8,  bool equal_nan=false)
   output : Tensor(out)
   infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
+    func : ValueCompareInferMeta
+    param: [x, y]
   kernel :
     func : accuracy_check
-  traits : pir::SideEffectTrait, pir::ImmutableLayoutTrait
+    data_type : x
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : acos
   args : (Tensor x)
@@ -468,6 +469,15 @@
     func : BinomialInferMeta
   kernel :
     func : binomial
+
+- op : bipartite_match
+  args: (Tensor dist_mat, str match_type = "bipartite", float dist_threshold = 0.5)
+  output: Tensor (col_to_row_match_indices), Tensor (col_to_row_match_dist)
+  infer_meta:
+    func: BipartiteMatchInferMeta
+  kernel:
+    func: bipartite_match
+    data_type: dist_mat
 
 - op : bitwise_and
   args : (Tensor x, Tensor y)
@@ -2669,7 +2679,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : logsumexp
-  args : (Tensor x, int64_t[] axis,  bool keepdim,  bool reduce_all)
+  args : (Tensor x, int[] axis={0},  bool keepdim=false,  bool reduce_all=false)
   output : Tensor(out)
   infer_meta :
     func : LogsumexpInferMeta
@@ -4277,14 +4287,14 @@
   backward : thresholded_relu_grad
 
 - op : top_p_sampling
-  args : (Tensor x, Tensor ps, Tensor threshold, int seed=-1)
-  output : Tensor (out), Tensor(ids)
+  args : (Tensor x, Tensor ps, Tensor threshold, Tensor topp_seed, int random_seed=-1, int k=1, str mode="truncate")
+  output : Tensor (out), Tensor(ids), Tensor(topk_scores), Tensor(topk_ids)
   infer_meta :
     func : TopPSamplingInferMeta
   kernel :
     func : top_p_sampling
     data_type : x
-  optional : threshold
+  optional : threshold, topp_seed
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : topk

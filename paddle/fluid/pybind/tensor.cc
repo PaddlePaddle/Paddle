@@ -158,10 +158,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
-#ifdef PADDLE_WITH_CINN
-#include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
-#endif
-
 #include "paddle/common/flags.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
@@ -709,6 +705,11 @@ void BindTensor(pybind11::module &m) {  // NOLINT
       .def("_share_buffer_with",
            [](phi::DenseTensor &self, const phi::DenseTensor src,
               py::tuple t) {
+              if (!src.meta().is_contiguous()) {
+                PADDLE_THROW(platform::errors::InvalidArgument(
+                    "Tensor is not contiguous, cannot call "
+                    "share_buffer_with on it."));
+              }
              auto *cuda_ipc_allocation =
                  dynamic_cast<memory::allocation::CudaIpcAllocation *>(
                      src.Holder().get());

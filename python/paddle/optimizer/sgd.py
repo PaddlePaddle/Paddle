@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import warnings
+from typing import TYPE_CHECKING, Sequence
 
 from paddle import _C_ops, pir
 from paddle.nn.clip import GradientClipBase
@@ -25,6 +26,13 @@ from ..base.dygraph import no_grad
 from ..base.framework import in_dynamic_or_pir_mode
 from .optimizer import Optimizer
 
+if TYPE_CHECKING:
+    from paddle import Tensor
+    from paddle.nn.clip import GradientClipBase
+    from paddle.regularizer import WeightDecayRegularizer
+
+    from .lr import LRScheduler
+    from .optimizer import _ParameterConfig
 __all__ = []
 
 
@@ -37,8 +45,8 @@ class SGD(Optimizer):
         param\_out = param - learning\_rate * grad
 
     Parameters:
-        learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.
-            It can be a float value, a ``Tensor`` with a float type or a LearningRateDecay. The default value is 0.001.
+        learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a LRScheduler. The default value is 0.001.
         parameters (list|tuple|None, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static graph mode, at this time all parameters will be updated.
@@ -53,8 +61,7 @@ class SGD(Optimizer):
             some derived class of ``GradientClipBase`` . There are three clipping strategies
             ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
             :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
-        multi_precision (bool, optional): Whether to use multi-precision during weight updating. \
-            Default is false.
+        multi_precision (bool, optional): Whether to use multi-precision during weight updating.
         name (str|None, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
                 :ref:`api_guide_Name` .
@@ -76,15 +83,17 @@ class SGD(Optimizer):
 
     """
 
+    type: str
+
     def __init__(
         self,
-        learning_rate: float = 0.001,
-        parameters: list | tuple | None = None,
+        learning_rate: float | LRScheduler = 0.001,
+        parameters: Sequence[Tensor] | Sequence[_ParameterConfig] | None = None,
         weight_decay: float | WeightDecayRegularizer | None = None,
         grad_clip: GradientClipBase | None = None,
         multi_precision: bool = False,
         name: str | None = None,
-    ) -> Optimizer:
+    ) -> None:
         if learning_rate is None:
             raise ValueError("learning_rate is not set")
         super().__init__(
