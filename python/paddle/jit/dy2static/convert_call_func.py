@@ -20,7 +20,8 @@ import logging
 import os
 import pdb  # noqa: T100
 import re
-from typing import Any, List
+import types
+from typing import Any, Callable
 
 import numpy
 
@@ -100,7 +101,7 @@ def builtin_modules():
 BUILTIN_LIKELY_MODULES = builtin_modules()
 
 
-def add_ignore_module(modules: List[Any]):
+def add_ignore_module(modules: list[types.ModuleType]):
     """
     Adds modules that ignore transcription
     """
@@ -111,15 +112,21 @@ def add_ignore_module(modules: List[Any]):
 
 
 @functools.lru_cache
-def get_module_function(module):
+def get_module_functions(module) -> list[Callable[..., Any]]:
     visited = set()
+
+    def _try_get_members(module) -> list[tuple[str, Any]]:
+        try:
+            return inspect.getmembers(module)
+        except Exception:
+            return []
 
     def _get_module_functions(module):
         if module in visited:
             return []
         visited.add(module)
         results = []
-        for _member_name, member in inspect.getmembers(module):
+        for _member_name, member in _try_get_members(module):
             if callable(member):
                 results.append(member)
             if inspect.ismodule(member):
@@ -137,7 +144,7 @@ def is_unsupported(func):
     builtin_functions = [
         func
         for module in BUILTIN_LIKELY_MODULES
-        for func in get_module_function(module)
+        for func in get_module_functions(module)
     ]
 
     for builtin_fn in builtin_functions:
