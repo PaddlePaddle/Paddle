@@ -36,7 +36,7 @@
 
 namespace cinn::fusion {
 
-StmtPattern ConvertToStmtPattern(const PatternContent& content) {
+static StmtPattern ConvertToStmtPattern(const PatternContent& content) {
   const auto& kind = GetOpPatternKind(content.op);
   if (kind == hlir::framework::kReduction) {
     auto result =
@@ -63,8 +63,8 @@ StmtPattern ConvertToStmtPattern(const PatternContent& content) {
 
 // Trivial x other
 
-StmtPattern MergePatternImpl(const TrivialPattern& first,
-                             const TrivialPattern& second) {
+static StmtPattern MergePatternImpl(const TrivialPattern& first,
+                                    const TrivialPattern& second) {
   const auto& contents =
       UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second));
   return TrivialPattern(
@@ -73,8 +73,8 @@ StmtPattern MergePatternImpl(const TrivialPattern& first,
       std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
 
-StmtPattern MergePatternImpl(const TrivialPattern& first,
-                             const ReducePattern& second) {
+static StmtPattern MergePatternImpl(const TrivialPattern& first,
+                                    const ReducePattern& second) {
   const auto& contents =
       UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second));
   return ReducePattern(
@@ -93,8 +93,8 @@ B FusePatternIfConnected(A up_pattern,
   }
 }
 
-StmtPattern MergePatternImpl(const TrivialPattern& first,
-                             const ReduceTreePattern& second) {
+static StmtPattern MergePatternImpl(const TrivialPattern& first,
+                                    const ReduceTreePattern& second) {
   auto connect_ops = FindDownstreamOps(first.sink_op());
 
   auto old_childs = second.childs();
@@ -110,8 +110,8 @@ StmtPattern MergePatternImpl(const TrivialPattern& first,
       std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
 
-StmtPattern MergePatternImpl(const TrivialPattern& first,
-                             const ReduceTreePlusTrivialPattern& second) {
+static StmtPattern MergePatternImpl(
+    const TrivialPattern& first, const ReduceTreePlusTrivialPattern& second) {
   auto connect_ops = FindDownstreamOps(first.sink_op());
   return ReduceTreePlusTrivialPattern(
       FusePatternIfConnected(first, second.tree, connect_ops),
@@ -119,8 +119,8 @@ StmtPattern MergePatternImpl(const TrivialPattern& first,
       std::make_shared<FusionTracker>(first.tracker_, second.tracker_));
 }
 
-StmtPattern MergePatternImpl(const TrivialPattern& first,
-                             const AnchorPattern& second) {
+static StmtPattern MergePatternImpl(const TrivialPattern& first,
+                                    const AnchorPattern& second) {
   return AnchorPattern(
       UniqueConcatVector(GetOpsInPattern(first), GetOpsInPattern(second)),
       second.anchor(),
@@ -130,8 +130,8 @@ StmtPattern MergePatternImpl(const TrivialPattern& first,
 
 // RR & RT
 
-int InsertDownstreamIntoTree(const ReduceTreePattern& upstream,
-                             ReduceTreePattern& downstream) {  // NOLINT
+static int InsertDownstreamIntoTree(const ReduceTreePattern& upstream,
+                                    ReduceTreePattern& downstream) {  // NOLINT
   if (IsDirectUpstream(upstream.GetRootPattern().GetReduceOp(),
                        downstream.GetRootPattern().GetReduceOp())) {
     downstream.InsertChild(upstream);
@@ -144,8 +144,8 @@ int InsertDownstreamIntoTree(const ReduceTreePattern& upstream,
   return insert_num;
 }
 
-StmtPattern MergePatternImpl(const ReduceTreePattern& upstream,
-                             const ReduceTreePattern& downstream) {
+static StmtPattern MergePatternImpl(const ReduceTreePattern& upstream,
+                                    const ReduceTreePattern& downstream) {
   ReduceTreePattern result = ReduceTreePattern(
       downstream.childs(),
       downstream.GetRootPattern(),
@@ -156,8 +156,8 @@ StmtPattern MergePatternImpl(const ReduceTreePattern& upstream,
   return result;
 }
 
-StmtPattern MergePatternImpl(const ReduceTreePattern& first,
-                             const TrivialPattern& second) {
+static StmtPattern MergePatternImpl(const ReduceTreePattern& first,
+                                    const TrivialPattern& second) {
   return ReduceTreePlusTrivialPattern(
       first,
       second,
@@ -165,18 +165,18 @@ StmtPattern MergePatternImpl(const ReduceTreePattern& first,
 }
 
 // Anchor Fusion
-std::vector<ExprPromise> InitExprPromiseImpl(const TrivialPattern& pattern,
-                                             pir::Value anchor) {
+static std::vector<ExprPromise> InitExprPromiseImpl(
+    const TrivialPattern& pattern, pir::Value anchor) {
   return {ExprPromise(anchor, pattern.id())};
 }
 
-std::vector<ExprPromise> InitExprPromiseImpl(const ReducePattern& pattern,
-                                             pir::Value anchor) {
+static std::vector<ExprPromise> InitExprPromiseImpl(
+    const ReducePattern& pattern, pir::Value anchor) {
   return {ExprPromise(anchor, pattern.id())};
 }
 
-std::vector<ExprPromise> InitExprPromiseImpl(const ReduceTreePattern& pattern,
-                                             pir::Value anchor) {
+static std::vector<ExprPromise> InitExprPromiseImpl(
+    const ReduceTreePattern& pattern, pir::Value anchor) {
   // TODO(@wuzhanfei) this is temporary
   // now we do not support anchor fusion for reduce op,
   // so, this is ok currently. but need to be redesigned later
@@ -189,15 +189,15 @@ std::vector<ExprPromise> InitExprPromiseImpl(const PATTERN& pattern,
   PADDLE_THROW("Can not Init ExprPromise");
 }
 
-std::vector<ExprPromise> InitExprPromise(const StmtPattern& pattern,
-                                         pir::Value anchor) {
+static std::vector<ExprPromise> InitExprPromise(const StmtPattern& pattern,
+                                                pir::Value anchor) {
   return std::visit(
       [anchor](const auto& arg) { return InitExprPromiseImpl(arg, anchor); },
       pattern);
 }
 
-StmtPattern MergePatternImpl(const AnchorPattern& source,
-                             const AnchorPattern& dest) {
+static StmtPattern MergePatternImpl(const AnchorPattern& source,
+                                    const AnchorPattern& dest) {
   const auto& contents =
       UniqueConcatVector(GetOpsInPattern(source), GetOpsInPattern(dest));
   return AnchorPattern(
@@ -207,7 +207,7 @@ StmtPattern MergePatternImpl(const AnchorPattern& source,
       std::make_shared<FusionTracker>(source.tracker_, dest.tracker_));
 }
 
-TrivialPattern RecoverAnchorPatternToTrivial(
+static TrivialPattern RecoverAnchorPatternToTrivial(
     const AnchorPattern& anchor_pattern) {
   PADDLE_ENFORCE_EQ(anchor_pattern.anchor_state.promise.size(),
                     1,
@@ -222,12 +222,12 @@ TrivialPattern RecoverAnchorPatternToTrivial(
       std::make_shared<FusionTracker>(anchor_pattern.tracker_));
 }
 
-AnchorState GetAnchorState(const AnchorPattern& pattern) {
+static AnchorState GetAnchorState(const AnchorPattern& pattern) {
   return pattern.anchor_state;
 }
 
-AnchorState ApplyAnchorTransformRoute(const AnchorState& anchor_state,
-                                      const AnchorTransformRoute& route) {
+static AnchorState ApplyAnchorTransformRoute(
+    const AnchorState& anchor_state, const AnchorTransformRoute& route) {
   AnchorState result = anchor_state;
   for (auto promise : result.promise) {
     promise.update(route);
@@ -243,7 +243,7 @@ using LoopFramework = std::vector<symbol::DimExpr>;
 // std::optional will cause SegmentFault, TODO: fix this.
 using MaybeLoopFramework = LoopFramework;
 
-MaybeLoopFramework GetLoopFramework(const StmtPattern& pattern);
+static MaybeLoopFramework GetLoopFramework(const StmtPattern& pattern);
 
 static MaybeLoopFramework SqueezeLoopFramework(
     const MaybeLoopFramework& loop_framework) {
@@ -258,7 +258,8 @@ static MaybeLoopFramework SqueezeLoopFramework(
   return result;
 }
 
-bool IsLoopFrameworkEqual(const StmtPattern& lhs, const StmtPattern& rhs) {
+static bool IsLoopFrameworkEqual(const StmtPattern& lhs,
+                                 const StmtPattern& rhs) {
   auto lhs_loop = GetLoopFramework(lhs);
   auto rhs_loop = GetLoopFramework(rhs);
   VLOG(4) << "lhs loop range is:" << utils::Join(lhs_loop, ",");
@@ -336,12 +337,12 @@ struct LoopFrameworkVisitor {
   }
 };
 
-MaybeLoopFramework GetLoopFramework(const StmtPattern& pattern) {
+static MaybeLoopFramework GetLoopFramework(const StmtPattern& pattern) {
   return std::visit(LoopFrameworkVisitor(), pattern);
 }
 
-inline auto GetPaddingVector(const MaybeLoopFramework& first,
-                             const MaybeLoopFramework& second) {
+static inline auto GetPaddingVector(const MaybeLoopFramework& first,
+                                    const MaybeLoopFramework& second) {
   // two pointer to get the padding body.
   std::vector<int> padding_f;
   std::vector<int> padding_s;
@@ -379,8 +380,8 @@ inline auto GetPaddingVector(const MaybeLoopFramework& first,
   return std::tuple(padding_f, padding_s);
 }
 
-StmtPattern MergePatternImpl(const HorizontalFusionPattern& first,
-                             const HorizontalFusionPattern& second) {
+static StmtPattern MergePatternImpl(const HorizontalFusionPattern& first,
+                                    const HorizontalFusionPattern& second) {
   const auto& [f, s] =
       GetPaddingVector(GetLoopFramework(first), GetLoopFramework(second));
   typename HorizontalFusionPattern::PaddingStmtPattern pad_first = {first, f};
@@ -392,7 +393,8 @@ StmtPattern MergePatternImpl(const HorizontalFusionPattern& first,
 
 //
 
-StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
+static StmtPattern MergePattern(const StmtPattern& first,
+                                const StmtPattern& second) {
   VLOG(4) << "MergePattern: " << GetPatternName(first) << " x "
           << GetPatternName(second);
   const auto PatternMatch = adt::match{
@@ -432,7 +434,7 @@ StmtPattern MergePattern(const StmtPattern& first, const StmtPattern& second) {
   return std::visit(PatternMatch, first, second);
 }
 
-void SetReturnInstr(const StmtPattern& s) {
+static void SetReturnInstr(const StmtPattern& s) {
   std::visit(
       [](const auto& impl) {
         impl.tracker_->append(std::make_shared<ReturnInstr>(impl.id()));

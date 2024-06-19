@@ -278,7 +278,7 @@ struct HorizontalFusionPattern {
     id_ = UniqueId();
   }
   std::vector<PaddingStmtPattern> padding_patterns_;
-  std::vector<pir::Operation*> ops() const;
+  inline std::vector<pir::Operation*> ops() const;
 
   static std::string name() { return "Horizontal"; }
 
@@ -289,7 +289,7 @@ struct HorizontalFusionPattern {
   }
   std::string id() const { return id_; }
   std::string id_;
-  void update_tracker() const;
+  inline void update_tracker() const;
   FusionTrackerPtr tracker_;
 };
 
@@ -324,8 +324,8 @@ using StmtPattern = std::variant<TrivialPattern,
                                  UnsupportPattern,
                                  AnchorPattern>;
 
-std::string GetPatternId(const StmtPattern& s);
-std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
+static std::string GetPatternId(const StmtPattern& s);
+static std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern);
 
 struct HorizontalFusionPattern::PaddingStmtPattern {
   StmtPattern pattern;
@@ -335,7 +335,7 @@ struct HorizontalFusionPattern::PaddingStmtPattern {
       : pattern(pattern), padding_pos(padding_pos) {}
 };
 
-void HorizontalFusionPattern::update_tracker() const {
+inline void HorizontalFusionPattern::update_tracker() const {
   std::vector<std::string> tmp_names;
   for (int i = 0; i < padding_patterns_.size(); i++) {
     auto padding_pattern = padding_patterns_[i];
@@ -349,7 +349,7 @@ void HorizontalFusionPattern::update_tracker() const {
   tracker_->append(std::make_shared<CombineInstr>(tmp_names, id()));
 }
 
-std::vector<pir::Operation*> HorizontalFusionPattern::ops() const {
+inline std::vector<pir::Operation*> HorizontalFusionPattern::ops() const {
   std::vector<pir::Operation*> result;
   for (const auto& pattern : padding_patterns_) {
     auto ops = GetOpsInPattern(pattern.pattern);
@@ -358,7 +358,7 @@ std::vector<pir::Operation*> HorizontalFusionPattern::ops() const {
   return result;
 }
 
-std::string StmtPatternDebugStr(const StmtPattern& stmt) {
+static std::string StmtPatternDebugStr(const StmtPattern& stmt) {
   std::stringstream ss;
   auto all_ops = GetOpsInPattern(stmt);
   ss << "StmtPattern, size " << all_ops.size() << " :\n";
@@ -366,23 +366,24 @@ std::string StmtPatternDebugStr(const StmtPattern& stmt) {
   return ss.str();
 }
 
-std::string GetPatternName(const StmtPattern& s) {
+static std::string GetPatternName(const StmtPattern& s) {
   return std::visit([](const auto& impl) { return impl.name(); }, s);
 }
 
-std::string GetPatternId(const StmtPattern& s) {
+static std::string GetPatternId(const StmtPattern& s) {
   return std::visit([](const auto& impl) { return impl.id(); }, s);
 }
 
-FusionTrackerPtr GetFusionTracker(const StmtPattern& s) {
+static FusionTrackerPtr GetFusionTracker(const StmtPattern& s) {
   return std::visit([](const auto& impl) { return impl.tracker_; }, s);
 }
 
-std::vector<pir::Operation*> GetOpsInPattern(const StmtPattern& pattern) {
+static std::vector<pir::Operation*> GetOpsInPattern(
+    const StmtPattern& pattern) {
   return std::visit([](const auto& impl) { return impl.ops(); }, pattern);
 }
 
-std::unordered_set<pir::Value> GetPatternInputValuesIncludeInner(
+static std::unordered_set<pir::Value> GetPatternInputValuesIncludeInner(
     const StmtPattern& A) {
   std::unordered_set<pir::Value> result;
   for (const auto& op : GetOpsInPattern(A)) {
@@ -393,7 +394,7 @@ std::unordered_set<pir::Value> GetPatternInputValuesIncludeInner(
   return result;
 }
 
-std::unordered_set<pir::Value> GetPatternOutputValuesIncludedInner(
+static std::unordered_set<pir::Value> GetPatternOutputValuesIncludedInner(
     const StmtPattern& A) {
   std::unordered_set<pir::Value> result;
   for (const auto& op : GetOpsInPattern(A)) {
@@ -404,7 +405,8 @@ std::unordered_set<pir::Value> GetPatternOutputValuesIncludedInner(
   return result;
 }
 
-std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A) {
+static std::unordered_set<pir::Value> GetPatternInputValues(
+    const StmtPattern& A) {
   auto all_input_values = GetPatternInputValuesIncludeInner(A);
   for (const auto& value : GetPatternOutputValuesIncludedInner(A)) {
     all_input_values.erase(value);
@@ -413,7 +415,7 @@ std::unordered_set<pir::Value> GetPatternInputValues(const StmtPattern& A) {
   return all_input_values;
 }
 
-void PatternUpdateTracker(const StmtPattern& pattern) {
+static void PatternUpdateTracker(const StmtPattern& pattern) {
   return std::visit([](const auto& impl) { impl.update_tracker(); }, pattern);
 }
 }  // namespace cinn::fusion

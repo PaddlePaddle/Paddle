@@ -113,8 +113,8 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
   auto input_axes = CreateNewNamesWithRank(input_rank);
 
   const auto reduce_axis_idx = [&]() -> decltype(auto) {
-    const std::vector<size_t> axis_idx = GetReduceAxisIdx(reduce_op);
-    return std::unordered_set<size_t>(axis_idx.begin(), axis_idx.end());
+    const std::vector<int64_t> axis_idx = GetReduceAxisIdx(reduce_op);
+    return std::unordered_set<int64_t>(axis_idx.begin(), axis_idx.end());
   }();
   PADDLE_ENFORCE_NE(
       reduce_axis_idx.size(),
@@ -129,7 +129,7 @@ ShardableAxesSignature CreateSignatureForReduce(pir::Operation* reduce_op) {
       axes.emplace_back(ShardableAxesInfoManager::GetUniqueName());
       return axes;
     }
-    for (size_t i = 0; i < input_rank; i++) {
+    for (int64_t i = 0; i < input_rank; i++) {
       if (!reduce_axis_idx.count(i)) {
         axes.emplace_back(input_axes[i]);
       } else if (keep_dim) {
