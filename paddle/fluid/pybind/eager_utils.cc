@@ -2867,4 +2867,37 @@ void BindEagerUtils(PyObject* module) {
   }
 }
 
+std::tuple<std::vector<int64_t>,
+           paddle::flat_hash_map<int64_t, phi::ReduceType>>
+CvtPlacements(Placements placements, int ndim) {
+  std::vector<int64_t> dim_map(ndim, -1);
+  for (size_t i = 0; i < placements.size(); i++) {
+    auto& placement = placements[i];
+    if (placement->is_shard()) {
+      auto shard_dim =
+          dynamic_cast<const phi::distributed::Shard&>(*placement).get_dim();
+      PADDLE_ENFORCE_EQ(
+          dim_map[shard_dim],
+          -1,
+          common::errors::InvalidArgument(
+              "Tensor dim %lld is already sharded on mesh dim %lld,"
+              " DistTensor operator implementation does not support things "
+              "like hybrid"
+              " sharding strategies yet (i.e. [Shard(0), Shard(0)])",
+              shard_dim,
+              dim_map[shard_dim]));
+      dim_map[shard_dim] = i;
+    }
+  }
+  paddle::flat_hash_map<int64_t, phi::ReduceType> partial_status;
+  for (size_t i = 0; i < placements.size(); ++i) {
+    auto& p = placements[i];
+    if (p->is_partial()) {
+      partial_status.insert(
+          {i, dynamic_cast<phi::distributed::Partial&>(*p).get_reduce_type()});
+    }
+  }
+  return {dim_map, partial_status};
+}
+
 }  // namespace paddle::pybind
